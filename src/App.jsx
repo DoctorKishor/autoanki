@@ -4,7 +4,7 @@ import {
   UploadCloud, Upload, Play, CheckCircle, AlertCircle, Edit3, Camera, Pause, Bell, Bookmark,
   Trash2, Download, Plus, Minus, Save, X, Server, Database,
   Folder, ChevronRight, ChevronDown, Move, Image as ImageIcon,
-  RotateCcw, Grid, Layers, Settings, MessageSquare, Home, Library, RefreshCw, LayoutDashboard, Sliders,
+  RotateCcw, RotateCw, Grid, Layers, Settings, MessageSquare, Home, Library, RefreshCw, LayoutDashboard, Sliders,
   Eye, EyeOff, Menu, ChevronLeft, FileText, Loader2, Monitor, MoreVertical, Search, Send, Tv,
   AlertTriangle, CheckCircle2, Maximize, GraduationCap, BarChart2, Tag, Calendar, TrendingUp, Info, Sparkles, Compass, Share2,
   XCircle, HelpCircle, Check, ZoomIn, ZoomOut, Copy, QrCode, Key,
@@ -1525,7 +1525,7 @@ const validatePageRange = (val, maxPages) => {
   return { isValid, cleanVal: val, message };
 };
 
-const PdfPagePreview = ({ pdf, pageNum }) => {
+const PdfPagePreview = ({ pdf, pageNum, rotation = 0, onRotate }) => {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -1537,7 +1537,7 @@ const PdfPagePreview = ({ pdf, pageNum }) => {
         const page = await pdf.getPage(pageNum);
         if (!active) return;
 
-        const viewport = page.getViewport({ scale: 0.35 }); // Gorgeous print preview scale
+        const viewport = page.getViewport({ scale: 0.35, rotation }); // Gorgeous print preview scale with rotation support
         const canvas = canvasRef.current;
         if (!canvas) return;
 
@@ -1559,16 +1559,49 @@ const PdfPagePreview = ({ pdf, pageNum }) => {
     return () => {
       active = false;
     };
-  }, [pdf, pageNum]);
+  }, [pdf, pageNum, rotation]);
+
+  const handleRotateClick = (e) => {
+    e.stopPropagation();
+    if (onRotate) {
+      onRotate(pageNum);
+    }
+  };
 
   return (
-    <div className="flex flex-col items-center gap-2 shrink-0 bg-white border border-gray-200 rounded-2xl p-3 shadow-md hover:shadow-lg hover:border-blue-400 transition-all duration-200 group">
-      <div className="w-full bg-gray-50 flex items-center justify-center rounded-lg p-1.5 border border-gray-100 overflow-hidden relative">
-        <canvas ref={canvasRef} className="rounded shadow-sm max-w-full h-auto" />
+    <div className="flex flex-col items-center gap-2 shrink-0 bg-white border border-gray-200 rounded-2xl p-3 shadow-md hover:shadow-lg hover:border-blue-400 transition-all duration-200 group relative">
+      <div className="w-full bg-gray-50 flex items-center justify-center rounded-lg p-1.5 border border-gray-100 overflow-hidden relative group/canvas">
+        <canvas ref={canvasRef} className="rounded shadow-sm max-w-full h-auto transition-transform duration-200" />
+        
+        {/* Rotation option button in corner of small page preview */}
+        <button
+          type="button"
+          onClick={handleRotateClick}
+          title={`Rotate Page ${pageNum} 90° clockwise (currently ${rotation}°)`}
+          className="absolute top-2 right-2 p-1.5 bg-white/95 hover:bg-blue-600 text-gray-700 hover:text-white rounded-full shadow-md backdrop-blur-xs transition-all duration-150 border border-gray-200 hover:border-blue-500 hover:scale-110 active:scale-95 flex items-center justify-center z-10 opacity-90 group-hover/canvas:opacity-100 cursor-pointer"
+        >
+          <RotateCw className="w-3.5 h-3.5" />
+        </button>
+
+        {rotation > 0 && (
+          <span className="absolute bottom-2 left-2 text-[9px] font-black bg-blue-600/90 text-white px-2 py-0.5 rounded-md shadow-xs backdrop-blur-xs">
+            {rotation}°
+          </span>
+        )}
       </div>
-      <span className="text-[10px] font-black text-gray-600 group-hover:bg-blue-600 group-hover:text-white px-3 py-1 rounded-full transition-all duration-150">
-        Page {pageNum}
-      </span>
+      <div className="flex items-center justify-between w-full px-1">
+        <span className="text-[10px] font-black text-gray-600 group-hover:bg-blue-600 group-hover:text-white px-3 py-1 rounded-full transition-all duration-150">
+          Page {pageNum}
+        </span>
+        <button
+          type="button"
+          onClick={handleRotateClick}
+          title="Rotate page 90°"
+          className="text-gray-400 hover:text-blue-600 p-1 rounded-lg hover:bg-blue-50 transition flex items-center gap-1 text-[10px] font-bold"
+        >
+          <RotateCw className="w-3.5 h-3.5" />
+        </button>
+      </div>
     </div>
   );
 };
@@ -4928,7 +4961,7 @@ export default function App() {
   const [hoveredCardIdFromImage, setHoveredCardIdFromImage] = useState(null);
   const [selectedPages, setSelectedPages] = useState(new Set());
   const [moveDialog, setMoveDialog] = useState({ isOpen: false, targetPath: '' });
-  const [pdfDialog, setPdfDialog] = useState({ isOpen: false, file: null, numPages: 0, mappings: [], isConverting: false });
+  const [pdfDialog, setPdfDialog] = useState({ isOpen: false, file: null, numPages: 0, mappings: [], rotations: {}, isConverting: false });
   const [loadedPdfDoc, setLoadedPdfDoc] = useState(null);
   const [autoTagDialog, setAutoTagDialog] = useState({ isOpen: false });
   const [operationProgress, setOperationProgress] = useState({ show: false, title: '', message: '', current: 0, total: 0 });
@@ -14841,11 +14874,40 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
         file: file,
         numPages: pdf.numPages,
         mappings: [{ id: generateId(), range: `1-${pdf.numPages}`, deck: hierarchy || 'Marrow::Pathology' }],
+        rotations: {},
         isConverting: false
       });
     } catch (err) {
       alert("Failed to load PDF: " + err.message);
     }
+  };
+
+  const handleRotatePdfPage = (pageNum) => {
+    setPdfDialog(prev => {
+      const currentRot = prev.rotations?.[pageNum] || 0;
+      const nextRot = (currentRot + 90) % 360;
+      return {
+        ...prev,
+        rotations: {
+          ...(prev.rotations || {}),
+          [pageNum]: nextRot
+        }
+      };
+    });
+  };
+
+  const handleRotateAllPdfPages = () => {
+    setPdfDialog(prev => {
+      const pages = Array.from(new Set(
+        (prev.mappings || []).flatMap(m => parsePageRange(m.range, prev.numPages))
+      ));
+      const nextRotations = { ...(prev.rotations || {}) };
+      pages.forEach(p => {
+        const cur = nextRotations[p] || 0;
+        nextRotations[p] = (cur + 90) % 360;
+      });
+      return { ...prev, rotations: nextRotations };
+    });
   };
 
   const convertPdfToImages = async () => {
@@ -14879,7 +14941,8 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
           }));
 
           const page = await pdf.getPage(pageNum);
-          const viewport = page.getViewport({ scale: 2.0 });
+          const pageRotation = pdfDialog.rotations?.[pageNum] || 0;
+          const viewport = page.getViewport({ scale: 2.0, rotation: pageRotation });
           const canvas = document.createElement('canvas');
           const context = canvas.getContext('2d');
           canvas.height = viewport.height;
@@ -32588,7 +32651,7 @@ Return your response strictly as a JSON object matching this schema:
                       <div className="pt-4 border-t border-gray-100 flex items-center justify-end gap-3 shrink-0">
                         <button
                           onClick={() => {
-                            setPdfDialog({ isOpen: false, file: null, numPages: 0, mappings: [], isConverting: false });
+                            setPdfDialog({ isOpen: false, file: null, numPages: 0, mappings: [], rotations: {}, isConverting: false });
                             setLoadedPdfDoc(null);
                           }}
                           disabled={pdfDialog.isConverting}
@@ -32625,14 +32688,25 @@ Return your response strictly as a JSON object matching this schema:
                     <div className="w-full md:w-1/2 bg-gray-50 p-6 flex flex-col overflow-hidden text-left h-full">
                       <div className="flex items-center justify-between pb-3 border-b border-gray-200 shrink-0">
                         <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">Windows Print Preview Tray</span>
-                        <span className="text-[9px] font-bold text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded">
-                          {(() => {
-                            const count = Array.from(new Set(
-                              (pdfDialog.mappings || []).flatMap(m => parsePageRange(m.range, pdfDialog.numPages))
-                            )).length;
-                            return `${count} Selected`;
-                          })()}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={handleRotateAllPdfPages}
+                            title="Rotate all preview pages by 90°"
+                            className="text-[9px] font-bold text-gray-600 hover:text-blue-600 bg-white hover:bg-blue-50 border border-gray-200 hover:border-blue-300 px-2 py-0.5 rounded flex items-center gap-1 transition shadow-2xs cursor-pointer"
+                          >
+                            <RotateCw className="w-3 h-3" />
+                            Rotate All
+                          </button>
+                          <span className="text-[9px] font-bold text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded">
+                            {(() => {
+                              const count = Array.from(new Set(
+                                (pdfDialog.mappings || []).flatMap(m => parsePageRange(m.range, pdfDialog.numPages))
+                              )).length;
+                              return `${count} Selected`;
+                            })()}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Preview Scroll Tray */}
@@ -32653,7 +32727,13 @@ Return your response strictly as a JSON object matching this schema:
                           return (
                             <div className="grid grid-cols-2 gap-4">
                               {pages.map(num => (
-                                <PdfPagePreview key={num} pdf={loadedPdfDoc} pageNum={num} />
+                                <PdfPagePreview
+                                  key={num}
+                                  pdf={loadedPdfDoc}
+                                  pageNum={num}
+                                  rotation={pdfDialog.rotations?.[num] || 0}
+                                  onRotate={handleRotatePdfPage}
+                                />
                               ))}
                             </div>
                           );
