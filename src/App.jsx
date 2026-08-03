@@ -5160,8 +5160,16 @@ export default function App() {
     };
   }, [isDraggingFloating]);
   // CONFIGURATION STATE
-  const [geminiApiKey, setGeminiApiKey] = useState("AIzaSyDST4WyNbF4vYf-7oPEYcBvc-_tPmYQ2ro");
+  const [geminiApiKey, setGeminiApiKey] = useState(() => import.meta.env.VITE_GEMINI_API_KEY || localStorage.getItem("pyt_gemini_api_key") || "");
   const [imgbbApiKey, setImgbbApiKey] = useState('');
+
+  useEffect(() => {
+    if (geminiApiKey) {
+      localStorage.setItem("pyt_gemini_api_key", geminiApiKey);
+    } else {
+      localStorage.removeItem("pyt_gemini_api_key");
+    }
+  }, [geminiApiKey]);
   const [isImgbbKeyVisible, setIsImgbbKeyVisible] = useState(false);
   const [isExportingExtension, setIsExportingExtension] = useState(false);
   const [downloadedExtension, setDownloadedExtension] = useState(false);
