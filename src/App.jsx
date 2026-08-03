@@ -5161,7 +5161,7 @@ export default function App() {
   }, [isDraggingFloating]);
   // CONFIGURATION STATE
   const [geminiApiKey, setGeminiApiKey] = useState(() => import.meta.env.VITE_GEMINI_API_KEY || localStorage.getItem("pyt_gemini_api_key") || "");
-  const [imgbbApiKey, setImgbbApiKey] = useState('');
+  const [imgbbApiKey, setImgbbApiKey] = useState(() => import.meta.env.VITE_IMGBB_API_KEY || localStorage.getItem("pyt_imgbb_api_key") || "");
 
   useEffect(() => {
     if (geminiApiKey) {
@@ -5170,6 +5170,14 @@ export default function App() {
       localStorage.removeItem("pyt_gemini_api_key");
     }
   }, [geminiApiKey]);
+
+  useEffect(() => {
+    if (imgbbApiKey) {
+      localStorage.setItem("pyt_imgbb_api_key", imgbbApiKey);
+    } else {
+      localStorage.removeItem("pyt_imgbb_api_key");
+    }
+  }, [imgbbApiKey]);
   const [isImgbbKeyVisible, setIsImgbbKeyVisible] = useState(false);
   const [isExportingExtension, setIsExportingExtension] = useState(false);
   const [downloadedExtension, setDownloadedExtension] = useState(false);
@@ -13015,8 +13023,13 @@ JSON Format:
     const unsubscribe = onSnapshot(keysRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
+        if (data.geminiApiKey) {
+          setGeminiApiKey(data.geminiApiKey);
+          localStorage.setItem("pyt_gemini_api_key", data.geminiApiKey);
+        }
         if (data.imgbbApiKey) {
           setImgbbApiKey(data.imgbbApiKey);
+          localStorage.setItem("pyt_imgbb_api_key", data.imgbbApiKey);
         }
         if (data.githubUsername !== undefined) {
           setGithubUsername(data.githubUsername);
@@ -13027,7 +13040,6 @@ JSON Format:
         if (data.githubPatToken !== undefined) {
           setGithubPatToken(data.githubPatToken);
         }
-
       }
     }, (error) => {
       console.error("Error fetching keys:", error);
@@ -13035,15 +13047,23 @@ JSON Format:
     return () => unsubscribe();
   }, [user]);
 
-  const saveImgbbApiKeyToCloud = async (key) => {
-    if (!user || !db) return;
+  const saveApiKeysToCloud = async () => {
+    if (!user || !db) {
+      alert("Please log in first to save keys to the cloud.");
+      return;
+    }
     const keysRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'keys');
     try {
-      await setDoc(keysRef, { imgbbApiKey: key }, { merge: true });
-      alert("ImgBB API Key saved to cloud successfully!");
+      await setDoc(keysRef, { 
+        geminiApiKey: geminiApiKey || '',
+        imgbbApiKey: imgbbApiKey || '' 
+      }, { merge: true });
+      if (geminiApiKey) localStorage.setItem("pyt_gemini_api_key", geminiApiKey);
+      if (imgbbApiKey) localStorage.setItem("pyt_imgbb_api_key", imgbbApiKey);
+      alert("API Keys (Gemini & ImgBB) saved to Cloud & Local Storage successfully!");
     } catch (err) {
-      console.error("Failed to save ImgBB API Key to cloud:", err);
-      alert("Failed to save ImgBB API Key to cloud: " + err.message);
+      console.error("Failed to save API Keys to cloud:", err);
+      alert("Failed to save API Keys to cloud: " + err.message);
     }
   };
 
@@ -20981,10 +21001,10 @@ Return your response strictly as a JSON object matching this schema:
                           </div>
                           <div className="flex gap-2">
                             <button
-                              onClick={() => saveImgbbApiKeyToCloud(imgbbApiKey)}
+                              onClick={saveApiKeysToCloud}
                               className="flex-1 bg-green-50 text-green-600 p-4 rounded-2xl text-[10px] font-black uppercase border border-green-100 active:scale-95 transition"
                             >
-                              Save ImgBB Key to Cloud
+                              Save API Keys to Cloud
                             </button>
                           </div>
                           <div className="flex gap-2">
