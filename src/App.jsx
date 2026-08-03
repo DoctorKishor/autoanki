@@ -30,6 +30,8 @@ import {
 import { getPytTopics, upsertPytTopics } from './utils/pytService';
 import { calculateEfficiencyScore, calculateWeightedConcentration } from './utils/campCalculations';
 import { ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import ExportImageVerificationModal from './components/ExportImageVerificationModal';
+import { cropAndMaskDiagram } from './utils/imageCropper';
 
 import {
   getAuth, signInAnonymously, onAuthStateChanged,
@@ -337,23 +339,98 @@ const INDIAN_STATES = [
   "West Bengal"
 ];
 
-const DEFAULT_PROMPT = `
-I want you to act as a professional medical Anki card creator for NEET PG/INICET preparation.
-Analyze the attached image of medical notes. Extract EVERY SINGLE FACT thoroughly. 
-Go line by line, section by section. If there are 30 distinct facts on the page, you MUST generate 30 cards. Do not skip any detail.
+const MIRROR_PRECISION_V6_PROMPT = `SYSTEM ROLE: THE "MIRROR–PRECISION" PROTOCOL (v6) — JSON ENGINE
+You are a High-Fidelity Data Extraction and Card Engineering Engine designed for NEET PG / INICET preparation. Your sole function is to transform the provided image of a single PDF page into high-quality Anki flashcards with maximum fidelity and optimized learning design.
+You do not summarize. You do not reinterpret broadly. You extract, structure, and engineer recall.
 
-Principles:
-1. Minimum information principle: Keep it extremely brief and fact-dense.
-2. Optimize wording for fast active recall.
+CORE OPERATING PRINCIPLES (NON-NEGOTIABLE)
 
-Format Rules:
-- Determine dynamically if a fact is better as a "Basic" (Q&A) card or a "Cloze" (fill-in-the-blank) card.
-- CRITICAL JSON RULE: You MUST return all fields (front, back, text, ymin, xmin, ymax, xmax) for EVERY card.
-- If the card is "Basic", put the question in 'front' and the answer in 'back', and leave 'text' empty (""). NEVER LEAVE 'back' EMPTY for a Basic card.
-- If the card is "Cloze", put the cloze sentence in 'text' (e.g., '{{c1::Term}} is...'), and leave 'front' and 'back' empty ("").
-- Never answer or interpret beyond the text. Only summarize what is explicitly there.
-- EXACT LOCATION: For EVERY card, provide the exact coordinates of the text in the image. Return 'ymin' (top), 'xmin' (left), 'ymax' (bottom), 'xmax' (right) on a scale of 0 to 1000.
+1. Source Restriction (Hard Boundary Rule)
+- Absolute Fidelity: Use ONLY the exact content visible on the provided page image—text, tables, diagrams, and labels alike.
+- No External Context: Make no assumptions from other pages or chapters. Do not use outside/background knowledge, even on familiar topics. If a fact is not shown on that page, it does not exist for this task.
+- Exception Rule: Add minimal clarification ONLY when strictly necessary to:
+  * Make a card grammatically or logically functional.
+  * Preserve comprehension.
+  * Resolve an ambiguity (e.g., an obvious OCR artifact) that would otherwise make recall impossible.
+- Logging: This must be rare and never habitual. (Log internally prior to generating JSON).
+
+2. Total Coverage Rule
+Convert every clinically relevant element into at least one card:
+- Definitions, numbers, and values.
+- Classifications and diagnostic criteria.
+- Tables, lists, and enumerations.
+- Flowcharts and algorithms.
+- Red-box / highlighted / boxed notes.
+- Mnemonics and exam-pearl callouts (highly prioritized).
+- Footnotes (if clinically relevant) and image/diagram labels.
+Filtration: Exclude only non-clinical metadata (copyright lines, page numbers, video timestamps, headers).
+Deduplication: If the exact same fact is presented multiple times, card it once in whichever form preserves the most fidelity.
+Empty Pages: If the page has no extractable clinical content, return an empty JSON array [] rather than generating filler cards.
+
+3. Visual Fidelity Rule & Image Grounding
+Text extraction alone is unreliable. Tables, flowcharts, highlighted boxes, and image labels are routinely lost or scrambled when a PDF is read as text-only.
+- Visually inspect the rendered page image itself, not just its OCR text layer.
+- Cross-check the two before writing any card.
+- If the text layer and the rendered image disagree, the rendered image is authoritative.
+- If a card references or relies on a visual diagram, flowchart, histology slide, or anatomical figure on the page, flag it for diagram extraction.
+
+4. Card Engineering, Notetype Assignment & Cloze Deletion Rule (Critical)
+Avoid excessive micro-cards and overloaded macro-cards. Each card must test one cohesive recall unit.
+
+- Per-Card Notetype Decision: Before drafting each card, analyze its content against the criteria below and commit to exactly one notetype — Basic or Cloze. Make this decision independently for every card; never default an entire page to a single notetype out of convenience.
+
+- When to use Basic (Q&A) vs. Cloze:
+  * Use Basic for direct associations, definitions, and distinct standalone facts.
+  * Use Cloze for sequential pathways, mechanisms of action, overlapping symptom profiles, or complex phrasing where a traditional Q&A question would accidentally give away the answer via context clues.
+
+- Cloze Best Practices: Keep the cloze deletion specific. Do not cloze entire sentences. If a process has three steps, use {{c1::Step 1}}, {{c2::Step 2}}, and {{c3::Step 3}} within the same text block to generate overlapping cards.
+
+- Lists: A tightly related list of ≤4 items remains on one card. A list of >4 items must be split by category. If no natural subcategory exists, split into groups of ≤4 by logical adjacency.
+
+- Tables: Create one card per row if rows are independently testable; create one card with table structure if the comparative relationship itself is the testable concept.
+
+- Flowcharts/Algorithms: Create one card per decision point or step, strictly preserving the sequence.
+
+- Formatting & Phrasing:
+  * Topic Heading: Prefix questions/cloze text with the most specific subheading governing that content (e.g., "Thyroidectomy: What is..."). Fall back to the general subject only if no subheading applies.
+  * Verbatim Phrasing: Use exact phrasing, numbers, and terminology from the page. Do not paraphrase unless grammatically unavoidable.
+
+5. Image Attachment, Side Placement & Label Occlusion Rules:
+- If an extracted card references or relies on an image/diagram/figure on the actual page, set "has_image": true. Otherwise "has_image": false.
+- "img_box": If "has_image" is true, return [ymin, xmin, ymax, xmax] coordinates (0 to 1000 scale) for the exact boundary of the diagram. If false, return null.
+- "image_side": Specify "front", "back", or "both" for Basic cards. For Cloze cards, default to "front".
+- "image_confidence": Return an integer from 0 to 100 representing your confidence level that this card requires/benefits from including the diagram.
+- "occlusions": If the image is placed on the "front" of a card or in a "Cloze" question, inspect the diagram for any labels or text that reveal the exact answer. Return an array of bounding boxes [[ymin, xmin, ymax, xmax], ...] for those answer-revealing labels so they can be masked. If the image is on the "back" or has no answer labels, return [].
+
+STRICT JSON OUTPUT FORMAT
+Return ONLY a valid JSON array containing card objects. Do not wrap in extra commentary or conversational fluff outside the JSON.
+
+For EVERY card generated, you MUST populate all 13 of the following fields:
+
+1. "type": Exactly "Basic" or "Cloze" (Case-sensitive spelling).
+2. "front": 
+   - If "Basic": The Topic Subheading + Question text (e.g., "Thyroidectomy: What is the most common complication?").
+   - If "Cloze": Must be an empty string ("").
+3. "back": 
+   - If "Basic": The answer text. NEVER LEAVE 'back' EMPTY for a Basic card.
+   - If "Cloze": Optional extra context or notes — leave empty ("") if none.
+4. "text": 
+   - If "Basic": Must be an empty string ("").
+   - If "Cloze": The Topic Subheading + Cloze text (e.g., "Thyroidectomy: The most common complication is {{c1::recurrent laryngeal nerve injury}}.").
+5. "ymin": Top source coordinate of card text on the image (integer 0 to 1000).
+6. "xmin": Left source coordinate of card text on the image (integer 0 to 1000).
+7. "ymax": Bottom source coordinate of card text on the image (integer 0 to 1000).
+8. "xmax": Right source coordinate of card text on the image (integer 0 to 1000).
+9. "has_image": boolean (true if card has diagram/figure, false otherwise).
+10. "img_box": [ymin, xmin, ymax, xmax] or null.
+11. "image_side": "front" | "back" | "both" | "none".
+12. "image_confidence": integer (0 to 100).
+13. "occlusions": [[ymin, xmin, ymax, xmax], ...] or [].
+
+EXACT LOCATION BOUNDING BOXES: For EVERY card, inspect the page image and return exact 0 to 1000 normalized bounding coordinates for text ('ymin', 'xmin', 'ymax', 'xmax') and diagram ('img_box', 'occlusions').
 `;
+
+const DEFAULT_PROMPT = MIRROR_PRECISION_V6_PROMPT;
 
 // --- SPACED REPETITION SCHEDULER (SM-2) ---
 const calculateSM2 = (card, rating) => {
@@ -1229,6 +1306,10 @@ const handleImageCloudUpload = async (base64Image, fileName, apiKey) => {
 };
 
 const callGeminiWithRetry = async (apiKey, prompt, base64Image, mimeType, retries = 5) => {
+  if (!apiKey) {
+    throw new Error("Gemini API key is not configured. Please enter your Gemini API key in Settings.");
+  }
+
   let imgBase64 = base64Image;
   if (base64Image && (base64Image.startsWith('http://') || base64Image.startsWith('https://'))) {
     try {
@@ -1246,12 +1327,15 @@ const callGeminiWithRetry = async (apiKey, prompt, base64Image, mimeType, retrie
     }
   }
 
+  const rawDataBase64 = imgBase64.includes(',') ? imgBase64.split(',')[1] : imgBase64;
   const delays = [1000, 2000, 4000, 8000, 16000];
+  const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+
   const payload = {
     contents: [{
       parts: [
         { text: prompt },
-        { inlineData: { mimeType: mimeType, data: imgBase64.split(',')[1] } }
+        { inlineData: { mimeType: mimeType || 'image/jpeg', data: rawDataBase64 } }
       ]
     }],
     generationConfig: {
@@ -1281,22 +1365,28 @@ const callGeminiWithRetry = async (apiKey, prompt, base64Image, mimeType, retrie
     }
   };
 
+  let lastError = null;
   for (let i = 0; i < retries; i++) {
+    const model = models[i % models.length];
     try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`, {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
       const result = await response.json();
-      if (result.error) throw new Error(result.error.message);
-      const jsonText = result.candidates[0].content.parts[0].text;
+      if (result.error) throw new Error(result.error.message || `Gemini API error (${result.error.code})`);
+      const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!jsonText) throw new Error("Gemini API returned an empty text payload.");
       return JSON.parse(jsonText);
     } catch (error) {
-      if (i === retries - 1) throw error;
+      lastError = error;
+      console.warn(`[Gemini Attempt ${i + 1}/${retries} (${model}) failed]:`, error.message);
+      if (i === retries - 1) throw lastError;
       await new Promise(res => setTimeout(res, delays[i]));
     }
   }
+  throw lastError || new Error("Gemini AI request failed after retries.");
 };
 
 const callGeminiIndexExtractor = async (apiKey, base64Image, mimeType, retries = 5) => {
@@ -1349,16 +1439,19 @@ const callGeminiIndexExtractor = async (apiKey, base64Image, mimeType, retries =
     }
   };
 
+  const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
   for (let i = 0; i < retries; i++) {
+    const model = models[i % models.length];
     try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`, {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
       const result = await response.json();
       if (result.error) throw new Error(result.error.message);
-      const jsonText = result.candidates[0].content.parts[0].text;
+      const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!jsonText) throw new Error("No response content from Gemini.");
       return JSON.parse(jsonText);
     } catch (error) {
       if (i === retries - 1) throw error;
@@ -5294,6 +5387,8 @@ export default function App() {
   const [currentCropIndex, setCurrentCropIndex] = useState(0);
   const [cropZoom, setCropZoom] = useState(1.0);
   const [isCropPanning, setIsCropPanning] = useState(false);
+  const [isImageVerificationModalOpen, setIsImageVerificationModalOpen] = useState(false);
+  const [verificationModalCards, setVerificationModalCards] = useState([]);
   const syncCardToFirestore = async (card) => {
     if (!user || !db || !card || !card.id) return;
     try {
@@ -6851,7 +6946,7 @@ JSON Format:
             }
           };
 
-          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${geminiApiKey}`, {
+          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(contents)
@@ -13852,7 +13947,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
           }
         }
       };
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${geminiApiKey}`, {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -15087,6 +15182,10 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
   // --- GEMINI PROCESSING ---
   const processQueue = async (itemsToProcess = null) => {
     if (isProcessing) return;
+    if (!geminiApiKey) {
+      alert("Gemini API key is not configured. Please enter your Gemini API key in Settings / Setup to generate flashcards.");
+      return;
+    }
     const items = Array.isArray(itemsToProcess) ? itemsToProcess : queue;
     const pendingItems = items.filter(item => item.status === 'pending' || item.status === 'error');
     if (pendingItems.length === 0) return;
@@ -15103,7 +15202,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     let processed = 0;
 
     for (let item of pendingItems) {
-      setQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: 'processing' } : q));
+      setQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: 'processing', errorMessage: null } : q));
       setActiveQueueId(item.id);
 
       setOperationProgress(prev => ({
@@ -15126,6 +15225,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
         const updatedItem = {
           ...item,
           status: 'done',
+          errorMessage: null,
           generatedCards: cardsWithIds
         };
         setQueue(prev => prev.map(q => q.id === item.id ? updatedItem : q));
@@ -15139,7 +15239,8 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
         }
       } catch (error) {
         console.error("Failed to process item:", error);
-        setQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: 'error' } : q));
+        alert(`Failed to process ${item.fileName}: ${error.message}`);
+        setQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: 'error', errorMessage: error.message } : q));
       }
       processed++;
       setOperationProgress(prev => ({
@@ -15916,6 +16017,14 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       return;
     }
 
+    // Intercept for AI diagram image verification before compile if cards have extracted images
+    if (format === 'apkg' && includeImages && !overrideCards && cardsToUse.some(c => c.has_image || c.img_box || c.image_confidence !== undefined)) {
+      setVerificationModalCards(cardsToUse);
+      setIsExportDialogOpen(false);
+      setIsImageVerificationModalOpen(true);
+      return;
+    }
+
     // Intercept for manual review and crop before compile if checked
     if (format === 'apkg' && includeImages && manualReviewImages && !overrideCards) {
       const cloned = deckCardsToExport.map(card => {
@@ -16225,45 +16334,63 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
 
           let imgFilename = null;
 
-          if (includeImages && !card.excludeImage) {
-            const rawSrc = findCardImageSrc(card);
-            if (rawSrc) {
-              try {
-                let imgDataUrl = null;
-                const forceCrop = !!overrideCards;
-                if ((forceCrop || imagePortion === 'crop') && card.ymin !== undefined && card.xmin !== undefined) {
-                  imgDataUrl = await cropImageSrc(rawSrc, card);
-                } else {
-                  // Full image conversion
-                  imgDataUrl = await new Promise((resolve) => {
-                    const img = new Image();
-                    img.crossOrigin = "anonymous";
-                    img.onload = () => {
-                      const canvas = document.createElement('canvas');
-                      canvas.width = img.width;
-                      canvas.height = img.height;
-                      const ctx = canvas.getContext('2d');
-                      ctx.drawImage(img, 0, 0);
-                      resolve(canvas.toDataURL('image/png'));
-                    };
-                    img.onerror = () => resolve(null);
-                    img.src = rawSrc;
-                  });
-                }
+          if (includeImages && !card.excludeImage && card.include_image !== false) {
+            let imgDataUrl = card.cropped_data_url || null;
 
-                if (imgDataUrl) {
-                  const binaryData = convertDataUrlToBinary(imgDataUrl);
-                  const filename = `img_${card.id}.png`;
-
-                  // Pack the binary image blob in the zip, named as the count number
-                  zip.file(String(mediaCounter), binaryData);
-                  mediaManifest[String(mediaCounter)] = filename;
-                  imgFilename = filename;
-                  mediaCounter++;
+            if (!imgDataUrl && (card.has_image || (card.img_box && card.img_box.length === 4))) {
+              const rawSrc = findCardImageSrc(card);
+              if (rawSrc) {
+                try {
+                  imgDataUrl = await cropAndMaskDiagram(
+                    rawSrc,
+                    card.img_box,
+                    card.occlusions || [],
+                    card.image_side || 'back',
+                    card.type || 'Basic'
+                  );
+                } catch (maskErr) {
+                  console.warn('cropAndMaskDiagram failed:', maskErr);
                 }
-              } catch (mediaErr) {
-                console.warn(`Media bundling failed for card ${card.id}:`, mediaErr);
               }
+            }
+
+            if (!imgDataUrl) {
+              const rawSrc = findCardImageSrc(card);
+              if (rawSrc) {
+                try {
+                  const forceCrop = !!overrideCards;
+                  if ((forceCrop || imagePortion === 'crop') && card.ymin !== undefined && card.xmin !== undefined) {
+                    imgDataUrl = await cropImageSrc(rawSrc, card);
+                  } else {
+                    imgDataUrl = await new Promise((resolve) => {
+                      const img = new Image();
+                      img.crossOrigin = "anonymous";
+                      img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0);
+                        resolve(canvas.toDataURL('image/png'));
+                      };
+                      img.onerror = () => resolve(null);
+                      img.src = rawSrc;
+                    });
+                  }
+                } catch (mediaErr) {
+                  console.warn(`Media bundling failed for card ${card.id}:`, mediaErr);
+                }
+              }
+            }
+
+            if (imgDataUrl) {
+              const binaryData = convertDataUrlToBinary(imgDataUrl);
+              const filename = `img_${card.id || i}.png`;
+
+              zip.file(String(mediaCounter), binaryData);
+              mediaManifest[String(mediaCounter)] = filename;
+              imgFilename = filename;
+              mediaCounter++;
             }
           }
 
@@ -16277,11 +16404,18 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
           let f2 = type === 'Cloze' ? (card.extra || '') : (card.back || '');
 
           const cleanField = (s) => (s || '').replace(/\n/g, '<br>').replace(/\r/g, '').replace(/\t/g, ' ');
-          const escapedF1 = cleanField(f1);
+          let escapedF1 = cleanField(f1);
           let escapedF2 = cleanField(f2);
 
           if (imgFilename) {
-            escapedF2 += `<br><br><div class="card-image-container"><img src="${imgFilename}" style="max-width:100%; border-radius:12px; margin-top:12px; box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div>`;
+            const side = card.image_side || (type === 'Cloze' ? 'text' : 'back');
+            const imgTag = `<br><br><div class="card-image-container"><img src="${imgFilename}" style="max-width:100%; border-radius:12px; margin-top:12px; box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div>`;
+            if (side === 'front' || side === 'both' || type === 'Cloze') {
+              escapedF1 += imgTag;
+            }
+            if (side === 'back' || side === 'both') {
+              escapedF2 += imgTag;
+            }
           }
 
           const flds = `${escapedF1}\u001f${escapedF2}`;
@@ -19661,8 +19795,13 @@ Return your response strictly as a JSON object matching this schema:
                                     <div className="text-[10px] font-bold truncate opacity-80">{item.fileName}</div>
                                     <div className="flex items-center gap-2 mt-1">
                                       {item.status === 'processing' && <div className="h-1 flex-grow bg-white/10 rounded-full overflow-hidden"><div className="h-full bg-blue-400 w-1/2 animate-shimmer" /></div>}
-                                      {item.status === 'done' && <span className="text-[9px] text-green-400 font-black">READY</span>}
+                                      {item.status === 'done' && <span className="text-[9px] text-green-400 font-black">READY ({item.generatedCards?.length || 0})</span>}
                                       {item.status === 'pending' && <span className="text-[9px] text-white/40 font-bold">QUEUED</span>}
+                                      {item.status === 'error' && (
+                                        <button onClick={() => retryItem(item.id)} className="text-[9px] text-red-400 font-black hover:underline cursor-pointer">
+                                          FAILED (RETRY)
+                                        </button>
+                                      )}
                                     </div>
                                   </div>
                                   {item.status === 'done' && (
@@ -32234,6 +32373,16 @@ Return your response strictly as a JSON object matching this schema:
                   </div>
                 </div>
               )}
+
+              <ExportImageVerificationModal
+                isOpen={isImageVerificationModalOpen}
+                onClose={() => setIsImageVerificationModalOpen(false)}
+                cards={verificationModalCards}
+                sourceImageUrl={verificationModalCards.length > 0 ? findCardImageSrc(verificationModalCards[0]) : null}
+                onConfirmExport={(verifiedCards) => {
+                  exportDeck(exportFormat, verifiedCards);
+                }}
+              />
 
               {exportSuccessGuide && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[220] animate-in fade-in duration-300">
