@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "AutoAnki Screenshot Snipper",
+  "version": "1.0.0",
+  "description": "Right-click any page to snip a screenshot, select a folder, and send it directly to AutoAnki.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "contextMenus",
+    "storage",
+    "offscreen"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "icons": {
+    "16": "favicon.svg",
+    "32": "favicon.svg",
+    "48": "favicon.svg",
+    "128": "favicon.svg"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "favicon.svg"
+  }
+}

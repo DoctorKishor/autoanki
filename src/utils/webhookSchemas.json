@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "HealthMetricsWebhookPayload",
+  "description": "JSON payload schema pushed to Firestore by Make.com for daily health tracking correlations",
+  "type": "OBJECT",
+  "properties": {
+    "date": {
+      "type": "STRING",
+      "description": "Document ID date matching YYYY-MM-DD format",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "sleep_hours": {
+      "type": "NUMBER",
+      "description": "Total duration of sleep in hours",
+      "minimum": 0,
+      "maximum": 24
+    },
+    "sleep_score": {
+      "type": "INTEGER",
+      "description": "Sleep quality score from wearable application",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "workout_duration": {
+      "type": "INTEGER",
+      "description": "Total active workout duration in minutes",
+      "minimum": 0
+    },
+    "workout_type": {
+      "type": "STRING",
+      "description": "Categorized workout type from tracking application",
+      "enum": ["Lifting", "Cardio", "None"]
+    },
+    "timestamp": {
+      "type": "STRING",
+      "description": "ISO timestamp indicating when the sync occurred"
+    }
+  },
+  "required": [
+    "date",
+    "sleep_hours",
+    "sleep_score",
+    "workout_duration",
+    "workout_type"
+  ]
+}

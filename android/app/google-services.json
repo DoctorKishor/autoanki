@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "373065987778",
+    "project_id": "autoanki-d7f3c",
+    "storage_bucket": "autoanki-d7f3c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:373065987778:android:3540b8c0c04778e8a6ad5b",
+        "android_client_info": {
+          "package_name": "com.autoanki.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "373065987778-oso2e8grtuddl0bleob5agaaffjp188d.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.autoanki.app",
+            "certificate_hash": "18cc46b12062e2e3abe2debfaaaf8d428041ad72"
+          }
+        },
+        {
+          "client_id": "373065987778-o11hmpkgtf3bncdvhcjiaq0qb66d11q6.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyClH6o86a3P_zN5Hg13lB7f4_dbwexT9tA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "373065987778-o11hmpkgtf3bncdvhcjiaq0qb66d11q6.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

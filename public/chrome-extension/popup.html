@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>AutoAnki Snipper</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --bg: #0b0f19;
+      --card-bg: rgba(17, 24, 39, 0.7);
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --border: rgba(255, 255, 255, 0.08);
+      --success: #10b981;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      width: 320px;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+      padding: 20px;
+      border: 1px solid var(--border);
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      align-items: center;
+      text-align: center;
+    }
+
+    header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .logo-container {
+      background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+      margin-bottom: 4px;
+    }
+
+    .logo-container svg {
+      width: 24px;
+      height: 24px;
+      fill: none;
+      stroke: white;
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    h1 {
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(to right, #60a5fa, #3b82f6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .card {
+      width: 100%;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      min-height: 140px;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .view {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+    }
+
+    .user-info {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .avatar {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      border: 2px solid var(--primary);
+      background-size: cover;
+      background-position: center;
+    }
+
+    .user-details {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .name {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .email {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .btn {
+      width: 100%;
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .google-btn {
+      background: white;
+      color: #1f2937;
+      box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
+    }
+
+    .google-btn:hover {
+      background: #f9fafb;
+      transform: translateY(-1px);
+    }
+
+    .google-icon {
+      width: 18px;
+      height: 18px;
+    }
+
+    .icon-svg {
+      width: 18px;
+      height: 18px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--success);
+      margin-top: 4px;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background-color: var(--success);
+      box-shadow: 0 0 8px var(--success);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .loading-spinner {
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      border-top: 2px solid var(--primary);
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      animation: spin 0.8s linear infinite;
+    }
+
+    /* QR / Pairing specific styles */
+    .qr-container {
+      background: white;
+      padding: 12px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      margin: 8px 0;
+    }
+
+    .qr-image {
+      width: 140px;
+      height: 140px;
+      display: block;
+    }
+
+    .code-display {
+      background: #0b1329;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 14px 20px;
+      font-size: 1.8rem;
+      font-weight: 800;
+      font-family: monospace;
+      color: #60a5fa;
+      letter-spacing: 0.1em;
+      margin: 12px 0;
+      box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.5);
+    }
+
+    .pulse-text {
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #60a5fa;
+      animation: pulse 1.5s infinite alternate;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    @keyframes pulse {
+      from { opacity: 0.4; }
+      to { opacity: 1; }
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo-container">
+        <svg viewBox="0 0 24 24">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+          <circle cx="8.5" cy="8.5" r="1.5"></circle>
+          <polyline points="21 15 16 10 5 21"></polyline>
+        </svg>
+      </div>
+      <h1>AutoAnki Snipper</h1>
+      <span class="subtitle">Capture & send snippets instantly</span>
+    </header>
+
+    <div class="card">
+      <!-- Loading State -->
+      <div id="loading-state" class="view">
+        <div class="loading-spinner"></div>
+        <p class="subtitle">Securing Connection...</p>
+      </div>
+
+      <!-- Logged Out State / Login Selector -->
+      <div id="logged-out-state" class="view hidden">
+        <p class="subtitle" style="margin-bottom: 4px;">Choose a login method to authenticate</p>
+        
+        <button id="login-google-btn" class="btn google-btn">
+          <svg class="google-icon" viewBox="0 0 24 24">
+            <path fill="#EA4335" d="M12 5.04c1.62 0 3.08.56 4.22 1.64l3.15-3.15C17.45 1.68 14.9 1 12 1 7.35 1 3.37 3.68 1.44 7.6l3.77 2.92c.9-2.7 3.42-4.48 6.79-4.48z"/>
+            <path fill="#4285F4" d="M23.49 12.27c0-.81-.07-1.59-.2-2.36H12v4.47h6.44c-.28 1.47-1.11 2.71-2.36 3.55l3.66 2.84c2.14-1.97 3.75-4.88 3.75-8.5z"/>
+            <path fill="#FBBC05" d="M5.21 14.78a6.96 6.96 0 0 1 0-4.22L1.44 7.64a11.96 11.96 0 0 0 0 10.04l3.77-2.9z"/>
+            <path fill="#34A853" d="M12 23c3.24 0 5.97-1.07 7.96-2.91l-3.66-2.84c-1.01.68-2.31 1.09-4.3 1.09-3.37 0-5.89-1.78-6.79-4.48L1.44 16.8A11.96 11.96 0 0 0 12 23z"/>
+          </svg>
+          Sign in with Google
+        </button>
+
+        <button id="login-qr-btn" class="btn btn-secondary">
+          <svg class="icon-svg" viewBox="0 0 24 24">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+          </svg>
+          Login with QR Code
+        </button>
+
+        <button id="login-code-btn" class="btn btn-secondary">
+          <svg class="icon-svg" viewBox="0 0 24 24">
+            <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3M15.5 7.5L19 4"/>
+          </svg>
+          Login with 6-Digit Code
+        </button>
+      </div>
+
+      <!-- QR Code Waiting State -->
+      <div id="qr-waiting-state" class="view hidden">
+        <h2 class="name">QR Code Login</h2>
+        <p class="subtitle">Scan this code with a logged-in mobile device to authenticate instantly.</p>
+        
+        <div class="qr-container">
+          <img id="qr-code-img" class="qr-image" src="" alt="Login QR Code" />
+        </div>
+
+        <div class="pulse-text">
+          <div class="loading-spinner" style="width: 12px; height: 12px; border-width: 1px;"></div>
+          Waiting for approval...
+        </div>
+
+        <button id="cancel-qr-btn" class="btn btn-secondary">Cancel & Return</button>
+      </div>
+
+      <!-- Pairing Code Waiting State -->
+      <div id="pairing-waiting-state" class="view hidden">
+        <h2 class="name">Pairing Code Login</h2>
+        <p class="subtitle">Enter this 6-digit code in the "Pair / Authorize Device" section of your active settings screen.</p>
+        
+        <div id="pairing-code-val" class="code-display">000 000</div>
+
+        <div class="pulse-text">
+          <div class="loading-spinner" style="width: 12px; height: 12px; border-width: 1px;"></div>
+          Waiting for approval...
+        </div>
+
+        <button id="cancel-code-btn" class="btn btn-secondary">Cancel & Return</button>
+      </div>
+
+      <!-- Logged In State -->
+      <div id="logged-in-state" class="view hidden">
+        <div id="user-avatar" class="avatar"></div>
+        <div class="user-details">
+          <div id="user-name" class="name">Loading...</div>
+          <div id="user-email" class="email">Loading...</div>
+        </div>
+        <div class="status-badge">
+          <div class="status-dot"></div>
+          Ready to Snip
+        </div>
+        <button id="logout-btn" class="btn btn-secondary" style="margin-top: 8px;">Sign Out</button>
+      </div>
+    </div>
+  </div>
+  <script src="popup.js" type="module"></script>
+</body>
+</html>

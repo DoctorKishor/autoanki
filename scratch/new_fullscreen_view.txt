@@ -1,0 +1,330 @@
+  const renderTimerFullscreenView = () => {
+    const activeType = timerState.timerType || 'pomodoro';
+    const isRunning  = timerState.status === 'running';
+    const isIdle     = timerState.status === 'idle';
+
+    const fmt2 = n => String(n).padStart(2,'0');
+    const formatTime = secs => {
+      const h = Math.floor(secs/3600), m = Math.floor((secs%3600)/60), s = secs%60;
+      return h > 0 ? `${fmt2(h)}:${fmt2(m)}:${fmt2(s)}` : `${fmt2(m)}:${fmt2(s)}`;
+    };
+    const formatStopwatch = ms => {
+      const ts = Math.floor(ms/1000);
+      const h = Math.floor(ts/3600), m = Math.floor((ts%3600)/60), s = ts%60, cs = Math.floor((ms%1000)/10);
+      return showMilliseconds
+        ? `${fmt2(h)}:${fmt2(m)}:${fmt2(s)}.${fmt2(cs)}`
+        : `${fmt2(h)}:${fmt2(m)}:${fmt2(s)}`;
+    };
+
+    const timerLabel = activeType === 'pomodoro'
+      ? (timerState.mode === 'study' ? 'Study Session' : 'Break Time')
+      : activeType === 'timer' ? 'Countdown Timer' : 'Stopwatch';
+
+    // Scheduler session
+    const todaySchedule = studySchedule[todayStr];
+    const todayTasks = todaySchedule?.tasks || [];
+    const nowD = new Date();
+    const currentMin = nowD.getHours()*60 + nowD.getMinutes();
+    const activeTask = todayTasks.find(t => {
+      if (!t.startTime) return false;
+      const s = parseTimeToMinutes(t.startTime) || 0;
+      const e = parseTimeToMinutes(t.endTime || formatMinutesToTime(s+60)) || 0;
+      return currentMin >= s && currentMin < e;
+    });
+    let activeProgressPercent = 0, activeTimeRemaining = '';
+    if (activeTask) {
+      const s = parseTimeToMinutes(activeTask.startTime) || 0;
+      const e = parseTimeToMinutes(activeTask.endTime || formatMinutesToTime(s+60)) || 0;
+      activeProgressPercent = Math.min(100, Math.max(0, ((currentMin-s)/(e-s))*100));
+      const rem = e - currentMin;
+      activeTimeRemaining = rem > 65 ? `${Math.floor(rem/60)}h ${rem%60}m left` : `${rem}m left`;
+    }
+    const taskColor = activeTask?.color || 'blue';
+    const progressBarColor =
+      taskColor==='purple' ? '#a855f7' : taskColor==='emerald' ? '#10b981' :
+      taskColor==='amber'  ? '#f59e0b' : taskColor==='rose'    ? '#f43f5e' :
+      taskColor==='violet' ? '#8b5cf6' : '#3b82f6';
+
+    const bgStyle = fsYoutubeVideoId
+      ? { backgroundColor: '#000' }
+      : { background: STATIC_BG_GRADIENTS[fullscreenTimerBg] || '#000' };
+
+    const togglePanel = panel => setActiveFullscreenPanel(prev => prev===panel ? null : panel);
+    const closePanel  = ()     => setActiveFullscreenPanel(null);
+
+    const startWidgetDrag = (e, wid) => {
+      const w = fsWidgets.find(x => x.id===wid); if (!w) return;
+      const ox = e.clientX-w.x, oy = e.clientY-w.y;
+      const mv = me => setFsWidgets(prev => prev.map(x => x.id===wid ? {...x,x:me.clientX-ox,y:me.clientY-oy} : x));
+      const up = () => { window.removeEventListener('mousemove',mv); window.removeEventListener('mouseup',up); };
+      window.addEventListener('mousemove',mv); window.addEventListener('mouseup',up);
+    };
+    const startWidgetResize = (e, wid) => {
+      const w = fsWidgets.find(x => x.id===wid); if (!w) return;
+      const sx=e.clientX, sy=e.clientY, sw=w.w, sh=w.h;
+      const mv = me => setFsWidgets(prev => prev.map(x => x.id===wid ? {...x,w:Math.max(200,sw+(me.clientX-sx)),h:Math.max(150,sh+(me.clientY-sy))} : x));
+      const up = () => { window.removeEventListener('mousemove',mv); window.removeEventListener('mouseup',up); };
+      window.addEventListener('mousemove',mv); window.addEventListener('mouseup',up);
+    };
+
+    const renderNativeWidget = nativeId => {
+      const tasks2 = studySchedule[todayStr]?.tasks || [];
+      const nowD2 = new Date();
+      const cm2 = nowD2.getHours()*60+nowD2.getMinutes();
+      const at2 = tasks2.find(t => { if(!t.startTime) return false; const s=parseTimeToMinutes(t.startTime)||0; const e2=parseTimeToMinutes(t.endTime||formatMinutesToTime(s+60))||0; return cm2>=s&&cm2<e2; });
+      const ut2 = tasks2.filter(t=>t.startTime&&parseTimeToMinutes(t.startTime)>cm2).sort((a,b)=>parseTimeToMinutes(a.startTime)-parseTimeToMinutes(b.startTime))[0];
+      switch(nativeId) {
+        case 'streakCounter': return (
+          <div className="p-4 space-y-2">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-pink-500 rounded-xl flex items-center justify-center">
+                <Flame className="w-7 h-7 text-white fill-current"/>
+              </div>
+              <div>
+                <div className="text-2xl font-black text-white">{currentStreak} Days</div>
+                <div className="text-[10px] text-orange-300 font-black uppercase tracking-wider">{streakLabel}</div>
+              </div>
+            </div>
+            <div className={`p-2 rounded-xl text-[10px] font-bold ${isStreakSafe?'bg-emerald-900/50 text-emerald-300':'bg-red-900/50 text-red-300'}`}>
+              {isStreakSafe ? '✓ Streak secured today!' : '⚠ Log study to save your streak'}
+            </div>
+          </div>
+        );
+        case 'liveStudyTracker': return (
+          <div className="p-4 space-y-2">
+            {at2 ? (<>
+              <div className="flex items-center gap-2"><div className="w-2 h-2 bg-blue-400 rounded-full animate-ping"/><span className="text-[10px] font-black text-blue-300 uppercase">Now</span></div>
+              <div className="text-sm font-black text-white">{at2.topic}</div>
+              <div className="text-[10px] text-slate-400">{at2.notes||'No notes'}</div>
+            </>) : ut2 ? (<>
+              <div className="text-[10px] font-black text-slate-400 uppercase">Up Next</div>
+              <div className="text-sm font-black text-white">{ut2.topic}</div>
+              <div className="text-[10px] text-slate-400">Starts {formatTime12(ut2.startTime)}</div>
+            </>) : <div className="text-xs text-slate-400 text-center py-4">No scheduled tasks today</div>}
+          </div>
+        );
+        case 'todayAgenda': return (
+          <div className="p-4 space-y-1 overflow-y-auto max-h-full">
+            <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-2">Today's Agenda</div>
+            {tasks2.length===0 ? <div className="text-xs text-slate-500 text-center py-4">No tasks</div>
+              : tasks2.slice(0,8).map(t => {
+                const s=parseTimeToMinutes(t.startTime)||0; const e2=parseTimeToMinutes(t.endTime||formatMinutesToTime(s+60))||0; const isCur=cm2>=s&&cm2<e2;
+                return (
+                  <div key={t.id} className={`flex items-center gap-2 p-2 rounded-lg ${isCur?'bg-blue-900/60':'bg-white/5'}`}>
+                    <div className={`w-2 h-2 rounded-full shrink-0 ${t.completed?'bg-emerald-400':isCur?'bg-blue-400 animate-pulse':'bg-slate-600'}`}/>
+                    <span className={`text-[11px] font-bold flex-grow truncate ${t.completed?'line-through text-slate-500':'text-slate-200'}`}>{t.topic}</span>
+                    <span className="text-[9px] font-mono text-slate-500 shrink-0">{formatTime12(t.startTime)}</span>
+                  </div>
+                );
+              })}
+          </div>
+        );
+        default: return <div className="p-4 text-xs text-slate-400">Widget: {nativeId}</div>;
+      }
+    };
+
+    const editingWidget = fsWidgets.find(w => w.id===fsEditingWidgetId);
+    const saveCss = () => {
+      setFsWidgets(prev => prev.map(w => w.id===fsEditingWidgetId ? {...w,customCss:fsTempWidgetCss} : w));
+      setFsEditingWidgetId(null);
+    };
+    const openCssEditor = w => { setFsEditingWidgetId(w.id); setFsTempWidgetCss(w.customCss||''); };
+
+    return (
+      <div className="fixed inset-0 z-[300] flex items-center justify-center text-white select-none overflow-hidden"
+        style={bgStyle} onClick={closePanel}>
+
+        {/* YouTube background */}
+        {fsYoutubeVideoId && (
+          <iframe key={fsYoutubeVideoId}
+            src={`https://www.youtube.com/embed/${fsYoutubeVideoId}?autoplay=1&mute=${fsBgVideoVolume===0?1:0}&loop=1&playlist=${fsYoutubeVideoId}&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1`}
+            allow="autoplay; encrypted-media" className="absolute inset-0 pointer-events-none"
+            style={{width:'100%',height:'100%',transform:'scale(1.08)'}} frameBorder="0"/>
+        )}
+        <div className="absolute inset-0 bg-black/35 pointer-events-none"/>
+
+        {/* Hidden sound players */}
+        {SOUND_TRACKS.map(track => (fsSoundVolumes[track.id]||0)>0 && (
+          <iframe key={track.id}
+            src={`https://www.youtube.com/embed/${track.videoId}?autoplay=1&loop=1&playlist=${track.videoId}&controls=0`}
+            allow="autoplay; encrypted-media" style={{display:'none'}} frameBorder="0"/>
+        ))}
+
+        {/* Full-width session progress bar */}
+        {activeTask && (
+          <div className="absolute top-0 left-0 right-0 h-[3px] bg-white/10 z-20 pointer-events-none">
+            <div className="h-full transition-all duration-1000" style={{width:`${activeProgressPercent}%`,backgroundColor:progressBarColor}}/>
+          </div>
+        )}
+
+        {/* TOP BAR */}
+        <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-6 pt-5 z-10"
+          onClick={e => e.stopPropagation()}>
+          {/* Session badge */}
+          {activeTask ? (
+            <div className="flex items-center gap-2.5 bg-black/50 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/10">
+              <div className="w-2 h-2 rounded-full animate-pulse shrink-0" style={{backgroundColor:progressBarColor}}/>
+              <div>
+                <div className="text-[9px] font-black uppercase tracking-widest text-white/50">Now Studying</div>
+                <div className="text-xs font-black text-white leading-tight">{activeTask.topic}</div>
+              </div>
+              <div className="ml-2 text-[10px] font-mono text-white/40 border-l border-white/10 pl-2.5">{activeTimeRemaining}</div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 bg-black/40 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-white/10">
+              <Clock className="w-3.5 h-3.5 text-white/40"/>
+              <span className="text-xs font-black text-white/50">Free Study Session</span>
+            </div>
+          )}
+
+          {/* Control buttons + popovers */}
+          <div className="relative flex items-center gap-2" onClick={e => e.stopPropagation()}>
+            <CtrlBtn panelId="background"    activePanel={activeFullscreenPanel} icon={ImageIcon} label="Background"    onToggle={togglePanel}/>
+            <CtrlBtn panelId="sounds"        activePanel={activeFullscreenPanel} icon={Music}     label="Sounds"        onToggle={togglePanel}/>
+            <CtrlBtn panelId="quotes"        activePanel={activeFullscreenPanel} icon={Quote}     label="Quotes"        onToggle={togglePanel}/>
+            <CtrlBtn panelId="stats"         activePanel={activeFullscreenPanel} icon={BarChart}  label="Stats"         onToggle={togglePanel}/>
+            <CtrlBtn panelId="timerSettings" activePanel={activeFullscreenPanel} icon={Settings}  label="Timer"         onToggle={togglePanel}/>
+            <CtrlBtn panelId="widgets"       activePanel={activeFullscreenPanel} icon={Layout}    label="Widgets"       onToggle={togglePanel}/>
+            <div className="w-px h-6 bg-white/15 mx-1"/>
+            <button onClick={() => setIsTimerFullscreen(false)} title="Exit Fullscreen"
+              className="w-10 h-10 flex items-center justify-center rounded-xl border border-white/15 bg-black/40 backdrop-blur-md text-white hover:bg-white/20 hover:border-white/30 transition-all active:scale-95">
+              <Minimize2 style={{width:18,height:18}}/>
+            </button>
+
+            {activeFullscreenPanel && (
+              <div className="absolute top-[calc(100%+10px)] right-0 z-50" onClick={e => e.stopPropagation()}>
+                {activeFullscreenPanel==='background' && (
+                  <BgPanel fsYoutubeVideoId={fsYoutubeVideoId} setFsYoutubeVideoId={setFsYoutubeVideoId}
+                    fsBgCategory={fsBgCategory} setFsBgCategory={setFsBgCategory}
+                    fullscreenTimerBg={fullscreenTimerBg} handleSetFullscreenTimerBg={handleSetFullscreenTimerBg}
+                    fsBgVideoVolume={fsBgVideoVolume} setFsBgVideoVolume={setFsBgVideoVolume} onClose={closePanel}/>
+                )}
+                {activeFullscreenPanel==='sounds' && (
+                  <SoundsPanel fsSoundVolumes={fsSoundVolumes} setFsSoundVolumes={setFsSoundVolumes}
+                    fsBgVideoVolume={fsBgVideoVolume} setFsBgVideoVolume={setFsBgVideoVolume} onClose={closePanel}/>
+                )}
+                {activeFullscreenPanel==='quotes' && (
+                  <QuotesPanel fsQuoteVisible={fsQuoteVisible} setFsQuoteVisible={setFsQuoteVisible}
+                    onShuffle={() => setFsCurrentQuoteIndex(i => (i+1)%STUDY_QUOTES.length)} onClose={closePanel}/>
+                )}
+                {activeFullscreenPanel==='stats' && (
+                  <StatsPanel todayLog={todayLog} timerState={timerState} todayTasks={todayTasks}
+                    currentStreak={currentStreak} onClose={closePanel}/>
+                )}
+                {activeFullscreenPanel==='timerSettings' && (
+                  <TimerSettingsPanel
+                    activeType={activeType} isRunning={isRunning} isIdle={isIdle}
+                    fullscreenTimerStyle={fullscreenTimerStyle}
+                    pomodoroFocusMins={pomodoroFocusMins} setPomodoroFocusMins={setPomodoroFocusMins}
+                    pomodoroBreakMins={pomodoroBreakMins} setPomodoroBreakMins={setPomodoroBreakMins}
+                    pomodoroLongBreakMins={pomodoroLongBreakMins} setPomodoroLongBreakMins={setPomodoroLongBreakMins}
+                    pomodoroTargetRounds={pomodoroTargetRounds} setPomodoroTargetRounds={setPomodoroTargetRounds}
+                    customTimerHours={customTimerHours} setCustomTimerHours={setCustomTimerHours}
+                    customTimerMins={customTimerMins} setCustomTimerMins={setCustomTimerMins}
+                    customTimerSecs={customTimerSecs} setCustomTimerSecs={setCustomTimerSecs}
+                    showMilliseconds={showMilliseconds} setShowMilliseconds={setShowMilliseconds}
+                    handleSwitchTimerType={handleSwitchTimerType}
+                    handleSetFullscreenTimerStyle={handleSetFullscreenTimerStyle}
+                    handleStartPomodoro={handleStartPomodoro}
+                    handleStartCountdownTimer={handleStartCountdownTimer}
+                    handleStartStopwatchTimer={handleStartStopwatchTimer}
+                    handlePauseActiveTimer={handlePauseActiveTimer}
+                    handleResumeActiveTimer={handleResumeActiveTimer}
+                    handleResetActiveTimer={handleResetActiveTimer}
+                    handleRecordStopwatchLap={handleRecordStopwatchLap}
+                    onClose={closePanel}/>
+                )}
+                {activeFullscreenPanel==='widgets' && (
+                  <WidgetsPanel fsWidgets={fsWidgets} setFsWidgets={setFsWidgets}
+                    fsCustomizingWidgets={fsCustomizingWidgets} setFsCustomizingWidgets={setFsCustomizingWidgets}
+                    setFsEditingWidgetId={setFsEditingWidgetId} onClose={closePanel}/>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* CENTRAL TIMER */}
+        <div className="relative z-10 flex flex-col items-center justify-center w-full pointer-events-none">
+          <div className="mb-5 flex items-center gap-2 bg-white/10 px-4 py-1.5 rounded-full border border-white/10">
+            <Timer className="w-4 h-4 text-white/60 animate-pulse"/>
+            <span className="text-xs font-black uppercase tracking-widest text-white/60">{timerLabel}</span>
+          </div>
+
+          {fullscreenTimerStyle==='flip' ? (
+            <div className="flex items-center justify-center flex-wrap gap-2">
+              {(activeType==='stopwatch' ? formatStopwatch(localStopwatchTime) : formatTime(timerState.timerType==='pomodoro'?localTimerTimeLeft:timerState.timerType==='timer'?localCustomTimerTimeLeft:Math.floor(localStopwatchTime/1000))).split('').map((char,i) => {
+                if (char===':'||char==='.') return <span key={i} className="text-5xl md:text-7xl font-black font-mono text-white/50 pb-2">{char}</span>;
+                return <ReactFlipDigit key={i} digit={char} theme={fullscreenTimerBg}/>;
+              })}
+            </div>
+          ) : (
+            <span className="font-black font-mono tracking-tight leading-none tabular-nums drop-shadow-[0_8px_40px_rgba(0,0,0,0.6)] text-center select-none"
+              style={{fontSize:'clamp(5rem,18vw,16rem)'}}>
+              {activeType==='stopwatch'
+                ? formatStopwatch(localStopwatchTime)
+                : formatTime(activeType==='pomodoro'?localTimerTimeLeft:localCustomTimerTimeLeft)}
+            </span>
+          )}
+
+          {fsQuoteVisible && (
+            <div className="mt-8 text-center max-w-xl px-6 pointer-events-auto">
+              <p className="text-base md:text-lg font-semibold text-white/70 leading-relaxed italic">
+                &ldquo;{STUDY_QUOTES[fsCurrentQuoteIndex % STUDY_QUOTES.length].text}&rdquo;
+              </p>
+              <p className="mt-2 text-[11px] font-black text-white/35 uppercase tracking-widest">
+                &mdash; {STUDY_QUOTES[fsCurrentQuoteIndex % STUDY_QUOTES.length].author}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* FLOATING WIDGET CANVAS */}
+        {fsWidgets.map(widget => (
+          <FloatingWidget key={widget.id} widget={widget} customizing={fsCustomizingWidgets}
+            onDragStart={startWidgetDrag} onResizeStart={startWidgetResize}
+            onEdit={openCssEditor} onRemove={id => setFsWidgets(prev => prev.filter(w => w.id!==id))}>
+            {widget.type==='custom_browser'
+              ? <iframe src={widget.url} title={widget.title} className="w-full h-full border-0" allow="autoplay; encrypted-media"/>
+              : renderNativeWidget(widget.nativeId)
+            }
+          </FloatingWidget>
+        ))}
+
+        {/* CSS EDITOR MODAL */}
+        {fsEditingWidgetId && editingWidget && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            onClick={() => setFsEditingWidgetId(null)}>
+            <div className="w-[480px] bg-[#0a0a14] border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
+              onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/10">
+                <span className="text-sm font-black text-white flex items-center gap-2">
+                  <Code2 className="w-4 h-4 text-blue-400"/> CSS Editor &mdash; {editingWidget.title}
+                </span>
+                <button onClick={() => setFsEditingWidgetId(null)} className="text-slate-500 hover:text-white transition"><X className="w-4 h-4"/></button>
+              </div>
+              <div className="p-4 space-y-3">
+                <div className="flex gap-2">
+                  <button onClick={() => setFsTempWidgetCss(OBS_CSS_TEMPLATE)}
+                    className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition">Load OBS Template</button>
+                  <button onClick={() => setFsTempWidgetCss('body { background: transparent; }')}
+                    className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition">Transparent BG</button>
+                </div>
+                <textarea value={fsTempWidgetCss} onChange={e => setFsTempWidgetCss(e.target.value)} rows={10}
+                  placeholder={OBS_CSS_TEMPLATE}
+                  className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-xs font-mono text-green-300 placeholder-slate-600 outline-none resize-none focus:border-blue-400/50"/>
+                <div className="flex gap-2 justify-end">
+                  <button onClick={() => setFsEditingWidgetId(null)}
+                    className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-black transition">Cancel</button>
+                  <button onClick={saveCss}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-black transition active:scale-95 flex items-center gap-1.5">
+                    <Save className="w-3.5 h-3.5"/> Save CSS
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };

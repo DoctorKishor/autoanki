@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">AutoAnki</string>
+    <string name="title_activity_main">AutoAnki</string>
+    <string name="package_name">com.autoanki.app</string>
+    <string name="custom_url_scheme">com.autoanki.app</string>
+</resources>
