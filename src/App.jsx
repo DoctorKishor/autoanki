@@ -30,6 +30,8 @@ import {
 import { getPytTopics, upsertPytTopics } from './utils/pytService';
 import { calculateEfficiencyScore, calculateWeightedConcentration } from './utils/campCalculations';
 import { ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import ExportImageVerificationModal from './components/ExportImageVerificationModal';
+import { cropAndMaskDiagram } from './utils/imageCropper';
 
 import {
   getAuth, signInAnonymously, onAuthStateChanged,
@@ -337,23 +339,97 @@ const INDIAN_STATES = [
   "West Bengal"
 ];
 
-const DEFAULT_PROMPT = `
-I want you to act as a professional medical Anki card creator for NEET PG/INICET preparation.
-Analyze the attached image of medical notes. Extract EVERY SINGLE FACT thoroughly. 
-Go line by line, section by section. If there are 30 distinct facts on the page, you MUST generate 30 cards. Do not skip any detail.
+const MIRROR_PRECISION_V6_PROMPT = `SYSTEM ROLE: THE "MIRROR–PRECISION" PROTOCOL (v6) — JSON ENGINE
+You are a High-Fidelity Data Extraction and Card Engineering Engine designed for NEET PG / INICET preparation. Your sole function is to transform the provided image of a single PDF page into high-quality Anki flashcards with maximum fidelity and optimized learning design.
+You do not summarize. You do not reinterpret broadly. You extract, structure, and engineer recall.
 
-Principles:
-1. Minimum information principle: Keep it extremely brief and fact-dense.
-2. Optimize wording for fast active recall.
+CORE OPERATING PRINCIPLES (NON-NEGOTIABLE)
 
-Format Rules:
-- Determine dynamically if a fact is better as a "Basic" (Q&A) card or a "Cloze" (fill-in-the-blank) card.
-- CRITICAL JSON RULE: You MUST return all fields (front, back, text, ymin, xmin, ymax, xmax) for EVERY card.
-- If the card is "Basic", put the question in 'front' and the answer in 'back', and leave 'text' empty (""). NEVER LEAVE 'back' EMPTY for a Basic card.
-- If the card is "Cloze", put the cloze sentence in 'text' (e.g., '{{c1::Term}} is...'), and leave 'front' and 'back' empty ("").
-- Never answer or interpret beyond the text. Only summarize what is explicitly there.
-- EXACT LOCATION: For EVERY card, provide the exact coordinates of the text in the image. Return 'ymin' (top), 'xmin' (left), 'ymax' (bottom), 'xmax' (right) on a scale of 0 to 1000.
+1. Source Restriction (Hard Boundary Rule)
+- Absolute Fidelity: Use ONLY the exact content visible on the provided page image—text, tables, diagrams, and labels alike.
+- No External Context: Make no assumptions from other pages or chapters. Do not use outside/background knowledge, even on familiar topics. If a fact is not shown on that page, it does not exist for this task.
+- Exception Rule: Add minimal clarification ONLY when strictly necessary to:
+  * Make a card grammatically or logically functional.
+  * Preserve comprehension.
+  * Resolve an ambiguity (e.g., an obvious OCR artifact) that would otherwise make recall impossible.
+- Logging: This must be rare and never habitual. (Log internally prior to generating JSON).
+
+2. Total Coverage Rule
+Convert every clinically relevant element into at least one card:
+- Definitions, numbers, and values.
+- Classifications and diagnostic criteria.
+- Tables, lists, and enumerations.
+- Flowcharts and algorithms.
+- Red-box / highlighted / boxed notes.
+- Mnemonics and exam-pearl callouts (highly prioritized).
+- Footnotes (if clinically relevant) and image/diagram labels.
+Filtration: Exclude only non-clinical metadata (copyright lines, page numbers, video timestamps, headers).
+Deduplication: If the exact same fact is presented multiple times, card it once in whichever form preserves the most fidelity.
+Empty Pages: If the page has no extractable clinical content, return an empty JSON array [] rather than generating filler cards.
+
+3. Visual Fidelity Rule & Image Grounding
+Text extraction alone is unreliable. Tables, flowcharts, highlighted boxes, and image labels are routinely lost or scrambled when a PDF is read as text-only.
+- Visually inspect the rendered page image itself, not just its OCR text layer.
+- Cross-check the two before writing any card.
+- If the text layer and the rendered image disagree, the rendered image is authoritative.
+- If a card references or relies on a visual diagram, flowchart, histology slide, or anatomical figure on the page, flag it for diagram extraction.
+
+4. Card Engineering, Notetype Assignment & Cloze Deletion Rule (Critical)
+Avoid excessive micro-cards and overloaded macro-cards. Each card must test one cohesive recall unit.
+
+- Per-Card Notetype Decision: Before drafting each card, analyze its content against the criteria below and commit to exactly one notetype — Basic or Cloze. Make this decision independently for every card; never default an entire page to a single notetype out of convenience.
+
+- When to use Basic (Q&A) vs. Cloze:
+  * Use Basic for direct associations, definitions, and distinct standalone facts.
+  * Use Cloze for sequential pathways, mechanisms of action, overlapping symptom profiles, or complex phrasing where a traditional Q&A question would accidentally give away the answer via context clues.
+
+- Cloze Best Practices: Keep the cloze deletion specific. Do not cloze entire sentences. If a process has three steps, use {{c1::Step 1}}, {{c2::Step 2}}, and {{c3::Step 3}} within the same text block to generate overlapping cards.
+
+- Lists: A tightly related list of ≤4 items remains on one card. A list of >4 items must be split by category. If no natural subcategory exists, split into groups of ≤4 by logical adjacency.
+
+- Tables: Create one card per row if rows are independently testable; create one card with table structure if the comparative relationship itself is the testable concept.
+
+- Flowcharts/Algorithms: Create one card per decision point or step, strictly preserving the sequence.
+
+- Formatting & Phrasing:
+  * Topic Heading: Prefix questions/cloze text with the most specific subheading governing that content (e.g., "Thyroidectomy: What is..."). Fall back to the general subject only if no subheading applies.
+  * Verbatim Phrasing: Use exact phrasing, numbers, and terminology from the page. Do not paraphrase unless grammatically unavoidable.
+
+5. Image Attachment & Side Placement Rules:
+- ABSOLUTELY CRITICAL: NOT ALL CARDS NEED IMAGES! Most cards test text concepts and MUST HAVE "has_image": false and "img_box": null.
+- Set "has_image": true ONLY for MANDATORY cards that directly test an actual visual figure on the page (clinical lesion photo, anatomical diagram/schematic, medical instrument, X-ray/CT/MRI, or histological slide). Paragraphs, bullet lists, headers, and text tables are strictly text ("has_image": false).
+- "img_box": WHENEVER "has_image" is true, YOU MUST RETURN [ymin, xmin, ymax, xmax] relative bounding coordinates (0 to 1000 scale) tightly cropping ONLY the visual asset/diagram itself. NEVER return [0, 0, 1000, 1000] (the whole page). If "has_image" is false, return null.
+- "image_side": Specify "front", "back", or "both" for Basic cards. For Cloze cards, default to "front".
+- "image_confidence": Return an integer from 0 to 100 representing AI confidence that this card genuinely requires a cropped diagram.
+
+STRICT JSON OUTPUT FORMAT
+Return ONLY a valid JSON array containing card objects. Do not wrap in extra commentary or conversational fluff outside the JSON.
+
+For EVERY card generated, you MUST populate all 13 of the following fields:
+
+1. "type": Exactly "Basic" or "Cloze" (Case-sensitive spelling).
+2. "front": 
+   - If "Basic": The Topic Subheading + Question text (e.g., "Thyroidectomy: What is the most common complication?").
+   - If "Cloze": Must be an empty string ("").
+3. "back": 
+   - If "Basic": The answer text. NEVER LEAVE 'back' EMPTY for a Basic card.
+   - If "Cloze": Optional extra context or notes — leave empty ("") if none.
+4. "text": 
+   - If "Basic": Must be an empty string ("").
+   - If "Cloze": The Topic Subheading + Cloze text (e.g., "Thyroidectomy: The most common complication is {{c1::recurrent laryngeal nerve injury}}.").
+5. "ymin": Top source coordinate of card text on the image (integer 0 to 1000).
+6. "xmin": Left source coordinate of card text on the image (integer 0 to 1000).
+7. "ymax": Bottom source coordinate of card text on the image (integer 0 to 1000).
+8. "xmax": Right source coordinate of card text on the image (integer 0 to 1000).
+9. "has_image": boolean (true if card has visual diagram/figure, false for pure text).
+10. "img_box": [ymin, xmin, ymax, xmax] or null.
+11. "image_side": "front" | "back" | "both" | "none".
+12. "image_confidence": integer (0 to 100).
+
+EXACT LOCATION BOUNDING BOXES: For EVERY card, inspect the page image and return exact 0 to 1000 normalized bounding coordinates for text ('ymin', 'xmin', 'ymax', 'xmax') and diagram ('img_box').
 `;
+
+const DEFAULT_PROMPT = MIRROR_PRECISION_V6_PROMPT;
 
 // --- SPACED REPETITION SCHEDULER (SM-2) ---
 const calculateSM2 = (card, rating) => {
@@ -1228,7 +1304,30 @@ const handleImageCloudUpload = async (base64Image, fileName, apiKey) => {
   return await uploadToImgBB(base64Image, apiKey);
 };
 
-const callGeminiWithRetry = async (apiKey, prompt, base64Image, mimeType, retries = 5) => {
+export const sanitizeCardForFirestore = (card) => {
+  if (!card || typeof card !== 'object') return card;
+  const sanitized = { ...card };
+  if (Array.isArray(sanitized.occlusions)) {
+    sanitized.occlusions = sanitized.occlusions.map(occ => {
+      if (Array.isArray(occ)) {
+        return {
+          ymin: typeof occ[0] === 'number' ? occ[0] : 0,
+          xmin: typeof occ[1] === 'number' ? occ[1] : 0,
+          ymax: typeof occ[2] === 'number' ? occ[2] : 0,
+          xmax: typeof occ[3] === 'number' ? occ[3] : 0
+        };
+      }
+      return occ;
+    });
+  }
+  return sanitized;
+};
+
+const callGeminiWithRetry = async (apiKey, prompt, base64Image, mimeType, retries = 4) => {
+  if (!apiKey) {
+    throw new Error("Gemini API key is not configured. Please enter your Gemini API key in Settings.");
+  }
+
   let imgBase64 = base64Image;
   if (base64Image && (base64Image.startsWith('http://') || base64Image.startsWith('https://'))) {
     try {
@@ -1246,12 +1345,21 @@ const callGeminiWithRetry = async (apiKey, prompt, base64Image, mimeType, retrie
     }
   }
 
-  const delays = [1000, 2000, 4000, 8000, 16000];
+  const rawDataBase64 = imgBase64.includes(',') ? imgBase64.split(',')[1] : imgBase64;
+  // Gemini model fallback chain ordered by priority and rate limits
+  const models = [
+    'gemini-3.5-flash-lite',
+    'gemini-3.5-flash',
+    'gemini-2.5-flash-lite',
+    'gemini-2.5-flash',
+    'gemini-2.0-flash'
+  ];
+
   const payload = {
     contents: [{
       parts: [
         { text: prompt },
-        { inlineData: { mimeType: mimeType, data: imgBase64.split(',')[1] } }
+        { inlineData: { mimeType: mimeType || 'image/jpeg', data: rawDataBase64 } }
       ]
     }],
     generationConfig: {
@@ -1268,12 +1376,16 @@ const callGeminiWithRetry = async (apiKey, prompt, base64Image, mimeType, retrie
                 front: { type: "STRING", description: "The question. (Leave empty string '' if type is Cloze)" },
                 back: { type: "STRING", description: "The answer. (Leave empty string '' if type is Cloze. ABSOLUTELY MANDATORY if type is Basic)" },
                 text: { type: "STRING", description: "The fill-in-the-blank text. (Leave empty string '' if type is Basic)" },
-                ymin: { type: "INTEGER", description: "Bounding box top edge (0-1000 scale)" },
-                xmin: { type: "INTEGER", description: "Bounding box left edge (0-1000 scale)" },
-                ymax: { type: "INTEGER", description: "Bounding box bottom edge (0-1000 scale)" },
-                xmax: { type: "INTEGER", description: "Bounding box right edge (0-1000 scale)" }
+                ymin: { type: "INTEGER", description: "Bounding box top edge of source text on page (0-1000 scale)" },
+                xmin: { type: "INTEGER", description: "Bounding box left edge of source text on page (0-1000 scale)" },
+                ymax: { type: "INTEGER", description: "Bounding box bottom edge of source text on page (0-1000 scale)" },
+                xmax: { type: "INTEGER", description: "Bounding box right edge of source text on page (0-1000 scale)" },
+                has_image: { type: "BOOLEAN", description: "Set true ONLY if an actual, clear visual figure (lesion photo, diagram, medical instrument, X-ray/CT/MRI, histological slide) on the page is directly relevant. Pure text, headers, and text tables are strictly false." },
+                img_box: { type: "ARRAY", items: { type: "INTEGER" }, description: "[ymin, xmin, ymax, xmax] relative bounding box (0-1000 scale) for the visual asset if has_image is true" },
+                image_side: { type: "STRING", enum: ["front", "back", "both", "none"], description: "Which card side the diagram belongs on" },
+                image_confidence: { type: "INTEGER", description: "Confidence score 0-100 that diagram adds high value to recall" }
               },
-              required: ["type", "front", "back", "text", "ymin", "xmin", "ymax", "xmax"]
+              required: ["type", "front", "back", "text", "ymin", "xmin", "ymax", "xmax", "has_image"]
             }
           }
         }
@@ -1281,22 +1393,51 @@ const callGeminiWithRetry = async (apiKey, prompt, base64Image, mimeType, retrie
     }
   };
 
+  let lastError = null;
   for (let i = 0; i < retries; i++) {
+    const model = models[i % models.length];
+    // Per-request 45s abort timeout so a hung fetch never stalls the batch
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 45000);
     try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), signal: controller.signal }
+      );
+      clearTimeout(timeoutId);
+
+      // Handle rate-limit (429) with Retry-After header before reading body
+      if (response.status === 429) {
+        const retryAfter = parseInt(response.headers.get('Retry-After') || '0', 10);
+        const waitMs = retryAfter > 0 ? retryAfter * 1000 : Math.min(4000 * (i + 1), 12000);
+        console.warn(`[Gemini] Rate limited (429) on ${model}. Waiting ${waitMs / 1000}s before trying next model (${i + 1}/${retries})...`);
+        await new Promise(res => setTimeout(res, waitMs));
+        lastError = new Error(`Rate limited by Gemini API (429). Retrying after ${waitMs / 1000}s.`);
+        continue;
+      }
+
       const result = await response.json();
-      if (result.error) throw new Error(result.error.message);
-      const jsonText = result.candidates[0].content.parts[0].text;
-      return JSON.parse(jsonText);
+      if (result.error) throw new Error(result.error.message || `Gemini API error (${result.error.code})`);
+      const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!jsonText) throw new Error("Gemini API returned an empty text payload.");
+      const parsedData = JSON.parse(jsonText);
+      if (parsedData && Array.isArray(parsedData.cards)) {
+        parsedData.cards = parsedData.cards.map(c => sanitizeCardForFirestore(c));
+      }
+      return parsedData;
     } catch (error) {
-      if (i === retries - 1) throw error;
-      await new Promise(res => setTimeout(res, delays[i]));
+      clearTimeout(timeoutId);
+      // AbortError means our 45s timeout fired — treat as a retryable network error
+      const isTimeout = error.name === 'AbortError';
+      lastError = isTimeout ? new Error(`Request timed out (45s) on model ${model}`) : error;
+      console.warn(`[Gemini Attempt ${i + 1}/${retries} (${model}) ${isTimeout ? 'TIMEOUT' : 'failed'}]:`, lastError.message);
+      if (i === retries - 1) throw lastError;
+      // Exponential backoff: 3s, 7s, 15s between retries
+      const backoffMs = [3000, 7000, 15000][i] ?? 15000;
+      await new Promise(res => setTimeout(res, backoffMs));
     }
   }
+  throw lastError || new Error("Gemini AI request failed after retries.");
 };
 
 const callGeminiIndexExtractor = async (apiKey, base64Image, mimeType, retries = 5) => {
@@ -1349,16 +1490,19 @@ const callGeminiIndexExtractor = async (apiKey, base64Image, mimeType, retries =
     }
   };
 
+  const models = ['gemini-3.1-flash-lite', 'gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.0-flash'];
   for (let i = 0; i < retries; i++) {
+    const model = models[i % models.length];
     try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`, {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
       const result = await response.json();
       if (result.error) throw new Error(result.error.message);
-      const jsonText = result.candidates[0].content.parts[0].text;
+      const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!jsonText) throw new Error("No response content from Gemini.");
       return JSON.parse(jsonText);
     } catch (error) {
       if (i === retries - 1) throw error;
@@ -5067,8 +5211,24 @@ export default function App() {
     };
   }, [isDraggingFloating]);
   // CONFIGURATION STATE
-  const [geminiApiKey, setGeminiApiKey] = useState("AIzaSyDST4WyNbF4vYf-7oPEYcBvc-_tPmYQ2ro");
-  const [imgbbApiKey, setImgbbApiKey] = useState('');
+  const [geminiApiKey, setGeminiApiKey] = useState(() => import.meta.env.VITE_GEMINI_API_KEY || localStorage.getItem("pyt_gemini_api_key") || "");
+  const [imgbbApiKey, setImgbbApiKey] = useState(() => import.meta.env.VITE_IMGBB_API_KEY || localStorage.getItem("pyt_imgbb_api_key") || "");
+
+  useEffect(() => {
+    if (geminiApiKey) {
+      localStorage.setItem("pyt_gemini_api_key", geminiApiKey);
+    } else {
+      localStorage.removeItem("pyt_gemini_api_key");
+    }
+  }, [geminiApiKey]);
+
+  useEffect(() => {
+    if (imgbbApiKey) {
+      localStorage.setItem("pyt_imgbb_api_key", imgbbApiKey);
+    } else {
+      localStorage.removeItem("pyt_imgbb_api_key");
+    }
+  }, [imgbbApiKey]);
   const [isImgbbKeyVisible, setIsImgbbKeyVisible] = useState(false);
   const [isExportingExtension, setIsExportingExtension] = useState(false);
   const [downloadedExtension, setDownloadedExtension] = useState(false);
@@ -5294,6 +5454,8 @@ export default function App() {
   const [currentCropIndex, setCurrentCropIndex] = useState(0);
   const [cropZoom, setCropZoom] = useState(1.0);
   const [isCropPanning, setIsCropPanning] = useState(false);
+  const [isImageVerificationModalOpen, setIsImageVerificationModalOpen] = useState(false);
+  const [verificationModalCards, setVerificationModalCards] = useState([]);
   const syncCardToFirestore = async (card) => {
     if (!user || !db || !card || !card.id) return;
     try {
@@ -5310,6 +5472,13 @@ export default function App() {
       if (card.ymax !== undefined) cleanData.ymax = card.ymax;
       if (card.excludeImage !== undefined) cleanData.excludeImage = card.excludeImage;
       if (card.hasImage !== undefined) cleanData.hasImage = card.hasImage;
+      if (card.has_image !== undefined) cleanData.has_image = card.has_image;
+      if (card.img_box !== undefined) cleanData.img_box = card.img_box;
+      if (card.image_side !== undefined) cleanData.image_side = card.image_side;
+      if (card.image_confidence !== undefined) cleanData.image_confidence = card.image_confidence;
+      if (card.occlusions !== undefined) {
+        cleanData.occlusions = sanitizeCardForFirestore({ occlusions: card.occlusions }).occlusions;
+      }
       cleanData.updatedAt = Date.now();
       await setDoc(cardDoc, cleanData, { merge: true });
     } catch (err) {
@@ -12912,8 +13081,13 @@ JSON Format:
     const unsubscribe = onSnapshot(keysRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
+        if (data.geminiApiKey) {
+          setGeminiApiKey(data.geminiApiKey);
+          localStorage.setItem("pyt_gemini_api_key", data.geminiApiKey);
+        }
         if (data.imgbbApiKey) {
           setImgbbApiKey(data.imgbbApiKey);
+          localStorage.setItem("pyt_imgbb_api_key", data.imgbbApiKey);
         }
         if (data.githubUsername !== undefined) {
           setGithubUsername(data.githubUsername);
@@ -12924,7 +13098,6 @@ JSON Format:
         if (data.githubPatToken !== undefined) {
           setGithubPatToken(data.githubPatToken);
         }
-
       }
     }, (error) => {
       console.error("Error fetching keys:", error);
@@ -12932,15 +13105,23 @@ JSON Format:
     return () => unsubscribe();
   }, [user]);
 
-  const saveImgbbApiKeyToCloud = async (key) => {
-    if (!user || !db) return;
+  const saveApiKeysToCloud = async () => {
+    if (!user || !db) {
+      alert("Please log in first to save keys to the cloud.");
+      return;
+    }
     const keysRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'keys');
     try {
-      await setDoc(keysRef, { imgbbApiKey: key }, { merge: true });
-      alert("ImgBB API Key saved to cloud successfully!");
+      await setDoc(keysRef, { 
+        geminiApiKey: geminiApiKey || '',
+        imgbbApiKey: imgbbApiKey || '' 
+      }, { merge: true });
+      if (geminiApiKey) localStorage.setItem("pyt_gemini_api_key", geminiApiKey);
+      if (imgbbApiKey) localStorage.setItem("pyt_imgbb_api_key", imgbbApiKey);
+      alert("API Keys (Gemini & ImgBB) saved to Cloud & Local Storage successfully!");
     } catch (err) {
-      console.error("Failed to save ImgBB API Key to cloud:", err);
-      alert("Failed to save ImgBB API Key to cloud: " + err.message);
+      console.error("Failed to save API Keys to cloud:", err);
+      alert("Failed to save API Keys to cloud: " + err.message);
     }
   };
 
@@ -15014,21 +15195,26 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
               const page = await batchPdf.getPage(pageNum);
               const pageRotation = rotations[pageNum] || 0;
 
-              // Cap canvas to 800px on longest edge to prevent GB-level RGBA buffers
-              // on large-format / high-DPI scanned textbooks
-              const raw = page.getViewport({ scale: 1.0, rotation: pageRotation });
-              const scale = Math.min(0.9, 800 / Math.max(raw.width, raw.height));
+              // Native PDF resolution — no artificial downscaling cap
+              const scale = 2.0; // 300 DPI high resolution
               const viewport = page.getViewport({ scale, rotation: pageRotation });
 
               reusableCanvas.width  = Math.floor(viewport.width);
               reusableCanvas.height = Math.floor(viewport.height);
 
+              reusableContext.imageSmoothingEnabled = true;
+              reusableContext.imageSmoothingQuality = 'high';
+
               await page.render({ canvasContext: reusableContext, viewport }).promise;
 
-              const base64 = reusableCanvas.toDataURL('image/jpeg', 0.82);
+              // High-fidelity export — zero visual loss
+              const base64 = reusableCanvas.toDataURL('image/jpeg', 0.95);
 
+              // Immediately release PDF.js worker memory & reset canvas dimensions to 0 to free GPU/RAM
               if (typeof page.cleanup === 'function') page.cleanup();
-              reusableContext.clearRect(0, 0, reusableCanvas.width, reusableCanvas.height);
+              reusableCanvas.width = 0;
+              reusableCanvas.height = 0;
+              reusableContext.clearRect(0, 0, 0, 0);
 
               const itemId = generateId();
               if (firstItemId === null) firstItemId = itemId;
@@ -15087,6 +15273,10 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
   // --- GEMINI PROCESSING ---
   const processQueue = async (itemsToProcess = null) => {
     if (isProcessing) return;
+    if (!geminiApiKey) {
+      alert("Gemini API key is not configured. Please enter your Gemini API key in Settings / Setup to generate flashcards.");
+      return;
+    }
     const items = Array.isArray(itemsToProcess) ? itemsToProcess : queue;
     const pendingItems = items.filter(item => item.status === 'pending' || item.status === 'error');
     if (pendingItems.length === 0) return;
@@ -15101,14 +15291,23 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     });
 
     let processed = 0;
+    let errorCount = 0;
 
-    for (let item of pendingItems) {
-      setQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: 'processing' } : q));
+    for (let itemIdx = 0; itemIdx < pendingItems.length; itemIdx++) {
+      const item = pendingItems[itemIdx];
+
+      // Pace requests: wait 2.5s between items to avoid rate-limit bursts
+      // (skip delay for the very first item)
+      if (itemIdx > 0) {
+        await new Promise(res => setTimeout(res, 2500));
+      }
+
+      setQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: 'processing', errorMessage: null } : q));
       setActiveQueueId(item.id);
 
       setOperationProgress(prev => ({
         ...prev,
-        message: `Analyzing: ${item.fileName.slice(0, 35) || 'Document page'}...`,
+        message: `Analyzing page ${itemIdx + 1} of ${pendingItems.length}: ${item.fileName.slice(0, 30) || 'Document page'}...`,
         current: processed
       }));
 
@@ -15121,11 +15320,33 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
           throw new Error("Gemini returned an invalid response format.");
         }
 
+        const sanitizeCardBounds = (c) => {
+          let imgBox = c.img_box;
+          let hasImg = Boolean(c.has_image);
+          if (imgBox) {
+            let ymin = 0, xmin = 0, ymax = 0, xmax = 0;
+            if (Array.isArray(imgBox) && imgBox.length === 4) {
+              [ymin, xmin, ymax, xmax] = imgBox;
+            } else if (typeof imgBox === 'object') {
+              ymin = imgBox.ymin ?? 0;
+              xmin = imgBox.xmin ?? 0;
+              ymax = imgBox.ymax ?? 0;
+              xmax = imgBox.xmax ?? 0;
+            }
+            if ((ymin === 0 && xmin === 0 && ymax === 0 && xmax === 0) || ymax <= ymin || xmax <= xmin) {
+              hasImg = false;
+              imgBox = null;
+            }
+          }
+          return { ...c, has_image: hasImg, img_box: imgBox };
+        };
+
         // Store generated cards LOCALLY in the queue item with IDs for editing
-        const cardsWithIds = result.cards.map(c => ({ ...c, id: generateId(), queueId: item.id }));
+        const cardsWithIds = result.cards.map(c => sanitizeCardBounds({ ...c, id: generateId(), queueId: item.id }));
         const updatedItem = {
           ...item,
           status: 'done',
+          errorMessage: null,
           generatedCards: cardsWithIds
         };
         setQueue(prev => prev.map(q => q.id === item.id ? updatedItem : q));
@@ -15135,11 +15356,18 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
             ...prev,
             message: `Autosaving to cloud: ${item.fileName.slice(0, 30)}...`
           }));
-          await saveQueueItemToCloud(item.id, false, true, updatedItem);
+          try {
+            await saveQueueItemToCloud(item.id, false, true, updatedItem);
+          } catch (saveErr) {
+            // Autosave failure is non-fatal — card stays in queue for manual save
+            console.warn(`[Autosave] Failed for ${item.fileName}:`, saveErr.message);
+          }
         }
       } catch (error) {
-        console.error("Failed to process item:", error);
-        setQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: 'error' } : q));
+        errorCount++;
+        console.error(`[processQueue] Failed item ${itemIdx + 1}/${pendingItems.length} (${item.fileName}):`, error);
+        // Mark as error in UI — do NOT block with alert() in a batch loop
+        setQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: 'error', errorMessage: error.message } : q));
       }
       processed++;
       setOperationProgress(prev => ({
@@ -15150,6 +15378,19 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
 
     setIsProcessing(false);
     setOperationProgress({ show: false, title: '', message: '', current: 0, total: 0 });
+
+    // Surface a single summary alert at the end rather than per-item blocking alerts
+    const successCount = processed - errorCount;
+    if (pendingItems.length > 1) {
+      if (errorCount > 0) {
+        alert(`Processed ${successCount} of ${pendingItems.length} pages successfully.\n${errorCount} page(s) failed — see the ⚠ error badge on failed items. You can retry them individually.`);
+      }
+    } else if (errorCount > 0) {
+      // Single item error — still show alert so user knows
+      const failedItem = pendingItems[0];
+      const errMsg = queue.find(q => q.id === failedItem?.id)?.errorMessage || 'Unknown error';
+      alert(`Failed to process ${failedItem?.fileName || 'page'}: ${errMsg}`);
+    }
 
     // Auto-select the first finished item on mobile
     if (isMobile && !activeQueueId) {
@@ -15205,14 +15446,14 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       const cardPromises = result.cards.map(card => {
         const cardId = generateId();
         const cardDoc = doc(db, 'artifacts', appId, 'users', user.uid, 'flashcards', cardId);
-        return setDoc(cardDoc, {
+        return setDoc(cardDoc, sanitizeCardForFirestore({
           ...card,
           id: cardId,
           pageId: pageId,
           deck: pageObj.deck || hierarchy || 'Marrow::Pathology',
           createdAt: Date.now(),
           isPending: true // Keep in triage
-        });
+        }));
       });
       await Promise.all(cardPromises);
 
@@ -15550,6 +15791,11 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       alert("You are not logged in. Please refresh and wait for the app to initialize.");
       return;
     }
+    if (!imgbbApiKey) {
+      const msg = "ImgBB API Key is not set.\n\nPlease go to Settings → paste your ImgBB API key → click 'Save API Keys to Cloud'.";
+      if (!silent) alert(msg);
+      throw new Error("ImgBB API Key is not configured.");
+    }
 
     const item = itemOverride || queue.find(q => q.id === id);
     if (!item) {
@@ -15603,11 +15849,12 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
         if (item.generatedCards && item.generatedCards.length > 0) {
           console.log(`[CloudSave] Step 2/2: Saving ${item.generatedCards.length} cards...`);
           const nowTime = Date.now();
-          const cardPromises = item.generatedCards.map(card => {
+          const cardPromises = item.generatedCards.map(rawCard => {
+            const card = sanitizeCardForFirestore(rawCard);
             const cardId = generateId();
             _savedCards.push({ ...card, id: cardId, pageId: item.id, deck: _finalDeck, createdAt: nowTime, updatedAt: nowTime, isPending: asPending });
             const cardDoc = doc(db, 'artifacts', appId, 'users', user.uid, 'flashcards', cardId);
-            return setDoc(cardDoc, {
+            return setDoc(cardDoc, sanitizeCardForFirestore({
               ...card,
               id: cardId,
               pageId: item.id,
@@ -15615,7 +15862,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
               createdAt: nowTime,
               updatedAt: nowTime,
               isPending: asPending
-            });
+            }));
           });
           await Promise.all(cardPromises);
         }
@@ -15680,6 +15927,11 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     const processedItems = queue.filter(q => q.status === 'done');
     if (processedItems.length === 0) return;
 
+    if (!imgbbApiKey) {
+      alert("ImgBB API Key is required to save pages to the cloud.\n\nPlease go to Settings → Paste your ImgBB API key → Click 'Save API Keys to Cloud'.");
+      return;
+    }
+
     const hasDifferentDecks = processedItems.some(item => {
       const itemDeck = item.hasCustomDeck ? item.deck : hierarchy;
       return itemDeck !== hierarchy;
@@ -15701,20 +15953,27 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     });
 
     let successCount = 0;
+    let failCount = 0;
     try {
       for (let i = 0; i < processedItems.length; i++) {
         const item = processedItems[i];
         setOperationProgress(prev => ({
           ...prev,
           current: i,
-          message: `Uploading page ${i + 1} of ${processedItems.length}: ${item.fileName}...`
+          message: `Uploading page ${i + 1} of ${processedItems.length}: ${item.fileName.slice(0, 40)}...`
         }));
         if (i > 0) {
           // Apply 2.5s spacing delay between bulk uploads to avoid API rate limits
           await new Promise(res => setTimeout(res, 2500));
         }
-        await saveQueueItemToCloud(item.id, false, true);
-        successCount++;
+        try {
+          // Pass item directly as itemOverride to avoid stale queue state closure issues
+          await saveQueueItemToCloud(item.id, false, true, item);
+          successCount++;
+        } catch (itemErr) {
+          failCount++;
+          console.error(`[BulkSave] Failed to save item ${item.fileName}:`, itemErr);
+        }
       }
       setOperationProgress(prev => ({
         ...prev,
@@ -15722,10 +15981,11 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
         message: 'Finalizing database writes...'
       }));
       await new Promise(res => setTimeout(res, 500));
-      alert(`Successfully saved ${successCount} pages to your library!`);
-    } catch (err) {
-      console.error("[BulkSave] Error:", err);
-      alert(`Partial save: ${successCount} items saved. One or more items failed.`);
+      if (failCount === 0) {
+        alert(`Successfully saved all ${successCount} pages to your library!`);
+      } else {
+        alert(`Saved ${successCount} of ${processedItems.length} pages.\n${failCount} page(s) failed — check that your ImgBB API key is valid in Settings.`);
+      }
     } finally {
       setIsSaving(false);
       setOperationProgress({ show: false, title: '', message: '', current: 0, total: 0 });
@@ -15880,15 +16140,35 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     });
   };
 
-  const convertDataUrlToBinary = (dataUrl) => {
-    const base64 = dataUrl.split(',')[1];
-    const binaryStr = atob(base64);
-    const len = binaryStr.length;
-    const bytes = new Uint8Array(len);
-    for (let i = 0; i < len; i++) {
-      bytes[i] = binaryStr.charCodeAt(i);
+  const fetchImageAsBinary = async (imgUrlOrDataUrl) => {
+    if (!imgUrlOrDataUrl) return null;
+    if (typeof imgUrlOrDataUrl === 'string' && imgUrlOrDataUrl.startsWith('data:')) {
+      try {
+        const parts = imgUrlOrDataUrl.split(',');
+        if (parts.length < 2) return null;
+        const base64 = parts[1];
+        const binaryStr = atob(base64);
+        const len = binaryStr.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+          bytes[i] = binaryStr.charCodeAt(i);
+        }
+        return bytes.buffer;
+      } catch (e) {
+        console.warn("Data URL binary conversion failed:", e);
+        return null;
+      }
+    } else if (typeof imgUrlOrDataUrl === 'string') {
+      try {
+        const resp = await fetch(imgUrlOrDataUrl);
+        if (!resp.ok) return null;
+        return await resp.arrayBuffer();
+      } catch (e) {
+        console.warn("Fetch image binary failed:", e);
+        return null;
+      }
     }
-    return bytes.buffer;
+    return null;
   };
 
   const generateGuid = () => {
@@ -15913,6 +16193,14 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     const cardsToUse = overrideCards || deckCardsToExport;
     if (cardsToUse.length === 0) {
       alert("No matching flashcards found for this export scope!");
+      return;
+    }
+
+    // Intercept for AI diagram image verification before compile if cards have extracted images
+    if (format === 'apkg' && includeImages && !overrideCards && cardsToUse.some(c => c.has_image || c.img_box || c.image_confidence !== undefined)) {
+      setVerificationModalCards(cardsToUse);
+      setIsExportDialogOpen(false);
+      setIsImageVerificationModalOpen(true);
       return;
     }
 
@@ -16225,44 +16513,45 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
 
           let imgFilename = null;
 
-          if (includeImages && !card.excludeImage) {
+          if (includeImages && !card.excludeImage && card.include_image !== false) {
+                let imgDataUrl = card.cropped_data_url || null;
             const rawSrc = findCardImageSrc(card);
-            if (rawSrc) {
-              try {
-                let imgDataUrl = null;
-                const forceCrop = !!overrideCards;
-                if ((forceCrop || imagePortion === 'crop') && card.ymin !== undefined && card.xmin !== undefined) {
-                  imgDataUrl = await cropImageSrc(rawSrc, card);
-                } else {
-                  // Full image conversion
-                  imgDataUrl = await new Promise((resolve) => {
-                    const img = new Image();
-                    img.crossOrigin = "anonymous";
-                    img.onload = () => {
-                      const canvas = document.createElement('canvas');
-                      canvas.width = img.width;
-                      canvas.height = img.height;
-                      const ctx = canvas.getContext('2d');
-                      ctx.drawImage(img, 0, 0);
-                      resolve(canvas.toDataURL('image/png'));
-                    };
-                    img.onerror = () => resolve(null);
-                    img.src = rawSrc;
-                  });
-                }
 
-                if (imgDataUrl) {
-                  const binaryData = convertDataUrlToBinary(imgDataUrl);
-                  const filename = `img_${card.id}.png`;
+            if (!imgDataUrl && rawSrc) {
+              const boxToUse = card.img_box || (
+                (card.ymin !== undefined && card.xmin !== undefined && card.ymax !== undefined && card.xmax !== undefined)
+                  ? [card.ymin, card.xmin, card.ymax, card.xmax]
+                  : null
+              );
 
-                  // Pack the binary image blob in the zip, named as the count number
-                  zip.file(String(mediaCounter), binaryData);
-                  mediaManifest[String(mediaCounter)] = filename;
-                  imgFilename = filename;
-                  mediaCounter++;
+              if (boxToUse) {
+                try {
+                  imgDataUrl = await cropAndMaskDiagram(
+                    rawSrc,
+                    boxToUse,
+                    card.occlusions || [],
+                    card.image_side || 'back',
+                    card.type || 'Basic'
+                  );
+                } catch (maskErr) {
+                  console.warn('cropAndMaskDiagram failed:', maskErr);
                 }
-              } catch (mediaErr) {
-                console.warn(`Media bundling failed for card ${card.id}:`, mediaErr);
+              }
+
+              if (!imgDataUrl) {
+                imgDataUrl = rawSrc;
+              }
+            }
+
+            if (imgDataUrl) {
+              const binaryData = await fetchImageAsBinary(imgDataUrl);
+              if (binaryData && binaryData.byteLength > 0) {
+                const filename = `img_${card.id || i}.png`;
+
+                zip.file(String(mediaCounter), binaryData);
+                mediaManifest[String(mediaCounter)] = filename;
+                imgFilename = filename;
+                mediaCounter++;
               }
             }
           }
@@ -16277,11 +16566,18 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
           let f2 = type === 'Cloze' ? (card.extra || '') : (card.back || '');
 
           const cleanField = (s) => (s || '').replace(/\n/g, '<br>').replace(/\r/g, '').replace(/\t/g, ' ');
-          const escapedF1 = cleanField(f1);
+          let escapedF1 = cleanField(f1);
           let escapedF2 = cleanField(f2);
 
           if (imgFilename) {
-            escapedF2 += `<br><br><div class="card-image-container"><img src="${imgFilename}" style="max-width:100%; border-radius:12px; margin-top:12px; box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div>`;
+            const side = card.image_side || (type === 'Cloze' ? 'text' : 'back');
+            const imgTag = `<br><br><div class="card-image-container"><img src="${imgFilename}" style="max-width:100%; border-radius:12px; margin-top:12px; box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div>`;
+            if (side === 'front' || side === 'both' || type === 'Cloze') {
+              escapedF1 += imgTag;
+            }
+            if (side === 'back' || side === 'both') {
+              escapedF2 += imgTag;
+            }
           }
 
           const flds = `${escapedF1}\u001f${escapedF2}`;
@@ -16341,8 +16637,8 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
           filename: `export_${safeName}.apkg`
         });
       } catch (err) {
-        console.error("APKG generation failed:", err);
-        alert("APKG generation failed: " + err.message);
+        // Use setTimeout so alert isn't swallowed by React's async error handling
+        setTimeout(() => alert('Export Error: ' + (err?.message || String(err))), 100);
         setIsExporting(false);
       }
       return;
@@ -16845,7 +17141,7 @@ Return your response strictly as a JSON object matching this schema:
             }
           };
 
-          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
+          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${geminiApiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -19661,8 +19957,13 @@ Return your response strictly as a JSON object matching this schema:
                                     <div className="text-[10px] font-bold truncate opacity-80">{item.fileName}</div>
                                     <div className="flex items-center gap-2 mt-1">
                                       {item.status === 'processing' && <div className="h-1 flex-grow bg-white/10 rounded-full overflow-hidden"><div className="h-full bg-blue-400 w-1/2 animate-shimmer" /></div>}
-                                      {item.status === 'done' && <span className="text-[9px] text-green-400 font-black">READY</span>}
+                                      {item.status === 'done' && <span className="text-[9px] text-green-400 font-black">READY ({item.generatedCards?.length || 0})</span>}
                                       {item.status === 'pending' && <span className="text-[9px] text-white/40 font-bold">QUEUED</span>}
+                                      {item.status === 'error' && (
+                                        <button onClick={() => retryItem(item.id)} className="text-[9px] text-red-400 font-black hover:underline cursor-pointer">
+                                          FAILED (RETRY)
+                                        </button>
+                                      )}
                                     </div>
                                   </div>
                                   {item.status === 'done' && (
@@ -20834,10 +21135,10 @@ Return your response strictly as a JSON object matching this schema:
                           </div>
                           <div className="flex gap-2">
                             <button
-                              onClick={() => saveImgbbApiKeyToCloud(imgbbApiKey)}
+                              onClick={saveApiKeysToCloud}
                               className="flex-1 bg-green-50 text-green-600 p-4 rounded-2xl text-[10px] font-black uppercase border border-green-100 active:scale-95 transition"
                             >
-                              Save ImgBB Key to Cloud
+                              Save API Keys to Cloud
                             </button>
                           </div>
                           <div className="flex gap-2">
@@ -22046,7 +22347,7 @@ Return your response strictly as a JSON object matching this schema:
                             <div className="flex justify-between items-center">
                               <div>
                                 <span className="text-xs font-black text-gray-900 block">Include Clinical Images</span>
-                                <span className="text-[8px] text-gray-400 font-bold block mt-0.5">Embed image chunks in notes</span>
+                                <span className="text-[9px] text-gray-400 font-bold block mt-0.5">Embed cropped image figures into deck notes</span>
                               </div>
                               <button
                                 onClick={() => setIncludeImages(!includeImages)}
@@ -22057,35 +22358,17 @@ Return your response strictly as a JSON object matching this schema:
                             </div>
 
                             {includeImages && (
-                              <div className="border-t border-gray-200 pt-3 flex flex-col gap-3 animate-in slide-in-from-top duration-250">
-                                <span className="text-[8px] font-black uppercase tracking-wider text-gray-400">Select Image Portion</span>
-                                <div className="grid grid-cols-2 gap-2">
-                                  <button
-                                    onClick={() => setImagePortion('crop')}
-                                    className={`py-1.5 px-2 rounded-lg border text-[9px] font-black transition ${imagePortion === 'crop' ? 'border-blue-600 bg-blue-50 text-blue-600' : 'border-gray-200 bg-white text-gray-500'}`}
-                                  >
-                                    Info Portion (Cropped)
-                                  </button>
-                                  <button
-                                    onClick={() => setImagePortion('full')}
-                                    className={`py-1.5 px-2 rounded-lg border text-[9px] font-black transition ${imagePortion === 'full' ? 'border-blue-600 bg-blue-50 text-blue-600' : 'border-gray-200 bg-white text-gray-500'}`}
-                                  >
-                                    Entire Page Image
-                                  </button>
+                              <div className="border-t border-gray-200/60 pt-3 flex justify-between items-center animate-in fade-in duration-200">
+                                <div>
+                                  <span className="text-xs font-black text-gray-900 block">Review & Fine-Tune Images</span>
+                                  <span className="text-[9px] text-gray-400 font-bold block mt-0.5">Interactively drag or scale crops before export</span>
                                 </div>
-
-                                <div className="border-t border-gray-205/50 pt-3 flex justify-between items-center">
-                                  <div>
-                                    <span className="text-xs font-black text-gray-900 block">Manual Image Crop</span>
-                                    <span className="text-[8px] text-gray-400 font-bold block mt-0.5">Review crop interactively</span>
-                                  </div>
-                                  <button
-                                    onClick={() => setManualReviewImages(!manualReviewImages)}
-                                    className={`w-10 h-5 rounded-full p-0.5 transition-colors duration-200 focus:outline-none ${manualReviewImages ? 'bg-blue-600' : 'bg-gray-300'}`}
-                                  >
-                                    <div className={`w-4 h-4 rounded-full bg-white shadow-md transform duration-200 ${manualReviewImages ? 'translate-x-5' : 'translate-x-0'}`} />
-                                  </button>
-                                </div>
+                                <button
+                                  onClick={() => setManualReviewImages(!manualReviewImages)}
+                                  className={`w-10 h-5 rounded-full p-0.5 transition-colors duration-200 focus:outline-none ${manualReviewImages ? 'bg-blue-600' : 'bg-gray-300'}`}
+                                >
+                                  <div className={`w-4 h-4 rounded-full bg-white shadow-md transform duration-200 ${manualReviewImages ? 'translate-x-5' : 'translate-x-0'}`} />
+                                </button>
                               </div>
                             )}
                           </div>
@@ -24491,7 +24774,14 @@ Return your response strictly as a JSON object matching this schema:
                                           className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl hover:border-blue-500 transition-all group cursor-pointer relative"
                                         >
                                           <div className="flex justify-between items-start mb-3">
-                                            <span className="text-[9px] font-black uppercase tracking-widest bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">{card.type}</span>
+                                            <div className="flex flex-wrap items-center gap-1.5">
+                                              <span className="text-[9px] font-black uppercase tracking-widest bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">{card.type}</span>
+                                              {Boolean(card.has_image || (card.img_box && (Array.isArray(card.img_box) ? card.img_box.length === 4 : card.img_box.ymin !== undefined)) || card.include_image) && (
+                                                <span className="text-[9px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                                  <ImageIcon className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" /> Image Attached
+                                                </span>
+                                              )}
+                                            </div>
                                             <div className="text-[8px] font-black text-gray-400 uppercase tracking-widest bg-gray-50 px-2 py-0.5 rounded-full flex items-center gap-1 group-hover:bg-blue-600 group-hover:text-white transition-colors">
                                               <Folder className="w-2.5 h-2.5" /> {card.deck?.split('::').pop() || 'Uncategorized'}
                                             </div>
@@ -24643,7 +24933,14 @@ Return your response strictly as a JSON object matching this schema:
                                               <button onClick={(e) => { e.stopPropagation(); setEditingCard(card); }} className="p-1 text-blue-600 hover:bg-blue-100 rounded-md transition-colors"><Edit3 className="w-3 h-3" /></button>
                                               <button onClick={(e) => { e.stopPropagation(); deleteCard(card.id); }} className="p-1 text-red-600 hover:bg-red-100 rounded-md transition-colors"><Trash2 className="w-3 h-3" /></button>
                                             </div>
-                                            <span className="text-[9px] font-black uppercase tracking-widest bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full mb-2 inline-block">{card.type}</span>
+                                            <div className="flex items-center gap-1.5 mb-2">
+                                              <span className="text-[9px] font-black uppercase tracking-widest bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">{card.type}</span>
+                                              {Boolean(card.has_image || (card.img_box && (Array.isArray(card.img_box) ? card.img_box.length === 4 : card.img_box.ymin !== undefined)) || card.include_image) && (
+                                                <span className="text-[9px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                                  <ImageIcon className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" /> Image
+                                                </span>
+                                              )}
+                                            </div>
                                             {card.type === 'Cloze' ? (
                                               <div className="text-sm text-gray-800">{card.text}</div>
                                             ) : (
@@ -29139,11 +29436,11 @@ Return your response strictly as a JSON object matching this schema:
                                 <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400">4. Media Asset Configuration</label>
 
                                 {exportFormat === 'apkg' ? (
-                                  <div className="border border-gray-100 rounded-2xl p-5 bg-gray-50/50 flex flex-col gap-4">
+                                  <div className="border border-gray-150 rounded-2xl p-5 bg-gray-50/50 flex flex-col gap-4">
                                     <div className="flex justify-between items-center">
                                       <div>
                                         <span className="text-sm font-black text-gray-900 tracking-tight block">Include Clinical Images</span>
-                                        <span className="text-[10px] text-gray-400 font-bold block mt-0.5">Embed high-quality image chunks in notes</span>
+                                        <span className="text-xs text-gray-400 font-medium block mt-0.5">Embed high-quality diagram figures into notes</span>
                                       </div>
                                       <button
                                         onClick={() => setIncludeImages(!includeImages)}
@@ -29154,38 +29451,17 @@ Return your response strictly as a JSON object matching this schema:
                                     </div>
 
                                     {includeImages && (
-                                      <div className="border-t border-gray-250/55 pt-4 flex flex-col gap-4 animate-in slide-in-from-top duration-200 text-left">
-                                        <div className="flex flex-col gap-2.5">
-                                          <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">Select Image Portion</span>
-                                          <div className="grid grid-cols-2 gap-2">
-                                            <button
-                                              onClick={() => setImagePortion('crop')}
-                                              className={`py-2 px-3 rounded-lg border text-xs font-black transition ${imagePortion === 'crop' ? 'border-blue-600 bg-blue-50 text-blue-600' : 'border-gray-200 hover:border-blue-300 bg-white text-gray-500'}`}
-                                            >
-                                              Portion with Info (Cropped)
-                                            </button>
-                                            <button
-                                              onClick={() => setImagePortion('full')}
-                                              className={`py-2 px-3 rounded-lg border text-xs font-black transition ${imagePortion === 'full' ? 'border-blue-600 bg-blue-50 text-blue-600' : 'border-gray-200 hover:border-blue-300 bg-white text-gray-500'}`}
-                                            >
-                                              Entire Page Image
-                                            </button>
-                                          </div>
+                                      <div className="border-t border-gray-200/70 pt-4 flex justify-between items-center animate-in fade-in duration-200">
+                                        <div>
+                                          <span className="text-sm font-black text-gray-900 tracking-tight block">Review & Fine-Tune Images</span>
+                                          <span className="text-xs text-gray-400 font-medium block mt-0.5">Interactively drag or scale crops before export</span>
                                         </div>
-
-                                        {/* Customize Images Individually Toggle */}
-                                        <div className="border-t border-gray-250/55 pt-4 flex justify-between items-center">
-                                          <div>
-                                            <span className="text-xs font-black text-gray-900 tracking-tight block">Customize Images Individually</span>
-                                            <span className="text-[10px] text-gray-400 font-bold block mt-0.5">Interactively crop or exclude card images before export</span>
-                                          </div>
-                                          <button
-                                            onClick={() => setManualReviewImages(!manualReviewImages)}
-                                            className={`w-12 h-6 rounded-full p-0.5 transition-colors duration-200 focus:outline-none shrink-0 ${manualReviewImages ? 'bg-blue-600' : 'bg-gray-300'}`}
-                                          >
-                                            <div className={`w-5 h-5 rounded-full bg-white shadow-md transform duration-200 ${manualReviewImages ? 'translate-x-6' : 'translate-x-0'}`} />
-                                          </button>
-                                        </div>
+                                        <button
+                                          onClick={() => setManualReviewImages(!manualReviewImages)}
+                                          className={`w-12 h-6 rounded-full p-0.5 transition-colors duration-200 focus:outline-none shrink-0 ${manualReviewImages ? 'bg-blue-600' : 'bg-gray-300'}`}
+                                        >
+                                          <div className={`w-5 h-5 rounded-full bg-white shadow-md transform duration-200 ${manualReviewImages ? 'translate-x-6' : 'translate-x-0'}`} />
+                                        </button>
                                       </div>
                                     )}
                                   </div>
@@ -32177,38 +32453,17 @@ Return your response strictly as a JSON object matching this schema:
                           </div>
 
                           {includeImages && (
-                            <div className="border-t border-gray-200/55 pt-3 flex flex-col gap-3 animate-in slide-in-from-top duration-200 text-left">
-                              <div className="flex flex-col gap-2">
-                                <span className="text-[9px] font-black uppercase tracking-wider text-gray-400">Select Image Portion</span>
-                                <div className="grid grid-cols-2 gap-2">
-                                  <button
-                                    onClick={() => setImagePortion('crop')}
-                                    className={`py-1.5 px-3 rounded-lg border text-[10px] font-black transition ${imagePortion === 'crop' ? 'border-blue-600 bg-blue-50 text-blue-600' : 'border-gray-200 hover:border-blue-300 bg-white text-gray-500'}`}
-                                  >
-                                    Portion with Info (Cropped)
-                                  </button>
-                                  <button
-                                    onClick={() => setImagePortion('full')}
-                                    className={`py-1.5 px-3 rounded-lg border text-[10px] font-black transition ${imagePortion === 'full' ? 'border-blue-600 bg-blue-50 text-blue-600' : 'border-gray-200 hover:border-blue-300 bg-white text-gray-500'}`}
-                                  >
-                                    Entire Page Image
-                                  </button>
-                                </div>
+                            <div className="border-t border-gray-200/55 pt-3 flex justify-between items-center animate-in fade-in duration-200">
+                              <div>
+                                <span className="text-[11px] font-black text-gray-900 tracking-tight block">Review & Fine-Tune Images</span>
+                                <span className="text-[9px] text-gray-400 font-bold block">Interactively drag or scale crops before export</span>
                               </div>
-
-                              {/* Customize Images Individually Toggle */}
-                              <div className="border-t border-gray-200/55 pt-3 flex justify-between items-center">
-                                <div>
-                                  <span className="text-[11px] font-black text-gray-900 tracking-tight block">Customize Images Individually</span>
-                                  <span className="text-[9px] text-gray-400 font-bold block">Interactively crop or exclude card images before export</span>
-                                </div>
-                                <button
-                                  onClick={() => setManualReviewImages(!manualReviewImages)}
-                                  className={`w-12 h-6 rounded-full p-0.5 transition-colors duration-200 focus:outline-none shrink-0 ${manualReviewImages ? 'bg-blue-600' : 'bg-gray-300'}`}
-                                >
-                                  <div className={`w-5 h-5 rounded-full bg-white shadow-md transform duration-200 ${manualReviewImages ? 'translate-x-6' : 'translate-x-0'}`} />
-                                </button>
-                              </div>
+                              <button
+                                onClick={() => setManualReviewImages(!manualReviewImages)}
+                                className={`w-12 h-6 rounded-full p-0.5 transition-colors duration-200 focus:outline-none shrink-0 ${manualReviewImages ? 'bg-blue-600' : 'bg-gray-300'}`}
+                              >
+                                <div className={`w-5 h-5 rounded-full bg-white shadow-md transform duration-200 ${manualReviewImages ? 'translate-x-6' : 'translate-x-0'}`} />
+                              </button>
                             </div>
                           )}
                         </div>
@@ -32234,6 +32489,99 @@ Return your response strictly as a JSON object matching this schema:
                   </div>
                 </div>
               )}
+
+              <ExportImageVerificationModal
+                isOpen={isImageVerificationModalOpen}
+                onClose={() => setIsImageVerificationModalOpen(false)}
+                cards={verificationModalCards}
+                sourceImageUrl={verificationModalCards.length > 0 ? findCardImageSrc(verificationModalCards[0]) : null}
+                findCardImageSrc={findCardImageSrc}
+                onConfirmExport={async (verifiedCards) => {
+                  const verifiedMap = new Map((verifiedCards || []).map(c => [c.id, c]));
+
+                  // 1. Batch update local flashcards state
+                  setCards(prev => prev.map(c => {
+                    if (verifiedMap.has(c.id)) {
+                      const v = verifiedMap.get(c.id);
+                      return {
+                        ...c,
+                        front: v.front !== undefined ? v.front : c.front,
+                        back: v.back !== undefined ? v.back : c.back,
+                        text: v.text !== undefined ? v.text : c.text,
+                        has_image: Boolean(v.include_image),
+                        include_image: Boolean(v.include_image),
+                        img_box: v.img_box || null,
+                        image_side: v.image_side || 'back',
+                        cropped_data_url: v.cropped_data_url || c.cropped_data_url
+                      };
+                    }
+                    return c;
+                  }));
+
+                  // 2. Batch update active queue items
+                  setQueue(prev => prev.map(item => {
+                    if (item.generatedCards) {
+                      let updated = false;
+                      const newCards = item.generatedCards.map(c => {
+                        if (verifiedMap.has(c.id)) {
+                          updated = true;
+                          const v = verifiedMap.get(c.id);
+                          return {
+                            ...c,
+                            front: v.front !== undefined ? v.front : c.front,
+                            back: v.back !== undefined ? v.back : c.back,
+                            text: v.text !== undefined ? v.text : c.text,
+                            has_image: Boolean(v.include_image),
+                            include_image: Boolean(v.include_image),
+                            img_box: v.img_box || null,
+                            image_side: v.image_side || 'back',
+                            cropped_data_url: v.cropped_data_url || c.cropped_data_url
+                          };
+                        }
+                        return c;
+                      });
+                      if (updated) return { ...item, generatedCards: newCards };
+                    }
+                    return item;
+                  }));
+
+                  // 3. Single Bulk Batch Write to Firestore to minimize quota
+                  if (user?.uid && db) {
+                    try {
+                      const batch = writeBatch(db);
+                      let count = 0;
+                      (verifiedCards || []).forEach(c => {
+                        if (c.id) {
+                          const cardRef = doc(db, 'artifacts', appId, 'users', user.uid, 'flashcards', c.id);
+                          const updateData = {
+                            front: c.front,
+                            back: c.back,
+                            text: c.text,
+                            has_image: Boolean(c.include_image),
+                            include_image: Boolean(c.include_image),
+                            img_box: c.img_box || null,
+                            image_side: c.image_side || 'back',
+                            updatedAt: Date.now()
+                          };
+                          if (c.cropped_data_url) updateData.cropped_data_url = c.cropped_data_url;
+                          batch.set(cardRef, updateData, { merge: true });
+                          count++;
+                        }
+                      });
+                      if (count > 0) {
+                        await batch.commit();
+                        console.log(`[Batch Sync] Successfully committed ${count} verified card text & crop updates to Firestore in 1 single batch.`);
+                      }
+                    } catch (err) {
+                      console.warn("[Batch Sync] Firestore batch update error:", err);
+                    }
+                  }
+
+                  // 4. Trigger deck export with fully updated cards — awaited so the modal
+                  // stays open until the .apkg file download completes.
+                  await exportDeck(exportFormat, verifiedCards);
+                }}
+              />
 
               {exportSuccessGuide && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[220] animate-in fade-in duration-300">
