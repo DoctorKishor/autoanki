@@ -1537,7 +1537,7 @@ const PdfPagePreview = ({ pdf, pageNum, rotation = 0, onRotate }) => {
         const page = await pdf.getPage(pageNum);
         if (!active) return;
 
-        const viewport = page.getViewport({ scale: 0.35, rotation }); // Gorgeous print preview scale with rotation support
+        const viewport = page.getViewport({ scale: 0.35, rotation }); // Print preview scale with exact rotation
         const canvas = canvasRef.current;
         if (!canvas) return;
 
@@ -1561,46 +1561,60 @@ const PdfPagePreview = ({ pdf, pageNum, rotation = 0, onRotate }) => {
     };
   }, [pdf, pageNum, rotation]);
 
-  const handleRotateClick = (e) => {
-    e.stopPropagation();
-    if (onRotate) {
-      onRotate(pageNum);
-    }
-  };
-
   return (
     <div className="flex flex-col items-center gap-2 shrink-0 bg-white border border-gray-200 rounded-2xl p-3 shadow-md hover:shadow-lg hover:border-blue-400 transition-all duration-200 group relative">
       <div className="w-full bg-gray-50 flex items-center justify-center rounded-lg p-1.5 border border-gray-100 overflow-hidden relative group/canvas">
         <canvas ref={canvasRef} className="rounded shadow-sm max-w-full h-auto transition-transform duration-200" />
         
-        {/* Rotation option button in corner of small page preview */}
-        <button
-          type="button"
-          onClick={handleRotateClick}
-          title={`Rotate Page ${pageNum} 90° clockwise (currently ${rotation}°)`}
-          className="absolute top-2 right-2 p-1.5 bg-white/95 hover:bg-blue-600 text-gray-700 hover:text-white rounded-full shadow-md backdrop-blur-xs transition-all duration-150 border border-gray-200 hover:border-blue-500 hover:scale-110 active:scale-95 flex items-center justify-center z-10 opacity-90 group-hover/canvas:opacity-100 cursor-pointer"
-        >
-          <RotateCw className="w-3.5 h-3.5" />
-        </button>
+        {/* Dual corner rotation buttons (Anti-clockwise & Clockwise) */}
+        <div className="absolute top-2 right-2 flex items-center gap-1 bg-white/95 backdrop-blur-xs p-1 rounded-full shadow-md border border-gray-200 z-10 opacity-90 group-hover/canvas:opacity-100 transition-opacity">
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onRotate?.(pageNum, 'ccw'); }}
+            title={`Rotate Page ${pageNum} 90° anti-clockwise (currently ${rotation}°)`}
+            className="p-1 text-gray-600 hover:text-white hover:bg-blue-600 rounded-full transition duration-150 cursor-pointer active:scale-95 flex items-center justify-center"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+          </button>
+          <div className="w-px h-3 bg-gray-200" />
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onRotate?.(pageNum, 'cw'); }}
+            title={`Rotate Page ${pageNum} 90° clockwise (currently ${rotation}°)`}
+            className="p-1 text-gray-600 hover:text-white hover:bg-blue-600 rounded-full transition duration-150 cursor-pointer active:scale-95 flex items-center justify-center"
+          >
+            <RotateCw className="w-3.5 h-3.5" />
+          </button>
+        </div>
 
         {rotation > 0 && (
-          <span className="absolute bottom-2 left-2 text-[9px] font-black bg-blue-600/90 text-white px-2 py-0.5 rounded-md shadow-xs backdrop-blur-xs">
+          <span className="absolute bottom-2 left-2 text-[9px] font-black bg-blue-600 text-white px-2 py-0.5 rounded-md shadow-xs backdrop-blur-xs">
             {rotation}°
           </span>
         )}
       </div>
-      <div className="flex items-center justify-between w-full px-1">
+      <div className="flex items-center justify-between w-full px-1 pt-1">
         <span className="text-[10px] font-black text-gray-600 group-hover:bg-blue-600 group-hover:text-white px-3 py-1 rounded-full transition-all duration-150">
           Page {pageNum}
         </span>
-        <button
-          type="button"
-          onClick={handleRotateClick}
-          title="Rotate page 90°"
-          className="text-gray-400 hover:text-blue-600 p-1 rounded-lg hover:bg-blue-50 transition flex items-center gap-1 text-[10px] font-bold"
-        >
-          <RotateCw className="w-3.5 h-3.5" />
-        </button>
+        <div className="flex items-center gap-1 text-gray-400">
+          <button
+            type="button"
+            onClick={() => onRotate?.(pageNum, 'ccw')}
+            title="Rotate 90° anti-clockwise"
+            className="p-1 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onRotate?.(pageNum, 'cw')}
+            title="Rotate 90° clockwise"
+            className="p-1 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+          >
+            <RotateCw className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -14882,10 +14896,11 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     }
   };
 
-  const handleRotatePdfPage = (pageNum) => {
+  const handleRotatePdfPage = (pageNum, direction = 'cw') => {
     setPdfDialog(prev => {
       const currentRot = prev.rotations?.[pageNum] || 0;
-      const nextRot = (currentRot + 90) % 360;
+      const delta = direction === 'ccw' ? -90 : 90;
+      const nextRot = (currentRot + delta + 360) % 360;
       return {
         ...prev,
         rotations: {
@@ -14896,15 +14911,16 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     });
   };
 
-  const handleRotateAllPdfPages = () => {
+  const handleRotateAllPdfPages = (direction = 'cw') => {
     setPdfDialog(prev => {
       const pages = Array.from(new Set(
         (prev.mappings || []).flatMap(m => parsePageRange(m.range, prev.numPages))
-      ));
+      )).sort((a, b) => a - b);
       const nextRotations = { ...(prev.rotations || {}) };
+      const delta = direction === 'ccw' ? -90 : 90;
       pages.forEach(p => {
         const cur = nextRotations[p] || 0;
-        nextRotations[p] = (cur + 90) % 360;
+        nextRotations[p] = (cur + delta + 360) % 360;
       });
       return { ...prev, rotations: nextRotations };
     });
@@ -14930,7 +14946,8 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       let extractedCount = 0;
 
       for (const mapping of pdfDialog.mappings) {
-        const pageNumbers = parsePageRange(mapping.range, pdf.numPages);
+        // Ensure page numbers are extracted in strict ascending sequential order
+        const pageNumbers = parsePageRange(mapping.range, pdf.numPages).sort((a, b) => a - b);
         const targetDeck = mapping.deck.trim() || 'Marrow::Pathology';
 
         for (const pageNum of pageNumbers) {
@@ -14958,7 +14975,8 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
             base64: base64,
             status: 'pending',
             deck: targetDeck,
-            hasCustomDeck: true
+            hasCustomDeck: true,
+            pageRotation: pageRotation
           });
 
           extractedCount++;
@@ -32688,17 +32706,27 @@ Return your response strictly as a JSON object matching this schema:
                     <div className="w-full md:w-1/2 bg-gray-50 p-6 flex flex-col overflow-hidden text-left h-full">
                       <div className="flex items-center justify-between pb-3 border-b border-gray-200 shrink-0">
                         <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">Windows Print Preview Tray</span>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[9px] font-bold text-gray-400 mr-0.5">Rotate All:</span>
                           <button
                             type="button"
-                            onClick={handleRotateAllPdfPages}
-                            title="Rotate all preview pages by 90°"
-                            className="text-[9px] font-bold text-gray-600 hover:text-blue-600 bg-white hover:bg-blue-50 border border-gray-200 hover:border-blue-300 px-2 py-0.5 rounded flex items-center gap-1 transition shadow-2xs cursor-pointer"
+                            onClick={() => handleRotateAllPdfPages('ccw')}
+                            title="Rotate all preview pages 90° anti-clockwise"
+                            className="text-[9px] font-bold text-gray-600 hover:text-blue-600 bg-white hover:bg-blue-50 border border-gray-200 hover:border-blue-300 px-2 py-0.5 rounded flex items-center gap-1 transition shadow-2xs cursor-pointer active:scale-95"
+                          >
+                            <RotateCcw className="w-3 h-3" />
+                            90° ↺
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRotateAllPdfPages('cw')}
+                            title="Rotate all preview pages 90° clockwise"
+                            className="text-[9px] font-bold text-gray-600 hover:text-blue-600 bg-white hover:bg-blue-50 border border-gray-200 hover:border-blue-300 px-2 py-0.5 rounded flex items-center gap-1 transition shadow-2xs cursor-pointer active:scale-95"
                           >
                             <RotateCw className="w-3 h-3" />
-                            Rotate All
+                            90° ↻
                           </button>
-                          <span className="text-[9px] font-bold text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded">
+                          <span className="text-[9px] font-bold text-blue-600 bg-blue-50 border border-blue-100 px-2.5 py-0.5 rounded ml-1">
                             {(() => {
                               const count = Array.from(new Set(
                                 (pdfDialog.mappings || []).flatMap(m => parsePageRange(m.range, pdfDialog.numPages))
