@@ -1329,7 +1329,7 @@ const callGeminiWithRetry = async (apiKey, prompt, base64Image, mimeType, retrie
 
   const rawDataBase64 = imgBase64.includes(',') ? imgBase64.split(',')[1] : imgBase64;
   const delays = [1000, 2000, 4000, 8000, 16000];
-  const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+  const models = ['gemini-3.1-flash-lite', 'gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.0-flash'];
 
   const payload = {
     contents: [{
@@ -1439,7 +1439,7 @@ const callGeminiIndexExtractor = async (apiKey, base64Image, mimeType, retries =
     }
   };
 
-  const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+  const models = ['gemini-3.1-flash-lite', 'gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.0-flash'];
   for (let i = 0; i < retries; i++) {
     const model = models[i % models.length];
     try {
@@ -6946,7 +6946,7 @@ JSON Format:
             }
           };
 
-          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
+          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${geminiApiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(contents)
@@ -13947,7 +13947,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
           }
         }
       };
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${geminiApiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -16979,7 +16979,7 @@ Return your response strictly as a JSON object matching this schema:
             }
           };
 
-          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
+          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${geminiApiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
