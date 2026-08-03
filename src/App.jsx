@@ -15679,6 +15679,11 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       alert("You are not logged in. Please refresh and wait for the app to initialize.");
       return;
     }
+    if (!imgbbApiKey) {
+      const msg = "ImgBB API Key is not set.\n\nPlease go to Settings → paste your ImgBB API key → click 'Save API Keys to Cloud'.";
+      if (!silent) alert(msg);
+      throw new Error("ImgBB API Key is not configured.");
+    }
 
     const item = itemOverride || queue.find(q => q.id === id);
     if (!item) {
@@ -15809,6 +15814,11 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     const processedItems = queue.filter(q => q.status === 'done');
     if (processedItems.length === 0) return;
 
+    if (!imgbbApiKey) {
+      alert("ImgBB API Key is required to save pages to the cloud.\n\nPlease go to Settings → Paste your ImgBB API key → Click 'Save API Keys to Cloud'.");
+      return;
+    }
+
     const hasDifferentDecks = processedItems.some(item => {
       const itemDeck = item.hasCustomDeck ? item.deck : hierarchy;
       return itemDeck !== hierarchy;
@@ -15830,20 +15840,27 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     });
 
     let successCount = 0;
+    let failCount = 0;
     try {
       for (let i = 0; i < processedItems.length; i++) {
         const item = processedItems[i];
         setOperationProgress(prev => ({
           ...prev,
           current: i,
-          message: `Uploading page ${i + 1} of ${processedItems.length}: ${item.fileName}...`
+          message: `Uploading page ${i + 1} of ${processedItems.length}: ${item.fileName.slice(0, 40)}...`
         }));
         if (i > 0) {
           // Apply 2.5s spacing delay between bulk uploads to avoid API rate limits
           await new Promise(res => setTimeout(res, 2500));
         }
-        await saveQueueItemToCloud(item.id, false, true);
-        successCount++;
+        try {
+          // Pass item directly as itemOverride to avoid stale queue state closure issues
+          await saveQueueItemToCloud(item.id, false, true, item);
+          successCount++;
+        } catch (itemErr) {
+          failCount++;
+          console.error(`[BulkSave] Failed to save item ${item.fileName}:`, itemErr);
+        }
       }
       setOperationProgress(prev => ({
         ...prev,
@@ -15851,10 +15868,11 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
         message: 'Finalizing database writes...'
       }));
       await new Promise(res => setTimeout(res, 500));
-      alert(`Successfully saved ${successCount} pages to your library!`);
-    } catch (err) {
-      console.error("[BulkSave] Error:", err);
-      alert(`Partial save: ${successCount} items saved. One or more items failed.`);
+      if (failCount === 0) {
+        alert(`Successfully saved all ${successCount} pages to your library!`);
+      } else {
+        alert(`Saved ${successCount} of ${processedItems.length} pages.\n${failCount} page(s) failed — check that your ImgBB API key is valid in Settings.`);
+      }
     } finally {
       setIsSaving(false);
       setOperationProgress({ show: false, title: '', message: '', current: 0, total: 0 });
