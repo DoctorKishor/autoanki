@@ -128,7 +128,7 @@ const FSRS_W = [
 ];
 
 // Power-forgetting-curve constants — fixed by FSRS math so R(S days, S) ≈ 0.9
-const FSRS_DECAY  = -0.5;
+const FSRS_DECAY = -0.5;
 const FSRS_FACTOR = 19 / 81; // ≈ 0.23457
 
 const _fsrsClamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
@@ -143,7 +143,7 @@ const _fsrsD0 = (r) =>
 /** Difficulty after a repeat review: delta then mean-revert to D₀(Easy). */
 const _fsrsUpdateD = (D, rating) => {
   const D0easy = _fsrsD0(4);
-  const delta  = D - FSRS_W[6] * (rating - 3);
+  const delta = D - FSRS_W[6] * (rating - 3);
   return _fsrsClamp(FSRS_W[7] * D0easy + (1 - FSRS_W[7]) * delta, 1, 10);
 };
 
@@ -214,9 +214,9 @@ const calculateNextFSRSReview = (existingData, rating, reviewDateStr) => {
 
   if (isNew) {
     // ── First review: bootstrap from rating directly ─────────────────────────
-    D    = _fsrsD0(rating);
-    S    = FSRS_W[rating - 1]; // w[0..3] map directly to Again/Hard/Good/Easy
-    R    = 1.0;                 // Assume full retention at card-creation moment
+    D = _fsrsD0(rating);
+    S = FSRS_W[rating - 1]; // w[0..3] map directly to Again/Hard/Good/Easy
+    R = 1.0;                 // Assume full retention at card-creation moment
     newD = D;
     newS = S;
   } else {
@@ -235,7 +235,7 @@ const calculateNextFSRSReview = (existingData, rating, reviewDateStr) => {
       );
     }
 
-    R    = _fsrsR(elapsed, S);
+    R = _fsrsR(elapsed, S);
     newD = _fsrsUpdateD(D, rating);
     newS = rating === 1
       ? 0.1
@@ -253,13 +253,13 @@ const calculateNextFSRSReview = (existingData, rating, reviewDateStr) => {
   nextDate.setDate(nextDate.getDate() + interval);
 
   return {
-    difficulty:     parseFloat(newD.toFixed(4)),
-    stability:      parseFloat(newS.toFixed(4)),
+    difficulty: parseFloat(newD.toFixed(4)),
+    stability: parseFloat(newS.toFixed(4)),
     retrievability: parseFloat(R.toFixed(4)),
     interval,
-    nextReviewDue:  _fsrsDateStr(nextDate),
+    nextReviewDue: _fsrsDateStr(nextDate),
     lastReviewDate: _fsrsDateStr(reviewDate),
-    reviewCount:    ((existingData?.reviewCount) || 0) + 1,
+    reviewCount: ((existingData?.reviewCount) || 0) + 1,
     isNew,
   };
 };
@@ -1525,64 +1525,106 @@ const validatePageRange = (val, maxPages) => {
   return { isValid, cleanVal: val, message };
 };
 
+// Module-level semaphore: at most 2 PDF page previews render simultaneously.
+// Without this, selecting 29 pages fires 29 concurrent pdf.getPage() calls which
+// overwhelm the PDF.js worker and spike RAM to multiple GB.
+const _pdfPreviewSem = { count: 0, max: 2, queue: [] };
+const _pdfPreviewAcquire = () => new Promise(resolve => {
+  if (_pdfPreviewSem.count < _pdfPreviewSem.max) {
+    _pdfPreviewSem.count++;
+    resolve();
+  } else {
+    _pdfPreviewSem.queue.push(resolve);
+  }
+});
+const _pdfPreviewRelease = () => {
+  const next = _pdfPreviewSem.queue.shift();
+  if (next) { next(); } else { _pdfPreviewSem.count--; }
+};
+
 const PdfPagePreview = ({ pdf, pageNum, rotation = 0, onRotate }) => {
   const canvasRef = useRef(null);
+  const wrapperRef = useRef(null);
+  const [isVisible, setIsVisible] = useState(false);
+  const [rendered, setRendered] = useState(false);
 
+  // Step 1: Only render when tile is actually visible in the scrollable container
   useEffect(() => {
-    let active = true;
-    if (!pdf || !pageNum) return;
+    const el = wrapperRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) setIsVisible(true);
+        // Don't hide on scroll-out — once rendered keep the bitmap
+      },
+      { rootMargin: '100px' }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  // Step 2: Render canvas only when visible, using the global semaphore
+  useEffect(() => {
+    if (!isVisible || !pdf || !pageNum) return;
+
+    let cancelled = false;
 
     const renderPage = async () => {
+      await _pdfPreviewAcquire();
+      if (cancelled) { _pdfPreviewRelease(); return; }
+
       try {
         const page = await pdf.getPage(pageNum);
-        if (!active) return;
+        if (cancelled) { if (typeof page.cleanup === 'function') page.cleanup(); _pdfPreviewRelease(); return; }
 
-        const viewport = page.getViewport({ scale: 0.35, rotation }); // Print preview scale with exact rotation
+        // Scale to a fixed 180px wide thumbnail — enough to see content, minimal RGBA memory
+        const unscaled = page.getViewport({ scale: 1.0, rotation });
+        const thumbScale = 180 / unscaled.width;
+        const viewport = page.getViewport({ scale: thumbScale, rotation });
+
         const canvas = canvasRef.current;
-        if (!canvas) return;
+        if (!canvas || cancelled) { if (typeof page.cleanup === 'function') page.cleanup(); _pdfPreviewRelease(); return; }
 
-        const context = canvas.getContext('2d');
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
+        canvas.width  = Math.floor(viewport.width);
+        canvas.height = Math.floor(viewport.height);
+        const ctx = canvas.getContext('2d', { alpha: false });
 
-        const renderContext = {
-          canvasContext: context,
-          viewport: viewport
-        };
-        await page.render(renderContext).promise;
-      } catch (err) {
-        console.error("Error rendering PDF page preview:", err);
+        await page.render({ canvasContext: ctx, viewport }).promise;
+
+        // Free decoded page streams immediately after drawing to canvas
+        if (typeof page.cleanup === 'function') page.cleanup();
+
+        if (!cancelled) setRendered(true);
+      } catch (_) {
+        // Ignore render errors (e.g. page out of range, doc destroyed)
+      } finally {
+        _pdfPreviewRelease();
       }
     };
 
     renderPage();
-    return () => {
-      active = false;
-    };
-  }, [pdf, pageNum, rotation]);
+    return () => { cancelled = true; };
+  }, [isVisible, pdf, pageNum, rotation]);
 
   return (
-    <div className="flex flex-col items-center gap-2 shrink-0 bg-white border border-gray-200 rounded-2xl p-3 shadow-md hover:shadow-lg hover:border-blue-400 transition-all duration-200 group relative">
-      <div className="w-full bg-gray-50 flex items-center justify-center rounded-lg p-1.5 border border-gray-100 overflow-hidden relative group/canvas">
-        <canvas ref={canvasRef} className="rounded shadow-sm max-w-full h-auto transition-transform duration-200" />
-        
-        {/* Dual corner rotation buttons (Anti-clockwise & Clockwise) */}
+    <div ref={wrapperRef} className="flex flex-col items-center gap-2 shrink-0 bg-white border border-gray-200 rounded-2xl p-3 shadow-md hover:shadow-lg hover:border-blue-400 transition-all duration-200 group relative">
+      <div className="w-full bg-gray-50 flex items-center justify-center rounded-lg p-1.5 border border-gray-100 overflow-hidden relative group/canvas" style={{ minHeight: 100 }}>
+        {/* Lightweight placeholder shown until the tile is visible and rendered */}
+        {!rendered && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 text-gray-300">
+            <svg className="w-6 h-6 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+            <span className="text-[9px] font-semibold text-gray-400">Page {pageNum}</span>
+          </div>
+        )}
+        <canvas ref={canvasRef} className="rounded shadow-sm max-w-full h-auto transition-transform duration-200" style={{ display: rendered ? 'block' : 'none' }} />
+
+        {/* Dual corner rotation buttons */}
         <div className="absolute top-2 right-2 flex items-center gap-1 bg-white/95 backdrop-blur-xs p-1 rounded-full shadow-md border border-gray-200 z-10 opacity-90 group-hover/canvas:opacity-100 transition-opacity">
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onRotate?.(pageNum, 'ccw'); }}
-            title={`Rotate Page ${pageNum} 90° anti-clockwise (currently ${rotation}°)`}
-            className="p-1 text-gray-600 hover:text-white hover:bg-blue-600 rounded-full transition duration-150 cursor-pointer active:scale-95 flex items-center justify-center"
-          >
+          <button type="button" onClick={(e) => { e.stopPropagation(); onRotate?.(pageNum, 'ccw'); }} title={`Rotate Page ${pageNum} 90° anti-clockwise (currently ${rotation}°)`} className="p-1 text-gray-600 hover:text-white hover:bg-blue-600 rounded-full transition duration-150 cursor-pointer active:scale-95 flex items-center justify-center">
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
           <div className="w-px h-3 bg-gray-200" />
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onRotate?.(pageNum, 'cw'); }}
-            title={`Rotate Page ${pageNum} 90° clockwise (currently ${rotation}°)`}
-            className="p-1 text-gray-600 hover:text-white hover:bg-blue-600 rounded-full transition duration-150 cursor-pointer active:scale-95 flex items-center justify-center"
-          >
+          <button type="button" onClick={(e) => { e.stopPropagation(); onRotate?.(pageNum, 'cw'); }} title={`Rotate Page ${pageNum} 90° clockwise (currently ${rotation}°)`} className="p-1 text-gray-600 hover:text-white hover:bg-blue-600 rounded-full transition duration-150 cursor-pointer active:scale-95 flex items-center justify-center">
             <RotateCw className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -1598,22 +1640,8 @@ const PdfPagePreview = ({ pdf, pageNum, rotation = 0, onRotate }) => {
           Page {pageNum}
         </span>
         <div className="flex items-center gap-1 text-gray-400">
-          <button
-            type="button"
-            onClick={() => onRotate?.(pageNum, 'ccw')}
-            title="Rotate 90° anti-clockwise"
-            className="p-1 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => onRotate?.(pageNum, 'cw')}
-            title="Rotate 90° clockwise"
-            className="p-1 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
-          >
-            <RotateCw className="w-3.5 h-3.5" />
-          </button>
+          <button type="button" onClick={() => onRotate?.(pageNum, 'ccw')} title="Rotate 90° anti-clockwise" className="p-1 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"><RotateCcw className="w-3.5 h-3.5" /></button>
+          <button type="button" onClick={() => onRotate?.(pageNum, 'cw')} title="Rotate 90° clockwise" className="p-1 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"><RotateCw className="w-3.5 h-3.5" /></button>
         </div>
       </div>
     </div>
@@ -10355,7 +10383,7 @@ JSON Format:
     setIsSaving(true);
     try {
       const batch = writeBatch(db);
-      
+
       // Group by subject docId
       const reviewsBySubject = {};
       batchedReviews.forEach(r => {
@@ -10392,10 +10420,10 @@ JSON Format:
           // Pass the topic's current FSRS state (could be undefined on first review).
           // The engine returns the full updated payload including nextReviewDue.
           const currentFsrsState = {
-            difficulty:     topics[cleanTopicName].difficulty,
-            stability:      topics[cleanTopicName].stability,
+            difficulty: topics[cleanTopicName].difficulty,
+            stability: topics[cleanTopicName].stability,
             lastReviewDate: topics[cleanTopicName].lastReviewDate,
-            reviewCount:    topics[cleanTopicName].reviewCount,
+            reviewCount: topics[cleanTopicName].reviewCount,
           };
 
           // Pass existingData as null if this is truly the first FSRS review
@@ -10403,13 +10431,13 @@ JSON Format:
           const fsrsResult = calculateNextFSRSReview(fsrsInput, review.rating, review.dateStr);
 
           // ── Merge results back into the topic object ──────────────────────────
-          topics[cleanTopicName].difficulty     = fsrsResult.difficulty;
-          topics[cleanTopicName].stability      = fsrsResult.stability;
+          topics[cleanTopicName].difficulty = fsrsResult.difficulty;
+          topics[cleanTopicName].stability = fsrsResult.stability;
           topics[cleanTopicName].retrievability = fsrsResult.retrievability;
-          topics[cleanTopicName].interval       = fsrsResult.interval;
-          topics[cleanTopicName].nextReviewDue  = fsrsResult.nextReviewDue;
+          topics[cleanTopicName].interval = fsrsResult.interval;
+          topics[cleanTopicName].nextReviewDue = fsrsResult.nextReviewDue;
           topics[cleanTopicName].lastReviewDate = fsrsResult.lastReviewDate;
-          topics[cleanTopicName].reviewCount    = fsrsResult.reviewCount;
+          topics[cleanTopicName].reviewCount = fsrsResult.reviewCount;
 
           // Keep the legacy studyDates log (used by Subject Tracker coverage stats)
           if (!topics[cleanTopicName].studyDates.includes(review.dateStr)) {
@@ -10426,7 +10454,7 @@ JSON Format:
       }
 
       await batch.commit();
-      
+
       // Update local quota tracking
       fbTracker.write(Object.keys(reviewsBySubject).length);
       setFbUsage(fbTracker.getUsage());
@@ -10489,7 +10517,7 @@ JSON Format:
     const uid = targetUid || user?.uid;
     if (!db || !uid || !topicName) return;
     const docId = subject.trim().toLowerCase();
-    
+
     setSubjectTrackerData(prev => {
       return prev.map(p => {
         if (p.id === docId) {
@@ -10529,7 +10557,7 @@ JSON Format:
   const handleRescheduleFuture = () => {
     const updatedTrackerData = JSON.parse(JSON.stringify(subjectTrackerData));
     const allTopicsToSchedule = [];
-    
+
     updatedTrackerData.forEach(subDoc => {
       if (subDoc.topics) {
         Object.entries(subDoc.topics).forEach(([topicKey, topic]) => {
@@ -10557,7 +10585,7 @@ JSON Format:
     allTopicsToSchedule.sort((a, b) => {
       const overdueA = a.isNaive ? getDaysOverdueStr(a.firstReadDate) : getDaysOverdueStr(a.nextReviewDue);
       const overdueB = b.isNaive ? getDaysOverdueStr(b.firstReadDate) : getDaysOverdueStr(b.nextReviewDue);
-      
+
       if (overdueB !== overdueA) {
         return overdueB - overdueA;
       }
@@ -10569,10 +10597,10 @@ JSON Format:
     });
 
     let currentTargetDate = new Date();
-    
+
     let allocatedPagesInCurrentDay = 0;
     const previewSummary = {};
-    
+
     const capLimit = parseInt(maxDailyReviewCap, 10) || 30;
     allTopicsToSchedule.forEach(item => {
       const currentTopicWeight = getTopicWeight(item.topic, item.subDoc.topics);
@@ -10580,11 +10608,11 @@ JSON Format:
         currentTargetDate.setDate(currentTargetDate.getDate() + 1);
         allocatedPagesInCurrentDay = 0;
       }
-      
+
       const dateStr = `${currentTargetDate.getFullYear()}-${String(currentTargetDate.getMonth() + 1).padStart(2, '0')}-${String(currentTargetDate.getDate()).padStart(2, '0')}`;
       item.topic.nextReviewDue = dateStr;
       allocatedPagesInCurrentDay += currentTopicWeight;
-      
+
       if (!previewSummary[dateStr]) {
         previewSummary[dateStr] = 0;
       }
@@ -10644,9 +10672,9 @@ JSON Format:
 
     const getDaysRemaining = (dateStr) => {
       const today = new Date();
-      today.setHours(0,0,0,0);
+      today.setHours(0, 0, 0, 0);
       const target = new Date(dateStr);
-      target.setHours(0,0,0,0);
+      target.setHours(0, 0, 0, 0);
       const diffTime = target.getTime() - today.getTime();
       return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     };
@@ -10704,7 +10732,7 @@ JSON Format:
     // ── Dynamic Topic Extraction for Offline Review Batcher ───────────────
     const mockTopicsList = (() => {
       const matchDoc = subjectTrackerData.find(d => d.subject === mockReviewSubject) ||
-                       subjectTrackerData.find(d => d.subject?.toLowerCase() === mockReviewSubject.toLowerCase());
+        subjectTrackerData.find(d => d.subject?.toLowerCase() === mockReviewSubject.toLowerCase());
       if (!matchDoc || !matchDoc.topics) return [];
       return Object.values(matchDoc.topics)
         .filter(t => typeof t.name === 'string' && t.name.trim().length > 0)
@@ -10818,14 +10846,14 @@ JSON Format:
         const dateB = b.nextReviewDue || '9999-12-31';
         const comp = dateA.localeCompare(dateB);
         if (comp !== 0) return comp;
-        
+
         if (a.isNaive || b.isNaive) {
           const dateA = a.firstReadDate || '9999-12-31';
           const dateB = b.firstReadDate || '9999-12-31';
           const comp = dateA.localeCompare(dateB);
           if (comp !== 0) return comp;
         }
-        
+
         const pageA = parseInt(a.page, 10) || 0;
         const pageB = parseInt(b.page, 10) || 0;
         return pageA - pageB;
@@ -10865,7 +10893,7 @@ JSON Format:
 
       // 4. Update and shift subsequent topics in a cloned tracker data array
       const updatedTrackerData = JSON.parse(JSON.stringify(subjectTrackerData));
-      
+
       const addOneDay = (dateStr) => {
         const d = new Date(`${dateStr}T00:00:00`);
         d.setDate(d.getDate() + 1);
@@ -10927,11 +10955,10 @@ JSON Format:
           <button
             onClick={handleSyncBatchedReviews}
             disabled={batchedReviews.length === 0 || isSaving}
-            className={`px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all duration-200 flex items-center gap-2 ${
-              batchedReviews.length > 0
-                ? 'bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white shadow-lg shadow-indigo-600/25 active:scale-95 cursor-pointer'
-                : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
-            }`}
+            className={`px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all duration-200 flex items-center gap-2 ${batchedReviews.length > 0
+              ? 'bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white shadow-lg shadow-indigo-600/25 active:scale-95 cursor-pointer'
+              : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
+              }`}
           >
             <UploadCloud className="w-4 h-4" />
             {isSaving ? 'Syncing...' : `Save & Sync to Cloud (${batchedReviews.length} pending)`}
@@ -10943,33 +10970,30 @@ JSON Format:
           <button
             type="button"
             onClick={() => setSmartReviewSubTab('logger')}
-            className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-200 active:scale-95 ${
-              smartReviewSubTab === 'logger'
-                ? 'bg-white text-indigo-755 shadow-sm'
-                : 'text-gray-400 hover:text-gray-700'
-            }`}
+            className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-200 active:scale-95 ${smartReviewSubTab === 'logger'
+              ? 'bg-white text-indigo-755 shadow-sm'
+              : 'text-gray-400 hover:text-gray-700'
+              }`}
           >
             Review Logs & Exams
           </button>
           <button
             type="button"
             onClick={() => setSmartReviewSubTab('visualizer')}
-            className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-200 active:scale-95 ${
-              smartReviewSubTab === 'visualizer'
-                ? 'bg-white text-indigo-755 shadow-sm'
-                : 'text-gray-400 hover:text-gray-700'
-            }`}
+            className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-200 active:scale-95 ${smartReviewSubTab === 'visualizer'
+              ? 'bg-white text-indigo-755 shadow-sm'
+              : 'text-gray-400 hover:text-gray-700'
+              }`}
           >
             Analytics Visualizer
           </button>
           <button
             type="button"
             onClick={() => setSmartReviewSubTab('strength')}
-            className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-200 active:scale-95 ${
-              smartReviewSubTab === 'strength'
-                ? 'bg-white text-indigo-755 shadow-sm'
-                : 'text-gray-400 hover:text-gray-700'
-            }`}
+            className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-200 active:scale-95 ${smartReviewSubTab === 'strength'
+              ? 'bg-white text-indigo-755 shadow-sm'
+              : 'text-gray-400 hover:text-gray-700'
+              }`}
           >
             Subject Strength
           </button>
@@ -11070,7 +11094,7 @@ JSON Format:
               const comp = dateA.localeCompare(dateB);
               if (comp !== 0) return comp;
             }
-            
+
             const pageA = parseInt(a.page, 10) || 0;
             const pageB = parseInt(b.page, 10) || 0;
             return pageA - pageB;
@@ -11144,7 +11168,7 @@ JSON Format:
                     Set a maximum daily page allocation threshold to limit spaced repetition workloads and prevent study fatigue
                   </p>
                 </div>
-                
+
                 <div className="flex items-center gap-3 self-end sm:self-auto flex-wrap animate-fadeIn">
                   <div className="flex items-center gap-2">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider whitespace-nowrap">Global Daily Page Cap</label>
@@ -11439,7 +11463,7 @@ JSON Format:
 
                 <div className="bg-indigo-50/30 border border-indigo-100 rounded-2xl p-4 space-y-3">
                   <span className="text-[9px] font-black uppercase text-indigo-600 tracking-wider">Add Simulated Study Session</span>
-                  
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label className="text-[9px] font-black text-slate-500 uppercase">Subject</label>
@@ -11449,7 +11473,7 @@ JSON Format:
                           const nextSub = e.target.value;
                           setMockReviewSubject(nextSub);
                           const matchDoc = subjectTrackerData.find(d => d.subject === nextSub) ||
-                                           subjectTrackerData.find(d => d.subject?.toLowerCase() === nextSub.toLowerCase());
+                            subjectTrackerData.find(d => d.subject?.toLowerCase() === nextSub.toLowerCase());
                           if (matchDoc && matchDoc.topics) {
                             const topics = Object.values(matchDoc.topics)
                               .filter(t => typeof t.name === 'string' && t.name.trim().length > 0)
@@ -11699,7 +11723,7 @@ JSON Format:
         {/* Subject Strength sub-tab */}
         {smartReviewSubTab === 'strength' && (() => {
           const subjectsList = ["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"];
-          
+
           return (
             <div className="bg-white p-6 rounded-3xl border border-gray-250 shadow-sm space-y-6 text-left">
               <div>
@@ -11716,7 +11740,7 @@ JSON Format:
                 const activeDoc = subjectTrackerData.find(d => d.subject === selectedStrengthSubject);
                 const activeTopics = activeDoc && activeDoc.topics ? Object.values(activeDoc.topics) : [];
                 const activeTotal = activeTopics.length;
-                
+
                 const activeScores = activeTopics.map(topic => {
                   if (!topic.studyDates || topic.studyDates.length === 0) return 0;
                   const lastDateStr = topic.lastReviewDate || (topic.studyDates && topic.studyDates.length > 0 ? topic.studyDates[topic.studyDates.length - 1] : null);
@@ -11732,11 +11756,11 @@ JSON Format:
                 });
                 const activeSum = activeScores.reduce((acc, s) => acc + s, 0);
                 const activeScore = activeTotal > 0 ? Math.round((activeSum / activeTotal) * 100) : 0;
-                
+
                 let diagnosticTitle = "";
                 let diagnosticFeedback = "";
                 let badgeColor = "";
-                
+
                 if (activeScore > 75) {
                   diagnosticTitle = "Mastered";
                   diagnosticFeedback = "Excellent Memory Depth. Core topics are thoroughly consolidated via repetitive readings (4+ reviews). Maintain long-term FSRS intervals.";
@@ -11753,7 +11777,7 @@ JSON Format:
 
                 return (
                   <div className="bg-indigo-50/40 border border-indigo-150 rounded-3xl p-5 space-y-3 relative animate-fadeIn">
-                    <button 
+                    <button
                       onClick={() => setSelectedStrengthSubject(null)}
                       className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition"
                       title="Clear Selection"
@@ -11776,7 +11800,7 @@ JSON Format:
                         {diagnosticTitle}
                       </span>
                     </div>
-                    
+
                     <p className="text-xs font-semibold text-gray-650 leading-relaxed bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
                       {diagnosticFeedback}
                     </p>
@@ -11789,7 +11813,7 @@ JSON Format:
                   const doc = subjectTrackerData.find(d => d.subject === subjName);
                   const topics = doc && doc.topics ? Object.values(doc.topics) : [];
                   const total = topics.length;
-                  
+
                   const individualScores = topics.map(topic => {
                     if (!topic.studyDates || topic.studyDates.length === 0) return 0;
                     const lastDateStr = topic.lastReviewDate || (topic.studyDates && topic.studyDates.length > 0 ? topic.studyDates[topic.studyDates.length - 1] : null);
@@ -11803,7 +11827,7 @@ JSON Format:
                     const stability = topic.stability != null ? topic.stability : 2.0;
                     return Math.pow(0.9, daysElapsed / stability);
                   });
-                  
+
                   const sum = individualScores.reduce((acc, s) => acc + s, 0);
                   const score = total > 0 ? Math.round((sum / total) * 100) : 0;
 
@@ -11820,14 +11844,13 @@ JSON Format:
                   const isSelected = selectedStrengthSubject === subjName;
 
                   return (
-                    <div 
-                      key={subjName} 
+                    <div
+                      key={subjName}
                       onClick={() => setSelectedStrengthSubject(subjName)}
-                      className={`p-4 rounded-2xl border flex flex-col justify-between space-y-3 cursor-pointer transition duration-200 ${
-                        isSelected 
-                          ? 'border-indigo-500 bg-indigo-50/20 shadow-md ring-2 ring-indigo-500/20' 
-                          : 'border-gray-100 bg-gray-50/30 hover:border-indigo-300 hover:bg-white hover:shadow-sm'
-                      }`}
+                      className={`p-4 rounded-2xl border flex flex-col justify-between space-y-3 cursor-pointer transition duration-200 ${isSelected
+                        ? 'border-indigo-500 bg-indigo-50/20 shadow-md ring-2 ring-indigo-500/20'
+                        : 'border-gray-100 bg-gray-50/30 hover:border-indigo-300 hover:bg-white hover:shadow-sm'
+                        }`}
                     >
                       <div className="flex justify-between items-start">
                         <div>
@@ -11842,8 +11865,8 @@ JSON Format:
                       </div>
 
                       <div className="w-full bg-gray-200/80 rounded-full h-2 overflow-hidden">
-                        <div 
-                          className={`h-full rounded-full transition-all duration-500 ${barColor}`} 
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${barColor}`}
                           style={{ width: `${total > 0 ? score : 0}%` }}
                         />
                       </div>
@@ -11857,438 +11880,436 @@ JSON Format:
            STAGE 3: FSRS ANALYTICS DASHBOARD
            Subject Switcher · Mastery Score Circle · Topic Timeline
           ═══════════════════════════════════════════════════════════ */}
-      {smartReviewSubTab === 'visualizer' && (() => {
-        // ── Subject dropdown options derived dynamically from Firestore ────
-        const dynamicSubjects = (() => {
-          if (!subjectTrackerData || subjectTrackerData.length === 0) return [];
-          const list = subjectTrackerData
-            .map(d => d.subject)
-            .filter(s => typeof s === 'string' && s.trim().length > 0);
-          return Array.from(new Set(list)).sort();
-        })();
+        {smartReviewSubTab === 'visualizer' && (() => {
+          // ── Subject dropdown options derived dynamically from Firestore ────
+          const dynamicSubjects = (() => {
+            if (!subjectTrackerData || subjectTrackerData.length === 0) return [];
+            const list = subjectTrackerData
+              .map(d => d.subject)
+              .filter(s => typeof s === 'string' && s.trim().length > 0);
+            return Array.from(new Set(list)).sort();
+          })();
 
-        // Fallback if current state selection isn't loaded/present in dynamic set
-        const activeSubject = dynamicSubjects.includes(fsrsAnalyticsSubject)
-          ? fsrsAnalyticsSubject
-          : (dynamicSubjects[0] || '');
+          // Fallback if current state selection isn't loaded/present in dynamic set
+          const activeSubject = dynamicSubjects.includes(fsrsAnalyticsSubject)
+            ? fsrsAnalyticsSubject
+            : (dynamicSubjects[0] || '');
 
-        // ── Pull FSRS-enriched topics for selected subject ─────────────────
-        const analyticsDoc = subjectTrackerData.find(d => d.subject === activeSubject) ||
-                             subjectTrackerData.find(d => d.subject?.toLowerCase() === activeSubject.toLowerCase());
-        const allTopicObjects = analyticsDoc && analyticsDoc.topics
-          ? Object.values(analyticsDoc.topics)
-          : [];
+          // ── Pull FSRS-enriched topics for selected subject ─────────────────
+          const analyticsDoc = subjectTrackerData.find(d => d.subject === activeSubject) ||
+            subjectTrackerData.find(d => d.subject?.toLowerCase() === activeSubject.toLowerCase());
+          const allTopicObjects = analyticsDoc && analyticsDoc.topics
+            ? Object.values(analyticsDoc.topics)
+            : [];
 
-        // ── Workload Aggregation (All subjects) ─────────────────────────────
-        const workloadMap = {};
-        if (subjectTrackerData) {
-          subjectTrackerData.forEach(subDoc => {
-            const subName = subDoc.subject;
-            if (subDoc.topics) {
-              Object.values(subDoc.topics).forEach(topic => {
-                if (topic.nextReviewDue) {
-                  const dueStr = topic.nextReviewDue;
-                  if (!workloadMap[dueStr]) {
-                    workloadMap[dueStr] = [];
+          // ── Workload Aggregation (All subjects) ─────────────────────────────
+          const workloadMap = {};
+          if (subjectTrackerData) {
+            subjectTrackerData.forEach(subDoc => {
+              const subName = subDoc.subject;
+              if (subDoc.topics) {
+                Object.values(subDoc.topics).forEach(topic => {
+                  if (topic.nextReviewDue) {
+                    const dueStr = topic.nextReviewDue;
+                    if (!workloadMap[dueStr]) {
+                      workloadMap[dueStr] = [];
+                    }
+                    workloadMap[dueStr].push({
+                      subject: subName,
+                      page: topic.page || 0,
+                      name: topic.name || 'Unnamed Topic',
+                      stability: topic.stability,
+                      interval: topic.interval
+                    });
                   }
-                  workloadMap[dueStr].push({
-                    subject: subName,
-                    page: topic.page || 0,
-                    name: topic.name || 'Unnamed Topic',
-                    stability: topic.stability,
-                    interval: topic.interval
-                  });
-                }
-              });
+                });
+              }
+            });
+          }
+
+          // ── Calendar Calculations ───────────────────────────────────────────
+          const daysInMonth = new Date(currentCalendarYear, currentCalendarMonth + 1, 0).getDate();
+          const firstDayIndex = new Date(currentCalendarYear, currentCalendarMonth, 1).getDay(); // 0 = Sun, 6 = Sat
+
+          const blanks = Array(firstDayIndex).fill(null);
+          const dayNumbers = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+          const calendarCells = [...blanks, ...dayNumbers];
+
+          const MONTH_NAMES = [
+            "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"
+          ];
+
+          const yearsRange = Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - 1 + i);
+
+          // Helper to change month
+          const handlePrevMonth = () => {
+            if (currentCalendarMonth === 0) {
+              setCurrentCalendarMonth(11);
+              setCurrentCalendarYear(prev => prev - 1);
+            } else {
+              setCurrentCalendarMonth(prev => prev - 1);
             }
-          });
-        }
-
-        // ── Calendar Calculations ───────────────────────────────────────────
-        const daysInMonth = new Date(currentCalendarYear, currentCalendarMonth + 1, 0).getDate();
-        const firstDayIndex = new Date(currentCalendarYear, currentCalendarMonth, 1).getDay(); // 0 = Sun, 6 = Sat
-        
-        const blanks = Array(firstDayIndex).fill(null);
-        const dayNumbers = Array.from({ length: daysInMonth }, (_, i) => i + 1);
-        const calendarCells = [...blanks, ...dayNumbers];
-
-        const MONTH_NAMES = [
-          "January", "February", "March", "April", "May", "June",
-          "July", "August", "September", "October", "November", "December"
-        ];
-        
-        const yearsRange = Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - 1 + i);
-
-        // Helper to change month
-        const handlePrevMonth = () => {
-          if (currentCalendarMonth === 0) {
-            setCurrentCalendarMonth(11);
-            setCurrentCalendarYear(prev => prev - 1);
-          } else {
-            setCurrentCalendarMonth(prev => prev - 1);
-          }
-        };
-
-        const handleNextMonth = () => {
-          if (currentCalendarMonth === 11) {
-            setCurrentCalendarMonth(0);
-            setCurrentCalendarYear(prev => prev + 1);
-          } else {
-            setCurrentCalendarMonth(prev => prev + 1);
-          }
-        };
-
-        const handleCellClick = (day) => {
-          if (!day) return;
-          const m = String(currentCalendarMonth + 1).padStart(2, '0');
-          const d = String(day).padStart(2, '0');
-          const dateStr = `${currentCalendarYear}-${m}-${d}`;
-          setSelectedCalendarDateStr(dateStr);
-        };
-
-        const getCellData = (day) => {
-          if (!day) return { count: 0, list: [], dateStr: null };
-          const m = String(currentCalendarMonth + 1).padStart(2, '0');
-          const d = String(day).padStart(2, '0');
-          const dateStr = `${currentCalendarYear}-${m}-${d}`;
-          return {
-            count: workloadMap[dateStr]?.length || 0,
-            list: workloadMap[dateStr] || [],
-            dateStr
           };
-        };
 
-        // Sort topics by page number
-        const sortedTopics = [...allTopicObjects].sort((a, b) => (a.page || 0) - (b.page || 0));
+          const handleNextMonth = () => {
+            if (currentCalendarMonth === 11) {
+              setCurrentCalendarMonth(0);
+              setCurrentCalendarYear(prev => prev + 1);
+            } else {
+              setCurrentCalendarMonth(prev => prev + 1);
+            }
+          };
 
-        return (
-          <div className="space-y-6 mt-6 min-h-[600px]">
-            {/* Subject Selector & Title */}
-            <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <div>
-                <h3 className="text-base font-black text-gray-900 tracking-tight flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-indigo-600" />
-                  Interactive Spaced Repetition Workspace
-                </h3>
-                <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mt-0.5">
-                  FSRS Spaced Repetition Workload & Timeline Visualizer
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="text-xs font-black uppercase tracking-wider text-gray-400">Selected Subject</label>
-                <select
-                  value={activeSubject}
-                  onChange={e => setFsrsAnalyticsSubject(e.target.value)}
-                  className="text-xs font-black text-indigo-700 bg-white border border-indigo-200 rounded-2xl px-4 py-2.5 outline-none focus:ring-4 focus:ring-indigo-500/10 cursor-pointer shadow-sm hover:border-indigo-400 transition"
-                  disabled={dynamicSubjects.length === 0}
-                >
-                  {dynamicSubjects.length === 0 ? (
-                    <option value="">No subjects loaded</option>
-                  ) : (
-                    dynamicSubjects.map(s => (
-                      <option key={s} value={s}>{s}</option>
-                    ))
-                  )}
-                </select>
-              </div>
-            </div>
+          const handleCellClick = (day) => {
+            if (!day) return;
+            const m = String(currentCalendarMonth + 1).padStart(2, '0');
+            const d = String(day).padStart(2, '0');
+            const dateStr = `${currentCalendarYear}-${m}-${d}`;
+            setSelectedCalendarDateStr(dateStr);
+          };
 
-            {/* Calendar Heatmap Card */}
-            <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-6 min-h-[450px]">
-              {/* Header with Picker and navigation */}
-              <div className="flex flex-col sm:flex-row justify-between items-center gap-4 border-b border-gray-100 pb-4">
+          const getCellData = (day) => {
+            if (!day) return { count: 0, list: [], dateStr: null };
+            const m = String(currentCalendarMonth + 1).padStart(2, '0');
+            const d = String(day).padStart(2, '0');
+            const dateStr = `${currentCalendarYear}-${m}-${d}`;
+            return {
+              count: workloadMap[dateStr]?.length || 0,
+              list: workloadMap[dateStr] || [],
+              dateStr
+            };
+          };
+
+          // Sort topics by page number
+          const sortedTopics = [...allTopicObjects].sort((a, b) => (a.page || 0) - (b.page || 0));
+
+          return (
+            <div className="space-y-6 mt-6 min-h-[600px]">
+              {/* Subject Selector & Title */}
+              <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                  <h4 className="text-sm font-black text-gray-800 uppercase tracking-wider flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-indigo-600" />
-                    All-Subject Workload Heatmap
-                  </h4>
-                  <p className="text-xs text-gray-400 mt-0.5">Review volume scheduled across all medical subjects</p>
+                  <h3 className="text-base font-black text-gray-900 tracking-tight flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-indigo-600" />
+                    Interactive Spaced Repetition Workspace
+                  </h3>
+                  <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mt-0.5">
+                    FSRS Spaced Repetition Workload & Timeline Visualizer
+                  </p>
                 </div>
-                
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={handlePrevMonth}
-                    className="p-2 border border-gray-200 rounded-xl hover:bg-gray-50 active:scale-95 transition"
-                  >
-                    <ChevronLeft className="w-4 h-4 text-gray-600" />
-                  </button>
-                  
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-black uppercase tracking-wider text-gray-400">Selected Subject</label>
                   <select
-                    value={currentCalendarMonth}
-                    onChange={e => setCurrentCalendarMonth(parseInt(e.target.value))}
-                    className="text-xs font-bold bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 cursor-pointer outline-none hover:border-gray-300"
+                    value={activeSubject}
+                    onChange={e => setFsrsAnalyticsSubject(e.target.value)}
+                    className="text-xs font-black text-indigo-700 bg-white border border-indigo-200 rounded-2xl px-4 py-2.5 outline-none focus:ring-4 focus:ring-indigo-500/10 cursor-pointer shadow-sm hover:border-indigo-400 transition"
+                    disabled={dynamicSubjects.length === 0}
                   >
-                    {MONTH_NAMES.map((name, idx) => (
-                      <option key={idx} value={idx}>{name}</option>
-                    ))}
+                    {dynamicSubjects.length === 0 ? (
+                      <option value="">No subjects loaded</option>
+                    ) : (
+                      dynamicSubjects.map(s => (
+                        <option key={s} value={s}>{s}</option>
+                      ))
+                    )}
                   </select>
-
-                  <select
-                    value={currentCalendarYear}
-                    onChange={e => setCurrentCalendarYear(parseInt(e.target.value))}
-                    className="text-xs font-bold bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 cursor-pointer outline-none hover:border-gray-300"
-                  >
-                    {yearsRange.map(y => (
-                      <option key={y} value={y}>{y}</option>
-                    ))}
-                  </select>
-
-                  <button
-                    onClick={handleNextMonth}
-                    className="p-2 border border-gray-200 rounded-xl hover:bg-gray-50 active:scale-95 transition"
-                  >
-                    <ChevronRight className="w-4 h-4 text-gray-600" />
-                  </button>
                 </div>
               </div>
 
-              {/* Grid Layout (Heatmap + Drawer side-by-side on desktop) */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                
-                {/* Left: Heatmap Grid */}
-                <div className="lg:col-span-7 space-y-4">
-                  {/* Days of week header */}
-                  <div className="grid grid-cols-7 gap-2 text-center">
-                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-                      <span key={d} className="text-[10px] font-black text-gray-400 uppercase tracking-wider">{d}</span>
-                    ))}
+              {/* Calendar Heatmap Card */}
+              <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-6 min-h-[450px]">
+                {/* Header with Picker and navigation */}
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 border-b border-gray-100 pb-4">
+                  <div>
+                    <h4 className="text-sm font-black text-gray-800 uppercase tracking-wider flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-indigo-600" />
+                      All-Subject Workload Heatmap
+                    </h4>
+                    <p className="text-xs text-gray-400 mt-0.5">Review volume scheduled across all medical subjects</p>
                   </div>
 
-                  {/* Calendar Grid cells */}
-                  <div className="grid grid-cols-7 gap-2">
-                    {calendarCells.map((day, idx) => {
-                      if (day === null) {
-                        return <div key={`blank-${idx}`} className="aspect-square bg-transparent border border-transparent rounded-2xl" />;
-                      }
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={handlePrevMonth}
+                      className="p-2 border border-gray-200 rounded-xl hover:bg-gray-50 active:scale-95 transition"
+                    >
+                      <ChevronLeft className="w-4 h-4 text-gray-600" />
+                    </button>
 
-                      const { count, dateStr } = getCellData(day);
-                      const isSelected = selectedCalendarDateStr === dateStr;
-                      
-                      const todayObj = new Date();
-                      const todayStrForCompare = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, '0')}-${String(todayObj.getDate()).padStart(2, '0')}`;
-                      const isToday = dateStr === todayStrForCompare;
+                    <select
+                      value={currentCalendarMonth}
+                      onChange={e => setCurrentCalendarMonth(parseInt(e.target.value))}
+                      className="text-xs font-bold bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 cursor-pointer outline-none hover:border-gray-300"
+                    >
+                      {MONTH_NAMES.map((name, idx) => (
+                        <option key={idx} value={idx}>{name}</option>
+                      ))}
+                    </select>
 
-                      let intensityClass = 'bg-gray-50/50 hover:bg-gray-100 text-gray-500 border border-gray-100';
-                      if (count === 1) {
-                        intensityClass = 'bg-indigo-50 text-indigo-700 border border-indigo-100 hover:bg-indigo-100/70';
-                      } else if (count >= 2 && count <= 3) {
-                        intensityClass = 'bg-indigo-100 text-indigo-800 border border-indigo-200 hover:bg-indigo-200/70';
-                      } else if (count >= 4 && count <= 5) {
-                        intensityClass = 'bg-indigo-200 text-indigo-900 border border-indigo-300 hover:bg-indigo-300/70';
-                      } else if (count >= 6) {
-                        intensityClass = 'bg-indigo-600 text-white border border-indigo-700 hover:bg-indigo-700';
+                    <select
+                      value={currentCalendarYear}
+                      onChange={e => setCurrentCalendarYear(parseInt(e.target.value))}
+                      className="text-xs font-bold bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 cursor-pointer outline-none hover:border-gray-300"
+                    >
+                      {yearsRange.map(y => (
+                        <option key={y} value={y}>{y}</option>
+                      ))}
+                    </select>
+
+                    <button
+                      onClick={handleNextMonth}
+                      className="p-2 border border-gray-200 rounded-xl hover:bg-gray-50 active:scale-95 transition"
+                    >
+                      <ChevronRight className="w-4 h-4 text-gray-600" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Grid Layout (Heatmap + Drawer side-by-side on desktop) */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+                  {/* Left: Heatmap Grid */}
+                  <div className="lg:col-span-7 space-y-4">
+                    {/* Days of week header */}
+                    <div className="grid grid-cols-7 gap-2 text-center">
+                      {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+                        <span key={d} className="text-[10px] font-black text-gray-400 uppercase tracking-wider">{d}</span>
+                      ))}
+                    </div>
+
+                    {/* Calendar Grid cells */}
+                    <div className="grid grid-cols-7 gap-2">
+                      {calendarCells.map((day, idx) => {
+                        if (day === null) {
+                          return <div key={`blank-${idx}`} className="aspect-square bg-transparent border border-transparent rounded-2xl" />;
+                        }
+
+                        const { count, dateStr } = getCellData(day);
+                        const isSelected = selectedCalendarDateStr === dateStr;
+
+                        const todayObj = new Date();
+                        const todayStrForCompare = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, '0')}-${String(todayObj.getDate()).padStart(2, '0')}`;
+                        const isToday = dateStr === todayStrForCompare;
+
+                        let intensityClass = 'bg-gray-50/50 hover:bg-gray-100 text-gray-500 border border-gray-100';
+                        if (count === 1) {
+                          intensityClass = 'bg-indigo-50 text-indigo-700 border border-indigo-100 hover:bg-indigo-100/70';
+                        } else if (count >= 2 && count <= 3) {
+                          intensityClass = 'bg-indigo-100 text-indigo-800 border border-indigo-200 hover:bg-indigo-200/70';
+                        } else if (count >= 4 && count <= 5) {
+                          intensityClass = 'bg-indigo-200 text-indigo-900 border border-indigo-300 hover:bg-indigo-300/70';
+                        } else if (count >= 6) {
+                          intensityClass = 'bg-indigo-600 text-white border border-indigo-700 hover:bg-indigo-700';
+                        }
+
+                        return (
+                          <button
+                            key={`day-${day}`}
+                            onClick={() => handleCellClick(day)}
+                            className={`aspect-square rounded-2xl flex flex-col items-center justify-between p-1.5 font-bold border transition duration-150 active:scale-90 relative ${intensityClass} ${isSelected ? 'ring-4 ring-indigo-500/20 border-indigo-600 z-10' : ''
+                              } ${isToday ? 'ring-2 ring-amber-400' : ''}`}
+                          >
+                            <span className="text-[10px] self-start">{day}</span>
+                            {count > 0 && (
+                              <span className={`text-[9px] font-black ${count >= 6 ? 'text-indigo-100' : 'text-indigo-600 bg-indigo-50/30 px-1 rounded'}`}>
+                                {count}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Legend */}
+                    <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-gray-100">
+                      <span className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Legend:</span>
+                      <span className="flex items-center gap-1.5 text-[9px] font-bold text-gray-500">
+                        <span className="w-2.5 h-2.5 bg-gray-50 border border-gray-100 rounded-md" /> 0 scheduled
+                      </span>
+                      <span className="flex items-center gap-1.5 text-[9px] font-bold text-gray-500">
+                        <span className="w-2.5 h-2.5 bg-indigo-50 border border-indigo-100 rounded-md" /> 1 topic
+                      </span>
+                      <span className="flex items-center gap-1.5 text-[9px] font-bold text-gray-500">
+                        <span className="w-2.5 h-2.5 bg-indigo-100 border border-indigo-200 rounded-md" /> 2-3 topics
+                      </span>
+                      <span className="flex items-center gap-1.5 text-[9px] font-bold text-gray-500">
+                        <span className="w-2.5 h-2.5 bg-indigo-200 border border-indigo-300 rounded-md" /> 4-5 topics
+                      </span>
+                      <span className="flex items-center gap-1.5 text-[9px] font-bold text-gray-500">
+                        <span className="w-2.5 h-2.5 bg-indigo-500 border border-indigo-600 rounded-md" /> 6+ topics
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Right: Drawer List */}
+                  <div className="lg:col-span-5 bg-gray-50/50 border border-gray-200/60 rounded-3xl p-5 space-y-4 min-h-[320px]">
+                    {selectedCalendarDateStr ? (
+                      <>
+                        <div className="flex justify-between items-center border-b border-gray-200 pb-2">
+                          <h5 className="text-[11px] font-black text-gray-700 uppercase tracking-widest">
+                            Due on {selectedCalendarDateStr}
+                          </h5>
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                            {workloadMap[selectedCalendarDateStr]?.length || 0} topics
+                          </span>
+                        </div>
+
+                        <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1 custom-scrollbar">
+                          {(() => {
+                            const list = workloadMap[selectedCalendarDateStr] || [];
+                            if (list.length === 0) {
+                              return (
+                                <p className="text-xs text-gray-400 italic py-6 text-center">
+                                  No topics scheduled for this date.
+                                </p>
+                              );
+                            }
+                            return list.map((item, idx) => (
+                              <div key={idx} className="p-3 bg-white border border-gray-150 rounded-2xl shadow-sm hover:shadow transition flex justify-between items-start gap-2">
+                                <div className="min-w-0 flex-grow text-left">
+                                  <span className="text-[8px] font-black text-indigo-700 bg-indigo-50 border border-indigo-200/50 px-1.5 py-0.5 rounded uppercase tracking-wide">
+                                    {item.subject}
+                                  </span>
+                                  <span className="text-xs font-bold text-gray-800 ml-2 truncate block mt-1">
+                                    Pg. {item.page} - {item.name}
+                                  </span>
+                                </div>
+                                {item.stability != null && (
+                                  <div className="text-right shrink-0">
+                                    <span className="text-[9px] font-black text-gray-400 bg-gray-100 border border-gray-200/60 px-1.5 py-0.5 rounded block">
+                                      S: {item.stability.toFixed(1)}d
+                                    </span>
+                                    {item.interval != null && (
+                                      <span className="text-[8px] text-gray-300 block mt-0.5">
+                                        Interval: {item.interval}d
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            ));
+                          })()}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-16 text-center text-gray-400">
+                        <Calendar className="w-8 h-8 text-gray-300 mb-2" />
+                        <p className="text-xs font-bold">No Date Selected</p>
+                        <p className="text-[10px] text-gray-300 mt-1 max-w-[200px]">
+                          Click on any highlighted day in the calendar grid to inspect due revision items.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                </div>
+              </div>
+
+              {/* Historical-to-Future Progression Timeline */}
+              <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-4 min-h-[400px]">
+                <div>
+                  <h4 className="text-sm font-black text-gray-800 uppercase tracking-wider flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-indigo-600" />
+                    Historical-to-Future Topic Progression
+                  </h4>
+                  <p className="text-xs text-gray-400 mt-0.5">Sequential lifecycle flow of {activeSubject} topics</p>
+                </div>
+
+                {sortedTopics.length === 0 ? (
+                  <div className="py-16 text-center border border-dashed border-gray-200 rounded-3xl bg-gray-50/50">
+                    <Brain className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                    <p className="text-xs font-bold text-gray-400">No registered topics found for this subject.</p>
+                    <p className="text-[10px] text-gray-300 mt-1">Register new topics inside the Subject Tracker tab first.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
+                    {sortedTopics.map((topic, idx) => {
+                      const pastDates = topic.studyDates && Array.isArray(topic.studyDates)
+                        ? Array.from(new Set(topic.studyDates.map(d => typeof d === 'string' ? d : new Date(d).toISOString().split('T')[0]))).sort()
+                        : [];
+
+                      const hasFuture = !!topic.nextReviewDue;
+                      const isNaive = !hasFuture && pastDates.length > 0;
+                      const isUnstarted = pastDates.length === 0;
+
+                      let futureStatus = 'upcoming';
+                      if (topic.nextReviewDue) {
+                        const todayCompare = new Date().setHours(0, 0, 0, 0);
+                        const dueCompare = new Date(`${topic.nextReviewDue}T00:00:00`).setHours(0, 0, 0, 0);
+                        if (dueCompare < todayCompare) {
+                          futureStatus = 'overdue';
+                        }
                       }
 
                       return (
-                        <button
-                          key={`day-${day}`}
-                          onClick={() => handleCellClick(day)}
-                          className={`aspect-square rounded-2xl flex flex-col items-center justify-between p-1.5 font-bold border transition duration-150 active:scale-90 relative ${intensityClass} ${
-                            isSelected ? 'ring-4 ring-indigo-500/20 border-indigo-600 z-10' : ''
-                          } ${isToday ? 'ring-2 ring-amber-400' : ''}`}
-                        >
-                          <span className="text-[10px] self-start">{day}</span>
-                          {count > 0 && (
-                            <span className={`text-[9px] font-black ${count >= 6 ? 'text-indigo-100' : 'text-indigo-600 bg-indigo-50/30 px-1 rounded'}`}>
-                              {count}
-                            </span>
-                          )}
-                        </button>
+                        <div key={idx} className="p-4 bg-gray-50/40 border border-gray-200/60 rounded-3xl hover:bg-white hover:border-indigo-100 hover:shadow-sm transition-all duration-200">
+                          <div className="flex justify-between items-start mb-3">
+                            <div className="text-left">
+                              <span className="text-[9px] font-mono font-black text-indigo-600 bg-indigo-50 border border-indigo-200/50 px-2 py-0.5 rounded">
+                                Page {topic.page || 0}
+                              </span>
+                              <span className="text-xs font-black text-gray-800 ml-2">{topic.name}</span>
+                            </div>
+                            {topic.stability != null && (
+                              <span className="text-[9px] font-black text-gray-400 bg-white border border-gray-150 px-2 py-0.5 rounded shadow-sm">
+                                S: {topic.stability.toFixed(1)}d | D: {topic.difficulty?.toFixed(1) || '0.0'}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2 overflow-x-auto py-2 pr-2 scrollbar-thin">
+                            {isUnstarted && (
+                              <div className="flex items-center shrink-0">
+                                <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 bg-gray-100 border border-gray-200 px-3 py-1 rounded-full shadow-sm">
+                                  ⚪ Unstarted
+                                </span>
+                              </div>
+                            )}
+
+                            {isNaive && (
+                              <div className="flex items-center shrink-0">
+                                <span className="text-[10px] font-black uppercase tracking-wider text-blue-500 bg-blue-50 border border-blue-100 px-3 py-1 rounded-full shadow-sm">
+                                  🔵 Naive (No FSRS)
+                                </span>
+                              </div>
+                            )}
+
+                            {pastDates.map((date, pIdx) => (
+                              <div key={pIdx} className="flex items-center shrink-0">
+                                {pIdx > 0 && <span className="text-gray-300 mx-1 font-black text-xs">→</span>}
+                                <div className="flex items-center gap-1 text-[9px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200/60 px-2.5 py-1 rounded-xl shadow-xs">
+                                  <span>✓</span>
+                                  <span>{date}</span>
+                                </div>
+                              </div>
+                            ))}
+
+                            {hasFuture && (
+                              <>
+                                <span className="text-gray-300 mx-1 font-black text-xs shrink-0">→</span>
+                                <div className={`flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-xl border shrink-0 shadow-sm ${futureStatus === 'overdue'
+                                  ? 'bg-rose-50 text-rose-700 border-rose-200 animate-pulse'
+                                  : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                                  }`}>
+                                  <span>📅</span>
+                                  <span>
+                                    {topic.nextReviewDue} {futureStatus === 'overdue' ? '(Overdue)' : ''}
+                                  </span>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
                       );
                     })}
                   </div>
-
-                  {/* Legend */}
-                  <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-gray-100">
-                    <span className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Legend:</span>
-                    <span className="flex items-center gap-1.5 text-[9px] font-bold text-gray-500">
-                      <span className="w-2.5 h-2.5 bg-gray-50 border border-gray-100 rounded-md" /> 0 scheduled
-                    </span>
-                    <span className="flex items-center gap-1.5 text-[9px] font-bold text-gray-500">
-                      <span className="w-2.5 h-2.5 bg-indigo-50 border border-indigo-100 rounded-md" /> 1 topic
-                    </span>
-                    <span className="flex items-center gap-1.5 text-[9px] font-bold text-gray-500">
-                      <span className="w-2.5 h-2.5 bg-indigo-100 border border-indigo-200 rounded-md" /> 2-3 topics
-                    </span>
-                    <span className="flex items-center gap-1.5 text-[9px] font-bold text-gray-500">
-                      <span className="w-2.5 h-2.5 bg-indigo-200 border border-indigo-300 rounded-md" /> 4-5 topics
-                    </span>
-                    <span className="flex items-center gap-1.5 text-[9px] font-bold text-gray-500">
-                      <span className="w-2.5 h-2.5 bg-indigo-500 border border-indigo-600 rounded-md" /> 6+ topics
-                    </span>
-                  </div>
-                </div>
-
-                {/* Right: Drawer List */}
-                <div className="lg:col-span-5 bg-gray-50/50 border border-gray-200/60 rounded-3xl p-5 space-y-4 min-h-[320px]">
-                  {selectedCalendarDateStr ? (
-                    <>
-                      <div className="flex justify-between items-center border-b border-gray-200 pb-2">
-                        <h5 className="text-[11px] font-black text-gray-700 uppercase tracking-widest">
-                          Due on {selectedCalendarDateStr}
-                        </h5>
-                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
-                          {workloadMap[selectedCalendarDateStr]?.length || 0} topics
-                        </span>
-                      </div>
-                      
-                      <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1 custom-scrollbar">
-                        {(() => {
-                          const list = workloadMap[selectedCalendarDateStr] || [];
-                          if (list.length === 0) {
-                            return (
-                              <p className="text-xs text-gray-400 italic py-6 text-center">
-                                No topics scheduled for this date.
-                              </p>
-                            );
-                          }
-                          return list.map((item, idx) => (
-                            <div key={idx} className="p-3 bg-white border border-gray-150 rounded-2xl shadow-sm hover:shadow transition flex justify-between items-start gap-2">
-                              <div className="min-w-0 flex-grow text-left">
-                                <span className="text-[8px] font-black text-indigo-700 bg-indigo-50 border border-indigo-200/50 px-1.5 py-0.5 rounded uppercase tracking-wide">
-                                  {item.subject}
-                                </span>
-                                <span className="text-xs font-bold text-gray-800 ml-2 truncate block mt-1">
-                                  Pg. {item.page} - {item.name}
-                                </span>
-                              </div>
-                              {item.stability != null && (
-                                <div className="text-right shrink-0">
-                                  <span className="text-[9px] font-black text-gray-400 bg-gray-100 border border-gray-200/60 px-1.5 py-0.5 rounded block">
-                                    S: {item.stability.toFixed(1)}d
-                                  </span>
-                                  {item.interval != null && (
-                                    <span className="text-[8px] text-gray-300 block mt-0.5">
-                                      Interval: {item.interval}d
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          ));
-                        })()}
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-16 text-center text-gray-400">
-                      <Calendar className="w-8 h-8 text-gray-300 mb-2" />
-                      <p className="text-xs font-bold">No Date Selected</p>
-                      <p className="text-[10px] text-gray-300 mt-1 max-w-[200px]">
-                        Click on any highlighted day in the calendar grid to inspect due revision items.
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-              </div>
-            </div>
-
-            {/* Historical-to-Future Progression Timeline */}
-            <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-4 min-h-[400px]">
-              <div>
-                <h4 className="text-sm font-black text-gray-800 uppercase tracking-wider flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-indigo-600" />
-                  Historical-to-Future Topic Progression
-                </h4>
-                <p className="text-xs text-gray-400 mt-0.5">Sequential lifecycle flow of {activeSubject} topics</p>
+                )}
               </div>
 
-              {sortedTopics.length === 0 ? (
-                <div className="py-16 text-center border border-dashed border-gray-200 rounded-3xl bg-gray-50/50">
-                  <Brain className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                  <p className="text-xs font-bold text-gray-400">No registered topics found for this subject.</p>
-                  <p className="text-[10px] text-gray-300 mt-1">Register new topics inside the Subject Tracker tab first.</p>
-                </div>
-              ) : (
-                <div className="space-y-4 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
-                  {sortedTopics.map((topic, idx) => {
-                    const pastDates = topic.studyDates && Array.isArray(topic.studyDates)
-                      ? Array.from(new Set(topic.studyDates.map(d => typeof d === 'string' ? d : new Date(d).toISOString().split('T')[0]))).sort()
-                      : [];
-                    
-                    const hasFuture = !!topic.nextReviewDue;
-                    const isNaive = !hasFuture && pastDates.length > 0;
-                    const isUnstarted = pastDates.length === 0;
-
-                    let futureStatus = 'upcoming';
-                    if (topic.nextReviewDue) {
-                      const todayCompare = new Date().setHours(0,0,0,0);
-                      const dueCompare = new Date(`${topic.nextReviewDue}T00:00:00`).setHours(0,0,0,0);
-                      if (dueCompare < todayCompare) {
-                        futureStatus = 'overdue';
-                      }
-                    }
-
-                    return (
-                      <div key={idx} className="p-4 bg-gray-50/40 border border-gray-200/60 rounded-3xl hover:bg-white hover:border-indigo-100 hover:shadow-sm transition-all duration-200">
-                        <div className="flex justify-between items-start mb-3">
-                          <div className="text-left">
-                            <span className="text-[9px] font-mono font-black text-indigo-600 bg-indigo-50 border border-indigo-200/50 px-2 py-0.5 rounded">
-                              Page {topic.page || 0}
-                            </span>
-                            <span className="text-xs font-black text-gray-800 ml-2">{topic.name}</span>
-                          </div>
-                          {topic.stability != null && (
-                            <span className="text-[9px] font-black text-gray-400 bg-white border border-gray-150 px-2 py-0.5 rounded shadow-sm">
-                              S: {topic.stability.toFixed(1)}d | D: {topic.difficulty?.toFixed(1) || '0.0'}
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-2 overflow-x-auto py-2 pr-2 scrollbar-thin">
-                          {isUnstarted && (
-                            <div className="flex items-center shrink-0">
-                              <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 bg-gray-100 border border-gray-200 px-3 py-1 rounded-full shadow-sm">
-                                ⚪ Unstarted
-                              </span>
-                            </div>
-                          )}
-
-                          {isNaive && (
-                            <div className="flex items-center shrink-0">
-                              <span className="text-[10px] font-black uppercase tracking-wider text-blue-500 bg-blue-50 border border-blue-100 px-3 py-1 rounded-full shadow-sm">
-                                🔵 Naive (No FSRS)
-                              </span>
-                            </div>
-                          )}
-
-                          {pastDates.map((date, pIdx) => (
-                            <div key={pIdx} className="flex items-center shrink-0">
-                              {pIdx > 0 && <span className="text-gray-300 mx-1 font-black text-xs">→</span>}
-                              <div className="flex items-center gap-1 text-[9px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200/60 px-2.5 py-1 rounded-xl shadow-xs">
-                                <span>✓</span>
-                                <span>{date}</span>
-                              </div>
-                            </div>
-                          ))}
-
-                          {hasFuture && (
-                            <>
-                              <span className="text-gray-300 mx-1 font-black text-xs shrink-0">→</span>
-                              <div className={`flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-xl border shrink-0 shadow-sm ${
-                                futureStatus === 'overdue'
-                                  ? 'bg-rose-50 text-rose-700 border-rose-200 animate-pulse'
-                                  : 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                              }`}>
-                                <span>📅</span>
-                                <span>
-                                  {topic.nextReviewDue} {futureStatus === 'overdue' ? '(Overdue)' : ''}
-                                </span>
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
             </div>
-            
-          </div>
-        );
-      })()}
-    </div>
+          );
+        })()}
+      </div>
     );
   };
 
@@ -12986,16 +13007,16 @@ JSON Format:
   // Automatic one-time migration of PYT topics from root '/pyt_topics' to user-scoped path
   useEffect(() => {
     if (!db || !user) return;
-    
+
     const runMigration = async () => {
       const migrationFlag = localStorage.getItem(`pyt_migration_done_${user.uid}`);
       if (migrationFlag === 'true') return;
-      
+
       try {
         const { collection, getDocs, doc, setDoc } = await import('firebase/firestore');
         const rootCollectionRef = collection(db, 'pyt_topics');
         const snapshot = await getDocs(rootCollectionRef);
-        
+
         if (!snapshot.empty) {
           console.log(`Migrating ${snapshot.docs.length} PYT topics to user-scoped path...`);
           for (const docSnap of snapshot.docs) {
@@ -13010,7 +13031,7 @@ JSON Format:
         console.warn("PYT topics auto-migration skipped or not permitted in this environment:", err.message);
       }
     };
-    
+
     runMigration();
   }, [db, user]);
 
@@ -14879,13 +14900,16 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
 
   const handlePdfFile = async (file) => {
     try {
-      const arrayBuffer = await file.arrayBuffer();
-      const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+      // Use a blob URL so PDF.js streams from the OS file cache.
+      // file.arrayBuffer() would copy the entire PDF into V8 heap (300-500MB for large textbooks).
+      const blobUrl = URL.createObjectURL(file);
+      const loadingTask = pdfjsLib.getDocument({ url: blobUrl });
       const pdf = await loadingTask.promise;
       setLoadedPdfDoc(pdf);
       setPdfDialog({
         isOpen: true,
         file: file,
+        blobUrl: blobUrl,   // stored for extraction — no re-reads of the file needed
         numPages: pdf.numPages,
         mappings: [{ id: generateId(), range: `1-${pdf.numPages}`, deck: hierarchy || 'Marrow::Pathology' }],
         rotations: {},
@@ -14930,79 +14954,124 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     if (!pdfDialog.file || !pdfDialog.mappings || !loadedPdfDoc) return;
     setPdfDialog(prev => ({ ...prev, isConverting: true }));
 
-    const pdf = loadedPdfDoc;
-    const totalPagesToExtract = pdfDialog.mappings.reduce((sum, m) => sum + parsePageRange(m.range, pdf.numPages).length, 0);
+    // Renders this many pages per PDF.js document instance before destroying it.
+    // After BATCH_SIZE pages, the old doc is destroyed and a new one opened from the
+    // blob URL — this is the only reliable way to flush the PDF.js worker decoded-bitmap cache.
+    const BATCH_SIZE = 5;
+
+    const sourceFile = pdfDialog.file;
+    const blobUrl = pdfDialog.blobUrl;  // already created in handlePdfFile — zero re-read cost
+    const numPages = loadedPdfDoc.numPages;
+    const rotations = pdfDialog.rotations || {};
+    const totalPagesToExtract = pdfDialog.mappings.reduce(
+      (sum, m) => sum + parsePageRange(m.range, numPages).length, 0
+    );
+
+    // Destroy the preloaded doc immediately so its worker is freed before the batched loop starts
+    try { await loadedPdfDoc.destroy(); } catch (_) {}
+    setLoadedPdfDoc(null);
 
     setOperationProgress({
       show: true,
       title: 'Mapping PDF Pages',
-      message: 'Extracting pages from PDF...',
+      message: 'Starting extraction...',
       current: 0,
       total: totalPagesToExtract
     });
 
-    try {
-      const newItems = [];
-      let extractedCount = 0;
+    // Single reusable off-screen canvas — allocated once, reused for every page
+    const reusableCanvas = document.createElement('canvas');
+    const reusableContext = reusableCanvas.getContext('2d', { alpha: false });
 
+    let extractedCount = 0;
+    let firstItemId = null;
+
+    try {
       for (const mapping of pdfDialog.mappings) {
-        // Ensure page numbers are extracted in strict ascending sequential order
-        const pageNumbers = parsePageRange(mapping.range, pdf.numPages).sort((a, b) => a - b);
+        const pageNumbers = parsePageRange(mapping.range, numPages).sort((a, b) => a - b);
         const targetDeck = mapping.deck.trim() || 'Marrow::Pathology';
 
-        for (const pageNum of pageNumbers) {
-          setOperationProgress(prev => ({
-            ...prev,
-            message: `Extracting page ${pageNum} of ${pdf.numPages} from PDF...`,
-            current: extractedCount
-          }));
+        // Process in small batches. Each batch opens a FRESH PDF.js doc via the blob URL
+        // (no ArrayBuffer copy into V8 heap) and destroys it when done.
+        for (let batchStart = 0; batchStart < pageNumbers.length; batchStart += BATCH_SIZE) {
+          const batch = pageNumbers.slice(batchStart, batchStart + BATCH_SIZE);
 
-          const page = await pdf.getPage(pageNum);
-          const pageRotation = pdfDialog.rotations?.[pageNum] || 0;
-          // Optimized scale factor: 1.5 (drastically lowers memory while preserving high text legibility)
-          const viewport = page.getViewport({ scale: 1.5, rotation: pageRotation });
-          const canvas = document.createElement('canvas');
-          const context = canvas.getContext('2d');
-          canvas.height = viewport.height;
-          canvas.width = viewport.width;
+          // Open fresh doc from the blob URL — PDF.js streams from OS file cache,
+          // so the full file is NEVER copied into JavaScript heap memory.
+          const loadingTask = pdfjsLib.getDocument({ url: blobUrl });
+          const batchPdf = await loadingTask.promise;
 
-          await page.render({ canvasContext: context, viewport }).promise;
-          // Optimized compression: JPEG @ 0.85 quality (~350KB per page vs 8.5MB PNG)
-          const base64 = canvas.toDataURL('image/jpeg', 0.85);
+          try {
+            for (const pageNum of batch) {
+              setOperationProgress({
+                show: true,
+                title: 'Mapping PDF Pages',
+                message: `Extracting page ${pageNum} of ${numPages} from PDF...`,
+                current: extractedCount,
+                total: totalPagesToExtract
+              });
 
-          // Free PDF.js page buffers and GPU canvas memory immediately
-          if (typeof page.cleanup === 'function') page.cleanup();
-          canvas.width = 0;
-          canvas.height = 0;
+              const page = await batchPdf.getPage(pageNum);
+              const pageRotation = rotations[pageNum] || 0;
 
-          newItems.push({
-            id: generateId(),
-            fileName: `${pdfDialog.file.name} (Page ${pageNum})`,
-            mimeType: 'image/jpeg',
-            base64: base64,
-            status: 'pending',
-            deck: targetDeck,
-            hasCustomDeck: true,
-            pageRotation: pageRotation
-          });
+              // Cap canvas to 800px on longest edge to prevent GB-level RGBA buffers
+              // on large-format / high-DPI scanned textbooks
+              const raw = page.getViewport({ scale: 1.0, rotation: pageRotation });
+              const scale = Math.min(0.9, 800 / Math.max(raw.width, raw.height));
+              const viewport = page.getViewport({ scale, rotation: pageRotation });
 
-          extractedCount++;
-          setOperationProgress(prev => ({
-            ...prev,
-            current: extractedCount
-          }));
+              reusableCanvas.width  = Math.floor(viewport.width);
+              reusableCanvas.height = Math.floor(viewport.height);
 
-          // Yield execution to main thread to allow browser GC & keep progress UI responsive
-          await new Promise(resolve => setTimeout(resolve, 20));
+              await page.render({ canvasContext: reusableContext, viewport }).promise;
+
+              const base64 = reusableCanvas.toDataURL('image/jpeg', 0.82);
+
+              if (typeof page.cleanup === 'function') page.cleanup();
+              reusableContext.clearRect(0, 0, reusableCanvas.width, reusableCanvas.height);
+
+              const itemId = generateId();
+              if (firstItemId === null) firstItemId = itemId;
+
+              // Push straight into queue state one item at a time — no local array accumulation
+              setQueue(prev => [...prev, {
+                id: itemId,
+                fileName: `${sourceFile.name} (Page ${pageNum})`,
+                mimeType: 'image/jpeg',
+                base64,
+                status: 'pending',
+                deck: targetDeck,
+                hasCustomDeck: true,
+                pageRotation: pageRotation
+              }]);
+
+              extractedCount++;
+
+              // Yield 30ms per page so the browser event loop can run GC and update the UI
+              await new Promise(r => setTimeout(r, 30));
+            }
+          } finally {
+            // CRITICAL: destroy() terminates the PDF.js worker for this batch,
+            // flushing ALL decoded font/bitmap data from worker thread memory.
+            try { await batchPdf.destroy(); } catch (_) {}
+          }
+
+          // Extra 100ms GC pause between batches so V8 can reclaim worker memory
+          await new Promise(r => setTimeout(r, 100));
         }
       }
 
-      setQueue(prev => [...prev, ...newItems]);
-      if (!activeQueueId && newItems.length > 0) setActiveQueueId(newItems[0].id);
-      setPdfDialog({ isOpen: false, file: null, numPages: 0, mappings: [], isConverting: false });
-      setLoadedPdfDoc(null);
+      reusableCanvas.width  = 0;
+      reusableCanvas.height = 0;
+
+      if (firstItemId && !activeQueueId) setActiveQueueId(firstItemId);
+
+      // Revoke the blob URL so the browser releases the file reference
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+
+      setPdfDialog({ isOpen: false, file: null, blobUrl: null, numPages: 0, mappings: [], rotations: {}, isConverting: false });
     } catch (err) {
-      alert("Conversion failed: " + err.message);
+      alert('Conversion failed: ' + err.message);
       setPdfDialog(prev => ({ ...prev, isConverting: false }));
     } finally {
       setPdfDialog(prev => ({ ...prev, isConverting: false }));
@@ -28600,46 +28669,46 @@ Return your response strictly as a JSON object matching this schema:
                                   <h3 className="text-sm font-black text-gray-800 uppercase tracking-wider">Revision Depth Distribution</h3>
                                   <p className="text-xs text-gray-400">Percentage of topics revised by frequency</p>
                                 </div>
-                                 <div className="w-full h-[350px] min-h-[350px]">
-                                   {(() => {
-                                     const activeStat = pytCoverageStats.activeStat;
-                                     const total = activeStat.totalTopics || 1;
-                                     const chartData = [
-                                       { name: '0 Revisions', count: activeStat.count0, percentage: Math.round((activeStat.count0 / total) * 100), fill: '#94a3b8' },
-                                       { name: '1 Revision', count: activeStat.count1, percentage: Math.round((activeStat.count1 / total) * 100), fill: '#f59e0b' },
-                                       { name: '2 Revisions', count: activeStat.count2, percentage: Math.round((activeStat.count2 / total) * 100), fill: '#3b82f6' },
-                                       { name: '3+ Revisions', count: activeStat.count3Plus, percentage: Math.round((activeStat.count3Plus / total) * 100), fill: '#10b981' }
-                                     ];
-                                     return (
-                                       <ResponsiveContainer width="100%" height={350} minWidth={0}>
-                                         <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
-                                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                           <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
-                                           <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} unit="%" />
-                                           <Tooltip
-                                             content={({ active, payload }) => {
-                                               if (active && payload && payload.length) {
-                                                 const data = payload[0].payload;
-                                                 return (
-                                                   <div className="bg-white p-3 border border-gray-150 rounded-2xl shadow-xl text-xs font-bold">
-                                                     <p className="text-gray-900 font-extrabold mb-1">{data.name}</p>
-                                                     <p className="text-blue-600">{data.percentage}% ({data.count} topics)</p>
-                                                   </div>
-                                                 );
-                                               }
-                                               return null;
-                                             }}
-                                           />
-                                           <Bar dataKey="percentage" radius={[8, 8, 0, 0]} maxBarSize={60}>
-                                             {chartData.map((entry, index) => (
-                                               <Cell key={`cell-${index}`} fill={entry.fill} />
-                                             ))}
-                                           </Bar>
-                                         </BarChart>
-                                       </ResponsiveContainer>
-                                     );
-                                   })()}
-                                 </div>
+                                <div className="w-full h-[350px] min-h-[350px]">
+                                  {(() => {
+                                    const activeStat = pytCoverageStats.activeStat;
+                                    const total = activeStat.totalTopics || 1;
+                                    const chartData = [
+                                      { name: '0 Revisions', count: activeStat.count0, percentage: Math.round((activeStat.count0 / total) * 100), fill: '#94a3b8' },
+                                      { name: '1 Revision', count: activeStat.count1, percentage: Math.round((activeStat.count1 / total) * 100), fill: '#f59e0b' },
+                                      { name: '2 Revisions', count: activeStat.count2, percentage: Math.round((activeStat.count2 / total) * 100), fill: '#3b82f6' },
+                                      { name: '3+ Revisions', count: activeStat.count3Plus, percentage: Math.round((activeStat.count3Plus / total) * 100), fill: '#10b981' }
+                                    ];
+                                    return (
+                                      <ResponsiveContainer width="100%" height={350} minWidth={0}>
+                                        <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
+                                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                          <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
+                                          <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} unit="%" />
+                                          <Tooltip
+                                            content={({ active, payload }) => {
+                                              if (active && payload && payload.length) {
+                                                const data = payload[0].payload;
+                                                return (
+                                                  <div className="bg-white p-3 border border-gray-150 rounded-2xl shadow-xl text-xs font-bold">
+                                                    <p className="text-gray-900 font-extrabold mb-1">{data.name}</p>
+                                                    <p className="text-blue-600">{data.percentage}% ({data.count} topics)</p>
+                                                  </div>
+                                                );
+                                              }
+                                              return null;
+                                            }}
+                                          />
+                                          <Bar dataKey="percentage" radius={[8, 8, 0, 0]} maxBarSize={60}>
+                                            {chartData.map((entry, index) => (
+                                              <Cell key={`cell-${index}`} fill={entry.fill} />
+                                            ))}
+                                          </Bar>
+                                        </BarChart>
+                                      </ResponsiveContainer>
+                                    );
+                                  })()}
+                                </div>
                               </div>
                             </div>
 
@@ -28755,37 +28824,37 @@ Return your response strictly as a JSON object matching this schema:
                                   <h3 className="text-sm font-black text-gray-800 uppercase tracking-wider">7-Day Study Adherence History</h3>
                                   <p className="text-xs text-gray-400">Daily completion percentage over last 7 calendar days</p>
                                 </div>
-                                 <div className="w-full h-[350px] min-h-[350px]">
-                                   <ResponsiveContainer width="100%" height={350} minWidth={0}>
-                                     <BarChart data={adherenceStats.last7Days} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
-                                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                       <XAxis dataKey="dateLabel" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
-                                       <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} unit="%" />
-                                       <Tooltip
-                                         content={({ active, payload }) => {
-                                           if (active && payload && payload.length) {
-                                             const data = payload[0].payload;
-                                             return (
-                                               <div className="bg-white p-3 border border-gray-150 rounded-2xl shadow-xl text-xs font-bold">
-                                                 <p className="text-gray-900 font-extrabold mb-1">{data.dateLabel}</p>
-                                                 <p className="text-blue-600">{data.rate}% ({data.completed} of {data.total} tasks completed)</p>
-                                               </div>
-                                             );
-                                           }
-                                           return null;
-                                         }}
-                                       />
-                                       <Bar dataKey="rate" radius={[8, 8, 0, 0]} maxBarSize={50}>
-                                         {adherenceStats.last7Days.map((entry, index) => (
-                                           <Cell
-                                             key={`cell-${index}`}
-                                             fill={entry.rate >= 80 ? '#10b981' : entry.rate >= 50 ? '#f59e0b' : entry.total === 0 ? '#cbd5e1' : '#ef4444'}
-                                           />
-                                         ))}
-                                       </Bar>
-                                     </BarChart>
-                                   </ResponsiveContainer>
-                                 </div>
+                                <div className="w-full h-[350px] min-h-[350px]">
+                                  <ResponsiveContainer width="100%" height={350} minWidth={0}>
+                                    <BarChart data={adherenceStats.last7Days} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
+                                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                      <XAxis dataKey="dateLabel" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
+                                      <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} unit="%" />
+                                      <Tooltip
+                                        content={({ active, payload }) => {
+                                          if (active && payload && payload.length) {
+                                            const data = payload[0].payload;
+                                            return (
+                                              <div className="bg-white p-3 border border-gray-150 rounded-2xl shadow-xl text-xs font-bold">
+                                                <p className="text-gray-900 font-extrabold mb-1">{data.dateLabel}</p>
+                                                <p className="text-blue-600">{data.rate}% ({data.completed} of {data.total} tasks completed)</p>
+                                              </div>
+                                            );
+                                          }
+                                          return null;
+                                        }}
+                                      />
+                                      <Bar dataKey="rate" radius={[8, 8, 0, 0]} maxBarSize={50}>
+                                        {adherenceStats.last7Days.map((entry, index) => (
+                                          <Cell
+                                            key={`cell-${index}`}
+                                            fill={entry.rate >= 80 ? '#10b981' : entry.rate >= 50 ? '#f59e0b' : entry.total === 0 ? '#cbd5e1' : '#ef4444'}
+                                          />
+                                        ))}
+                                      </Bar>
+                                    </BarChart>
+                                  </ResponsiveContainer>
+                                </div>
                               </div>
 
                               {/* Right Column: Detailed Schedule History List */}
@@ -31599,8 +31668,8 @@ Return your response strictly as a JSON object matching this schema:
                 data-timer-type={timerState?.timerType || 'pomodoro'}
                 data-timer-status={
                   (timerState?.timerType === 'pomodoro' ? timerState?.pomodoroStatus :
-                   timerState?.timerType === 'timer' ? timerState?.timerStatus :
-                   timerState?.stopwatchStatus) || 'idle'
+                    timerState?.timerType === 'timer' ? timerState?.timerStatus :
+                      timerState?.stopwatchStatus) || 'idle'
                 }
                 data-timer-mode={timerState?.pomodoroMode || 'study'}
                 data-timer-time-left={
@@ -32679,7 +32748,8 @@ Return your response strictly as a JSON object matching this schema:
                       <div className="pt-4 border-t border-gray-100 flex items-center justify-end gap-3 shrink-0">
                         <button
                           onClick={() => {
-                            setPdfDialog({ isOpen: false, file: null, numPages: 0, mappings: [], rotations: {}, isConverting: false });
+                            if (pdfDialog.blobUrl) URL.revokeObjectURL(pdfDialog.blobUrl);
+                            setPdfDialog({ isOpen: false, file: null, blobUrl: null, numPages: 0, mappings: [], rotations: {}, isConverting: false });
                             setLoadedPdfDoc(null);
                           }}
                           disabled={pdfDialog.isConverting}
