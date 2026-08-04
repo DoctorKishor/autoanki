@@ -11,7 +11,7 @@ import {
   Flame, Trophy, Award, Clock, BookOpen, Activity, Timer, Hourglass, ListChecks, GitMerge,
   Puzzle, Heart, Flag,
   Music, Quote, BarChart as BarChartIcon, Maximize2, MonitorPlay, GripVertical, Code2, Volume2, VolumeX,
-  ChevronUp, Edit2, Layout, ExternalLink, Minimize2, Brain
+  ChevronUp, Edit2, Layout, ExternalLink, Minimize2, Brain, Sun, Moon
 } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import JSZip from 'jszip';
@@ -32,6 +32,24 @@ import { calculateEfficiencyScore, calculateWeightedConcentration } from './util
 import { ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import ExportImageVerificationModal from './components/ExportImageVerificationModal';
 import { cropAndMaskDiagram } from './utils/imageCropper';
+import { getLocalSetting, saveLocalSetting, getLocalCards, saveLocalCards, replaceAllLocalCards, saveLocalCard, deleteLocalCard, getLocalPages, saveLocalPages, replaceAllLocalPages, saveLocalPage, deleteLocalPage } from './services/localDb';
+import { motion, AnimatePresence } from 'framer-motion';
+import UiverseButton from './components/UiverseButton';
+import UiverseGlassRadio from './components/UiverseGlassRadio';
+import UiverseSwitch from './components/UiverseSwitch';
+
+const BACKUP_FREQUENCY_OPTIONS = [
+  { value: 'daily', label: 'Daily Snapshot', badge: 'Recommended' },
+  { value: '3days', label: 'Every 3 Days' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'onEdit', label: 'On Every Deck / Topic Edit' },
+];
+
+const BACKUP_RETENTION_OPTIONS = [
+  { value: '3', label: 'Keep Last 3 Snapshots' },
+  { value: '5', label: 'Keep Last 5 Snapshots', badge: 'Default' },
+  { value: '10', label: 'Keep Last 10 Snapshots' },
+];
 
 import {
   getAuth, signInAnonymously, onAuthStateChanged,
@@ -49,7 +67,7 @@ import {
 import {
   getStorage, ref, uploadString, uploadBytes, getDownloadURL, deleteObject
 } from 'firebase/storage';
-import { motion, AnimatePresence } from 'framer-motion';
+
 
 // Setup PDF.js Worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
@@ -1325,7 +1343,9 @@ export const sanitizeCardForFirestore = (card) => {
   return sanitized;
 };
 
-const callGeminiWithRetry = async (apiKey, prompt, base64Image, mimeType, retries = 4) => {
+// onProgress: optional callback (msg: string) => void — called during rate-limit waits
+// so the progress modal can show a live countdown instead of a frozen UI.
+const callGeminiWithRetry = async (apiKey, prompt, base64Image, mimeType, retries = 5, onProgress = null) => {
   if (!apiKey) {
     throw new Error("Gemini API key is not configured. Please enter your Gemini API key in Settings.");
   }
@@ -1348,7 +1368,7 @@ const callGeminiWithRetry = async (apiKey, prompt, base64Image, mimeType, retrie
   }
 
   const rawDataBase64 = imgBase64.includes(',') ? imgBase64.split(',')[1] : imgBase64;
-  // Gemini model fallback chain ordered by priority and rate limits
+  // Gemini model fallback chain: fastest / cheapest first, most capable last
   const models = [
     'gemini-3.5-flash-lite',
     'gemini-3.5-flash',
@@ -1395,7 +1415,11 @@ const callGeminiWithRetry = async (apiKey, prompt, base64Image, mimeType, retrie
     }
   };
 
+  // Track total pause time across retries so the caller can subtract it from
+  // the inter-item gap and avoid double-waiting after a 429 recovery.
+  let totalPausedMs = 0;
   let lastError = null;
+
   for (let i = 0; i < retries; i++) {
     const model = models[i % models.length];
     // Per-request 45s abort timeout so a hung fetch never stalls the batch
@@ -1408,13 +1432,19 @@ const callGeminiWithRetry = async (apiKey, prompt, base64Image, mimeType, retrie
       );
       clearTimeout(timeoutId);
 
-      // Handle rate-limit (429) with Retry-After header before reading body
+      // Handle rate-limit (429): honour Retry-After header first, then scale exponentially
       if (response.status === 429) {
-        const retryAfter = parseInt(response.headers.get('Retry-After') || '0', 10);
-        const waitMs = retryAfter > 0 ? retryAfter * 1000 : Math.min(4000 * (i + 1), 12000);
-        console.warn(`[Gemini] Rate limited (429) on ${model}. Waiting ${waitMs / 1000}s before trying next model (${i + 1}/${retries})...`);
+        const retryAfterHeader = parseInt(response.headers.get('Retry-After') || '0', 10);
+        // Exponential back-off: 8s → 16s → 32s (capped at 60s). Free tier = 15 RPM.
+        const backoffScale = [8000, 16000, 32000, 60000];
+        const waitMs = retryAfterHeader > 0 ? retryAfterHeader * 1000 : (backoffScale[i] ?? 60000);
+        const waitSec = Math.round(waitMs / 1000);
+        const rateLimitErr = `HTTP 429 Rate Limit [${model}]: Rate limit exceeded.`;
+        console.warn(`[Gemini] ${rateLimitErr} Waiting ${waitSec}s before retry ${i + 1}/${retries}...`);
+        if (onProgress) onProgress(`⏳ Rate limit hit — waiting ${waitSec}s before retrying (attempt ${i + 1}/${retries})...`, `${rateLimitErr} Retrying in ${waitSec}s.`);
         await new Promise(res => setTimeout(res, waitMs));
-        lastError = new Error(`Rate limited by Gemini API (429). Retrying after ${waitMs / 1000}s.`);
+        totalPausedMs += waitMs;
+        lastError = new Error(rateLimitErr);
         continue;
       }
 
@@ -1426,17 +1456,23 @@ const callGeminiWithRetry = async (apiKey, prompt, base64Image, mimeType, retrie
       if (parsedData && Array.isArray(parsedData.cards)) {
         parsedData.cards = parsedData.cards.map(c => sanitizeCardForFirestore(c));
       }
+      // Attach the total paused duration so processQueue can skip redundant waiting
+      parsedData._pausedMs = totalPausedMs;
       return parsedData;
     } catch (error) {
       clearTimeout(timeoutId);
       // AbortError means our 45s timeout fired — treat as a retryable network error
       const isTimeout = error.name === 'AbortError';
-      lastError = isTimeout ? new Error(`Request timed out (45s) on model ${model}`) : error;
-      console.warn(`[Gemini Attempt ${i + 1}/${retries} (${model}) ${isTimeout ? 'TIMEOUT' : 'failed'}]:`, lastError.message);
+      const exactErrMsg = isTimeout ? `Request timed out (45s) on model ${model}` : (error.message || String(error));
+      lastError = isTimeout ? new Error(exactErrMsg) : error;
+      console.warn(`[Gemini Attempt ${i + 1}/${retries} (${model}) ${isTimeout ? 'TIMEOUT' : 'failed'}]:`, exactErrMsg);
       if (i === retries - 1) throw lastError;
-      // Exponential backoff: 3s, 7s, 15s between retries
-      const backoffMs = [3000, 7000, 15000][i] ?? 15000;
+      // Exponential backoff on general errors: 4s, 8s, 16s, 30s
+      const backoffMs = [4000, 8000, 16000, 30000][i] ?? 30000;
+      const waitSec = Math.round(backoffMs / 1000);
+      if (onProgress) onProgress(`⚠️ Request failed — retrying in ${waitSec}s (attempt ${i + 2}/${retries})...`, `[${model}] ${exactErrMsg}`);
       await new Promise(res => setTimeout(res, backoffMs));
+      totalPausedMs += backoffMs;
     }
   }
   throw lastError || new Error("Gemini AI request failed after retries.");
@@ -1731,7 +1767,7 @@ const PdfPagePreview = ({ pdf, pageNum, rotation = 0, onRotate }) => {
         const canvas = canvasRef.current;
         if (!canvas || cancelled) { if (typeof page.cleanup === 'function') page.cleanup(); _pdfPreviewRelease(); return; }
 
-        canvas.width  = Math.floor(viewport.width);
+        canvas.width = Math.floor(viewport.width);
         canvas.height = Math.floor(viewport.height);
         const ctx = canvas.getContext('2d', { alpha: false });
 
@@ -1758,7 +1794,7 @@ const PdfPagePreview = ({ pdf, pageNum, rotation = 0, onRotate }) => {
         {/* Lightweight placeholder shown until the tile is visible and rendered */}
         {!rendered && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 text-gray-300">
-            <svg className="w-6 h-6 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+            <svg className="w-6 h-6 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" /></svg>
             <span className="text-[9px] font-semibold text-gray-400">Page {pageNum}</span>
           </div>
         )}
@@ -3022,8 +3058,15 @@ export default function App() {
     return taskStyles;
   };
 
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const DEFAULT_LOCAL_USER = useMemo(() => ({
+    uid: 'local_user',
+    email: 'offline@local.db',
+    displayName: 'Local Student',
+    isLocal: true
+  }), []);
+
+  const [user, setUser] = useState(() => DEFAULT_LOCAL_USER);
+  const [loading, setLoading] = useState(false);
   const [authError, setAuthError] = useState(null);
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -3047,7 +3090,7 @@ export default function App() {
   const [subjectCardCounts, setSubjectCardCounts] = useState({});
   // --- LAZY LOADING / QUOTA STATES ---
   const [totalCardCount, setTotalCardCount] = useState(0);      // from getCountFromServer (1 read)
-  const [pendingPageCount, setPendingPageCount] = useState(0);   // pending triage page count
+
   const [isFolderLoading, setIsFolderLoading] = useState(false); // folder card fetch in progress
   const [isStudyLogsLoading, setIsStudyLogsLoading] = useState(false);
   const [isTrashLoading, setIsTrashLoading] = useState(false);
@@ -3645,63 +3688,37 @@ export default function App() {
     }
   };
 
-  // OBS Token Management: Generate/fetch token for the logged-in user on the dashboard
+  // OBS Token Management: Generate/fetch token for the logged-in user (Local DB - Item 16.5)
   useEffect(() => {
-    if (!user || !db || isObsOverlay) return;
+    if (isObsOverlay) return;
 
-    const tokenDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'obsToken');
-    const unsubscribe = onSnapshot(tokenDocRef, async (snap) => {
-      if (snap.exists()) {
-        setObsToken(snap.data().token);
+    getLocalSetting('obsToken').then(async (data) => {
+      if (data && data.token) {
+        setObsToken(data.token);
       } else {
         const newToken = 'obs_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
         try {
-          await setDoc(tokenDocRef, { token: newToken });
-          await setDoc(doc(db, 'obs_tokens', newToken), {
-            uid: user.uid,
-            createdAt: Date.now()
-          });
+          await saveLocalSetting('obsToken', { token: newToken, createdAt: Date.now() });
           setObsToken(newToken);
         } catch (e) {
-          console.error("Error creating initial OBS token:", e);
+          console.error("[LocalDB] Error creating initial OBS token:", e);
         }
       }
-    }, err => {
-      console.error("Error listening to OBS token:", err);
-    });
+    }).catch(err => console.error("[LocalDB] Error listening to OBS token:", err));
+  }, [isObsOverlay]);
 
-    return () => unsubscribe();
-  }, [user, db, isObsOverlay]);
-
-  // OBS Token Management: Regenerate the token (invalidates all old browser sources)
+  // OBS Token Management: Regenerate the token
   const handleRegenerateObsToken = async () => {
-    if (!user || !db) return;
     if (!window.confirm("Are you sure you want to regenerate your OBS Stream Key? ALL existing OBS Browser Sources using the old key will immediately stop working.")) return;
 
     setObsTokenLoading(true);
     try {
-      const oldToken = obsToken;
       const newToken = 'obs_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-
-      // 1. Write the new token mapping
-      await setDoc(doc(db, 'obs_tokens', newToken), {
-        uid: user.uid,
-        createdAt: Date.now()
-      });
-
-      // 2. Update the user's settings document
-      const tokenDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'obsToken');
-      await setDoc(tokenDocRef, { token: newToken });
-
-      // 3. Delete the old token document
-      if (oldToken) {
-        await deleteDoc(doc(db, 'obs_tokens', oldToken));
-      }
-
+      await saveLocalSetting('obsToken', { token: newToken, createdAt: Date.now() });
       setObsToken(newToken);
       alert("OBS Stream Key successfully regenerated!");
     } catch (e) {
-      console.error("Error regenerating OBS token:", e);
+      console.error("[LocalDB] Error regenerating OBS token:", e);
       alert("Failed to regenerate token: " + e.message);
     } finally {
       setObsTokenLoading(false);
@@ -3791,25 +3808,26 @@ export default function App() {
   };
 
   const renderChromeExtensionSection = () => {
+    const isDark = settingsThemeMode === 'dark';
     return (
-      <div className="bg-white rounded-2xl p-6 border border-gray-150 shadow-sm space-y-6">
+      <div className={`${isDark ? 'neu-card-dark' : 'neu-card-light'} p-6 space-y-6 text-left`}>
         <div>
-          <h3 className="text-sm font-black text-gray-900 flex items-center gap-2">
+          <h3 className={`text-sm font-black flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
             <Puzzle className="w-4 h-4 text-blue-500" /> AutoAnki Chrome Extension
           </h3>
-          <p className="text-[10px] text-gray-400 font-bold mt-0.5">
+          <p className={`text-[10px] font-bold mt-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
             Enhance your workflow by clipping snippets directly from Chrome into your study deck triage.
           </p>
         </div>
 
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-5 space-y-4">
+        <div className={`${isDark ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200'} p-5 space-y-4 rounded-2xl`}>
           <div className="flex items-start gap-4">
-            <div className="p-3 bg-blue-600 rounded-xl text-white shrink-0 shadow-lg shadow-blue-600/20">
+            <div className={`p-3 rounded-xl shrink-0 ${isDark ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'}`}>
               <Puzzle className="w-6 h-6" />
             </div>
             <div className="space-y-1">
-              <h4 className="text-xs font-black text-blue-900">AutoAnki Screenshot Snipper</h4>
-              <p className="text-[10px] text-blue-700/80 font-semibold leading-relaxed">
+              <h4 className={`text-xs font-black ${isDark ? 'text-blue-400' : 'text-blue-900'}`}>AutoAnki Screenshot Snipper</h4>
+              <p className={`text-[10px] font-semibold leading-relaxed ${isDark ? 'text-gray-300' : 'text-blue-700/80'}`}>
                 Right-click any webpage, select an area to snip, select your deck folder tree, and instantly send it to the AutoAnki Triage Queue. Supports high-resolution screen scaling (DPR) and automatically loads your cloud decks.
               </p>
             </div>
@@ -3819,7 +3837,8 @@ export default function App() {
             <button
               onClick={handleExportExtension}
               disabled={isExportingExtension}
-              className="w-full sm:w-auto px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-xs font-black uppercase tracking-wider transition active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg shadow-blue-600/20"
+              className={`w-full sm:w-auto px-6 py-3.5 text-xs font-black uppercase tracking-wider transition active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 ${isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+                }`}
             >
               {isExportingExtension ? (
                 <>
@@ -3837,18 +3856,19 @@ export default function App() {
         </div>
 
         {downloadedExtension && (
-          <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 flex items-start gap-3 animate-in fade-in zoom-in-95 duration-300">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+          <div className={`rounded-2xl p-4 flex items-start gap-3 animate-in fade-in zoom-in-95 duration-300 ${isDark ? 'neu-pressed-dark border border-emerald-500/30 text-emerald-400' : 'bg-emerald-50 border border-emerald-100 text-emerald-800'
+            }`}>
+            <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
             <div>
-              <div className="text-xs font-black text-emerald-800">Extension Downloaded Successfully!</div>
-              <div className="text-[10px] text-emerald-600 font-bold mt-0.5">Follow the setup guide below to install it in Google Chrome.</div>
+              <div className="text-xs font-black">Extension Downloaded Successfully!</div>
+              <div className={`text-[10px] font-bold mt-0.5 ${isDark ? 'text-emerald-400/80' : 'text-emerald-600'}`}>Follow the setup guide below to install it in Google Chrome.</div>
             </div>
           </div>
         )}
 
         {/* Setup and Usage Instructions */}
-        <div className="space-y-6 pt-4 border-t border-gray-100">
-          <div className="flex items-center gap-2 text-blue-600">
+        <div className={`space-y-6 pt-4 border-t ${isDark ? 'border-gray-800' : 'border-gray-200/60'}`}>
+          <div className="flex items-center gap-2 text-blue-500">
             <Info className="w-4 h-4 shrink-0" />
             <span className="text-[10px] font-black uppercase tracking-wider">Installation & Setup Guide</span>
           </div>
@@ -3856,33 +3876,37 @@ export default function App() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Installation Step List */}
             <div className="space-y-4">
-              <h5 className="text-[10px] font-black text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+              <h5 className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                 <Compass className="w-3.5 h-3.5 text-blue-500" />
                 How to Install
               </h5>
               <ol className="space-y-3">
                 <li className="flex gap-3">
-                  <div className="w-5 h-5 rounded-full bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center text-[10px] font-black shrink-0">1</div>
-                  <div className="text-[10px] text-gray-600 font-bold leading-relaxed">
-                    <strong>Extract the ZIP:</strong> Unzip the downloaded <code className="bg-gray-150 px-1.5 py-0.5 rounded text-[9px] font-mono">AutoAnki-Chrome-Extension.zip</code> file into a dedicated folder on your computer.
+                  <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${isDark ? 'neu-pressed-dark text-blue-400 border border-blue-500/30' : 'bg-blue-50 border border-blue-200 text-blue-600'
+                    }`}>1</div>
+                  <div className={`text-[10px] font-bold leading-relaxed ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                    <strong className={isDark ? 'text-white' : 'text-gray-800'}>Extract the ZIP:</strong> Unzip the downloaded <code className={`px-1.5 py-0.5 rounded text-[9px] font-mono ${isDark ? 'neu-pressed-dark text-blue-300' : 'bg-gray-200/80 text-gray-800'}`}>AutoAnki-Chrome-Extension.zip</code> file into a dedicated folder on your computer.
                   </div>
                 </li>
                 <li className="flex gap-3">
-                  <div className="w-5 h-5 rounded-full bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center text-[10px] font-black shrink-0">2</div>
-                  <div className="text-[10px] text-gray-600 font-bold leading-relaxed">
-                    <strong>Open Extensions:</strong> In Google Chrome, navigate to <a href="chrome://extensions/" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline font-extrabold hover:text-blue-800">chrome://extensions/</a>.
+                  <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${isDark ? 'neu-pressed-dark text-blue-400 border border-blue-500/30' : 'bg-blue-50 border border-blue-200 text-blue-600'
+                    }`}>2</div>
+                  <div className={`text-[10px] font-bold leading-relaxed ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                    <strong className={isDark ? 'text-white' : 'text-gray-800'}>Open Extensions:</strong> In Google Chrome, navigate to <a href="chrome://extensions/" target="_blank" rel="noopener noreferrer" className="text-blue-500 underline font-extrabold hover:text-blue-400">chrome://extensions/</a>.
                   </div>
                 </li>
                 <li className="flex gap-3">
-                  <div className="w-5 h-5 rounded-full bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center text-[10px] font-black shrink-0">3</div>
-                  <div className="text-[10px] text-gray-600 font-bold leading-relaxed">
-                    <strong>Developer Mode:</strong> Toggle the <strong>Developer mode</strong> switch in the upper-right corner of the page.
+                  <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${isDark ? 'neu-pressed-dark text-blue-400 border border-blue-500/30' : 'bg-blue-50 border border-blue-200 text-blue-600'
+                    }`}>3</div>
+                  <div className={`text-[10px] font-bold leading-relaxed ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                    <strong className={isDark ? 'text-white' : 'text-gray-800'}>Developer Mode:</strong> Toggle the <strong className={isDark ? 'text-white' : 'text-gray-800'}>Developer mode</strong> switch in the upper-right corner of the page.
                   </div>
                 </li>
                 <li className="flex gap-3">
-                  <div className="w-5 h-5 rounded-full bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center text-[10px] font-black shrink-0">4</div>
-                  <div className="text-[10px] text-gray-600 font-bold leading-relaxed">
-                    <strong>Load Unpacked:</strong> Click the <strong>Load unpacked</strong> button in the top-left and select the extracted folder.
+                  <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${isDark ? 'neu-pressed-dark text-blue-400 border border-blue-500/30' : 'bg-blue-50 border border-blue-200 text-blue-600'
+                    }`}>4</div>
+                  <div className={`text-[10px] font-bold leading-relaxed ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                    <strong className={isDark ? 'text-white' : 'text-gray-800'}>Load Unpacked:</strong> Click the <strong className={isDark ? 'text-white' : 'text-gray-800'}>Load unpacked</strong> button in the top-left and select the extracted folder.
                   </div>
                 </li>
               </ol>
@@ -3890,43 +3914,48 @@ export default function App() {
 
             {/* Usage Step List */}
             <div className="space-y-4">
-              <h5 className="text-[10px] font-black text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+              <h5 className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                 <Puzzle className="w-3.5 h-3.5 text-indigo-500" />
                 How to Connect & Use
               </h5>
               <ol className="space-y-3">
                 <li className="flex gap-3">
-                  <div className="w-5 h-5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-600 flex items-center justify-center text-[10px] font-black shrink-0">1</div>
-                  <div className="text-[10px] text-gray-600 font-bold leading-relaxed">
-                    <strong>Open Popup:</strong> Click the extensions puzzle icon in your browser toolbar, pin <strong>AutoAnki Screenshot Snipper</strong>, and click it.
+                  <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${isDark ? 'neu-pressed-dark text-indigo-400 border border-indigo-500/30' : 'bg-indigo-50 border border-indigo-200 text-indigo-600'
+                    }`}>1</div>
+                  <div className={`text-[10px] font-bold leading-relaxed ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                    <strong className={isDark ? 'text-white' : 'text-gray-800'}>Open Popup:</strong> Click the extensions puzzle icon in your browser toolbar, pin <strong className={isDark ? 'text-white' : 'text-gray-800'}>AutoAnki Screenshot Snipper</strong>, and click it.
                   </div>
                 </li>
                 <li className="flex gap-3">
-                  <div className="w-5 h-5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-600 flex items-center justify-center text-[10px] font-black shrink-0">2</div>
-                  <div className="text-[10px] text-gray-600 font-bold leading-relaxed">
-                    <strong>Link Account:</strong> If you are signed in on this browser, click <strong>Link Browser Session</strong> to instantly authorize the extension.
+                  <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${isDark ? 'neu-pressed-dark text-indigo-400 border border-indigo-500/30' : 'bg-indigo-50 border border-indigo-200 text-indigo-600'
+                    }`}>2</div>
+                  <div className={`text-[10px] font-bold leading-relaxed ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                    <strong className={isDark ? 'text-white' : 'text-gray-800'}>Link Account:</strong> If you are signed in on this browser, click <strong className={isDark ? 'text-white' : 'text-gray-800'}>Link Browser Session</strong> to instantly authorize the extension.
                   </div>
                 </li>
                 <li className="flex gap-3">
-                  <div className="w-5 h-5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-600 flex items-center justify-center text-[10px] font-black shrink-0">3</div>
-                  <div className="text-[10px] text-gray-600 font-bold leading-relaxed">
-                    <strong>Right-Click & Drag:</strong> Right-click on any page you want to snip, select <strong>Snip to AutoAnki</strong>, then drag a box over your content.
+                  <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${isDark ? 'neu-pressed-dark text-indigo-400 border border-indigo-500/30' : 'bg-indigo-50 border border-indigo-200 text-indigo-600'
+                    }`}>3</div>
+                  <div className={`text-[10px] font-bold leading-relaxed ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                    <strong className={isDark ? 'text-white' : 'text-gray-800'}>Right-Click & Drag:</strong> Right-click on any page you want to snip, select <strong className={isDark ? 'text-white' : 'text-gray-800'}>Snip to AutoAnki</strong>, then drag a box over your content.
                   </div>
                 </li>
                 <li className="flex gap-3">
-                  <div className="w-5 h-5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-600 flex items-center justify-center text-[10px] font-black shrink-0">4</div>
-                  <div className="text-[10px] text-gray-600 font-bold leading-relaxed">
-                    <strong>Select Deck & Send:</strong> Review your screenshot, choose your target deck folder (with high contrast tree select), and click <strong>Send to AutoAnki</strong>.
+                  <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${isDark ? 'neu-pressed-dark text-indigo-400 border border-indigo-500/30' : 'bg-indigo-50 border border-indigo-200 text-indigo-600'
+                    }`}>4</div>
+                  <div className={`text-[10px] font-bold leading-relaxed ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                    <strong className={isDark ? 'text-white' : 'text-gray-800'}>Select Deck & Send:</strong> Review your screenshot, choose your target deck folder (with high contrast tree select), and click <strong className={isDark ? 'text-white' : 'text-gray-800'}>Send to AutoAnki</strong>.
                   </div>
                 </li>
               </ol>
             </div>
           </div>
 
-          <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 flex items-start gap-2 text-[10px] text-amber-700 font-bold leading-relaxed">
+          <div className={`rounded-xl p-3 flex items-start gap-2 text-[10px] font-bold leading-relaxed ${isDark ? 'neu-pressed-dark border border-amber-500/30 text-amber-300' : 'bg-amber-50 border border-amber-100 text-amber-800'
+            }`}>
             <Info className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
             <div>
-              <strong>Security Notice:</strong> The extension connects to your Firestore namespace using a secure auth channel. Make sure you have your ImgBB API key set up in the settings above so the extension can upload and preview large images.
+              <strong className={isDark ? 'text-amber-200' : 'text-amber-900'}>Security Notice:</strong> The extension connects to your Firestore namespace using a secure auth channel. Make sure you have your ImgBB API key set up in the settings above so the extension can upload and preview large images.
             </div>
           </div>
         </div>
@@ -3935,28 +3964,29 @@ export default function App() {
   };
 
   const renderDiscordPresenceSection = () => {
+    const isDark = settingsThemeMode === 'dark';
     return (
-      <div className="bg-white rounded-2xl p-6 border border-gray-150 shadow-sm space-y-6">
+      <div className={`${isDark ? 'neu-card-dark' : 'neu-card-light'} p-6 space-y-6 text-left`}>
         <div>
-          <h3 className="text-sm font-black text-gray-900 flex items-center gap-2 animate-pulse">
+          <h3 className={`text-sm font-black flex items-center gap-2 animate-pulse ${isDark ? 'text-white' : 'text-gray-900'}`}>
             <svg className="w-4 h-4 text-blue-500 fill-current" viewBox="0 0 24 24">
               <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.094 13.094 0 0 1-1.873-.894.077.077 0 0 1-.008-.128c.126-.093.252-.19.372-.287a.075.075 0 0 1 .077-.011c3.92 1.793 8.18 1.793 12.061 0a.073.073 0 0 1 .078.009c.12.099.246.195.373.289a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.894.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.156-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.156 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.156-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.156 2.418z" />
             </svg>
             Discord Rich Presence (DRP)
           </h3>
-          <p className="text-[10px] text-gray-400 font-bold mt-0.5">
+          <p className={`text-[10px] font-bold mt-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
             Display your active study subject, timer clocks, and streaks on your Discord profile using PreMiD.
           </p>
         </div>
 
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-5 space-y-4">
+        <div className={`${isDark ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200'} p-5 space-y-4 rounded-2xl`}>
           <div className="flex items-start gap-4">
-            <div className="p-3 bg-blue-600 rounded-xl text-white shrink-0 shadow-lg shadow-blue-600/20">
+            <div className={`p-3 rounded-xl shrink-0 ${isDark ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'}`}>
               <MessageSquare className="w-6 h-6" />
             </div>
             <div className="space-y-1 text-left">
-              <h4 className="text-xs font-black text-blue-900 font-bold">AutoAnki Discord Integration</h4>
-              <p className="text-[10px] text-blue-700/80 font-semibold leading-relaxed">
+              <h4 className={`text-xs font-black ${isDark ? 'text-blue-400' : 'text-blue-900'}`}>AutoAnki Discord Integration</h4>
+              <p className={`text-[10px] font-semibold leading-relaxed ${isDark ? 'text-gray-300' : 'text-blue-700/80'}`}>
                 Connect your study sessions directly to Discord. Displays your active study subject, timer clocks (Stopwatch / Pomodoro), and streak counts in real time. Works automatically on your local machine and deployed site.
               </p>
             </div>
@@ -3965,7 +3995,8 @@ export default function App() {
           <div className="pt-2">
             <button
               onClick={() => setShowDiscordHelpModal(true)}
-              className="px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-xs font-black uppercase tracking-wider transition active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20"
+              className={`px-6 py-3.5 text-xs font-black uppercase tracking-wider transition active:scale-95 flex items-center justify-center gap-2 ${isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+                }`}
             >
               <HelpCircle className="w-4 h-4" />
               DRP Setup Guide & Instructions
@@ -3977,24 +4008,25 @@ export default function App() {
   };
 
   const renderDeviceManagerSection = () => {
+    const isDark = settingsThemeMode === 'dark';
     return (
-      <div className="bg-white rounded-2xl p-6 border border-gray-150 shadow-sm space-y-6">
+      <div className={`${isDark ? 'neu-card-dark' : 'neu-card-light'} p-6 space-y-6 text-left`}>
         <div>
-          <h3 className="text-sm font-black text-gray-900 flex items-center gap-2">
+          <h3 className={`text-sm font-black flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
             <Tv className="w-4 h-4 text-blue-500" /> Logged-In Devices & Stream Overlays
           </h3>
-          <p className="text-[10px] text-gray-400 font-bold mt-0.5">
+          <p className={`text-[10px] font-bold mt-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
             Manage active browser sessions, paired stream devices, or authorize a login request.
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-1">
-          <div className="space-y-4 bg-gray-50/50 p-5 rounded-2xl border border-gray-100 flex flex-col justify-between">
+          <div className={`${isDark ? 'neu-pressed-dark border border-gray-800' : 'bg-gray-50/50 border border-gray-100'} p-5 rounded-2xl flex flex-col justify-between space-y-4`}>
             <div>
-              <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider block mb-1">
+              <label className={`text-[10px] font-black uppercase tracking-wider block mb-1 ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
                 Pair / Authorize Device
               </label>
-              <p className="text-[9px] text-gray-450 font-bold mb-3 leading-relaxed">
+              <p className={`text-[9px] font-bold mb-3 leading-relaxed ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                 Enter the 6-digit code shown on the target device's screen, or click the scanner icon to scan a login QR code.
               </p>
 
@@ -4008,12 +4040,14 @@ export default function App() {
                     placeholder="e.g. 582901"
                     value={pairingCodeInput}
                     onChange={(e) => setPairingCodeInput(e.target.value)}
-                    className="w-full bg-white border border-gray-200 p-3.5 pr-24 rounded-xl text-sm font-mono font-black tracking-widest text-center focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition"
+                    className={`w-full p-3.5 pr-24 text-sm font-mono font-black tracking-widest text-center outline-none ${isDark ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-gray-800'
+                      }`}
                   />
                   <button
                     onClick={handlePairDevice}
                     disabled={pairingStatus?.type === 'loading'}
-                    className="absolute right-2 top-2 bottom-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-4 rounded-lg text-[10px] font-black uppercase tracking-wider transition active:scale-95 flex items-center justify-center cursor-pointer font-bold"
+                    className={`absolute right-2 top-2 bottom-2 px-4 text-[10px] font-black uppercase tracking-wider transition active:scale-95 flex items-center justify-center cursor-pointer font-bold ${isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+                      }`}
                   >
                     {pairingStatus?.type === 'loading' ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -4025,7 +4059,8 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setIsSettingsScannerOpen(true)}
-                  className="bg-gray-100 hover:bg-gray-200 border border-gray-200 text-gray-700 p-3.5 rounded-xl transition active:scale-95 flex items-center justify-center shrink-0 cursor-pointer shadow-sm"
+                  className={`p-3.5 transition active:scale-95 flex items-center justify-center shrink-0 cursor-pointer ${isDark ? 'neu-btn-dark text-gray-200' : 'neu-btn-light text-gray-700'
+                    }`}
                   title="Scan Login QR code from another device"
                 >
                   <QrCode className="w-5 h-5" />
@@ -4034,9 +4069,9 @@ export default function App() {
             </div>
 
             {pairingStatus && (
-              <div className={`mt-3 p-3 rounded-xl border text-[10px] font-bold ${pairingStatus.type === 'error' ? 'bg-red-50 border-red-200 text-red-700' :
-                pairingStatus.type === 'success' ? 'bg-green-50 border-green-200 text-green-700' :
-                  'bg-blue-50 border-blue-200 text-blue-700'
+              <div className={`mt-3 p-3 rounded-xl border text-[10px] font-bold ${pairingStatus.type === 'error' ? (isDark ? 'neu-pressed-dark border-red-500/30 text-red-400' : 'bg-red-50 border-red-200 text-red-700') :
+                  pairingStatus.type === 'success' ? (isDark ? 'neu-pressed-dark border-green-500/30 text-green-400' : 'bg-green-50 border-green-200 text-green-700') :
+                    (isDark ? 'neu-pressed-dark border-blue-500/30 text-blue-400' : 'bg-blue-50 border-blue-200 text-blue-700')
                 }`}>
                 {pairingStatus.message}
               </div>
@@ -4044,14 +4079,15 @@ export default function App() {
           </div>
 
           <div className="space-y-3">
-            <span className="text-[10px] font-black text-gray-550 uppercase tracking-wider block">
+            <span className={`text-[10px] font-black uppercase tracking-wider block ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
               Active Paired Devices ({pairedDevices.length})
             </span>
 
             {pairedDevices.length === 0 ? (
-              <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-200 rounded-2xl bg-white text-center">
-                <Monitor className="w-8 h-8 text-gray-300 mb-1.5" />
-                <span className="text-[10px] font-bold text-gray-400">No active stream overlays connected.</span>
+              <div className={`flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-2xl text-center ${isDark ? 'neu-pressed-dark border-gray-800 text-gray-400' : 'bg-white border-gray-200 text-gray-400'
+                }`}>
+                <Monitor className="w-8 h-8 text-gray-400 mb-1.5" />
+                <span className="text-[10px] font-bold">No active stream overlays connected.</span>
               </div>
             ) : (
               <div className="space-y-2.5 max-h-[220px] overflow-y-auto pr-1 custom-scrollbar">
@@ -4067,22 +4103,24 @@ export default function App() {
                   return (
                     <div
                       key={device.id}
-                      className={`p-3 border rounded-xl flex items-center justify-between hover:shadow-sm transition ${isLocalDevice ? 'bg-blue-50/20 border-blue-150' : 'bg-white border-gray-150'}`}
+                      className={`p-3 rounded-xl flex items-center justify-between transition ${isDark ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200'
+                        }`}
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${isLocalDevice ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-500'}`}>
+                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${isLocalDevice ? 'bg-blue-600/20 text-blue-400' : (isDark ? 'bg-gray-800 text-gray-400' : 'bg-gray-100 text-gray-500')
+                          }`}>
                           <IconComp className="w-4 h-4" />
                         </div>
                         <div className="min-w-0 text-left">
-                          <span className="text-xs font-black text-gray-850 block truncate leading-tight flex items-center gap-1.5">
+                          <span className={`text-xs font-black block truncate leading-tight flex items-center gap-1.5 ${isDark ? 'text-white' : 'text-gray-800'}`}>
                             {device.name}
                             {isLocalDevice && (
-                              <span className="bg-blue-600/10 text-blue-600 font-extrabold text-[8px] px-1.5 py-0.5 rounded-full uppercase tracking-wider shrink-0">
+                              <span className="bg-blue-600/20 text-blue-400 font-extrabold text-[8px] px-1.5 py-0.5 rounded-full uppercase tracking-wider shrink-0">
                                 Current
                               </span>
                             )}
                           </span>
-                          <span className="text-[9px] text-gray-455 font-bold block mt-0.5">
+                          <span className={`text-[9px] font-bold block mt-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                             Active: {pairedDate}
                           </span>
                         </div>
@@ -4091,7 +4129,8 @@ export default function App() {
                       <button
                         onClick={() => handleRevokeDevice(device.id)}
                         disabled={isRevokingDeviceId === device.id}
-                        className="text-[9px] border border-red-100 hover:border-red-200 text-red-650 hover:bg-red-50/50 py-1.5 px-3 rounded-lg font-black uppercase tracking-wider transition shrink-0 cursor-pointer disabled:opacity-50"
+                        className={`text-[9px] py-1.5 px-3 rounded-lg font-black uppercase tracking-wider transition shrink-0 cursor-pointer disabled:opacity-50 ${isDark ? 'bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30' : 'bg-red-50 hover:bg-red-100 text-red-600 border border-red-200'
+                          }`}
                       >
                         {isRevokingDeviceId === device.id ? (
                           <Loader2 className="w-3 h-3 animate-spin mx-2" />
@@ -4143,6 +4182,7 @@ export default function App() {
   // local draft state so saves are explicit
   const [draftNavIds, setDraftNavIds] = useState(DEFAULT_NAV_IDS);
   const [navSaveToast, setNavSaveToast] = useState(false);
+  const [navTabsOpen, setNavTabsOpen] = useState(false);
 
   // --- STUDY LOGGER STATES ---
   const [studyActiveTab, setStudyActiveTab] = useState('record'); // 'record' | 'manual'
@@ -4479,17 +4519,14 @@ export default function App() {
     };
   }, [isTimerFullscreen]);
 
-  // Load custom backgrounds from cloud
+  // Load custom backgrounds from Local DB (Item 16.4)
   useEffect(() => {
-    if (user && db) {
-      const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'studyRoomBackgrounds');
-      getDoc(docRef).then(docSnap => {
-        if (docSnap.exists() && docSnap.data().categories) {
-          setFsBgCategories(docSnap.data().categories);
-        }
-      }).catch(err => console.error("Error fetching backgrounds:", err));
-    }
-  }, [user]);
+    getLocalSetting('studyRoomBackgrounds').then(data => {
+      if (data && data.categories) {
+        setFsBgCategories(data.categories);
+      }
+    }).catch(err => console.error("[LocalDB] Error fetching backgrounds:", err));
+  }, []);
 
   // Save/update custom background item
   const handleUpdateBgItem = async (itemId, updatedName, updatedVideoUrl, updatedStartTime) => {
@@ -4514,13 +4551,10 @@ export default function App() {
     }
     if (found) {
       setFsBgCategories(nextCategories);
-      if (user && db) {
-        try {
-          const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'studyRoomBackgrounds');
-          await setDoc(docRef, { categories: nextCategories });
-        } catch (e) {
-          console.error("Error saving backgrounds to cloud:", e);
-        }
+      try {
+        await saveLocalSetting('studyRoomBackgrounds', { categories: nextCategories });
+      } catch (e) {
+        console.error("[LocalDB] Error saving backgrounds:", e);
       }
     }
   };
@@ -4548,13 +4582,10 @@ export default function App() {
     nextCategories[category] = [...nextCategories[category], newItem];
 
     setFsBgCategories(nextCategories);
-    if (user && db) {
-      try {
-        const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'studyRoomBackgrounds');
-        await setDoc(docRef, { categories: nextCategories });
-      } catch (e) {
-        console.error("Error saving backgrounds to cloud:", e);
-      }
+    try {
+      await saveLocalSetting('studyRoomBackgrounds', { categories: nextCategories });
+    } catch (e) {
+      console.error("[LocalDB] Error saving backgrounds:", e);
     }
   };
 
@@ -4629,10 +4660,8 @@ export default function App() {
     fsQuoteShuffleInterval
   ]);
 
-  // 2. Debounced auto-sync to Firestore (only if changed and not matching the last saved ref)
+  // 2. Debounced auto-sync to Local DB
   useEffect(() => {
-    if (!user || !db) return;
-
     const prefsObj = {
       fsYoutubeVideoId,
       fsBgVideoBlur,
@@ -4661,14 +4690,13 @@ export default function App() {
 
     const timer = setTimeout(async () => {
       try {
-        const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'studyRoomPreferences');
-        await setDoc(docRef, prefsObj, { merge: true });
+        await saveLocalSetting('studyRoomPreferences', prefsObj);
         lastSavedPreferencesRef.current = currentSerialized;
-        console.log("Study Room Layout automatically synced to Cloud.");
+        console.log("[LocalDB] Study Room Layout automatically saved to Local DB.");
       } catch (err) {
-        console.warn("Auto-sync to cloud failed (likely quota exceeded):", err);
+        console.warn("[LocalDB] Auto-sync to Local DB failed:", err);
       }
-    }, 5000); // 5 seconds debounce to protect Firestore quota
+    }, 1000);
 
     return () => clearTimeout(timer);
   }, [
@@ -4692,52 +4720,38 @@ export default function App() {
     fsQuoteShuffleInterval
   ]);
 
-  // 3. Load from Cloud on mount/user state load
+  // 3. Load from Local DB on mount
   useEffect(() => {
-    if (user && db) {
-      const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'studyRoomPreferences');
-      getDoc(docRef).then(docSnap => {
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          if (data.fsYoutubeVideoId !== undefined) setFsYoutubeVideoId(data.fsYoutubeVideoId);
-          if (data.fsBgVideoBlur !== undefined) setFsBgVideoBlur(data.fsBgVideoBlur);
-          if (data.fsBgVideoStartTime !== undefined) setFsBgVideoStartTime(data.fsBgVideoStartTime);
-          if (data.fullscreenTimerBg !== undefined) setFullscreenTimerBg(data.fullscreenTimerBg);
-          if (data.fullscreenTimerStyle !== undefined) setFullscreenTimerStyle(data.fullscreenTimerStyle);
-          if (data.fsBgCategory !== undefined) setFsBgCategory(data.fsBgCategory);
-          if (data.fsBgVideoVolume !== undefined) setFsBgVideoVolume(data.fsBgVideoVolume);
-          if (data.fsSoundVolumes !== undefined) setFsSoundVolumes(data.fsSoundVolumes);
-          if (data.fsWidgets !== undefined) setFsWidgets(data.fsWidgets);
-          if (data.fsTimerFontSize !== undefined) setFsTimerFontSize(data.fsTimerFontSize);
-          if (data.fsTimerOpacity !== undefined) setFsTimerOpacity(data.fsTimerOpacity);
-          if (data.fsTimerPos !== undefined) setFsTimerPos(data.fsTimerPos);
-          if (data.fsTimerMoved !== undefined) setFsTimerMoved(data.fsTimerMoved);
-          if (data.fsTimerBlendMode !== undefined) setFsTimerBlendMode(data.fsTimerBlendMode || 'normal');
-          if (data.fsQuoteVisible !== undefined) setFsQuoteVisible(data.fsQuoteVisible);
-          if (data.fsCurrentQuoteIndex !== undefined) setFsCurrentQuoteIndex(data.fsCurrentQuoteIndex);
-          if (data.fsQuoteShuffleInterval !== undefined) setFsQuoteShuffleInterval(data.fsQuoteShuffleInterval);
+    getLocalSetting('studyRoomPreferences').then(data => {
+      if (data) {
+        if (data.fsYoutubeVideoId !== undefined) setFsYoutubeVideoId(data.fsYoutubeVideoId);
+        if (data.fsBgVideoBlur !== undefined) setFsBgVideoBlur(data.fsBgVideoBlur);
+        if (data.fsBgVideoStartTime !== undefined) setFsBgVideoStartTime(data.fsBgVideoStartTime);
+        if (data.fullscreenTimerBg !== undefined) setFullscreenTimerBg(data.fullscreenTimerBg);
+        if (data.fullscreenTimerStyle !== undefined) setFullscreenTimerStyle(data.fullscreenTimerStyle);
+        if (data.fsBgCategory !== undefined) setFsBgCategory(data.fsBgCategory);
+        if (data.fsBgVideoVolume !== undefined) setFsBgVideoVolume(data.fsBgVideoVolume);
+        if (data.fsSoundVolumes !== undefined) setFsSoundVolumes(data.fsSoundVolumes);
+        if (data.fsWidgets !== undefined) setFsWidgets(data.fsWidgets);
+        if (data.fsTimerFontSize !== undefined) setFsTimerFontSize(data.fsTimerFontSize);
+        if (data.fsTimerOpacity !== undefined) setFsTimerOpacity(data.fsTimerOpacity);
+        if (data.fsTimerPos !== undefined) setFsTimerPos(data.fsTimerPos);
+        if (data.fsTimerMoved !== undefined) setFsTimerMoved(data.fsTimerMoved);
+        if (data.fsTimerBlendMode !== undefined) setFsTimerBlendMode(data.fsTimerBlendMode || 'normal');
+        if (data.fsQuoteVisible !== undefined) setFsQuoteVisible(data.fsQuoteVisible);
+        if (data.fsCurrentQuoteIndex !== undefined) setFsCurrentQuoteIndex(data.fsCurrentQuoteIndex);
+        if (data.fsQuoteShuffleInterval !== undefined) setFsQuoteShuffleInterval(data.fsQuoteShuffleInterval);
 
-          const serialized = JSON.stringify(data);
-          lastSavedPreferencesRef.current = serialized;
-          try {
-            localStorage.setItem('study_room_layout_prefs', serialized);
-          } catch (e) {
-            console.error("localStorage cache update failed:", e);
-          }
-        }
-      }).catch(err => {
-        console.warn("Could not fetch layout preferences from Cloud (Firestore):", err);
-      });
-    }
-  }, [user]);
+        const serialized = JSON.stringify(data);
+        lastSavedPreferencesRef.current = serialized;
+      }
+    }).catch(err => {
+      console.warn("[LocalDB] Could not fetch layout preferences:", err);
+    });
+  }, []);
 
-  // Save Study Room Preferences to Cloud manually
+  // Save Study Room Preferences to Local DB manually
   const handleSaveStudyRoomLayout = async () => {
-    if (!user || !db) {
-      setFsSaveToast({ type: 'error', message: 'You must be logged in to save settings to the cloud.' });
-      setTimeout(() => setFsSaveToast(null), 4000);
-      return;
-    }
     const prefsObj = {
       fsYoutubeVideoId,
       fsBgVideoBlur,
@@ -4758,13 +4772,12 @@ export default function App() {
       fsQuoteShuffleInterval
     };
     try {
-      const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'studyRoomPreferences');
-      await setDoc(docRef, prefsObj, { merge: true });
+      await saveLocalSetting('studyRoomPreferences', prefsObj);
       lastSavedPreferencesRef.current = JSON.stringify(prefsObj);
-      setFsSaveToast({ type: 'success', message: 'Layout successfully saved to cloud!' });
+      setFsSaveToast({ type: 'success', message: 'Layout successfully saved to Local DB!' });
       setTimeout(() => setFsSaveToast(null), 3000);
     } catch (err) {
-      console.error("Error saving study room layout:", err);
+      console.error("[LocalDB] Error saving study room layout:", err);
       setFsSaveToast({ type: 'error', message: 'Save failed: ' + err.message });
       setTimeout(() => setFsSaveToast(null), 5000);
     }
@@ -5084,62 +5097,65 @@ export default function App() {
     }
   }, [isMobile]);
 
-  // --- BOTTOM NAV CONFIG SYNC ---
+  // --- INLINE BUTTON SUCCESS CONFIRMATION STATES ---
+  const [credentialsSavedState, setCredentialsSavedState] = useState(false);
+  const [exportBackupState, setExportBackupState] = useState(false);
+  const [importBackupState, setImportBackupState] = useState(false);
+  const [navSavedState, setNavSavedState] = useState(false);
+
+  // --- BOTTOM NAV CONFIG SYNC (Local DB - Item 16.1) ---
   useEffect(() => {
-    if (!user || !db) return;
-    const navRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'bottomNav');
-    const unsub = onSnapshot(navRef, snap => {
-      if (snap.exists()) {
-        const d = snap.data();
-        if (Array.isArray(d.ids) && d.ids.length > 0) {
-          setBottomNavIds(d.ids);
-          setDraftNavIds(d.ids);
-        }
+    let isMounted = true;
+    getLocalSetting('bottomNav').then(savedIds => {
+      if (isMounted && Array.isArray(savedIds) && savedIds.length > 0) {
+        setBottomNavIds(savedIds);
+        setDraftNavIds(savedIds);
       }
-    });
-    return () => unsub();
-  }, [user, db]);
+    }).catch(err => console.error('[LocalDB] Failed to load bottomNav:', err));
+    return () => { isMounted = false; };
+  }, []);
 
   const saveBottomNavIds = useCallback(async (ids) => {
     setBottomNavIds(ids);
     setDraftNavIds(ids);
-    if (!user || !db) return;
-    const navRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'bottomNav');
-    await setDoc(navRef, { ids }, { merge: true });
-    setNavSaveToast(true);
-    setTimeout(() => setNavSaveToast(false), 2000);
-  }, [user, db]);
+    try {
+      await saveLocalSetting('bottomNav', ids);
+      setNavSaveToast(true);
+      setNavSavedState(true);
+      setTimeout(() => setNavSaveToast(false), 2000);
+      setTimeout(() => setNavSavedState(false), 2500);
+    } catch (err) {
+      console.error('[LocalDB] Failed to save bottomNav:', err);
+    }
+  }, []);
 
-  // --- DASHBOARD WIDGETS CONFIG SYNC ---
+  // --- DASHBOARD WIDGETS CONFIG SYNC (Local DB - Item 16.2) ---
   useEffect(() => {
-    if (!user || !db) return;
-    const dashRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'dashboard');
-    const unsub = onSnapshot(dashRef, snap => {
-      if (snap.exists()) {
-        const d = snap.data();
-        if (Array.isArray(d.widgets)) {
-          setDashboardWidgets(prev => {
-            const merged = [...d.widgets];
-            // Ensure no missing default widgets are lost if a saved layout has an older list
-            prev.forEach(pW => {
-              if (!merged.some(mW => mW.id === pW.id)) {
-                merged.push(pW);
-              }
-            });
-            return merged;
+    let isMounted = true;
+    getLocalSetting('dashboard').then(savedWidgets => {
+      if (isMounted && Array.isArray(savedWidgets) && savedWidgets.length > 0) {
+        setDashboardWidgets(prev => {
+          const merged = [...savedWidgets];
+          prev.forEach(pW => {
+            if (!merged.some(mW => mW.id === pW.id)) {
+              merged.push(pW);
+            }
           });
-        }
+          return merged;
+        });
       }
-    });
-    return () => unsub();
-  }, [user, db]);
+    }).catch(err => console.error('[LocalDB] Failed to load dashboard widgets:', err));
+    return () => { isMounted = false; };
+  }, []);
 
   const saveDashboardLayout = useCallback(async (widgets) => {
     setDashboardWidgets(widgets);
-    if (!user || !db) return;
-    const dashRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'dashboard');
-    await setDoc(dashRef, { widgets }, { merge: true });
-  }, [user, db]);
+    try {
+      await saveLocalSetting('dashboard', widgets);
+    } catch (err) {
+      console.error('[LocalDB] Failed to save dashboard layout:', err);
+    }
+  }, []);
 
   // --- PANEL WIDTHS ---
   const DEFAULT_PANEL_WIDTHS = { left: 320, center: 500, deckHeight: 280 };
@@ -5193,10 +5209,17 @@ export default function App() {
   const [pdfDialog, setPdfDialog] = useState({ isOpen: false, file: null, numPages: 0, mappings: [], rotations: {}, isConverting: false });
   const [loadedPdfDoc, setLoadedPdfDoc] = useState(null);
   const [autoTagDialog, setAutoTagDialog] = useState({ isOpen: false });
-  const [operationProgress, setOperationProgress] = useState({ show: false, title: '', message: '', current: 0, total: 0 });
+  const [operationProgress, setOperationProgress] = useState({ show: false, title: '', message: '', current: 0, total: 0, lastError: null });
   const [isProgressMinimized, setIsProgressMinimized] = useState(false);
   const [isPdfScanMinimized, setIsPdfScanMinimized] = useState(false);
   const [isAutosaveEnabled, setIsAutosaveEnabled] = useState(false);
+  const [imageStorageMode, setImageStorageMode] = useState(() => {
+    return localStorage.getItem("pyt_image_storage_mode") || "local";
+  });
+  const [autoBackupEnabled, setAutoBackupEnabled] = useState(true);
+  const [autoBackupFrequency, setAutoBackupFrequency] = useState('daily');
+  const [autoBackupRetention, setAutoBackupRetention] = useState('5');
+  const [lastBackupTime, setLastBackupTime] = useState(null);
   const [floatingPos, setFloatingPos] = useState({ x: window.innerWidth - 200, y: 150 });
   const [isDraggingFloating, setIsDraggingFloating] = useState(false);
   const dragStartOffset = useRef({ x: 0, y: 0 });
@@ -5276,6 +5299,7 @@ export default function App() {
   const [isExportingExtension, setIsExportingExtension] = useState(false);
   const [downloadedExtension, setDownloadedExtension] = useState(false);
   const [systemPrompt, setSystemPrompt] = useState(DEFAULT_PROMPT);
+  const [regeneratingCardId, setRegeneratingCardId] = useState(null);
 
   // GitHub Auto-Upload Configuration
   const [githubUsername, setGithubUsername] = useState(() => localStorage.getItem("pyt_github_username") || "");
@@ -5389,17 +5413,14 @@ export default function App() {
   const [reschedulePreview, setReschedulePreview] = useState(null);
 
   const saveCapToCloud = async (newCap, newOrig = null) => {
-    const uid = targetUid || user?.uid;
-    if (!db || !uid) return;
     try {
-      const settingsRef = doc(db, 'artifacts', appId, 'users', uid, 'settings', 'hierarchy');
-      const updateData = { maxDailyReviewCap: newCap };
+      const updates = { maxDailyReviewCap: newCap };
       if (newOrig !== null) {
-        updateData.originalCap = newOrig;
+        updates.originalCap = newOrig;
       }
-      await setDoc(settingsRef, updateData, { merge: true });
+      await updateHierarchySetting(updates);
     } catch (err) {
-      console.error("Error saving cap to cloud:", err);
+      console.error("Error saving cap locally:", err);
     }
   };
 
@@ -5461,30 +5482,43 @@ export default function App() {
 
 
   // HIERARCHY STATE
-  const [hierarchy, setHierarchy] = useState('Marrow::Pathology');
+  const [hierarchy, setHierarchy] = useState('');
   const [deckPaths, setDeckPaths] = useState([]);
 
   // DERIVED EFFECTIVE DECK PATHS & AUTO-HEAL
   const effectiveDeckPaths = useMemo(() => {
     const pathsSet = new Set();
-    deckPaths.forEach(p => { if (p) pathsSet.add(p); });
-    cloudPages.forEach(p => { if (p.deck && p.deck !== 'Root') pathsSet.add(p.deck); });
-    cards.forEach(c => { if (c.deck && c.deck !== 'Root') pathsSet.add(c.deck); });
+    const addPathAndAncestors = (p) => {
+      if (!p || p === 'Root') return;
+      const parts = p.split('::');
+      let currentPath = '';
+      parts.forEach(part => {
+        currentPath = currentPath ? `${currentPath}::${part}` : part;
+        pathsSet.add(currentPath);
+      });
+    };
+
+    deckPaths.forEach(addPathAndAncestors);
+    cloudPages.forEach(p => { if (p.deck) addPathAndAncestors(p.deck); });
+    cards.forEach(c => { if (c.deck) addPathAndAncestors(c.deck); });
     return Array.from(pathsSet).sort();
   }, [deckPaths, cloudPages, cards]);
 
   useEffect(() => {
-    if (!user || !db) return;
     if (effectiveDeckPaths.length > deckPaths.length) {
       const missing = effectiveDeckPaths.filter(p => !deckPaths.includes(p));
       if (missing.length > 0) {
-        console.log(`[AutoHeal] Discovered ${missing.length} unlisted folder path(s), updating Firestore settings:`, missing);
+        console.log(`[AutoHeal] Discovered ${missing.length} unlisted folder path(s), updating Local DB settings:`, missing);
         setDeckPaths(effectiveDeckPaths);
-        const settingsRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'hierarchy');
-        setDoc(settingsRef, { paths: effectiveDeckPaths }, { merge: true }).catch(err => console.warn('[AutoHeal] Failed to sync deckPaths:', err));
+        getLocalSetting('hierarchy').then(existing => {
+          saveLocalSetting('hierarchy', { ...(existing || {}), paths: effectiveDeckPaths }).catch(err => console.warn('[AutoHeal] Failed to sync deckPaths:', err));
+        });
       }
     }
-  }, [effectiveDeckPaths, deckPaths, user, db]);
+    if (effectiveDeckPaths.length > 0 && (!hierarchy || (!effectiveDeckPaths.includes(hierarchy) && hierarchy !== 'Root' && hierarchy !== 'PENDING_REVIEW' && hierarchy !== 'COMPANION_SCANS'))) {
+      setHierarchy(effectiveDeckPaths[0]);
+    }
+  }, [effectiveDeckPaths, deckPaths, hierarchy]);
 
   // IMAGE PREVIEW STATE
   const [activeQueueId, setActiveQueueId] = useState(null);
@@ -5498,7 +5532,7 @@ export default function App() {
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
-  const [approveDialog, setApproveDialog] = useState({ isOpen: false, pageId: null, targetDeck: '' });
+
   const [searchQuery, setSearchQuery] = useState('');
   const [trashPages, setTrashPages] = useState([]);
   const [trashCards, setTrashCards] = useState([]);
@@ -5522,32 +5556,13 @@ export default function App() {
   const [isImageVerificationModalOpen, setIsImageVerificationModalOpen] = useState(false);
   const [verificationModalCards, setVerificationModalCards] = useState([]);
   const syncCardToFirestore = async (card) => {
-    if (!user || !db || !card || !card.id) return;
+    if (!card || !card.id) return;
     try {
-      const cardDoc = doc(db, 'artifacts', appId, 'users', user.uid, 'flashcards', card.id);
-      const cleanData = {};
-      if (card.front !== undefined) cleanData.front = card.front;
-      if (card.back !== undefined) cleanData.back = card.back;
-      if (card.text !== undefined) cleanData.text = card.text;
-      if (card.extra !== undefined) cleanData.extra = card.extra;
-      if (card.deck !== undefined) cleanData.deck = card.deck;
-      if (card.xmin !== undefined) cleanData.xmin = card.xmin;
-      if (card.ymin !== undefined) cleanData.ymin = card.ymin;
-      if (card.xmax !== undefined) cleanData.xmax = card.xmax;
-      if (card.ymax !== undefined) cleanData.ymax = card.ymax;
-      if (card.excludeImage !== undefined) cleanData.excludeImage = card.excludeImage;
-      if (card.hasImage !== undefined) cleanData.hasImage = card.hasImage;
-      if (card.has_image !== undefined) cleanData.has_image = card.has_image;
-      if (card.img_box !== undefined) cleanData.img_box = card.img_box;
-      if (card.image_side !== undefined) cleanData.image_side = card.image_side;
-      if (card.image_confidence !== undefined) cleanData.image_confidence = card.image_confidence;
-      if (card.occlusions !== undefined) {
-        cleanData.occlusions = sanitizeCardForFirestore({ occlusions: card.occlusions }).occlusions;
-      }
-      cleanData.updatedAt = Date.now();
-      await setDoc(cardDoc, cleanData, { merge: true });
+      const updatedCard = { ...card, updatedAt: Date.now() };
+      await saveLocalCard(updatedCard);
+      setCards(prev => prev.map(c => c.id === card.id ? { ...c, ...updatedCard } : c));
     } catch (err) {
-      console.error("Firestore sync error:", err);
+      console.error("[LocalDB] Error saving card updates locally:", err);
     }
   };
   const zoomWindowRef = useRef(null);
@@ -5562,7 +5577,7 @@ export default function App() {
   const [exportProgressText, setExportProgressText] = useState('');
   const [exportSuccessGuide, setExportSuccessGuide] = useState(null);
   const [currentStudyCardIndex, setCurrentStudyCardIndex] = useState(0);
-  const [selectedDecksToExport, setSelectedDecksToExport] = useState(['Marrow::Pathology']);
+  const [selectedDecksToExport, setSelectedDecksToExport] = useState([]);
   const [selectedInboxPageIds, setSelectedInboxPageIds] = useState([]);
   const [deckSearchQuery, setDeckSearchQuery] = useState('');
   const [hoveredSunburstNode, setHoveredSunburstNode] = useState(null);
@@ -6177,8 +6192,8 @@ export default function App() {
   const logout = async () => {
     try {
       localStorage.removeItem('qr_logged_in_user');
-      setUser(null);
-      await signOut(auth);
+      setUser(DEFAULT_LOCAL_USER);
+      if (auth) await signOut(auth);
     } catch (err) {
       console.error("Logout Error", err);
     }
@@ -6244,21 +6259,19 @@ export default function App() {
     }
 
     const unsubscribe = onAuthStateChanged(auth, (u) => {
-      console.log("Auth State Changed:", u ? u.email : "Logged Out");
+      console.log("Auth State Changed:", u ? u.email : "Local Offline Mode");
       if (u) {
         setUser(u);
         localStorage.removeItem('qr_logged_in_user');
-        setLoading(false);
       } else {
         const stored = localStorage.getItem('qr_logged_in_user');
         if (stored) {
           try {
             setUser(JSON.parse(stored));
           } catch (e) {
-            setUser(null);
+            setUser(DEFAULT_LOCAL_USER);
           }
         } else {
-          setUser(null);
         }
         setLoading(false);
       }
@@ -6266,226 +6279,80 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // --- ON LOGIN: FETCH CARD COUNT (1 READ ONLY) ---
+  // --- INITIALIZE CARD COUNT FROM LOCAL INDEXEDDB (Item 3.2) ---
   useEffect(() => {
-    if (!user || !db) return;
-    const cardsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'flashcards');
-    getCountFromServer(cardsRef).then(snap => {
-      setTotalCardCount(snap.data().count);
-      fbTracker.read(1);
-      setFbUsage(fbTracker.getUsage());
+    let isMounted = true;
+    getLocalCards().then(cards => {
+      if (!isMounted) return;
+      if (Array.isArray(cards)) {
+        setTotalCardCount(cards.length);
+      }
     }).catch(err => {
-      console.error('Failed to get card count:', err);
-      setTotalCardCount(2986); // Fallback to our local cache metric to unblock the rendering engine
+      console.warn('[LocalDB] Failed to read total card count:', err);
     });
-  }, [user]);
+    return () => { isMounted = false; };
+  }, []);
 
-  // --- LAZY CARD LOADERS ---
-  // loadFolderCards: fetches cards for a specific deck path (and all its sub-decks).
-  // Uses a range query so opening "Marrow" loads "Marrow", "Marrow::Pathology", etc.
+  // --- LOCAL FOLDER CARD LOADER (Item 3.3 - INDEXEDDB) ---
+  // loadFolderCards: filters cards for a specific deck path (and all its sub-decks) from Local IndexedDB
   const loadFolderCards = useCallback(async (deckPath, force = false) => {
-    if (!user || !db) return;
     if (allCardsLoaded.current && !force) return; // already have everything
     if (!deckPath || deckPath === 'Root' || deckPath === 'PENDING_REVIEW') {
-      // Root or Pending view — load pages only; cards not needed for folder list
       return;
     }
     if (loadedFolderPaths.current.has(deckPath) && !force) return; // cached this session
     setIsFolderLoading(true);
     try {
-      const cardsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'flashcards');
-      // Range query: matches exact deck AND all sub-decks (e.g. "Marrow::" prefix)
-      const snap = await getDocs(
-        query(cardsRef, where('deck', '>=', deckPath), where('deck', '<=', deckPath + '\uf8ff'))
+      const allLocalCards = await getLocalCards();
+      const prefix = `${deckPath}::`;
+      const folderCards = (allLocalCards || []).filter(c =>
+        c && (c.deck === deckPath || (c.deck && c.deck.startsWith(prefix)))
       );
-      fbTracker.read(snap.size);
-      const newCards = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
       setCards(prev => {
         const existingIds = new Set(prev.map(c => c.id));
-        const toAdd = newCards.filter(c => !existingIds.has(c.id));
+        const toAdd = folderCards.filter(c => !existingIds.has(c.id));
         if (toAdd.length === 0) return prev;
-        return [...prev, ...toAdd].sort((a, b) => b.createdAt - a.createdAt);
+        return [...prev, ...toAdd].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
       });
       loadedFolderPaths.current.add(deckPath);
-      setFbUsage(fbTracker.getUsage());
-    } catch (err) { console.error('Failed to load folder cards:', err); }
-    finally { setIsFolderLoading(false); }
-  }, [user, db]);
-
-  // loadAllCards: fetches/syncs flashcards using delta sync (cache-first + server query of updatedAt > maxCachedUpdatedAt)
-  const loadAllCards = useCallback(async (force = false) => {
-    if (!user || !db) return;
-    if (allCardsLoaded.current && !force) return;
-    allCardsLoaded.current = true;
-    setIsFolderLoading(true);
-    try {
-      const cardsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'flashcards');
-
-      // 1. Fetch from Cache first (0 reads)
-      let cachedCards = [];
-      try {
-        const cacheSnap = await getDocsFromCache(cardsRef);
-        cachedCards = cacheSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        console.log(`[DeltaSync] Loaded ${cachedCards.length} cards from local cache.`);
-      } catch (cacheErr) {
-        console.warn("[DeltaSync] Failed to read from cache (likely empty or first run):", cacheErr);
-      }
-
-      // Find the latest updatedAt timestamp in cache
-      let lastSyncedAt = 0;
-      if (cachedCards.length > 0) {
-        lastSyncedAt = Math.max(...cachedCards.map(c => c.updatedAt || 0));
-      }
-
-      console.log(`[DeltaSync] Querying server for updates since: ${new Date(lastSyncedAt).toISOString()}`);
-
-      // 2. Fetch only modified/new cards from server (uses OR query to catch legacy cards missing updatedAt)
-      let q;
-      if (lastSyncedAt > 0) {
-        q = query(cardsRef, or(where('updatedAt', '>', lastSyncedAt), where('createdAt', '>', lastSyncedAt)));
-      } else {
-        q = cardsRef;
-      }
-      const serverSnap = await getDocsFromServer(q);
-      const serverSize = serverSnap.size;
-      fbTracker.read(serverSize);
-
-      const serverCards = serverSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-      console.log(`[DeltaSync] Fetched ${serverSize} updated cards from Firestore server.`);
-
-      // 3. Fetch Trashed / Deleted Card IDs for Cross-Device Sync
-      let trashedCardIds = new Set();
-      try {
-        const trashCardsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'trash_cards');
-        const deletedRecordsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'deleted_records');
-        const [trashSnap, delSnap] = await Promise.all([
-          getDocs(trashCardsRef).catch(() => ({ docs: [] })),
-          getDocs(deletedRecordsRef).catch(() => ({ docs: [] }))
-        ]);
-        trashSnap.docs.forEach(d => trashedCardIds.add(d.id));
-        delSnap.docs.forEach(d => trashedCardIds.add(d.id));
-      } catch (tErr) {
-        console.warn("[DeltaSync] Trashed/deleted cards lookup warning:", tErr);
-      }
-
-      // 4. Merge: replace cached cards with updated ones, excluding deleted items
-      const cardsMap = new Map();
-      cachedCards.forEach(c => { if (!trashedCardIds.has(c.id)) cardsMap.set(c.id, c); });
-      serverCards.forEach(c => { if (!trashedCardIds.has(c.id)) cardsMap.set(c.id, c); });
-
-      const mergedCards = Array.from(cardsMap.values())
-        .filter(c => !trashedCardIds.has(c.id))
-        .sort((a, b) => b.createdAt - a.createdAt);
-
-      setCards(mergedCards);
-      setTotalCardCount(mergedCards.length);
-      allCardsLoaded.current = true;
-      setFbUsage(fbTracker.getUsage());
     } catch (err) {
-      console.error('Failed to load cards via Delta Sync, falling back to full query:', err);
-      try {
-        const cardsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'flashcards');
-        const snap = await getDocs(cardsRef);
-        fbTracker.read(snap.size);
-        const allCards = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-          .sort((a, b) => b.createdAt - a.createdAt);
-        setCards(allCards);
-        setTotalCardCount(allCards.length);
-        allCardsLoaded.current = true;
-        setFbUsage(fbTracker.getUsage());
-      } catch (fbErr) {
-        console.error('Fallback loadAllCards failed:', fbErr);
-      }
+      console.error('Failed to load folder cards locally:', err);
     } finally {
       setIsFolderLoading(false);
     }
-  }, [user, db]);
+  }, []);
 
-  // --- LAZY PAGES LOADER ---
-  const loadPages = useCallback(async (force = false) => {
-    if (!user || !db) return;
-    if (pagesLoaded.current && !force) return;
-    pagesLoaded.current = true;
+  // --- LOCAL GLOBAL FLASHCARD LOADER (Item 3.4 - INDEXEDDB) ---
+  const loadAllCards = useCallback(async (force = false) => {
+    if (allCardsLoaded.current && !force) return;
+    setIsFolderLoading(true);
     try {
-      const pagesRef = collection(db, 'artifacts', appId, 'users', user.uid, 'pages');
-
-      // 1. Fetch from Cache first (0 reads)
-      let cachedPages = [];
-      try {
-        const cacheSnap = await getDocsFromCache(pagesRef);
-        cachedPages = cacheSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        console.log(`[DeltaSync] Loaded ${cachedPages.length} pages from local cache.`);
-      } catch (cacheErr) {
-        console.warn("[DeltaSync] Failed to read pages from cache:", cacheErr);
-      }
-
-      // Find the latest updatedAt timestamp in cache
-      let lastSyncedAt = 0;
-      if (cachedPages.length > 0) {
-        lastSyncedAt = Math.max(...cachedPages.map(p => p.updatedAt || p.createdAt || 0));
-      }
-
-      console.log(`[DeltaSync] Querying server for pages since: ${new Date(lastSyncedAt).toISOString()}`);
-
-      // 2. Fetch only modified/new pages from server (using OR query to catch legacy pages missing updatedAt)
-      let q;
-      if (lastSyncedAt > 0) {
-        q = query(pagesRef, or(where('updatedAt', '>', lastSyncedAt), where('createdAt', '>', lastSyncedAt)));
-      } else {
-        q = pagesRef;
-      }
-      const serverSnap = await getDocsFromServer(q);
-      const serverSize = serverSnap.size;
-      fbTracker.read(serverSize);
-
-      const serverPages = serverSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-      console.log(`[DeltaSync] Fetched ${serverSize} updated pages from Firestore server.`);
-
-      // 3. Fetch Trashed / Deleted Page IDs for Cross-Device Sync
-      let trashedPageIds = new Set();
-      try {
-        const trashPagesRef = collection(db, 'artifacts', appId, 'users', user.uid, 'trash_pages');
-        const deletedRecordsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'deleted_records');
-        const [trashSnap, delSnap] = await Promise.all([
-          getDocs(trashPagesRef).catch(() => ({ docs: [] })),
-          getDocs(deletedRecordsRef).catch(() => ({ docs: [] }))
-        ]);
-        trashSnap.docs.forEach(d => trashedPageIds.add(d.id));
-        delSnap.docs.forEach(d => trashedPageIds.add(d.id));
-      } catch (tErr) {
-        console.warn("[DeltaSync] Trashed/deleted pages lookup warning:", tErr);
-      }
-
-      // 4. Merge: replace cached pages with updated ones, excluding deleted items
-      const pagesMap = new Map();
-      cachedPages.forEach(p => { if (!trashedPageIds.has(p.id)) pagesMap.set(p.id, p); });
-      serverPages.forEach(p => { if (!trashedPageIds.has(p.id)) pagesMap.set(p.id, p); });
-
-      const mergedPages = Array.from(pagesMap.values())
-        .filter(p => !trashedPageIds.has(p.id))
-        .sort((a, b) => b.createdAt - a.createdAt);
-
-      setCloudPages(mergedPages);
-      setPendingPageCount(mergedPages.filter(p => p.isPending).length);
-      pagesLoaded.current = true;
-      setFbUsage(fbTracker.getUsage());
+      const localCards = await getLocalCards();
+      const sortedCards = (localCards || []).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      setCards(sortedCards);
+      setTotalCardCount(sortedCards.length);
+      allCardsLoaded.current = true;
     } catch (err) {
-      console.error('Failed to load pages via Delta Sync, falling back to full query:', err);
-      try {
-        const pagesRef = collection(db, 'artifacts', appId, 'users', user.uid, 'pages');
-        const snap = await getDocs(pagesRef);
-        fbTracker.read(snap.size);
-        const fetchedPages = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-          .sort((a, b) => b.createdAt - a.createdAt);
-        setCloudPages(fetchedPages);
-        setPendingPageCount(fetchedPages.filter(p => p.isPending).length);
-        pagesLoaded.current = true;
-        setFbUsage(fbTracker.getUsage());
-      } catch (fbErr) {
-        console.error('Fallback loadPages failed:', fbErr);
-      }
+      console.error('[LocalDB] Failed to load all cards locally:', err);
+    } finally {
+      setIsFolderLoading(false);
     }
-  }, [user, db]);
+  }, []);
+
+  // --- LOCAL SCANS / PAGES LOADER (Item 3.5 - INDEXEDDB) ---
+  const loadPages = useCallback(async (force = false) => {
+    if (pagesLoaded.current && !force) return;
+    try {
+      const localPages = await getLocalPages();
+      const sortedPages = (localPages || []).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      setCloudPages(sortedPages);
+      setPendingPageCount(sortedPages.filter(p => p.isPending).length);
+      pagesLoaded.current = true;
+    } catch (err) {
+      console.error('[LocalDB] Failed to load pages locally:', err);
+    }
+  }, []);
 
   // --- LAZY STUDY LOGS LOADER ---
   const loadStudyLogs = useCallback(async (force = false) => {
@@ -6507,26 +6374,24 @@ export default function App() {
 
   // --- TAB CHANGE: TRIGGER APPROPRIATE LAZY LOADS ---
   useEffect(() => {
-    if (!user || !db) return;
     if (['dashboard', 'cards', 'library', 'studyRoom', 'analytics', 'export', 'prompt', 'obsOverlay'].includes(currentTab)) {
       loadPages();
     }
-    if (['dashboard', 'studyRoom', 'analytics', 'export', 'prompt', 'obsOverlay'].includes(currentTab)) {
+    if (['dashboard', 'cards', 'library', 'studyRoom', 'analytics', 'export', 'prompt', 'obsOverlay'].includes(currentTab)) {
       loadAllCards();
     }
-    if (['dashboard', 'studyRoom', 'analytics', 'correlation', 'obsOverlay'].includes(currentTab)) {
+    if (user && db && ['dashboard', 'studyRoom', 'analytics', 'correlation', 'obsOverlay'].includes(currentTab)) {
       loadStudyLogs();
     }
   }, [currentTab, user, db, loadAllCards, loadPages, loadStudyLogs]);
 
   // --- FOLDER/HIERARCHY CHANGE: TRIGGER FOLDER CARD LOAD ---
   useEffect(() => {
-    if (!user || !db) return;
     loadPages(); // pages always needed when navigating folders
     if (hierarchy && hierarchy !== 'PENDING_REVIEW') {
       loadFolderCards(hierarchy);
     }
-  }, [hierarchy, user, db, loadFolderCards, loadPages]);
+  }, [hierarchy, loadFolderCards, loadPages]);
 
   // --- SEARCH: ENSURE ALL CARDS ARE LOADED ---
   useEffect(() => {
@@ -6535,22 +6400,24 @@ export default function App() {
     }
   }, [searchQuery, loadAllCards]);
 
-  // --- LAZY TRASH LOADER ---
+  // --- LOCAL TRASH LOADER (Item 3.6 - INDEXEDDB) ---
   const loadTrash = useCallback(async () => {
-    if (!user || !db || trashLoaded.current) return;
+    if (trashLoaded.current) return;
     setIsTrashLoading(true);
     try {
-      const trashPagesRef = collection(db, 'artifacts', appId, 'users', user.uid, 'trash_pages');
-      const trashCardsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'trash_cards');
-      const [pSnap, cSnap] = await Promise.all([getDocs(trashPagesRef), getDocs(trashCardsRef)]);
-      fbTracker.read(pSnap.size + cSnap.size);
-      setTrashPages(pSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => b.deletedAt - a.deletedAt));
-      setTrashCards(cSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => b.deletedAt - a.deletedAt));
+      const [tPages, tCards] = await Promise.all([
+        getLocalKV('trash_pages'),
+        getLocalKV('trash_cards')
+      ]);
+      setTrashPages((tPages || []).sort((a, b) => (b.deletedAt || 0) - (a.deletedAt || 0)));
+      setTrashCards((tCards || []).sort((a, b) => (b.deletedAt || 0) - (a.deletedAt || 0)));
       trashLoaded.current = true;
-      setFbUsage(fbTracker.getUsage());
-    } catch (err) { console.error('Failed to load trash:', err); }
-    finally { setIsTrashLoading(false); }
-  }, [user, db]);
+    } catch (err) {
+      console.error('[LocalDB] Failed to load trash:', err);
+    } finally {
+      setIsTrashLoading(false);
+    }
+  }, []);
 
   // Handle PYT progress increment/decrement & database auto-save
   const handlePytCountChange = async (subject, topicName, newCount) => {
@@ -9711,10 +9578,9 @@ JSON Format:
 
       await setDoc(pageDocRef, {
         imageUrl: finalImageUrl,
-        deck: 'Mobile Scans Inbox',
+        deck: hierarchy || (deckPaths[0] || 'General'),
         fileName: file.name || `Scan_${formattedDate.replace(/[\s,:]/g, '_')}.jpg`,
         isCompanionScan: true,
-        isPending: true,
         createdAt: Date.now(),
         updatedAt: Date.now()
       });
@@ -10181,8 +10047,8 @@ JSON Format:
     if (hierarchy === 'COMPANION_SCANS') {
       return uniqueCloudPages.filter(p => p.isCompanionScan);
     }
-    // Show both pending and approved pages in the folder (including subfolders)
-    return uniqueCloudPages.filter(p => p.deck === hierarchy || (p.deck && p.deck.startsWith(hierarchy + '::')));
+    // Show only pages belonging directly to this folder (subfolder items appear inside subfolders)
+    return uniqueCloudPages.filter(p => p.deck === hierarchy);
   }, [uniqueCloudPages, hierarchy, selectedTags, cards]);
 
   // Auto-scroll to card when highlighted from search or image
@@ -10230,11 +10096,11 @@ JSON Format:
 
   // Extract all unique tags in active library
   const allTags = useMemo(() => {
-    // Filter cards belonging to the selected folder/deck or its nested children
+    // Filter cards belonging directly to the selected folder/deck
     const activeFolderCards = cards.filter(card => {
       if (!hierarchy) return true;
       if (hierarchy === 'PENDING_REVIEW') return card.isPending;
-      return card.deck === hierarchy || (card.deck && card.deck.startsWith(hierarchy + '::'));
+      return card.deck === hierarchy;
     });
 
     // Further restrict the active cards if there are selectedTags
@@ -13070,22 +12936,17 @@ JSON Format:
   };
 
 
-  // --- ONE-TIME AUTO-HEAL: INITIALIZE PRE-AGGREGATED CARD COUNTS ---
+  // --- ONE-TIME AUTO-HEAL: INITIALIZE PRE-AGGREGATED CARD COUNTS (LOCAL INDEXEDDB) ---
   const initializeStatsCounts = async (paths) => {
-    if (!user || !db) return;
-    console.log("[Auto-Heal] Initializing pre-aggregated card counts...");
+    console.log("[Auto-Heal] Initializing pre-aggregated card counts locally...");
     try {
-      const cardsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'flashcards');
-
+      const allLocalCards = await getLocalCards();
       const newDeckCounts = {};
       const newSubjectCounts = {};
 
       for (const path of paths) {
-        const q = query(cardsRef, where('deck', '==', path));
-        const snap = await getCountFromServer(q);
-        const count = snap.data().count;
+        const count = (allLocalCards || []).filter(c => c && c.deck === path).length;
         newDeckCounts[path] = count;
-        fbTracker.read(1); // 1 read per count query
 
         const parts = path.split('::');
         const subject = parts.length > 1 ? parts[parts.length - 1] : parts[0];
@@ -13094,22 +12955,20 @@ JSON Format:
         }
       }
 
-      const settingsRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'hierarchy');
-      await setDoc(settingsRef, {
+      await updateHierarchySetting({
         deckCardCounts: newDeckCounts,
         subjectCardCounts: newSubjectCounts
-      }, { merge: true });
+      });
 
       setDeckCardCounts(newDeckCounts);
       setSubjectCardCounts(newSubjectCounts);
-      setFbUsage(fbTracker.getUsage());
     } catch (err) {
-      console.error("[Auto-Heal] Failed to initialize counts:", err);
+      console.error("[Auto-Heal] Failed to initialize counts locally:", err);
     }
   };
 
   const batchUpdateCardCounts = async (updates) => {
-    if (!user || !db || !updates || Object.keys(updates).length === 0) return;
+    if (!updates || Object.keys(updates).length === 0) return;
     try {
       const nextDeckCounts = { ...deckCardCounts };
       const nextSubjectCounts = { ...subjectCardCounts };
@@ -13124,32 +12983,32 @@ JSON Format:
         }
       });
 
-      const settingsRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'hierarchy');
-      await setDoc(settingsRef, {
-        deckCardCounts: nextDeckCounts,
-        subjectCardCounts: nextSubjectCounts
-      }, { merge: true });
-
       setDeckCardCounts(nextDeckCounts);
       setSubjectCardCounts(nextSubjectCounts);
-      fbTracker.write(1);
-      setFbUsage(fbTracker.getUsage());
-      console.log("[Stats] Card counts updated:", updates);
+
+      await updateHierarchySetting({
+        deckCardCounts: nextDeckCounts,
+        subjectCardCounts: nextSubjectCounts
+      });
+      console.log("[Stats] Card counts updated locally:", updates);
     } catch (err) {
-      console.error("[Stats] Failed to batch update card counts:", err);
+      console.error("[Stats] Failed to batch update card counts locally:", err);
     }
   };
 
-  // --- SYNC DECK HIERARCHY (FOLDERS) & STUDY CAP ---
+  // --- SYNC DECK HIERARCHY (FOLDERS) & STUDY CAP (Local DB - Item 16.3) ---
   useEffect(() => {
-    const uid = targetUid || user?.uid;
-    if (!uid || !db) return;
-    const settingsRef = doc(db, 'artifacts', appId, 'users', uid, 'settings', 'hierarchy');
-    const unsubscribe = onSnapshot(settingsRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        if (data.paths && Array.isArray(data.paths)) {
+    let isMounted = true;
+    getLocalSetting('hierarchy').then(data => {
+      if (!isMounted) return;
+      if (data) {
+        if (data.paths && Array.isArray(data.paths) && data.paths.length > 0) {
           setDeckPaths(data.paths);
+          if (data.activeHierarchy && data.paths.includes(data.activeHierarchy)) {
+            setHierarchy(data.activeHierarchy);
+          } else if (data.paths.length > 0) {
+            setHierarchy(data.paths[0]);
+          }
         }
         if (data.deckCardCounts) {
           setDeckCardCounts(data.deckCardCounts);
@@ -13163,7 +13022,6 @@ JSON Format:
         if (data.originalCap !== undefined) {
           setOriginalCap(data.originalCap);
         }
-        // Auto-heal if deck counts are missing or empty
         if (!data.deckCardCounts || Object.keys(data.deckCardCounts).length === 0) {
           if (!statsCountInitialized.current) {
             statsCountInitialized.current = true;
@@ -13172,88 +13030,221 @@ JSON Format:
         }
       } else {
         // First time user? Set defaults
-        const defaults = ['Marrow', 'Marrow::Pathology', 'Marrow::Pharmacology'];
+        const defaults = ['General'];
         setDeckPaths(defaults);
-        setDoc(settingsRef, {
+        setHierarchy('General');
+        saveLocalSetting('hierarchy', {
           paths: defaults,
+          activeHierarchy: 'General',
           maxDailyReviewCap: 30,
           originalCap: 30
-        }, { merge: true });
+        }).catch(err => console.warn('[LocalDB] Error saving hierarchy:', err));
         initializeStatsCounts(defaults);
       }
-    });
-    return () => unsubscribe();
+    }).catch(err => console.warn('[LocalDB] Error reading hierarchy:', err));
+    return () => { isMounted = false; };
   }, [db, targetUid, user]);
 
-  // --- FETCH API KEYS FROM CLOUD ---
+  // --- FETCH & PERSIST API KEYS + GITHUB CREDENTIALS LOCALLY ---
+  const [settingsThemeMode, setSettingsThemeMode] = useState(() => {
+    return localStorage.getItem("pyt_settings_theme_mode") || "light";
+  });
+
+  const saveSettingsThemeMode = async (mode) => {
+    setSettingsThemeMode(mode);
+    try {
+      localStorage.setItem("pyt_settings_theme_mode", mode);
+      const existing = (await getLocalSetting('apiKeys')) || {};
+      await saveLocalSetting('apiKeys', { ...existing, settingsThemeMode: mode });
+    } catch (err) {
+      console.error("[LocalDB] Failed to save settings theme mode:", err);
+    }
+  };
+
   useEffect(() => {
-    if (!user || !db) return;
-    const keysRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'keys');
-    const unsubscribe = onSnapshot(keysRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        if (data.geminiApiKey) {
+    // 1. Synchronous fallback read from localStorage
+    const lsGemini = localStorage.getItem("pyt_gemini_api_key");
+    const lsImgbb = localStorage.getItem("pyt_imgbb_api_key");
+    const lsGhUser = localStorage.getItem("pyt_github_username");
+    const lsGhRepo = localStorage.getItem("pyt_github_repo");
+    const lsGhPat = localStorage.getItem("pyt_github_pat");
+
+    const lsAutoBackup = localStorage.getItem("pyt_auto_backup_enabled");
+    const lsAutoFreq = localStorage.getItem("pyt_auto_backup_freq");
+    const lsAutoRet = localStorage.getItem("pyt_auto_backup_ret");
+    const lsThemeMode = localStorage.getItem("pyt_settings_theme_mode");
+
+    if (lsGemini) setGeminiApiKey(lsGemini);
+    if (lsImgbb) setImgbbApiKey(lsImgbb);
+    if (lsGhUser) setGithubUsername(lsGhUser);
+    if (lsGhRepo) setGithubRepo(lsGhRepo);
+    if (lsGhPat) setGithubPatToken(lsGhPat);
+
+    if (lsAutoBackup !== null) setAutoBackupEnabled(lsAutoBackup === 'true');
+    if (lsAutoFreq) setAutoBackupFrequency(lsAutoFreq);
+    if (lsAutoRet) setAutoBackupRetention(lsAutoRet);
+    if (lsThemeMode) setSettingsThemeMode(lsThemeMode);
+
+    // 2. Full read from IndexedDB
+    getLocalSetting('apiKeys').then(data => {
+      if (data) {
+        if (data.geminiApiKey !== undefined) {
           setGeminiApiKey(data.geminiApiKey);
           localStorage.setItem("pyt_gemini_api_key", data.geminiApiKey);
         }
-        if (data.imgbbApiKey) {
+        if (data.imgbbApiKey !== undefined) {
           setImgbbApiKey(data.imgbbApiKey);
           localStorage.setItem("pyt_imgbb_api_key", data.imgbbApiKey);
         }
         if (data.githubUsername !== undefined) {
           setGithubUsername(data.githubUsername);
+          localStorage.setItem("pyt_github_username", data.githubUsername);
         }
         if (data.githubRepo !== undefined) {
           setGithubRepo(data.githubRepo);
+          localStorage.setItem("pyt_github_repo", data.githubRepo);
         }
         if (data.githubPatToken !== undefined) {
           setGithubPatToken(data.githubPatToken);
+          localStorage.setItem("pyt_github_pat", data.githubPatToken);
+        }
+        if (data.autoBackupEnabled !== undefined) {
+          setAutoBackupEnabled(data.autoBackupEnabled);
+          localStorage.setItem("pyt_auto_backup_enabled", String(data.autoBackupEnabled));
+        }
+        if (data.autoBackupFrequency) {
+          setAutoBackupFrequency(data.autoBackupFrequency);
+          localStorage.setItem("pyt_auto_backup_freq", data.autoBackupFrequency);
+        }
+        if (data.autoBackupRetention) {
+          setAutoBackupRetention(data.autoBackupRetention);
+          localStorage.setItem("pyt_auto_backup_ret", data.autoBackupRetention);
         }
       }
-    }, (error) => {
-      console.error("Error fetching keys:", error);
-    });
-    return () => unsubscribe();
-  }, [user]);
+    }).catch(err => console.error("[LocalDB] Error fetching credentials:", err));
+  }, []);
 
-  const saveApiKeysToCloud = async () => {
-    if (!user || !db) {
-      alert("Please log in first to save keys to the cloud.");
-      return;
-    }
-    const keysRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'keys');
+  const saveAllCredentialsLocal = async () => {
     try {
-      await setDoc(keysRef, { 
+      const payload = {
         geminiApiKey: geminiApiKey || '',
-        imgbbApiKey: imgbbApiKey || '' 
-      }, { merge: true });
+        imgbbApiKey: imgbbApiKey || '',
+        githubUsername: githubUsername || '',
+        githubRepo: githubRepo || '',
+        githubPatToken: githubPatToken || '',
+        autoBackupEnabled,
+        autoBackupFrequency,
+        autoBackupRetention
+      };
+      await saveLocalSetting('apiKeys', payload);
+
+      // Save to localStorage as well
       if (geminiApiKey) localStorage.setItem("pyt_gemini_api_key", geminiApiKey);
       if (imgbbApiKey) localStorage.setItem("pyt_imgbb_api_key", imgbbApiKey);
-      alert("API Keys (Gemini & ImgBB) saved to Cloud & Local Storage successfully!");
+      if (githubUsername) localStorage.setItem("pyt_github_username", githubUsername);
+      if (githubRepo) localStorage.setItem("pyt_github_repo", githubRepo);
+      if (githubPatToken) localStorage.setItem("pyt_github_pat", githubPatToken);
+
+      localStorage.setItem("pyt_auto_backup_enabled", String(autoBackupEnabled));
+      localStorage.setItem("pyt_auto_backup_freq", autoBackupFrequency);
+      localStorage.setItem("pyt_auto_backup_ret", autoBackupRetention);
+
+      // Inline success confirmation (only if save actually worked)
+      setCredentialsSavedState(true);
+      setTimeout(() => setCredentialsSavedState(false), 2500);
     } catch (err) {
-      console.error("Failed to save API Keys to cloud:", err);
-      alert("Failed to save API Keys to cloud: " + err.message);
+      console.error("[LocalDB] Failed to save credentials:", err);
     }
   };
 
-
-
-  const saveGithubCredentialsToCloud = async () => {
-    if (!user || !db) {
-      alert("Please log in first to save credentials to the cloud.");
-      return;
-    }
-    const keysRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'keys');
+  const handleExportBackup = async () => {
     try {
-      await setDoc(keysRef, {
-        githubUsername,
-        githubRepo,
-        githubPatToken
-      }, { merge: true });
-      alert("GitHub credentials saved to cloud successfully!");
+      const backupData = {
+        version: 1,
+        timestamp: new Date().toISOString(),
+        apiKeys: (await getLocalSetting('apiKeys')) || {
+          geminiApiKey: geminiApiKey || '',
+          imgbbApiKey: imgbbApiKey || '',
+          githubUsername: githubUsername || '',
+          githubRepo: githubRepo || '',
+          githubPatToken: githubPatToken || ''
+        },
+        settingsThemeMode,
+        draftNavIds,
+        autoBackupEnabled,
+        autoBackupFrequency,
+        autoBackupRetention
+      };
+      const jsonStr = JSON.stringify(backupData, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `auto-anki-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      setExportBackupState(true);
+      setTimeout(() => setExportBackupState(false), 2500);
     } catch (err) {
-      console.error("Failed to save GitHub credentials to cloud:", err);
-      alert("Failed to save GitHub credentials to cloud: " + err.message);
+      console.error("Export backup failed:", err);
+    }
+  };
+
+  const handleImportBackup = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,application/json';
+    input.onchange = async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const backup = JSON.parse(text);
+        if (backup.apiKeys) {
+          await saveLocalSetting('apiKeys', backup.apiKeys);
+          if (backup.apiKeys.geminiApiKey) setGeminiApiKey(backup.apiKeys.geminiApiKey);
+          if (backup.apiKeys.imgbbApiKey) setImgbbApiKey(backup.apiKeys.imgbbApiKey);
+          if (backup.apiKeys.githubUsername) setGithubUsername(backup.apiKeys.githubUsername);
+          if (backup.apiKeys.githubRepo) setGithubRepo(backup.apiKeys.githubRepo);
+          if (backup.apiKeys.githubPatToken) setGithubPatToken(backup.apiKeys.githubPatToken);
+        }
+        if (backup.draftNavIds) {
+          setDraftNavIds(backup.draftNavIds);
+          saveBottomNavIds(backup.draftNavIds);
+        }
+        if (backup.settingsThemeMode) {
+          setSettingsThemeMode(backup.settingsThemeMode);
+        }
+        setImportBackupState(true);
+        setTimeout(() => setImportBackupState(false), 2500);
+      } catch (err) {
+        console.error("Import backup failed:", err);
+      }
+    };
+    input.click();
+  };
+
+  const saveBackupConfigLocal = async (enabled, freq, ret) => {
+    setAutoBackupEnabled(enabled);
+    setAutoBackupFrequency(freq);
+    setAutoBackupRetention(ret);
+    try {
+      const existing = (await getLocalSetting('apiKeys')) || {};
+      const payload = {
+        ...existing,
+        autoBackupEnabled: enabled,
+        autoBackupFrequency: freq,
+        autoBackupRetention: ret
+      };
+      await saveLocalSetting('apiKeys', payload);
+      localStorage.setItem("pyt_auto_backup_enabled", String(enabled));
+      localStorage.setItem("pyt_auto_backup_freq", freq);
+      localStorage.setItem("pyt_auto_backup_ret", ret);
+    } catch (err) {
+      console.error("[LocalDB] Failed to save auto-backup settings:", err);
     }
   };
 
@@ -14710,11 +14701,13 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
   };
 
   const selectActivePrompt = async (id) => {
-    if (!user || !db) return;
     try {
-      const activePromptDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'activePrompt');
-      await setDoc(activePromptDocRef, { activePromptId: id }, { merge: true });
+      if (user && db) {
+        const activePromptDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'activePrompt');
+        await setDoc(activePromptDocRef, { activePromptId: id }, { merge: true });
+      }
       setActivePromptId(id);
+      saveLocalSetting('activePromptId', id);
 
       let targetContent = DEFAULT_PROMPT;
       if (id !== 'default') {
@@ -14723,37 +14716,20 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       }
       setSystemPrompt(targetContent);
       alert("Active prompt changed successfully!");
-    } catch (error) {
-      console.error("Error setting active prompt:", error);
-      alert("Failed to set active prompt: " + error.message);
+    } catch (err) {
+      console.error("Error setting active prompt:", err);
+      alert("Failed to set active prompt: " + err.message);
     }
   };
 
-  // --- GLOBAL PASTE LISTENER ---
-  useEffect(() => {
-    const handlePaste = async (e) => {
-      const items = e.clipboardData?.items;
-      if (!items) return;
+  // --- HIERARCHY / FOLDER HANDLERS (LOCAL INDEXEDDB) ---
+  const updateHierarchySetting = async (updates) => {
+    const existing = (await getLocalSetting('hierarchy')) || {};
+    const merged = { ...existing, ...updates };
+    await saveLocalSetting('hierarchy', merged);
+    return merged;
+  };
 
-      const imageFiles = [];
-      for (let i = 0; i < items.length; i++) {
-        if (items[i].type.indexOf('image') === 0) {
-          const file = items[i].getAsFile();
-          const newFile = new File([file], `Pasted_Image_${Math.floor(Math.random() * 10000)}.png`, { type: file.type });
-          imageFiles.push(newFile);
-        }
-      }
-
-      if (imageFiles.length > 0) {
-        await addFilesToQueue(imageFiles);
-      }
-    };
-
-    window.addEventListener('paste', handlePaste);
-    return () => window.removeEventListener('paste', handlePaste);
-  }, [hierarchy]);
-
-  // --- HIERARCHY / FOLDER HANDLERS ---
   const handleSaveNewFolder = async () => {
     if (!newFolderDialog.input.trim()) return;
 
@@ -14764,9 +14740,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     if (!deckPaths.includes(newPath)) {
       const nextPaths = Array.from(new Set([...deckPaths, newPath]));
       setDeckPaths(nextPaths);
-      // Sync to Cloud
-      const settingsRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'hierarchy');
-      await setDoc(settingsRef, { paths: nextPaths }, { merge: true });
+      await updateHierarchySetting({ paths: nextPaths });
     }
     setHierarchy(newPath);
     setNewFolderDialog({ isOpen: false, basePath: '', input: '' });
@@ -14792,7 +14766,6 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
 
     // 1. Update deckPaths state with order
     const finalPaths = (() => {
-      // Remove dragged and its children
       const others = deckPaths.filter(p => p !== draggedPath && !p.startsWith(`${draggedPath}::`));
       const targetIdx = others.indexOf(targetPath);
 
@@ -14802,17 +14775,14 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       } else if (position === 'below') {
         updated = [...others.slice(0, targetIdx + 1), draggedPath, ...others.slice(targetIdx + 1)];
       } else {
-        // Inside
         updated = [...others, draggedPath];
       }
 
-      // Re-map children
       const final = updated.map(p => {
         if (p === draggedPath) return newBasePath;
         return p;
       });
 
-      // Add children back with new paths
       const children = deckPaths.filter(p => p.startsWith(`${draggedPath}::`));
       children.forEach(child => {
         final.push(child.replace(draggedPath, newBasePath));
@@ -14822,87 +14792,36 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     })();
 
     setDeckPaths(finalPaths);
-    // Sync to Cloud
-    const settingsRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'hierarchy');
-    await setDoc(settingsRef, { paths: finalPaths }, { merge: true });
+    await updateHierarchySetting({ paths: finalPaths });
 
     if (hierarchy === draggedPath || hierarchy.startsWith(`${draggedPath}::`)) {
       setHierarchy(hierarchy.replace(draggedPath, newBasePath));
     }
-    // 2. Cloud Sync: Scan and update ALL pages and cards matching draggedPath prefix
-    if (!user || !db) return;
+
+    // 2. Update local Pages & Cards in IndexedDB (non-destructive)
     try {
-      const pagesRef = collection(db, 'artifacts', appId, 'users', user.uid, 'pages');
-      const cardsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'flashcards');
-
-      // Fetch all exact folder pages and subfolder pages from Firestore
-      const [snapPagesExact, snapPagesSub] = await Promise.all([
-        getDocs(query(pagesRef, where('deck', '==', draggedPath))),
-        getDocs(query(pagesRef, where('deck', '>=', draggedPath + '::'), where('deck', '<=', draggedPath + '::\uf8ff')))
-      ]);
-      fbTracker.read(snapPagesExact.size + snapPagesSub.size);
-
-      // Fetch all exact folder cards and subfolder cards from Firestore
-      const [snapCardsExact, snapCardsSub] = await Promise.all([
-        getDocs(query(cardsRef, where('deck', '==', draggedPath))),
-        getDocs(query(cardsRef, where('deck', '>=', draggedPath + '::'), where('deck', '<=', draggedPath + '::\uf8ff')))
-      ]);
-      fbTracker.read(snapCardsExact.size + snapCardsSub.size);
-
-      let batch = writeBatch(db);
-      let ops = 0;
       const nowTime = Date.now();
-
-      const commitIfNeeded = async () => {
-        if (ops >= 450) {
-          await batch.commit();
-          batch = writeBatch(db);
-          ops = 0;
-        }
-      };
-
-      const allPagesDocs = [...snapPagesExact.docs, ...snapPagesSub.docs];
-      for (const pageDoc of allPagesDocs) {
-        const pageData = pageDoc.data();
-        const newDeck = pageData.deck.replace(draggedPath, newBasePath);
-        batch.set(doc(db, 'artifacts', appId, 'users', user.uid, 'pages', pageDoc.id), { deck: newDeck }, { merge: true });
-        ops++;
-        await commitIfNeeded();
-      }
-
-      const allCardsDocs = [...snapCardsExact.docs, ...snapCardsSub.docs];
-      for (const cardDoc of allCardsDocs) {
-        const cardData = cardDoc.data();
-        const newDeck = cardData.deck.replace(draggedPath, newBasePath);
-        const nextTags = updateFolderTagsOnMove(cardData.tags || [], cardData.deck, newDeck);
-        batch.set(doc(db, 'artifacts', appId, 'users', user.uid, 'flashcards', cardDoc.id), { deck: newDeck, tags: nextTags, updatedAt: nowTime }, { merge: true });
-        ops++;
-        await commitIfNeeded();
-      }
-
-      if (ops > 0) {
-        await batch.commit();
-      }
-
-      fbTracker.write(allPagesDocs.length + allCardsDocs.length);
-      setFbUsage(fbTracker.getUsage());
-
-      // Optimistic updates for elements in local memory
-      setCloudPages(prev => prev.map(p => {
-        if (p.deck === draggedPath || p.deck.startsWith(`${draggedPath}::`)) {
+      const allLocalPages = await getLocalPages();
+      const updatedPages = (allLocalPages || []).map(p => {
+        if (p.deck === draggedPath || (p.deck && p.deck.startsWith(`${draggedPath}::`))) {
           return { ...p, deck: p.deck.replace(draggedPath, newBasePath) };
         }
         return p;
-      }));
+      });
+      setCloudPages(updatedPages);
+      await saveLocalPages(updatedPages);
 
-      setCards(prev => prev.map(c => {
-        if (c.deck === draggedPath || c.deck.startsWith(`${draggedPath}::`)) {
+      const allLocalCards = await getLocalCards();
+      const updatedCards = (allLocalCards || []).map(c => {
+        if (c.deck === draggedPath || (c.deck && c.deck.startsWith(`${draggedPath}::`))) {
           const nextDeck = c.deck.replace(draggedPath, newBasePath);
           const nextTags = updateFolderTagsOnMove(c.tags || [], c.deck, nextDeck);
           return { ...c, deck: nextDeck, tags: nextTags, updatedAt: nowTime };
         }
         return c;
-      }));
+      });
+      setCards(updatedCards);
+      await saveLocalCards(updatedCards);
 
       // Update pre-aggregated counts
       const nextDeckCounts = { ...deckCardCounts };
@@ -14932,46 +14851,23 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       if (countsChanged) {
         setDeckCardCounts(nextDeckCounts);
         setSubjectCardCounts(nextSubjectCounts);
-        const settingsRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'hierarchy');
-        await setDoc(settingsRef, {
+        await updateHierarchySetting({
+          paths: finalPaths,
           deckCardCounts: nextDeckCounts,
           subjectCardCounts: nextSubjectCounts
-        }, { merge: true });
+        });
       }
-
     } catch (err) {
-      console.error("Failed to migrate data for moved folder:", err);
+      console.error("Failed to migrate data for moved folder locally:", err);
     }
   };
-  // Legacy approvePendingItem removed - use approveTriageItem at 1052
 
   const handleDeleteFolder = async (path) => {
-    if (!user || !db) return;
+    const allLocalPages = await getLocalPages();
+    const allLocalCards = await getLocalCards();
 
-    // Scan Firestore to find ALL pages and flashcards in this deck and its subfolders
-    let allTargetPages = [];
-    let allTargetCards = [];
-    try {
-      const pagesRef = collection(db, 'artifacts', appId, 'users', user.uid, 'pages');
-      const cardsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'flashcards');
-      const [pagesSnap, cardsSnap] = await Promise.all([
-        getDocs(pagesRef),
-        getDocs(cardsRef)
-      ]);
-      fbTracker.read(pagesSnap.size + cardsSnap.size);
-
-      allTargetPages = pagesSnap.docs
-        .map(d => ({ id: d.id, ...d.data() }))
-        .filter(p => p.deck === path || (p.deck && p.deck.startsWith(`${path}::`)));
-
-      allTargetCards = cardsSnap.docs
-        .map(d => ({ id: d.id, ...d.data() }))
-        .filter(c => c.deck === path || (c.deck && c.deck.startsWith(`${path}::`)));
-    } catch (scanErr) {
-      console.warn("[DeleteFolder] Scan warning, falling back to local memory:", scanErr);
-      allTargetPages = cloudPages.filter(p => p.deck === path || (p.deck && p.deck.startsWith(`${path}::`)));
-      allTargetCards = cards.filter(c => c.deck === path || (c.deck && c.deck.startsWith(`${path}::`)));
-    }
+    const allTargetPages = (allLocalPages || []).filter(p => p.deck === path || (p.deck && p.deck.startsWith(`${path}::`)));
+    const allTargetCards = (allLocalCards || []).filter(c => c.deck === path || (c.deck && c.deck.startsWith(`${path}::`)));
 
     if (!window.confirm(`Are you sure you want to delete "${path.split('::').pop()}"?\n\nThis will permanently delete:\n- ${allTargetPages.length} Pages\n- ${allTargetCards.length} Flashcards\n\nThis action cannot be undone.`)) {
       return;
@@ -14980,32 +14876,18 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     try {
       setIsSaving(true);
       const nowTs = Date.now();
-      const batch = writeBatch(db);
-
-      // Move Pages to Trash
-      allTargetPages.forEach(page => {
-        const pageRef = doc(db, 'artifacts', appId, 'users', user.uid, 'pages', page.id);
-        const trashPageRef = doc(db, 'artifacts', appId, 'users', user.uid, 'trash_pages', page.id);
-        batch.set(trashPageRef, { ...page, deletedAt: nowTs });
-        batch.delete(pageRef);
-      });
-
-      // Move Cards to Trash
-      allTargetCards.forEach(card => {
-        const cardRef = doc(db, 'artifacts', appId, 'users', user.uid, 'flashcards', card.id);
-        const trashCardRef = doc(db, 'artifacts', appId, 'users', user.uid, 'trash_cards', card.id);
-        batch.set(trashCardRef, { ...card, deletedAt: nowTs });
-        batch.delete(cardRef);
-      });
-
-      await batch.commit();
-
-      // Optimistic updates on local state
       const targetPageIds = new Set(allTargetPages.map(p => p.id));
       const targetCardIds = new Set(allTargetCards.map(c => c.id));
 
-      setCloudPages(prev => prev.filter(p => !targetPageIds.has(p.id)));
-      setCards(prev => prev.filter(c => !targetCardIds.has(c.id)));
+      const remainingPages = (allLocalPages || []).filter(p => !targetPageIds.has(p.id));
+      const remainingCards = (allLocalCards || []).filter(c => !targetCardIds.has(c.id));
+
+      setCloudPages(remainingPages);
+      await replaceAllLocalPages(remainingPages);
+
+      setCards(remainingCards);
+      await replaceAllLocalCards(remainingCards);
+
       setTotalCardCount(prev => Math.max(0, prev - targetCardIds.size));
 
       if (trashLoaded.current) {
@@ -15013,12 +14895,10 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
         setTrashCards(prev => [...allTargetCards.map(c => ({ ...c, deletedAt: nowTs })), ...prev]);
       }
 
-      // Update deckPaths locally and in cloud settings
+      // Update deckPaths locally
       const newPaths = deckPaths.filter(p => p !== path && !p.startsWith(`${path}::`));
       setDeckPaths(newPaths);
-
-      const settingsRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'hierarchy');
-      await setDoc(settingsRef, { paths: newPaths }, { merge: true });
+      await updateHierarchySetting({ paths: newPaths });
 
       if (hierarchy === path || hierarchy.startsWith(`${path}::`)) {
         setHierarchy('Root');
@@ -15027,7 +14907,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       alert("Folder and all contained items deleted successfully.");
       setIsSaving(false);
     } catch (err) {
-      console.error("Failed to delete folder:", err);
+      console.error("Failed to delete folder locally:", err);
       alert("Failed to delete folder: " + err.message);
       setIsSaving(false);
     }
@@ -15046,7 +14926,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
 
     const newPath = [...oldParts.slice(0, -1), newName.trim()].join('::');
 
-    // 1. Update deckPaths locally and in cloud
+    // 1. Update deckPaths locally
     const nextPaths = Array.from(new Set(deckPaths.map(path => {
       if (path === oldPath) return newPath;
       if (path.startsWith(`${oldPath}::`)) {
@@ -15056,127 +14936,75 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     }).filter(Boolean)));
 
     setDeckPaths(nextPaths);
-    const settingsRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'hierarchy');
-    await setDoc(settingsRef, { paths: nextPaths }, { merge: true });
+    await updateHierarchySetting({ paths: nextPaths });
 
     // 2. Update hierarchy selection
     if (hierarchy === oldPath || hierarchy.startsWith(`${oldPath}::`)) {
       setHierarchy(hierarchy.replace(oldPath, newPath));
     }
 
-    // 3. Update Cards and Pages in Cloud (Scanning Firestore to include items not in memory)
-    if (user && db) {
-      try {
-        const pagesRef = collection(db, 'artifacts', appId, 'users', user.uid, 'pages');
-        const cardsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'flashcards');
-
-        // Fetch all matching pages
-        const [snapPagesExact, snapPagesSub] = await Promise.all([
-          getDocs(query(pagesRef, where('deck', '==', oldPath))),
-          getDocs(query(pagesRef, where('deck', '>=', oldPath + '::'), where('deck', '<=', oldPath + '::\uf8ff')))
-        ]);
-        fbTracker.read(snapPagesExact.size + snapPagesSub.size);
-
-        // Fetch all matching cards
-        const [snapCardsExact, snapCardsSub] = await Promise.all([
-          getDocs(query(cardsRef, where('deck', '==', oldPath))),
-          getDocs(query(cardsRef, where('deck', '>=', oldPath + '::'), where('deck', '<=', oldPath + '::\uf8ff')))
-        ]);
-        fbTracker.read(snapCardsExact.size + snapCardsSub.size);
-
-        let batch = writeBatch(db);
-        let ops = 0;
-        const nowTime = Date.now();
-
-        const commitIfNeeded = async () => {
-          if (ops >= 450) {
-            await batch.commit();
-            batch = writeBatch(db);
-            ops = 0;
-          }
-        };
-
-        const allPagesDocs = [...snapPagesExact.docs, ...snapPagesSub.docs];
-        for (const pageDoc of allPagesDocs) {
-          batch.set(doc(db, 'artifacts', appId, 'users', user.uid, 'pages', pageDoc.id), { deck: pageDoc.data().deck.replace(oldPath, newPath) }, { merge: true });
-          ops++;
-          await commitIfNeeded();
+    // 3. Update Cards and Pages locally in IndexedDB (non-destructive)
+    try {
+      const nowTime = Date.now();
+      const allLocalPages = await getLocalPages();
+      const updatedPages = (allLocalPages || []).map(p => {
+        if (p.deck === oldPath || (p.deck && p.deck.startsWith(`${oldPath}::`))) {
+          return { ...p, deck: p.deck.replace(oldPath, newPath) };
         }
+        return p;
+      });
+      setCloudPages(updatedPages);
+      await saveLocalPages(updatedPages);
 
-        const allCardsDocs = [...snapCardsExact.docs, ...snapCardsSub.docs];
-        for (const cardDoc of allCardsDocs) {
-          const cardData = cardDoc.data();
-          const nextDeck = cardData.deck.replace(oldPath, newPath);
-          const nextTags = updateFolderTagsOnMove(cardData.tags || [], cardData.deck, nextDeck);
-          batch.set(doc(db, 'artifacts', appId, 'users', user.uid, 'flashcards', cardDoc.id), { deck: nextDeck, tags: nextTags, updatedAt: nowTime }, { merge: true });
-          ops++;
-          await commitIfNeeded();
+      const allLocalCards = await getLocalCards();
+      const updatedCards = (allLocalCards || []).map(c => {
+        if (c.deck === oldPath || (c.deck && c.deck.startsWith(`${oldPath}::`))) {
+          const nextDeck = c.deck.replace(oldPath, newPath);
+          const nextTags = updateFolderTagsOnMove(c.tags || [], c.deck, nextDeck);
+          return { ...c, deck: nextDeck, tags: nextTags, updatedAt: nowTime };
         }
+        return c;
+      });
+      setCards(updatedCards);
+      await saveLocalCards(updatedCards);
 
-        if (ops > 0) {
-          await batch.commit();
-        }
+      // Update pre-aggregated counts
+      const nextDeckCounts = { ...deckCardCounts };
+      const nextSubjectCounts = { ...subjectCardCounts };
+      let countsChanged = false;
+      Object.entries(deckCardCounts).forEach(([deckPath, count]) => {
+        if (deckPath === oldPath || deckPath.startsWith(`${oldPath}::`)) {
+          const nextDeck = deckPath.replace(oldPath, newPath);
+          nextDeckCounts[nextDeck] = (nextDeckCounts[nextDeck] || 0) + count;
+          delete nextDeckCounts[deckPath];
+          countsChanged = true;
 
-        fbTracker.write(allPagesDocs.length + allCardsDocs.length);
-        setFbUsage(fbTracker.getUsage());
-
-        // Update local memory state optimistically
-        setCloudPages(prev => prev.map(p => {
-          if (p.deck === oldPath || p.deck.startsWith(`${oldPath}::`)) {
-            return { ...p, deck: p.deck.replace(oldPath, newPath) };
-          }
-          return p;
-        }));
-
-        setCards(prev => prev.map(c => {
-          if (c.deck === oldPath || c.deck.startsWith(`${oldPath}::`)) {
-            const nextDeck = c.deck.replace(oldPath, newPath);
-            const nextTags = updateFolderTagsOnMove(c.tags || [], c.deck, nextDeck);
-            return { ...c, deck: nextDeck, tags: nextTags, updatedAt: nowTime };
-          }
-          return c;
-        }));
-
-        // Update pre-aggregated counts
-        const nextDeckCounts = { ...deckCardCounts };
-        const nextSubjectCounts = { ...subjectCardCounts };
-        let countsChanged = false;
-        Object.entries(deckCardCounts).forEach(([deckPath, count]) => {
-          if (deckPath === oldPath || deckPath.startsWith(`${oldPath}::`)) {
-            const nextDeck = deckPath.replace(oldPath, newPath);
-            nextDeckCounts[nextDeck] = (nextDeckCounts[nextDeck] || 0) + count;
-            delete nextDeckCounts[deckPath];
-            countsChanged = true;
-
-            const oldParts = deckPath.split('::');
-            const oldSubject = oldParts.length > 1 ? oldParts[oldParts.length - 1] : oldParts[0];
-            const newParts = nextDeck.split('::');
-            const newSubject = newParts.length > 1 ? newParts[newParts.length - 1] : newParts[0];
-            if (oldSubject !== newSubject) {
-              if (oldSubject && oldSubject !== 'Root') {
-                nextSubjectCounts[oldSubject] = Math.max(0, (nextSubjectCounts[oldSubject] || 0) - count);
-              }
-              if (newSubject && newSubject !== 'Root') {
-                nextSubjectCounts[newSubject] = (nextSubjectCounts[newSubject] || 0) + count;
-              }
+          const oldParts = deckPath.split('::');
+          const oldSubject = oldParts.length > 1 ? oldParts[oldParts.length - 1] : oldParts[0];
+          const newParts = nextDeck.split('::');
+          const newSubject = newParts.length > 1 ? newParts[newParts.length - 1] : newParts[0];
+          if (oldSubject !== newSubject) {
+            if (oldSubject && oldSubject !== 'Root') {
+              nextSubjectCounts[oldSubject] = Math.max(0, (nextSubjectCounts[oldSubject] || 0) - count);
+            }
+            if (newSubject && newSubject !== 'Root') {
+              nextSubjectCounts[newSubject] = (nextSubjectCounts[newSubject] || 0) + count;
             }
           }
-        });
-        if (countsChanged) {
-          setDeckCardCounts(nextDeckCounts);
-          setSubjectCardCounts(nextSubjectCounts);
-          const settingsRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'hierarchy');
-          await setDoc(settingsRef, {
-            deckCardCounts: nextDeckCounts,
-            subjectCardCounts: nextSubjectCounts
-          }, { merge: true });
         }
-
-      } catch (err) {
-        alert("Failed to update cloud documents after rename: " + err.message);
+      });
+      if (countsChanged) {
+        setDeckCardCounts(nextDeckCounts);
+        setSubjectCardCounts(nextSubjectCounts);
+        await updateHierarchySetting({
+          paths: nextPaths,
+          deckCardCounts: nextDeckCounts,
+          subjectCardCounts: nextSubjectCounts
+        });
       }
+    } catch (err) {
+      console.error("Failed to rename folder locally:", err);
     }
-
     setRenameDialog({ isOpen: false, path: '', input: '' });
   };
 
@@ -15257,7 +15085,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
         file: file,
         blobUrl: blobUrl,   // stored for extraction — no re-reads of the file needed
         numPages: pdf.numPages,
-        mappings: [{ id: generateId(), range: `1-${pdf.numPages}`, deck: hierarchy || 'Marrow::Pathology' }],
+        mappings: [{ id: generateId(), range: `1-${pdf.numPages}`, deck: hierarchy || (deckPaths[0] || 'General') }],
         rotations: {},
         isConverting: false
       });
@@ -15314,7 +15142,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     );
 
     // Destroy the preloaded doc immediately so its worker is freed before the batched loop starts
-    try { await loadedPdfDoc.destroy(); } catch (_) {}
+    try { await loadedPdfDoc.destroy(); } catch (_) { }
     setLoadedPdfDoc(null);
 
     setOperationProgress({
@@ -15335,7 +15163,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     try {
       for (const mapping of pdfDialog.mappings) {
         const pageNumbers = parsePageRange(mapping.range, numPages).sort((a, b) => a - b);
-        const targetDeck = mapping.deck.trim() || 'Marrow::Pathology';
+        const targetDeck = mapping.deck.trim() || hierarchy || (deckPaths[0] || 'General');
 
         // Process in small batches. Each batch opens a FRESH PDF.js doc via the blob URL
         // (no ArrayBuffer copy into V8 heap) and destroys it when done.
@@ -15364,7 +15192,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
               const scale = 2.0; // 300 DPI high resolution
               const viewport = page.getViewport({ scale, rotation: pageRotation });
 
-              reusableCanvas.width  = Math.floor(viewport.width);
+              reusableCanvas.width = Math.floor(viewport.width);
               reusableCanvas.height = Math.floor(viewport.height);
 
               reusableContext.imageSmoothingEnabled = true;
@@ -15404,7 +15232,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
           } finally {
             // CRITICAL: destroy() terminates the PDF.js worker for this batch,
             // flushing ALL decoded font/bitmap data from worker thread memory.
-            try { await batchPdf.destroy(); } catch (_) {}
+            try { await batchPdf.destroy(); } catch (_) { }
           }
 
           // Extra 100ms GC pause between batches so V8 can reclaim worker memory
@@ -15412,7 +15240,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
         }
       }
 
-      reusableCanvas.width  = 0;
+      reusableCanvas.width = 0;
       reusableCanvas.height = 0;
 
       if (firstItemId && !activeQueueId) setActiveQueueId(firstItemId);
@@ -15457,14 +15285,38 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
 
     let processed = 0;
     let errorCount = 0;
+    // Track how long the last Gemini call spent paused on rate-limit back-off so we
+    // can subtract that time from the inter-item gap and avoid double-waiting.
+    let lastPausedMs = 0;
+    // Free tier = 15 RPM → safe floor is 4 seconds between requests.
+    const BASE_INTER_ITEM_DELAY_MS = 4000;
+
+    // onProgress callback passed into callGeminiWithRetry so rate-limit waits
+    // and exact AI errors surface in the progress modal in real time.
+    const onGeminiProgress = (msg, errDetails = null) => {
+      setOperationProgress(prev => ({
+        ...prev,
+        message: msg,
+        lastError: errDetails !== undefined ? errDetails : prev.lastError
+      }));
+    };
 
     for (let itemIdx = 0; itemIdx < pendingItems.length; itemIdx++) {
       const item = pendingItems[itemIdx];
 
-      // Pace requests: wait 2.5s between items to avoid rate-limit bursts
-      // (skip delay for the very first item)
+      // Pace requests: maintain a safe gap between API calls for the free tier (15 RPM).
+      // If the previous request already spent time waiting due to a 429 back-off,
+      // reduce the gap by that amount so we don't double-wait.
       if (itemIdx > 0) {
-        await new Promise(res => setTimeout(res, 2500));
+        const remainingDelay = Math.max(0, BASE_INTER_ITEM_DELAY_MS - lastPausedMs);
+        if (remainingDelay > 0) {
+          setOperationProgress(prev => ({
+            ...prev,
+            message: `Next page in ${Math.round(remainingDelay / 1000)}s — respecting free-tier rate limit...`
+          }));
+          await new Promise(res => setTimeout(res, remainingDelay));
+        }
+        lastPausedMs = 0; // reset for the next iteration
       }
 
       setQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: 'processing', errorMessage: null } : q));
@@ -15473,17 +15325,26 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       setOperationProgress(prev => ({
         ...prev,
         message: `Analyzing page ${itemIdx + 1} of ${pendingItems.length}: ${item.fileName.slice(0, 30) || 'Document page'}...`,
-        current: processed
+        current: processed,
+        lastError: null
       }));
 
       try {
         const prompt = getGenerationPrompt();
 
-        const result = await callGeminiWithRetry(geminiApiKey, prompt, item.base64, item.mimeType);
+        const result = await callGeminiWithRetry(
+          geminiApiKey, prompt, item.base64, item.mimeType,
+          5,               // retries — 5 attempts across the fallback model chain
+          onGeminiProgress // surfaces rate-limit waits in the progress modal
+        );
 
         if (!result || !result.cards) {
           throw new Error("Gemini returned an invalid response format.");
         }
+
+        // Carry forward any pause time from 429 back-off inside callGeminiWithRetry
+        // so the next inter-item gap is correctly shortened.
+        lastPausedMs = result._pausedMs || 0;
 
         const sanitizeCardBounds = (c) => {
           let imgBox = c.img_box;
@@ -15517,12 +15378,13 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
         setQueue(prev => prev.map(q => q.id === item.id ? updatedItem : q));
 
         if (isAutosaveEnabled) {
+          const isImgbbCloud = imageStorageMode === 'cloud' && Boolean(imgbbApiKey);
           setOperationProgress(prev => ({
             ...prev,
-            message: `Autosaving to cloud: ${item.fileName.slice(0, 30)}...`
+            message: `Autosaving page & cards (${isImgbbCloud ? 'ImgBB Cloud' : 'Local DB'}): ${item.fileName.slice(0, 30)}...`
           }));
           try {
-            await saveQueueItemToCloud(item.id, false, true, updatedItem);
+            await saveQueueItemToCloud(item.id, true, updatedItem);
           } catch (saveErr) {
             // Autosave failure is non-fatal — card stays in queue for manual save
             console.warn(`[Autosave] Failed for ${item.fileName}:`, saveErr.message);
@@ -15601,7 +15463,15 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       const prompt = getGenerationPrompt();
       const mime = pageObj.mimeType || (pageObj.imageUrl?.startsWith('data:') ? pageObj.imageUrl.split(';')[0].split(':')[1] : 'image/jpeg');
 
-      const result = await callGeminiWithRetry(geminiApiKey, prompt, pageObj.imageUrl, mime);
+      const onGeminiProgress = (msg, errDetails = null) => {
+        setOperationProgress(prev => ({
+          ...prev,
+          message: msg,
+          lastError: errDetails !== undefined ? errDetails : prev.lastError
+        }));
+      };
+
+      const result = await callGeminiWithRetry(geminiApiKey, prompt, pageObj.imageUrl, mime, 5, onGeminiProgress);
 
       if (!result || !result.cards) {
         throw new Error("Gemini returned an invalid response format.");
@@ -15615,7 +15485,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
           ...card,
           id: cardId,
           pageId: pageId,
-          deck: pageObj.deck || hierarchy || 'Marrow::Pathology',
+          deck: pageObj.deck || hierarchy || (deckPaths[0] || 'General'),
           createdAt: Date.now(),
           isPending: true // Keep in triage
         }));
@@ -15636,6 +15506,40 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     }
   };
 
+  const handleRegenerateLibraryPage = (pageObj) => {
+    if (!pageObj) return;
+
+    const targetDeck = pageObj.deck || hierarchy || (deckPaths[0] || 'General');
+    const pageId = pageObj.id || generateId();
+    const pageImage = pageObj.imageUrl || pageObj.base64;
+    const fileName = pageObj.fileName || pageObj.name || `Library Page (${targetDeck.split('::').pop() || 'Uncategorized'})`;
+
+    const queueItem = {
+      id: pageId,
+      fileName: fileName,
+      mimeType: pageObj.mimeType || 'image/jpeg',
+      base64: pageImage,
+      imageUrl: pageImage,
+      status: 'pending',
+      deck: targetDeck,
+      hasCustomDeck: true,
+      pageRotation: pageObj.pageRotation || 0,
+      generatedCards: []
+    };
+
+    setQueue(prev => {
+      const exists = prev.some(q => q.id === pageId);
+      if (exists) {
+        return prev.map(q => q.id === pageId ? { ...q, status: 'pending', deck: targetDeck, hasCustomDeck: true, errorMessage: null } : q);
+      } else {
+        return [...prev, queueItem];
+      }
+    });
+
+    setActiveQueueId(pageId);
+    setCurrentTab('cards');
+  };
+
   const sendAllToWebDirectly = async () => {
     if (!user || queue.length === 0) return;
     setIsSaving(true);
@@ -15650,7 +15554,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     try {
       const itemsCopy = [...queue];
       for (let item of itemsCopy) {
-        await saveQueueItemToCloud(item.id, true, true);
+        await saveQueueItemToCloud(item.id, true);
         processed++;
         setOperationProgress(prev => ({
           ...prev,
@@ -15666,7 +15570,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     }
   };
 
-  // --- CRUD, SAVE & EXPORT ---
+  // --- CRUD, SAVE & EXPORT (INDEXEDDB) ---
   const deleteCard = async (id) => {
     // 1. Handle Queue Cards (Local)
     const qItem = queue.find(q => q.generatedCards?.some(c => c.id === id));
@@ -15678,194 +15582,153 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       return;
     }
 
-    // 2. Handle Cloud Cards
-    if (!user || !db) return;
+    // 2. Handle Saved Cards (Local DB)
     try {
-      const cardDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'flashcards', id);
-      let card = cards.find(c => c.id === id);
-      if (!card) {
-        const cardSnap = await getDoc(cardDocRef);
-        fbTracker.read(1);
-        if (cardSnap.exists()) {
-          card = { id: cardSnap.id, ...cardSnap.data() };
-        }
-      }
+      const allLocalCards = await getLocalCards();
+      let card = cards.find(c => c.id === id) || allLocalCards.find(c => c.id === id);
+
       if (card) {
-        await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'trash_cards', id), {
-          ...card,
-          deletedAt: Date.now()
-        });
-        // Add to local trash state if trash was already loaded
+        // Move to local trash KV store
+        const currentTrash = (await getLocalKV('trash_cards')) || [];
+        const updatedTrash = [{ ...card, deletedAt: Date.now() }, ...currentTrash.filter(tc => tc.id !== id)];
+        await setLocalKV('trash_cards', updatedTrash);
+
         if (trashLoaded.current) {
-          setTrashCards(prev => [{ ...card, deletedAt: Date.now() }, ...prev]);
+          setTrashCards(updatedTrash);
         }
-        fbTracker.write(1);
+
+        // Delete from local cards DB
+        await deleteLocalCard(id);
+
+        // Update state
+        setCards(prev => prev.filter(c => c.id !== id));
+        setTotalCardCount(prev => Math.max(0, prev - 1));
+        if (card.deck) {
+          batchUpdateCardCounts({ [card.deck]: -1 });
+        }
       }
-      await deleteDoc(cardDocRef);
-      // Optimistic update: remove from local cards state immediately
-      setCards(prev => prev.filter(c => c.id !== id));
-      setTotalCardCount(prev => Math.max(0, prev - 1));
-      if (card && card.deck) {
-        batchUpdateCardCounts({ [card.deck]: -1 });
-      }
-      fbTracker.delete(1);
-      setFbUsage(fbTracker.getUsage());
     } catch (err) {
+      console.error('[LocalDB] Failed to move card to trash:', err);
       alert("Failed to move card to trash: " + err.message);
     }
   };
+
   const deletePage = async (id, shouldDeleteCards = true) => {
-    if (!user || !db) return;
-    console.log(`[Delete] Initializing batch delete for page: ${id} | Delete Cards: ${shouldDeleteCards}`);
+    console.log(`[Delete] Initializing local delete for page: ${id} | Delete Cards: ${shouldDeleteCards}`);
 
-    const batch = writeBatch(db);
     try {
-      // 1. Prepare Page Deletion
       const page = cloudPages.find(p => p.id === id);
-      const pageRef = doc(db, 'artifacts', appId, 'users', user.uid, 'pages', id);
-      const trashPageRef = doc(db, 'artifacts', appId, 'users', user.uid, 'trash_pages', id);
 
+      // 1. Move Page to Local Trash KV
       if (page) {
-        batch.set(trashPageRef, { ...page, deletedAt: Date.now() });
+        const currentTrashPages = (await getLocalKV('trash_pages')) || [];
+        const updatedTrashPages = [{ ...page, deletedAt: Date.now() }, ...currentTrashPages.filter(tp => tp.id !== id)];
+        await setLocalKV('trash_pages', updatedTrashPages);
+        if (trashLoaded.current) {
+          setTrashPages(updatedTrashPages);
+        }
       }
-      batch.delete(pageRef);
 
-      // 2. Prepare Cards Deletion (Direct Firestore Query to support lazy-loaded cards)
-      let matchCount = 0;
+      // 2. Delete Page from IndexedDB
+      await deleteLocalPage(id);
+
+      // 3. Delete linked cards if requested
       let linkedCards = [];
       if (shouldDeleteCards) {
-        console.log(`[Delete] Querying Firestore for cards linked to page: ${id}`);
-        const cardsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'flashcards');
-        const snap = await getDocs(query(cardsRef, where('pageId', '==', id)));
-        fbTracker.read(snap.size);
-        linkedCards = snap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+        const allLocalCards = await getLocalCards();
+        linkedCards = (allLocalCards || []).filter(c => c.pageId === id || c.queueId === id);
 
-        linkedCards.forEach(cardData => {
-          matchCount++;
-          const trashCardRef = doc(db, 'artifacts', appId, 'users', user.uid, 'trash_cards', cardData.id);
-          const cardDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'flashcards', cardData.id);
-          batch.set(trashCardRef, { ...cardData, deletedAt: Date.now() });
-          batch.delete(cardDocRef);
-        });
+        if (linkedCards.length > 0) {
+          // Move linked cards to local trash KV
+          const currentTrashCards = (await getLocalKV('trash_cards')) || [];
+          const trashedLinked = linkedCards.map(c => ({ ...c, deletedAt: Date.now() }));
+          const updatedTrashCards = [...trashedLinked, ...currentTrashCards.filter(tc => !linkedCards.some(lc => lc.id === tc.id))];
+          await setLocalKV('trash_cards', updatedTrashCards);
+          if (trashLoaded.current) {
+            setTrashCards(updatedTrashCards);
+          }
 
-        console.log(`[Delete] Firestore Scan found ${matchCount} matching cards for page ${id}`);
+          // Delete linked cards from IndexedDB
+          for (const card of linkedCards) {
+            await deleteLocalCard(card.id);
+          }
+        }
       }
 
-      // 3. Commit Atomic Transaction
-      await batch.commit();
-      console.log(`[Delete] Atomic batch committed successfully for page ${id}`);
-
-      // Optimistic updates: update local state immediately
+      // Update local state
       const wasP = cloudPages.find(p => p.id === id)?.isPending;
       setCloudPages(prev => prev.filter(p => p.id !== id));
       if (wasP) setPendingPageCount(prev => Math.max(0, prev - 1));
-      if (page && trashLoaded.current) {
-        setTrashPages(prev => [{ ...page, deletedAt: Date.now() }, ...prev]);
-      }
-      if (shouldDeleteCards) {
+
+      if (shouldDeleteCards && linkedCards.length > 0) {
         const linkedIds = new Set(linkedCards.map(c => c.id));
         setCards(prev => prev.filter(c => !linkedIds.has(c.id)));
         setTotalCardCount(prev => Math.max(0, prev - linkedIds.size));
-        if (linkedCards.length > 0) {
-          const deckUpdates = {};
-          linkedCards.forEach(card => {
-            if (card.deck) {
-              deckUpdates[card.deck] = (deckUpdates[card.deck] || 0) - 1;
-            }
-          });
-          batchUpdateCardCounts(deckUpdates);
-        }
-        if (trashLoaded.current) {
-          setTrashCards(prev => [
-            ...linkedCards.map(c => ({ ...c, deletedAt: Date.now() })),
-            ...prev
-          ]);
-        }
-        fbTracker.write(linkedCards.length); // trash_cards setDoc calls
-        fbTracker.delete(1 + linkedCards.length); // page + card deletes
-      } else {
-        fbTracker.write(page ? 1 : 0); // trash_pages setDoc
-        fbTracker.delete(1); // page delete
+
+        const deckUpdates = {};
+        linkedCards.forEach(card => {
+          if (card.deck) {
+            deckUpdates[card.deck] = (deckUpdates[card.deck] || 0) - 1;
+          }
+        });
+        batchUpdateCardCounts(deckUpdates);
       }
-      setFbUsage(fbTracker.getUsage());
     } catch (err) {
-      console.error("[Delete] Batch failed:", err);
-      alert("System Error: Could not complete the full deletion. " + err.message);
+      console.error("[Delete] Local page deletion failed:", err);
+      alert("System Error: Could not complete the page deletion. " + err.message);
     }
   };
 
   const executeConfirmedRestore = async (shouldRestoreCards) => {
     const { page } = restoreConfirmDialog;
-    if (!user || !db || !page) return;
+    if (!page) return;
 
-    console.log(`[Restore] Initializing batch restore for page: ${page.id} | Restore Cards: ${shouldRestoreCards}`);
+    console.log(`[Restore] Initializing local restore for page: ${page.id} | Restore Cards: ${shouldRestoreCards}`);
     setIsSaving(true);
 
-    const batch = writeBatch(db);
     try {
-      const { deletedAt, id, ...data } = page;
+      const { deletedAt, ...restoredPageData } = page;
 
-      // 1. Restore Page
-      const pageRef = doc(db, 'artifacts', appId, 'users', user.uid, 'pages', id);
-      batch.set(pageRef, data);
+      // 1. Restore Page in IndexedDB
+      await saveLocalPage(restoredPageData);
 
-      const trashPageRef = doc(db, 'artifacts', appId, 'users', user.uid, 'trash_pages', id);
-      batch.delete(trashPageRef);
+      // 2. Remove Page from local trash KV store
+      const currentTrashPages = (await getLocalKV('trash_pages')) || [];
+      const updatedTrashPages = currentTrashPages.filter(tp => tp.id !== page.id);
+      await setLocalKV('trash_pages', updatedTrashPages);
 
-      // 2. Restore Cards (Deep Scan)
+      // 3. Restore Linked Cards if requested
+      let restoredCards = [];
       if (shouldRestoreCards) {
-        let matchCount = 0;
-        trashCards.forEach(c => {
-          const cardPageId = c.pageId || c.page_id || c.queueId;
-
-          if (cardPageId && String(cardPageId).trim() === String(id).trim()) {
-            matchCount++;
-            const { deletedAt: d, id: cid, ...cdata } = c;
-            cdata.updatedAt = Date.now();
-
-            const cardRef = doc(db, 'artifacts', appId, 'users', user.uid, 'flashcards', cid);
-            batch.set(cardRef, cdata);
-
-            const trashCardRef = doc(db, 'artifacts', appId, 'users', user.uid, 'trash_cards', cid);
-            batch.delete(trashCardRef);
-          }
-        });
-        console.log(`[Restore] Batch found ${matchCount} cards to include in restoration.`);
-      }
-
-      await batch.commit();
-      console.log(`[Restore] Atomic batch committed successfully for page ${id}`);
-
-      // Optimistic updates: restore items in local state
-      const { deletedAt: _da, id: _id, ...restoredPage } = page;
-      setCloudPages(prev => [restoredPage, ...prev].sort((a, b) => b.createdAt - a.createdAt));
-      setTrashPages(prev => prev.filter(p => p.id !== id));
-      if (shouldRestoreCards) {
-        const restoredCards = trashCards
-          .filter(c => { const cp = c.pageId || c.page_id || c.queueId; return cp && String(cp).trim() === String(id).trim(); })
+        const currentTrashCards = (await getLocalKV('trash_cards')) || [];
+        restoredCards = currentTrashCards
+          .filter(c => { const cp = c.pageId || c.page_id || c.queueId; return cp && String(cp).trim() === String(page.id).trim(); })
           .map(({ deletedAt: _d, ...c }) => ({ ...c, updatedAt: Date.now() }));
-        setCards(prev => [...prev, ...restoredCards].sort((a, b) => b.createdAt - a.createdAt));
-        setTotalCardCount(prev => prev + restoredCards.length);
-        if (restoredCards.length > 0) {
-          const deckUpdates = {};
-          restoredCards.forEach(card => {
-            if (card.deck) {
-              deckUpdates[card.deck] = (deckUpdates[card.deck] || 0) + 1;
-            }
-          });
-          batchUpdateCardCounts(deckUpdates);
+
+        for (const card of restoredCards) {
+          await saveLocalCard(card);
         }
-        setTrashCards(prev => prev.filter(c => { const cp = c.pageId || c.page_id || c.queueId; return !(cp && String(cp).trim() === String(id).trim()); }));
-        fbTracker.write(1 + restoredCards.length);
-        fbTracker.delete(1 + restoredCards.length);
-      } else {
-        fbTracker.write(1);
-        fbTracker.delete(1);
+
+        const updatedTrashCards = currentTrashCards.filter(c => {
+          const cp = c.pageId || c.page_id || c.queueId;
+          return !(cp && String(cp).trim() === String(page.id).trim());
+        });
+        await setLocalKV('trash_cards', updatedTrashCards);
+        setTrashCards(updatedTrashCards);
       }
-      setFbUsage(fbTracker.getUsage());
+
+      // Update local state
+      setCloudPages(prev => [restoredPageData, ...prev.filter(p => p.id !== page.id)].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)));
+      setTrashPages(updatedTrashPages);
+
+      if (shouldRestoreCards && restoredCards.length > 0) {
+        setCards(prev => [...restoredCards, ...prev.filter(c => !restoredCards.some(rc => rc.id === c.id))].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)));
+        setTotalCardCount(prev => prev + restoredCards.length);
+      }
+
       setRestoreConfirmDialog({ isOpen: false, page: null });
     } catch (err) {
-      console.error("[Restore] Batch failed:", err);
+      console.error("[Restore] Local restore failed:", err);
       alert("Restore Error: Could not complete restoration. " + err.message);
     } finally {
       setIsSaving(false);
@@ -15873,7 +15736,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
   };
 
   const saveEditedCard = async () => {
-    if (!user || !db || !editingCard) return;
+    if (!editingCard) return;
 
     // Find the original card's deck to see if it was moved
     const originalCard = cards.find(c => c.id === editingCard.id) ||
@@ -15899,188 +15762,185 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       return;
     }
 
-    // 2. Handle Cloud Cards
+    // 2. Handle Saved Cards (Local IndexedDB)
     try {
       const nowTime = Date.now();
       const updatedCardWithTime = { ...updatedCard, updatedAt: nowTime };
-      const cardDoc = doc(db, 'artifacts', appId, 'users', user.uid, 'flashcards', editingCard.id);
-      await setDoc(cardDoc, updatedCardWithTime, { merge: true });
+      await saveLocalCard(updatedCardWithTime);
+
       // Optimistic update: patch local state
       setCards(prev => prev.map(c => c.id === editingCard.id ? { ...c, ...updatedCardWithTime } : c));
-      if (oldDeck.trim() !== newDeck.trim()) {
-        batchUpdateCardCounts({
-          [oldDeck]: -1,
-          [newDeck]: 1
-        });
-      }
-      fbTracker.write(1);
-      setFbUsage(fbTracker.getUsage());
       setEditingCard(null);
     } catch (err) {
+      console.error('[LocalDB] Failed to save card changes:', err);
       alert("Failed to save changes: " + err.message);
     }
   };
 
   const rateCard = async (card, rating) => {
-    if (!user || !db) return;
-
-    // Calculate new SM-2 scheduling parameters
-    const newState = calculateSM2(card, rating);
-    const cardDoc = doc(db, 'artifacts', appId, 'users', user.uid, 'flashcards', card.id);
-
-    try {
-      // Save schedule changes to Firestore
-      const nowTime = Date.now();
-      await setDoc(cardDoc, { reviewState: newState, updatedAt: nowTime }, { merge: true });
-      // Optimistic update: patch reviewState in local state (no re-read needed)
-      setCards(prev => prev.map(c => c.id === card.id ? { ...c, reviewState: newState, updatedAt: nowTime } : c));
-      fbTracker.write(1);
-      setFbUsage(fbTracker.getUsage());
-
-      // Move to next card
-      if (currentStudyCardIndex < dueCards.length - 1) {
-        setIsAnswerRevealed(false);
-        setCurrentStudyCardIndex(prev => prev + 1);
-      } else {
-        setIsAnswerRevealed(false);
-        setCurrentStudyCardIndex(0);
-      }
-    } catch (err) {
-      console.error("Error scheduling card:", err);
+    // Simple review navigation without SM-2 scheduling
+    if (currentStudyCardIndex < dueCards.length - 1) {
+      setIsAnswerRevealed(false);
+      setCurrentStudyCardIndex(prev => prev + 1);
+    } else {
+      setIsAnswerRevealed(false);
+      setCurrentStudyCardIndex(0);
     }
   };
 
-  const saveQueueItemToCloud = async (id, asPending = false, silent = false, itemOverride = null) => {
-    if (!db || !storage) return;
-    if (!user) {
-      alert("You are not logged in. Please refresh and wait for the app to initialize.");
+  const regeneratePageWithGemini = async (pageId) => {
+    const item = queue.find(q => q.id === pageId);
+    if (!item) {
+      console.warn("[RegeneratePage] Item not found in queue:", pageId);
       return;
     }
-    if (!imgbbApiKey) {
-      const msg = "ImgBB API Key is not set.\n\nPlease go to Settings → paste your ImgBB API key → click 'Save API Keys to Cloud'.";
-      if (!silent) alert(msg);
-      throw new Error("ImgBB API Key is not configured.");
+    if (!geminiApiKey) {
+      alert("Please configure a Gemini API Key in Settings / Setup to generate flashcards.");
+      return;
     }
+    // Mark item as pending and trigger original full generation pipeline for this page
+    const pendingItem = { ...item, status: 'pending', errorMessage: null };
+    setQueue(prev => prev.map(q => q.id === pageId ? pendingItem : q));
+    await processQueue([pendingItem]);
+  };
 
+  const saveQueueItemToCloud = async (id, silent = false, itemOverride = null) => {
     const item = itemOverride || queue.find(q => q.id === id);
     if (!item) {
-      console.warn("[CloudSave] Item not found in queue:", id);
+      console.warn("[SaveItem] Item not found in queue:", id);
       return;
     }
+
+    const isImgbbCloud = imageStorageMode === 'cloud' && Boolean(imgbbApiKey);
 
     if (!silent) setIsSaving(true);
     if (!silent) {
       setOperationProgress({
         show: true,
-        title: 'Saving Page to Cloud',
-        message: 'Uploading image to ImgBB and writing document to database...',
+        title: isImgbbCloud ? 'Saving Page to ImgBB & Library' : 'Saving Page & Cards to Library',
+        message: isImgbbCloud ? 'Uploading page image to ImgBB Cloud...' : 'Writing records to Local Database...',
         current: 0,
         total: 1
       });
     }
     try {
-      console.log(`[CloudSave] >>> START: ${item.fileName} | id: ${item.id} | pending: ${asPending}`);
+      console.log(`[SaveItem] >>> START: ${item.fileName} | id: ${item.id} | Mode: ${imageStorageMode}`);
 
-      // Variables captured from uploadWithTimeout for use in optimistic updates below
-      let _finalDeck = '';
-      let _finalImageUrl = '';
+      let _finalDeck = (item.hasCustomDeck ? item.deck : hierarchy) || item.deck || (deckPaths[0] || 'General');
+      let _finalImageUrl = item.base64 || '';
       let _savedCards = [];
 
-      const uploadWithTimeout = async () => {
-        // Respect explicit page-range folder assignments set during extraction or in queue sidebar
-        _finalDeck = (item.hasCustomDeck ? item.deck : hierarchy) || item.deck || 'Marrow::Pathology';
+      // Update deck paths locally
+      if (!deckPaths.includes(_finalDeck)) {
+        const nextPaths = Array.from(new Set([...deckPaths, _finalDeck]));
+        setDeckPaths(nextPaths);
+        await updateHierarchySetting({ paths: nextPaths });
+      }
 
-        const pageDoc = doc(db, 'artifacts', appId, 'users', user.uid, 'pages', item.id);
-
-        // Ensure path exists in settings/hierarchy
-        if (!deckPaths.includes(_finalDeck)) {
-          const settingsRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'hierarchy');
-          const nextPaths = Array.from(new Set([...deckPaths, _finalDeck]));
-          await setDoc(settingsRef, { paths: nextPaths }, { merge: true });
+      // Upload to ImgBB cloud ONLY if user preference is 'cloud' and API key is provided
+      if (imageStorageMode === 'cloud' && imgbbApiKey) {
+        if (!silent) {
+          setOperationProgress(prev => ({
+            ...prev,
+            message: `Uploading image to ImgBB Cloud: ${item.fileName.slice(0, 30)}...`
+          }));
         }
-
-        _finalImageUrl = await handleImageCloudUpload(item.base64, item.fileName, imgbbApiKey);
-
-        const nowTs = Date.now();
-        await setDoc(pageDoc, {
-          imageUrl: _finalImageUrl,
-          deck: _finalDeck,
-          createdAt: nowTs,
-          updatedAt: nowTs,
-          fileName: item.fileName,
-          isPending: asPending,
-          mimeType: item.mimeType || 'image/jpeg'
-        });
-
-        // 2. Save Cards in Parallel
-        if (item.generatedCards && item.generatedCards.length > 0) {
-          console.log(`[CloudSave] Step 2/2: Saving ${item.generatedCards.length} cards...`);
-          const nowTime = Date.now();
-          const cardPromises = item.generatedCards.map(rawCard => {
-            const card = sanitizeCardForFirestore(rawCard);
-            const cardId = generateId();
-            _savedCards.push({ ...card, id: cardId, pageId: item.id, deck: _finalDeck, createdAt: nowTime, updatedAt: nowTime, isPending: asPending });
-            const cardDoc = doc(db, 'artifacts', appId, 'users', user.uid, 'flashcards', cardId);
-            return setDoc(cardDoc, sanitizeCardForFirestore({
-              ...card,
-              id: cardId,
-              pageId: item.id,
-              deck: _finalDeck,
-              createdAt: nowTime,
-              updatedAt: nowTime,
-              isPending: asPending
-            }));
-          });
-          await Promise.all(cardPromises);
+        try {
+          _finalImageUrl = await handleImageCloudUpload(item.base64, item.fileName, imgbbApiKey);
+        } catch (imgErr) {
+          console.warn("[SaveItem] ImgBB upload failed, falling back to local base64:", imgErr);
         }
-      };
+        if (!silent) {
+          setOperationProgress(prev => ({
+            ...prev,
+            message: `Writing records to Local Database...`
+          }));
+        }
+      }
 
-      // Race against a 60s timeout
-      await Promise.race([
-        uploadWithTimeout(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Cloud Sync Timed Out (60s). Please check your connection.")), 60000))
-      ]);
-
-      console.log("[CloudSave] <<< SUCCESS: All data synced.");
-
-      // --- Optimistic state updates ---
       const nowTs = Date.now();
       const newPage = {
-        id: item.id, imageUrl: _finalImageUrl, deck: _finalDeck,
-        createdAt: nowTs, updatedAt: nowTs, fileName: item.fileName,
-        isPending: asPending, mimeType: item.mimeType || 'image/jpeg'
+        id: item.id,
+        imageUrl: _finalImageUrl,
+        deck: _finalDeck,
+        createdAt: nowTs,
+        updatedAt: nowTs,
+        fileName: item.fileName,
+        mimeType: item.mimeType || 'image/jpeg'
       };
-      setCloudPages(prev => [newPage, ...prev].sort((a, b) => b.createdAt - a.createdAt));
-      if (asPending) setPendingPageCount(prev => prev + 1);
-      if (_savedCards.length > 0) {
-        setCards(prev => [..._savedCards, ...prev].sort((a, b) => b.createdAt - a.createdAt));
-        setTotalCardCount(prev => prev + _savedCards.length);
-        batchUpdateCardCounts({ [_finalDeck]: _savedCards.length });
-        // Invalidate folder cache so next folder visit gets consistent data
-        loadedFolderPaths.current.delete(_finalDeck);
-      }
-      fbTracker.write(1 + _savedCards.length); // page doc + card docs
-      setFbUsage(fbTracker.getUsage());
 
-      // Cleanup
-      setQueue(prev => prev.filter(q => q.id !== id));
-      setActiveQueueId(null);
-      if (!silent) {
-        setOperationProgress(prev => ({ ...prev, current: 1, message: 'Saved successfully!' }));
-        await new Promise(res => setTimeout(res, 500));
-      }
-      setTimeout(() => {
-        if (!silent) {
-          if (asPending) {
-            alert("Sent to 'Mobile Scans Inbox'! Check the 'Mobile Scans Inbox' folder under your Library tab on your laptop!");
-          } else {
-            alert(`Successfully saved to Library!`);
-          }
+      // 1. Save page to IndexedDB
+      await saveLocalPage(newPage);
+
+      // 2. Process & save flashcards with all 12 Gemini parameters to IndexedDB
+      if (item.generatedCards && item.generatedCards.length > 0) {
+        const nowTime = Date.now();
+        _savedCards = item.generatedCards.map(rawCard => {
+          const card = sanitizeCardForFirestore(rawCard);
+          const cardId = rawCard.id || generateId();
+          return {
+            id: cardId,
+            pageId: item.id,
+            deck: _finalDeck,
+            type: card.type || 'Basic',
+            front: card.front || '',
+            back: card.back || '',
+            text: card.text || '',
+            ymin: typeof card.ymin === 'number' ? card.ymin : 0,
+            xmin: typeof card.xmin === 'number' ? card.xmin : 0,
+            ymax: typeof card.ymax === 'number' ? card.ymax : 1000,
+            xmax: typeof card.xmax === 'number' ? card.xmax : 1000,
+            has_image: Boolean(card.has_image),
+            img_box: Array.isArray(card.img_box) ? card.img_box : null,
+            image_side: card.image_side || 'none',
+            image_confidence: typeof card.image_confidence === 'number' ? card.image_confidence : 0,
+            createdAt: nowTime,
+            updatedAt: nowTime
+          };
+        });
+
+        for (const card of _savedCards) {
+          await saveLocalCard(card);
         }
-      }, 100);
+      }
+
+      // Reset cache flags so Library views fetch updated local data
+      pagesLoaded.current = false;
+      allCardsLoaded.current = false;
+      loadedFolderPaths.current.clear();
+
+      // 3. Update React state immediately
+      setCloudPages(prev => [newPage, ...prev.filter(p => p.id !== newPage.id)].sort((a, b) => b.createdAt - a.createdAt));
+      if (_savedCards.length > 0) {
+        setCards(prev => [..._savedCards, ...prev.filter(c => !_savedCards.some(sc => sc.id === c.id))].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)));
+        setTotalCardCount(prev => Math.max(prev + _savedCards.length, cards.length + _savedCards.length));
+
+        const nextDeckCounts = {
+          ...deckCardCounts,
+          [_finalDeck]: (deckCardCounts[_finalDeck] || 0) + _savedCards.length
+        };
+        setDeckCardCounts(nextDeckCounts);
+        await updateHierarchySetting({ deckCardCounts: nextDeckCounts });
+      }
+
+      // Remove saved item from queue so it is cleared from card generation page
+      setQueue(prev => prev.filter(q => q.id !== id));
+      if (activeQueueId === id) {
+        setActiveQueueId(null);
+      }
+
+      if (!silent) {
+        setOperationProgress(prev => ({
+          ...prev,
+          current: 1,
+          message: isImgbbCloud ? 'Saved successfully to ImgBB Cloud & Local DB!' : 'Saved successfully to Local DB!'
+        }));
+        await new Promise(res => setTimeout(res, 300));
+        alert(`Successfully saved to ${isImgbbCloud ? 'ImgBB Cloud & Local' : 'Local'} Library!`);
+      }
     } catch (err) {
-      console.error("[CloudSave] !!! FAILED:", err);
-      if (!silent) alert("Failed to save to cloud: " + err.message);
+      console.error("[SaveItem] !!! FAILED:", err);
+      if (!silent) alert("Failed to save: " + err.message);
       throw err;
     } finally {
       if (!silent) {
@@ -16091,14 +15951,8 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
   };
 
   const saveAllProcessedToCloud = async () => {
-    if (!user) return;
     const processedItems = queue.filter(q => q.status === 'done');
     if (processedItems.length === 0) return;
-
-    if (!imgbbApiKey) {
-      alert("ImgBB API Key is required to save pages to the cloud.\n\nPlease go to Settings → Paste your ImgBB API key → Click 'Save API Keys to Cloud'.");
-      return;
-    }
 
     const hasDifferentDecks = processedItems.some(item => {
       const itemDeck = item.hasCustomDeck ? item.deck : hierarchy;
@@ -16111,48 +15965,59 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
 
     if (!confirm(confirmMessage)) return;
 
+    const isImgbbCloud = imageStorageMode === 'cloud' && Boolean(imgbbApiKey);
+
     setIsSaving(true);
     setOperationProgress({
       show: true,
-      title: 'Saving Pages to Cloud',
-      message: `Starting bulk upload of ${processedItems.length} items...`,
+      title: isImgbbCloud ? 'Saving Pages (ImgBB Cloud & Library)' : 'Saving Pages to Local Library',
+      message: `Starting bulk save of ${processedItems.length} items (${isImgbbCloud ? 'ImgBB Cloud' : 'Local DB'})...`,
       current: 0,
       total: processedItems.length
     });
 
     let successCount = 0;
     let failCount = 0;
+    const savedIds = new Set();
     try {
       for (let i = 0; i < processedItems.length; i++) {
         const item = processedItems[i];
         setOperationProgress(prev => ({
           ...prev,
           current: i,
-          message: `Uploading page ${i + 1} of ${processedItems.length}: ${item.fileName.slice(0, 40)}...`
+          message: `${isImgbbCloud ? 'Uploading to ImgBB & saving' : 'Saving'} page ${i + 1} of ${processedItems.length}: ${item.fileName.slice(0, 30)}...`
         }));
         if (i > 0) {
-          // Apply 2.5s spacing delay between bulk uploads to avoid API rate limits
-          await new Promise(res => setTimeout(res, 2500));
+          await new Promise(res => setTimeout(res, 100));
         }
         try {
-          // Pass item directly as itemOverride to avoid stale queue state closure issues
-          await saveQueueItemToCloud(item.id, false, true, item);
+          await saveQueueItemToCloud(item.id, true, item);
+          savedIds.add(item.id);
           successCount++;
         } catch (itemErr) {
           failCount++;
           console.error(`[BulkSave] Failed to save item ${item.fileName}:`, itemErr);
         }
       }
+
+      if (savedIds.size > 0) {
+        setQueue(prev => prev.filter(q => !savedIds.has(q.id)));
+        if (activeQueueId && savedIds.has(activeQueueId)) {
+          setActiveQueueId(null);
+        }
+      }
+
       setOperationProgress(prev => ({
         ...prev,
         current: processedItems.length,
         message: 'Finalizing database writes...'
       }));
-      await new Promise(res => setTimeout(res, 500));
+      await new Promise(res => setTimeout(res, 300));
+      const destText = isImgbbCloud ? 'ImgBB Cloud & Local Library' : 'Local Library';
       if (failCount === 0) {
-        alert(`Successfully saved all ${successCount} pages to your library!`);
+        alert(`Successfully saved all ${successCount} pages to ${destText}!`);
       } else {
-        alert(`Saved ${successCount} of ${processedItems.length} pages.\n${failCount} page(s) failed — check that your ImgBB API key is valid in Settings.`);
+        alert(`Saved ${successCount} of ${processedItems.length} pages to ${destText}.\n${failCount} page(s) failed.`);
       }
     } finally {
       setIsSaving(false);
@@ -16685,7 +16550,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
           let imgFilename = null;
 
           if (includeImages && !card.excludeImage && card.include_image !== false) {
-                let imgDataUrl = card.cropped_data_url || null;
+            let imgDataUrl = card.cropped_data_url || null;
             const rawSrc = findCardImageSrc(card);
 
             if (!imgDataUrl && rawSrc) {
@@ -17380,43 +17245,61 @@ Return your response strictly as a JSON object matching this schema:
     if (selectedPages.size === 0 || !moveDialog.targetPath) return;
     const target = moveDialog.targetPath;
     const ids = Array.from(selectedPages);
+    const nowTime = Date.now();
 
     try {
-      const batch = writeBatch(db);
-      const cardsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'flashcards');
-      const nowTime = Date.now();
-      let totalReads = 0;
-      let totalWrites = ids.length;
-
-      for (let pageId of ids) {
-        // Update Page
-        const pageDoc = doc(db, 'artifacts', appId, 'users', user.uid, 'pages', pageId);
-        batch.set(pageDoc, { deck: target }, { merge: true });
-
-        // Query Firestore for cards belonging to this page
-        const snap = await getDocs(query(cardsRef, where('pageId', '==', pageId)));
-        totalReads += snap.size;
-        snap.docs.forEach(docSnap => {
-          const cardDoc = doc(db, 'artifacts', appId, 'users', user.uid, 'flashcards', docSnap.id);
-          batch.set(cardDoc, { deck: target, updatedAt: nowTime }, { merge: true });
-          totalWrites++;
-        });
+      setIsSaving(true);
+      // 1. Update pages locally in IndexedDB (non-destructive)
+      const allLocalPages = await getLocalPages();
+      const affectedPages = (allLocalPages || [])
+        .filter(p => ids.includes(p.id))
+        .map(p => ({ ...p, deck: target, updatedAt: nowTime }));
+      if (affectedPages.length > 0) {
+        await saveLocalPages(affectedPages);
       }
 
-      await batch.commit();
-      fbTracker.read(totalReads);
-      fbTracker.write(totalWrites);
-      setFbUsage(fbTracker.getUsage());
+      // 2. Update cards locally in IndexedDB (non-destructive)
+      const allLocalCards = await getLocalCards();
+      const affectedCards = (allLocalCards || [])
+        .filter(c => ids.includes(c.pageId) || ids.includes(c.queueId) || (affectedPages.some(p => p.id === c.pageId || p.id === c.queueId)))
+        .map(c => ({ ...c, deck: target, updatedAt: nowTime }));
+      if (affectedCards.length > 0) {
+        await saveLocalCards(affectedCards);
+      }
 
-      // Update in-memory state for pages & cards
-      setCloudPages(prev => prev.map(p => ids.includes(p.id) ? { ...p, deck: target } : p));
-      setCards(prev => prev.map(c => (ids.includes(c.pageId) || ids.includes(c.queueId)) ? { ...c, deck: target, updatedAt: nowTime } : c));
+      // 3. Update React state
+      setCloudPages(prev => prev.map(p => ids.includes(p.id) ? { ...p, deck: target, updatedAt: nowTime } : p));
+      setCards(prev => prev.map(c => (ids.includes(c.pageId) || ids.includes(c.queueId) || affectedCards.some(ac => ac.id === c.id)) ? { ...c, deck: target, updatedAt: nowTime } : c));
+
+      // 4. Recalculate deck and subject counts locally
+      const refreshedCards = await getLocalCards();
+      const nextDeckCounts = {};
+      const nextSubjectCounts = {};
+      (refreshedCards || []).forEach(c => {
+        if (c && c.deck) {
+          nextDeckCounts[c.deck] = (nextDeckCounts[c.deck] || 0) + 1;
+          const parts = c.deck.split('::');
+          const subject = parts.length > 1 ? parts[parts.length - 1] : parts[0];
+          if (subject && subject !== 'Root') {
+            nextSubjectCounts[subject] = (nextSubjectCounts[subject] || 0) + 1;
+          }
+        }
+      });
+      setDeckCardCounts(nextDeckCounts);
+      setSubjectCardCounts(nextSubjectCounts);
+      await updateHierarchySetting({
+        deckCardCounts: nextDeckCounts,
+        subjectCardCounts: nextSubjectCounts
+      });
 
       setSelectedPages(new Set());
       setMoveDialog({ isOpen: false, targetPath: '' });
-      alert(`Successfully moved ${ids.length} pages (and their cards) to ${target}`);
+      alert(`Successfully moved ${ids.length} page(s) (and their cards) to ${target}`);
     } catch (err) {
+      console.error("[BulkMove] Error moving pages locally:", err);
       alert("Failed to move pages: " + err.message);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -19392,7 +19275,7 @@ Return your response strictly as a JSON object matching this schema:
           );
 
         case 'studyRoom':
-          const currentDeckName = hierarchy || 'Marrow::Pathology';
+          const currentDeckName = hierarchy || (deckPaths[0] || 'General');
           const deckCards = cards.filter(c => c.deck === currentDeckName);
           const pendingCardsCount = deckCards.filter(c => c.isPending).length;
           return (
@@ -19578,7 +19461,7 @@ Return your response strictly as a JSON object matching this schema:
       {(() => {
         try {
           let mainContent;
-          if (!user) {
+          if (false && !user) {
             if (qrLoginSessionId && qrLoginStatus === 'waiting') {
               mainContent = (
                 <div className="min-h-screen bg-[#0a192f] flex items-center justify-center p-4">
@@ -20057,32 +19940,32 @@ Return your response strictly as a JSON object matching this schema:
                     <div className="space-y-6">
                       {/* Dashboard Stats */}
                       <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-blue-600 p-4 rounded-3xl text-white shadow-xl shadow-blue-600/20">
-                          <div className="text-[10px] font-bold opacity-70 uppercase tracking-widest mb-1">Library</div>
+                        <div className={`${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'} p-5 rounded-3xl text-white`}>
+                          <div className="text-[10px] font-black opacity-80 uppercase tracking-widest mb-1">Library</div>
                           <div className="text-2xl font-black">{cards.length} Cards</div>
                         </div>
-                        <div className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm">
-                          <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Queue</div>
-                          <div className="text-2xl font-black text-blue-950">{queue.length} Items</div>
+                        <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-white' : 'neu-card-light text-gray-900'} p-5 rounded-3xl`}>
+                          <div className={`text-[10px] font-black uppercase tracking-widest mb-1 ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Queue</div>
+                          <div className="text-2xl font-black">{queue.length} Items</div>
                         </div>
                       </div>
 
                       {/* ACTIVE PROCESSING / QUEUE - HIGHER PRIORITY */}
                       {queue.length > 0 && (
-                        <div className="bg-blue-950 rounded-[2.5rem] p-6 text-white shadow-2xl shadow-blue-950/20 animate-in fade-in zoom-in duration-500">
+                        <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark border border-gray-800 text-white' : 'neu-card-light border border-white text-gray-900'} rounded-[2.5rem] p-6 animate-in fade-in zoom-in duration-500`}>
                           <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-2">
                               <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
                               <span className="text-xs font-black uppercase tracking-widest">Processing Engine</span>
                             </div>
-                            <button onClick={() => setQueue([])} className="text-[10px] text-white/40 font-bold uppercase">Clear</button>
+                            <button onClick={() => setQueue([])} className={`text-[10px] font-bold uppercase ${settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}`}>Clear</button>
                           </div>
 
                           <button
                             onClick={processQueue}
                             disabled={isProcessing}
                             className={`w-full flex items-center justify-center gap-3 p-4 rounded-2xl font-black text-sm transition-all active:scale-95 mb-3
-                      ${isProcessing ? 'bg-white/10 text-white/40' : 'bg-blue-500 text-white shadow-lg shadow-blue-500/30'}
+                      ${isProcessing ? (settingsThemeMode === 'dark' ? 'neu-pressed-dark text-gray-500' : 'neu-pressed-light text-gray-400') : (settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light')}
                     `}
                           >
                             {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Play className="w-5 h-5" />}
@@ -20090,10 +19973,10 @@ Return your response strictly as a JSON object matching this schema:
                           </button>
 
                           {/* Mobile Autosave Toggle */}
-                          <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/5 border border-white/10 mb-3 transition-colors hover:bg-white/10">
+                          <div className={`flex items-center justify-between p-3.5 rounded-2xl mb-3 transition-colors ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200/60'}`}>
                             <div className="flex flex-col text-left">
-                              <span className="text-[11px] font-black uppercase tracking-wider text-white">Auto-Save on Generation</span>
-                              <span className="text-[9px] font-semibold text-white/50">Uploads to library immediately upon completion</span>
+                              <span className={`text-[11px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>Auto-Save on Generation</span>
+                              <span className={`text-[9px] font-bold ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Uploads to library immediately upon completion</span>
                             </div>
                             <label className="relative inline-flex items-center cursor-pointer select-none">
                               <input
@@ -20102,59 +19985,92 @@ Return your response strictly as a JSON object matching this schema:
                                 onChange={(e) => setIsAutosaveEnabled(e.target.checked)}
                                 className="sr-only peer"
                               />
-                              <div className="w-9 h-5 bg-white/15 rounded-full peer peer-focus:ring-0 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-500" />
+                              <div className="w-9 h-5 bg-gray-300 rounded-full peer peer-focus:ring-0 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
                             </label>
+                          </div>
+
+                          {/* Mobile Image Storage Mode Selector */}
+                          <div className={`flex items-center justify-between p-3.5 rounded-2xl mb-3 transition-colors ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200/60'}`}>
+                            <div className="flex flex-col text-left">
+                              <span className={`text-[11px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>Image Storage Mode</span>
+                              <span className={`text-[9px] font-bold ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                                {imageStorageMode === 'local' ? '📁 Local DB (Offline & Instant)' : '☁️ ImgBB Cloud'}
+                              </span>
+                            </div>
+                            <select
+                              value={imageStorageMode}
+                              onChange={(e) => {
+                                const mode = e.target.value;
+                                setImageStorageMode(mode);
+                                localStorage.setItem("pyt_image_storage_mode", mode);
+                                saveLocalSetting('apiKeys', { imageStorageMode: mode });
+                              }}
+                              className={`text-[10px] font-black rounded-xl px-2.5 py-1.5 outline-none cursor-pointer ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white border border-gray-800' : 'neu-pressed-light text-gray-800 border border-gray-200'}`}
+                            >
+                              <option value="local" className={settingsThemeMode === 'dark' ? 'bg-slate-900 text-white' : ''}>📁 Local DB</option>
+                              <option value="cloud" className={settingsThemeMode === 'dark' ? 'bg-slate-900 text-white' : ''}>☁️ ImgBB Cloud</option>
+                            </select>
                           </div>
 
                           <button
                             onClick={sendAllToWebDirectly}
                             disabled={isProcessing || isSaving}
                             className={`w-full flex items-center justify-center gap-3 p-4 rounded-2xl font-black text-sm transition-all active:scale-95 mb-6
-                      ${isProcessing || isSaving ? 'bg-white/10 text-white/40' : 'bg-orange-600 text-white shadow-lg shadow-orange-600/30'}
+                      ${isProcessing || isSaving ? (settingsThemeMode === 'dark' ? 'neu-pressed-dark text-gray-500' : 'neu-pressed-light text-gray-400') : 'bg-amber-600 text-white shadow-lg shadow-amber-600/30'}
                     `}
                           >
                             {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
                             Send to Web Directly
                           </button>
 
-                          <div className="space-y-3 max-h-[250px] overflow-y-auto pr-1">
+                          <div className="space-y-3 max-h-[250px] overflow-y-auto pr-1 custom-scrollbar">
                             {queue.map(item => (
-                              <div key={item.id} onClick={() => setActiveQueueId(item.id)} className={`p-3 rounded-2xl border transition-all flex flex-col gap-2 cursor-pointer ${activeQueueId === item.id ? 'bg-white/15 border-white/20 scale-[1.02]' : 'bg-white/5 border-white/5 opacity-70'}`}>
+                              <div key={item.id} onClick={() => setActiveQueueId(item.id)} className={`p-3 rounded-2xl border transition-all flex flex-col gap-2 cursor-pointer ${activeQueueId === item.id ? (settingsThemeMode === 'dark' ? 'neu-pressed-dark border-blue-500/50' : 'neu-pressed-light border-blue-400') : (settingsThemeMode === 'dark' ? 'neu-card-dark border-gray-800' : 'neu-card-light border-gray-200')}`}>
                                 <div className="flex items-center gap-3 w-full">
-                                  <div className="w-10 h-10 bg-white/10 rounded-xl overflow-hidden shrink-0">
+                                  <div className={`w-10 h-10 rounded-xl overflow-hidden shrink-0 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
                                     <img src={item.base64} className="w-full h-full object-cover" alt="" />
                                   </div>
                                   <div className="flex-grow min-w-0 text-left">
-                                    <div className="text-[10px] font-bold truncate opacity-80">{item.fileName}</div>
+                                    <div className={`text-[10px] font-bold truncate ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>{item.fileName}</div>
                                     <div className="flex items-center gap-2 mt-1">
-                                      {item.status === 'processing' && <div className="h-1 flex-grow bg-white/10 rounded-full overflow-hidden"><div className="h-full bg-blue-400 w-1/2 animate-shimmer" /></div>}
-                                      {item.status === 'done' && <span className="text-[9px] text-green-400 font-black">READY ({item.generatedCards?.length || 0})</span>}
-                                      {item.status === 'pending' && <span className="text-[9px] text-white/40 font-bold">QUEUED</span>}
+                                      {item.status === 'processing' && <div className="h-1 flex-grow bg-blue-500/20 rounded-full overflow-hidden"><div className="h-full bg-blue-500 w-1/2 animate-pulse" /></div>}
+                                      {item.status === 'done' && <span className="text-[9px] text-emerald-500 font-black">READY ({item.generatedCards?.length || 0})</span>}
+                                      {item.status === 'pending' && <span className={`text-[9px] font-bold ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>QUEUED</span>}
                                       {item.status === 'error' && (
-                                        <button onClick={() => retryItem(item.id)} className="text-[9px] text-red-400 font-black hover:underline cursor-pointer">
+                                        <button onClick={() => retryItem(item.id)} className="text-[9px] text-red-500 font-black hover:underline cursor-pointer">
                                           FAILED (RETRY)
                                         </button>
                                       )}
                                     </div>
                                   </div>
                                   {item.status === 'done' && (
-                                    <div className="bg-green-500 text-white p-2 rounded-xl shrink-0">
-                                      <CheckCircle className="w-4 h-4" />
+                                    <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                      <button
+                                        onClick={() => regeneratePageWithGemini(item.id)}
+                                        disabled={isProcessing}
+                                        className={`p-2 rounded-xl transition-all active:scale-95 disabled:opacity-50 ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-purple-400' : 'neu-btn-light text-purple-600'}`}
+                                        title="Regenerate this page using Gemini AI pipeline"
+                                      >
+                                        <Sparkles className="w-4 h-4 text-purple-400" />
+                                      </button>
+                                      <div className={`p-2 rounded-xl ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'}`}>
+                                        <CheckCircle className="w-4 h-4 text-white" />
+                                      </div>
                                     </div>
                                   )}
                                 </div>
-                                <div className="flex items-center gap-1.5 w-full pt-1 border-t border-white/5" onClick={(e) => e.stopPropagation()}>
-                                  <Folder className="w-3 h-3 text-white/40 shrink-0" />
+                                <div className={`flex items-center gap-1.5 w-full pt-1.5 border-t ${settingsThemeMode === 'dark' ? 'border-gray-800' : 'border-gray-200'}`} onClick={(e) => e.stopPropagation()}>
+                                  <Folder className={`w-3 h-3 shrink-0 ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
                                   <select
                                     value={item.deck || hierarchy}
                                     onChange={(e) => {
                                       const nextDeck = e.target.value;
                                       setQueue(prev => prev.map(q => q.id === item.id ? { ...q, deck: nextDeck, hasCustomDeck: true } : q));
                                     }}
-                                    className="text-[9px] bg-white/10 text-white/80 border border-white/5 rounded px-1.5 py-0.5 flex-grow truncate outline-none cursor-pointer hover:bg-white/20 transition-all font-bold"
+                                    className={`text-[9px] rounded px-1.5 py-0.5 flex-grow truncate outline-none cursor-pointer font-bold ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white border border-gray-800' : 'neu-pressed-light text-gray-800 border border-gray-200'}`}
                                   >
                                     {effectiveDeckPaths.map(p => (
-                                      <option key={p} value={p} className="text-gray-900 bg-white">{p.replace(/::/g, ' ➔ ')}</option>
+                                      <option key={p} value={p} className={settingsThemeMode === 'dark' ? 'bg-slate-900 text-white' : ''}>{p.replace(/::/g, ' ➔ ')}</option>
                                     ))}
                                   </select>
                                 </div>
@@ -20164,118 +20080,50 @@ Return your response strictly as a JSON object matching this schema:
                         </div>
                       )}
 
-                      {/* Upload Action Card */}
-                      <div className="bg-white rounded-[2.5rem] p-6 shadow-sm border border-gray-100">
-                        <div className="flex items-center justify-between mb-6">
-                          <div className="flex flex-col">
-                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Target Deck</span>
-                            <span className="text-sm font-black text-blue-950 truncate max-w-[150px]">{hierarchy}</span>
+                      {/* Dropzone Card */}
+                      <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-6 rounded-[2rem] text-center`}>
+                        {/* Selected Deck Selector for Mobile */}
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex flex-col text-left">
+                            <span className={`text-[10px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Target Folder</span>
+                            <span className={`text-xs font-black truncate max-w-[180px] ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>{hierarchy}</span>
                           </div>
                           <button
-                            onClick={() => setIsFolderPickerOpen(true)}
-                            className="bg-blue-50 text-blue-600 px-4 py-2 rounded-xl text-[10px] font-black uppercase active:scale-95 transition"
+                            onClick={() => setShowMobileFolderTree(!showMobileFolderTree)}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400' : 'neu-btn-light text-blue-600'}`}
                           >
-                            Change Deck
+                            <Folder className="w-3.5 h-3.5" />
+                            {showMobileFolderTree ? 'Hide' : 'Select'}
                           </button>
                         </div>
 
-                        {/* PROMPT SELECTORS */}
-                        <div className="border-t border-gray-100 pt-4 mt-4 space-y-4 text-left">
-                          <div>
-                            <label className="block text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">Prompt Template</label>
-                            <select
-                              value={generationPromptId}
-                              onChange={(e) => setGenerationPromptId(e.target.value)}
-                              className="w-full p-2.5 border border-gray-200 rounded-xl outline-none text-xs font-bold bg-gray-50 text-gray-800 focus:ring-4 focus:ring-blue-500/10"
-                            >
-                              <option value="default">Default Medical Prompt</option>
-                              {customPrompts.map(p => (
-                                <option key={p.id} value={p.id}>{p.name}</option>
-                              ))}
-                            </select>
-                          </div>
-
-                          {(() => {
-                            const currentPromptName = generationPromptId === 'default'
-                              ? 'Default Medical Prompt'
-                              : (customPrompts.find(p => p.id === generationPromptId)?.name || '');
-                            const isHighYield = currentPromptName.toLowerCase().includes('high-yield');
-                            if (isHighYield) {
-                              const subjects = Array.from(new Set(pytTopicsList.map(p => p.subject).filter(Boolean)));
-                              return (
-                                <div className="animate-in slide-in-from-top-2 duration-200">
-                                  <label className="block text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">Select Subject</label>
-                                  <select
-                                    value={selectedGenerationSubject}
-                                    onChange={(e) => setSelectedGenerationSubject(e.target.value)}
-                                    className="w-full p-2.5 border border-gray-200 rounded-xl outline-none text-xs font-bold bg-gray-50 text-gray-800 focus:ring-4 focus:ring-blue-500/10"
-                                  >
-                                    <option value="">-- Choose Subject --</option>
-                                    {subjects.map(sub => (
-                                      <option key={sub} value={sub}>{sub}</option>
-                                    ))}
-                                  </select>
-                                </div>
-                              );
-                            }
-                            return null;
-                          })()}
-                        </div>
-
-                        {/* MOBILE FOLDER PICKER MODAL */}
-                        {isFolderPickerOpen && (
-                          <div className="fixed inset-0 bg-white z-[100] flex flex-col animate-in slide-in-from-bottom duration-300">
-                            <header className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                              <div className="flex flex-col">
-                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Select Target Deck</span>
-                                <span className="text-sm font-black text-blue-950 truncate max-w-[200px]">{hierarchy}</span>
-                              </div>
-                              <button
-                                onClick={() => { setIsFolderPickerOpen(false); setMovingNode(null); }}
-                                className="bg-blue-600 text-white px-6 py-2 rounded-xl text-xs font-black uppercase shadow-lg shadow-blue-600/20"
-                              >
-                                Done
-                              </button>
-                            </header>
-                            <div className="flex-grow overflow-y-auto p-5">
-                              <div className="mb-4 p-3 bg-blue-50 rounded-xl border border-blue-100">
-                                <p className="text-[10px] text-blue-600 font-bold leading-tight">
-                                  {movingNode ? `Select destination for: ${movingNode.split('::').pop()}` : 'Tap a folder to select it. Long press or use buttons to create/rename.'}
-                                </p>
-                              </div>
-                              <TreeFolder
-                                node={buildTree(effectiveDeckPaths, cloudPages, deckCardCounts)}
-                                level={0}
-                                selectedPath={hierarchy}
-                                onSelect={(path) => {
-                                  if (movingNode) {
-                                    handleMoveNode(movingNode, path);
-                                    setMovingNode(null);
-                                  } else {
-                                    setHierarchy(path);
-                                  }
-                                }}
-                                onAdd={(path) => setNewFolderDialog({ isOpen: true, basePath: path, input: '' })}
-                                onRename={(path) => setRenameDialog({ isOpen: true, path, input: path.split('::').pop() })}
-                                onDelete={handleDeleteFolder}
-                                onMoveNode={handleMoveNode}
-                                isMobileMoveMode={!!movingNode}
-                                onToggleMove={(path) => setMovingNode(movingNode === path ? null : path)}
-                              />
-                            </div>
+                        {showMobileFolderTree && (
+                          <div className={`p-3 rounded-2xl mb-4 text-left max-h-[250px] overflow-y-auto custom-scrollbar ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200'}`}>
+                            <TreeFolder
+                              node={buildTree(effectiveDeckPaths, cloudPages, deckCardCounts)}
+                              level={0}
+                              selectedPath={hierarchy}
+                              onSelect={(path) => { setHierarchy(path); setShowMobileFolderTree(false); }}
+                              onAdd={(path) => setNewFolderDialog({ isOpen: true, basePath: path, input: '' })}
+                              onRename={(path) => setRenameDialog({ isOpen: true, path, input: path.split('::').pop() })}
+                              onDelete={handleDeleteFolder}
+                              onMoveNode={handleMoveNode}
+                              isMobileMoveMode={!!movingNode}
+                              onToggleMove={(path) => setMovingNode(movingNode === path ? null : path)}
+                            />
                           </div>
                         )}
 
-                        <label className={`flex flex-col items-center justify-center p-10 border-2 border-dashed rounded-[2rem] transition-all cursor-pointer group
-                  ${isUploading ? 'bg-gray-100 border-gray-200 cursor-not-allowed' : 'bg-blue-50/50 border-blue-100 active:bg-blue-100 active:border-blue-300'}
-                `}>
-                          <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 shadow-lg transition
-                    ${isUploading ? 'bg-gray-300 animate-pulse' : 'bg-blue-600 shadow-blue-600/30 group-active:scale-90'}
-                  `}>
-                            {isUploading ? <Loader2 className="w-8 h-8 text-white animate-spin" /> : <UploadCloud className="w-8 h-8 text-white" />}
+                        <label className={`flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-[2rem] transition-all cursor-pointer group ${isUploading
+                            ? (settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-800 cursor-not-allowed' : 'neu-pressed-light border-gray-300 cursor-not-allowed')
+                            : (settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-700 hover:border-blue-400' : 'neu-pressed-light border-gray-300 hover:border-blue-500')
+                          }`}>
+                          <div className={`w-14 h-14 rounded-full flex items-center justify-center mb-3 transition ${isUploading ? 'bg-gray-400 animate-pulse' : (settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light')
+                            }`}>
+                            {isUploading ? <Loader2 className="w-7 h-7 text-white animate-spin" /> : <UploadCloud className="w-7 h-7 text-white" />}
                           </div>
-                          <span className="font-black text-blue-950">{isUploading ? 'Uploading...' : 'New Capture'}</span>
-                          <span className="text-[10px] text-blue-600/60 font-bold mt-1">{isUploading ? 'Converting files for AI...' : 'Tap to add pages to current deck'}</span>
+                          <span className={`font-black text-sm ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>{isUploading ? 'Uploading...' : 'New Capture'}</span>
+                          <span className={`text-[10px] font-bold mt-1 ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{isUploading ? 'Converting files for AI...' : 'Tap to add pages to current deck'}</span>
                           {!isUploading && <input type="file" multiple accept="image/*,application/pdf" className="hidden" onChange={handleFileSelect} />}
                         </label>
                       </div>
@@ -20283,15 +20131,15 @@ Return your response strictly as a JSON object matching this schema:
                       {/* Workspace / Preview Section */}
                       {activeQueueId && (
                         <div className="space-y-4 animate-in slide-in-from-bottom-4 duration-500">
-                          <div className="bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100 p-2">
-                            <div className="aspect-[3/4] bg-gray-100 rounded-2xl overflow-hidden relative shadow-inner">
+                          <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-2.5 rounded-3xl overflow-hidden`}>
+                            <div className={`aspect-[3/4] rounded-2xl overflow-hidden relative ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
                               <img src={activeImageObj?.imageUrl || activeImageObj?.base64} className="w-full h-full object-cover" alt="" />
                             </div>
                           </div>
 
                           <div className="space-y-3">
                             <div className="flex items-center justify-between px-1">
-                              <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                              <h3 className={`text-[10px] font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                                 {queue.find(q => q.id === activeQueueId) ? 'Preview: AI Generation' : 'Library: Saved Cards'}
                               </h3>
                               <button onClick={() => setActiveQueueId(null)} className="text-red-500 text-[10px] font-black uppercase">Close</button>
@@ -20299,20 +20147,22 @@ Return your response strictly as a JSON object matching this schema:
 
                             {/* Cards Display */}
                             {(queue.find(q => q.id === activeQueueId)?.generatedCards || pageCards).map(card => (
-                              <div key={card.id} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 space-y-2 active:scale-[0.98] transition border-l-4 border-l-blue-500">
-                                <span className="text-[8px] font-black uppercase tracking-widest bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full inline-block">{card.type}</span>
+                              <div key={card.id} className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-white' : 'neu-card-light text-gray-900'} p-4 rounded-2xl space-y-2`}>
+                                <div className="flex items-center justify-between">
+                                  <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full inline-block ${settingsThemeMode === 'dark' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}>{card.type}</span>
+                                </div>
                                 {card.type === 'Cloze' ? (
-                                  <div className="text-sm text-gray-800 font-medium leading-relaxed">{card.text}</div>
+                                  <div className={`text-sm font-medium leading-relaxed ${settingsThemeMode === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>{card.text}</div>
                                 ) : (
                                   <div className="space-y-1">
-                                    <div className="text-sm text-gray-800 font-black leading-tight">{card.front}</div>
-                                    <div className="text-xs text-blue-600 font-medium">{card.back}</div>
+                                    <div className={`text-sm font-black leading-tight ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>{card.front}</div>
+                                    <div className={`text-xs font-medium ${settingsThemeMode === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>{card.back}</div>
                                   </div>
                                 )}
                               </div>
                             ))}
                             {(queue.find(q => q.id === activeQueueId)?.generatedCards || pageCards).length === 0 && (
-                              <div className="p-10 text-center text-gray-400 italic text-sm">
+                              <div className={`p-10 text-center italic text-sm ${settingsThemeMode === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
                                 No cards generated yet for this page.
                               </div>
                             )}
@@ -20321,18 +20171,18 @@ Return your response strictly as a JSON object matching this schema:
                             {activeQueueItem?.status === 'done' ? (
                               <div className="pt-6 space-y-3 pb-20">
                                 <button
-                                  disabled={isSaving}
-                                  onClick={() => saveQueueItemToCloud(activeQueueId, true)}
-                                  className="w-full bg-blue-600 text-white p-5 rounded-2xl text-xs font-black flex items-center justify-center gap-2 shadow-xl shadow-blue-600/30 active:scale-95 transition disabled:opacity-50"
+                                  disabled={isProcessing || isSaving}
+                                  onClick={() => regeneratePageWithGemini(activeQueueId)}
+                                  className={`w-full p-4 rounded-2xl text-xs font-black flex items-center justify-center gap-2 active:scale-95 transition disabled:opacity-50 ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-purple-400' : 'neu-btn-light text-purple-600'}`}
                                 >
-                                  {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Monitor className="w-5 h-5" />}
-                                  Continue on Web
+                                  {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+                                  Regenerate Page with Gemini AI
                                 </button>
 
                                 <button
                                   disabled={isSaving}
                                   onClick={() => saveQueueItemToCloud(activeQueueId)}
-                                  className="w-full bg-green-600 text-white p-5 rounded-2xl text-xs font-black flex items-center justify-center gap-2 shadow-xl shadow-green-600/30 active:scale-95 transition disabled:opacity-50"
+                                  className={`w-full p-5 rounded-2xl text-xs font-black flex items-center justify-center gap-2 active:scale-95 transition disabled:opacity-50 ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'}`}
                                 >
                                   <CheckCircle className="w-5 h-5" /> Save Instantly to Library
                                 </button>
@@ -20340,7 +20190,7 @@ Return your response strictly as a JSON object matching this schema:
                                 <button
                                   disabled={isSaving || queue.filter(q => q.status === 'done').length === 0}
                                   onClick={saveAllProcessedToCloud}
-                                  className="w-full bg-indigo-600 text-white p-5 rounded-2xl text-xs font-black flex items-center justify-center gap-2 shadow-xl shadow-indigo-600/30 active:scale-95 transition disabled:opacity-50"
+                                  className={`w-full p-5 rounded-2xl text-xs font-black flex items-center justify-center gap-2 active:scale-95 transition disabled:opacity-50 ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'}`}
                                 >
                                   <Layers className="w-5 h-5" /> Save All to Library
                                 </button>
@@ -20348,7 +20198,7 @@ Return your response strictly as a JSON object matching this schema:
                                 <button
                                   disabled={isSaving}
                                   onClick={() => saveQueueItemToCloud(activeQueueId)}
-                                  className="w-full bg-emerald-600 text-white p-5 rounded-2xl text-xs font-black flex items-center justify-center gap-2 shadow-xl shadow-emerald-600/30 active:scale-95 transition disabled:opacity-50"
+                                  className={`w-full p-5 rounded-2xl text-xs font-black flex items-center justify-center gap-2 active:scale-95 transition disabled:opacity-50 ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'}`}
                                 >
                                   <CheckCircle className="w-5 h-5" /> Save Selected Pages to Library
                                 </button>
@@ -20356,7 +20206,7 @@ Return your response strictly as a JSON object matching this schema:
                                 <button
                                   disabled={isSaving || queue.length === 0}
                                   onClick={sendAllToWebDirectly}
-                                  className="w-full bg-amber-600 text-white p-5 rounded-2xl text-xs font-black flex items-center justify-center gap-2 shadow-xl shadow-amber-600/30 active:scale-95 transition disabled:opacity-50"
+                                  className={`w-full p-5 rounded-2xl text-xs font-black flex items-center justify-center gap-2 active:scale-95 transition disabled:opacity-50 ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'}`}
                                 >
                                   <Send className="w-5 h-5" /> Send All to Web
                                 </button>
@@ -20364,7 +20214,7 @@ Return your response strictly as a JSON object matching this schema:
                                 <button
                                   disabled={isSaving}
                                   onClick={() => removeQueueItem(activeQueueId)}
-                                  className="w-full bg-red-50 text-red-600 p-4 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center gap-2 border border-red-100 active:scale-95 transition disabled:opacity-50"
+                                  className={`w-full p-4 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center gap-2 transition disabled:opacity-50 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-red-400 border border-red-500/30' : 'neu-pressed-light text-red-600 border border-red-200'}`}
                                 >
                                   <Trash2 className="w-4 h-4" /> Discard Generation
                                 </button>
@@ -20374,7 +20224,7 @@ Return your response strictly as a JSON object matching this schema:
                                 <button
                                   disabled={isSaving}
                                   onClick={() => setDeleteConfirmDialog({ isOpen: true, pageIds: [activeQueueId], isBulk: false })}
-                                  className="w-full bg-red-50 text-red-600 p-4 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center gap-2 border border-red-100 active:scale-95 transition disabled:opacity-50"
+                                  className={`w-full p-4 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center gap-2 transition disabled:opacity-50 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-red-400 border border-red-500/30' : 'neu-pressed-light text-red-600 border border-red-200'}`}
                                 >
                                   <Trash2 className="w-4 h-4" /> Delete Page from Library
                                 </button>
@@ -20469,14 +20319,6 @@ Return your response strictly as a JSON object matching this schema:
                           <div className="space-y-3">
                             <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1 flex justify-between items-center">
                               <span>Generated Cards ({pageCards.length})</span>
-                              {activeImageObj?.isPending && (
-                                <button
-                                  onClick={() => setApproveDialog({ isOpen: true, pageId: activeImageObj.id, targetDeck: activeImageObj.deck || hierarchy })}
-                                  className="bg-orange-600 text-white px-3 py-1 rounded-full text-[8px]"
-                                >
-                                  Approve Capture
-                                </button>
-                              )}
                             </h3>
                             {pageCards.map(card => (
                               <div key={card.id} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 space-y-2 border-l-4 border-l-blue-500">
@@ -20848,7 +20690,10 @@ Return your response strictly as a JSON object matching this schema:
                                           </div>
                                           <div className="flex justify-end gap-1.5 text-[8px] pt-1">
                                             <button
-                                              onClick={() => setEditingSessionId(null)}
+                                              onClick={() => {
+                                                setHierarchy(card.deck || hierarchy || (deckPaths[0] || 'General'));
+                                                setEditingSessionId(null);
+                                              }}
                                               className="px-2 py-1 bg-gray-100 rounded text-gray-600 font-extrabold uppercase hover:bg-gray-250 transition active:scale-95"
                                             >
                                               Cancel
@@ -21257,303 +21102,462 @@ Return your response strictly as a JSON object matching this schema:
                   )}
 
                   {currentTab === 'settings' && (
-                    <div className="space-y-4 pb-8">
-                      {/* Global Config */}
-                      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4">
-                        <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Global Configuration</h3>
+                    <motion.div
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -15 }}
+                      transition={{ duration: 0.3, ease: 'easeOut' }}
+                      className={`space-y-4 pb-8 transition-colors duration-300 p-2 rounded-2xl smooth-settings-scroll ${settingsThemeMode === 'dark' ? 'neu-bg-dark' : 'neu-bg-light'
+                        }`}
+                    >
+                      {/* NEUMORPHIC THEME SWITCHER CARD (Mobile) */}
+                      <motion.div
+                        whileHover={{ y: -2 }}
+                        className={settingsThemeMode === 'dark' ? 'neu-card-dark p-5 space-y-3' : 'neu-card-light p-5 space-y-3'}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2.5">
+                            <div className={settingsThemeMode === 'dark' ? 'p-2 rounded-xl neu-pressed-dark text-amber-400' : 'p-2 rounded-xl neu-pressed-light text-amber-500'}>
+                              <Sparkles className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <h3 className={`text-xs font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>Neumorphic Theme</h3>
+                              <p className={`text-[9px] font-medium ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Toggle tactile UI theme</p>
+                            </div>
+                          </div>
+
+                          {/* Uiverse Pill Toggle (Mobile) */}
+                          <div className="uiverse-wrapper shrink-0 p-0">
+                            <label className="pill-toggle cursor-pointer" title="Toggle Neumorphic Theme">
+                              <input
+                                type="checkbox"
+                                checked={settingsThemeMode === 'dark'}
+                                onChange={(e) => saveSettingsThemeMode(e.target.checked ? 'dark' : 'light')}
+                              />
+                              <div className="track flex items-center justify-between px-3.5">
+                                <Sun className="w-3.5 h-3.5 text-amber-500 z-0" />
+                                <Moon className="w-3.5 h-3.5 text-blue-400 z-0" />
+                                <div className="pill">
+                                  <div className="pill-surface flex items-center justify-center">
+                                    {settingsThemeMode === 'dark' ? (
+                                      <Moon className="w-3.5 h-3.5 text-blue-500 stroke-[2.5]" />
+                                    ) : (
+                                      <Sun className="w-3.5 h-3.5 text-amber-500 stroke-[2.5]" />
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </label>
+                          </div>
+                        </div>
+                      </motion.div>
+
+                      {/* Unified Credentials Card (Mobile) */}
+                      <motion.div
+                        whileHover={{ y: -2 }}
+                        className={settingsThemeMode === 'dark' ? 'neu-card-dark p-5 space-y-4' : 'neu-card-light p-5 space-y-4'}
+                      >
+                        <div className="flex items-center justify-between">
+                          <h3 className={`text-xs font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>API & Integration Credentials</h3>
+                        </div>
+
                         <div className="space-y-4">
                           <div className="relative">
-                            <label className="text-[10px] font-black text-gray-500 uppercase block mb-2">Google Gemini API Key</label>
+                            <label className="text-[10px] font-black text-gray-400 uppercase block mb-1.5">Google Gemini API Key</label>
                             <div className="relative">
                               <input
                                 type={isApiKeyVisible ? "text" : "password"}
                                 value={geminiApiKey}
                                 onChange={(e) => setGeminiApiKey(e.target.value)}
-                                className="w-full bg-gray-50 border border-gray-200 p-4 pr-12 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-500/10 outline-none transition shadow-inner"
+                                className={`w-full p-3 pr-12 text-xs font-bold outline-none font-mono ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-gray-800'
+                                  }`}
                                 placeholder="Paste key here..."
                               />
                               <button
+                                type="button"
                                 onClick={() => setIsApiKeyVisible(!isApiKeyVisible)}
                                 className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600 transition"
                               >
-                                {isApiKeyVisible ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                {isApiKeyVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                               </button>
                             </div>
                           </div>
+
                           <div className="relative">
-                            <label className="text-[10px] font-black text-gray-500 uppercase block mb-2">ImgBB API Key (For hosting large images)</label>
+                            <div className="flex justify-between items-center mb-1.5">
+                              <label className="text-[10px] font-black text-gray-400 uppercase">ImgBB API Key</label>
+                              <a href="https://api.imgbb.com/" target="_blank" rel="noopener noreferrer" className="text-[9px] font-bold text-blue-500 hover:underline">
+                                api.imgbb.com ↗
+                              </a>
+                            </div>
                             <div className="relative">
                               <input
                                 type={isImgbbKeyVisible ? "text" : "password"}
                                 value={imgbbApiKey}
                                 onChange={(e) => setImgbbApiKey(e.target.value)}
-                                className="w-full bg-gray-50 border border-gray-200 p-4 pr-12 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-500/10 outline-none transition shadow-inner"
-                                placeholder="Paste ImgBB key here..."
+                                className={`w-full p-3 pr-12 text-xs font-bold outline-none font-mono ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-gray-800'
+                                  }`}
+                                placeholder="Paste ImgBB key..."
                               />
                               <button
+                                type="button"
                                 onClick={() => setIsImgbbKeyVisible(!isImgbbKeyVisible)}
-                                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600 transition"
+                                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-500 transition"
                               >
-                                {isImgbbKeyVisible ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                {isImgbbKeyVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                               </button>
                             </div>
-                            <span className="text-[8px] font-bold text-gray-400 mt-1 block">
-                              Get a free key in 30 seconds at{' '}
-                              <a href="https://api.imgbb.com/" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
-                                api.imgbb.com
-                              </a>
-                            </span>
                           </div>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={saveApiKeysToCloud}
-                              className="flex-1 bg-green-50 text-green-600 p-4 rounded-2xl text-[10px] font-black uppercase border border-green-100 active:scale-95 transition"
-                            >
-                              Save API Keys to Cloud
-                            </button>
-                          </div>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => { setGeminiApiKey(''); setIsApiKeyVisible(true); }}
-                              className="flex-1 bg-blue-50 text-blue-600 p-4 rounded-2xl text-[10px] font-black uppercase border border-blue-100 active:scale-95 transition"
-                            >
-                              Change Key
-                            </button>
-                            <button
-                              onClick={logout}
-                              className="flex-1 bg-red-50 text-red-600 p-4 rounded-2xl text-[10px] font-black uppercase border border-red-100 active:scale-95 transition"
-                            >
-                              Logout
-                            </button>
-                          </div>
-                        </div>
-                      </div>
 
-
-
-                      {/* GitHub Configuration Card (Mobile) */}
-                      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-                            <svg className="w-3.5 h-3.5 text-gray-800" viewBox="0 0 24 24" fill="currentColor">
-                              <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
-                            </svg>
-                            GitHub PDF Auto-Sync
-                          </h3>
-                          <button
-                            type="button"
-                            onClick={() => setShowGithubHelpModal(true)}
-                            className="text-gray-400 hover:text-blue-600 transition p-1 bg-gray-50 rounded-lg"
-                            title="Help setup GitHub"
-                          >
-                            <HelpCircle className="w-4 h-4" />
-                          </button>
-                        </div>
-                        <div className="space-y-4">
-                          <div>
-                            <label className="text-[10px] font-black text-gray-500 uppercase block mb-2">GitHub Username</label>
-                            <input
-                              type="text"
-                              value={githubUsername}
-                              onChange={(e) => setGithubUsername(e.target.value)}
-                              className="w-full bg-gray-50 border border-gray-200 p-4 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-500/10 outline-none transition shadow-inner text-gray-855"
-                              placeholder="e.g. yourusername"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-[10px] font-black text-gray-500 uppercase block mb-2">Repository Name</label>
-                            <input
-                              type="text"
-                              value={githubRepo}
-                              onChange={(e) => setGithubRepo(e.target.value)}
-                              className="w-full bg-gray-50 border border-gray-200 p-4 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-500/10 outline-none transition shadow-inner text-gray-855"
-                              placeholder="e.g. my-textbooks"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-[10px] font-black text-gray-500 uppercase block mb-2">Personal Access Token (PAT)</label>
-                            <div className="relative">
-                              <input
-                                type={isGithubPatVisible ? "text" : "password"}
-                                value={githubPatToken}
-                                onChange={(e) => setGithubPatToken(e.target.value)}
-                                className="w-full bg-gray-50 border border-gray-200 p-4 pr-12 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-500/10 outline-none transition shadow-inner text-gray-855 font-mono"
-                                placeholder="ghp_..."
-                              />
+                          <div className="pt-4 border-t border-gray-500/10 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <h4 className={`text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 ${settingsThemeMode === 'dark' ? 'text-gray-200' : 'text-gray-700'
+                                }`}>
+                                <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                                  <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
+                                </svg>
+                                GitHub PDF Sync
+                              </h4>
                               <button
-                                onClick={() => setIsGithubPatVisible(!isGithubPatVisible)}
-                                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600 transition"
+                                type="button"
+                                onClick={() => setShowGithubHelpModal(true)}
+                                className="text-gray-400 hover:text-blue-500 transition p-1"
                               >
-                                {isGithubPatVisible ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                <HelpCircle className="w-4 h-4" />
                               </button>
                             </div>
-                          </div>
-                          <div className="pt-2">
-                            <button
-                              onClick={saveGithubCredentialsToCloud}
-                              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition active:scale-95 flex items-center justify-center gap-1"
-                            >
-                              Save to Cloud
-                            </button>
-                          </div>
-                        </div>
-                      </div>
 
-                      {/* Bottom Navigation Configurator */}
-                      <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h3 className="text-xs font-black text-gray-800">Bottom Navigation Tabs</h3>
-                            <p className="text-[9px] text-gray-400 font-bold mt-0.5">Select up to 8 menus. Drag to reorder. Tap Save to apply.</p>
-                          </div>
-                          {navSaveToast && (
-                            <span className="text-[9px] font-black text-green-600 bg-green-50 border border-green-200 px-2.5 py-1 rounded-full animate-pulse">✓ Saved!</span>
-                          )}
-                        </div>
-
-                        {/* Checkboxes — pick which menus to show */}
-                        <div className="space-y-2">
-                          {ALL_MENUS.map(menu => {
-                            const isChecked = draftNavIds.includes(menu.id);
-                            const isDisabled = !isChecked && draftNavIds.length >= 8;
-                            return (
-                              <label
-                                key={menu.id}
-                                className={`flex items-center justify-between px-4 py-3 rounded-xl border transition cursor-pointer active:scale-[0.98] ${isChecked ? 'border-blue-200 bg-blue-50' : 'border-gray-100 bg-gray-50'
-                                  } ${isDisabled ? 'opacity-40 pointer-events-none' : ''}`}
-                              >
-                                <span className="text-xs font-bold text-gray-800">{menu.label}</span>
+                            <div>
+                              <label className="text-[10px] font-black text-gray-400 uppercase block mb-1">Username</label>
+                              <input
+                                type="text"
+                                value={githubUsername}
+                                onChange={(e) => setGithubUsername(e.target.value)}
+                                className={`w-full p-3 text-xs font-bold outline-none ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-gray-800'
+                                  }`}
+                                placeholder="e.g. yourusername"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-black text-gray-400 uppercase block mb-1">Repository</label>
+                              <input
+                                type="text"
+                                value={githubRepo}
+                                onChange={(e) => setGithubRepo(e.target.value)}
+                                className={`w-full p-3 text-xs font-bold outline-none ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-gray-800'
+                                  }`}
+                                placeholder="e.g. my-textbooks"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-black text-gray-400 uppercase block mb-1">Access Token (PAT)</label>
+                              <div className="relative">
                                 <input
-                                  type="checkbox"
-                                  checked={isChecked}
-                                  disabled={isDisabled}
-                                  onChange={() => {
-                                    let newIds;
-                                    if (isChecked) {
-                                      newIds = draftNavIds.filter(id => id !== menu.id);
-                                    } else {
-                                      const order = ALL_MENUS.map(m => m.id);
-                                      const merged = [...draftNavIds, menu.id].sort((a, b) => order.indexOf(a) - order.indexOf(b));
-                                      newIds = merged;
-                                    }
-                                    setDraftNavIds(newIds);
-                                  }}
-                                  className="accent-blue-600 w-4 h-4"
+                                  type={isGithubPatVisible ? "text" : "password"}
+                                  value={githubPatToken}
+                                  onChange={(e) => setGithubPatToken(e.target.value)}
+                                  className={`w-full p-3 pr-12 text-xs font-bold outline-none font-mono ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-gray-800'
+                                    }`}
+                                  placeholder="ghp_..."
                                 />
-                              </label>
-                            );
-                          })}
+                                <button
+                                  type="button"
+                                  onClick={() => setIsGithubPatVisible(!isGithubPatVisible)}
+                                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-500 transition"
+                                >
+                                  {isGithubPatVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="pt-3">
+                            <UiverseButton
+                              icon={<Save className={`w-4 h-4 ${settingsThemeMode === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />}
+                              onClick={saveAllCredentialsLocal}
+                              fullWidth
+                              size="sm"
+                              themeMode={settingsThemeMode}
+                              variant={settingsThemeMode === 'dark' ? 'dark' : 'default'}
+                              isSuccess={credentialsSavedState}
+                              successText="Saved!"
+                            >
+                              Save Credentials
+                            </UiverseButton>
+                          </div>
+                        </div>
+                      </motion.div>
+
+                      {/* Local App Backup & Restore Card (Mobile) */}
+                      <motion.div
+                        whileHover={{ y: -2 }}
+                        className={settingsThemeMode === 'dark' ? 'neu-card-dark p-5 space-y-4' : 'neu-card-light p-5 space-y-4'}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className={settingsThemeMode === 'dark' ? 'p-2 rounded-xl neu-pressed-dark text-blue-400' : 'p-2 rounded-xl neu-pressed-light text-blue-600'}>
+                              <Database className="w-4 h-4" />
+                            </div>
+                            <h3 className={`text-xs font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>Local Backup & Restore</h3>
+                          </div>
+                          <span className="px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 rounded-md text-[9px] font-black uppercase">
+                            Offline Vault
+                          </span>
                         </div>
 
-                        {/* Drag-and-drop reorder of selected tabs */}
-                        {draftNavIds.length > 1 && (
-                          <div>
-                            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2">Drag to Reorder</p>
-                            <DragDropContext onDragEnd={(result) => {
-                              if (!result.destination) return;
-                              const reordered = Array.from(draftNavIds);
-                              const [moved] = reordered.splice(result.source.index, 1);
-                              reordered.splice(result.destination.index, 0, moved);
-                              setDraftNavIds(reordered);
-                            }}>
-                              <Droppable droppableId="nav-reorder" direction="vertical">
-                                {(provided) => (
-                                  <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-2">
-                                    {draftNavIds.map((id, index) => {
-                                      const menu = ALL_MENUS.find(m => m.id === id);
-                                      if (!menu) return null;
-                                      return (
-                                        <Draggable key={id} draggableId={id} index={index}>
-                                          {(prov, snapshot) => (
-                                            <div
-                                              ref={prov.innerRef}
-                                              {...prov.draggableProps}
-                                              {...prov.dragHandleProps}
-                                              className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-xs font-bold bg-white transition select-none ${snapshot.isDragging ? 'border-blue-400 shadow-lg shadow-blue-100 scale-105' : 'border-gray-200'
-                                                }`}
-                                            >
-                                              <span className="text-gray-300 text-base leading-none">⠿</span>
-                                              <span className="flex-1 text-gray-700">{menu.label}</span>
-                                              <span className="text-[9px] text-gray-400 font-bold"># {index + 1}</span>
-                                            </div>
-                                          )}
-                                        </Draggable>
-                                      );
-                                    })}
-                                    {provided.placeholder}
+                        <div className="grid grid-cols-1 gap-3">
+                          <UiverseButton
+                            icon={<Download className={`w-4 h-4 ${settingsThemeMode === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />}
+                            onClick={handleExportBackup}
+                            fullWidth
+                            size="sm"
+                            themeMode={settingsThemeMode}
+                            variant={settingsThemeMode === 'dark' ? 'dark' : 'default'}
+                            isSuccess={exportBackupState}
+                            successText="Exported!"
+                          >
+                            Export Backup (.json)
+                          </UiverseButton>
+
+                          <UiverseButton
+                            icon={<Upload className={`w-4 h-4 ${settingsThemeMode === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`} />}
+                            onClick={handleImportBackup}
+                            fullWidth
+                            size="sm"
+                            themeMode={settingsThemeMode}
+                            variant={settingsThemeMode === 'dark' ? 'dark' : 'default'}
+                            isSuccess={importBackupState}
+                            successText="Imported!"
+                          >
+                            Import Backup File
+                          </UiverseButton>
+                        </div>
+
+                        <div className="pt-4 border-t border-gray-500/10 space-y-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h4 className={`text-[11px] font-bold ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>Automatic Backups</h4>
+                              <p className="text-[9px] text-gray-400 font-medium">Background snapshots in IndexedDB</p>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={autoBackupEnabled}
+                                onChange={(e) => saveBackupConfigLocal(e.target.checked, autoBackupFrequency, autoBackupRetention)}
+                                className="sr-only peer"
+                              />
+                              <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                          </div>
+
+                          <AnimatePresence>
+                            {autoBackupEnabled && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                transition={{ duration: 0.3, ease: 'easeInOut' }}
+                                className={`space-y-3 p-4 rounded-xl text-left border overflow-hidden ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-gray-200'
+                                  }`}
+                              >
+                                <div>
+                                  <label className="block text-[9px] font-black uppercase tracking-widest text-gray-400 mb-2">Backup Frequency</label>
+                                  <UiverseGlassRadio
+                                    name="mobileBackupFrequency"
+                                    options={BACKUP_FREQUENCY_OPTIONS}
+                                    value={autoBackupFrequency}
+                                    onChange={(newVal) => saveBackupConfigLocal(autoBackupEnabled, newVal, autoBackupRetention)}
+                                    themeMode={settingsThemeMode}
+                                    size="sm"
+                                  />
+                                </div>
+
+                                <div className="pt-2">
+                                  <label className="block text-[9px] font-black uppercase tracking-widest text-gray-400 mb-2">Retention Policy</label>
+                                  <UiverseGlassRadio
+                                    name="mobileBackupRetention"
+                                    options={BACKUP_RETENTION_OPTIONS}
+                                    value={autoBackupRetention}
+                                    onChange={(newVal) => saveBackupConfigLocal(autoBackupEnabled, autoBackupFrequency, newVal)}
+                                    themeMode={settingsThemeMode}
+                                    size="sm"
+                                  />
+                                </div>
+
+                                <div className="pt-2 border-t border-blue-100 text-[9px] text-blue-800 font-medium flex items-center justify-between">
+                                  <span className="flex items-center gap-1">
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                                    Vault Active
+                                  </span>
+                                  <span className="text-gray-400">IndexedDB Engine</span>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      </motion.div>
+
+                      {/* Bottom Navigation Configurator — Collapsible Uiverse Frame */}
+                      <div
+                        style={{
+                          borderRadius: '16px',
+                          boxShadow: settingsThemeMode === 'dark'
+                            ? '8px 8px 18px #171a20, -8px -8px 18px #2d3440, inset 0 0 0 1px rgba(255,255,255,0.05)'
+                            : '-8px -8px 15px rgba(255,255,255,0.85), 10px 10px 12px rgba(0,0,0,0.1), inset 8px 8px 15px rgba(255,255,255,0.6), inset 10px 10px 10px rgba(0,0,0,0.06)',
+                          background: settingsThemeMode === 'dark' ? '#222730' : '#e8eaf0',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        {/* Collapsible Header — styled like switch-holder */}
+                        <button
+                          type="button"
+                          onClick={() => setNavTabsOpen(o => !o)}
+                          className="w-full flex items-center justify-between px-5 py-4 transition-all duration-200 active:scale-[0.99] cursor-pointer select-none"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-xl ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'}`}>
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                              </svg>
+                            </div>
+                            <div className="text-left">
+                              <h3 className={`text-sm font-black leading-tight ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>Bottom Navigation Tabs</h3>
+                              <p className={`text-[10px] font-medium ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                                {draftNavIds.length} of 8 selected
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {navSaveToast && (
+                              <span className="text-[9px] font-black text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full animate-pulse">✓ Saved!</span>
+                            )}
+                            <motion.div
+                              animate={{ rotate: navTabsOpen ? 180 : 0 }}
+                              transition={{ duration: 0.25 }}
+                              className={`w-6 h-6 rounded-full flex items-center justify-center ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-gray-300' : 'neu-pressed-light text-gray-500'}`}
+                            >
+                              <ChevronDown className="w-3.5 h-3.5" />
+                            </motion.div>
+                          </div>
+                        </button>
+
+                        {/* Collapsible body */}
+                        <AnimatePresence initial={false}>
+                          {navTabsOpen && (
+                            <motion.div
+                              key="nav-tabs-body"
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              transition={{ duration: 0.3, ease: 'easeInOut' }}
+                              className="overflow-hidden"
+                            >
+                              <div
+                                className="px-4 pb-4 space-y-3"
+                                style={{
+                                  borderTop: settingsThemeMode === 'dark'
+                                    ? '1px solid rgba(255,255,255,0.06)'
+                                    : '1px solid rgba(0,0,0,0.07)',
+                                  paddingTop: '16px',
+                                }}
+                              >
+                                {/* 3D Neumorphic Switches */}
+                                <div className="space-y-2.5">
+                                  {ALL_MENUS.map(menu => {
+                                    const isChecked = draftNavIds.includes(menu.id);
+                                    const isDisabled = !isChecked && draftNavIds.length >= 8;
+                                    return (
+                                      <UiverseSwitch
+                                        key={menu.id}
+                                        id={`mobile-nav-switch-${menu.id}`}
+                                        label={menu.label}
+                                        checked={isChecked}
+                                        disabled={isDisabled}
+                                        themeMode={settingsThemeMode}
+                                        size="sm"
+                                        onChange={(val) => {
+                                          let newIds;
+                                          if (!val) {
+                                            newIds = draftNavIds.filter(id => id !== menu.id);
+                                          } else {
+                                            const order = ALL_MENUS.map(m => m.id);
+                                            const merged = [...draftNavIds, menu.id].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+                                            newIds = merged;
+                                          }
+                                          setDraftNavIds(newIds);
+                                        }}
+                                      />
+                                    );
+                                  })}
+                                </div>
+
+                                {/* Drag-and-drop reorder */}
+                                {draftNavIds.length > 1 && (
+                                  <div className="pt-2" style={{ borderTop: settingsThemeMode === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.07)' }}>
+                                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2 pt-2">Drag to Reorder</p>
+                                    <DragDropContext onDragEnd={(result) => {
+                                      if (!result.destination) return;
+                                      const reordered = Array.from(draftNavIds);
+                                      const [moved] = reordered.splice(result.source.index, 1);
+                                      reordered.splice(result.destination.index, 0, moved);
+                                      setDraftNavIds(reordered);
+                                    }}>
+                                      <Droppable droppableId="nav-reorder" direction="vertical">
+                                        {(provided) => (
+                                          <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-2">
+                                            {draftNavIds.map((id, index) => {
+                                              const menu = ALL_MENUS.find(m => m.id === id);
+                                              if (!menu) return null;
+                                              return (
+                                                <Draggable key={id} draggableId={id} index={index}>
+                                                  {(prov, snapshot) => (
+                                                    <div
+                                                      ref={prov.innerRef}
+                                                      {...prov.draggableProps}
+                                                      {...prov.dragHandleProps}
+                                                      className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-xs font-bold transition select-none ${snapshot.isDragging
+                                                          ? 'border-blue-400 shadow-lg shadow-blue-500/20 scale-105'
+                                                          : settingsThemeMode === 'dark'
+                                                            ? 'neu-pressed-dark border-slate-700/80'
+                                                            : 'neu-pressed-light border-slate-200'
+                                                        }`}
+                                                    >
+                                                      <span className="text-gray-400 text-base leading-none">⠿</span>
+                                                      <span className={`flex-1 ${settingsThemeMode === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>{menu.label}</span>
+                                                      <span className="text-[9px] text-gray-400 font-bold"># {index + 1}</span>
+                                                    </div>
+                                                  )}
+                                                </Draggable>
+                                              );
+                                            })}
+                                            {provided.placeholder}
+                                          </div>
+                                        )}
+                                      </Droppable>
+                                    </DragDropContext>
                                   </div>
                                 )}
-                              </Droppable>
-                            </DragDropContext>
-                          </div>
-                        )}
 
-                        {/* Save Button */}
-                        <button
-                          onClick={() => saveBottomNavIds(draftNavIds)}
-                          className="w-full py-3.5 bg-blue-600 text-white text-xs font-black uppercase tracking-wider rounded-2xl shadow-lg shadow-blue-600/20 active:scale-95 transition flex items-center justify-center gap-2"
-                        >
-                          <Save className="w-4 h-4" />
-                          Save Navigation
-                        </button>
+                                {/* Save Button */}
+                                <UiverseButton
+                                  icon={<Save className={`w-4 h-4 ${settingsThemeMode === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />}
+                                  onClick={() => saveBottomNavIds(draftNavIds)}
+                                  fullWidth
+                                  size="sm"
+                                  themeMode={settingsThemeMode}
+                                  variant={settingsThemeMode === 'dark' ? 'dark' : 'default'}
+                                  isSuccess={navSavedState}
+                                  successText="Saved!"
+                                >
+                                  Save Navigation
+                                </UiverseButton>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
 
-                      {renderChromeExtensionSection()}
-
-                      {renderDeviceManagerSection()}
-
-                      {renderDiscordPresenceSection()}
-
-                      {/* Firebase Daily Quota — Mobile */}
-                      <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-xs font-black text-gray-800 flex items-center gap-2">
-                            <Database className="w-4 h-4 text-blue-500" />
-                            Firebase Daily Quota
-                          </h3>
-                          <button
-                            onClick={() => setFbUsage(fbTracker.getUsage())}
-                            className="text-[9px] font-black text-blue-600 uppercase tracking-widest"
-                          >
-                            Refresh
-                          </button>
-                        </div>
-                        {[
-                          { label: 'Reads', used: fbUsage.reads, limit: 50000, color: 'blue' },
-                          { label: 'Writes', used: fbUsage.writes, limit: 20000, color: 'emerald' },
-                          { label: 'Deletes', used: fbUsage.deletes, limit: 20000, color: 'rose' },
-                        ].map(({ label, used, limit, color }) => {
-                          const pct = Math.min(100, Math.round((used / limit) * 100));
-                          const isHot = pct >= 85;
-                          const isWarm = pct >= 60;
-                          const barCls = isHot ? 'bg-red-500' : isWarm ? 'bg-amber-400' : `bg-${color}-500`;
-                          const numCls = isHot ? 'text-red-600' : isWarm ? 'text-amber-600' : `text-${color}-600`;
-                          return (
-                            <div key={label} className="mb-2">
-                              <div className="flex justify-between items-center mb-1">
-                                <span className="text-[11px] font-black text-gray-700">{label}</span>
-                                <span className={`text-[10px] font-black ${numCls}`}>
-                                  {isHot && '⚠️ '}{used.toLocaleString()} / {(limit / 1000).toFixed(0)}k
-                                </span>
-                              </div>
-                              <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                                <div
-                                  className={`h-full rounded-full transition-all duration-700 ${barCls}`}
-                                  style={{ width: `${pct}%` }}
-                                />
-                              </div>
-                              <div className="text-right text-[8px] text-gray-400 font-bold mt-0.5">{pct}% used today</div>
-                            </div>
-                          );
-                        })}
-                        <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 flex items-start gap-2">
-                          <Info className="w-3 h-3 text-blue-500 mt-0.5 shrink-0" />
-                          <p className="text-[9px] text-blue-700 font-medium leading-relaxed">
-                            Tracked locally for today's session. Resets at midnight. Free tier: 50k reads / 20k writes / 20k deletes per day.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
+                    </motion.div>
                   )}
 
 
@@ -24080,20 +24084,7 @@ Return your response strictly as a JSON object matching this schema:
                     </div>
 
                     <div className="flex items-center gap-4">
-                      {pendingPageCount > 0 && (
-                        <button
-                          onClick={() => { setHierarchy('PENDING_REVIEW'); setCurrentTab('library'); }}
-                          className="flex items-center gap-2 px-3 py-1.5 bg-orange-50 hover:bg-orange-100 border border-orange-100 rounded-xl transition-all group animate-in slide-in-from-right-4"
-                        >
-                          <div className="relative">
-                            <div className="w-2 h-2 bg-orange-500 rounded-full animate-ping absolute inset-0" />
-                            <div className="w-2 h-2 bg-orange-600 rounded-full relative" />
-                          </div>
-                          <span className="text-[10px] font-black text-orange-700 uppercase tracking-widest group-hover:translate-x-0.5 transition-transform">
-                            Pending
-                          </span>
-                        </button>
-                      )}
+
                       {/* Desktop Focus Header Widget */}
                       {timerState.status !== 'idle' && (
                         <div
@@ -24256,25 +24247,29 @@ Return your response strictly as a JSON object matching this schema:
                     )}
 
                     {currentTab === 'cards' && (
-                      <div className="flex-grow p-4 flex gap-0 max-w-[1920px] mx-auto w-full h-full overflow-hidden">
+                      <div className={`flex-grow p-4 flex gap-4 max-w-[1920px] mx-auto w-full h-full overflow-hidden ${settingsThemeMode === 'dark' ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'}`}>
                         {/* Left: Folders & Queue */}
                         <div
                           className="flex flex-col gap-4 min-w-[250px] h-full overflow-y-auto pr-1 custom-scrollbar"
                           style={{ width: `${leftWidth}px` }}
                         >
                           <div
-                            className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 shrink-0 flex flex-col"
+                            className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-4 shrink-0 flex flex-col`}
                             style={{ height: `${deckHeight}px` }}
                           >
                             <div className="flex justify-between items-center mb-3 shrink-0">
-                              <h2 className="font-semibold flex items-center gap-2 text-sm text-gray-800">
-                                <Folder className="w-4 h-4 text-blue-600" /> Deck Target
+                              <h2 className={`font-black flex items-center gap-2 text-xs uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>
+                                <Folder className="w-4 h-4 text-blue-500" /> Deck Target
                               </h2>
-                              <button onClick={() => setNewFolderDialog({ isOpen: true, basePath: '', input: '' })} className="p-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100">
+                              <button
+                                onClick={() => setNewFolderDialog({ isOpen: true, basePath: '', input: '' })}
+                                className={`p-1.5 rounded-xl transition ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400' : 'neu-btn-light text-blue-600'}`}
+                                title="Create New Folder"
+                              >
                                 <Plus className="w-3.5 h-3.5" />
                               </button>
                             </div>
-                            <div className="flex-grow overflow-y-auto border border-gray-100 rounded-lg p-2 bg-gray-50 mb-2 custom-scrollbar">
+                            <div className={`flex-grow overflow-y-auto rounded-2xl p-2.5 mb-2 custom-scrollbar ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200/60'}`}>
                               <TreeFolder
                                 node={buildTree(effectiveDeckPaths, cloudPages, deckCardCounts)}
                                 level={0}
@@ -24286,14 +24281,14 @@ Return your response strictly as a JSON object matching this schema:
                                 showCounts={true}
                               />
                             </div>
-                            <div className="text-[10px] bg-blue-50 border border-blue-100 p-2 rounded-xl flex items-center justify-between shrink-0 font-medium">
-                              <span className="truncate text-blue-900 pr-1"><strong>Target:</strong> {hierarchy}</span>
+                            <div className={`text-[10px] p-2.5 rounded-xl flex items-center justify-between shrink-0 font-medium ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400 border border-blue-500/30' : 'neu-pressed-light text-blue-900 border border-blue-200/50'}`}>
+                              <span className="truncate pr-1"><strong>Target:</strong> {hierarchy}</span>
                               <button
                                 onClick={() => {
                                   setSelectedDecksToExport([hierarchy]);
                                   setCurrentTab('export');
                                 }}
-                                className="ml-1 px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white text-[9px] font-black uppercase tracking-wider rounded-lg transition shrink-0 shadow-md shadow-blue-600/10 active:scale-95 flex items-center gap-1"
+                                className={`ml-1 px-3 py-1 text-[9px] font-black uppercase tracking-wider rounded-lg transition shrink-0 flex items-center gap-1 ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'}`}
                               >
                                 <Download className="w-2.5 h-2.5" /> Export
                               </button>
@@ -24305,38 +24300,38 @@ Return your response strictly as a JSON object matching this schema:
                             onMouseDown={() => setIsResizingDeck(true)}
                             className="h-2 hover:h-3 -my-2 bg-transparent hover:bg-blue-500/10 cursor-row-resize transition-all shrink-0 z-30 group flex items-center justify-center"
                           >
-                            <div className="h-[1px] w-full bg-gray-100 group-hover:bg-blue-300 mx-4" />
+                            <div className={`h-[1px] w-full ${settingsThemeMode === 'dark' ? 'bg-gray-800 group-hover:bg-blue-500' : 'bg-gray-200 group-hover:bg-blue-400'} mx-4`} />
                           </div>
 
-                          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 shrink-0">
+                          <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-4 shrink-0`}>
                             <div
-                              className={`border-2 border-dashed rounded-lg p-4 text-center transition cursor-pointer
-                      ${isDraggingFile ? 'border-blue-500 bg-blue-50 scale-[1.02]' : 'border-gray-300 hover:bg-blue-50'}
+                              className={`border-2 border-dashed rounded-2xl p-4 text-center transition cursor-pointer
+                      ${isDraggingFile ? (settingsThemeMode === 'dark' ? 'border-blue-400 neu-pressed-dark' : 'border-blue-500 neu-pressed-light') : (settingsThemeMode === 'dark' ? 'border-gray-700/60 neu-pressed-dark hover:border-blue-400' : 'border-gray-300 neu-pressed-light hover:border-blue-500')}
                     `}
                               onClick={() => fileInputRef.current.click()}
                               onDragOver={(e) => { e.preventDefault(); setIsDraggingFile(true); }}
                               onDragLeave={() => setIsDraggingFile(false)}
                               onDrop={handleDropFiles}
                             >
-                              <UploadCloud className={`w-6 h-6 mx-auto mb-1 ${isDraggingFile ? 'text-blue-500' : 'text-gray-400'}`} />
-                              <p className="text-xs font-medium text-gray-700">Click or Drag Image</p>
+                              <UploadCloud className={`w-6 h-6 mx-auto mb-1 ${isDraggingFile ? 'text-blue-500' : (settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500')}`} />
+                              <p className={`text-xs font-bold ${settingsThemeMode === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>Click or Drag Image</p>
                             </div>
                             <input type="file" multiple accept="image/*,application/pdf" className="hidden" ref={fileInputRef} onChange={handleFileSelect} />
                           </div>
 
                           {/* PROMPT SELECTORS */}
-                          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 shrink-0">
+                          <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-4 shrink-0`}>
                             <div className="space-y-3">
                               <div>
-                                <label className="block text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1 text-left">Prompt Template</label>
+                                <label className={`block text-[9px] font-black uppercase tracking-widest mb-1 text-left ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Prompt Template</label>
                                 <select
                                   value={generationPromptId}
                                   onChange={(e) => setGenerationPromptId(e.target.value)}
-                                  className="w-full p-2 border border-gray-200 rounded-lg outline-none text-xs font-bold bg-gray-50 text-gray-800 focus:ring-4 focus:ring-blue-500/10"
+                                  className={`w-full p-2.5 rounded-xl outline-none text-xs font-bold transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white border border-gray-800' : 'neu-pressed-light text-gray-800 border border-gray-200'}`}
                                 >
-                                  <option value="default">Default Medical Prompt</option>
+                                  <option value="default" className={settingsThemeMode === 'dark' ? 'bg-slate-900 text-white' : ''}>Default Medical Prompt</option>
                                   {customPrompts.map(p => (
-                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                    <option key={p.id} value={p.id} className={settingsThemeMode === 'dark' ? 'bg-slate-900 text-white' : ''}>{p.name}</option>
                                   ))}
                                 </select>
                               </div>
@@ -24350,15 +24345,15 @@ Return your response strictly as a JSON object matching this schema:
                                   const subjects = Array.from(new Set(pytTopicsList.map(p => p.subject).filter(Boolean)));
                                   return (
                                     <div className="animate-in slide-in-from-top-2 duration-200">
-                                      <label className="block text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1 text-left">Select Subject</label>
+                                      <label className={`block text-[9px] font-black uppercase tracking-widest mb-1 text-left ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Select Subject</label>
                                       <select
                                         value={selectedGenerationSubject}
                                         onChange={(e) => setSelectedGenerationSubject(e.target.value)}
-                                        className="w-full p-2 border border-gray-200 rounded-lg outline-none text-xs font-bold bg-gray-50 text-gray-800 focus:ring-4 focus:ring-blue-500/10"
+                                        className={`w-full p-2.5 rounded-xl outline-none text-xs font-bold transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white border border-gray-800' : 'neu-pressed-light text-gray-800 border border-gray-200'}`}
                                       >
-                                        <option value="">-- Choose Subject --</option>
+                                        <option value="" className={settingsThemeMode === 'dark' ? 'bg-slate-900 text-white' : ''}>-- Choose Subject --</option>
                                         {subjects.map(sub => (
-                                          <option key={sub} value={sub}>{sub}</option>
+                                          <option key={sub} value={sub} className={settingsThemeMode === 'dark' ? 'bg-slate-900 text-white' : ''}>{sub}</option>
                                         ))}
                                       </select>
                                     </div>
@@ -24368,15 +24363,15 @@ Return your response strictly as a JSON object matching this schema:
                             </div>
                           </div>
 
-                          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex-grow flex flex-col overflow-hidden min-h-[250px] max-h-[400px] xl:max-h-none shrink-0">
+                          <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-4 flex-grow flex flex-col overflow-hidden min-h-[250px] max-h-[400px] xl:max-h-none shrink-0`}>
                             <div className="flex justify-between items-center mb-3 shrink-0">
-                              <h2 className="font-semibold text-sm">Processing Queue</h2>
+                              <h2 className={`font-black text-xs uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>Processing Queue</h2>
                               <div className="flex gap-2">
                                 {queue.some(q => q.status === 'done') && (
                                   <button
                                     onClick={saveAllProcessedToCloud}
                                     disabled={isProcessing || isSaving}
-                                    className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-3 py-1.5 rounded text-xs font-black flex items-center gap-1.5 transition shadow-lg shadow-blue-600/20 active:scale-95"
+                                    className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 transition ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'} disabled:opacity-50`}
                                   >
                                     <Save className="w-3.5 h-3.5" /> Save All
                                   </button>
@@ -24384,7 +24379,7 @@ Return your response strictly as a JSON object matching this schema:
                                 <button
                                   onClick={processQueue}
                                   disabled={isProcessing || queue.filter(q => q.status === 'pending').length === 0}
-                                  className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-3 py-1.5 rounded text-xs font-black flex items-center gap-1.5 transition shadow-lg shadow-green-600/20 active:scale-95"
+                                  className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 transition ${settingsThemeMode === 'dark' ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20' : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20'} disabled:opacity-50 active:scale-95`}
                                 >
                                   <Play className="w-3.5 h-3.5" /> {isProcessing ? 'Wait...' : 'Start'}
                                 </button>
@@ -24392,10 +24387,10 @@ Return your response strictly as a JSON object matching this schema:
                             </div>
 
                             {/* Desktop Autosave Toggle */}
-                            <div className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 border border-gray-150 mb-3 transition hover:bg-gray-100 shrink-0">
+                            <div className={`flex items-center justify-between p-2.5 rounded-2xl mb-3 transition shrink-0 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200/60'}`}>
                               <div className="flex flex-col text-left">
-                                <span className="text-[10px] font-black uppercase tracking-wider text-gray-800">Auto-Save on Generation</span>
-                                <span className="text-[9px] font-bold text-gray-400">Save page and cards to cloud immediately</span>
+                                <span className={`text-[10px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>Auto-Save on Generation</span>
+                                <span className={`text-[9px] font-bold ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Save page and cards immediately upon completion</span>
                               </div>
                               <label className="relative inline-flex items-center cursor-pointer select-none">
                                 <input
@@ -24404,54 +24399,75 @@ Return your response strictly as a JSON object matching this schema:
                                   onChange={(e) => setIsAutosaveEnabled(e.target.checked)}
                                   className="sr-only peer"
                                 />
-                                <div className="w-9 h-5 bg-gray-200 rounded-full peer peer-focus:ring-0 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
+                                <div className="w-9 h-5 bg-gray-300 rounded-full peer peer-focus:ring-0 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
                               </label>
                             </div>
-                            <div className="overflow-y-auto space-y-2 pr-1 flex-grow custom-scrollbar">
+
+                            {/* Desktop Image Storage Mode Selector */}
+                            <div className={`flex items-center justify-between p-2.5 rounded-2xl mb-3 transition shrink-0 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200/60'}`}>
+                              <div className="flex flex-col text-left">
+                                <span className={`text-[10px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>Image Storage Mode</span>
+                                <span className={`text-[9px] font-bold ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                                  {imageStorageMode === 'local' ? '📁 Local DB (Offline & Instant)' : '☁️ ImgBB Cloud Upload'}
+                                </span>
+                              </div>
+                              <select
+                                value={imageStorageMode}
+                                onChange={(e) => {
+                                  const mode = e.target.value;
+                                  setImageStorageMode(mode);
+                                  localStorage.setItem("pyt_image_storage_mode", mode);
+                                  saveLocalSetting('apiKeys', { imageStorageMode: mode });
+                                }}
+                                className={`text-[9px] font-black rounded-xl px-2 py-1 outline-none cursor-pointer transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white border border-gray-800' : 'neu-pressed-light text-gray-800 border border-gray-200'}`}
+                              >
+                                <option value="local" className={settingsThemeMode === 'dark' ? 'bg-slate-900 text-white' : ''}>📁 Local DB</option>
+                                <option value="cloud" className={settingsThemeMode === 'dark' ? 'bg-slate-900 text-white' : ''}>☁️ ImgBB Cloud</option>
+                              </select>
+                            </div>
+
+                            <button
+                              onClick={sendAllToWebDirectly}
+                              disabled={isProcessing || isSaving}
+                              className={`w-full flex items-center justify-center gap-2 p-2.5 rounded-xl font-black text-xs transition-all active:scale-95 mb-3 ${settingsThemeMode === 'dark' ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'bg-amber-600 hover:bg-amber-700 text-white'} disabled:opacity-50 shrink-0 shadow-md`}
+                            >
+                              <Send className="w-3.5 h-3.5" /> Send All to Web
+                            </button>
+
+                            <div className="flex-grow overflow-y-auto space-y-2 pr-1 custom-scrollbar">
                               {queue.length === 0 ? (
-                                <p className="text-xs text-gray-500 text-center italic mt-4">Queue is empty</p>
+                                <div className={`text-center py-8 text-xs font-medium ${settingsThemeMode === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Queue is empty</div>
                               ) : (
                                 queue.map(item => (
                                   <div
                                     key={item.id}
                                     onClick={() => setActiveQueueId(item.id)}
-                                    className={`flex flex-col gap-2 p-2.5 rounded-xl border cursor-pointer transition
-                                    ${activeQueueId === item.id ? 'bg-blue-50 border-blue-300 shadow-sm' : 'bg-gray-50 border-gray-150 hover:bg-gray-100'}
-                                  `}
+                                    className={`p-2.5 rounded-2xl border transition-all flex items-center gap-3 cursor-pointer ${activeQueueId === item.id
+                                        ? (settingsThemeMode === 'dark' ? 'neu-pressed-dark border-blue-500/50 text-white' : 'neu-pressed-light border-blue-400 text-gray-900')
+                                        : (settingsThemeMode === 'dark' ? 'neu-card-dark border-gray-800 text-gray-300 hover:border-gray-700' : 'neu-card-light border-gray-200/60 text-gray-700 hover:border-gray-300')
+                                      }`}
                                   >
-                                    <div className="flex items-center justify-between w-full">
-                                      <span className="text-xs truncate w-1/2 font-bold text-gray-800" title={item.fileName}>{item.fileName}</span>
-                                      <div className="flex items-center gap-2">
-                                        {item.status === 'pending' && <span className="text-[10px] text-yellow-600 bg-yellow-100 px-1.5 py-0.5 rounded font-black uppercase tracking-wider">Wait</span>}
-                                        {item.status === 'processing' && <span className="text-[10px] text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded animate-pulse font-black uppercase tracking-wider">Run</span>}
-                                        {item.status === 'done' && <CheckCircle className="w-4 h-4 text-green-500" />}
-                                        {item.status === 'error' && (
-                                          <button onClick={(e) => { e.stopPropagation(); retryItem(item.id); }} className="text-blue-500 hover:text-blue-700" title="Retry">
-                                            <RotateCcw className="w-4 h-4" />
-                                          </button>
-                                        )}
-                                        {item.status !== 'processing' && (
-                                          <button onClick={(e) => { e.stopPropagation(); removeQueueItem(item.id); }} className="text-gray-400 hover:text-red-500 transition">
-                                            <Trash2 className="w-3.5 h-3.5" />
-                                          </button>
-                                        )}
+                                    <div className={`w-8 h-8 rounded-xl overflow-hidden shrink-0 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
+                                      <img src={item.base64} alt="" className="w-full h-full object-cover" />
+                                    </div>
+                                    <div className="flex-grow min-w-0 text-left">
+                                      <div className={`text-xs font-bold truncate ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>{item.fileName}</div>
+                                      <div className="flex items-center gap-1.5 mt-0.5">
+                                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${item.status === 'done' ? 'bg-green-500/20 text-green-400' :
+                                            item.status === 'processing' ? 'bg-blue-500/20 text-blue-400 animate-pulse' :
+                                              item.status === 'error' ? 'bg-red-500/20 text-red-400' :
+                                                (settingsThemeMode === 'dark' ? 'bg-gray-800 text-gray-400' : 'bg-gray-200 text-gray-600')
+                                          }`}>
+                                          {item.status}
+                                        </span>
                                       </div>
                                     </div>
-                                    <div className="flex items-center gap-1.5 w-full pt-1.5 border-t border-gray-200/50" onClick={(e) => e.stopPropagation()}>
-                                      <Folder className="w-3 h-3 text-gray-400 shrink-0" />
-                                      <select
-                                        value={item.deck || hierarchy}
-                                        onChange={(e) => {
-                                          const nextDeck = e.target.value;
-                                          setQueue(prev => prev.map(q => q.id === item.id ? { ...q, deck: nextDeck, hasCustomDeck: true } : q));
-                                        }}
-                                        className="text-[9px] bg-white text-gray-700 border border-gray-200 rounded px-1.5 py-0.5 flex-grow truncate outline-none cursor-pointer hover:bg-gray-50 transition-all font-bold"
-                                      >
-                                        {effectiveDeckPaths.map(p => (
-                                          <option key={p} value={p}>{p.replace(/::/g, ' ➔ ')}</option>
-                                        ))}
-                                      </select>
-                                    </div>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); removeQueueItem(item.id); }}
+                                      className={`p-1 rounded-lg transition ${settingsThemeMode === 'dark' ? 'text-red-400 hover:bg-red-500/20' : 'text-red-600 hover:bg-red-100'}`}
+                                    >
+                                      <X className="w-3.5 h-3.5" />
+                                    </button>
                                   </div>
                                 ))
                               )}
@@ -24464,32 +24480,38 @@ Return your response strictly as a JSON object matching this schema:
                           onMouseDown={() => setIsResizingLeft(true)}
                           className="w-2 hover:w-3 bg-transparent hover:bg-blue-500/10 cursor-col-resize transition-all shrink-0 z-30 group flex items-center justify-center"
                         >
-                          <div className="w-[1px] h-full bg-gray-200 group-hover:bg-blue-300" />
+                          <div className={`w-[1px] h-full ${settingsThemeMode === 'dark' ? 'bg-gray-800 group-hover:bg-blue-500' : 'bg-gray-200 group-hover:bg-blue-400'}`} />
                         </div>
 
-                        {/* Center: Image Preview */}
-                        <div
-                          className="h-full bg-gray-900 rounded-xl shadow-inner border border-gray-300 overflow-hidden flex flex-col relative shrink-0"
-                          style={{ width: `${centerWidth}px` }}
-                        >
-                          <div className="bg-gray-800 text-gray-300 px-4 py-2 text-xs flex justify-between items-center shadow-md z-10 shrink-0">
-                            <span className="flex items-center gap-2 font-medium">
-                              <ImageIcon className="w-4 h-4" /> Live Image Preview
-                            </span>
-                            {activeImageObj && <span className="truncate max-w-[200px] text-[10px] opacity-70">{activeImageObj.fileName}</span>}
+                        {/* Center: Canvas / Image Preview */}
+                        <div className={`flex-grow h-full ${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-4 flex flex-col min-w-[300px] overflow-hidden`}>
+                          <div className="flex justify-between items-center mb-3 shrink-0">
+                            <h2 className={`font-black text-xs uppercase tracking-wider flex items-center gap-2 ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>
+                              <ImageIcon className="w-4 h-4 text-blue-500" /> Page Preview
+                            </h2>
+                            {activeImageObj && (
+                              <span className={`text-[10px] font-bold px-2.5 py-1 rounded-xl ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-700'}`}>
+                                {activeImageObj.fileName}
+                              </span>
+                            )}
                           </div>
-                          <div ref={dashboardPreviewRef} className={`flex-grow overflow-auto relative p-8 flex justify-center bg-gray-950 ${zoomLevel > 1 ? 'items-start' : 'items-center'}`}>
+
+                          <div
+                            ref={dashboardPreviewRef}
+                            className={`flex-grow relative rounded-2xl overflow-hidden flex items-center justify-center select-none ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200/60'}`}
+                          >
                             {!activeImageObj ? (
-                              <div className="text-gray-500 text-sm flex flex-col items-center">
-                                <ImageIcon className="w-12 h-12 mb-2 opacity-20" />
-                                <p>Select a page from the queue</p>
+                              <div className={`text-center p-8 ${settingsThemeMode === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                                <ImageIcon className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                                <p className="text-xs font-bold">No page selected</p>
+                                <p className="text-[10px] mt-1">Select an item from the queue to view its preview</p>
                               </div>
                             ) : (
                               <>
                                 <div className="absolute top-4 right-4 z-[20] flex flex-col gap-2">
-                                  <button onClick={() => setZoomLevel(prev => Math.min(prev + 0.2, 3))} className="bg-white/90 hover:bg-white backdrop-blur shadow-md p-2 rounded-xl text-gray-700 transition active:scale-90" title="Zoom In"><Plus className="w-4 h-4" /></button>
-                                  <button onClick={() => resetPreview(dashboardPreviewRef)} className="bg-white/90 hover:bg-white backdrop-blur shadow-md p-2 rounded-xl text-gray-700 transition text-[10px] font-bold active:scale-90" title="Reset">1:1</button>
-                                  <button onClick={() => setZoomLevel(prev => Math.max(prev - 0.2, 0.5))} className="bg-white/90 hover:bg-white backdrop-blur shadow-md p-2 rounded-xl text-gray-700 transition active:scale-90" title="Zoom Out"><Minus className="w-4 h-4" /></button>
+                                  <button onClick={() => setZoomLevel(prev => Math.min(prev + 0.2, 3))} className={`p-2 rounded-xl transition ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-white' : 'neu-btn-light text-gray-700'}`} title="Zoom In"><Plus className="w-4 h-4" /></button>
+                                  <button onClick={() => resetPreview(dashboardPreviewRef)} className={`p-2 rounded-xl text-[10px] font-black transition ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-white' : 'neu-btn-light text-gray-700'}`} title="Reset">1:1</button>
+                                  <button onClick={() => setZoomLevel(prev => Math.max(prev - 0.2, 0.5))} className={`p-2 rounded-xl transition ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-white' : 'neu-btn-light text-gray-700'}`} title="Zoom Out"><Minus className="w-4 h-4" /></button>
                                 </div>
                                 <div
                                   className={`relative shadow-2xl transition-all duration-300 origin-top flex-shrink-0 ${isPanning ? 'transition-none' : ''}`}
@@ -24501,7 +24523,7 @@ Return your response strictly as a JSON object matching this schema:
                                   <img
                                     src={activeImageObj.imageUrl || activeImageObj.base64}
                                     alt="Notes Preview"
-                                    className={`w-full h-auto rounded ${zoomLevel > 1 ? 'cursor-grab active:cursor-grabbing' : 'cursor-crosshair'}`}
+                                    className={`w-full h-auto rounded-xl ${zoomLevel > 1 ? 'cursor-grab active:cursor-grabbing' : 'cursor-crosshair'}`}
                                     onMouseMove={handleImageMouseMove}
                                     onMouseDown={handleImageMouseDown}
                                     onMouseUp={handleImageMouseUp}
@@ -24547,49 +24569,54 @@ Return your response strictly as a JSON object matching this schema:
                           onMouseDown={() => setIsResizingCenter(true)}
                           className="w-2 hover:w-3 bg-transparent hover:bg-blue-500/10 cursor-col-resize transition-all shrink-0 z-30 group flex items-center justify-center"
                         >
-                          <div className="w-[1px] h-full bg-gray-200 group-hover:bg-blue-300" />
+                          <div className={`w-[1px] h-full ${settingsThemeMode === 'dark' ? 'bg-gray-800 group-hover:bg-blue-500' : 'bg-gray-200 group-hover:bg-blue-400'}`} />
                         </div>
 
                         {/* Right: Active Page Cards */}
-                        <div className="flex-grow h-full bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col min-w-[300px]">
-                          <div className="flex flex-col gap-3 mb-4 shrink-0 border-b border-gray-100 pb-4">
-                            <h2 className="text-lg font-bold flex items-center gap-2">
-                              <CheckCircle className="w-5 h-5 text-green-600" /> Current Page Cards ({pageCards.length})
+                        <div className={`flex-grow h-full ${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-4 flex flex-col min-w-[300px]`}>
+                          <div className={`flex flex-col gap-3 mb-4 shrink-0 pb-4 border-b ${settingsThemeMode === 'dark' ? 'border-gray-800' : 'border-gray-200/60'}`}>
+                            <h2 className={`text-base font-black flex items-center gap-2 uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>
+                              <CheckCircle className="w-5 h-5 text-emerald-500" /> Current Page Cards ({pageCards.length})
                             </h2>
                             <div className="flex flex-wrap gap-2">
                               {activeQueueItem?.status === 'done' && (
-                                <button
-                                  onClick={() => saveQueueItemToCloud(activeQueueId)}
-                                  className="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 shadow-xl shadow-green-600/30 transition-all active:scale-95 animate-in slide-in-from-top-2 duration-300"
-                                >
-                                  <Save className="w-4 h-4" /> Save to "{currentFolderName}" & Library
-                                </button>
+                                <>
+                                  <button
+                                    disabled={isProcessing}
+                                    onClick={() => regeneratePageWithGemini(activeQueueId)}
+                                    className={`px-4 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50 ${settingsThemeMode === 'dark' ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'bg-purple-600 hover:bg-purple-700 text-white'} shadow-md`}
+                                    title="Re-run full Gemini AI pipeline to regenerate cards for this page"
+                                  >
+                                    {isProcessing ? <Loader2 className="w-4 h-4 animate-spin text-purple-200" /> : <Sparkles className="w-4 h-4 text-purple-200" />}
+                                    Regenerate Page with Gemini
+                                  </button>
+
+                                  <button
+                                    onClick={() => saveQueueItemToCloud(activeQueueId)}
+                                    className={`px-5 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 transition-all active:scale-95 ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'}`}
+                                  >
+                                    <Save className="w-4 h-4" /> Save to "{currentFolderName}" & Library
+                                  </button>
+                                </>
                               )}
-                              {activeImageObj?.isPending && (
-                                <button
-                                  onClick={() => setApproveDialog({ isOpen: true, pageId: activeImageObj.id, targetDeck: activeImageObj.deck || hierarchy })}
-                                  className="bg-orange-600 hover:bg-orange-700 text-white px-5 py-2.5 rounded-xl text-xs font-black flex items-center justify-center gap-2 shadow-xl shadow-orange-600/30 transition-all active:scale-95 animate-in slide-in-from-top-2 duration-300"
-                                >
-                                  <CheckCircle className="w-4 h-4" /> Approve & Move to Library
-                                </button>
-                              )}
-                              <div className="ml-auto flex items-center gap-1 text-[10px] text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-100 font-mono">
+
+                              <div className={`ml-auto flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-xl font-mono ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400 border border-blue-500/30' : 'neu-pressed-light text-blue-700 border border-blue-200/50'}`}>
                                 <Folder className="w-3 h-3" /> {hierarchy === 'PENDING_REVIEW' ? 'Triage Queue' : hierarchy}
                               </div>
                             </div>
                           </div>
-                          <div className="flex-grow overflow-y-auto space-y-3 pr-2">
+                          <div className="flex-grow overflow-y-auto space-y-3 pr-2 custom-scrollbar">
                             {(!activeQueueId || !activeQueueItem) ? (
-                              <div className="h-full flex flex-col items-center justify-center text-gray-400 p-8 text-center">
-                                <ImageIcon className="w-12 h-12 mb-4 opacity-10" />
-                                <p className="text-sm font-medium">Card Generation is for new card creation.</p>
-                                <p className="text-[10px] mt-2">Select an image from the queue or upload a new one to start extracting cards.</p>
+                              <div className={`h-full flex flex-col items-center justify-center p-8 text-center ${settingsThemeMode === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                                <ImageIcon className="w-12 h-12 mb-4 opacity-20" />
+                                <p className="text-sm font-bold">Card Generation is for new card creation.</p>
+                                <p className="text-[10px] mt-2 font-medium">Select an image from the queue or upload a new one to start extracting cards.</p>
                               </div>
                             ) : (
                               <>
                                 {pageCards.length === 0 ? (
-                                  <div className="h-full flex flex-col items-center justify-center text-gray-400">
-                                    <p className="text-sm">Run processing to see generated cards.</p>
+                                  <div className={`h-full flex flex-col items-center justify-center ${settingsThemeMode === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                                    <p className="text-sm font-medium">Run processing to see generated cards.</p>
                                   </div>
                                 ) : (
                                   pageCards.map(card => (
@@ -24598,22 +24625,20 @@ Return your response strictly as a JSON object matching this schema:
                                       id={`card-${card.id}`}
                                       onMouseEnter={() => card.ymin !== undefined && setHoveredCardCoordinates({ ymin: card.ymin, xmin: card.xmin, ymax: card.ymax, xmax: card.xmax })}
                                       onMouseLeave={() => setHoveredCardCoordinates(null)}
-                                      className={`p-3 border rounded-lg relative group cursor-pointer transition
-                          ${hoveredCardIdFromImage === card.id
-                                          ? 'border-blue-500 bg-blue-100 shadow-md ring-2 ring-blue-500/20 scale-[1.02]'
-                                          : 'border-blue-100 bg-blue-50/30 hover:bg-blue-50'}
-                        `}
+                                      className={`p-3.5 rounded-2xl relative group cursor-pointer transition ${hoveredCardIdFromImage === card.id
+                                          ? (settingsThemeMode === 'dark' ? 'neu-pressed-dark border-blue-500/50 text-white scale-[1.02]' : 'neu-pressed-light border-blue-400 text-gray-900 scale-[1.02]')
+                                          : (settingsThemeMode === 'dark' ? 'neu-card-dark text-gray-200 border border-gray-800/60 hover:border-blue-500/30' : 'neu-card-light text-gray-800 border border-gray-200/60 hover:border-blue-300')
+                                        }`}
                                     >
-                                      <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition bg-white/80 p-1 rounded">
-                                        <button onClick={() => setEditingCard(card)} className="p-1 text-blue-600 hover:bg-blue-100 rounded"><Edit3 className="w-3 h-3" /></button>
-                                        <button onClick={() => deleteCard(card.id)} className="p-1 text-red-600 hover:bg-red-100 rounded"><Trash2 className="w-3 h-3" /></button>
+                                      <div className={`absolute top-2.5 right-2.5 flex gap-1 opacity-0 group-hover:opacity-100 transition p-1 rounded-xl z-10 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
+                                        <button onClick={() => setEditingCard(card)} className={`p-1 rounded-lg transition ${settingsThemeMode === 'dark' ? 'text-blue-400 hover:bg-blue-500/20' : 'text-blue-600 hover:bg-blue-100'}`} title="Edit Card"><Edit3 className="w-3.5 h-3.5" /></button>
+                                        <button onClick={() => deleteCard(card.id)} className={`p-1 rounded-lg transition ${settingsThemeMode === 'dark' ? 'text-red-400 hover:bg-red-500/20' : 'text-red-600 hover:bg-red-100'}`} title="Delete Card"><Trash2 className="w-3.5 h-3.5" /></button>
                                       </div>
-                                      <div className="text-[10px] text-blue-600 font-bold mb-1.5 bg-blue-100 inline-block px-1.5 py-0.5 rounded tracking-wide">{card.type}</div>
+                                      <div className={`text-[10px] font-black uppercase tracking-wider inline-block px-2 py-0.5 rounded-full mb-2 ${settingsThemeMode === 'dark' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}>{card.type}</div>
                                       {card.type === 'Cloze' ? (
-                                        <div className="text-xs text-gray-800"><span className="font-semibold text-gray-500">Text:</span> {card.text}</div>
+                                        <div className={`text-xs leading-relaxed ${settingsThemeMode === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}><span className={`font-bold ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Text:</span> {card.text}</div>
                                       ) : (
                                         <div className="space-y-1">
-                                          <div className="text-xs text-gray-800"><span className="font-semibold text-gray-500">Front:</span> {card.front}</div>
                                           <div className="text-xs text-gray-800"><span className="font-semibold text-gray-500">Back:</span> {card.back}</div>
                                         </div>
                                       )}
@@ -24673,7 +24698,10 @@ Return your response strictly as a JSON object matching this schema:
                                       <button
                                         onClick={async () => {
                                           if (confirm("Permanently delete this page?")) {
-                                            await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'trash_pages', page.id));
+                                            const currentTrash = (await getLocalKV('trash_pages')) || [];
+                                            const updatedTrash = currentTrash.filter(p => p.id !== page.id);
+                                            await setLocalKV('trash_pages', updatedTrash);
+                                            setTrashPages(updatedTrash);
                                           }
                                         }}
                                         className="p-2 text-red-600 hover:bg-red-50 rounded-xl transition" title="Delete Permanently"
@@ -24703,9 +24731,14 @@ Return your response strictly as a JSON object matching this schema:
                                       <div className="flex gap-1">
                                         <button
                                           onClick={async () => {
-                                            const { deletedAt, id, ...data } = card;
-                                            await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'flashcards', id), data);
-                                            await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'trash_cards', id));
+                                            const { deletedAt, ...restoredCard } = card;
+                                            await saveLocalCard(restoredCard);
+                                            const currentTrash = (await getLocalKV('trash_cards')) || [];
+                                            const updatedTrash = currentTrash.filter(c => c.id !== card.id);
+                                            await setLocalKV('trash_cards', updatedTrash);
+                                            setTrashCards(updatedTrash);
+                                            setCards(prev => [restoredCard, ...prev.filter(c => c.id !== card.id)].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)));
+                                            setTotalCardCount(prev => prev + 1);
                                           }}
                                           className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition"
                                         >
@@ -24753,24 +24786,7 @@ Return your response strictly as a JSON object matching this schema:
                             </button>
                           </div>
                           <div className="flex-grow overflow-y-auto border border-gray-100 rounded-lg p-2 bg-gray-50">
-                            {/* Mobile Scans Inbox Sidebar Item */}
-                            {cloudPages.some(p => p.isCompanionScan) && (
-                              <div className="mb-4">
-                                <button
-                                  onClick={() => setHierarchy('COMPANION_SCANS')}
-                                  className={`w-full flex items-center gap-3 p-3 rounded-xl transition ${hierarchy === 'COMPANION_SCANS' ? 'bg-orange-600 text-white shadow-lg' : 'bg-orange-50 text-orange-700 hover:bg-orange-100'}`}
-                                >
-                                  <Camera className="w-5 h-5 shrink-0" />
-                                  <div className="text-left overflow-hidden">
-                                    <div className="text-[9px] font-black uppercase tracking-widest opacity-70 truncate">Scanner Inbox</div>
-                                    <div className="text-xs font-black truncate">Mobile Scans Inbox</div>
-                                  </div>
-                                  <span className="ml-auto bg-white/20 px-2 py-0.5 rounded-lg text-[10px] font-black">
-                                    {cloudPages.filter(p => p.isCompanionScan).length}
-                                  </span>
-                                </button>
-                              </div>
-                            )}
+
 
                             <TreeFolder
                               node={buildTree(effectiveDeckPaths, cloudPages, deckCardCounts)}
@@ -24933,7 +24949,7 @@ Return your response strictly as a JSON object matching this schema:
                                         <div
                                           key={card.id}
                                           onClick={() => {
-                                            setHierarchy(card.deck || 'Marrow::Pathology');
+                                            setHierarchy(card.deck || hierarchy || (deckPaths[0] || 'General'));
                                             setActiveQueueId(card.pageId);
                                             setSearchQuery('');
                                             // Highlight the card immediately
@@ -25070,6 +25086,16 @@ Return your response strictly as a JSON object matching this schema:
                                             </button>
                                           </>
                                         )}
+                                        {activeImageObj && (
+                                          <button
+                                            onClick={() => handleRegenerateLibraryPage(activeImageObj)}
+                                            className="flex items-center gap-2 px-3 py-1.5 bg-purple-50 text-purple-600 hover:bg-purple-100 border border-purple-200/60 rounded-xl text-[10px] font-black uppercase transition-all shadow-sm active:scale-95 hover:scale-105"
+                                            title="Send page to Card Generator queue to regenerate flashcards for its folder"
+                                          >
+                                            <RefreshCw className="w-3 h-3" />
+                                            Regenerate Cards
+                                          </button>
+                                        )}
                                         <button
                                           onClick={() => setDeleteConfirmDialog({ isOpen: true, pageIds: [activeQueueId], isBulk: false })}
                                           className="flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl text-[10px] font-black uppercase transition-all"
@@ -25150,7 +25176,7 @@ Return your response strictly as a JSON object matching this schema:
                                           {/* Bulk Actions Header */}
                                           <div className="bg-gray-50/50 p-4 rounded-2xl border border-gray-200/50 flex flex-wrap items-center justify-between gap-3 animate-in fade-in duration-200">
                                             <div className="flex items-center gap-2">
-                                            <input
+                                              <input
                                                 type="checkbox"
                                                 checked={folderPages.length > 0 && selectedInboxPageIds.length === folderPages.length}
                                                 onChange={(e) => {
@@ -25173,27 +25199,11 @@ Return your response strictly as a JSON object matching this schema:
                                                 <button
                                                   onClick={async () => {
                                                     const selectedPages = folderPages.filter(p => selectedInboxPageIds.includes(p.id));
-                                                    const newQueueItems = selectedPages.map(page => ({
-                                                       id: page.id,
-                                                       fileName: page.fileName || 'Mobile Scan Document',
-                                                       mimeType: 'image/png',
-                                                       base64: page.base64 || page.imageUrl,
-                                                       status: 'pending',
-                                                       deck: page.deck === 'Mobile Scans Inbox' ? 'General' : (page.deck || 'General')
-                                                     }));
-                                                     const filteredNewItems = newQueueItems.filter(item => !queue.some(q => q.id === item.id));
-                                                     setQueue(prev => [...prev, ...filteredNewItems]);
-                                                     if (filteredNewItems.length > 0) setActiveQueueId(filteredNewItems[0].id);
-                                                     // Update Firestore for each
-                                                    for (let page of selectedPages) {
+                                                    const updatedInboxPages = selectedPages.map(page => {
                                                       const finalDeck = page.deck === 'Mobile Scans Inbox' ? 'General' : (page.deck || 'General');
-                                                      const pageDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'pages', page.id);
-                                                      await updateDoc(pageDocRef, {
-                                                        deck: finalDeck,
-                                                        isCompanionScan: false,
-                                                        isPending: false
-                                                      });
-                                                    }
+                                                      return { ...page, deck: finalDeck, isCompanionScan: false, isPending: false };
+                                                    });
+                                                    await saveLocalPages(updatedInboxPages);
 
                                                     // Update local state
                                                     setCloudPages(prev => prev.map(p => {
@@ -25218,8 +25228,7 @@ Return your response strictly as a JSON object matching this schema:
                                                       setCloudPages(prev => prev.filter(p => !selectedInboxPageIds.includes(p.id)));
 
                                                       for (let id of selectedInboxPageIds) {
-                                                        const pageDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'pages', id);
-                                                        await deleteDoc(pageDocRef);
+                                                        await deleteLocalPage(id);
                                                       }
                                                       setSelectedInboxPageIds([]);
                                                     }
@@ -25282,9 +25291,9 @@ Return your response strictly as a JSON object matching this schema:
                                                           value={page.fileName || ''}
                                                           onChange={async (e) => {
                                                             const newName = e.target.value;
-                                                            setCloudPages(prev => prev.map(p => p.id === page.id ? { ...p, fileName: newName } : p));
-                                                            const pageDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'pages', page.id);
-                                                            await updateDoc(pageDocRef, { fileName: newName });
+                                                            const updated = { ...page, fileName: newName };
+                                                            setCloudPages(prev => prev.map(p => p.id === page.id ? updated : p));
+                                                            await saveLocalPage(updated);
                                                           }}
                                                           className="w-full p-2.5 bg-gray-50 border border-gray-100 rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none text-xs font-bold text-gray-800"
                                                           placeholder="Enter descriptive page name..."
@@ -25299,19 +25308,14 @@ Return your response strictly as a JSON object matching this schema:
                                                           onChange={async (e) => {
                                                             const targetDeck = e.target.value;
                                                             const isInbox = targetDeck === 'Mobile Scans Inbox';
-                                                            setCloudPages(prev => prev.map(p => p.id === page.id ? {
-                                                              ...p,
+                                                            const updated = {
+                                                              ...page,
                                                               deck: isInbox ? 'Mobile Scans Inbox' : targetDeck,
                                                               isCompanionScan: isInbox,
                                                               isPending: isInbox
-                                                            } : p));
-
-                                                            const pageDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'pages', page.id);
-                                                            await updateDoc(pageDocRef, {
-                                                              deck: isInbox ? 'Mobile Scans Inbox' : targetDeck,
-                                                              isCompanionScan: isInbox,
-                                                              isPending: isInbox
-                                                            });
+                                                            };
+                                                            setCloudPages(prev => prev.map(p => p.id === page.id ? updated : p));
+                                                            await saveLocalPage(updated);
                                                           }}
                                                           className="w-full p-2.5 bg-gray-50 border border-gray-100 rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none text-xs font-bold text-gray-700 cursor-pointer"
                                                         >
@@ -25328,11 +25332,10 @@ Return your response strictly as a JSON object matching this schema:
                                                         onClick={async () => {
                                                           if (confirm("Are you sure you want to discard this scanned document page?")) {
                                                             setCloudPages(prev => prev.filter(p => p.id !== page.id));
-                                                            const pageDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'pages', page.id);
-                                                            await deleteDoc(pageDocRef);
+                                                            await deleteLocalPage(page.id);
                                                           }
                                                         }}
-                                                        className="p-2.5 bg-red-50 hover:bg-red-100 text-red-650 rounded-xl transition active:scale-95 flex items-center justify-center"
+                                                        className="p-2.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl transition active:scale-95 flex items-center justify-center"
                                                         title="Discard Scan"
                                                       >
                                                         <Trash2 className="w-4 h-4" />
@@ -25340,6 +25343,15 @@ Return your response strictly as a JSON object matching this schema:
                                                       <button
                                                         onClick={async () => {
                                                           const finalDeck = page.deck === 'Mobile Scans Inbox' ? 'General' : (page.deck || 'General');
+
+                                                          const updatedPage = {
+                                                            ...page,
+                                                            deck: finalDeck,
+                                                            isCompanionScan: false
+                                                          };
+                                                          await saveLocalPage(updatedPage);
+
+                                                          setCloudPages(prev => prev.map(p => p.id === page.id ? updatedPage : p));
 
                                                           const newQueueItem = {
                                                             id: page.id,
@@ -25355,17 +25367,6 @@ Return your response strictly as a JSON object matching this schema:
                                                           setQueue(newQueue);
                                                           setActiveQueueId(page.id);
 
-                                                          const pageDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'pages', page.id);
-                                                          await updateDoc(pageDocRef, {
-                                                            deck: finalDeck,
-                                                            isCompanionScan: false
-                                                          });
-
-                                                          setCloudPages(prev => prev.map(p => p.id === page.id ? {
-                                                            ...p,
-                                                            deck: finalDeck,
-                                                            isCompanionScan: false
-                                                          } : p));
 
                                                           setCurrentTab('home');
                                                         }}
@@ -25385,59 +25386,51 @@ Return your response strictly as a JSON object matching this schema:
                                   ) : (
                                     <>
                                       <div className="mb-8">
-                                      {(() => {
-                                           const allFolderPagesSelected = folderPages.length > 0 && folderPages.every(p => selectedPages.has(p.id));
-                                           const someFolderPagesSelected = folderPages.some(p => selectedPages.has(p.id));
-                                           const handleSelectAllFolderPages = () => {
-                                             if (allFolderPagesSelected) {
-                                               const newSet = new Set(selectedPages);
-                                               folderPages.forEach(p => newSet.delete(p.id));
-                                               setSelectedPages(newSet);
-                                             } else {
-                                               const newSet = new Set(selectedPages);
-                                               folderPages.forEach(p => newSet.add(p.id));
-                                               setSelectedPages(newSet);
-                                             }
-                                           };
+                                        {(() => {
+                                          const allFolderPagesSelected = folderPages.length > 0 && folderPages.every(p => selectedPages.has(p.id));
+                                          const someFolderPagesSelected = folderPages.some(p => selectedPages.has(p.id));
+                                          const handleSelectAllFolderPages = () => {
+                                            if (allFolderPagesSelected) {
+                                              const newSet = new Set(selectedPages);
+                                              folderPages.forEach(p => newSet.delete(p.id));
+                                              setSelectedPages(newSet);
+                                            } else {
+                                              const newSet = new Set(selectedPages);
+                                              folderPages.forEach(p => newSet.add(p.id));
+                                              setSelectedPages(newSet);
+                                            }
+                                          };
 
-                                           return (
-                                             <div className="flex justify-between items-center mb-4">
-                                               <div className="flex items-center gap-3">
-                                                 <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2 uppercase tracking-widest text-[10px]">
-                                                   <Grid className="w-4 h-4" /> Saved Pages ({folderPages.length})
-                                                 </h3>
-                                                 {folderPages.length > 0 && (
-                                                   <button
-                                                     type="button"
-                                                     onClick={handleSelectAllFolderPages}
-                                                     className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-[10px] font-bold border transition-all active:scale-95 cursor-pointer ${
-                                                       allFolderPagesSelected
-                                                         ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/20 hover:bg-blue-700'
-                                                         : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 hover:border-gray-300'
-                                                     }`}
-                                                   >
-                                                     <input
-                                                       type="checkbox"
-                                                       checked={allFolderPagesSelected}
-                                                       ref={el => { if (el) el.indeterminate = !allFolderPagesSelected && someFolderPagesSelected; }}
-                                                       onChange={() => {}}
-                                                       className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-gray-300 pointer-events-none"
-                                                     />
-                                                     <span>{allFolderPagesSelected ? 'Deselect All' : `Select All (${folderPages.length})`}</span>
-                                                   </button>
-                                                 )}
-                                               </div>
-                                               {hierarchy === 'PENDING_REVIEW' && cloudPages.length > 0 && (
-                                                 <button
-                                                   onClick={discardAllTriage}
-                                                   className="flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-600 rounded-xl text-[10px] font-black uppercase hover:bg-red-100 transition-all active:scale-95"
-                                                 >
-                                                   <Trash2 className="w-3 h-3" /> Discard All Triage
-                                                 </button>
-                                               )}
-                                             </div>
-                                           );
-                                         })()}
+                                          return (
+                                            <div className="flex justify-between items-center mb-4">
+                                              <div className="flex items-center gap-3">
+                                                <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2 uppercase tracking-widest text-[10px]">
+                                                  <Grid className="w-4 h-4" /> Saved Pages ({folderPages.length})
+                                                </h3>
+                                                {folderPages.length > 0 && (
+                                                  <button
+                                                    type="button"
+                                                    onClick={handleSelectAllFolderPages}
+                                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-[10px] font-bold border transition-all active:scale-95 cursor-pointer ${allFolderPagesSelected
+                                                        ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/20 hover:bg-blue-700'
+                                                        : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 hover:border-gray-300'
+                                                      }`}
+                                                  >
+                                                    <input
+                                                      type="checkbox"
+                                                      checked={allFolderPagesSelected}
+                                                      ref={el => { if (el) el.indeterminate = !allFolderPagesSelected && someFolderPagesSelected; }}
+                                                      onChange={() => { }}
+                                                      className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-gray-300 pointer-events-none"
+                                                    />
+                                                    <span>{allFolderPagesSelected ? 'Deselect All' : `Select All (${folderPages.length})`}</span>
+                                                  </button>
+                                                )}
+                                              </div>
+
+                                            </div>
+                                          );
+                                        })()}
                                         {(folderPages.length === 0 && directSubfolders.length === 0) ? (
                                           <div className="bg-gray-50 border border-dashed border-gray-200 rounded-3xl p-20 text-center text-gray-400">
                                             <ImageIcon className="w-16 h-16 mx-auto mb-4 opacity-10" />
@@ -30223,282 +30216,334 @@ Return your response strictly as a JSON object matching this schema:
                       </div>
                     )}
 
-                    {/* SETTINGS VIEW */}
+                    {/* SETTINGS VIEW (Desktop) */}
                     {currentTab === 'settings' && (
-                      <div className="flex-grow p-4 lg:p-6 flex flex-col gap-6 max-w-[800px] mx-auto w-full overflow-y-auto pb-24 lg:pb-6">
-                        <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-200">
-                          <h2 className="text-xl font-black text-gray-900 tracking-tight mb-8">Cloud Configuration</h2>
-
-                          <div className="space-y-8">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                              <div>
-                                <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">Gemini API Key</label>
-                                <div className="relative">
-                                  <input
-                                    type={isApiKeyVisible ? "text" : "password"}
-                                    value={geminiApiKey}
-                                    onChange={(e) => setGeminiApiKey(e.target.value)}
-                                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-mono pr-12"
-                                  />
-                                  <button
-                                    onClick={() => setIsApiKeyVisible(!isApiKeyVisible)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600"
-                                  >
-                                    {isApiKeyVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                  </button>
-                                </div>
-                                <button
-                                  onClick={() => alert("API Key updated for this session!")}
-                                  className="mt-2 text-[10px] font-bold text-blue-600 uppercase hover:underline"
-                                >
-                                  Update Key
-                                </button>
-                              </div>
-                              <div>
-                                <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">Database Namespace</label>
-                                <input
-                                  type="text"
-                                  disabled
-                                  value={appId}
-                                  className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-400 text-sm font-mono"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">ImgBB API Key</label>
-                                <div className="relative">
-                                  <input
-                                    type={isImgbbKeyVisible ? "text" : "password"}
-                                    value={imgbbApiKey}
-                                    onChange={(e) => setImgbbApiKey(e.target.value)}
-                                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-mono pr-12"
-                                    placeholder="Paste ImgBB key here..."
-                                  />
-                                  <button
-                                    onClick={() => setIsImgbbKeyVisible(!isImgbbKeyVisible)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600"
-                                  >
-                                    {isImgbbKeyVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                  </button>
-                                </div>
-                                <div className="flex justify-between items-center mt-2">
-                                  <button
-                                    onClick={() => saveImgbbApiKeyToCloud(imgbbApiKey)}
-                                    className="text-[10px] font-bold text-green-600 uppercase hover:underline"
-                                  >
-                                    Save ImgBB Key
-                                  </button>
-                                  <a href="https://api.imgbb.com/" target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-600 hover:underline">
-                                    api.imgbb.com
-                                  </a>
-                                </div>
-                              </div>
-                            </div>
-
-
-
-                            <div className="pt-6 border-t border-gray-100">
-                              <div className="flex items-center gap-2 mb-4">
-                                <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
-                                  <svg className="w-4 h-4 text-gray-800" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
-                                  </svg>
-                                  GitHub PDF Auto-Sync Configuration
-                                </h3>
-                                <button
-                                  type="button"
-                                  onClick={() => setShowGithubHelpModal(true)}
-                                  className="text-gray-400 hover:text-blue-600 transition p-1 bg-gray-50 rounded-lg"
-                                  title="How to setup GitHub sync?"
-                                >
-                                  <HelpCircle className="w-4 h-4" />
-                                </button>
-                              </div>
-
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div>
-                                  <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">GitHub Username</label>
-                                  <input
-                                    type="text"
-                                    value={githubUsername}
-                                    onChange={(e) => setGithubUsername(e.target.value)}
-                                    placeholder="e.g. yourusername"
-                                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-semibold text-gray-800"
-                                  />
+                      <motion.div
+                        initial={{ opacity: 0, y: 15 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -15 }}
+                        transition={{ duration: 0.3, ease: 'easeOut' }}
+                        className={`flex-grow w-full h-full overflow-y-auto smooth-settings-scroll transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-bg-dark' : 'neu-bg-light'
+                          }`}
+                      >
+                        <motion.div
+                          initial="hidden"
+                          animate="show"
+                          variants={{
+                            hidden: { opacity: 0 },
+                            show: { opacity: 1, transition: { staggerChildren: 0.1 } }
+                          }}
+                          className="p-4 lg:p-6 flex flex-col gap-6 max-w-[800px] mx-auto w-full pb-24 lg:pb-6"
+                        >
+                          {/* NEUMORPHIC THEME SWITCHER CARD (Desktop) */}
+                          <motion.div
+                            variants={{
+                              hidden: { opacity: 0, y: 20 },
+                              show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 25 } }
+                            }}
+                            whileHover={{ y: -2 }}
+                            className={settingsThemeMode === 'dark' ? 'neu-card-dark p-6 md:p-8 space-y-4' : 'neu-card-light p-6 md:p-8 space-y-4'}
+                          >
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                              <div className="flex items-center gap-3">
+                                <div className={settingsThemeMode === 'dark' ? 'p-3 rounded-2xl neu-pressed-dark text-amber-400' : 'p-3 rounded-2xl neu-pressed-light text-amber-500'}>
+                                  <Sparkles className="w-5 h-5" />
                                 </div>
                                 <div>
-                                  <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">Repository Name</label>
+                                  <h2 className={`text-base font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>Neumorphic UI Theme Mode</h2>
+                                  <p className={`text-xs font-medium ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Select a tactile Soft UI theme for your configuration workspace.</p>
+                                </div>
+                              </div>
+
+                              {/* Uiverse Pill Toggle (Desktop) */}
+                              <div className="uiverse-wrapper shrink-0 p-0">
+                                <label className="pill-toggle cursor-pointer" title="Toggle Neumorphic Theme">
                                   <input
-                                    type="text"
-                                    value={githubRepo}
-                                    onChange={(e) => setGithubRepo(e.target.value)}
-                                    placeholder="e.g. my-textbooks"
-                                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-semibold text-gray-800"
+                                    type="checkbox"
+                                    checked={settingsThemeMode === 'dark'}
+                                    onChange={(e) => saveSettingsThemeMode(e.target.checked ? 'dark' : 'light')}
                                   />
-                                </div>
-                                <div>
-                                  <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">Personal Access Token (PAT)</label>
-                                  <div className="relative">
-                                    <input
-                                      type={isGithubPatVisible ? "text" : "password"}
-                                      value={githubPatToken}
-                                      onChange={(e) => setGithubPatToken(e.target.value)}
-                                      placeholder="ghp_..."
-                                      className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-mono pr-12 text-gray-800"
-                                    />
-                                    <button
-                                      onClick={() => setIsGithubPatVisible(!isGithubPatVisible)}
-                                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600"
-                                    >
-                                      {isGithubPatVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="flex gap-4 mt-6">
-                                <button
-                                  onClick={saveGithubCredentialsToCloud}
-                                  className="py-3 px-6 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-widest rounded-xl active:scale-95 transition flex items-center justify-center gap-2"
-                                >
-                                  Save to Cloud
-                                </button>
-                              </div>
-                            </div>
-
-                            <div className="pt-6 border-t border-gray-100">
-                              <h3 className="text-sm font-bold text-gray-800 mb-4">Security & Sync</h3>
-                              <div className="bg-blue-50 border border-blue-100 p-4 rounded-2xl flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">G</div>
-                                  <div>
-                                    <div className="text-sm font-bold text-blue-900">{user.email || 'Google Account Connected'}</div>
-                                    <div className="text-[10px] text-blue-600 font-medium">UID: {user.uid}</div>
-                                  </div>
-                                </div>
-                                <button onClick={logout} className="px-4 py-2 bg-white text-red-600 border border-red-100 rounded-xl text-xs font-bold hover:bg-red-50 transition">Disconnect</button>
-                              </div>
-                            </div>
-
-                            <div className="pt-6 border-t border-gray-100">
-                              {renderChromeExtensionSection()}
-                            </div>
-
-                            <div className="pt-6 border-t border-gray-100">
-                              {renderDeviceManagerSection()}
-                            </div>
-
-                            <div className="pt-6 border-t border-gray-100">
-                              {renderDiscordPresenceSection()}
-                            </div>
-
-                            <div className="pt-6 border-t border-gray-100">
-                              <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2 mb-4">
-                                <Key className="w-4 h-4 text-blue-500" />
-                                Email & Password Access (Automated Agent Backup)
-                              </h3>
-                              <p className="text-[11px] text-gray-500 mb-4 leading-relaxed">
-                                Link an email and password credential to your account (email: <strong className="text-gray-800">{user?.email}</strong>). This enables automated agents (like Hermes) to log directly into your workspace using standard credentials, bypassing OAuth flow limitations.
-                              </p>
-                              <form onSubmit={handleUpdatePassword} className="space-y-4 max-w-md">
-                                <div className="grid grid-cols-2 gap-4">
-                                  <div>
-                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">New Password</label>
-                                    <input
-                                      type="password"
-                                      value={settingsPassword}
-                                      onChange={(e) => setSettingsPassword(e.target.value)}
-                                      placeholder="At least 6 chars..."
-                                      className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-xs font-semibold text-gray-800 placeholder-gray-300"
-                                    />
-                                  </div>
-                                  <div>
-                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Confirm Password</label>
-                                    <input
-                                      type="password"
-                                      value={settingsConfirmPassword}
-                                      onChange={(e) => setSettingsConfirmPassword(e.target.value)}
-                                      placeholder="Re-enter password..."
-                                      className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-xs font-semibold text-gray-800 placeholder-gray-300"
-                                    />
-                                  </div>
-                                </div>
-                                <button
-                                  type="submit"
-                                  disabled={isUpdatingPassword}
-                                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer"
-                                >
-                                  {isUpdatingPassword ? (
-                                    <>
-                                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                      Updating Password...
-                                    </>
-                                  ) : (
-                                    'Set / Update Password'
-                                  )}
-                                </button>
-                              </form>
-                            </div>
-
-                            <div className="pt-6 border-t border-gray-100">
-                              <div className="flex items-center justify-between mb-5">
-                                <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
-                                  <Database className="w-4 h-4 text-blue-500" />
-                                  Firebase Daily Quota
-                                </h3>
-                                <button
-                                  onClick={() => setFbUsage(fbTracker.getUsage())}
-                                  className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline"
-                                >
-                                  Refresh
-                                </button>
-                              </div>
-                              <div className="grid grid-cols-3 gap-4 mb-4">
-                                {[
-                                  { label: 'Reads', used: fbUsage.reads, limit: 50000, color: 'blue' },
-                                  { label: 'Writes', used: fbUsage.writes, limit: 20000, color: 'emerald' },
-                                  { label: 'Deletes', used: fbUsage.deletes, limit: 20000, color: 'rose' },
-                                ].map(({ label, used, limit, color }) => {
-                                  const pct = Math.min(100, Math.round((used / limit) * 100));
-                                  const isHot = pct >= 85;
-                                  const isWarm = pct >= 60;
-                                  const barCls = isHot ? 'bg-red-500' : isWarm ? 'bg-amber-400' : `bg-${color}-500`;
-                                  const numCls = isHot ? 'text-red-600' : isWarm ? 'text-amber-600' : `text-${color}-600`;
-                                  return (
-                                    <div key={label} className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
-                                      <div className="flex justify-between items-center mb-2">
-                                        <span className="text-xs font-black text-gray-700">{label}</span>
-                                        <span className={`text-[10px] font-black ${numCls}`}>
-                                          {isHot && '⚠️ '}{used.toLocaleString()}
-                                        </span>
-                                      </div>
-                                      <div className="w-full h-2.5 bg-gray-200 rounded-full overflow-hidden mb-1.5">
-                                        <div
-                                          className={`h-full rounded-full transition-all duration-700 ${barCls}`}
-                                          style={{ width: `${pct}%` }}
-                                        />
-                                      </div>
-                                      <div className="flex justify-between text-[9px] text-gray-400 font-bold">
-                                        <span>0</span>
-                                        <span>{pct}% of {(limit / 1000).toFixed(0)}k</span>
+                                  <div className="track flex items-center justify-between px-3.5">
+                                    <Sun className="w-4 h-4 text-amber-500 z-0" />
+                                    <Moon className="w-4 h-4 text-blue-400 z-0" />
+                                    <div className="pill">
+                                      <div className="pill-surface flex items-center justify-center">
+                                        {settingsThemeMode === 'dark' ? (
+                                          <Moon className="w-4 h-4 text-blue-500 stroke-[2.5]" />
+                                        ) : (
+                                          <Sun className="w-4 h-4 text-amber-500 stroke-[2.5]" />
+                                        )}
                                       </div>
                                     </div>
-                                  );
-                                })}
+                                  </div>
+                                </label>
                               </div>
-                              <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 flex items-start gap-2">
-                                <Info className="w-3.5 h-3.5 text-blue-500 mt-0.5 shrink-0" />
-                                <p className="text-[10px] text-blue-700 font-medium leading-relaxed">
-                                  Usage is tracked locally for today's browser session. Counts reset at midnight. Firestore free-tier limits: <strong>50k reads / 20k writes / 20k deletes per day</strong>. Storage quota is N/A — images are hosted on ImgBB.
-                                </p>
+                            </div>
+                          </motion.div>
+
+                          {/* API & INTEGRATION CREDENTIALS CARD */}
+                          <motion.div
+                            variants={{
+                              hidden: { opacity: 0, y: 20 },
+                              show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 25 } }
+                            }}
+                            whileHover={{ y: -2 }}
+                            className={settingsThemeMode === 'dark' ? 'neu-card-dark p-6 md:p-8 space-y-6' : 'neu-card-light p-6 md:p-8 space-y-6'}
+                          >
+                            <h2 className={`text-lg font-black tracking-tight ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>API & Integration Credentials</h2>
+
+                            <div className="space-y-8">
+                              <div className="space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                  <div>
+                                    <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">Gemini API Key</label>
+                                    <div className="relative">
+                                      <input
+                                        type={isApiKeyVisible ? "text" : "password"}
+                                        value={geminiApiKey}
+                                        onChange={(e) => setGeminiApiKey(e.target.value)}
+                                        className={`w-full p-3.5 outline-none text-sm font-mono pr-12 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-gray-800'
+                                          }`}
+                                        placeholder="Paste Gemini API key..."
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => setIsApiKeyVisible(!isApiKeyVisible)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-500 transition"
+                                      >
+                                        {isApiKeyVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  <div>
+                                    <div className="flex justify-between items-center mb-2">
+                                      <label className="block text-xs font-black uppercase tracking-widest text-gray-400">ImgBB API Key</label>
+                                      <a href="https://api.imgbb.com/" target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-500 hover:underline font-bold">
+                                        Get ImgBB Key ↗
+                                      </a>
+                                    </div>
+                                    <div className="relative">
+                                      <input
+                                        type={isImgbbKeyVisible ? "text" : "password"}
+                                        value={imgbbApiKey}
+                                        onChange={(e) => setImgbbApiKey(e.target.value)}
+                                        className={`w-full p-3.5 outline-none text-sm font-mono pr-12 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-gray-800'
+                                          }`}
+                                        placeholder="Paste ImgBB key here..."
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => setIsImgbbKeyVisible(!isImgbbKeyVisible)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-500 transition"
+                                      >
+                                        {isImgbbKeyVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="pt-6 border-t border-gray-500/10">
+                                  <div className="flex items-center justify-between mb-4">
+                                    <h3 className={`text-sm font-bold flex items-center gap-2 ${settingsThemeMode === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>
+                                      <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                                        <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
+                                      </svg>
+                                      GitHub PDF Sync Details
+                                    </h3>
+                                    <button
+                                      type="button"
+                                      onClick={() => setShowGithubHelpModal(true)}
+                                      className="text-gray-400 hover:text-blue-500 transition p-1"
+                                      title="How to setup GitHub sync?"
+                                    >
+                                      <HelpCircle className="w-4 h-4" />
+                                    </button>
+                                  </div>
+
+                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div>
+                                      <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">GitHub Username</label>
+                                      <input
+                                        type="text"
+                                        value={githubUsername}
+                                        onChange={(e) => setGithubUsername(e.target.value)}
+                                        placeholder="e.g. yourusername"
+                                        className={`w-full p-3.5 outline-none text-sm font-semibold ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-gray-800'
+                                          }`}
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">Repository Name</label>
+                                      <input
+                                        type="text"
+                                        value={githubRepo}
+                                        onChange={(e) => setGithubRepo(e.target.value)}
+                                        placeholder="e.g. my-textbooks"
+                                        className={`w-full p-3.5 outline-none text-sm font-semibold ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-gray-800'
+                                          }`}
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">Personal Access Token (PAT)</label>
+                                      <div className="relative">
+                                        <input
+                                          type={isGithubPatVisible ? "text" : "password"}
+                                          value={githubPatToken}
+                                          onChange={(e) => setGithubPatToken(e.target.value)}
+                                          placeholder="ghp_..."
+                                          className={`w-full p-3.5 outline-none text-sm font-mono pr-12 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-gray-800'
+                                            }`}
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() => setIsGithubPatVisible(!isGithubPatVisible)}
+                                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-500 transition"
+                                        >
+                                          {isGithubPatVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="pt-6 border-t border-gray-500/10 flex justify-between items-center">
+                                    <div className="text-[10px] text-gray-400 font-medium">Saved locally in IndexedDB & LocalStorage</div>
+                                    <UiverseButton
+                                      icon={<Save className="w-4 h-4 text-blue-500" />}
+                                      onClick={saveAllCredentialsLocal}
+                                      size="md"
+                                      themeMode={settingsThemeMode}
+                                      isSuccess={credentialsSavedState}
+                                      successText="Saved!"
+                                    >
+                                      Save Credentials
+                                    </UiverseButton>
+                                  </div>
+                                </div>
                               </div>
+                            </div>
+                          </motion.div>
+
+                          {/* LOCAL BACKUP & RESTORE CARD (Desktop) */}
+                          <motion.div
+                            variants={{
+                              hidden: { opacity: 0, y: 20 },
+                              show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 25 } }
+                            }}
+                            whileHover={{ y: -2 }}
+                            className={settingsThemeMode === 'dark' ? 'neu-card-dark p-6 md:p-8' : 'neu-card-light p-6 md:p-8'}
+                          >
+                            <div className="flex items-center justify-between mb-6">
+                              <div className="flex items-center gap-3">
+                                <div className={settingsThemeMode === 'dark' ? 'p-3 rounded-2xl neu-pressed-dark text-blue-400' : 'p-3 rounded-2xl neu-pressed-light text-blue-600'}>
+                                  <Database className="w-5 h-5" />
+                                </div>
+                                <div>
+                                  <h2 className={`text-lg font-black tracking-tight ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>Local App Backup & Restore</h2>
+                                  <p className={`text-xs font-medium ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Export/Import your entire workspace or configure automatic background snapshots.</p>
+                                </div>
+                              </div>
+                              <span className="px-3 py-1 bg-green-50 text-green-700 border border-green-200 rounded-full text-[10px] font-black uppercase tracking-wider">
+                                100% Offline Vault
+                              </span>
                             </div>
 
-                            <div className="pt-6 border-t border-gray-100 flex justify-between items-center">
-                              <div className="text-[10px] text-gray-400">Version 2.1.0 Cloud Professional</div>
-                              <button className="px-8 py-3 bg-blue-600 text-white rounded-2xl text-xs font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-600/20">Apply All Changes</button>
+                            <div className="space-y-6">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <UiverseButton
+                                  icon={<Download className="w-4 h-4 text-blue-500" />}
+                                  onClick={handleExportBackup}
+                                  fullWidth
+                                  size="md"
+                                  themeMode={settingsThemeMode}
+                                  isSuccess={exportBackupState}
+                                  successText="Exported!"
+                                >
+                                  Export Backup (.json)
+                                </UiverseButton>
+
+                                <UiverseButton
+                                  icon={<Upload className="w-4 h-4 text-emerald-500" />}
+                                  onClick={handleImportBackup}
+                                  fullWidth
+                                  size="md"
+                                  themeMode={settingsThemeMode}
+                                  isSuccess={importBackupState}
+                                  successText="Imported!"
+                                >
+                                  Import Backup File
+                                </UiverseButton>
+                              </div>
+
+                              <div className="pt-6 border-t border-gray-500/10 space-y-5">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <h3 className={`text-sm font-bold ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>Automatic Background Backups</h3>
+                                    <p className="text-[11px] text-gray-400 font-medium">Automatically save periodic local snapshots to browser IndexedDB vault.</p>
+                                  </div>
+
+                                  <label className="relative inline-flex items-center cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={autoBackupEnabled}
+                                      onChange={(e) => saveBackupConfigLocal(e.target.checked, autoBackupFrequency, autoBackupRetention)}
+                                      className="sr-only peer"
+                                    />
+                                    <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                  </label>
+                                </div>
+
+                                <AnimatePresence>
+                                  {autoBackupEnabled && (
+                                    <motion.div
+                                      initial={{ opacity: 0, height: 0 }}
+                                      animate={{ opacity: 1, height: 'auto' }}
+                                      exit={{ opacity: 0, height: 0 }}
+                                      transition={{ duration: 0.3, ease: 'easeInOut' }}
+                                      className={`grid grid-cols-1 md:grid-cols-2 gap-6 p-5 rounded-2xl border text-left overflow-hidden ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-gray-200'
+                                        }`}
+                                    >
+                                      <div>
+                                        <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Backup Frequency</label>
+                                        <UiverseGlassRadio
+                                          name="desktopBackupFrequency"
+                                          options={BACKUP_FREQUENCY_OPTIONS}
+                                          value={autoBackupFrequency}
+                                          onChange={(newVal) => saveBackupConfigLocal(autoBackupEnabled, newVal, autoBackupRetention)}
+                                          themeMode={settingsThemeMode}
+                                          size="md"
+                                        />
+                                      </div>
+
+                                      <div>
+                                        <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Retention Policy</label>
+                                        <UiverseGlassRadio
+                                          name="desktopBackupRetention"
+                                          options={BACKUP_RETENTION_OPTIONS}
+                                          value={autoBackupRetention}
+                                          onChange={(newVal) => saveBackupConfigLocal(autoBackupEnabled, autoBackupFrequency, newVal)}
+                                          themeMode={settingsThemeMode}
+                                          size="md"
+                                        />
+                                      </div>
+
+                                      <div className="md:col-span-2 pt-2 border-t border-gray-500/10 flex items-center justify-between text-[11px] font-medium">
+                                        <span className="flex items-center gap-1.5 text-emerald-500">
+                                          <CheckCircle2 className="w-4 h-4" />
+                                          IndexedDB Storage Engine active
+                                        </span>
+                                        <span className="text-gray-400 font-normal">
+                                          {lastBackupTime ? `Last backup: ${lastBackupTime}` : 'Automated snapshots ready'}
+                                        </span>
+                                      </div>
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
+                              </div>
                             </div>
-                          </div>
-                        </div>
-                      </div>
+                          </motion.div>
+                        </motion.div>
+                      </motion.div>
                     )}
 
                     {/* PYT MANAGER VIEW (Desktop) */}
@@ -32353,13 +32398,13 @@ Return your response strictly as a JSON object matching this schema:
                 </div>
               )}
               {newFolderDialog.isOpen && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[200]">
-                  <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col animate-in zoom-in duration-200">
-                    <div className="bg-gray-50 p-4 border-b flex justify-between items-center">
-                      <h3 className="font-bold text-sm text-gray-800">
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
+                  <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-white border border-gray-800' : 'neu-card-light text-gray-900 border border-white'} rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col animate-in zoom-in duration-200`}>
+                    <div className={`p-5 border-b flex justify-between items-center ${settingsThemeMode === 'dark' ? 'border-gray-800' : 'border-gray-200/60'}`}>
+                      <h3 className={`font-black text-xs uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>
                         {newFolderDialog.basePath ? `New subfolder in "${newFolderDialog.basePath.split('::').pop()}"` : 'New Root Folder'}
                       </h3>
-                      <button onClick={() => setNewFolderDialog({ isOpen: false, basePath: '', input: '' })} className="text-gray-400 hover:text-gray-600">
+                      <button onClick={() => setNewFolderDialog({ isOpen: false, basePath: '', input: '' })} className={`p-1 rounded-lg transition ${settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-400 hover:text-gray-600'}`}>
                         <X className="w-4 h-4" />
                       </button>
                     </div>
@@ -32368,13 +32413,13 @@ Return your response strictly as a JSON object matching this schema:
                         type="text" autoFocus value={newFolderDialog.input}
                         onChange={(e) => setNewFolderDialog({ ...newFolderDialog, input: e.target.value })}
                         onKeyDown={(e) => e.key === 'Enter' && handleSaveNewFolder()}
-                        className="w-full p-3 border border-gray-200 rounded-xl text-sm focus:ring-4 focus:ring-blue-500/10 outline-none transition"
+                        className={`w-full p-3 rounded-xl text-sm font-bold outline-none transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white border border-gray-800' : 'neu-pressed-light text-gray-800 border border-gray-200'}`}
                         placeholder="Folder name..."
                       />
                     </div>
-                    <div className="p-4 bg-gray-50 border-t flex justify-end gap-3">
-                      <button onClick={() => setNewFolderDialog({ isOpen: false, basePath: '', input: '' })} className="px-5 py-2 text-xs font-bold text-gray-500 hover:bg-gray-200 rounded-xl transition">Cancel</button>
-                      <button onClick={handleSaveNewFolder} className="px-6 py-2 text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 rounded-xl shadow-lg shadow-blue-600/20 transition">Create Folder</button>
+                    <div className={`p-4 border-t flex justify-end gap-3 ${settingsThemeMode === 'dark' ? 'border-gray-800' : 'border-gray-200/60'}`}>
+                      <button onClick={() => setNewFolderDialog({ isOpen: false, basePath: '', input: '' })} className={`px-5 py-2 text-xs font-bold transition ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-gray-300' : 'neu-btn-light text-gray-600'}`}>Cancel</button>
+                      <button onClick={handleSaveNewFolder} className={`px-6 py-2 text-xs font-black uppercase tracking-wider transition ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'}`}>Create Folder</button>
                     </div>
                   </div>
                 </div>
@@ -32382,60 +32427,60 @@ Return your response strictly as a JSON object matching this schema:
 
               {editingCard && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
-                  <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col animate-in zoom-in duration-300">
-                    <div className="bg-gray-50 p-6 border-b flex justify-between items-center">
-                      <h3 className="font-black text-gray-900 uppercase tracking-widest text-xs">Edit Card</h3>
-                      <button onClick={() => setEditingCard(null)} className="text-gray-400 hover:text-gray-600">
+                  <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-white border border-gray-800' : 'neu-card-light text-gray-900 border border-white'} rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col animate-in zoom-in duration-300`}>
+                    <div className={`p-6 border-b flex justify-between items-center ${settingsThemeMode === 'dark' ? 'border-gray-800' : 'border-gray-200/60'}`}>
+                      <h3 className={`font-black uppercase tracking-widest text-xs ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>Edit Card</h3>
+                      <button onClick={() => setEditingCard(null)} className={`p-1 rounded-lg transition ${settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-400 hover:text-gray-600'}`}>
                         <X className="w-5 h-5" />
                       </button>
                     </div>
-                    <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto">
+                    <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
                       <div>
-                        <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Target Deck</label>
+                        <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Target Deck</label>
                         <input
                           type="text" value={editingCard.deck || ''}
                           onChange={(e) => setEditingCard({ ...editingCard, deck: e.target.value })}
-                          className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none text-xs font-mono"
+                          className={`w-full p-3 rounded-xl outline-none text-xs font-mono transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white border border-gray-800' : 'neu-pressed-light text-gray-800 border border-gray-200'}`}
                         />
                       </div>
                       {editingCard.type === 'Cloze' ? (
                         <div>
-                          <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Cloze Content</label>
+                          <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Cloze Content</label>
                           <textarea
                             rows={6} value={editingCard.text || ''}
                             onChange={(e) => setEditingCard({ ...editingCard, text: e.target.value })}
-                            className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 outline-none text-sm leading-relaxed font-mono"
+                            className={`w-full p-4 rounded-2xl outline-none text-sm leading-relaxed font-mono transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white border border-gray-800' : 'neu-pressed-light text-gray-800 border border-gray-200'}`}
                           />
                         </div>
                       ) : (
                         <div className="space-y-6">
                           <div>
-                            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Front (Question)</label>
+                            <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Front (Question)</label>
                             <textarea
                               rows={3} value={editingCard.front || ''}
                               onChange={(e) => setEditingCard({ ...editingCard, front: e.target.value })}
-                              className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 outline-none text-sm font-bold"
+                              className={`w-full p-4 rounded-2xl outline-none text-sm font-bold transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white border border-gray-800' : 'neu-pressed-light text-gray-800 border border-gray-200'}`}
                             />
                           </div>
                           <div>
-                            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Back (Answer)</label>
+                            <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Back (Answer)</label>
                             <textarea
                               rows={3} value={editingCard.back || ''}
                               onChange={(e) => setEditingCard({ ...editingCard, back: e.target.value })}
-                              className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 outline-none text-sm text-blue-600 font-medium"
+                              className={`w-full p-4 rounded-2xl outline-none text-sm font-bold transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400 border border-gray-800' : 'neu-pressed-light text-blue-600 border border-gray-200'}`}
                             />
                           </div>
                         </div>
                       )}
 
                       {/* Tag Editor Section */}
-                      <div className="pt-4 border-t border-gray-100">
-                        <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Card Tags</label>
+                      <div className={`pt-4 border-t ${settingsThemeMode === 'dark' ? 'border-gray-800' : 'border-gray-200/60'}`}>
+                        <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Card Tags</label>
                         <div className="flex flex-wrap gap-1.5 mb-2">
                           {((editingCard.tags || [])).map(tag => {
                             const cleanTag = tag.trim().startsWith('#') ? tag.trim() : `#${tag.trim()}`;
                             return (
-                              <span key={cleanTag} className="flex items-center gap-1 text-[10px] bg-blue-50 text-blue-600 px-2 py-1 rounded-full font-bold">
+                              <span key={cleanTag} className={`flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-full font-bold ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400 border border-blue-500/30' : 'neu-pressed-light text-blue-600 border border-blue-100'}`}>
                                 <span>{cleanTag}</span>
                                 <button
                                   type="button"
@@ -32443,7 +32488,7 @@ Return your response strictly as a JSON object matching this schema:
                                     const updatedTags = (editingCard.tags || []).filter(t => t !== tag);
                                     setEditingCard({ ...editingCard, tags: updatedTags });
                                   }}
-                                  className="hover:bg-blue-100 rounded-full p-0.5 text-blue-600 transition"
+                                  className={`rounded-full p-0.5 transition ${settingsThemeMode === 'dark' ? 'hover:bg-blue-500/20 text-blue-400' : 'hover:bg-blue-100 text-blue-600'}`}
                                 >
                                   <X className="w-2.5 h-2.5" />
                                 </button>
@@ -32467,13 +32512,13 @@ Return your response strictly as a JSON object matching this schema:
                               e.currentTarget.value = '';
                             }
                           }}
-                          className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none text-xs font-semibold"
+                          className={`w-full p-3 rounded-xl outline-none text-xs font-semibold transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white border border-gray-800' : 'neu-pressed-light text-gray-800 border border-gray-200'}`}
                         />
                       </div>
                     </div>
-                    <div className="p-6 bg-gray-50 border-t flex justify-end gap-4">
-                      <button onClick={() => setEditingCard(null)} className="px-8 py-3 text-xs font-bold text-gray-500 hover:bg-gray-200 rounded-2xl transition">Discard</button>
-                      <button onClick={saveEditedCard} className="px-10 py-3 bg-blue-600 text-white text-xs font-black rounded-2xl hover:bg-blue-700 shadow-xl shadow-blue-600/30 flex items-center gap-2 active:scale-95 transition">
+                    <div className={`p-6 border-t flex justify-end gap-4 ${settingsThemeMode === 'dark' ? 'border-gray-800' : 'border-gray-200/60'}`}>
+                      <button onClick={() => setEditingCard(null)} className={`px-8 py-3 text-xs font-bold transition ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-gray-300' : 'neu-btn-light text-gray-600'}`}>Discard</button>
+                      <button onClick={saveEditedCard} className={`px-10 py-3 text-xs font-black uppercase tracking-wider flex items-center gap-2 transition ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'}`}>
                         <Save className="w-4 h-4" /> Update Card
                       </button>
                     </div>
@@ -32750,36 +32795,21 @@ Return your response strictly as a JSON object matching this schema:
                     return item;
                   }));
 
-                  // 3. Single Bulk Batch Write to Firestore to minimize quota
-                  if (user?.uid && db) {
-                    try {
-                      const batch = writeBatch(db);
-                      let count = 0;
-                      (verifiedCards || []).forEach(c => {
-                        if (c.id) {
-                          const cardRef = doc(db, 'artifacts', appId, 'users', user.uid, 'flashcards', c.id);
-                          const updateData = {
-                            front: c.front,
-                            back: c.back,
-                            text: c.text,
-                            has_image: Boolean(c.include_image),
-                            include_image: Boolean(c.include_image),
-                            img_box: c.img_box || null,
-                            image_side: c.image_side || 'back',
-                            updatedAt: Date.now()
-                          };
-                          if (c.cropped_data_url) updateData.cropped_data_url = c.cropped_data_url;
-                          batch.set(cardRef, updateData, { merge: true });
-                          count++;
-                        }
-                      });
-                      if (count > 0) {
-                        await batch.commit();
-                        console.log(`[Batch Sync] Successfully committed ${count} verified card text & crop updates to Firestore in 1 single batch.`);
-                      }
-                    } catch (err) {
-                      console.warn("[Batch Sync] Firestore batch update error:", err);
+                  // 3. Persist verified card edits and crop updates directly to local IndexedDB
+                  try {
+                    const cardsToSave = (verifiedCards || []).map(c => ({
+                      ...c,
+                      has_image: Boolean(c.include_image),
+                      include_image: Boolean(c.include_image),
+                      img_box: c.img_box || null,
+                      image_side: c.image_side || 'back',
+                      updatedAt: Date.now()
+                    }));
+                    if (cardsToSave.length > 0) {
+                      await saveLocalCards(cardsToSave);
                     }
+                  } catch (err) {
+                    console.warn("[LocalDB] Failed to save verified cards to IndexedDB:", err);
                   }
 
                   // 4. Trigger deck export with fully updated cards — awaited so the modal
@@ -32975,12 +33005,12 @@ Return your response strictly as a JSON object matching this schema:
 
               {moveDialog.isOpen && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
-                  <div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in duration-300">
-                    <div className="p-8 border-b border-gray-100 bg-gray-50/50">
-                      <h3 className="text-xl font-black text-gray-900 leading-tight">Move Selected Items</h3>
-                      <p className="text-xs text-gray-500 mt-2 font-medium">Select a destination deck from your hierarchy.</p>
+                  <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-white border border-gray-800' : 'neu-card-light text-gray-900 border border-white'} rounded-[2.5rem] w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in duration-300`}>
+                    <div className={`p-8 border-b ${settingsThemeMode === 'dark' ? 'border-gray-800' : 'border-gray-200/60'}`}>
+                      <h3 className={`text-xl font-black leading-tight ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>Move Selected Items</h3>
+                      <p className={`text-xs mt-2 font-bold ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Select a destination deck from your hierarchy.</p>
                     </div>
-                    <div className="p-6 max-h-[350px] overflow-y-auto bg-gray-50/30">
+                    <div className={`p-6 max-h-[350px] overflow-y-auto custom-scrollbar ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border-y border-gray-800' : 'neu-pressed-light border-y border-gray-200/60'}`}>
                       <TreeFolder
                         node={buildTree(effectiveDeckPaths, cloudPages, deckCardCounts)}
                         level={0}
@@ -32991,12 +33021,12 @@ Return your response strictly as a JSON object matching this schema:
                         onMoveNode={() => { }}
                       />
                     </div>
-                    <div className="p-8 bg-white border-t border-gray-100 flex justify-end gap-4">
-                      <button onClick={() => setMoveDialog({ isOpen: false, targetPath: '' })} className="px-8 py-3 text-sm font-bold text-gray-500 hover:bg-gray-200 rounded-2xl transition">Cancel</button>
+                    <div className={`p-8 border-t flex justify-end gap-4 ${settingsThemeMode === 'dark' ? 'border-gray-800' : 'border-gray-200/60'}`}>
+                      <button onClick={() => setMoveDialog({ isOpen: false, targetPath: '' })} className={`px-8 py-3 text-xs font-bold transition ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-gray-300' : 'neu-btn-light text-gray-600'}`}>Cancel</button>
                       <button
                         onClick={handleBulkMove}
                         disabled={!moveDialog.targetPath}
-                        className="px-10 py-3 bg-blue-600 text-white text-sm font-black rounded-2xl hover:bg-blue-700 disabled:bg-gray-300 transition shadow-xl shadow-blue-600/30 active:scale-95"
+                        className={`px-10 py-3 text-xs font-black uppercase tracking-wider transition ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'} disabled:opacity-50`}
                       >
                         Apply Move
                       </button>
@@ -33007,38 +33037,58 @@ Return your response strictly as a JSON object matching this schema:
 
               {operationProgress.show && !isProgressMinimized && (
                 <div className="fixed inset-0 bg-black/85 backdrop-blur-lg z-[250] flex items-center justify-center p-4">
-                  <div className="bg-white/95 backdrop-blur-md rounded-[2.5rem] w-full max-w-md shadow-2xl p-8 border border-white/20 animate-in fade-in zoom-in duration-300 flex flex-col items-center text-center relative">
+                  <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-white border border-gray-800' : 'neu-card-light text-gray-900 border border-white'} rounded-[2.5rem] w-full max-w-md shadow-2xl p-8 animate-in fade-in zoom-in duration-300 flex flex-col items-center text-center relative`}>
 
                     {/* Minimize Button */}
                     <button
                       onClick={() => setIsProgressMinimized(true)}
-                      className="absolute top-6 right-6 p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-full transition duration-150 cursor-pointer"
+                      className={`absolute top-6 right-6 p-2.5 rounded-full transition duration-150 cursor-pointer ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-gray-400 hover:text-white' : 'neu-btn-light text-gray-500 hover:text-gray-800'}`}
                       title="Minimize to background"
                     >
                       <Minus className="w-5 h-5 stroke-[2.5]" />
                     </button>
 
                     {/* Glowing Pulse Orb */}
-                    <div className="w-20 h-20 bg-blue-600 rounded-[2rem] flex items-center justify-center mb-6 shadow-2xl shadow-blue-500/40 relative overflow-hidden group">
-                      <div className="absolute inset-0 bg-gradient-to-tr from-blue-400 to-indigo-600 animate-pulse opacity-80" />
-                      <Loader2 className="w-9 h-9 text-white animate-spin relative z-10" />
+                    <div className={`w-20 h-20 ${operationProgress.lastError ? 'bg-amber-500 shadow-amber-500/40' : 'bg-blue-600 shadow-blue-500/40'} rounded-[2rem] flex items-center justify-center mb-6 shadow-2xl relative overflow-hidden group transition-colors duration-300`}>
+                      <div className={`absolute inset-0 bg-gradient-to-tr ${operationProgress.lastError ? 'from-amber-400 to-orange-600' : 'from-blue-400 to-indigo-600'} animate-pulse opacity-80`} />
+                      {operationProgress.lastError ? (
+                        <AlertTriangle className="w-9 h-9 text-white relative z-10 animate-pulse" />
+                      ) : (
+                        <Loader2 className="w-9 h-9 text-white animate-spin relative z-10" />
+                      )}
                     </div>
 
-                    <h3 className="text-xl font-black text-gray-900 tracking-tight">{operationProgress.title}</h3>
-                    <p className="text-xs text-gray-500 mt-2 font-semibold max-w-xs">{operationProgress.message}</p>
+                    <h3 className={`text-xl font-black tracking-tight ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>{operationProgress.title}</h3>
+                    <p className={`text-xs mt-2 font-bold max-w-xs ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{operationProgress.message}</p>
+
+                    {/* Real-time exact AI error alert box */}
+                    {operationProgress.lastError && (
+                      <div className={`w-full mt-4 p-3.5 rounded-2xl flex items-start gap-2.5 text-left animate-in fade-in slide-in-from-top-2 duration-300 shadow-sm ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-amber-500/30 text-amber-300' : 'bg-amber-50 border border-amber-200 text-amber-900'}`}>
+                        <AlertCircle className="w-4.5 h-4.5 text-amber-500 shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[10px] font-black uppercase tracking-wider flex items-center justify-between">
+                            <span>AI Exception (Retrying...)</span>
+                            <span className="text-[9px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full font-bold">Auto-retry active</span>
+                          </div>
+                          <p className="text-[11px] font-medium mt-1 break-words select-text font-mono leading-tight">
+                            {operationProgress.lastError}
+                          </p>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Gorgeous Premium Progress Bar */}
-                    <div className="w-full bg-gray-100 rounded-full h-3.5 mt-8 overflow-hidden border border-gray-250/50 p-0.5 relative">
+                    <div className={`w-full rounded-full h-3.5 mt-6 overflow-hidden p-0.5 relative ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200'}`}>
                       <div
-                        className="bg-gradient-to-r from-blue-500 to-indigo-600 h-full rounded-full transition-all duration-300 ease-out shadow-inner"
+                        className={`bg-gradient-to-r ${operationProgress.lastError ? 'from-amber-500 to-orange-600' : 'from-blue-500 to-indigo-600'} h-full rounded-full transition-all duration-300 ease-out shadow-inner`}
                         style={{ width: `${operationProgress.total > 0 ? (operationProgress.current / operationProgress.total) * 100 : 0}%` }}
                       />
                     </div>
 
                     {/* Numerical Indicator */}
-                    <div className="flex items-center justify-between w-full mt-4 text-[10px] font-black uppercase tracking-wider text-gray-400">
+                    <div className={`flex items-center justify-between w-full mt-4 text-[10px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                       <span>Progress</span>
-                      <span className="text-blue-600 bg-blue-50 border border-blue-100 px-3 py-1 rounded-full">
+                      <span className={`px-3 py-1 rounded-full ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400 border border-blue-500/30' : 'neu-pressed-light text-blue-700 border border-blue-200'}`}>
                         {operationProgress.current} / {operationProgress.total} Complete
                       </span>
                     </div>
@@ -33078,18 +33128,28 @@ Return your response strictly as a JSON object matching this schema:
                     if (hasDragged.current) return;
                     setIsProgressMinimized(false);
                   }}
-                  className="bg-white/95 backdrop-blur-md rounded-2xl border border-blue-200/50 shadow-xl shadow-blue-500/20 px-4 py-3 flex items-center gap-3 transition-all select-none hover:border-blue-400 group active:scale-95"
+                  className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-white border border-gray-800' : 'neu-card-light text-gray-900 border border-white'} rounded-2xl shadow-xl px-4 py-3 flex items-center gap-3 transition-all select-none group active:scale-95`}
                 >
-                  <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center shadow-md relative shrink-0">
-                    <Loader2 className="w-4.5 h-4.5 text-white animate-spin" />
+                  <div className={`w-8 h-8 rounded-xl bg-gradient-to-tr ${operationProgress.lastError ? 'from-amber-500 to-orange-600' : 'from-blue-500 to-indigo-600'} flex items-center justify-center shadow-md relative shrink-0`}>
+                    {operationProgress.lastError ? (
+                      <AlertTriangle className="w-4.5 h-4.5 text-white animate-pulse" />
+                    ) : (
+                      <Loader2 className="w-4.5 h-4.5 text-white animate-spin" />
+                    )}
                   </div>
                   <div className="text-left shrink-0">
-                    <span className="text-[10px] font-black text-gray-800 uppercase tracking-wide block truncate max-w-[120px]">
+                    <span className={`text-[10px] font-black uppercase tracking-wide block truncate max-w-[140px] ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                       {operationProgress.title}
                     </span>
-                    <span className="text-[9px] font-bold text-blue-600 bg-blue-50 border border-blue-100/50 px-2 py-0.5 rounded-full inline-block mt-0.5">
-                      {operationProgress.current} / {operationProgress.total} Done
-                    </span>
+                    {operationProgress.lastError ? (
+                      <span className="text-[9px] font-bold text-amber-400 bg-amber-500/20 border border-amber-500/30 px-2 py-0.5 rounded-full block truncate max-w-[140px] mt-0.5" title={operationProgress.lastError}>
+                        ⚠ {operationProgress.lastError}
+                      </span>
+                    ) : (
+                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full inline-block mt-0.5 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400 border border-blue-500/30' : 'neu-pressed-light text-blue-700 border border-blue-200'}`}>
+                        {operationProgress.current} / {operationProgress.total} Done
+                      </span>
+                    )}
                   </div>
                 </div>
               )}
@@ -33237,7 +33297,7 @@ Return your response strictly as a JSON object matching this schema:
                                     type="button"
                                     onClick={() => {
                                       setPdfFolderPickerMappingId(mapping.id);
-                                      setPdfFolderPickerTempPath(mapping.deck || 'Marrow::Pathology');
+                                      setPdfFolderPickerTempPath(mapping.deck || hierarchy || (deckPaths[0] || 'General'));
                                     }}
                                     className="w-full p-2.5 bg-white hover:bg-gray-50 border border-gray-200 hover:border-blue-400 rounded-xl outline-none text-left flex items-center justify-between transition-all duration-200 group/btn"
                                   >
@@ -33288,7 +33348,7 @@ Return your response strictly as a JSON object matching this schema:
                               const defaultRange = nextStart <= pdfDialog.numPages ? `${nextStart}` : '';
                               setPdfDialog(prev => ({
                                 ...prev,
-                                mappings: [...prev.mappings, { id: generateId(), range: defaultRange, deck: hierarchy || 'Marrow::Pathology' }]
+                                mappings: [...prev.mappings, { id: generateId(), range: defaultRange, deck: hierarchy || (deckPaths[0] || 'General') }]
                               }));
                             }}
                             className="w-full py-2.5 border border-dashed border-blue-300 hover:border-blue-500 text-blue-600 hover:bg-blue-50/50 rounded-xl text-xs font-black uppercase tracking-wider transition flex items-center justify-center gap-1.5"
@@ -33443,7 +33503,7 @@ Return your response strictly as a JSON object matching this schema:
                           type="text"
                           value={pdfFolderPickerTempPath}
                           onChange={(e) => setPdfFolderPickerTempPath(e.target.value)}
-                          placeholder="e.g. Marrow::Pathology"
+                          placeholder="e.g. Pathology::Autonomics"
                           className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none text-xs font-black text-gray-800"
                         />
                       </div>
@@ -33561,7 +33621,7 @@ Return your response strictly as a JSON object matching this schema:
                                   Card {currentCropIndex + 1} of {customCropCards.length}
                                 </span>
                                 <span className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-bold border border-blue-100">
-                                  {card.deck || 'Marrow::Pathology'}
+                                  {card.deck || hierarchy || (deckPaths[0] || 'General')}
                                 </span>
                               </div>
                               <h4 className="text-[11px] text-gray-400 font-bold mt-1">
@@ -33871,54 +33931,7 @@ Return your response strictly as a JSON object matching this schema:
                 </div>
               )}
 
-              {/* APPROVE TRIAGE DIALOG */}
-              {approveDialog.isOpen && (
-                <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-gray-950/40 backdrop-blur-sm animate-in fade-in duration-200">
-                  <div className="bg-white w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl border border-gray-100 animate-in zoom-in-95 duration-200">
-                    <div className="w-16 h-16 bg-orange-100 rounded-2xl flex items-center justify-center mb-6 shadow-sm">
-                      <CheckCircle2 className="w-8 h-8 text-orange-600" />
-                    </div>
-                    <h3 className="text-xl font-black text-gray-900 mb-2">Approve Capture?</h3>
-                    <p className="text-sm text-gray-500 mb-6 font-medium leading-relaxed">
-                      Where would you like to save this medical note? You can keep the location set on your phone or move it to a new deck.
-                    </p>
 
-                    <div className="space-y-3 mb-8">
-                      <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Target Deck Selection</div>
-                      <div className="max-h-[250px] overflow-y-auto bg-gray-50/50 rounded-2xl border border-gray-100 p-4 shadow-inner">
-                        <TreeFolder
-                          node={buildTree(effectiveDeckPaths, cloudPages, deckCardCounts)}
-                          level={0}
-                          selectedPath={approveDialog.targetDeck}
-                          onSelect={(path) => setApproveDialog(prev => ({ ...prev, targetDeck: path }))}
-                          onAdd={() => { }}
-                          onRename={() => { }}
-                          onMoveNode={() => { }}
-                        />
-                      </div>
-                      <p className="text-[9px] text-orange-600 font-bold px-1 italic">
-                        Original location: {cloudPages.find(p => p.id === approveDialog.pageId)?.deck}
-                      </p>
-                    </div>
-
-                    <div className="flex gap-3">
-                      <button
-                        onClick={() => setApproveDialog({ isOpen: false, pageId: null, targetDeck: '' })}
-                        className="flex-1 px-6 py-4 bg-gray-50 text-gray-500 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-gray-100 transition shadow-sm"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={() => approveTriageItem(approveDialog.pageId, approveDialog.targetDeck)}
-                        disabled={isSaving}
-                        className="flex-[2] px-6 py-4 bg-orange-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-orange-600/30 hover:scale-[1.02] active:scale-[0.98] transition disabled:opacity-50"
-                      >
-                        {isSaving ? "Finalizing..." : "Confirm & Move"}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
 
               {/* DELETE CHOICE DIALOG */}
               {deleteConfirmDialog.isOpen && (
@@ -35243,7 +35256,7 @@ export function TagConceptWeb({ cards, hierarchy, onSelectTags }) {
       if (showAllTags) return true;
       if (!hierarchy) return true;
       if (hierarchy === 'PENDING_REVIEW') return card.isPending;
-      return card.deck === hierarchy || (card.deck && card.deck.startsWith(hierarchy + '::'));
+      return card.deck === hierarchy;
     });
 
     const tagData = {};

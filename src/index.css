@@ -67,3 +67,511 @@ body,
   0% { transform: rotateX(180deg); }
   100% { transform: rotateX(0deg); }
 }
+
+/* ==========================================================
+   NEUMORPHISM DESIGN SYSTEM (Light & Dark Themes)
+   ========================================================== */
+
+/* Light Neumorphism (#e6ecf5 base) */
+.neu-bg-light {
+  background-color: #e6ecf5;
+  color: #1e293b;
+}
+
+.neu-card-light {
+  background: #e6ecf5;
+  box-shadow: 9px 9px 18px #c5cbd6, -9px -9px 18px #ffffff;
+  border-radius: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+}
+
+.neu-pressed-light {
+  background: #e6ecf5;
+  box-shadow: inset 4px 4px 8px #c5cbd6, inset -4px -4px 8px #ffffff;
+  border-radius: 1rem;
+}
+
+.neu-btn-light {
+  background: #e6ecf5;
+  box-shadow: 6px 6px 12px #c5cbd6, -6px -6px 12px #ffffff;
+  border-radius: 1rem;
+  transition: all 0.2s ease-in-out;
+}
+.neu-btn-light:hover {
+  box-shadow: 8px 8px 16px #bcc2cc, -8px -8px 16px #ffffff;
+}
+.neu-btn-light:active {
+  box-shadow: inset 4px 4px 8px #c5cbd6, inset -4px -4px 8px #ffffff;
+}
+
+.neu-btn-accent-light {
+  background: linear-gradient(145deg, #2563eb, #1d4ed8);
+  box-shadow: 6px 6px 14px #c5cbd6, -6px -6px 14px #ffffff;
+  color: #ffffff;
+  border-radius: 1rem;
+  transition: all 0.2s ease-in-out;
+}
+.neu-btn-accent-light:hover {
+  box-shadow: 8px 8px 16px #bcc2cc, -8px -8px 16px #ffffff;
+}
+.neu-btn-accent-light:active {
+  box-shadow: inset 3px 3px 6px #1e40af, inset -3px -3px 6px #3b82f6;
+}
+
+/* Dark Neumorphism (#222730 warm dark grey base - NOT pitch black) */
+.neu-bg-dark {
+  background-color: #222730;
+  color: #f1f5f9;
+}
+
+.neu-card-dark {
+  background: #222730;
+  box-shadow: 8px 8px 18px #171a20, -8px -8px 18px #2d3440;
+  border-radius: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.neu-pressed-dark {
+  background: #222730;
+  box-shadow: inset 4px 4px 9px #171a20, inset -4px -4px 9px #2d3440;
+  border-radius: 1rem;
+}
+
+.neu-btn-dark {
+  background: #222730;
+  box-shadow: 6px 6px 12px #171a20, -6px -6px 12px #2d3440;
+  border-radius: 1rem;
+  color: #e2e8f0;
+  transition: all 0.2s ease-in-out;
+}
+.neu-btn-dark:hover {
+  box-shadow: 8px 8px 16px #13161c, -8px -8px 16px #313946;
+}
+.neu-btn-dark:active {
+  box-shadow: inset 4px 4px 8px #171a20, inset -4px -4px 8px #2d3440;
+}
+
+.neu-btn-accent-dark {
+  background: linear-gradient(145deg, #3b82f6, #2563eb);
+  box-shadow: 6px 6px 14px #171a20, -6px -6px 14px #2d3440;
+  color: #ffffff;
+  border-radius: 1rem;
+  transition: all 0.2s ease-in-out;
+}
+.neu-btn-accent-dark:hover {
+  box-shadow: 8px 8px 16px #13161c, -8px -8px 16px #313946;
+}
+.neu-btn-accent-dark:active {
+  box-shadow: inset 3px 3px 6px #1d4ed8, inset -3px -3px 6px #60a5fa;
+}
+
+/* From Uiverse.io by ashif_6672 */ 
+.uiverse-wrapper {
+  --pill-width: 140px;
+  --pill-height: 46px;
+  --knob-size: 54px;
+  --accent: #2563eb;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.pill-toggle {
+  position: relative;
+  display: inline-block;
+  width: var(--pill-width);
+  height: var(--pill-height);
+}
+.pill-toggle input {
+  display: none;
+}
+.track {
+  width: 100%;
+  height: 100%;
+  background: #d0d0d0;
+  border-radius: 999px;
+  box-shadow:
+    inset 0 2px 6px rgba(0, 0, 0, 0.15),
+    inset 0 4px 12px rgba(0, 0, 0, 0.05),
+    0 1px 0 rgba(255, 255, 255, 0.4);
+  position: relative;
+  transition: background 0.4s ease;
+}
+.pill {
+  position: absolute;
+  top: -8.8%;
+  left: -5%;
+  width: var(--knob-size);
+  height: 110%;
+  border-radius: 999px;
+  cursor: pointer;
+
+  background: linear-gradient(to bottom, #e6e6e6, #cfcfcf);
+
+  box-shadow:
+    0 1px 0 var(--accent),
+    0 8px 15px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+
+  transition: all 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 2;
+}
+
+.pill-surface {
+  position: absolute;
+  inset: 5%;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #f4f4f4 0%, #dedede 45%, #cfcfcf 100%);
+
+  box-shadow:
+    inset 0 -1px 2px rgba(0, 0, 0, 0.1),
+    inset 0 1px 2px rgba(255, 255, 255, 0.8);
+}
+
+.pill-toggle:hover .pill {
+  transform: translateY(-1px);
+
+  box-shadow:
+    0 4px 0 var(--accent),
+    0 15px 25px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.pill-toggle input:active + .track .pill {
+  transform: translateY(2px);
+  box-shadow:
+    0 2px 0 var(--accent),
+    0 2px 6px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  transition: all 0.1s ease;
+}
+.pill-toggle input:checked + .track .pill {
+  left: calc(105% - var(--knob-size));
+}
+
+.pill-toggle input:checked + .track {
+  background: #171a20;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+/* ==========================================================================
+   UIVERSE.IO 00KUBI ANIMATED 3D BUTTON DESIGN SYSTEM
+   ========================================================================== */
+.uiverse-00kubi-btn {
+  --primary: #3b82f6;
+  --neutral-1: #ffffff;
+  --neutral-2: #f1f5f9;
+  --radius: 16px;
+
+  cursor: pointer;
+  border-radius: var(--radius);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+  border: none;
+  box-shadow:
+    0 1px 1px rgba(255, 255, 255, 0.6),
+    0 10px 20px rgba(0, 0, 0, 0.06),
+    0 4px 6px rgba(0, 0, 0, 0.04);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  min-width: 140px;
+  padding: 12px 20px;
+  height: 48px;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-style: normal;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: #1e293b;
+  user-select: none;
+}
+
+/* Size Variants */
+.uiverse-00kubi-btn.uiverse-btn-lg {
+  min-width: 180px;
+  padding: 16px 26px;
+  height: 54px;
+  font-size: 15px;
+}
+
+.uiverse-00kubi-btn.uiverse-btn-sm {
+  min-width: 100px;
+  padding: 8px 14px;
+  height: 38px;
+  font-size: 11px;
+}
+
+.uiverse-00kubi-btn.uiverse-btn-full {
+  width: 100%;
+}
+
+/* Theme & Color Variants */
+.neu-bg-dark .uiverse-00kubi-btn,
+.neu-card-dark .uiverse-00kubi-btn,
+.dark .uiverse-00kubi-btn,
+.uiverse-00kubi-btn.uiverse-btn-dark {
+  --neutral-1: #242b35;
+  --neutral-2: #161a22;
+  --primary: #60a5fa;
+  color: #f8fafc;
+  box-shadow:
+    0 1px 1px rgba(255, 255, 255, 0.08),
+    0 12px 24px rgba(0, 0, 0, 0.4),
+    0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.uiverse-00kubi-btn.uiverse-btn-primary {
+  --neutral-1: #3b82f6;
+  --neutral-2: #1d4ed8;
+  --primary: #93c5fd;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  box-shadow:
+    0 2px 4px rgba(59, 130, 246, 0.3),
+    0 12px 24px rgba(29, 78, 216, 0.25);
+}
+
+.uiverse-00kubi-btn.uiverse-btn-accent {
+  --neutral-1: #8b5cf6;
+  --neutral-2: #6d28d9;
+  --primary: #c4b5fd;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  box-shadow:
+    0 2px 4px rgba(139, 92, 246, 0.3),
+    0 12px 24px rgba(109, 40, 217, 0.25);
+}
+
+.uiverse-00kubi-btn:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow:
+    0 2px 4px rgba(255, 255, 255, 0.5),
+    0 18px 32px rgba(0, 0, 0, 0.12),
+    0 8px 12px rgba(0, 0, 0, 0.08);
+}
+
+.neu-bg-dark .uiverse-00kubi-btn:hover,
+.neu-card-dark .uiverse-00kubi-btn:hover,
+.uiverse-00kubi-btn.uiverse-btn-dark:hover {
+  box-shadow:
+    0 2px 4px rgba(255, 255, 255, 0.12),
+    0 18px 32px rgba(0, 0, 0, 0.5),
+    0 8px 12px rgba(0, 0, 0, 0.35);
+}
+
+.uiverse-00kubi-btn:active {
+  transform: scale(0.98);
+  box-shadow:
+    0 0 1px 2px rgba(255, 255, 255, 0.3),
+    0 8px 3px -3px rgba(0, 0, 0, 0.15);
+}
+
+.uiverse-00kubi-btn:after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--neutral-1), var(--neutral-2)) padding-box,
+    linear-gradient(to bottom, rgba(226, 232, 240, 0.9), rgba(203, 213, 225, 0.6))
+      border-box;
+  z-index: 0;
+  transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.uiverse-00kubi-btn:hover::after {
+  background:
+    linear-gradient(var(--neutral-1), var(--neutral-2)) padding-box,
+    linear-gradient(to bottom, rgba(147, 197, 253, 0.8), rgba(59, 130, 246, 0.4))
+      border-box;
+  box-shadow: inset 0 -1px 3px 0 rgba(255, 255, 255, 0.8);
+}
+
+.neu-bg-dark .uiverse-00kubi-btn:after,
+.neu-card-dark .uiverse-00kubi-btn:after,
+.dark .uiverse-00kubi-btn:after,
+.uiverse-00kubi-btn.uiverse-btn-dark:after {
+  background:
+    linear-gradient(var(--neutral-1), var(--neutral-2)) padding-box,
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.05))
+      border-box;
+}
+
+.neu-bg-dark .uiverse-00kubi-btn:hover::after,
+.neu-card-dark .uiverse-00kubi-btn:hover::after,
+.dark .uiverse-00kubi-btn:hover::after,
+.uiverse-00kubi-btn.uiverse-btn-dark:hover::after {
+  background:
+    linear-gradient(var(--neutral-1), var(--neutral-2)) padding-box,
+    linear-gradient(to bottom, rgba(96, 165, 250, 0.6), rgba(37, 99, 235, 0.35))
+      border-box;
+}
+
+.uiverse-00kubi-btn:focus,
+.uiverse-00kubi-btn:focus-visible {
+  outline: none;
+}
+
+.uiverse-00kubi-btn::before {
+  content: "";
+  inset: 3px;
+  position: absolute;
+  background: linear-gradient(to top, var(--neutral-1), var(--neutral-2));
+  border-radius: calc(var(--radius) - 3px);
+  z-index: 1;
+}
+
+/* Outline spinning gradient effect (Slower, Ambient 5.5s rotation) */
+.uiverse-00kubi-btn .outline {
+  position: absolute;
+  border-radius: inherit;
+  overflow: hidden;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 0.7s ease;
+  inset: -1px;
+}
+.uiverse-00kubi-btn .outline::before {
+  content: "";
+  position: absolute;
+  inset: -100%;
+  background: conic-gradient(
+    from 180deg,
+    transparent 60%,
+    var(--primary) 85%,
+    transparent 100%
+  );
+  animation: kubi-spin 5.5s linear infinite;
+  animation-play-state: paused;
+  opacity: 0.6;
+}
+
+@keyframes kubi-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.uiverse-00kubi-btn:hover .outline {
+  opacity: 1;
+}
+.uiverse-00kubi-btn:hover .outline::before {
+  animation-play-state: running;
+}
+
+/* Internal States & Typography */
+.uiverse-00kubi-btn .state {
+  padding-left: 22px;
+  z-index: 3;
+  display: flex;
+  position: relative;
+  align-items: center;
+  justify-content: center;
+}
+
+.uiverse-00kubi-btn .state p {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+}
+
+.uiverse-00kubi-btn .state .icon {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  margin: auto;
+  transform: scale(1.1);
+  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.uiverse-00kubi-btn .state .icon svg {
+  overflow: visible;
+}
+
+.uiverse-00kubi-btn .state p span {
+  display: inline-block;
+  opacity: 0.95;
+  animation: kubi-slideDown 1.0s cubic-bezier(0.16, 1, 0.3, 1) forwards calc(var(--i) * 0.04s);
+}
+
+.uiverse-00kubi-btn:hover p span {
+  opacity: 1;
+  animation: kubi-wave 1.1s ease-in-out forwards calc(var(--i) * 0.045s);
+}
+
+.uiverse-00kubi-btn:focus p span {
+  opacity: 1;
+  animation: kubi-disapear 1.0s ease-in-out forwards calc(var(--i) * 0.04s);
+}
+
+@keyframes kubi-wave {
+  30% {
+    opacity: 1;
+    transform: translateY(3px);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-3px);
+    color: var(--primary);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes kubi-slideDown {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px) rotate(-15deg);
+    color: var(--primary);
+    filter: blur(2px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) rotate(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes kubi-disapear {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: translateX(4px) translateY(10px);
+    color: var(--primary);
+    filter: blur(3px);
+  }
+}
+
+.uiverse-00kubi-btn:hover .state .icon {
+  transform: scale(1.25) rotate(12deg);
+}
+
+/* Smooth Settings Scrollbar */
+.smooth-settings-scroll {
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.4) transparent;
+}
+.smooth-settings-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.smooth-settings-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.4);
+  border-radius: 9999px;
+}
