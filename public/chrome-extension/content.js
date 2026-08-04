@@ -258,6 +258,84 @@ function showFolderModal(croppedDataUrl) {
       font-weight: 600 !important;
     }
 
+    /* Collapsible Folder Tree Selector Styles */
+    .folder-trigger {
+      background: #ffffff !important;
+      border: 2px solid #3b82f6 !important;
+      border-radius: 12px;
+      padding: 10px 14px;
+      color: #0f172a !important;
+      font-size: 0.88rem !important;
+      font-weight: 700 !important;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      user-select: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .folder-trigger:hover {
+      border-color: #2563eb !important;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2) !important;
+    }
+
+    .folder-tree-dropdown {
+      max-height: 200px;
+      overflow-y: auto;
+      background: #ffffff !important;
+      border: 2px solid #3b82f6 !important;
+      border-radius: 12px;
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+      margin-top: 4px;
+    }
+
+    .tree-node {
+      display: flex;
+      align-items: center;
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #0f172a;
+      cursor: pointer;
+      user-select: none;
+      transition: background-color 0.15s ease;
+    }
+
+    .tree-node:hover {
+      background-color: #f1f5f9;
+    }
+
+    .tree-node.selected {
+      background-color: #eff6ff;
+      color: #1d4ed8;
+      font-weight: 800;
+    }
+
+    .tree-toggle-btn {
+      width: 18px;
+      height: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      margin-right: 4px;
+      cursor: pointer;
+      font-size: 10px;
+      color: #64748b;
+      flex-shrink: 0;
+    }
+
+    .tree-toggle-btn:hover {
+      background-color: #cbd5e1;
+      color: #0f172a;
+    }
+
     /* Inline folder creator stylesheet */
     .new-folder-panel {
       background: rgba(255, 255, 255, 0.04);
@@ -428,11 +506,20 @@ function showFolderModal(croppedDataUrl) {
       </div>
 
       <div class="form-group">
-        <label for="folder-select">Destination Folder</label>
+        <label>Destination Folder</label>
         <div style="position: relative; display: flex; flex-direction: column; gap: 6px;">
-          <select id="folder-select" disabled>
-            <option value="loading">Loading folders...</option>
-          </select>
+          <div id="folder-trigger" class="folder-trigger">
+            <div style="display: flex; align-items: center; gap: 8px; overflow: hidden; max-width: 90%;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+              <span id="selected-folder-text" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Inbox/Triage (Default)</span>
+            </div>
+            <svg id="folder-trigger-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </div>
+
+          <div id="folder-tree-dropdown" class="folder-tree-dropdown hidden-panel">
+            <!-- Dynamic Collapsible Folder Tree -->
+          </div>
+
           <button id="toggle-new-folder-btn" class="text-btn" style="align-self: flex-end; font-size: 0.75rem; color: #60a5fa; background: none; border: none; cursor: pointer; font-weight: 600; padding: 4px 0; display: flex; align-items: center; gap: 4px;">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path><line x1="12" y1="11" x2="12" y2="17"></line><line x1="9" y1="14" x2="15" y2="14"></line></svg>
             Create New Folder
@@ -458,6 +545,28 @@ function showFolderModal(croppedDataUrl) {
         </div>
       </div>
 
+      <!-- Inline ImgBB Key Creator Panel -->
+      <div id="imgbb-key-panel" class="new-folder-panel hidden-panel" style="border-color: #3b82f6; background: rgba(59, 130, 246, 0.08);">
+        <div style="font-size: 0.85rem; font-weight: 800; color: #60a5fa; display: flex; align-items: center; gap: 6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3M15.5 7.5L19 4"/></svg>
+          ImgBB API Key Required
+        </div>
+        <p style="font-size: 0.75rem; color: #d1d5db; line-height: 1.4;">
+          To save screenshots to AutoAnki, please enter your ImgBB API Key below. It will be saved securely to your cloud settings.
+        </p>
+        <div class="form-group">
+          <label for="imgbb-key-input">ImgBB API Key</label>
+          <input type="text" id="imgbb-key-input" placeholder="Paste ImgBB API key here..." />
+        </div>
+        <div style="font-size: 0.7rem; color: #9ca3af;">
+          Need a free key? <a href="https://api.imgbb.com/" target="_blank" style="color: #60a5fa; text-decoration: underline;">Get a free API key at ImgBB.com</a>
+        </div>
+        <div class="btn-row">
+          <button id="cancel-imgbb-key-btn" class="btn btn-secondary btn-sm">Cancel</button>
+          <button id="save-imgbb-key-btn" class="btn btn-primary btn-sm">Save & Continue</button>
+        </div>
+      </div>
+
       <div id="status-display" class="status-msg"></div>
 
       <div class="btn-row">
@@ -469,7 +578,9 @@ function showFolderModal(croppedDataUrl) {
   shadow.appendChild(modalOverlay);
 
   // References
-  const folderSelect = shadow.getElementById('folder-select');
+  const folderTrigger = shadow.getElementById('folder-trigger');
+  const selectedFolderText = shadow.getElementById('selected-folder-text');
+  const folderTreeDropdown = shadow.getElementById('folder-tree-dropdown');
   const sendBtn = shadow.getElementById('send-btn');
   const cancelBtn = shadow.getElementById('cancel-btn');
   const statusDisplay = shadow.getElementById('status-display');
@@ -482,12 +593,183 @@ function showFolderModal(croppedDataUrl) {
   const cancelNewFolderBtn = shadow.getElementById('cancel-new-folder-btn');
   const saveNewFolderBtn = shadow.getElementById('save-new-folder-btn');
 
+  // ImgBB Key Creator References
+  const imgbbKeyPanel = shadow.getElementById('imgbb-key-panel');
+  const imgbbKeyInput = shadow.getElementById('imgbb-key-input');
+  const cancelImgbbKeyBtn = shadow.getElementById('cancel-imgbb-key-btn');
+  const saveImgbbKeyBtn = shadow.getElementById('save-imgbb-key-btn');
+
   let currentFoldersList = [];
+  let selectedFolder = 'Inbox/Triage';
+  const expandedPaths = new Set(); // Empty by default => ALL subfolders collapsed by default!
 
   // Cancel callback
   cancelBtn.addEventListener('click', () => {
     container.remove();
   });
+
+  // ImgBB Key Panel Handlers
+  cancelImgbbKeyBtn.addEventListener('click', () => {
+    imgbbKeyPanel.classList.add('hidden-panel');
+  });
+
+  saveImgbbKeyBtn.addEventListener('click', () => {
+    const key = imgbbKeyInput.value.trim();
+    if (!key) {
+      alert('Please enter your ImgBB API Key.');
+      imgbbKeyInput.focus();
+      return;
+    }
+
+    saveImgbbKeyBtn.disabled = true;
+    cancelImgbbKeyBtn.disabled = true;
+    saveImgbbKeyBtn.textContent = 'Saving...';
+
+    chrome.storage.local.set({ imgbbApiKey: key }, () => {
+      chrome.runtime.sendMessage({
+        target: 'background',
+        action: 'SAVE_IMGBB_KEY',
+        apiKey: key
+      }, (res) => {
+        saveImgbbKeyBtn.disabled = false;
+        cancelImgbbKeyBtn.disabled = false;
+        saveImgbbKeyBtn.textContent = 'Save & Continue';
+
+        if (chrome.runtime.lastError) {
+          console.warn('Background key save note:', chrome.runtime.lastError.message);
+        }
+
+        imgbbKeyPanel.classList.add('hidden-panel');
+        showStatus('🔑 Key saved! Retrying upload...', 'success');
+        // Automatically retry upload
+        sendBtn.click();
+      });
+    });
+  });
+
+  // Toggle folder tree dropdown
+  folderTrigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    folderTreeDropdown.classList.toggle('hidden-panel');
+  });
+
+  // Close dropdown on click outside
+  modalOverlay.addEventListener('click', (e) => {
+    if (!e.target.closest('#folder-trigger') && !e.target.closest('#folder-tree-dropdown')) {
+      folderTreeDropdown.classList.add('hidden-panel');
+    }
+  });
+
+  function updateTriggerDisplay() {
+    if (selectedFolder === 'Inbox/Triage') {
+      selectedFolderText.textContent = 'Inbox/Triage (Default)';
+    } else {
+      selectedFolderText.textContent = selectedFolder.replace(/::/g, ' / ');
+    }
+  }
+
+  function buildTreeStructure(paths) {
+    const root = {};
+    paths.forEach(path => {
+      if (!path || path === 'Inbox/Triage') return;
+      const parts = path.split('::');
+      let current = root;
+      let currPath = '';
+      parts.forEach(part => {
+        currPath = currPath ? `${currPath}::${part}` : part;
+        if (!current[part]) {
+          current[part] = {
+            name: part,
+            path: currPath,
+            children: {}
+          };
+        }
+        current = current[part].children;
+      });
+    });
+    return root;
+  }
+
+  function renderNodesRecursive(nodeMap, depth, containerEl) {
+    Object.values(nodeMap).forEach(node => {
+      const hasChildren = Object.keys(node.children).length > 0;
+      const isExpanded = expandedPaths.has(node.path);
+
+      const nodeEl = document.createElement('div');
+      nodeEl.className = `tree-node ${selectedFolder === node.path ? 'selected' : ''}`;
+      nodeEl.style.paddingLeft = `${depth * 14 + 10}px`;
+
+      const toggleBtn = document.createElement('span');
+      toggleBtn.className = 'tree-toggle-btn';
+      if (hasChildren) {
+        toggleBtn.textContent = isExpanded ? '▼' : '▶';
+        toggleBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (isExpanded) {
+            expandedPaths.delete(node.path);
+          } else {
+            expandedPaths.add(node.path);
+          }
+          renderFolderTree();
+        });
+      } else {
+        toggleBtn.textContent = '';
+      }
+      nodeEl.appendChild(toggleBtn);
+
+      const labelSpan = document.createElement('span');
+      labelSpan.style.display = 'flex';
+      labelSpan.style.alignItems = 'center';
+      labelSpan.style.gap = '6px';
+      labelSpan.style.overflow = 'hidden';
+      labelSpan.style.textOverflow = 'ellipsis';
+      labelSpan.style.whiteSpace = 'nowrap';
+      labelSpan.innerHTML = `<span>📁</span><span>${node.name}</span>`;
+      nodeEl.appendChild(labelSpan);
+
+      nodeEl.addEventListener('click', () => {
+        selectedFolder = node.path;
+        updateTriggerDisplay();
+        folderTreeDropdown.classList.add('hidden-panel');
+        renderFolderTree();
+      });
+
+      containerEl.appendChild(nodeEl);
+
+      // Render children recursively ONLY if node is expanded!
+      if (hasChildren && isExpanded) {
+        renderNodesRecursive(node.children, depth + 1, containerEl);
+      }
+    });
+  }
+
+  function renderFolderTree() {
+    folderTreeDropdown.innerHTML = '';
+
+    // 1. Default Inbox/Triage option
+    const defaultNode = document.createElement('div');
+    defaultNode.className = `tree-node ${selectedFolder === 'Inbox/Triage' ? 'selected' : ''}`;
+    defaultNode.innerHTML = `
+      <span class="tree-toggle-btn"></span>
+      <span style="display:flex; align-items:center; gap:6px;">
+        <span style="color: #2563eb;">📥</span>
+        <span>Inbox/Triage (Default)</span>
+      </span>
+    `;
+    defaultNode.addEventListener('click', () => {
+      selectedFolder = 'Inbox/Triage';
+      updateTriggerDisplay();
+      folderTreeDropdown.classList.add('hidden-panel');
+      renderFolderTree();
+    });
+    folderTreeDropdown.appendChild(defaultNode);
+
+    // 2. Build tree structure from currentFoldersList
+    const treeRoot = buildTreeStructure(currentFoldersList);
+
+    // 3. Render nodes (subfolders collapsed by default)
+    renderNodesRecursive(treeRoot, 0, folderTreeDropdown);
+  }
 
   // Fetch folders from background service worker
   chrome.runtime.sendMessage({ target: 'background', action: 'GET_FOLDERS' }, (response) => {
@@ -507,10 +789,9 @@ function showFolderModal(croppedDataUrl) {
     }
   });
 
-  // Helper to format flat folder list as a tree with indentation
+  // Helper for parent select dropdown in folder creator
   function formatPathsAsTree(paths) {
     const uniquePaths = Array.from(new Set(paths.filter(Boolean)));
-    // Sort paths alphabetically to ensure parent nodes precede child nodes
     const sortedPaths = uniquePaths.sort((a, b) => {
       return a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true });
     });
@@ -521,7 +802,6 @@ function showFolderModal(croppedDataUrl) {
       const depth = parts.length - 1;
       const leafName = parts[parts.length - 1];
       
-      // Use non-breaking spaces (\u00A0) for nesting indent
       let prefix = '';
       if (depth > 0) {
         prefix = '\u00A0\u00A0'.repeat(depth) + '└─ ';
@@ -536,43 +816,24 @@ function showFolderModal(croppedDataUrl) {
   }
 
   function populateFolders(folders) {
-    folderSelect.innerHTML = '';
-    
-    // Add default Inbox/Triage option
-    const defaultOpt = document.createElement('option');
-    defaultOpt.value = 'Inbox/Triage';
-    defaultOpt.textContent = 'Inbox/Triage (Default)';
-    folderSelect.appendChild(defaultOpt);
-
-    // Format folders into tree hierarchy options
-    const treeOptions = formatPathsAsTree(folders);
-    treeOptions.forEach(optData => {
-      if (optData.value !== 'Inbox/Triage') {
-        const opt = document.createElement('option');
-        opt.value = optData.value;
-        opt.textContent = optData.text;
-        folderSelect.appendChild(opt);
-      }
-    });
-
-    folderSelect.disabled = false;
+    renderFolderTree();
     sendBtn.disabled = false;
   }
 
   function setupFallbackFolderList() {
-    folderSelect.innerHTML = '';
-    const defaultOpt = document.createElement('option');
-    defaultOpt.value = 'Inbox/Triage';
-    defaultOpt.textContent = 'Inbox/Triage (Default)';
-    folderSelect.appendChild(defaultOpt);
-    
-    folderSelect.disabled = false;
+    renderFolderTree();
     sendBtn.disabled = false;
   }
 
   function showStatus(msg, type) {
     statusDisplay.textContent = msg;
-    statusDisplay.className = `status-msg ${type}`;
+    if (type) {
+      statusDisplay.style.display = 'block';
+      statusDisplay.className = `status-msg ${type}`;
+    } else {
+      statusDisplay.style.display = 'none';
+      statusDisplay.className = 'status-msg';
+    }
   }
 
   // Folder Creator Interactive Logic
@@ -596,9 +857,8 @@ function showFolderModal(croppedDataUrl) {
     });
 
     // Default parent to the currently selected folder in main list (if valid)
-    const currentVal = folderSelect.value;
-    if (currentVal && currentVal !== 'loading' && currentVal !== 'Inbox/Triage') {
-      newFolderParentSelect.value = currentVal;
+    if (selectedFolder && selectedFolder !== 'Inbox/Triage') {
+      newFolderParentSelect.value = selectedFolder;
     } else {
       newFolderParentSelect.value = '';
     }
@@ -658,8 +918,9 @@ function showFolderModal(croppedDataUrl) {
       if (response && response.success) {
         // Update local list, repopulate, select the new folder and hide form
         currentFoldersList = response.folders || [];
+        selectedFolder = newPath;
+        updateTriggerDisplay();
         populateFolders(currentFoldersList);
-        folderSelect.value = newPath;
         closeNewFolderPanel();
       } else {
         const err = response ? response.error : 'Failed to create folder.';
@@ -670,46 +931,80 @@ function showFolderModal(croppedDataUrl) {
 
   // Handle Send button click
   sendBtn.addEventListener('click', async () => {
-    const selectedFolder = folderSelect.value;
-    
     // UI Loading State
     sendBtn.disabled = true;
     cancelBtn.disabled = true;
-    folderSelect.disabled = true;
+    folderTrigger.style.pointerEvents = 'none';
+    folderTrigger.style.opacity = '0.6';
+    folderTreeDropdown.classList.add('hidden-panel');
     toggleNewFolderBtn.style.display = 'none';
     sendBtn.innerHTML = '<div class="loading-spinner"></div> Sending...';
     statusDisplay.style.display = 'none';
 
-    // Send snippet details to background script for Firebase uploads
-    chrome.runtime.sendMessage({
-      target: 'background',
-      action: 'UPLOAD_SNIP',
-      dataUrl: croppedDataUrl,
-      deck: selectedFolder
-    }, (response) => {
-      if (chrome.runtime.lastError) {
-        showStatus('Communication error: ' + chrome.runtime.lastError.message, 'error');
-        resetSendingState();
-        return;
-      }
+    try {
+      // 1. Store cropped base64 in chrome.storage.local to avoid Chrome IPC message size limits
+      await new Promise((resolve, reject) => {
+        chrome.storage.local.set({ pendingSnipDataUrl: croppedDataUrl }, () => {
+          if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+          else resolve();
+        });
+      });
 
-      if (response && response.success) {
-        showStatus('✨ Uploaded successfully!', 'success');
-        setTimeout(() => {
-          container.remove();
-        }, 1200);
-      } else {
-        const err = response ? response.error : 'Upload failed.';
-        showStatus('❌ ' + err, 'error');
-        resetSendingState();
-      }
-    });
+      // 2. Send lightweight upload request to background service worker with 20s safety timeout
+      let hasResponded = false;
+      const timeoutTimer = setTimeout(() => {
+        if (!hasResponded) {
+          hasResponded = true;
+          showStatus('❌ Upload timed out. Please check extension background connection.', 'error');
+          resetSendingState();
+        }
+      }, 20000);
+
+      chrome.runtime.sendMessage({
+        target: 'background',
+        action: 'UPLOAD_SNIP',
+        deck: selectedFolder
+      }, (response) => {
+        if (hasResponded) return;
+        hasResponded = true;
+        clearTimeout(timeoutTimer);
+
+        if (chrome.runtime.lastError) {
+          showStatus('Communication error: ' + chrome.runtime.lastError.message, 'error');
+          resetSendingState();
+          return;
+        }
+
+        if (response && response.success) {
+          showStatus('✨ Uploaded successfully!', 'success');
+          setTimeout(() => {
+            container.remove();
+          }, 1200);
+        } else if (response && (response.code === 'MISSING_IMGBB_KEY' || response.code === 'INVALID_IMGBB_KEY')) {
+          showStatus(response.code === 'MISSING_IMGBB_KEY' 
+            ? '🔑 ImgBB API Key is required to upload snips.' 
+            : '❌ Invalid ImgBB API Key. Please re-enter your key.', 'error');
+          imgbbKeyPanel.classList.remove('hidden-panel');
+          imgbbKeyInput.value = '';
+          imgbbKeyInput.focus();
+          resetSendingState();
+        } else {
+          const err = response ? response.error : 'Upload failed.';
+          showStatus('❌ ' + err, 'error');
+          resetSendingState();
+        }
+      });
+    } catch (err) {
+      showStatus('❌ Error: ' + (err.message || 'Failed to save snip'), 'error');
+      resetSendingState();
+    }
   });
 
   function resetSendingState() {
     sendBtn.disabled = false;
     cancelBtn.disabled = false;
-    folderSelect.disabled = false;
+    folderTrigger.style.pointerEvents = 'auto';
+    folderTrigger.style.opacity = '1';
     toggleNewFolderBtn.style.display = 'flex';
     sendBtn.innerHTML = 'Send to AutoAnki';
   }

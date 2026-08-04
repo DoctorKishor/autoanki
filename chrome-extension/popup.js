@@ -95,38 +95,38 @@ function showLoggedOutState() {
   loggedOutState.classList.remove('hidden');
 }
 
-// 1. Google OAuth Flow
+// 1. Google OAuth / Web Session Flow
 async function handleGoogleLogin() {
   loginGoogleBtn.disabled = true;
   loginGoogleBtn.textContent = 'Connecting...';
   
+  const sessionId = 'google_session_' + Math.random().toString(36).substring(2, 12).toUpperCase();
+  activeSessionId = sessionId;
+
   try {
-    await chrome.offscreen.createDocument({
-      url: 'offscreen.html',
-      reasons: ['DOM_SCRAPING'],
-      justification: 'Firebase Auth requires an offscreen document window context to run signInWithPopup'
-    }).catch(err => {
-      if (!err.message.includes('Only one offscreen document')) throw err;
+    const docRef = doc(db, 'qr_logins', sessionId);
+    await setDoc(docRef, {
+      id: sessionId,
+      status: 'pending',
+      createdAt: Date.now(),
+      expiresAt: Date.now() + 5 * 60 * 1000
     });
 
-    chrome.runtime.sendMessage({ target: 'offscreen', type: 'sign-in' }, (response) => {
-      chrome.offscreen.closeDocument();
-      resetGoogleBtn();
+    const authUrl = `https://autoanki-d7f3c.web.app/?login_session=${sessionId}`;
+    chrome.tabs.create({ url: authUrl });
 
-      if (response && response.success) {
-        const user = response.user;
-        chrome.storage.local.set({ user }, () => {
-          showLoggedInState(user);
-        });
-      } else {
-        const errMsg = response ? response.error : 'Unknown authentication error';
-        alert('Authentication failed: ' + errMsg);
-      }
-    });
+    hideAllViews();
+    loadingState.classList.remove('hidden');
+    const subTitleEl = document.querySelector('#loading-state .subtitle');
+    if (subTitleEl) subTitleEl.textContent = 'Authorizing with AutoAnki web session...';
+
+    // Subscribe to session doc updates
+    listenToSessionDoc(docRef);
   } catch (error) {
-    console.error('Error during Google OAuth:', error);
-    alert('An error occurred during Google Login.');
+    console.error("Failed to start Google authentication session:", error);
+    alert("Error connecting session: " + error.message);
     resetGoogleBtn();
+    showLoggedOutState();
   }
 }
 

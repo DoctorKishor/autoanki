@@ -3517,6 +3517,47 @@ export default function App() {
     };
   }, [db, qrLoginSessionId, qrLoginStatus]);
 
+  // --- REAL-TIME PAIRED EXTENSION SNIP LISTENER ---
+  useEffect(() => {
+    if (!db || !user || !user.uid) return;
+
+    const q = query(
+      collection(db, 'qr_logins'),
+      where('targetUid', '==', user.uid),
+      where('status', '==', 'pending_snip')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      snapshot.docChanges().forEach(async (change) => {
+        if (change.type === 'added') {
+          const docData = change.doc.data();
+          const scanId = change.doc.id.replace(`${user.uid}_scan_`, '');
+          const targetPageRef = doc(db, 'artifacts', appId, 'users', user.uid, 'pages', scanId);
+
+          try {
+            await setDoc(targetPageRef, {
+              fileName: docData.fileName || `Snip_${Date.now()}.png`,
+              deck: docData.deck || 'Inbox/Triage',
+              imageUrl: docData.imageUrl,
+              isPending: true,
+              isCompanionScan: true,
+              createdAt: docData.createdAt || Date.now(),
+              updatedAt: Date.now(),
+              label: "Windows Snips"
+            });
+            await deleteDoc(change.doc.ref).catch(console.error);
+          } catch (e) {
+            console.error("Error converting paired extension snip to user page:", e);
+          }
+        }
+      });
+    }, (err) => {
+      console.warn("Extension snip buffer listener note:", err.message);
+    });
+
+    return () => unsubscribe();
+  }, [db, user]);
+
   // --- PAIRING CODE LOGIN SYSTEM ---
   const handleInitPairingCodeLogin = async () => {
     if (!db) return;
@@ -10115,6 +10156,16 @@ JSON Format:
   };
 
   // Derived state for the current folder view
+  const uniqueCloudPages = useMemo(() => {
+    const map = new Map();
+    (cloudPages || []).forEach(p => {
+      if (p && p.id && !map.has(p.id)) {
+        map.set(p.id, p);
+      }
+    });
+    return Array.from(map.values());
+  }, [cloudPages]);
+
   const folderPages = useMemo(() => {
     if (selectedTags.length > 0) {
       const matchedPageIds = new Set(cards.filter(c => {
@@ -10122,17 +10173,17 @@ JSON Format:
         const formattedTags = c.tags.map(t => t.trim().startsWith('#') ? t.trim() : `#${t.trim()}`);
         return selectedTags.every(st => formattedTags.includes(st));
       }).map(c => c.pageId));
-      return cloudPages.filter(p => matchedPageIds.has(p.id));
+      return uniqueCloudPages.filter(p => matchedPageIds.has(p.id));
     }
     if (hierarchy === 'PENDING_REVIEW') {
-      return cloudPages.filter(p => p.isPending);
+      return uniqueCloudPages.filter(p => p.isPending);
     }
     if (hierarchy === 'COMPANION_SCANS') {
-      return cloudPages.filter(p => p.isCompanionScan);
+      return uniqueCloudPages.filter(p => p.isCompanionScan);
     }
     // Show both pending and approved pages in the folder (including subfolders)
-    return cloudPages.filter(p => p.deck === hierarchy || (p.deck && p.deck.startsWith(hierarchy + '::')));
-  }, [cloudPages, hierarchy, selectedTags, cards]);
+    return uniqueCloudPages.filter(p => p.deck === hierarchy || (p.deck && p.deck.startsWith(hierarchy + '::')));
+  }, [uniqueCloudPages, hierarchy, selectedTags, cards]);
 
   // Auto-scroll to card when highlighted from search or image
   useEffect(() => {
@@ -25099,7 +25150,7 @@ Return your response strictly as a JSON object matching this schema:
                                           {/* Bulk Actions Header */}
                                           <div className="bg-gray-50/50 p-4 rounded-2xl border border-gray-200/50 flex flex-wrap items-center justify-between gap-3 animate-in fade-in duration-200">
                                             <div className="flex items-center gap-2">
-                                              <input
+                                            <input
                                                 type="checkbox"
                                                 checked={folderPages.length > 0 && selectedInboxPageIds.length === folderPages.length}
                                                 onChange={(e) => {
@@ -25122,33 +25173,25 @@ Return your response strictly as a JSON object matching this schema:
                                                 <button
                                                   onClick={async () => {
                                                     const selectedPages = folderPages.filter(p => selectedInboxPageIds.includes(p.id));
-                                                    const newQueueItems = selectedPages.map(page => {
-                                                      const finalDeck = page.deck === 'Mobile Scans Inbox' ? 'General' : (page.deck || 'General');
-                                                      return {
-                                                        id: page.id,
-                                                        fileName: page.fileName || 'Mobile Scan Document',
-                                                        mimeType: 'image/png',
-                                                        base64: page.base64 || page.imageUrl,
-                                                        status: 'pending',
-                                                        deck: finalDeck
-                                                      };
-                                                    });
-
-                                                    const filteredNewItems = newQueueItems.filter(item => !queue.some(q => q.id === item.id));
-                                                    const newQueue = [...queue, ...filteredNewItems];
-                                                    setQueue(newQueue);
-
-                                                    if (filteredNewItems.length > 0) {
-                                                      setActiveQueueId(filteredNewItems[0].id);
-                                                    }
-
-                                                    // Update Firestore for each
+                                                    const newQueueItems = selectedPages.map(page => ({
+                                                       id: page.id,
+                                                       fileName: page.fileName || 'Mobile Scan Document',
+                                                       mimeType: 'image/png',
+                                                       base64: page.base64 || page.imageUrl,
+                                                       status: 'pending',
+                                                       deck: page.deck === 'Mobile Scans Inbox' ? 'General' : (page.deck || 'General')
+                                                     }));
+                                                     const filteredNewItems = newQueueItems.filter(item => !queue.some(q => q.id === item.id));
+                                                     setQueue(prev => [...prev, ...filteredNewItems]);
+                                                     if (filteredNewItems.length > 0) setActiveQueueId(filteredNewItems[0].id);
+                                                     // Update Firestore for each
                                                     for (let page of selectedPages) {
                                                       const finalDeck = page.deck === 'Mobile Scans Inbox' ? 'General' : (page.deck || 'General');
                                                       const pageDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'pages', page.id);
                                                       await updateDoc(pageDocRef, {
                                                         deck: finalDeck,
-                                                        isCompanionScan: false
+                                                        isCompanionScan: false,
+                                                        isPending: false
                                                       });
                                                     }
 
@@ -25156,13 +25199,13 @@ Return your response strictly as a JSON object matching this schema:
                                                     setCloudPages(prev => prev.map(p => {
                                                       if (selectedInboxPageIds.includes(p.id)) {
                                                         const finalDeck = p.deck === 'Mobile Scans Inbox' ? 'General' : (p.deck || 'General');
-                                                        return { ...p, deck: finalDeck, isCompanionScan: false };
+                                                        return { ...p, deck: finalDeck, isCompanionScan: false, isPending: false };
                                                       }
                                                       return p;
                                                     }));
 
                                                     setSelectedInboxPageIds([]);
-                                                    setCurrentTab('home');
+                                                    setCurrentTab('dashboard');
                                                   }}
                                                   className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black uppercase text-[10px] tracking-wider rounded-xl shadow-lg shadow-blue-500/10 flex items-center gap-1.5 transition active:scale-95"
                                                 >
@@ -25259,13 +25302,15 @@ Return your response strictly as a JSON object matching this schema:
                                                             setCloudPages(prev => prev.map(p => p.id === page.id ? {
                                                               ...p,
                                                               deck: isInbox ? 'Mobile Scans Inbox' : targetDeck,
-                                                              isCompanionScan: isInbox
+                                                              isCompanionScan: isInbox,
+                                                              isPending: isInbox
                                                             } : p));
 
                                                             const pageDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'pages', page.id);
                                                             await updateDoc(pageDocRef, {
                                                               deck: isInbox ? 'Mobile Scans Inbox' : targetDeck,
-                                                              isCompanionScan: isInbox
+                                                              isCompanionScan: isInbox,
+                                                              isPending: isInbox
                                                             });
                                                           }}
                                                           className="w-full p-2.5 bg-gray-50 border border-gray-100 rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none text-xs font-bold text-gray-700 cursor-pointer"
@@ -25340,19 +25385,59 @@ Return your response strictly as a JSON object matching this schema:
                                   ) : (
                                     <>
                                       <div className="mb-8">
-                                        <div className="flex justify-between items-center mb-4">
-                                          <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2 uppercase tracking-widest text-[10px]">
-                                            <Grid className="w-4 h-4" /> Saved Pages ({folderPages.length})
-                                          </h3>
-                                          {hierarchy === 'PENDING_REVIEW' && cloudPages.length > 0 && (
-                                            <button
-                                              onClick={discardAllTriage}
-                                              className="flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-600 rounded-xl text-[10px] font-black uppercase hover:bg-red-100 transition-all active:scale-95"
-                                            >
-                                              <Trash2 className="w-3 h-3" /> Discard All Triage
-                                            </button>
-                                          )}
-                                        </div>
+                                      {(() => {
+                                           const allFolderPagesSelected = folderPages.length > 0 && folderPages.every(p => selectedPages.has(p.id));
+                                           const someFolderPagesSelected = folderPages.some(p => selectedPages.has(p.id));
+                                           const handleSelectAllFolderPages = () => {
+                                             if (allFolderPagesSelected) {
+                                               const newSet = new Set(selectedPages);
+                                               folderPages.forEach(p => newSet.delete(p.id));
+                                               setSelectedPages(newSet);
+                                             } else {
+                                               const newSet = new Set(selectedPages);
+                                               folderPages.forEach(p => newSet.add(p.id));
+                                               setSelectedPages(newSet);
+                                             }
+                                           };
+
+                                           return (
+                                             <div className="flex justify-between items-center mb-4">
+                                               <div className="flex items-center gap-3">
+                                                 <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2 uppercase tracking-widest text-[10px]">
+                                                   <Grid className="w-4 h-4" /> Saved Pages ({folderPages.length})
+                                                 </h3>
+                                                 {folderPages.length > 0 && (
+                                                   <button
+                                                     type="button"
+                                                     onClick={handleSelectAllFolderPages}
+                                                     className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-[10px] font-bold border transition-all active:scale-95 cursor-pointer ${
+                                                       allFolderPagesSelected
+                                                         ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/20 hover:bg-blue-700'
+                                                         : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 hover:border-gray-300'
+                                                     }`}
+                                                   >
+                                                     <input
+                                                       type="checkbox"
+                                                       checked={allFolderPagesSelected}
+                                                       ref={el => { if (el) el.indeterminate = !allFolderPagesSelected && someFolderPagesSelected; }}
+                                                       onChange={() => {}}
+                                                       className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-gray-300 pointer-events-none"
+                                                     />
+                                                     <span>{allFolderPagesSelected ? 'Deselect All' : `Select All (${folderPages.length})`}</span>
+                                                   </button>
+                                                 )}
+                                               </div>
+                                               {hierarchy === 'PENDING_REVIEW' && cloudPages.length > 0 && (
+                                                 <button
+                                                   onClick={discardAllTriage}
+                                                   className="flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-600 rounded-xl text-[10px] font-black uppercase hover:bg-red-100 transition-all active:scale-95"
+                                                 >
+                                                   <Trash2 className="w-3 h-3" /> Discard All Triage
+                                                 </button>
+                                               )}
+                                             </div>
+                                           );
+                                         })()}
                                         {(folderPages.length === 0 && directSubfolders.length === 0) ? (
                                           <div className="bg-gray-50 border border-dashed border-gray-200 rounded-3xl p-20 text-center text-gray-400">
                                             <ImageIcon className="w-16 h-16 mx-auto mb-4 opacity-10" />

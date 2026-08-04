@@ -142,7 +142,24 @@ async function handleAsyncMessage(message, sendResponse) {
       throw new Error("User session expired. Please log in again from the extension popup.");
     }
 
-    const response = await sendToOffscreenWithRetry({ ...message, user });
+    let extraData = {};
+    if (message.action === 'UPLOAD_SNIP' || message.action === 'SAVE_IMGBB_KEY') {
+      const storageRes = await new Promise(resolve => {
+        chrome.storage.local.get(['pendingSnipDataUrl', 'imgbbApiKey'], resolve);
+      });
+      if (storageRes) {
+        if (storageRes.pendingSnipDataUrl) extraData.dataUrl = storageRes.pendingSnipDataUrl;
+        if (storageRes.imgbbApiKey) extraData.imgbbApiKey = storageRes.imgbbApiKey;
+      }
+    }
+
+    const response = await sendToOffscreenWithRetry({ ...message, ...extraData, user });
+
+    // Clean up stored pending snip dataUrl after offscreen processing
+    if (message.action === 'UPLOAD_SNIP') {
+      chrome.storage.local.remove(['pendingSnipDataUrl']);
+    }
+
     sendResponse(response);
   } catch (error) {
     console.error("Background operation error:", error);
