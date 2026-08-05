@@ -6,6 +6,7 @@
 
 ## 📌 Current Module: Settings Menu
 
+
 ### 1. External API Credentials (`STORES.SETTINGS` -> `apiKeys`)
 
 | Key Name | Storage Engine | Description | Backup Required |
@@ -33,4 +34,4 @@
 ### 📋 Up Next (To be added as we proceed):
 - [ ] Flashcard Deck & Review Progress (`KV_STORE`)
 - [ ] Topic Master Tracker & PYT Progress (`TOPICS`)
-- [ ] CAMP Tracker & Focus Metrics (`CAMP_TRACKER`)
+- [ ] CAMP Tracker & Focus Metrics (`CAMP_TRACKER`).
