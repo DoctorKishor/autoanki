@@ -3,7 +3,7 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import {
   UploadCloud, Upload, Play, CheckCircle, AlertCircle, Edit3, Camera, Pause, Bell, Bookmark,
   Trash2, Download, Plus, Minus, Save, X, Server, Database,
-  Folder, ChevronRight, ChevronDown, Move, Image as ImageIcon,
+  Folder, FolderOpen, ChevronRight, ChevronDown, Move, Image as ImageIcon,
   RotateCcw, RotateCw, Grid, Layers, Settings, MessageSquare, Home, Library, RefreshCw, LayoutDashboard, Sliders,
   Eye, EyeOff, Menu, ChevronLeft, FileText, Loader2, Monitor, MoreVertical, Search, Send, Tv,
   AlertTriangle, CheckCircle2, Maximize, GraduationCap, BarChart2, Tag, Calendar, TrendingUp, Info, Sparkles, Compass, Share2,
@@ -916,7 +916,7 @@ const HierarchicalSunburst = ({ deckPaths, cloudPages, deckCardCounts = {}, onSe
   );
 };
 
-const ExportTreeFolder = ({ node, level = 0, selectedDecks, onToggle }) => {
+const ExportTreeFolder = ({ node, level = 0, selectedDecks, onToggle, themeMode = 'light' }) => {
   const [isOpen, setIsOpen] = useState(false);
   const hasChildren = Object.keys(node.children).length > 0;
 
@@ -964,25 +964,37 @@ const ExportTreeFolder = ({ node, level = 0, selectedDecks, onToggle }) => {
             level={0}
             selectedDecks={selectedDecks}
             onToggle={onToggle}
+            themeMode={themeMode}
           />
         ))}
       </div>
     );
   }
 
+  const FolderIcon = (hasChildren && isOpen) ? FolderOpen : Folder;
+
   return (
-    <div className="flex flex-col select-none">
+    <div className="flex flex-col select-none relative">
       <div
-        className="flex items-center justify-between py-1.5 px-3 rounded-2xl transition hover:bg-gray-100/75 border border-transparent"
-        style={{ paddingLeft: `${Math.max(12, level * 16)}px` }}
+        className={`flex items-center justify-between py-2 px-3 rounded-[1.2rem] transition-all duration-200 cursor-pointer group my-1 mx-1 ${
+          isChecked
+            ? (themeMode === 'dark' ? 'neu-item-pressed-dark border border-blue-500/50 text-blue-300' : 'neu-item-pressed-light border border-blue-300/80 text-blue-900 font-bold')
+            : (themeMode === 'dark' ? 'neu-item-dark text-gray-300 hover:border-gray-700' : 'neu-item-light text-gray-700 hover:border-blue-300/80')
+        }`}
+        style={{ marginLeft: `${level * 18 + 4}px` }}
       >
+        {/* Horizontal connector line for non-root child items */}
+        {level > 0 && (
+          <div className={`absolute -left-[14px] top-1/2 -translate-y-1/2 w-3.5 h-[1px] pointer-events-none ${themeMode === 'dark' ? 'bg-gray-800' : 'bg-gray-300/80'}`} />
+        )}
+
         <div className="flex items-center gap-2 min-w-0 flex-grow">
           {hasChildren ? (
             <button
-              onClick={() => setIsOpen(!isOpen)}
-              className="p-1 hover:bg-gray-200/80 rounded-lg text-gray-500 transition shrink-0"
+              onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}
+              className={`p-1 rounded-lg transition shrink-0 ${themeMode === 'dark' ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-200/60 text-gray-500'}`}
             >
-              {isOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+              {isOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
             </button>
           ) : (
             <div className="w-5 h-5 shrink-0" />
@@ -1000,35 +1012,117 @@ const ExportTreeFolder = ({ node, level = 0, selectedDecks, onToggle }) => {
             />
 
             <div className="flex items-center gap-2 min-w-0 flex-grow">
-              <Folder className={`w-4 h-4 shrink-0 transition ${isChecked ? 'text-blue-500 fill-blue-100' : 'text-gray-400'}`} />
-              <span className={`text-xs truncate ${isChecked ? 'text-blue-900 font-bold' : 'text-gray-700 font-medium'}`}>
+              <FolderIcon className={`w-4 h-4 shrink-0 transition ${isChecked ? 'text-blue-500 fill-blue-500/10' : (themeMode === 'dark' ? 'text-blue-400' : 'text-blue-600')}`} />
+              <span className={`text-xs font-bold truncate ${isChecked ? (themeMode === 'dark' ? 'text-white' : 'text-blue-900') : (themeMode === 'dark' ? 'text-gray-200' : 'text-gray-800')}`}>
                 {node.name}
               </span>
             </div>
           </label>
         </div>
 
-        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0 select-none ${isChecked ? 'bg-blue-100/80 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
+        <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-lg shrink-0 select-none ${
+          isChecked
+            ? (themeMode === 'dark' ? 'neu-pressed-dark text-blue-400 border border-blue-500/30' : 'neu-pressed-light text-blue-700 border border-blue-200')
+            : (themeMode === 'dark' ? 'neu-pressed-dark text-gray-400 border border-gray-800' : 'neu-pressed-light text-gray-500 border border-gray-200/50')
+        }`}>
           {node.tCCount}
         </span>
       </div>
 
-      {hasChildren && isOpen && (
-        <div className="flex flex-col relative mt-0.5">
-          <div
-            className="absolute left-[20px] top-0 bottom-2 w-[1.5px] bg-gray-200/60 rounded-full"
-            style={{ left: `${Math.max(20, level * 16 + 18)}px` }}
-          />
-          <div className="space-y-0.5">
-            {Object.values(node.children).map(child => (
-              <ExportTreeFolder
-                key={child.path}
-                node={child}
-                level={level + 1}
-                selectedDecks={selectedDecks}
-                onToggle={onToggle}
-              />
-            ))}
+      <AnimatePresence initial={false}>
+        {hasChildren && isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+            className="overflow-hidden relative flex flex-col py-0.5 px-0.5"
+          >
+            {/* Vertical connector guide line */}
+            <div
+              className={`absolute top-0 bottom-2 w-[1px] ${themeMode === 'dark' ? 'bg-gray-800' : 'bg-gray-300/80'}`}
+              style={{ left: `${level * 18 + 16}px` }}
+            />
+            <div className="space-y-1">
+              {Object.values(node.children).map(child => (
+                <ExportTreeFolder
+                  key={child.path}
+                  node={child}
+                  level={level + 1}
+                  selectedDecks={selectedDecks}
+                  onToggle={onToggle}
+                  themeMode={themeMode}
+                />
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+const NeumorphicSelect = ({ value, onChange, options, themeMode = 'light', placeholder = 'Select...' }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (ref.current && !ref.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedOption = options.find(o => String(o.value) === String(value)) || options[0];
+
+  return (
+    <div ref={ref} className="relative w-full text-left">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full p-2.5 rounded-xl flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${
+          themeMode === 'dark'
+            ? 'neu-pressed-dark text-white border border-gray-800 hover:border-gray-700'
+            : 'neu-pressed-light text-gray-800 border border-gray-200/80 hover:border-gray-300'
+        }`}
+      >
+        <span className="truncate pr-2">{selectedOption?.label || placeholder}</span>
+        <ChevronDown className={`w-4 h-4 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-blue-500' : (themeMode === 'dark' ? 'text-gray-400' : 'text-gray-500')}`} />
+      </button>
+
+      {isOpen && (
+        <div
+          className={`absolute left-0 right-0 top-full mt-1.5 z-50 p-1.5 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 ${
+            themeMode === 'dark'
+              ? 'neu-card-dark border border-gray-800 bg-slate-900/95 backdrop-blur-md'
+              : 'neu-card-light border border-gray-200 bg-white/95 backdrop-blur-md'
+          }`}
+        >
+          <div className="max-h-56 overflow-y-auto custom-scrollbar space-y-1">
+            {options.map((opt) => {
+              const isSelected = String(opt.value) === String(value);
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => {
+                    onChange(opt.value);
+                    setIsOpen(false);
+                  }}
+                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-between transition ${
+                    isSelected
+                      ? (themeMode === 'dark' ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600')
+                      : (themeMode === 'dark' ? 'hover:bg-gray-800/60 text-gray-300' : 'hover:bg-gray-100 text-gray-700')
+                  }`}
+                >
+                  <span className="truncate">{opt.label}</span>
+                  {isSelected && <Check className="w-3.5 h-3.5 text-blue-500 shrink-0 ml-2" />}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
@@ -1036,7 +1130,31 @@ const ExportTreeFolder = ({ node, level = 0, selectedDecks, onToggle }) => {
   );
 };
 
-const TreeFolder = ({ node, level, selectedPath, onSelect, onAdd, onRename, onDelete, onMoveNode, isMobileMoveMode, onToggleMove, showCounts = true, hideActions = false }) => {
+const OrbitalLoader = ({ themeMode = 'light', size = 'normal' }) => {
+  const containerSizeClass = size === 'small' ? 'w-10 h-10' : size === 'large' ? 'w-44 h-44' : 'w-32 h-32';
+  const iconSizeClass = size === 'small' ? 'w-4 h-4' : size === 'large' ? 'w-9 h-9' : 'w-6 h-6';
+
+  return (
+    <div className={`ripple-loader-container ${themeMode === 'dark' ? 'dark-theme' : 'light-theme'} ${containerSizeClass} flex items-center justify-center relative select-none shrink-0`}>
+      <div className="loader">
+        <div style={{ '--i': 1, '--inset': '44%' }} className="box">
+          <div className="logo flex items-center justify-center">
+            <Brain className={`${iconSizeClass} ${themeMode === 'dark' ? 'text-blue-400' : 'text-blue-600'} animate-pulse`} />
+          </div>
+        </div>
+        <div style={{ '--i': 2, '--inset': '40%' }} className="box" />
+        <div style={{ '--i': 3, '--inset': '36%' }} className="box" />
+        <div style={{ '--i': 4, '--inset': '32%' }} className="box" />
+        <div style={{ '--i': 5, '--inset': '28%' }} className="box" />
+        <div style={{ '--i': 6, '--inset': '24%' }} className="box" />
+        <div style={{ '--i': 7, '--inset': '20%' }} className="box" />
+        <div style={{ '--i': 8, '--inset': '16%' }} className="box" />
+      </div>
+    </div>
+  );
+};
+
+const TreeFolder = ({ node, level = 0, selectedPath, onSelect, onAdd, onRename, onDelete, onMoveNode, isMobileMoveMode, onToggleMove, showCounts = true, hideActions = false, themeMode = 'light' }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -1095,8 +1213,10 @@ const TreeFolder = ({ node, level, selectedPath, onSelect, onAdd, onRename, onDe
     }
   };
 
+  const FolderIcon = (hasChildren && isOpen) ? FolderOpen : Folder;
+
   return (
-    <div className="select-none group">
+    <div className="select-none group relative">
       {!node.isRoot && (
         <div
           draggable={!hideActions}
@@ -1104,32 +1224,51 @@ const TreeFolder = ({ node, level, selectedPath, onSelect, onAdd, onRename, onDe
           onDragOver={hideActions ? undefined : handleDragOver}
           onDragLeave={hideActions ? undefined : handleDragLeave}
           onDrop={hideActions ? undefined : handleDrop}
-          className={`relative flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-all duration-200 mb-1
-            ${isSelected ? 'bg-blue-600 text-white shadow-xl shadow-blue-600/30 scale-[1.01]' : 'hover:bg-blue-50 text-blue-950'}
-            ${!hideActions && isDragOver === 'inside' ? 'ring-2 ring-blue-500 bg-blue-50' : ''}
-            ${!hideActions && isMobileMoveMode && onToggleMove ? 'ring-2 ring-blue-400 animate-pulse bg-blue-50/50 shadow-lg' : ''}
+          className={`relative flex items-center gap-2.5 p-2 rounded-[1.2rem] cursor-pointer transition-all duration-200 my-1 mx-1
+            ${isSelected
+              ? (themeMode === 'dark'
+                ? 'neu-item-pressed-dark border border-blue-500/60 text-blue-300 shadow-inner'
+                : 'neu-item-pressed-light border border-blue-400/80 text-blue-900 shadow-inner font-bold')
+              : (themeMode === 'dark'
+                ? 'neu-item-dark text-gray-300 hover:border-gray-700 hover:text-white'
+                : 'neu-item-light text-gray-700 hover:border-blue-300/80 hover:text-blue-950')
+            }
+            ${!hideActions && isDragOver === 'inside' ? 'ring-2 ring-blue-500 bg-blue-500/10' : ''}
+            ${!hideActions && isMobileMoveMode && onToggleMove ? 'ring-2 ring-blue-400 animate-pulse bg-blue-400/10 shadow-lg' : ''}
             ${showMenu ? 'z-50' : 'z-0'}
           `}
-          style={{ marginLeft: `${level * 16}px` }}
+          style={{ marginLeft: `${level * 18 + 4}px` }}
           onClick={() => onSelect(node.path)}
         >
+          {/* Horizontal branch line for nested items */}
+          {level > 0 && (
+            <div className={`absolute -left-[14px] top-1/2 -translate-y-1/2 w-3.5 h-[1px] pointer-events-none ${themeMode === 'dark' ? 'bg-gray-800' : 'bg-gray-300/80'}`} />
+          )}
+
           {/* Drop Indicators */}
           {!hideActions && isDragOver === 'above' && <div className="absolute top-0 left-0 right-0 h-0.5 bg-blue-500 z-10 rounded-full" />}
           {!hideActions && isDragOver === 'below' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500 z-10 rounded-full" />}
 
-          <div onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }} className="w-5 h-5 flex items-center justify-center shrink-0">
-            {hasChildren ? (isOpen ? <ChevronDown className={`w-4 h-4 ${isSelected ? 'text-white' : 'text-blue-300'}`} /> : <ChevronRight className={`w-4 h-4 ${isSelected ? 'text-white' : 'text-blue-300'}`} />) : <div className="w-4 h-4" />}
+          <div
+            onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}
+            className={`w-5 h-5 flex items-center justify-center shrink-0 rounded-lg transition ${themeMode === 'dark' ? 'hover:bg-gray-800/80 text-gray-400' : 'hover:bg-gray-200/60 text-gray-500'}`}
+          >
+            {hasChildren ? (
+              isOpen ? <ChevronDown className={`w-3.5 h-3.5 ${isSelected ? (themeMode === 'dark' ? 'text-blue-400' : 'text-blue-600') : ''}`} />
+                     : <ChevronRight className={`w-3.5 h-3.5 ${isSelected ? (themeMode === 'dark' ? 'text-blue-400' : 'text-blue-600') : ''}`} />
+            ) : <div className="w-3.5 h-3.5" />}
           </div>
 
-          <Folder className={`w-4 h-4 shrink-0 ${isSelected ? 'text-blue-100' : 'text-blue-500'}`} />
+          <FolderIcon className={`w-4 h-4 shrink-0 transition ${isSelected ? (themeMode === 'dark' ? 'text-blue-400' : 'text-blue-600') : (themeMode === 'dark' ? 'text-gray-400 group-hover:text-blue-400' : 'text-blue-500/80 group-hover:text-blue-600')}`} />
+          
           <div className="flex flex-col min-w-0 flex-grow">
-            <span className={`text-[11px] font-black truncate tracking-tight ${isSelected ? 'text-white' : 'text-blue-950'}`}>
+            <span className={`text-[11px] font-bold truncate tracking-tight ${isSelected ? (themeMode === 'dark' ? 'text-white font-extrabold' : 'text-blue-950 font-extrabold') : (themeMode === 'dark' ? 'text-gray-200' : 'text-gray-800')}`}>
               {node.name}
             </span>
             {showCounts && (
-              <div className={`text-[8px] font-bold uppercase flex items-center gap-2 ${isSelected ? 'text-blue-100' : 'text-gray-400'}`}>
-                <span className="flex items-center gap-0.5"><ImageIcon className="w-2 h-2" /> {node.pCount}{node.tPCount > node.pCount && `/${node.tPCount}`}</span>
-                <span className="flex items-center gap-0.5"><Layers className="w-2 h-2" /> {node.cCount}{node.tCCount > node.cCount && `/${node.tCCount}`}</span>
+              <div className={`text-[8px] font-mono font-semibold uppercase flex items-center gap-2 mt-0.5 ${isSelected ? (themeMode === 'dark' ? 'text-blue-300' : 'text-blue-700') : (themeMode === 'dark' ? 'text-gray-400' : 'text-gray-500')}`}>
+                <span className="flex items-center gap-0.5"><ImageIcon className="w-2.5 h-2.5 opacity-75" /> {node.pCount}{node.tPCount > node.pCount && `/${node.tPCount}`}</span>
+                <span className="flex items-center gap-0.5"><Layers className="w-2.5 h-2.5 opacity-75" /> {node.cCount}{node.tCCount > node.cCount && `/${node.tCCount}`}</span>
               </div>
             )}
           </div>
@@ -1138,40 +1277,54 @@ const TreeFolder = ({ node, level, selectedPath, onSelect, onAdd, onRename, onDe
             <div className="ml-auto relative" ref={menuRef}>
               <button
                 onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
-                className={`p-1.5 rounded-xl transition-all ${isSelected ? 'hover:bg-white/20' : 'hover:bg-blue-100'} ${showMenu ? 'bg-blue-600 text-white' : ''}`}
+                className={`p-1.5 rounded-xl transition-all ${
+                  isSelected
+                    ? (themeMode === 'dark' ? 'hover:bg-blue-500/20 text-blue-300' : 'hover:bg-blue-200/50 text-blue-800')
+                    : (themeMode === 'dark' ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-200/60 text-gray-500')
+                } ${showMenu ? (themeMode === 'dark' ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600') : ''}`}
               >
-                <MoreVertical className="w-4 h-4" />
+                <MoreVertical className="w-3.5 h-3.5" />
               </button>
 
               {showMenu && (
                 <div
-                  className="absolute right-0 top-full mt-1 bg-white border border-gray-100 shadow-2xl rounded-2xl p-1 z-[100] flex flex-col min-w-[120px] animate-in fade-in zoom-in-95 duration-200"
+                  className={`absolute right-0 top-full mt-1 border shadow-2xl rounded-2xl p-1 z-[100] flex flex-col min-w-[120px] animate-in fade-in zoom-in-95 duration-200 ${
+                    themeMode === 'dark' ? 'neu-card-dark border-gray-700 text-gray-200' : 'neu-card-light border-gray-200 text-gray-800'
+                  }`}
                   onClick={(e) => e.stopPropagation()}
                 >
                   {onToggleMove && (
                     <button
                       onClick={(e) => { e.stopPropagation(); onToggleMove(node.path); setShowMenu(false); }}
-                      className="flex items-center gap-2 p-2.5 hover:bg-blue-50 rounded-xl text-blue-600 text-[10px] font-black uppercase transition"
+                      className={`flex items-center gap-2 p-2.5 rounded-xl text-[10px] font-black uppercase transition ${
+                        themeMode === 'dark' ? 'hover:bg-blue-900/40 text-blue-400' : 'hover:bg-blue-50 text-blue-600'
+                      }`}
                     >
                       <Move className="w-3.5 h-3.5" /> Move
                     </button>
                   )}
                   <button
                     onClick={(e) => { e.stopPropagation(); onRename(node.path); setShowMenu(false); }}
-                    className="flex items-center gap-2 p-2.5 hover:bg-blue-50 rounded-xl text-gray-600 text-[10px] font-black uppercase transition"
+                    className={`flex items-center gap-2 p-2.5 rounded-xl text-[10px] font-black uppercase transition ${
+                      themeMode === 'dark' ? 'hover:bg-gray-800 text-gray-300' : 'hover:bg-gray-100 text-gray-700'
+                    }`}
                   >
                     <Edit3 className="w-3.5 h-3.5" /> Rename
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); onAdd(node.path); setIsOpen(true); setShowMenu(false); }}
-                    className="flex items-center gap-2 p-2.5 hover:bg-blue-50 rounded-xl text-blue-600 text-[10px] font-black uppercase transition"
+                    className={`flex items-center gap-2 p-2.5 rounded-xl text-[10px] font-black uppercase transition ${
+                      themeMode === 'dark' ? 'hover:bg-blue-900/40 text-blue-400' : 'hover:bg-blue-50 text-blue-600'
+                    }`}
                   >
                     <Plus className="w-3.5 h-3.5" /> Subfolder
                   </button>
-                  <div className="h-px bg-gray-100 my-1" />
+                  <div className={`h-px my-1 ${themeMode === 'dark' ? 'bg-gray-800' : 'bg-gray-200/60'}`} />
                   <button
                     onClick={(e) => { e.stopPropagation(); onDelete(node.path); setShowMenu(false); }}
-                    className="flex items-center gap-2 p-2.5 hover:bg-red-50 rounded-xl text-red-500 text-[10px] font-black uppercase transition"
+                    className={`flex items-center gap-2 p-2.5 rounded-xl text-[10px] font-black uppercase transition ${
+                      themeMode === 'dark' ? 'hover:bg-red-900/40 text-red-400' : 'hover:bg-red-50 text-red-500'
+                    }`}
                   >
                     <Trash2 className="w-3.5 h-3.5" /> Delete
                   </button>
@@ -1187,35 +1340,55 @@ const TreeFolder = ({ node, level, selectedPath, onSelect, onAdd, onRename, onDe
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
-          className={`py-1 text-[10px] uppercase tracking-wider font-bold text-center border-2 border-dashed rounded mb-2 transition
-            ${isDragOver ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-400 hover:border-gray-300'}
-          `}
+          className={`py-1.5 mx-1 text-[10px] uppercase tracking-wider font-bold text-center border-2 border-dashed rounded-xl mb-2 transition ${
+            isDragOver
+              ? (themeMode === 'dark' ? 'border-blue-500 bg-blue-500/10 text-blue-400' : 'border-blue-500 bg-blue-50 text-blue-700')
+              : (themeMode === 'dark' ? 'border-gray-800 text-gray-500 hover:border-gray-700' : 'border-gray-200 text-gray-400 hover:border-gray-300')
+          }`}
         >
           {isDragOver ? "Drop to Root" : "Drag to Root"}
         </div>
       )}
 
-      {(isOpen || node.isRoot) && (
-        <div>
-          {Object.values(node.children).map(child => (
-            <TreeFolder
-              key={child.path}
-              node={child}
-              level={node.isRoot ? 0 : level + 1}
-              selectedPath={selectedPath}
-              onSelect={onSelect}
-              onAdd={onAdd}
-              onRename={onRename}
-              onDelete={onDelete}
-              onMoveNode={onMoveNode}
-              isMobileMoveMode={isMobileMoveMode && child.path === isMobileMoveMode}
-              onToggleMove={onToggleMove}
-              showCounts={showCounts}
-              hideActions={hideActions}
-            />
-          ))}
-        </div>
-      )}
+      <AnimatePresence initial={false}>
+        {(isOpen || node.isRoot) && (
+          <motion.div
+            initial={node.isRoot ? false : { height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+            className="overflow-hidden relative flex flex-col py-0.5 px-0.5"
+          >
+            {/* Vertical connector guide line for subfolders */}
+            {!node.isRoot && (
+              <div
+                className={`absolute top-0 bottom-2 w-[1px] ${themeMode === 'dark' ? 'bg-gray-800' : 'bg-gray-300/80'}`}
+                style={{ left: `${level * 18 + 16}px` }}
+              />
+            )}
+            <div className="space-y-1">
+              {Object.values(node.children).map(child => (
+                <TreeFolder
+                  key={child.path}
+                  node={child}
+                  level={node.isRoot ? 0 : level + 1}
+                  selectedPath={selectedPath}
+                  onSelect={onSelect}
+                  onAdd={onAdd}
+                  onRename={onRename}
+                  onDelete={onDelete}
+                  onMoveNode={onMoveNode}
+                  isMobileMoveMode={isMobileMoveMode && child.path === isMobileMoveMode}
+                  onToggleMove={onToggleMove}
+                  showCounts={showCounts}
+                  hideActions={hideActions}
+                  themeMode={themeMode}
+                />
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -1724,7 +1897,7 @@ const _pdfPreviewRelease = () => {
   if (next) { next(); } else { _pdfPreviewSem.count--; }
 };
 
-const PdfPagePreview = ({ pdf, pageNum, rotation = 0, onRotate }) => {
+const PdfPagePreview = ({ pdf, pageNum, rotation = 0, onRotate, themeMode = 'light' }) => {
   const canvasRef = useRef(null);
   const wrapperRef = useRef(null);
   const [isVisible, setIsVisible] = useState(false);
@@ -1789,8 +1962,8 @@ const PdfPagePreview = ({ pdf, pageNum, rotation = 0, onRotate }) => {
   }, [isVisible, pdf, pageNum, rotation]);
 
   return (
-    <div ref={wrapperRef} className="flex flex-col items-center gap-2 shrink-0 bg-white border border-gray-200 rounded-2xl p-3 shadow-md hover:shadow-lg hover:border-blue-400 transition-all duration-200 group relative">
-      <div className="w-full bg-gray-50 flex items-center justify-center rounded-lg p-1.5 border border-gray-100 overflow-hidden relative group/canvas" style={{ minHeight: 100 }}>
+    <div ref={wrapperRef} className={`flex flex-col items-center gap-2 shrink-0 p-3 rounded-2xl transition-all duration-200 group relative ${themeMode === 'dark' ? 'neu-card-dark text-white' : 'neu-card-light text-gray-900'}`}>
+      <div className={`w-full flex items-center justify-center rounded-xl p-1.5 overflow-hidden relative group/canvas ${themeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200/60'}`} style={{ minHeight: 100 }}>
         {/* Lightweight placeholder shown until the tile is visible and rendered */}
         {!rendered && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 text-gray-300">
@@ -1801,12 +1974,12 @@ const PdfPagePreview = ({ pdf, pageNum, rotation = 0, onRotate }) => {
         <canvas ref={canvasRef} className="rounded shadow-sm max-w-full h-auto transition-transform duration-200" style={{ display: rendered ? 'block' : 'none' }} />
 
         {/* Dual corner rotation buttons */}
-        <div className="absolute top-2 right-2 flex items-center gap-1 bg-white/95 backdrop-blur-xs p-1 rounded-full shadow-md border border-gray-200 z-10 opacity-90 group-hover/canvas:opacity-100 transition-opacity">
-          <button type="button" onClick={(e) => { e.stopPropagation(); onRotate?.(pageNum, 'ccw'); }} title={`Rotate Page ${pageNum} 90° anti-clockwise (currently ${rotation}°)`} className="p-1 text-gray-600 hover:text-white hover:bg-blue-600 rounded-full transition duration-150 cursor-pointer active:scale-95 flex items-center justify-center">
+        <div className={`absolute top-2 right-2 flex items-center gap-1 backdrop-blur-md p-1 rounded-full border z-10 opacity-90 group-hover/canvas:opacity-100 transition-opacity ${themeMode === 'dark' ? 'neu-card-dark border-gray-800 text-gray-200' : 'neu-card-light border-gray-200 text-gray-700'}`}>
+          <button type="button" onClick={(e) => { e.stopPropagation(); onRotate?.(pageNum, 'ccw'); }} title={`Rotate Page ${pageNum} 90° anti-clockwise (currently ${rotation}°)`} className={`p-1 rounded-full transition duration-150 cursor-pointer active:scale-95 flex items-center justify-center ${themeMode === 'dark' ? 'text-gray-300 hover:text-white hover:bg-blue-600' : 'text-gray-600 hover:text-white hover:bg-blue-600'}`}>
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
-          <div className="w-px h-3 bg-gray-200" />
-          <button type="button" onClick={(e) => { e.stopPropagation(); onRotate?.(pageNum, 'cw'); }} title={`Rotate Page ${pageNum} 90° clockwise (currently ${rotation}°)`} className="p-1 text-gray-600 hover:text-white hover:bg-blue-600 rounded-full transition duration-150 cursor-pointer active:scale-95 flex items-center justify-center">
+          <div className={`w-px h-3 ${themeMode === 'dark' ? 'bg-gray-700' : 'bg-gray-200'}`} />
+          <button type="button" onClick={(e) => { e.stopPropagation(); onRotate?.(pageNum, 'cw'); }} title={`Rotate Page ${pageNum} 90° clockwise (currently ${rotation}°)`} className={`p-1 rounded-full transition duration-150 cursor-pointer active:scale-95 flex items-center justify-center ${themeMode === 'dark' ? 'text-gray-300 hover:text-white hover:bg-blue-600' : 'text-gray-600 hover:text-white hover:bg-blue-600'}`}>
             <RotateCw className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -1818,12 +1991,12 @@ const PdfPagePreview = ({ pdf, pageNum, rotation = 0, onRotate }) => {
         )}
       </div>
       <div className="flex items-center justify-between w-full px-1 pt-1">
-        <span className="text-[10px] font-black text-gray-600 group-hover:bg-blue-600 group-hover:text-white px-3 py-1 rounded-full transition-all duration-150">
+        <span className={`text-[10px] font-black px-3 py-1 rounded-full transition-all duration-150 ${themeMode === 'dark' ? 'neu-pressed-dark text-gray-300 group-hover:bg-blue-600 group-hover:text-white' : 'neu-pressed-light text-gray-700 group-hover:bg-blue-600 group-hover:text-white'}`}>
           Page {pageNum}
         </span>
         <div className="flex items-center gap-1 text-gray-400">
-          <button type="button" onClick={() => onRotate?.(pageNum, 'ccw')} title="Rotate 90° anti-clockwise" className="p-1 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"><RotateCcw className="w-3.5 h-3.5" /></button>
-          <button type="button" onClick={() => onRotate?.(pageNum, 'cw')} title="Rotate 90° clockwise" className="p-1 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"><RotateCw className="w-3.5 h-3.5" /></button>
+          <button type="button" onClick={() => onRotate?.(pageNum, 'ccw')} title="Rotate 90° anti-clockwise" className={`p-1 rounded-lg transition ${themeMode === 'dark' ? 'text-gray-400 hover:text-blue-400 hover:bg-gray-800' : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'}`}><RotateCcw className="w-3.5 h-3.5" /></button>
+          <button type="button" onClick={() => onRotate?.(pageNum, 'cw')} title="Rotate 90° clockwise" className={`p-1 rounded-lg transition ${themeMode === 'dark' ? 'text-gray-400 hover:text-blue-400 hover:bg-gray-800' : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'}`}><RotateCw className="w-3.5 h-3.5" /></button>
         </div>
       </div>
     </div>
@@ -3216,6 +3389,7 @@ export default function App() {
     });
   };
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
+  const [sidebarTooltip, setSidebarTooltip] = useState(null); // { label: string, top: number }
   const [isUploading, setIsUploading] = useState(false);
   const [isFolderPickerOpen, setIsFolderPickerOpen] = useState(false);
   const [movingNode, setMovingNode] = useState(null); // For touch-based moving
@@ -4931,6 +5105,12 @@ export default function App() {
 
 
 
+  // Collapsible Card States for Card Generation Sidebar
+  const [isDeckCardHovered, setIsDeckCardHovered] = useState(false);
+  const [isDeckCardClicked, setIsDeckCardClicked] = useState(false);
+  const [isQueueCardHovered, setIsQueueCardHovered] = useState(false);
+  const [isQueueCardClicked, setIsQueueCardClicked] = useState(false);
+
   // Session Editing States
   const [editingSessionId, setEditingSessionId] = useState(null);
   const [editingSessionTargetDate, setEditingSessionTargetDate] = useState('');
@@ -5157,29 +5337,39 @@ export default function App() {
     }
   }, []);
 
-  // --- PANEL WIDTHS ---
-  const DEFAULT_PANEL_WIDTHS = { left: 320, center: 500, deckHeight: 280 };
-  const [leftWidth, setLeftWidth] = useState(DEFAULT_PANEL_WIDTHS.left);
-  const [centerWidth, setCenterWidth] = useState(DEFAULT_PANEL_WIDTHS.center);
+  // --- PANEL WIDTHS & RESPONSIVE 3-COLUMN RESIZER ---
+  const cardsContainerRef = useRef(null);
+  const DEFAULT_PANEL_WIDTHS = { left: 27, center: 36, deckHeight: 280 };
+  const [colWidths, setColWidths] = useState({ left: DEFAULT_PANEL_WIDTHS.left, center: DEFAULT_PANEL_WIDTHS.center });
   const [deckHeight, setDeckHeight] = useState(DEFAULT_PANEL_WIDTHS.deckHeight);
   const [isResizingLeft, setIsResizingLeft] = useState(false);
   const [isResizingCenter, setIsResizingCenter] = useState(false);
   const [isResizingDeck, setIsResizingDeck] = useState(false);
 
   const resetLayout = () => {
-    setLeftWidth(DEFAULT_PANEL_WIDTHS.left);
-    setCenterWidth(DEFAULT_PANEL_WIDTHS.center);
+    setColWidths({ left: DEFAULT_PANEL_WIDTHS.left, center: DEFAULT_PANEL_WIDTHS.center });
     setDeckHeight(DEFAULT_PANEL_WIDTHS.deckHeight);
   };
 
   useEffect(() => {
     const handleMouseMove = (e) => {
       if (isResizingLeft) {
-        const sidebarWidth = isSidebarExpanded ? 256 : 80;
-        setLeftWidth(Math.max(250, Math.min(600, e.clientX - sidebarWidth)));
+        if (!cardsContainerRef.current) return;
+        const rect = cardsContainerRef.current.getBoundingClientRect();
+        if (rect.width <= 0) return;
+        const mouseOffset = e.clientX - rect.left;
+        const pct = (mouseOffset / rect.width) * 100;
+        const newLeftPct = Math.max(18, Math.min(50, pct));
+        setColWidths(prev => ({ ...prev, left: newLeftPct }));
       } else if (isResizingCenter) {
-        const sidebarWidth = isSidebarExpanded ? 256 : 80;
-        setCenterWidth(Math.max(300, Math.min(1000, e.clientX - sidebarWidth - leftWidth)));
+        if (!cardsContainerRef.current) return;
+        const rect = cardsContainerRef.current.getBoundingClientRect();
+        if (rect.width <= 0) return;
+        const mouseOffset = e.clientX - rect.left;
+        const pct = (mouseOffset / rect.width) * 100;
+        const currentLeft = colWidths.left;
+        const newCenterPct = Math.max(18, Math.min(80 - currentLeft, pct - currentLeft));
+        setColWidths(prev => ({ ...prev, center: newCenterPct }));
       } else if (isResizingDeck) {
         const headerHeight = 64;
         setDeckHeight(Math.max(120, Math.min(600, e.clientY - headerHeight - 32)));
@@ -5201,7 +5391,7 @@ export default function App() {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isResizingLeft, isResizingCenter, isResizingDeck, leftWidth, isSidebarExpanded]);
+  }, [isResizingLeft, isResizingCenter, isResizingDeck, colWidths.left]);
   const [isApiKeyVisible, setIsApiKeyVisible] = useState(false);
   const [hoveredCardIdFromImage, setHoveredCardIdFromImage] = useState(null);
   const [selectedPages, setSelectedPages] = useState(new Set());
@@ -5483,6 +5673,7 @@ export default function App() {
 
   // HIERARCHY STATE
   const [hierarchy, setHierarchy] = useState('');
+  const [showMobileFolderTree, setShowMobileFolderTree] = useState(false);
   const [deckPaths, setDeckPaths] = useState([]);
 
   // DERIVED EFFECTIVE DECK PATHS & AUTO-HEAL
@@ -19777,14 +19968,14 @@ Return your response strictly as a JSON object matching this schema:
             }
           } else if (isMobile) {
             mainContent = (
-              <div className="flex flex-col h-screen h-[100dvh] w-screen bg-gray-50 overflow-hidden select-none">
+              <div className={`flex flex-col h-screen h-[100dvh] w-screen overflow-hidden select-none transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'}`}>
                 {/* MOBILE HEADER - Android Style AppBar */}
-                <header className="bg-white px-5 py-4 flex items-center justify-between border-b border-gray-100 shrink-0 z-40">
+                <header className={`px-5 py-4 flex items-center justify-between border-b shrink-0 z-40 transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-card-dark border-gray-800 text-white' : 'neu-card-light border-gray-200/80 text-blue-950'}`}>
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white shadow-lg shadow-blue-600/20">
                       <Server className="w-5 h-5" />
                     </div>
-                    <span className="font-black tracking-tight text-xl text-blue-950">AutoAnki</span>
+                    <span className={`font-black tracking-tight text-xl ${settingsThemeMode === 'dark' ? 'text-white' : 'text-blue-950'}`}>AutoAnki</span>
                   </div>
                   <div className="flex items-center gap-3">
                     {currentTab === 'dashboard' && (
@@ -19881,7 +20072,7 @@ Return your response strictly as a JSON object matching this schema:
                 )}
 
                 {/* MOBILE MAIN CONTENT */}
-                <main className="flex-grow overflow-y-auto pb-36 p-4">
+                <main className={`flex-grow overflow-y-auto pb-36 p-4 transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'}`}>
                   {currentTab === 'campTracker' && (
                     <CampDashboard
                       db={db}
@@ -19937,17 +20128,24 @@ Return your response strictly as a JSON object matching this schema:
                     />
                   )}
                   {currentTab === 'cards' && (
-                    <div className="space-y-6">
+                    <motion.div
+                      key="mobile-cards-tab"
+                      initial={{ opacity: 0, y: 24, scale: 0.98 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -16, scale: 0.98 }}
+                      transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+                      className={`space-y-6 min-h-full transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'}`}
+                    >
                       {/* Dashboard Stats */}
                       <div className="grid grid-cols-2 gap-3">
-                        <div className={`${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'} p-5 rounded-3xl text-white`}>
+                        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }} className={`${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'} p-5 rounded-3xl text-white`}>
                           <div className="text-[10px] font-black opacity-80 uppercase tracking-widest mb-1">Library</div>
                           <div className="text-2xl font-black">{cards.length} Cards</div>
-                        </div>
-                        <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-white' : 'neu-card-light text-gray-900'} p-5 rounded-3xl`}>
+                        </motion.div>
+                        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }} className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-white' : 'neu-card-light text-gray-900'} p-5 rounded-3xl`}>
                           <div className={`text-[10px] font-black uppercase tracking-widest mb-1 ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Queue</div>
                           <div className="text-2xl font-black">{queue.length} Items</div>
-                        </div>
+                        </motion.div>
                       </div>
 
                       {/* ACTIVE PROCESSING / QUEUE - HIGHER PRIORITY */}
@@ -19978,15 +20176,23 @@ Return your response strictly as a JSON object matching this schema:
                               <span className={`text-[11px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>Auto-Save on Generation</span>
                               <span className={`text-[9px] font-bold ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Uploads to library immediately upon completion</span>
                             </div>
-                            <label className="relative inline-flex items-center cursor-pointer select-none">
+                            <div className="neu-toggle-cont">
                               <input
                                 type="checkbox"
+                                id="mobile-autosave-toggle"
+                                className="toggle-input"
                                 checked={isAutosaveEnabled}
                                 onChange={(e) => setIsAutosaveEnabled(e.target.checked)}
-                                className="sr-only peer"
                               />
-                              <div className="w-9 h-5 bg-gray-300 rounded-full peer peer-focus:ring-0 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
-                            </label>
+                              <label
+                                htmlFor="mobile-autosave-toggle"
+                                className={settingsThemeMode === 'dark' ? 'toggle-label-dark' : 'toggle-label-light'}
+                              >
+                                <div className={settingsThemeMode === 'dark' ? 'cont-label-play-dark' : 'cont-label-play-light'}>
+                                  <span className="label-play"></span>
+                                </div>
+                              </label>
+                            </div>
                           </div>
 
                           {/* Mobile Image Storage Mode Selector */}
@@ -19994,22 +20200,45 @@ Return your response strictly as a JSON object matching this schema:
                             <div className="flex flex-col text-left">
                               <span className={`text-[11px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>Image Storage Mode</span>
                               <span className={`text-[9px] font-bold ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                                {imageStorageMode === 'local' ? '📁 Local DB (Offline & Instant)' : '☁️ ImgBB Cloud'}
+                                {imageStorageMode === 'local' ? '📁 Local DB (Offline)' : '☁️ ImgBB Cloud'}
                               </span>
                             </div>
-                            <select
-                              value={imageStorageMode}
-                              onChange={(e) => {
-                                const mode = e.target.value;
-                                setImageStorageMode(mode);
-                                localStorage.setItem("pyt_image_storage_mode", mode);
-                                saveLocalSetting('apiKeys', { imageStorageMode: mode });
-                              }}
-                              className={`text-[10px] font-black rounded-xl px-2.5 py-1.5 outline-none cursor-pointer ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white border border-gray-800' : 'neu-pressed-light text-gray-800 border border-gray-200'}`}
-                            >
-                              <option value="local" className={settingsThemeMode === 'dark' ? 'bg-slate-900 text-white' : ''}>📁 Local DB</option>
-                              <option value="cloud" className={settingsThemeMode === 'dark' ? 'bg-slate-900 text-white' : ''}>☁️ ImgBB Cloud</option>
-                            </select>
+                            <div className="neu-radio-group">
+                              <label className="neu-radio-btn">
+                                <input
+                                  type="radio"
+                                  name="mobile-image-storage-mode"
+                                  value="local"
+                                  checked={imageStorageMode === 'local'}
+                                  onChange={() => {
+                                    setImageStorageMode('local');
+                                    localStorage.setItem("pyt_image_storage_mode", 'local');
+                                    saveLocalSetting('apiKeys', { imageStorageMode: 'local' });
+                                  }}
+                                />
+                                <span className={settingsThemeMode === 'dark' ? 'neu-radio-span-dark' : 'neu-radio-span-light'}>
+                                  <span className="neu-radio-led"></span>
+                                  📁 Local
+                                </span>
+                              </label>
+                              <label className="neu-radio-btn">
+                                <input
+                                  type="radio"
+                                  name="mobile-image-storage-mode"
+                                  value="cloud"
+                                  checked={imageStorageMode === 'cloud'}
+                                  onChange={() => {
+                                    setImageStorageMode('cloud');
+                                    localStorage.setItem("pyt_image_storage_mode", 'cloud');
+                                    saveLocalSetting('apiKeys', { imageStorageMode: 'cloud' });
+                                  }}
+                                />
+                                <span className={settingsThemeMode === 'dark' ? 'neu-radio-span-dark' : 'neu-radio-span-light'}>
+                                  <span className="neu-radio-led"></span>
+                                  ☁️ Cloud
+                                </span>
+                              </label>
+                            </div>
                           </div>
 
                           <button
@@ -20024,58 +20253,71 @@ Return your response strictly as a JSON object matching this schema:
                           </button>
 
                           <div className="space-y-3 max-h-[250px] overflow-y-auto pr-1 custom-scrollbar">
-                            {queue.map(item => (
-                              <div key={item.id} onClick={() => setActiveQueueId(item.id)} className={`p-3 rounded-2xl border transition-all flex flex-col gap-2 cursor-pointer ${activeQueueId === item.id ? (settingsThemeMode === 'dark' ? 'neu-pressed-dark border-blue-500/50' : 'neu-pressed-light border-blue-400') : (settingsThemeMode === 'dark' ? 'neu-card-dark border-gray-800' : 'neu-card-light border-gray-200')}`}>
-                                <div className="flex items-center gap-3 w-full">
-                                  <div className={`w-10 h-10 rounded-xl overflow-hidden shrink-0 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
-                                    <img src={item.base64} className="w-full h-full object-cover" alt="" />
-                                  </div>
-                                  <div className="flex-grow min-w-0 text-left">
-                                    <div className={`text-[10px] font-bold truncate ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>{item.fileName}</div>
-                                    <div className="flex items-center gap-2 mt-1">
-                                      {item.status === 'processing' && <div className="h-1 flex-grow bg-blue-500/20 rounded-full overflow-hidden"><div className="h-full bg-blue-500 w-1/2 animate-pulse" /></div>}
-                                      {item.status === 'done' && <span className="text-[9px] text-emerald-500 font-black">READY ({item.generatedCards?.length || 0})</span>}
-                                      {item.status === 'pending' && <span className={`text-[9px] font-bold ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>QUEUED</span>}
-                                      {item.status === 'error' && (
-                                        <button onClick={() => retryItem(item.id)} className="text-[9px] text-red-500 font-black hover:underline cursor-pointer">
-                                          FAILED (RETRY)
-                                        </button>
-                                      )}
+                            <AnimatePresence mode="popLayout">
+                              {queue.map(item => (
+                                <motion.div
+                                  key={item.id}
+                                  layout
+                                  initial={{ opacity: 0, scale: 0.92, y: 16 }}
+                                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                                  exit={{ opacity: 0, scale: 0.9, height: 0, opacity: 0, padding: 0 }}
+                                  transition={{ type: "spring", stiffness: 180, damping: 22, mass: 0.8 }}
+                                  whileHover={{ scale: 1.02 }}
+                                  whileTap={{ scale: 0.97 }}
+                                  onClick={() => setActiveQueueId(item.id)}
+                                  className={`p-3 rounded-2xl border transition-all flex flex-col gap-2 cursor-pointer ${activeQueueId === item.id ? (settingsThemeMode === 'dark' ? 'neu-pressed-dark border-blue-500/50' : 'neu-pressed-light border-blue-400') : (settingsThemeMode === 'dark' ? 'neu-card-dark border-gray-800' : 'neu-card-light border-gray-200')}`}
+                                >
+                                  <div className="flex items-center gap-3 w-full">
+                                    <div className={`w-10 h-10 rounded-xl overflow-hidden shrink-0 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
+                                      <img src={item.base64} className="w-full h-full object-cover" alt="" />
                                     </div>
-                                  </div>
-                                  {item.status === 'done' && (
-                                    <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                                      <button
-                                        onClick={() => regeneratePageWithGemini(item.id)}
-                                        disabled={isProcessing}
-                                        className={`p-2 rounded-xl transition-all active:scale-95 disabled:opacity-50 ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-purple-400' : 'neu-btn-light text-purple-600'}`}
-                                        title="Regenerate this page using Gemini AI pipeline"
-                                      >
-                                        <Sparkles className="w-4 h-4 text-purple-400" />
-                                      </button>
-                                      <div className={`p-2 rounded-xl ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'}`}>
-                                        <CheckCircle className="w-4 h-4 text-white" />
+                                    <div className="flex-grow min-w-0 text-left">
+                                      <div className={`text-[10px] font-bold truncate ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>{item.fileName}</div>
+                                      <div className="flex items-center gap-2 mt-1">
+                                        {item.status === 'processing' && <div className="h-1 flex-grow bg-blue-500/20 rounded-full overflow-hidden"><div className="h-full bg-blue-500 w-1/2 animate-pulse" /></div>}
+                                        {item.status === 'done' && <span className="text-[9px] text-emerald-500 font-black">READY ({item.generatedCards?.length || 0})</span>}
+                                        {item.status === 'pending' && <span className={`text-[9px] font-bold ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>QUEUED</span>}
+                                        {item.status === 'error' && (
+                                          <button onClick={() => retryItem(item.id)} className="text-[9px] text-red-500 font-black hover:underline cursor-pointer">
+                                            FAILED (RETRY)
+                                          </button>
+                                        )}
                                       </div>
                                     </div>
-                                  )}
-                                </div>
-                                <div className={`flex items-center gap-1.5 w-full pt-1.5 border-t ${settingsThemeMode === 'dark' ? 'border-gray-800' : 'border-gray-200'}`} onClick={(e) => e.stopPropagation()}>
-                                  <Folder className={`w-3 h-3 shrink-0 ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
-                                  <select
-                                    value={item.deck || hierarchy}
-                                    onChange={(e) => {
-                                      const nextDeck = e.target.value;
-                                      setQueue(prev => prev.map(q => q.id === item.id ? { ...q, deck: nextDeck, hasCustomDeck: true } : q));
-                                    }}
-                                    className={`text-[9px] rounded px-1.5 py-0.5 flex-grow truncate outline-none cursor-pointer font-bold ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white border border-gray-800' : 'neu-pressed-light text-gray-800 border border-gray-200'}`}
-                                  >
-                                    {effectiveDeckPaths.map(p => (
-                                      <option key={p} value={p} className={settingsThemeMode === 'dark' ? 'bg-slate-900 text-white' : ''}>{p.replace(/::/g, ' ➔ ')}</option>
-                                    ))}
-                                  </select>
-                                </div>
-                              </div>
-                            ))}
+                                    {item.status === 'done' && (
+                                      <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                        <button
+                                          onClick={() => regeneratePageWithGemini(item.id)}
+                                          disabled={isProcessing}
+                                          className={`p-2 rounded-xl transition-all active:scale-95 disabled:opacity-50 ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-purple-400' : 'neu-btn-light text-purple-600'}`}
+                                          title="Regenerate this page using Gemini AI pipeline"
+                                        >
+                                          <Sparkles className="w-4 h-4 text-purple-400" />
+                                        </button>
+                                        <div className={`p-2 rounded-xl ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'}`}>
+                                          <CheckCircle className="w-4 h-4 text-white" />
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className={`flex items-center gap-1.5 w-full pt-1.5 border-t ${settingsThemeMode === 'dark' ? 'border-gray-800' : 'border-gray-200'}`} onClick={(e) => e.stopPropagation()}>
+                                    <Folder className={`w-3 h-3 shrink-0 ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                                    <select
+                                      value={item.deck || hierarchy}
+                                      onChange={(e) => {
+                                        const nextDeck = e.target.value;
+                                        setQueue(prev => prev.map(q => q.id === item.id ? { ...q, deck: nextDeck, hasCustomDeck: true } : q));
+                                      }}
+                                      className={`text-[9px] rounded px-1.5 py-0.5 flex-grow truncate outline-none cursor-pointer font-bold ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white border border-gray-800' : 'neu-pressed-light text-gray-800 border border-gray-200'}`}
+                                    >
+                                      {effectiveDeckPaths.map(p => (
+                                        <option key={p} value={p} className={settingsThemeMode === 'dark' ? 'bg-slate-900 text-white' : ''}>{p.replace(/::/g, ' ➔ ')}</option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                </motion.div>
+                              ))}
+                            </AnimatePresence>
                           </div>
                         </div>
                       )}
@@ -20098,7 +20340,7 @@ Return your response strictly as a JSON object matching this schema:
                         </div>
 
                         {showMobileFolderTree && (
-                          <div className={`p-3 rounded-2xl mb-4 text-left max-h-[250px] overflow-y-auto custom-scrollbar ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200'}`}>
+                          <div className={`p-3.5 px-3.5 rounded-2xl mb-4 text-left max-h-[250px] overflow-y-auto custom-scrollbar ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200'}`}>
                             <TreeFolder
                               node={buildTree(effectiveDeckPaths, cloudPages, deckCardCounts)}
                               level={0}
@@ -20110,6 +20352,7 @@ Return your response strictly as a JSON object matching this schema:
                               onMoveNode={handleMoveNode}
                               isMobileMoveMode={!!movingNode}
                               onToggleMove={(path) => setMovingNode(movingNode === path ? null : path)}
+                              themeMode={settingsThemeMode}
                             />
                           </div>
                         )}
@@ -20146,21 +20389,33 @@ Return your response strictly as a JSON object matching this schema:
                             </div>
 
                             {/* Cards Display */}
-                            {(queue.find(q => q.id === activeQueueId)?.generatedCards || pageCards).map(card => (
-                              <div key={card.id} className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-white' : 'neu-card-light text-gray-900'} p-4 rounded-2xl space-y-2`}>
-                                <div className="flex items-center justify-between">
-                                  <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full inline-block ${settingsThemeMode === 'dark' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}>{card.type}</span>
-                                </div>
-                                {card.type === 'Cloze' ? (
-                                  <div className={`text-sm font-medium leading-relaxed ${settingsThemeMode === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>{card.text}</div>
-                                ) : (
-                                  <div className="space-y-1">
-                                    <div className={`text-sm font-black leading-tight ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>{card.front}</div>
-                                    <div className={`text-xs font-medium ${settingsThemeMode === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>{card.back}</div>
+                            <AnimatePresence mode="popLayout">
+                              {(queue.find(q => q.id === activeQueueId)?.generatedCards || pageCards).map((card, idx) => (
+                                <motion.div
+                                  key={card.id || idx}
+                                  layout
+                                  initial={{ opacity: 0, y: 20, scale: 0.96 }}
+                                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                                  exit={{ opacity: 0, scale: 0.92, height: 0, opacity: 0 }}
+                                  transition={{ duration: 0.6, delay: idx * 0.05, ease: [0.22, 1, 0.36, 1] }}
+                                  whileHover={{ scale: 1.015, y: -2 }}
+                                  whileTap={{ scale: 0.98 }}
+                                  className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-white' : 'neu-card-light text-gray-900'} p-4 rounded-2xl space-y-2`}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full inline-block ${settingsThemeMode === 'dark' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}>{card.type}</span>
                                   </div>
-                                )}
-                              </div>
-                            ))}
+                                  {card.type === 'Cloze' ? (
+                                    <div className={`text-sm font-medium leading-relaxed ${settingsThemeMode === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>{card.text}</div>
+                                  ) : (
+                                    <div className="space-y-1">
+                                      <div className={`text-sm font-black leading-tight ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>{card.front}</div>
+                                      <div className={`text-xs font-medium ${settingsThemeMode === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>{card.back}</div>
+                                    </div>
+                                  )}
+                                </motion.div>
+                              ))}
+                            </AnimatePresence>
                             {(queue.find(q => q.id === activeQueueId)?.generatedCards || pageCards).length === 0 && (
                               <div className={`p-10 text-center italic text-sm ${settingsThemeMode === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
                                 No cards generated yet for this page.
@@ -20233,7 +20488,7 @@ Return your response strictly as a JSON object matching this schema:
                           </div>
                         </div>
                       )}
-                    </div>
+                    </motion.div>
                   )}
 
                   {currentTab === 'library' && (
@@ -22573,9 +22828,8 @@ Return your response strictly as a JSON object matching this schema:
                       {/* Mobile Export Progress Overlay */}
                       {isExporting && (
                         <div className="fixed inset-0 bg-white/95 backdrop-blur-sm z-[200] flex flex-col items-center justify-center p-6 text-center">
-                          <div className="relative mb-4">
-                            <div className="w-16 h-16 rounded-full border-4 border-blue-100 border-t-blue-600 animate-spin"></div>
-                            <Download className="w-6 h-6 text-blue-600 absolute inset-0 m-auto animate-pulse" />
+                          <div className="relative mb-4 flex items-center justify-center">
+                            <OrbitalLoader themeMode={settingsThemeMode} size="large" />
                           </div>
                           <h4 className="text-base font-black text-gray-900 tracking-tight mb-1">Generating Bundle Payload</h4>
                           <p className="text-xs text-gray-500 font-bold max-w-xs">{exportProgressText || "Compiling databases, please wait..."}</p>
@@ -23779,7 +24033,7 @@ Return your response strictly as a JSON object matching this schema:
                 </main>
 
                 {/* DYNAMIC MOBILE NAVIGATION */}
-                <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex items-center justify-around z-30" style={{ paddingBottom: 'env(safe-area-inset-bottom, 12px)', paddingTop: '10px', paddingLeft: '8px', paddingRight: '8px' }}>
+                <nav className={`fixed bottom-0 left-0 right-0 border-t flex items-center justify-around z-30 transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-card-dark border-gray-800 text-gray-200' : 'neu-card-light border-gray-200/80 text-gray-700'}`} style={{ paddingBottom: 'env(safe-area-inset-bottom, 12px)', paddingTop: '10px', paddingLeft: '8px', paddingRight: '8px' }}>
                   {bottomNavIds.slice(0, 8).map(id => {
                     const menu = ALL_MENUS.find(m => m.id === id);
                     if (!menu) return null;
@@ -23806,197 +24060,122 @@ Return your response strictly as a JSON object matching this schema:
             );
           } else {
             mainContent = (
-              <div className="h-screen w-screen bg-gray-50 text-gray-800 font-sans flex overflow-hidden">
+              <div className={`h-screen w-screen font-sans flex overflow-hidden transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'}`}>
 
                 {/* SIDEBAR NAVIGATION (Hidden on Mobile) */}
-                <aside className={`flex ${isSidebarExpanded ? 'w-64' : 'w-20'} bg-blue-950 text-white flex flex-col py-6 border-r border-blue-900/50 shrink-0 transition-all duration-300 shadow-2xl z-20`}>
-                  <div className="px-6 mb-10 flex items-center justify-between">
+                <aside className={`flex ${isSidebarExpanded ? 'w-64' : 'w-20'} ${settingsThemeMode === 'dark' ? 'neu-card-dark border-r border-gray-800/80 text-slate-100' : 'neu-card-light border-r border-gray-200/80 text-slate-800'} flex flex-col py-6 shrink-0 transition-all duration-300 shadow-xl z-20 neu-action-sidebar`}>
+
+                  <div className="px-5 mb-8 flex items-center justify-between z-10">
                     <div className="flex items-center gap-3">
-                      <img src="/favicon.svg" alt="AutoAnki Logo" className="w-10 h-10 shrink-0 object-contain rounded-xl" />
-                      {isSidebarExpanded && <span className="font-black tracking-tight text-xl truncate">AutoAnki</span>}
+                      <img src="/favicon.svg" alt="AutoAnki Logo" className="w-9 h-9 shrink-0 object-contain rounded-xl shadow-md" />
+                      {isSidebarExpanded && <span className={`font-black tracking-tight text-xl truncate ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>AutoAnki</span>}
                     </div>
                     <button
                       onClick={() => setIsSidebarExpanded(!isSidebarExpanded)}
-                      className="p-1.5 hover:bg-white/10 rounded-lg text-blue-300 block"
+                      className={`p-1.5 rounded-xl transition-all cursor-pointer active:scale-95 ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-gray-400 hover:text-blue-400' : 'neu-btn-light text-gray-600 hover:text-blue-600'}`}
                     >
-                      {isSidebarExpanded ? <ChevronLeft className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                      {isSidebarExpanded ? <ChevronLeft className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
                     </button>
                   </div>
 
-                  <nav className="flex-grow space-y-2 px-3 overflow-y-auto custom-scrollbar max-h-[calc(100vh-220px)]">
-                    <button
-                      onClick={() => setCurrentTab('dashboard')}
-                      className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl transition ${currentTab === 'dashboard' ? 'bg-blue-600 shadow-lg shadow-blue-600/30 font-bold' : 'hover:bg-white/10 text-blue-200'}`}
-                      title="Dashboard"
-                    >
-                      <LayoutDashboard className="w-5 h-5 shrink-0" />
-                      {isSidebarExpanded && <span className="text-sm">Dashboard</span>}
-                    </button>
-                    <button
-                      onClick={() => setCurrentTab('campTracker')}
-                      className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl transition ${currentTab === 'campTracker' ? 'bg-blue-600 shadow-lg shadow-blue-600/30 font-bold' : 'hover:bg-white/10 text-blue-200'}`}
-                      title="CAMP Tracker"
-                    >
-                      <Activity className="w-5 h-5 shrink-0" />
-                      {isSidebarExpanded && <span className="text-sm">CAMP Tracker</span>}
-                    </button>
-                    <button
-                      onClick={() => setCurrentTab('cards')}
-                      className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl transition ${currentTab === 'cards' ? 'bg-blue-600 shadow-lg shadow-blue-600/30 font-bold' : 'hover:bg-white/10 text-blue-200'}`}
-                      title="Card Generation"
-                    >
-                      <Home className="w-5 h-5 shrink-0" />
-                      {isSidebarExpanded && <span className="text-sm">Card Generation</span>}
-                    </button>
-                    <button
-                      onClick={() => setCurrentTab('library')}
-                      className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl transition ${currentTab === 'library' ? 'bg-blue-600 shadow-lg shadow-blue-600/30 font-bold' : 'hover:bg-white/10 text-blue-200'}`}
-                      title="Library"
-                    >
-                      <Library className="w-5 h-5 shrink-0" />
-                      {isSidebarExpanded && <span className="text-sm">Library</span>}
-                    </button>
-                    <button
-                      onClick={() => { setCurrentTab('study'); setCurrentStudyCardIndex(0); setIsAnswerRevealed(false); }}
-                      className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl transition ${currentTab === 'study' ? 'bg-blue-600 shadow-lg shadow-blue-600/30 font-bold' : 'hover:bg-white/10 text-blue-200'}`}
-                      title="Study Room"
-                    >
-                      <GraduationCap className="w-5 h-5 shrink-0" />
-                      {isSidebarExpanded && <span className="text-sm">Study Room</span>}
-                    </button>
-                    <button
-                      onClick={() => setCurrentTab('analytics')}
-                      className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl transition ${currentTab === 'analytics' ? 'bg-blue-600 shadow-lg shadow-blue-600/30 font-bold' : 'hover:bg-white/10 text-blue-200'}`}
-                      title="Analysis"
-                    >
-                      <BarChart2 className="w-5 h-5 shrink-0" />
-                      {isSidebarExpanded && <span className="text-sm">Analysis</span>}
-                    </button>
-                    <button
-                      onClick={() => setCurrentTab('correlation')}
-                      className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl transition ${currentTab === 'correlation' ? 'bg-blue-600 shadow-lg shadow-blue-600/30 font-bold' : 'hover:bg-white/10 text-blue-200'}`}
-                      title="Health Insights"
-                    >
-                      <Activity className="w-5 h-5 shrink-0" />
-                      {isSidebarExpanded && <span className="text-sm">Health Insights</span>}
-                    </button>
-                    <button
-                      onClick={() => setCurrentTab('export')}
-                      className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl transition ${currentTab === 'export' ? 'bg-blue-600 shadow-lg shadow-blue-600/30 font-bold' : 'hover:bg-white/10 text-blue-200'}`}
-                      title="Exporter Hub"
-                    >
-                      <Download className="w-5 h-5 shrink-0 animate-bounce" />
-                      {isSidebarExpanded && <span className="text-sm">Exporter Hub</span>}
-                    </button>
-                    <button
-                      onClick={() => setCurrentTab('prompt')}
-                      className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl transition ${currentTab === 'prompt' ? 'bg-blue-600 shadow-lg shadow-blue-600/30 font-bold' : 'hover:bg-white/10 text-blue-200'}`}
-                      title="AI Prompt"
-                    >
-                      <MessageSquare className="w-5 h-5 shrink-0" />
-                      {isSidebarExpanded && <span className="text-sm">AI Prompt</span>}
-                    </button>
-                    <button
-                      onClick={() => setCurrentTab('pytManager')}
-                      className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl transition ${currentTab === 'pytManager' ? 'bg-blue-600 shadow-lg shadow-blue-600/30 font-bold' : 'hover:bg-white/10 text-blue-200'}`}
-                      title="PYT Manager"
-                    >
-                      <BookOpen className="w-5 h-5 shrink-0" />
-                      {isSidebarExpanded && <span className="text-sm">PYT Manager</span>}
-                    </button>
-                    <button
-                      onClick={() => setCurrentTab('pytLogger')}
-                      className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl transition ${currentTab === 'pytLogger' ? 'bg-blue-600 shadow-lg shadow-blue-600/30 font-bold' : 'hover:bg-white/10 text-blue-200'}`}
-                      title="PYT Logger"
-                    >
-                      <CheckCircle2 className="w-5 h-5 shrink-0" />
-                      {isSidebarExpanded && <span className="text-sm">PYT Logger</span>}
-                    </button>
-                    <button
-                      onClick={() => setCurrentTab('subjectTracker')}
-                      className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl transition ${currentTab === 'subjectTracker' ? 'bg-blue-600 shadow-lg shadow-blue-600/30 font-bold' : 'hover:bg-white/10 text-blue-200'}`}
-                      title="Subject Tracker"
-                    >
-                      <ListChecks className="w-5 h-5 shrink-0" />
-                      {isSidebarExpanded && <span className="text-sm">Subject Tracker</span>}
-                    </button>
-                    <button
-                      onClick={() => setCurrentTab('smartReview')}
-                      className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl transition ${currentTab === 'smartReview' ? 'bg-blue-600 shadow-lg shadow-blue-600/30 font-bold' : 'hover:bg-white/10 text-blue-200'}`}
-                      title="Smart Review"
-                    >
-                      <Brain className="w-5 h-5 shrink-0" />
-                      {isSidebarExpanded && <span className="text-sm">Smart Review</span>}
-                    </button>
-                    <button
-                      onClick={() => setCurrentTab('studyScheduler')}
-                      className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl transition ${currentTab === 'studyScheduler' ? 'bg-blue-600 shadow-lg shadow-blue-600/30 font-bold' : 'hover:bg-white/10 text-blue-200'}`}
-                      title="Study Scheduler"
-                    >
-                      <Calendar className="w-5 h-5 shrink-0" />
-                      {isSidebarExpanded && <span className="text-sm">Study Scheduler</span>}
-                    </button>
-                    <button
-                      onClick={() => setCurrentTab('obsOverlay')}
-                      className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl transition ${currentTab === 'obsOverlay' ? 'bg-blue-600 shadow-lg shadow-blue-600/30 font-bold' : 'hover:bg-white/10 text-blue-200'}`}
-                      title="OBS Customiser"
-                    >
-                      <Tv className="w-5 h-5 shrink-0" />
-                      {isSidebarExpanded && <span className="text-sm">OBS Customiser</span>}
-                    </button>
-                    <button
-                      onClick={() => setCurrentTab('about')}
-                      className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl transition ${currentTab === 'about' ? 'bg-blue-600 shadow-lg shadow-blue-600/30 font-bold' : 'hover:bg-white/10 text-blue-200'}`}
-                      title="About"
-                    >
-                      <Info className="w-5 h-5 shrink-0" />
-                      {isSidebarExpanded && <span className="text-sm">About</span>}
-                    </button>
-                    <button
-                      onClick={() => setCurrentTab('settings')}
-                      className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl transition ${currentTab === 'settings' ? 'bg-blue-600 shadow-lg shadow-blue-600/30 font-bold' : 'hover:bg-white/10 text-blue-200'}`}
-                      title="Settings"
-                    >
-                      <Settings className="w-5 h-5 shrink-0" />
-                      {isSidebarExpanded && <span className="text-sm">Settings</span>}
-                    </button>
-                    <button
-                      onClick={() => setCurrentTab('trash')}
-                      className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl transition ${currentTab === 'trash' ? 'bg-red-600 shadow-lg shadow-red-600/30 font-bold' : 'hover:bg-white/10 text-blue-200'}`}
-                      title="Recycle Bin"
-                    >
-                      <Trash2 className="w-5 h-5 shrink-0" />
-                      {isSidebarExpanded && <span className="text-sm">Recycle Bin</span>}
-                    </button>
+                  <nav className="flex-grow space-y-2.5 px-3 overflow-y-auto custom-scrollbar max-h-[calc(100vh-200px)] z-10">
+                    {[
+                      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, action: () => setCurrentTab('dashboard') },
+                      { id: 'campTracker', label: 'CAMP Tracker', icon: Activity, action: () => setCurrentTab('campTracker') },
+                      { id: 'cards', label: 'Card Generation', icon: Home, action: () => setCurrentTab('cards') },
+                      { id: 'library', label: 'Library', icon: Library, action: () => setCurrentTab('library') },
+                      { id: 'study', label: 'Study Room', icon: GraduationCap, action: () => { setCurrentTab('study'); setCurrentStudyCardIndex(0); setIsAnswerRevealed(false); } },
+                      { id: 'analytics', label: 'Analysis', icon: BarChart2, action: () => setCurrentTab('analytics') },
+                      { id: 'correlation', label: 'Health Insights', icon: Activity, action: () => setCurrentTab('correlation') },
+                      { id: 'export', label: 'Exporter Hub', icon: Download, action: () => setCurrentTab('export') },
+                      { id: 'prompt', label: 'AI Prompt', icon: MessageSquare, action: () => setCurrentTab('prompt') },
+                      { id: 'pytManager', label: 'PYT Manager', icon: BookOpen, action: () => setCurrentTab('pytManager') },
+                      { id: 'pytLogger', label: 'PYT Logger', icon: CheckCircle2, action: () => setCurrentTab('pytLogger') },
+                      { id: 'subjectTracker', label: 'Subject Tracker', icon: ListChecks, action: () => setCurrentTab('subjectTracker') },
+                      { id: 'smartReview', label: 'Smart Review', icon: Brain, action: () => setCurrentTab('smartReview') },
+                      { id: 'studyScheduler', label: 'Study Scheduler', icon: Calendar, action: () => setCurrentTab('studyScheduler') },
+                      { id: 'obsOverlay', label: 'OBS Customiser', icon: Tv, action: () => setCurrentTab('obsOverlay') },
+                      { id: 'about', label: 'About', icon: Info, action: () => setCurrentTab('about') },
+                      { id: 'settings', label: 'Settings', icon: Settings, action: () => setCurrentTab('settings') },
+                      { id: 'trash', label: 'Recycle Bin', icon: Trash2, action: () => setCurrentTab('trash') },
+                    ].map(item => {
+                      const IconComp = item.icon;
+                      const isActive = currentTab === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={item.action}
+                          onMouseEnter={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setSidebarTooltip({ label: item.label, top: rect.top + rect.height / 2 });
+                          }}
+                          onMouseLeave={() => setSidebarTooltip(null)}
+                          className={`neu-action-item ${settingsThemeMode === 'dark' ? 'dark-theme' : 'light-theme'} ${isActive ? 'active' : ''} w-full flex items-center gap-3 px-2 py-1.5 rounded-2xl group relative`}
+                        >
+                          <div className="neu-action-icon-box">
+                            <IconComp className={`w-5 h-5 shrink-0 ${item.id === 'export' && isActive ? 'animate-bounce' : ''}`} />
+                          </div>
+                          {isSidebarExpanded && (
+                            <span className={`text-xs font-black tracking-wide truncate transition-colors ${isActive ? (settingsThemeMode === 'dark' ? 'text-blue-400' : 'text-blue-600') : (settingsThemeMode === 'dark' ? 'text-gray-300 group-hover:text-white' : 'text-gray-700 group-hover:text-gray-900')}`}>
+                              {item.label}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </nav>
 
-                  <div className="mt-auto px-4 pb-4">
-                    <div className={`bg-white/5 p-4 rounded-2xl border border-white/10 ${!isSidebarExpanded && 'items-center flex flex-col'}`}>
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className="w-8 h-8 shrink-0 rounded-full bg-blue-500 flex items-center justify-center font-bold text-xs">
+                  <div className="mt-auto px-3 pt-3 z-10">
+                    <div className={`p-3 rounded-2xl transition-all ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200/60'} ${!isSidebarExpanded && 'items-center flex flex-col'}`}>
+                      <div className="flex items-center gap-3 mb-1">
+                        <div className="w-8 h-8 shrink-0 rounded-xl bg-gradient-to-tr from-blue-600 to-cyan-500 text-white flex items-center justify-center font-black text-xs shadow-md">
                           {user.displayName?.[0] || user.email?.[0] || 'D'}
                         </div>
                         {isSidebarExpanded && (
-                          <div className="truncate flex-grow">
-                            <div className="text-[10px] text-blue-400 font-bold uppercase tracking-wider">Medical ID</div>
-                            <div className="text-xs font-medium truncate">{user.displayName || 'Doctor'}</div>
+                          <div className="truncate flex-grow text-left">
+                            <div className="text-[9px] text-blue-500 font-extrabold uppercase tracking-widest">Medical ID</div>
+                            <div className={`text-xs font-black truncate ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>{user.displayName || 'Doctor'}</div>
                           </div>
                         )}
                       </div>
                       {isSidebarExpanded && (
-                        <button onClick={logout} className="w-full text-left text-[10px] text-blue-300 hover:text-white transition uppercase font-black">Sign Out</button>
+                        <button onClick={logout} className="w-full text-left text-[9px] text-red-500 hover:text-red-600 transition uppercase font-black tracking-wider pt-1 border-t border-gray-200/20">Sign Out</button>
                       )}
                     </div>
                   </div>
+
+                  <AnimatePresence>
+                    {!isSidebarExpanded && sidebarTooltip && (
+                      <motion.div
+                        key="sidebar-tooltip-pill"
+                        initial={{ opacity: 0, x: -14, scale: 0.8 }}
+                        animate={{ opacity: 1, x: 0, scale: 1 }}
+                        exit={{ opacity: 0, x: -10, scale: 0.85 }}
+                        transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                        className={`fixed z-[99999] pointer-events-none ${
+                          settingsThemeMode === 'dark'
+                            ? 'bg-[#242832] text-white border-1.5 border-sky-400/40 shadow-[0_6px_22px_rgba(56,189,248,0.35)]'
+                            : 'bg-white text-slate-900 border-1.5 border-blue-500/35 shadow-[0_6px_22px_rgba(37,99,235,0.25)]'
+                        } px-4 py-1.5 rounded-full font-black text-xs whitespace-nowrap flex items-center justify-center`}
+                        style={{
+                          left: '88px',
+                          top: `${sidebarTooltip.top}px`,
+                          transform: 'translateY(-50%)'
+                        }}
+                      >
+                        {sidebarTooltip.label}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </aside>
 
                 {/* MAIN CONTENT AREA */}
-                <div className="flex-grow flex flex-col relative overflow-hidden">
+                <div className={`flex-grow flex flex-col relative overflow-hidden transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'}`}>
 
                   {/* TOP BAR */}
-                  <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 shrink-0 z-10">
+                  <header className={`h-16 flex items-center justify-between px-6 shrink-0 z-10 border-b transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-card-dark border-gray-800 text-white shadow-md' : 'neu-card-light border-gray-200/80 text-gray-800 shadow-sm'}`}>
                     <div className="flex items-center gap-4">
-                      <h2 className="font-black text-lg text-gray-900 tracking-tight capitalize">
+                      <h2 className={`font-black text-lg tracking-tight capitalize ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                         {currentTab === 'campTracker' ? 'CAMP Tracker' : currentTab}
                       </h2>
                       {currentTab === 'dashboard' && (
@@ -24178,7 +24357,7 @@ Return your response strictly as a JSON object matching this schema:
                   </header>
 
                   {/* TAB VIEWS */}
-                  <div className="flex-grow flex flex-col overflow-hidden relative">
+                  <div className={`flex-grow flex flex-col overflow-hidden relative transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'}`}>
 
                     {currentTab === 'campTracker' && (
                       <CampDashboard
@@ -24247,53 +24426,94 @@ Return your response strictly as a JSON object matching this schema:
                     )}
 
                     {currentTab === 'cards' && (
-                      <div className={`flex-grow p-4 flex gap-4 max-w-[1920px] mx-auto w-full h-full overflow-hidden ${settingsThemeMode === 'dark' ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'}`}>
+                      <motion.div
+                        key="desktop-cards-tab"
+                        ref={cardsContainerRef}
+                        initial={{ opacity: 0, y: 24, scale: 0.98 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -16, scale: 0.98 }}
+                        transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+                        className={`flex-grow p-4 pr-7 flex gap-4 max-w-[1920px] mx-auto w-full h-full overflow-hidden ${settingsThemeMode === 'dark' ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'}`}
+                      >
                         {/* Left: Folders & Queue */}
                         <div
-                          className="flex flex-col gap-4 min-w-[250px] h-full overflow-y-auto pr-1 custom-scrollbar"
-                          style={{ width: `${leftWidth}px` }}
+                          className="flex flex-col gap-5 min-w-[220px] shrink-0 h-full overflow-y-auto p-3.5 custom-scrollbar"
+                          style={{ width: `${colWidths.left}%` }}
                         >
-                          <div
-                            className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-4 shrink-0 flex flex-col`}
-                            style={{ height: `${deckHeight}px` }}
-                          >
-                            <div className="flex justify-between items-center mb-3 shrink-0">
-                              <h2 className={`font-black flex items-center gap-2 text-xs uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>
-                                <Folder className="w-4 h-4 text-blue-500" /> Deck Target
-                              </h2>
-                              <button
-                                onClick={() => setNewFolderDialog({ isOpen: true, basePath: '', input: '' })}
-                                className={`p-1.5 rounded-xl transition ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400' : 'neu-btn-light text-blue-600'}`}
-                                title="Create New Folder"
-                              >
-                                <Plus className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                            <div className={`flex-grow overflow-y-auto rounded-2xl p-2.5 mb-2 custom-scrollbar ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200/60'}`}>
-                              <TreeFolder
-                                node={buildTree(effectiveDeckPaths, cloudPages, deckCardCounts)}
-                                level={0}
-                                selectedPath={hierarchy}
-                                onSelect={setHierarchy}
-                                onAdd={(path) => setNewFolderDialog({ isOpen: true, basePath: path, input: '' })}
-                                onRename={(path) => setRenameDialog({ isOpen: true, path: path, input: path.split('::').pop() })}
-                                onMoveNode={handleMoveNode}
-                                showCounts={true}
-                              />
-                            </div>
-                            <div className={`text-[10px] p-2.5 rounded-xl flex items-center justify-between shrink-0 font-medium ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400 border border-blue-500/30' : 'neu-pressed-light text-blue-900 border border-blue-200/50'}`}>
-                              <span className="truncate pr-1"><strong>Target:</strong> {hierarchy}</span>
-                              <button
-                                onClick={() => {
-                                  setSelectedDecksToExport([hierarchy]);
-                                  setCurrentTab('export');
+                          {(() => {
+                            const isExpanded = isDeckCardHovered || isDeckCardClicked;
+                            return (
+                              <div
+                                onMouseEnter={() => setIsDeckCardHovered(true)}
+                                onMouseLeave={() => setIsDeckCardHovered(false)}
+                                className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-4 shrink-0 flex flex-col transition-all duration-500 ease-in-out overflow-hidden cursor-pointer`}
+                                style={{ height: isExpanded ? `${deckHeight}px` : '64px' }}
+                                onClick={(e) => {
+                                  if (!e.target.closest('button') && !e.target.closest('.TreeFolder')) {
+                                    setIsDeckCardClicked(prev => !prev);
+                                  }
                                 }}
-                                className={`ml-1 px-3 py-1 text-[9px] font-black uppercase tracking-wider rounded-lg transition shrink-0 flex items-center gap-1 ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'}`}
                               >
-                                <Download className="w-2.5 h-2.5" /> Export
-                              </button>
-                            </div>
-                          </div>
+                                <div className="flex justify-between items-center shrink-0 h-8">
+                                  <h2 className={`font-black flex items-center gap-2 text-xs uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>
+                                    <Folder className="w-4 h-4 text-blue-500" /> Deck Target
+                                    {!isExpanded && (
+                                      <span className={`text-[10px] normal-case font-bold px-2 py-0.5 rounded-lg truncate max-w-[120px] ${settingsThemeMode === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-800'}`}>
+                                        {hierarchy}
+                                      </span>
+                                    )}
+                                  </h2>
+                                  <div className="flex items-center gap-1.5">
+                                    {isExpanded && (
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); setNewFolderDialog({ isOpen: true, basePath: '', input: '' }); }}
+                                        className={`p-1.5 rounded-xl transition ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400' : 'neu-btn-light text-blue-600'}`}
+                                        title="Create New Folder"
+                                      >
+                                        <Plus className="w-3.5 h-3.5" />
+                                      </button>
+                                    )}
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); setIsDeckCardClicked(prev => !prev); }}
+                                      className={`p-1.5 rounded-xl transition ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-gray-400 hover:text-white' : 'neu-btn-light text-gray-500 hover:text-gray-900'}`}
+                                      title={isExpanded ? "Collapse Card" : "Expand Card"}
+                                    >
+                                      {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <div className={`min-h-0 flex-grow flex flex-col transition-all duration-300 ${isExpanded ? 'opacity-100 mt-3' : 'opacity-0 h-0 overflow-hidden pointer-events-none'}`}>
+                                  <div className={`min-h-0 flex-grow overflow-y-auto rounded-2xl p-3.5 mb-2 custom-scrollbar ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200/60'}`}>
+                                    <TreeFolder
+                                      node={buildTree(effectiveDeckPaths, cloudPages, deckCardCounts)}
+                                      level={0}
+                                      selectedPath={hierarchy}
+                                      onSelect={setHierarchy}
+                                      onAdd={(path) => setNewFolderDialog({ isOpen: true, basePath: path, input: '' })}
+                                      onRename={(path) => setRenameDialog({ isOpen: true, path: path, input: path.split('::').pop() })}
+                                      onMoveNode={handleMoveNode}
+                                      showCounts={true}
+                                      themeMode={settingsThemeMode}
+                                    />
+                                  </div>
+                                  <div className={`text-[10px] p-2.5 rounded-xl flex items-center justify-between shrink-0 font-medium ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400 border border-blue-500/30' : 'neu-pressed-light text-blue-900 border border-blue-200/50'}`}>
+                                    <span className="truncate pr-1"><strong>Target:</strong> {hierarchy}</span>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedDecksToExport([hierarchy]);
+                                        setCurrentTab('export');
+                                      }}
+                                      className={`ml-1 px-3 py-1 text-[9px] font-black uppercase tracking-wider rounded-lg transition shrink-0 flex items-center gap-1 ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'}`}
+                                    >
+                                      <Download className="w-2.5 h-2.5" /> Export
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })()}
 
                           {/* Vertical Resize Handle */}
                           <div
@@ -24324,16 +24544,16 @@ Return your response strictly as a JSON object matching this schema:
                             <div className="space-y-3">
                               <div>
                                 <label className={`block text-[9px] font-black uppercase tracking-widest mb-1 text-left ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Prompt Template</label>
-                                <select
+                                <NeumorphicSelect
                                   value={generationPromptId}
-                                  onChange={(e) => setGenerationPromptId(e.target.value)}
-                                  className={`w-full p-2.5 rounded-xl outline-none text-xs font-bold transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white border border-gray-800' : 'neu-pressed-light text-gray-800 border border-gray-200'}`}
-                                >
-                                  <option value="default" className={settingsThemeMode === 'dark' ? 'bg-slate-900 text-white' : ''}>Default Medical Prompt</option>
-                                  {customPrompts.map(p => (
-                                    <option key={p.id} value={p.id} className={settingsThemeMode === 'dark' ? 'bg-slate-900 text-white' : ''}>{p.name}</option>
-                                  ))}
-                                </select>
+                                  onChange={(val) => setGenerationPromptId(val)}
+                                  options={[
+                                    { value: 'default', label: 'Default Medical Prompt' },
+                                    ...customPrompts.map(p => ({ value: p.id, label: p.name }))
+                                  ]}
+                                  themeMode={settingsThemeMode}
+                                  placeholder="Select Prompt Template..."
+                                />
                               </div>
 
                               {(() => {
@@ -24346,16 +24566,16 @@ Return your response strictly as a JSON object matching this schema:
                                   return (
                                     <div className="animate-in slide-in-from-top-2 duration-200">
                                       <label className={`block text-[9px] font-black uppercase tracking-widest mb-1 text-left ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Select Subject</label>
-                                      <select
+                                      <NeumorphicSelect
                                         value={selectedGenerationSubject}
-                                        onChange={(e) => setSelectedGenerationSubject(e.target.value)}
-                                        className={`w-full p-2.5 rounded-xl outline-none text-xs font-bold transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white border border-gray-800' : 'neu-pressed-light text-gray-800 border border-gray-200'}`}
-                                      >
-                                        <option value="" className={settingsThemeMode === 'dark' ? 'bg-slate-900 text-white' : ''}>-- Choose Subject --</option>
-                                        {subjects.map(sub => (
-                                          <option key={sub} value={sub} className={settingsThemeMode === 'dark' ? 'bg-slate-900 text-white' : ''}>{sub}</option>
-                                        ))}
-                                      </select>
+                                        onChange={(val) => setSelectedGenerationSubject(val)}
+                                        options={[
+                                          { value: '', label: '-- Choose Subject --' },
+                                          ...subjects.map(sub => ({ value: sub, label: sub }))
+                                        ]}
+                                        themeMode={settingsThemeMode}
+                                        placeholder="Choose Subject..."
+                                      />
                                     </div>
                                   );
                                 }
@@ -24363,116 +24583,176 @@ Return your response strictly as a JSON object matching this schema:
                             </div>
                           </div>
 
-                          <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-4 flex-grow flex flex-col overflow-hidden min-h-[250px] max-h-[400px] xl:max-h-none shrink-0`}>
-                            <div className="flex justify-between items-center mb-3 shrink-0">
-                              <h2 className={`font-black text-xs uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>Processing Queue</h2>
-                              <div className="flex gap-2">
-                                {queue.some(q => q.status === 'done') && (
-                                  <button
-                                    onClick={saveAllProcessedToCloud}
-                                    disabled={isProcessing || isSaving}
-                                    className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 transition ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'} disabled:opacity-50`}
-                                  >
-                                    <Save className="w-3.5 h-3.5" /> Save All
-                                  </button>
-                                )}
-                                <button
-                                  onClick={processQueue}
-                                  disabled={isProcessing || queue.filter(q => q.status === 'pending').length === 0}
-                                  className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 transition ${settingsThemeMode === 'dark' ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20' : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20'} disabled:opacity-50 active:scale-95`}
-                                >
-                                  <Play className="w-3.5 h-3.5" /> {isProcessing ? 'Wait...' : 'Start'}
-                                </button>
-                              </div>
-                            </div>
-
-                            {/* Desktop Autosave Toggle */}
-                            <div className={`flex items-center justify-between p-2.5 rounded-2xl mb-3 transition shrink-0 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200/60'}`}>
-                              <div className="flex flex-col text-left">
-                                <span className={`text-[10px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>Auto-Save on Generation</span>
-                                <span className={`text-[9px] font-bold ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Save page and cards immediately upon completion</span>
-                              </div>
-                              <label className="relative inline-flex items-center cursor-pointer select-none">
-                                <input
-                                  type="checkbox"
-                                  checked={isAutosaveEnabled}
-                                  onChange={(e) => setIsAutosaveEnabled(e.target.checked)}
-                                  className="sr-only peer"
-                                />
-                                <div className="w-9 h-5 bg-gray-300 rounded-full peer peer-focus:ring-0 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
-                              </label>
-                            </div>
-
-                            {/* Desktop Image Storage Mode Selector */}
-                            <div className={`flex items-center justify-between p-2.5 rounded-2xl mb-3 transition shrink-0 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200/60'}`}>
-                              <div className="flex flex-col text-left">
-                                <span className={`text-[10px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>Image Storage Mode</span>
-                                <span className={`text-[9px] font-bold ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                                  {imageStorageMode === 'local' ? '📁 Local DB (Offline & Instant)' : '☁️ ImgBB Cloud Upload'}
-                                </span>
-                              </div>
-                              <select
-                                value={imageStorageMode}
-                                onChange={(e) => {
-                                  const mode = e.target.value;
-                                  setImageStorageMode(mode);
-                                  localStorage.setItem("pyt_image_storage_mode", mode);
-                                  saveLocalSetting('apiKeys', { imageStorageMode: mode });
+                          {(() => {
+                            const isExpanded = isQueueCardHovered || isQueueCardClicked;
+                            return (
+                              <div
+                                onMouseEnter={() => setIsQueueCardHovered(true)}
+                                onMouseLeave={() => setIsQueueCardHovered(false)}
+                                className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-4 flex-grow flex flex-col transition-all duration-500 ease-in-out overflow-hidden shrink-0 cursor-pointer ${isExpanded ? 'min-h-[280px] max-h-[400px] xl:max-h-none' : 'h-[64px] min-h-[64px] max-h-[64px]'}`}
+                                onClick={(e) => {
+                                  if (!e.target.closest('button') && !e.target.closest('select') && !e.target.closest('input')) {
+                                    setIsQueueCardClicked(prev => !prev);
+                                  }
                                 }}
-                                className={`text-[9px] font-black rounded-xl px-2 py-1 outline-none cursor-pointer transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white border border-gray-800' : 'neu-pressed-light text-gray-800 border border-gray-200'}`}
                               >
-                                <option value="local" className={settingsThemeMode === 'dark' ? 'bg-slate-900 text-white' : ''}>📁 Local DB</option>
-                                <option value="cloud" className={settingsThemeMode === 'dark' ? 'bg-slate-900 text-white' : ''}>☁️ ImgBB Cloud</option>
-                              </select>
-                            </div>
-
-                            <button
-                              onClick={sendAllToWebDirectly}
-                              disabled={isProcessing || isSaving}
-                              className={`w-full flex items-center justify-center gap-2 p-2.5 rounded-xl font-black text-xs transition-all active:scale-95 mb-3 ${settingsThemeMode === 'dark' ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'bg-amber-600 hover:bg-amber-700 text-white'} disabled:opacity-50 shrink-0 shadow-md`}
-                            >
-                              <Send className="w-3.5 h-3.5" /> Send All to Web
-                            </button>
-
-                            <div className="flex-grow overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-                              {queue.length === 0 ? (
-                                <div className={`text-center py-8 text-xs font-medium ${settingsThemeMode === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Queue is empty</div>
-                              ) : (
-                                queue.map(item => (
-                                  <div
-                                    key={item.id}
-                                    onClick={() => setActiveQueueId(item.id)}
-                                    className={`p-2.5 rounded-2xl border transition-all flex items-center gap-3 cursor-pointer ${activeQueueId === item.id
-                                        ? (settingsThemeMode === 'dark' ? 'neu-pressed-dark border-blue-500/50 text-white' : 'neu-pressed-light border-blue-400 text-gray-900')
-                                        : (settingsThemeMode === 'dark' ? 'neu-card-dark border-gray-800 text-gray-300 hover:border-gray-700' : 'neu-card-light border-gray-200/60 text-gray-700 hover:border-gray-300')
-                                      }`}
-                                  >
-                                    <div className={`w-8 h-8 rounded-xl overflow-hidden shrink-0 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
-                                      <img src={item.base64} alt="" className="w-full h-full object-cover" />
-                                    </div>
-                                    <div className="flex-grow min-w-0 text-left">
-                                      <div className={`text-xs font-bold truncate ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>{item.fileName}</div>
-                                      <div className="flex items-center gap-1.5 mt-0.5">
-                                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${item.status === 'done' ? 'bg-green-500/20 text-green-400' :
-                                            item.status === 'processing' ? 'bg-blue-500/20 text-blue-400 animate-pulse' :
-                                              item.status === 'error' ? 'bg-red-500/20 text-red-400' :
-                                                (settingsThemeMode === 'dark' ? 'bg-gray-800 text-gray-400' : 'bg-gray-200 text-gray-600')
-                                          }`}>
-                                          {item.status}
-                                        </span>
-                                      </div>
-                                    </div>
+                                <div className="flex justify-between items-center shrink-0 h-8">
+                                  <h2 className={`font-black text-xs uppercase tracking-wider flex items-center gap-2 ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>
+                                    Processing Queue
+                                    <span className={`text-[10px] normal-case font-bold px-2 py-0.5 rounded-lg ${settingsThemeMode === 'dark' ? 'bg-gray-800 text-gray-300' : 'bg-gray-200 text-gray-700'}`}>
+                                      {queue.length}
+                                    </span>
+                                  </h2>
+                                  <div className="flex gap-2 items-center">
+                                    {queue.some(q => q.status === 'done') && (
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); saveAllProcessedToCloud(); }}
+                                        disabled={isProcessing || isSaving}
+                                        className={`px-3 py-1 rounded-xl text-xs font-black flex items-center gap-1.5 transition ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'} disabled:opacity-50`}
+                                      >
+                                        <Save className="w-3 h-3" /> Save All
+                                      </button>
+                                    )}
                                     <button
-                                      onClick={(e) => { e.stopPropagation(); removeQueueItem(item.id); }}
-                                      className={`p-1 rounded-lg transition ${settingsThemeMode === 'dark' ? 'text-red-400 hover:bg-red-500/20' : 'text-red-600 hover:bg-red-100'}`}
+                                      onClick={(e) => { e.stopPropagation(); processQueue(); }}
+                                      disabled={isProcessing || queue.filter(q => q.status === 'pending').length === 0}
+                                      className={`px-3 py-1 rounded-xl text-xs font-black flex items-center gap-1.5 transition bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20 disabled:opacity-50 active:scale-95`}
                                     >
-                                      <X className="w-3.5 h-3.5" />
+                                      <Play className="w-3 h-3" /> {isProcessing ? 'Wait...' : 'Start'}
+                                    </button>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); setIsQueueCardClicked(prev => !prev); }}
+                                      className={`p-1.5 rounded-xl transition ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-gray-400 hover:text-white' : 'neu-btn-light text-gray-500 hover:text-gray-900'}`}
+                                      title={isExpanded ? "Collapse Card" : "Expand Card"}
+                                    >
+                                      {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                                     </button>
                                   </div>
-                                ))
-                              )}
-                            </div>
-                          </div>
+                                </div>
+
+                                <div className={`min-h-0 flex-grow flex flex-col transition-all duration-300 ${isExpanded ? 'opacity-100 mt-3' : 'opacity-0 h-0 overflow-hidden pointer-events-none'}`}>
+                                  {/* Desktop Autosave Toggle */}
+                                  <div className={`flex items-center justify-between p-2.5 rounded-2xl mb-3 transition shrink-0 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200/60'}`}>
+                                    <div className="flex flex-col text-left">
+                                      <span className={`text-[10px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>Auto-Save on Generation</span>
+                                      <span className={`text-[9px] font-bold ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Save page and cards immediately upon completion</span>
+                                    </div>
+                                    <div className="neu-toggle-cont">
+                                      <input
+                                        type="checkbox"
+                                        id="desktop-autosave-toggle"
+                                        className="toggle-input"
+                                        checked={isAutosaveEnabled}
+                                        onChange={(e) => setIsAutosaveEnabled(e.target.checked)}
+                                      />
+                                      <label
+                                        htmlFor="desktop-autosave-toggle"
+                                        className={settingsThemeMode === 'dark' ? 'toggle-label-dark' : 'toggle-label-light'}
+                                      >
+                                        <div className={settingsThemeMode === 'dark' ? 'cont-label-play-dark' : 'cont-label-play-light'}>
+                                          <span className="label-play"></span>
+                                        </div>
+                                      </label>
+                                    </div>
+                                  </div>
+
+                                  {/* Desktop Image Storage Mode Selector */}
+                                  <div className={`flex items-center justify-between p-2.5 rounded-2xl mb-3 transition shrink-0 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200/60'}`}>
+                                    <div className="flex flex-col text-left">
+                                      <span className={`text-[10px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>Image Storage Mode</span>
+                                      <span className={`text-[9px] font-bold ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                                        {imageStorageMode === 'local' ? '📁 Local DB (Offline & Instant)' : '☁️ ImgBB Cloud Upload'}
+                                      </span>
+                                    </div>
+                                    <div className="neu-radio-group">
+                                      <label className="neu-radio-btn">
+                                        <input
+                                          type="radio"
+                                          name="desktop-image-storage-mode"
+                                          value="local"
+                                          checked={imageStorageMode === 'local'}
+                                          onChange={() => {
+                                            setImageStorageMode('local');
+                                            localStorage.setItem("pyt_image_storage_mode", 'local');
+                                            saveLocalSetting('apiKeys', { imageStorageMode: 'local' });
+                                          }}
+                                        />
+                                        <span className={settingsThemeMode === 'dark' ? 'neu-radio-span-dark' : 'neu-radio-span-light'}>
+                                          <span className="neu-radio-led"></span>
+                                          📁 Local
+                                        </span>
+                                      </label>
+                                      <label className="neu-radio-btn">
+                                        <input
+                                          type="radio"
+                                          name="desktop-image-storage-mode"
+                                          value="cloud"
+                                          checked={imageStorageMode === 'cloud'}
+                                          onChange={() => {
+                                            setImageStorageMode('cloud');
+                                            localStorage.setItem("pyt_image_storage_mode", 'cloud');
+                                            saveLocalSetting('apiKeys', { imageStorageMode: 'cloud' });
+                                          }}
+                                        />
+                                        <span className={settingsThemeMode === 'dark' ? 'neu-radio-span-dark' : 'neu-radio-span-light'}>
+                                          <span className="neu-radio-led"></span>
+                                          ☁️ Cloud
+                                        </span>
+                                      </label>
+                                    </div>
+                                  </div>
+
+                                  <div className="min-h-0 flex-grow overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                                    {queue.length === 0 ? (
+                                      <div className={`text-center py-8 text-xs font-medium ${settingsThemeMode === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>Queue is empty</div>
+                                    ) : (
+                                      <AnimatePresence mode="popLayout">
+                                        {queue.map(item => (
+                                          <motion.div
+                                            key={item.id}
+                                            layout
+                                            initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                                            exit={{ opacity: 0, scale: 0.9, height: 0, margin: 0, padding: 0 }}
+                                            transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                                            whileHover={{ scale: 1.02, x: 2 }}
+                                            whileTap={{ scale: 0.98 }}
+                                            onClick={() => setActiveQueueId(item.id)}
+                                            className={`p-2.5 rounded-2xl border transition-all flex items-center gap-3 cursor-pointer ${activeQueueId === item.id
+                                                ? (settingsThemeMode === 'dark' ? 'neu-pressed-dark border-blue-500/50 text-white' : 'neu-pressed-light border-blue-400 text-gray-900')
+                                                : (settingsThemeMode === 'dark' ? 'neu-item-dark text-gray-300 hover:border-gray-700' : 'neu-item-light text-gray-700 hover:border-blue-300/80')
+                                              }`}
+                                          >
+                                            <div className={`w-8 h-8 rounded-xl overflow-hidden shrink-0 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
+                                              <img src={item.base64} alt="" className="w-full h-full object-cover" />
+                                            </div>
+                                            <div className="flex-grow min-w-0 text-left">
+                                              <div className={`text-xs font-bold truncate ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>{item.fileName}</div>
+                                              <div className="flex items-center gap-1.5 mt-0.5">
+                                                <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${item.status === 'done' ? 'bg-green-500/20 text-green-400' :
+                                                    item.status === 'processing' ? 'bg-blue-500/20 text-blue-400 animate-pulse' :
+                                                      item.status === 'error' ? 'bg-red-500/20 text-red-400' :
+                                                        (settingsThemeMode === 'dark' ? 'bg-gray-800 text-gray-400' : 'bg-gray-200 text-gray-600')
+                                                  }`}>
+                                                  {item.status}
+                                                </span>
+                                              </div>
+                                            </div>
+                                            <button
+                                              onClick={(e) => { e.stopPropagation(); removeQueueItem(item.id); }}
+                                              className={`p-1 rounded-lg transition ${settingsThemeMode === 'dark' ? 'text-red-400 hover:bg-red-500/20' : 'text-red-600 hover:bg-red-100'}`}
+                                            >
+                                              <X className="w-3.5 h-3.5" />
+                                            </button>
+                                          </motion.div>
+                                        ))}
+                                      </AnimatePresence>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
 
                         {/* Resize Handle 1 */}
@@ -24484,7 +24764,10 @@ Return your response strictly as a JSON object matching this schema:
                         </div>
 
                         {/* Center: Canvas / Image Preview */}
-                        <div className={`flex-grow h-full ${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-4 flex flex-col min-w-[300px] overflow-hidden`}>
+                        <div
+                          className={`h-full ${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-4 flex flex-col min-w-[220px] shrink-0 overflow-hidden`}
+                          style={{ width: `${colWidths.center}%` }}
+                        >
                           <div className="flex justify-between items-center mb-3 shrink-0">
                             <h2 className={`font-black text-xs uppercase tracking-wider flex items-center gap-2 ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>
                               <ImageIcon className="w-4 h-4 text-blue-500" /> Page Preview
@@ -24573,7 +24856,9 @@ Return your response strictly as a JSON object matching this schema:
                         </div>
 
                         {/* Right: Active Page Cards */}
-                        <div className={`flex-grow h-full ${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-4 flex flex-col min-w-[300px]`}>
+                        <div
+                          className={`h-full ${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-4 flex flex-col min-w-[220px] flex-1 overflow-hidden`}
+                        >
                           <div className={`flex flex-col gap-3 mb-4 shrink-0 pb-4 border-b ${settingsThemeMode === 'dark' ? 'border-gray-800' : 'border-gray-200/60'}`}>
                             <h2 className={`text-base font-black flex items-center gap-2 uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>
                               <CheckCircle className="w-5 h-5 text-emerald-500" /> Current Page Cards ({pageCards.length})
@@ -24605,7 +24890,7 @@ Return your response strictly as a JSON object matching this schema:
                               </div>
                             </div>
                           </div>
-                          <div className="flex-grow overflow-y-auto space-y-3 pr-2 custom-scrollbar">
+                          <div className="flex-grow overflow-y-auto p-3.5 space-y-4 custom-scrollbar">
                             {(!activeQueueId || !activeQueueItem) ? (
                               <div className={`h-full flex flex-col items-center justify-center p-8 text-center ${settingsThemeMode === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
                                 <ImageIcon className="w-12 h-12 mb-4 opacity-20" />
@@ -24619,37 +24904,46 @@ Return your response strictly as a JSON object matching this schema:
                                     <p className="text-sm font-medium">Run processing to see generated cards.</p>
                                   </div>
                                 ) : (
-                                  pageCards.map(card => (
-                                    <div
-                                      key={card.id}
-                                      id={`card-${card.id}`}
-                                      onMouseEnter={() => card.ymin !== undefined && setHoveredCardCoordinates({ ymin: card.ymin, xmin: card.xmin, ymax: card.ymax, xmax: card.xmax })}
-                                      onMouseLeave={() => setHoveredCardCoordinates(null)}
-                                      className={`p-3.5 rounded-2xl relative group cursor-pointer transition ${hoveredCardIdFromImage === card.id
-                                          ? (settingsThemeMode === 'dark' ? 'neu-pressed-dark border-blue-500/50 text-white scale-[1.02]' : 'neu-pressed-light border-blue-400 text-gray-900 scale-[1.02]')
-                                          : (settingsThemeMode === 'dark' ? 'neu-card-dark text-gray-200 border border-gray-800/60 hover:border-blue-500/30' : 'neu-card-light text-gray-800 border border-gray-200/60 hover:border-blue-300')
-                                        }`}
-                                    >
-                                      <div className={`absolute top-2.5 right-2.5 flex gap-1 opacity-0 group-hover:opacity-100 transition p-1 rounded-xl z-10 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
-                                        <button onClick={() => setEditingCard(card)} className={`p-1 rounded-lg transition ${settingsThemeMode === 'dark' ? 'text-blue-400 hover:bg-blue-500/20' : 'text-blue-600 hover:bg-blue-100'}`} title="Edit Card"><Edit3 className="w-3.5 h-3.5" /></button>
-                                        <button onClick={() => deleteCard(card.id)} className={`p-1 rounded-lg transition ${settingsThemeMode === 'dark' ? 'text-red-400 hover:bg-red-500/20' : 'text-red-600 hover:bg-red-100'}`} title="Delete Card"><Trash2 className="w-3.5 h-3.5" /></button>
-                                      </div>
-                                      <div className={`text-[10px] font-black uppercase tracking-wider inline-block px-2 py-0.5 rounded-full mb-2 ${settingsThemeMode === 'dark' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}>{card.type}</div>
-                                      {card.type === 'Cloze' ? (
-                                        <div className={`text-xs leading-relaxed ${settingsThemeMode === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}><span className={`font-bold ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Text:</span> {card.text}</div>
-                                      ) : (
-                                        <div className="space-y-1">
-                                          <div className="text-xs text-gray-800"><span className="font-semibold text-gray-500">Back:</span> {card.back}</div>
+                                  <AnimatePresence mode="popLayout">
+                                    {pageCards.map((card, idx) => (
+                                      <motion.div
+                                        key={card.id || idx}
+                                        layout
+                                        initial={{ opacity: 0, y: 20, scale: 0.96 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, scale: 0.92, height: 0, opacity: 0 }}
+                                        transition={{ duration: 0.6, delay: idx * 0.04, ease: [0.22, 1, 0.36, 1] }}
+                                        whileHover={{ scale: 1.015, y: -2 }}
+                                        whileTap={{ scale: 0.98 }}
+                                        id={`card-${card.id}`}
+                                        onMouseEnter={() => card.ymin !== undefined && setHoveredCardCoordinates({ ymin: card.ymin, xmin: card.xmin, ymax: card.ymax, xmax: card.xmax })}
+                                        onMouseLeave={() => setHoveredCardCoordinates(null)}
+                                        className={`p-3.5 rounded-2xl relative group cursor-pointer transition ${hoveredCardIdFromImage === card.id
+                                            ? (settingsThemeMode === 'dark' ? 'neu-pressed-dark border-blue-500/50 text-white scale-[1.02]' : 'neu-pressed-light border-blue-400 text-gray-900 scale-[1.02]')
+                                            : (settingsThemeMode === 'dark' ? 'neu-card-dark text-gray-200 border border-gray-800/60 hover:border-blue-500/30' : 'neu-card-light text-gray-800 border border-gray-200/60 hover:border-blue-300')
+                                          }`}
+                                      >
+                                        <div className={`absolute top-2.5 right-2.5 flex gap-1 opacity-0 group-hover:opacity-100 transition p-1 rounded-xl z-10 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
+                                          <button onClick={() => setEditingCard(card)} className={`p-1 rounded-lg transition ${settingsThemeMode === 'dark' ? 'text-blue-400 hover:bg-blue-500/20' : 'text-blue-600 hover:bg-blue-100'}`} title="Edit Card"><Edit3 className="w-3.5 h-3.5" /></button>
+                                          <button onClick={() => deleteCard(card.id)} className={`p-1 rounded-lg transition ${settingsThemeMode === 'dark' ? 'text-red-400 hover:bg-red-500/20' : 'text-red-600 hover:bg-red-100'}`} title="Delete Card"><Trash2 className="w-3.5 h-3.5" /></button>
                                         </div>
-                                      )}
-                                    </div>
-                                  ))
+                                        <div className={`text-[10px] font-black uppercase tracking-wider inline-block px-2 py-0.5 rounded-full mb-2 ${settingsThemeMode === 'dark' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}>{card.type}</div>
+                                        {card.type === 'Cloze' ? (
+                                          <div className={`text-xs leading-relaxed ${settingsThemeMode === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}><span className={`font-bold ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Text:</span> {card.text}</div>
+                                        ) : (
+                                          <div className="space-y-1">
+                                            <div className="text-xs text-gray-800"><span className="font-semibold text-gray-500">Back:</span> {card.back}</div>
+                                          </div>
+                                        )}
+                                      </motion.div>
+                                    ))}
+                                  </AnimatePresence>
                                 )}
                               </>
                             )}
                           </div>
                         </div>
-                      </div>
+                      </motion.div>
                     )}
 
                     {/* RECYCLE BIN VIEW */}
@@ -33048,13 +33342,15 @@ Return your response strictly as a JSON object matching this schema:
                       <Minus className="w-5 h-5 stroke-[2.5]" />
                     </button>
 
-                    {/* Glowing Pulse Orb */}
-                    <div className={`w-20 h-20 ${operationProgress.lastError ? 'bg-amber-500 shadow-amber-500/40' : 'bg-blue-600 shadow-blue-500/40'} rounded-[2rem] flex items-center justify-center mb-6 shadow-2xl relative overflow-hidden group transition-colors duration-300`}>
-                      <div className={`absolute inset-0 bg-gradient-to-tr ${operationProgress.lastError ? 'from-amber-400 to-orange-600' : 'from-blue-400 to-indigo-600'} animate-pulse opacity-80`} />
+                    {/* Glowing Pulse Orb / Orbital Loader */}
+                    <div className="mb-4 flex items-center justify-center">
                       {operationProgress.lastError ? (
-                        <AlertTriangle className="w-9 h-9 text-white relative z-10 animate-pulse" />
+                        <div className="w-20 h-20 bg-amber-500 shadow-amber-500/40 rounded-[2rem] flex items-center justify-center shadow-2xl relative overflow-hidden group">
+                          <div className="absolute inset-0 bg-gradient-to-tr from-amber-400 to-orange-600 animate-pulse opacity-80" />
+                          <AlertTriangle className="w-9 h-9 text-white relative z-10 animate-pulse" />
+                        </div>
                       ) : (
-                        <Loader2 className="w-9 h-9 text-white animate-spin relative z-10" />
+                        <OrbitalLoader themeMode={settingsThemeMode} size="large" />
                       )}
                     </div>
 
@@ -33130,11 +33426,15 @@ Return your response strictly as a JSON object matching this schema:
                   }}
                   className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-white border border-gray-800' : 'neu-card-light text-gray-900 border border-white'} rounded-2xl shadow-xl px-4 py-3 flex items-center gap-3 transition-all select-none group active:scale-95`}
                 >
-                  <div className={`w-8 h-8 rounded-xl bg-gradient-to-tr ${operationProgress.lastError ? 'from-amber-500 to-orange-600' : 'from-blue-500 to-indigo-600'} flex items-center justify-center shadow-md relative shrink-0`}>
+                  <div className="flex items-center justify-center shrink-0">
                     {operationProgress.lastError ? (
-                      <AlertTriangle className="w-4.5 h-4.5 text-white animate-pulse" />
+                      <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-600 flex items-center justify-center shadow-md">
+                        <AlertTriangle className="w-4.5 h-4.5 text-white animate-pulse" />
+                      </div>
                     ) : (
-                      <Loader2 className="w-4.5 h-4.5 text-white animate-spin" />
+                      <div className="w-8 h-8 flex items-center justify-center overflow-hidden">
+                        <OrbitalLoader themeMode={settingsThemeMode} size="small" />
+                      </div>
                     )}
                   </div>
                   <div className="text-left shrink-0">
@@ -33227,37 +33527,37 @@ Return your response strictly as a JSON object matching this schema:
 
               {pdfDialog.isOpen && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
-                  <div className="bg-white rounded-[2.5rem] w-full max-w-4xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300 flex flex-col md:flex-row h-[550px]">
+                  <div className={`rounded-[2.5rem] w-full max-w-5xl overflow-hidden animate-in fade-in zoom-in duration-300 flex flex-col md:flex-row h-[580px] ${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'}`}>
 
                     {/* Left Controls Column */}
-                    <div className="w-full md:w-1/2 p-8 flex flex-col justify-between border-r border-gray-100 text-left h-full">
+                    <div className={`w-full md:w-1/2 p-6 md:p-8 flex flex-col justify-between text-left h-full border-r ${settingsThemeMode === 'dark' ? 'border-gray-800/80' : 'border-gray-200/80'}`}>
                       <div className="flex flex-col flex-grow overflow-hidden">
                         <div className="flex items-center gap-3 shrink-0 mb-4">
-                          <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'}`}>
                             <FileText className="w-6 h-6 text-white" />
                           </div>
                           <div className="text-left">
-                            <h3 className="text-lg font-black text-gray-900 tracking-tight">PDF Page Extractor</h3>
-                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">"{pdfDialog.file?.name.slice(0, 30)}..."</p>
+                            <h3 className={`text-lg font-black tracking-tight ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>PDF Page Extractor</h3>
+                            <p className={`text-[10px] font-bold uppercase tracking-wider mt-0.5 ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>"{pdfDialog.file?.name.slice(0, 30)}..."</p>
                           </div>
                         </div>
 
-                        <div className="bg-blue-50/50 border border-blue-100/50 rounded-2xl p-4 text-left shrink-0 mb-4">
-                          <span className="text-[9px] font-black uppercase text-blue-500 tracking-wider">Document Summary</span>
+                        <div className={`rounded-2xl p-4 text-left shrink-0 mb-4 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-gray-200/60'}`}>
+                          <span className={`text-[9px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>Document Summary</span>
                           <div className="flex justify-between items-center mt-1">
-                            <span className="text-xs font-bold text-gray-700">Total Pages:</span>
-                            <span className="text-xs font-black text-gray-900 bg-white border border-gray-150 px-2.5 py-0.5 rounded-full">{pdfDialog.numPages} Pages</span>
+                            <span className={`text-xs font-bold ${settingsThemeMode === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Total Pages:</span>
+                            <span className={`text-xs font-black px-3 py-1 rounded-full ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400 border border-blue-500/30' : 'neu-pressed-light text-blue-800 border border-blue-200/60'}`}>{pdfDialog.numPages} Pages</span>
                           </div>
                         </div>
 
                         <div className="flex-grow overflow-y-auto space-y-4 pr-2 mb-4 custom-scrollbar text-left">
                           <div className="flex items-center justify-between">
-                            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400">Page Range Mappings</label>
-                            <span className="text-[9px] text-gray-400 font-bold uppercase">Search/type folders</span>
+                            <label className={`block text-[10px] font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Page Range Mappings</label>
+                            <span className={`text-[9px] font-bold uppercase ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Search/type folders</span>
                           </div>
 
                           {(pdfDialog.mappings || []).map((mapping, index) => (
-                            <div key={mapping.id} className="bg-gray-50/80 border border-gray-200/60 rounded-2xl p-4 space-y-3 relative group/mapping">
+                            <div key={mapping.id} className={`rounded-2xl p-4 space-y-3 relative group/mapping ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200/60'}`}>
                               {pdfDialog.mappings.length > 1 && (
                                 <button
                                   onClick={() => {
@@ -33266,7 +33566,7 @@ Return your response strictly as a JSON object matching this schema:
                                       mappings: prev.mappings.filter(m => m.id !== mapping.id)
                                     }));
                                   }}
-                                  className="absolute top-3 right-3 text-gray-400 hover:text-red-500 transition duration-150"
+                                  className={`absolute top-3 right-3 transition duration-150 ${settingsThemeMode === 'dark' ? 'text-gray-500 hover:text-red-400' : 'text-gray-400 hover:text-red-500'}`}
                                   title="Remove mapping"
                                 >
                                   <X className="w-3.5 h-3.5" />
@@ -33275,7 +33575,7 @@ Return your response strictly as a JSON object matching this schema:
 
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left">
                                 <div className="space-y-1">
-                                  <label className="block text-[9px] font-black uppercase tracking-widest text-gray-400">Page Range</label>
+                                  <label className={`block text-[9px] font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Page Range</label>
                                   <input
                                     type="text"
                                     value={mapping.range}
@@ -33287,32 +33587,32 @@ Return your response strictly as a JSON object matching this schema:
                                       }));
                                     }}
                                     placeholder="e.g. 1-3, 5"
-                                    className="w-full p-2.5 bg-white border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none text-sm font-black text-center tracking-tight"
+                                    className={`w-full p-2.5 rounded-xl outline-none text-sm font-black text-center tracking-tight transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white border border-gray-800 focus:border-blue-500' : 'neu-pressed-light text-gray-900 border border-gray-300/80 focus:border-blue-500'}`}
                                   />
                                 </div>
 
                                 <div className="space-y-1">
-                                  <label className="block text-[9px] font-black uppercase tracking-widest text-gray-400">Destination Folder</label>
+                                  <label className={`block text-[9px] font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Destination Folder</label>
                                   <button
                                     type="button"
                                     onClick={() => {
                                       setPdfFolderPickerMappingId(mapping.id);
                                       setPdfFolderPickerTempPath(mapping.deck || hierarchy || (deckPaths[0] || 'General'));
                                     }}
-                                    className="w-full p-2.5 bg-white hover:bg-gray-50 border border-gray-200 hover:border-blue-400 rounded-xl outline-none text-left flex items-center justify-between transition-all duration-200 group/btn"
+                                    className={`w-full p-2.5 rounded-xl outline-none text-left flex items-center justify-between transition-all duration-200 group/btn ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-white hover:border-blue-500/40' : 'neu-btn-light text-gray-900 hover:border-blue-400'}`}
                                   >
                                     <div className="flex items-center gap-2 min-w-0">
                                       <Folder className="w-4 h-4 text-blue-500 shrink-0 group-hover/btn:scale-110 transition-transform" />
                                       <div className="flex flex-col min-w-0">
-                                        <span className="text-xs font-black text-gray-900 truncate leading-tight">
+                                        <span className={`text-xs font-black truncate leading-tight ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                                           {(mapping.deck || '').split('::').pop() || 'Root'}
                                         </span>
-                                        <span className="text-[8px] font-bold text-gray-400 uppercase tracking-wider truncate">
+                                        <span className={`text-[8px] font-bold uppercase tracking-wider truncate ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                                           {mapping.deck || 'Root Folder'}
                                         </span>
                                       </div>
                                     </div>
-                                    <ChevronDown className="w-3.5 h-3.5 text-gray-400 shrink-0 ml-1.5 group-hover/btn:text-blue-500 transition-colors" />
+                                    <ChevronDown className={`w-3.5 h-3.5 shrink-0 ml-1.5 transition-colors ${settingsThemeMode === 'dark' ? 'text-gray-400 group-hover/btn:text-blue-400' : 'text-gray-400 group-hover/btn:text-blue-500'}`} />
                                   </button>
                                 </div>
                               </div>
@@ -33324,11 +33624,11 @@ Return your response strictly as a JSON object matching this schema:
                                 return (
                                   <div className="text-[10px] font-bold flex items-center gap-1.5 mt-1">
                                     {hasErrors ? (
-                                      <span className="text-red-600 flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" /> {validation.message}</span>
+                                      <span className="text-red-400 flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" /> {validation.message}</span>
                                     ) : mapping.range ? (
-                                      <span className="text-green-600 flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Ready: {parsed.length} pages</span>
+                                      <span className="text-emerald-400 flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Ready: {parsed.length} pages</span>
                                     ) : (
-                                      <span className="text-gray-400">Enter range</span>
+                                      <span className={settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}>Enter range</span>
                                     )}
                                   </div>
                                 );
@@ -33351,14 +33651,14 @@ Return your response strictly as a JSON object matching this schema:
                                 mappings: [...prev.mappings, { id: generateId(), range: defaultRange, deck: hierarchy || (deckPaths[0] || 'General') }]
                               }));
                             }}
-                            className="w-full py-2.5 border border-dashed border-blue-300 hover:border-blue-500 text-blue-600 hover:bg-blue-50/50 rounded-xl text-xs font-black uppercase tracking-wider transition flex items-center justify-center gap-1.5"
+                            className={`w-full py-2.5 border-2 border-dashed rounded-xl text-xs font-black uppercase tracking-wider transition flex items-center justify-center gap-1.5 active:scale-95 ${settingsThemeMode === 'dark' ? 'border-blue-500/40 text-blue-400 neu-pressed-dark hover:border-blue-400' : 'border-blue-300 text-blue-600 neu-pressed-light hover:border-blue-500'}`}
                           >
                             <Plus className="w-3.5 h-3.5" /> Add Folder Mapping
                           </button>
                         </div>
                       </div>
 
-                      <div className="pt-4 border-t border-gray-100 flex items-center justify-end gap-3 shrink-0">
+                      <div className={`pt-4 border-t flex items-center justify-end gap-3 shrink-0 ${settingsThemeMode === 'dark' ? 'border-gray-800' : 'border-gray-200/80'}`}>
                         <button
                           onClick={() => {
                             if (pdfDialog.blobUrl) URL.revokeObjectURL(pdfDialog.blobUrl);
@@ -33366,7 +33666,7 @@ Return your response strictly as a JSON object matching this schema:
                             setLoadedPdfDoc(null);
                           }}
                           disabled={pdfDialog.isConverting}
-                          className="px-6 py-3.5 text-xs font-black uppercase tracking-wider text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition duration-150"
+                          className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-wider transition active:scale-95 ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-gray-400 hover:text-white' : 'neu-btn-light text-gray-600 hover:text-gray-900'}`}
                         >
                           Cancel
                         </button>
@@ -33378,7 +33678,7 @@ Return your response strictly as a JSON object matching this schema:
                             pdfDialog.mappings.length === 0 ||
                             !pdfDialog.mappings.every(m => m.range && validatePageRange(m.range, pdfDialog.numPages).isValid)
                           }
-                          className="px-8 py-3.5 bg-blue-600 text-white text-xs font-black rounded-xl hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 transition shadow-lg shadow-blue-600/10 flex items-center gap-2 active:scale-95 duration-150"
+                          className={`px-8 py-3 rounded-xl text-xs font-black transition flex items-center gap-2 active:scale-95 shadow-md ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'} disabled:opacity-50 disabled:cursor-not-allowed`}
                         >
                           {pdfDialog.isConverting ? (
                             <>
@@ -33396,16 +33696,16 @@ Return your response strictly as a JSON object matching this schema:
                     </div>
 
                     {/* Right Print Preview Column */}
-                    <div className="w-full md:w-1/2 bg-gray-50 p-6 flex flex-col overflow-hidden text-left h-full">
-                      <div className="flex items-center justify-between pb-3 border-b border-gray-200 shrink-0">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">Windows Print Preview Tray</span>
+                    <div className={`w-full md:w-1/2 p-6 flex flex-col overflow-hidden text-left h-full ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
+                      <div className={`flex items-center justify-between pb-3 border-b shrink-0 ${settingsThemeMode === 'dark' ? 'border-gray-800/80' : 'border-gray-200/80'}`}>
+                        <span className={`text-[10px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Windows Print Preview Tray</span>
                         <div className="flex items-center gap-1.5">
-                          <span className="text-[9px] font-bold text-gray-400 mr-0.5">Rotate All:</span>
+                          <span className={`text-[9px] font-bold mr-0.5 ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Rotate All:</span>
                           <button
                             type="button"
                             onClick={() => handleRotateAllPdfPages('ccw')}
                             title="Rotate all preview pages 90° anti-clockwise"
-                            className="text-[9px] font-bold text-gray-600 hover:text-blue-600 bg-white hover:bg-blue-50 border border-gray-200 hover:border-blue-300 px-2 py-0.5 rounded flex items-center gap-1 transition shadow-2xs cursor-pointer active:scale-95"
+                            className={`text-[9px] font-bold px-2.5 py-1 rounded-xl flex items-center gap-1 transition cursor-pointer active:scale-95 ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-gray-200 hover:text-blue-400' : 'neu-btn-light text-gray-700 hover:text-blue-600'}`}
                           >
                             <RotateCcw className="w-3 h-3" />
                             90° ↺
@@ -33414,12 +33714,12 @@ Return your response strictly as a JSON object matching this schema:
                             type="button"
                             onClick={() => handleRotateAllPdfPages('cw')}
                             title="Rotate all preview pages 90° clockwise"
-                            className="text-[9px] font-bold text-gray-600 hover:text-blue-600 bg-white hover:bg-blue-50 border border-gray-200 hover:border-blue-300 px-2 py-0.5 rounded flex items-center gap-1 transition shadow-2xs cursor-pointer active:scale-95"
+                            className={`text-[9px] font-bold px-2.5 py-1 rounded-xl flex items-center gap-1 transition cursor-pointer active:scale-95 ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-gray-200 hover:text-blue-400' : 'neu-btn-light text-gray-700 hover:text-blue-600'}`}
                           >
                             <RotateCw className="w-3 h-3" />
                             90° ↻
                           </button>
-                          <span className="text-[9px] font-bold text-blue-600 bg-blue-50 border border-blue-100 px-2.5 py-0.5 rounded ml-1">
+                          <span className={`text-[9px] font-bold px-2.5 py-1 rounded-xl ml-1 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400 border border-blue-500/30' : 'neu-pressed-light text-blue-700 border border-blue-200/60'}`}>
                             {(() => {
                               const count = Array.from(new Set(
                                 (pdfDialog.mappings || []).flatMap(m => parsePageRange(m.range, pdfDialog.numPages))
@@ -33431,22 +33731,22 @@ Return your response strictly as a JSON object matching this schema:
                       </div>
 
                       {/* Preview Scroll Tray */}
-                      <div className="flex-grow overflow-y-auto mt-4 pr-1">
+                      <div className="flex-grow overflow-y-auto mt-2 p-4 custom-scrollbar">
                         {(() => {
                           const pages = Array.from(new Set(
                             (pdfDialog.mappings || []).flatMap(m => parsePageRange(m.range, pdfDialog.numPages))
                           )).sort((a, b) => a - b);
                           if (pages.length === 0) {
                             return (
-                              <div className="h-full flex flex-col items-center justify-center text-center text-gray-400 p-8">
-                                <FileText className="w-12 h-12 text-gray-300 stroke-[1] mb-3 animate-pulse" />
-                                <h4 className="text-xs font-black text-gray-500 uppercase tracking-wider">No Preview Available</h4>
+                              <div className={`h-full flex flex-col items-center justify-center text-center p-8 ${settingsThemeMode === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                                <FileText className="w-12 h-12 stroke-[1] mb-3 animate-pulse opacity-40" />
+                                <h4 className="text-xs font-black uppercase tracking-wider">No Preview Available</h4>
                                 <p className="text-[10px] mt-1">Enter valid page numbers in the mapping fields to see print preview thumbnails here.</p>
                               </div>
                             );
                           }
                           return (
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-2 gap-5 p-1">
                               {pages.map(num => (
                                 <PdfPagePreview
                                   key={num}
@@ -33454,6 +33754,7 @@ Return your response strictly as a JSON object matching this schema:
                                   pageNum={num}
                                   rotation={pdfDialog.rotations?.[num] || 0}
                                   onRotate={handleRotatePdfPage}
+                                  themeMode={settingsThemeMode}
                                 />
                               ))}
                             </div>
@@ -33468,23 +33769,23 @@ Return your response strictly as a JSON object matching this schema:
 
               {/* Visual Tree Folder Picker Modal for PDF Extractor */}
               {pdfFolderPickerMappingId && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[250] flex items-center justify-center p-4">
-                  <div className="bg-white border border-gray-150 rounded-[2.5rem] w-full max-w-md shadow-2xl p-6 flex flex-col h-[480px] animate-in fade-in zoom-in duration-200 text-left">
-                    <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-150 shrink-0">
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[250] flex items-center justify-center p-4">
+                  <div className={`rounded-[2.5rem] w-full max-w-md p-6 flex flex-col h-[480px] animate-in fade-in zoom-in duration-200 text-left ${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'}`}>
+                    <div className={`flex items-center justify-between mb-4 pb-3 border-b shrink-0 ${settingsThemeMode === 'dark' ? 'border-gray-800' : 'border-gray-200/80'}`}>
                       <div className="flex items-center gap-2">
-                        <Folder className="w-5 h-5 text-blue-600" />
-                        <h4 className="text-sm font-black text-gray-900 tracking-tight">Select Destination Folder</h4>
+                        <Folder className="w-5 h-5 text-blue-500" />
+                        <h4 className={`text-sm font-black tracking-tight ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>Select Destination Folder</h4>
                       </div>
                       <button
                         onClick={() => setPdfFolderPickerMappingId(null)}
-                        className="p-1 rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition"
+                        className={`p-1.5 rounded-full transition ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-gray-400 hover:text-white' : 'neu-btn-light text-gray-500 hover:text-gray-800'}`}
                       >
                         <X className="w-4 h-4" />
                       </button>
                     </div>
 
                     {/* Scrollable folder tree */}
-                    <div className="flex-grow overflow-y-auto custom-scrollbar pr-2 mb-4 bg-gray-50/50 border border-gray-100 rounded-2xl p-3">
+                    <div className={`flex-grow overflow-y-auto custom-scrollbar pr-2 mb-4 rounded-2xl p-3 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200/60'}`}>
                       <TreeFolder
                         node={buildTree(effectiveDeckPaths, cloudPages, deckCardCounts)}
                         level={0}
@@ -33492,19 +33793,20 @@ Return your response strictly as a JSON object matching this schema:
                         onSelect={(path) => setPdfFolderPickerTempPath(path)}
                         showCounts={false}
                         hideActions={true}
+                        themeMode={settingsThemeMode}
                       />
                     </div>
 
                     {/* Selected path and action buttons */}
                     <div className="space-y-3 shrink-0">
                       <div className="space-y-1">
-                        <label className="block text-[9px] font-black uppercase tracking-widest text-gray-400">Selected Path</label>
+                        <label className={`block text-[9px] font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Selected Path</label>
                         <input
                           type="text"
                           value={pdfFolderPickerTempPath}
                           onChange={(e) => setPdfFolderPickerTempPath(e.target.value)}
                           placeholder="e.g. Pathology::Autonomics"
-                          className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none text-xs font-black text-gray-800"
+                          className={`w-full p-2.5 rounded-xl outline-none text-xs font-black transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white border border-gray-800' : 'neu-pressed-light text-gray-800 border border-gray-200/80'}`}
                         />
                       </div>
 
@@ -33512,7 +33814,7 @@ Return your response strictly as a JSON object matching this schema:
                         <button
                           type="button"
                           onClick={() => setPdfFolderPickerMappingId(null)}
-                          className="flex-1 py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-black uppercase tracking-widest rounded-xl transition active:scale-95"
+                          className={`flex-1 py-2.5 px-4 text-xs font-black uppercase tracking-widest rounded-xl transition active:scale-95 ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-gray-400 hover:text-white' : 'neu-btn-light text-gray-700 hover:text-gray-900'}`}
                         >
                           Cancel
                         </button>
@@ -33525,7 +33827,7 @@ Return your response strictly as a JSON object matching this schema:
                             }));
                             setPdfFolderPickerMappingId(null);
                           }}
-                          className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-widest rounded-xl transition active:scale-95 shadow-md shadow-blue-500/20"
+                          className={`flex-1 py-2.5 px-4 text-xs font-black uppercase tracking-widest rounded-xl transition active:scale-95 shadow-md ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'}`}
                         >
                           Select Folder
                         </button>
