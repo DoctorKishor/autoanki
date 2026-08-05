@@ -995,3 +995,531 @@ body,
   opacity: 1;
   transform: translateY(-50%) translateX(8px) scale(1);
 }
+
+/* ==========================================================
+   NEUMORPHIC GENERATED CARDS DISPLAY & SIBLING BLUR SYSTEM
+   ========================================================== */
+
+/* 1. Theme Variables (Light & Dark) */
+:root,
+[data-theme="light"] {
+  --bg-color: #e8e8e8;
+  --text-primary: #2d3748;
+  --text-secondary: #718096;
+  /* Very minimal blue tint added */
+  --shadow-dark: #b2bac6;
+  --shadow-light: #f5f8ff;
+  --inset-dark: rgba(30, 50, 80, 0.12);
+  --inset-light: rgba(240, 248, 255, 0.8);
+}
+
+[data-theme="dark"] {
+  /* Inverted background and text colors */
+  --bg-color: #2d3748;
+  --text-primary: #e8e8e8;
+  --text-secondary: #a0aec0;
+  /* Very minimal blue tint added to the dark shadows */
+  --shadow-dark: #151a24;
+  --shadow-light: #445470;
+  --inset-dark: rgba(10, 20, 40, 0.2);
+  --inset-light: rgba(230, 240, 255, 0.7);
+}
+
+/* Map settingsThemeMode classes so dark/light theme modes in AutoAnki work seamlessly */
+.neu-bg-dark,
+.neu-card-dark {
+  --bg-color: #222730;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --shadow-dark: #15181e;
+  --shadow-light: #2f3642;
+  --inset-dark: rgba(10, 20, 40, 0.45);
+  --inset-light: rgba(230, 240, 255, 0.12);
+}
+
+.neu-bg-light,
+.neu-card-light {
+  --bg-color: #e6ecf5;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --shadow-dark: #b8c1d1;
+  --shadow-light: #ffffff;
+  --inset-dark: rgba(30, 50, 80, 0.14);
+  --inset-light: rgba(255, 255, 255, 0.85);
+}
+
+/* 2. Cards Container */
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  padding: 4px;
+}
+
+/* 3. Unified Card */
+.cards .card {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+  text-align: left;
+  min-height: 90px;
+  width: 100%;
+  border-radius: 16px;
+  padding: 16px;
+  cursor: pointer;
+  transition: 400ms cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+
+  /* Dynamic Neumorphic Colors & Outer Shadow */
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  box-shadow:
+    8px 8px 16px var(--shadow-dark),
+    -8px -8px 16px var(--shadow-light);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* 4. Text Styling */
+.cards .card p.tip,
+.cards .card .tip {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  line-height: 1.45;
+}
+
+.cards .card p.second-text,
+.cards .card .second-text {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-top: 6px;
+  line-height: 1.4;
+}
+
+/* 5. Deep Neumorphic Pressed State */
+.cards .card:hover {
+  /* Scales down slightly to simulate pressing down */
+  transform: scale(0.96, 0.96);
+  /* Deep inner shadow for maximum depth */
+  box-shadow:
+    inset 12px 12px 24px var(--inset-dark),
+    inset -12px -12px 24px var(--inset-light);
+}
+
+/* 6. Original Sibling Blur Preserved */
+.cards:hover > .card:not(:hover) {
+  filter: blur(8px);
+  transform: scale(0.92, 0.92);
+  opacity: 0.75;
+}
+
+/* Color Accent Variants for Cards */
+.cards .card.red {
+  border-left: 5px solid #ef4444;
+}
+
+.cards .card.blue {
+  border-left: 5px solid #3b82f6;
+}
+
+.cards .card.green {
+  border-left: 5px solid #10b981;
+}
+
+.cards .card.purple {
+  border-left: 5px solid #8b5cf6;
+}
+
+/* ==========================================================
+   NEUMORPHIC DUAL-THEME ANIMATED SAVE & SAVE ALL BUTTON
+   ========================================================== */
+
+.animated-save-btn {
+  --radius: 14px;
+  cursor: pointer;
+  border-radius: var(--radius);
+  border: none;
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-style: normal;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  outline: none;
+  user-select: none;
+  box-sizing: border-box;
+  overflow: visible;
+}
+
+/* Size Variants */
+.animated-save-btn-lg {
+  min-width: 170px;
+  height: 48px;
+  font-size: 14px;
+}
+
+.animated-save-btn-md {
+  min-width: 140px;
+  height: 42px;
+  font-size: 13px;
+}
+
+.animated-save-btn-sm {
+  min-width: 110px;
+  height: 36px;
+  font-size: 11px;
+}
+
+.animated-save-btn-full {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Light Theme Neumorphic Adaptation */
+.animated-save-btn-light {
+  --primary: #2563eb;
+  --neutral-1: #e6ecf5;
+  --neutral-2: #cbd5e1;
+  color: #1e293b;
+  background: transparent;
+  box-shadow:
+    0 0.5px 0.5px 1px rgba(255, 255, 255, 0.8),
+    5px 5px 12px #c2c8d4,
+    -5px -5px 12px #ffffff;
+}
+
+.animated-save-btn-light::after {
+  content: "";
+  inset: -4px;
+  position: absolute;
+  background: rgba(255, 255, 255, 0.3);
+  box-shadow:
+    0 6px 20px 0 rgba(37, 99, 235, 0.15),
+    inset 0 -2px 2px rgba(255, 255, 255, 0.6);
+  border-radius: calc(var(--radius) + 4px);
+  transition: all 0.4s ease;
+  z-index: 0;
+}
+
+.animated-save-btn-light:hover::after {
+  inset: -6px;
+  box-shadow:
+    0 8px 24px 0 rgba(37, 99, 235, 0.25),
+    inset 0 -2px 2px rgba(255, 255, 255, 0.8);
+}
+
+.animated-save-btn-light::before {
+  content: "";
+  inset: 5px;
+  position: absolute;
+  background: linear-gradient(to top, rgba(230, 236, 245, 0.9), rgba(203, 213, 225, 0.7));
+  opacity: 0.6;
+  border-radius: var(--radius);
+  filter: blur(0.5px);
+  backdrop-filter: blur(6px);
+  transition: all 0.3s ease;
+  z-index: 2;
+}
+
+.animated-save-btn-light .bg {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius);
+  background:
+    linear-gradient(#e6ecf5, #cbd5e1) padding-box,
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.6), rgba(194, 200, 212, 0.8)) border-box;
+  z-index: 1;
+  transition: all 0.4s ease;
+}
+
+.animated-save-btn-light:hover {
+  transform: scale(1.02);
+  box-shadow:
+    0 0 1px 2px rgba(255, 255, 255, 0.5),
+    7px 7px 18px #b4bcc8,
+    -7px -7px 18px #ffffff;
+}
+
+.animated-save-btn-light:active {
+  transform: scale(0.98);
+  box-shadow:
+    inset 3px 3px 6px #c2c8d4,
+    inset -3px -3px 6px #ffffff;
+}
+
+/* Dark Theme Neumorphic Adaptation */
+.animated-save-btn-dark {
+  --primary: #60a5fa;
+  --neutral-1: #222730;
+  --neutral-2: #171a20;
+  color: #f1f5f9;
+  background: transparent;
+  box-shadow:
+    0 0.5px 0.5px 1px rgba(255, 255, 255, 0.08),
+    5px 5px 12px #171a20,
+    -5px -5px 12px #2d3440;
+}
+
+.animated-save-btn-dark::after {
+  content: "";
+  inset: -4px;
+  position: absolute;
+  background: rgba(30, 41, 59, 0.4);
+  box-shadow:
+    0 6px 24px 0 rgba(0, 0, 0, 0.5),
+    inset 0 -2px 2px rgba(255, 255, 255, 0.1);
+  border-radius: calc(var(--radius) + 4px);
+  transition: all 0.4s ease;
+  z-index: 0;
+}
+
+.animated-save-btn-dark:hover::after {
+  inset: -6px;
+  box-shadow:
+    0 8px 28px 0 rgba(59, 130, 246, 0.3),
+    inset 0 -2px 2px rgba(255, 255, 255, 0.15);
+}
+
+.animated-save-btn-dark::before {
+  content: "";
+  inset: 5px;
+  position: absolute;
+  background: linear-gradient(to top, rgba(34, 39, 48, 0.9), rgba(23, 26, 32, 0.8));
+  opacity: 0.7;
+  border-radius: var(--radius);
+  filter: blur(0.5px);
+  backdrop-filter: blur(6px);
+  transition: all 0.3s ease;
+  z-index: 2;
+}
+
+.animated-save-btn-dark .bg {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius);
+  background:
+    linear-gradient(#222730, #171a20) padding-box,
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.12), rgba(0, 0, 0, 0.6)) border-box;
+  z-index: 1;
+  transition: all 0.4s ease;
+}
+
+.animated-save-btn-dark:hover {
+  transform: scale(1.02);
+  box-shadow:
+    0 0 1px 2px rgba(255, 255, 255, 0.12),
+    7px 7px 18px #13161c,
+    -7px -7px 18px #313946;
+}
+
+.animated-save-btn-dark:active {
+  transform: scale(0.98);
+  box-shadow:
+    inset 3px 3px 7px #171a20,
+    inset -3px -3px 7px #2d3440;
+}
+
+/* Background Spin Glow Effect */
+.animated-save-btn .bg-spin {
+  position: absolute;
+  border-radius: inherit;
+  overflow: hidden;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  inset: -3px;
+}
+
+.animated-save-btn .bg-spin::before {
+  content: "";
+  position: absolute;
+  inset: -100%;
+  filter: blur(14px);
+  background: conic-gradient(
+    transparent 30%,
+    rgba(96, 165, 250, 0.35) 80%,
+    transparent 100%
+  );
+  animation: saveBtnSpin 2s linear infinite;
+  animation-play-state: paused;
+}
+
+.animated-save-btn:hover .bg-spin {
+  opacity: 1;
+}
+.animated-save-btn:hover .bg-spin::before {
+  animation-play-state: running;
+}
+
+.animated-save-btn .bg-gradient {
+  position: absolute;
+  overflow: hidden;
+  border-radius: var(--radius);
+  inset: -4px;
+  z-index: 0;
+  opacity: 0.2;
+  transition: all 0.5s linear;
+  filter: blur(8px);
+}
+.animated-save-btn:hover .bg-gradient {
+  opacity: 0.85;
+}
+.animated-save-btn .bg-gradient::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  margin: auto;
+  aspect-ratio: 1;
+  background-image: linear-gradient(
+    90deg,
+    #2563eb,
+    #a855f7,
+    #ec4899,
+    #eab308,
+    #10b981,
+    #06b6d4
+  );
+  animation: saveBtnSpin 2.5s linear infinite;
+}
+
+/* Content Wrap & State Toggle */
+.animated-save-btn .wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 0 12px;
+}
+
+.animated-save-btn .state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  position: relative;
+  width: 100%;
+}
+
+.animated-save-btn .state p {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  letter-spacing: 0.02em;
+  font-weight: 800;
+}
+
+.animated-save-btn .state .icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+/* Letters Animation */
+.animated-save-btn .state p span {
+  display: inline-block;
+  opacity: 1;
+  transition: transform 0.2s ease;
+}
+
+.animated-save-btn:hover p span {
+  animation: saveBtnWave 0.5s ease forwards calc(var(--i) * 0.03s);
+}
+
+.animated-save-btn.state-saved .state--default {
+  display: none !important;
+}
+
+.animated-save-btn .state--added {
+  display: none;
+  color: #10b981;
+}
+
+.animated-save-btn.state-saved .state--added {
+  display: flex !important;
+  --primary: #10b981;
+}
+
+.animated-save-btn.state-saved .state--added span {
+  opacity: 0;
+  animation: saveBtnSlideDown 0.6s ease forwards calc(var(--i) * 0.04s);
+}
+
+.animated-save-btn.state-saved .state--added .icon svg {
+  animation: saveBtnCheck 0.6s cubic-bezier(0.5, -0.15, 0.3, 1.4) forwards;
+}
+
+/* Success Border Glow */
+.animated-save-btn.state-saved {
+  border: 1px solid rgba(16, 185, 129, 0.5) !important;
+}
+.animated-save-btn.state-saved .bg {
+  box-shadow: inset 0 0 12px rgba(16, 185, 129, 0.25) !important;
+}
+
+/* Keyframes */
+@keyframes saveBtnSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes saveBtnWave {
+  30% {
+    opacity: 1;
+    transform: translateY(3px);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-3px);
+    color: var(--primary);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes saveBtnSlideDown {
+  0% {
+    opacity: 0;
+    transform: translateY(-12px);
+    color: #10b981;
+    filter: blur(3px);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(2px);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes saveBtnCheck {
+  0% {
+    stroke-dasharray: 24;
+    stroke-dashoffset: -24;
+    transform: scale(2);
+    filter: blur(2px);
+  }
+  50% {
+    stroke-dashoffset: -7;
+  }
+  100% {
+    transform: scale(1);
+    stroke-dashoffset: 0;
+  }
+}

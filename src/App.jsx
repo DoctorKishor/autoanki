@@ -32,7 +32,7 @@ import { calculateEfficiencyScore, calculateWeightedConcentration } from './util
 import { ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import ExportImageVerificationModal from './components/ExportImageVerificationModal';
 import { cropAndMaskDiagram } from './utils/imageCropper';
-import { getLocalSetting, saveLocalSetting, getLocalCards, saveLocalCards, replaceAllLocalCards, saveLocalCard, deleteLocalCard, getLocalPages, saveLocalPages, replaceAllLocalPages, saveLocalPage, deleteLocalPage } from './services/localDb';
+import { getLocalSetting, saveLocalSetting, getLocalCards, saveLocalCards, replaceAllLocalCards, saveLocalCard, deleteLocalCard, getLocalPages, saveLocalPages, replaceAllLocalPages, saveLocalPage, deleteLocalPage, getLocalKV, setLocalKV } from './services/localDb';
 import { motion, AnimatePresence } from 'framer-motion';
 import UiverseButton from './components/UiverseButton';
 import UiverseGlassRadio from './components/UiverseGlassRadio';
@@ -621,7 +621,7 @@ const updateFolderTagsOnMove = (tags = [], oldDeck = '', newDeck = '') => {
   return nextTags;
 };
 
-const HierarchicalSunburst = ({ deckPaths, cloudPages, deckCardCounts = {}, onSelectDeck }) => {
+const HierarchicalSunburst = ({ deckPaths, libraryPages, deckCardCounts = {}, onSelectDeck }) => {
   const [hoveredNode, setHoveredNode] = useState(null);
   const [zoomNodePath, setZoomNodePath] = useState('Root');
   const [selectedSunburstNode, setSelectedSunburstNode] = useState(null);
@@ -631,8 +631,8 @@ const HierarchicalSunburst = ({ deckPaths, cloudPages, deckCardCounts = {}, onSe
   }, [zoomNodePath]);
 
   const treeRoot = useMemo(() => {
-    return buildTree(effectiveDeckPaths, cloudPages, deckCardCounts);
-  }, [effectiveDeckPaths, cloudPages, deckCardCounts]);
+    return buildTree(effectiveDeckPaths, libraryPages, deckCardCounts);
+  }, [effectiveDeckPaths, libraryPages, deckCardCounts]);
 
   const activeSubtreeRoot = useMemo(() => {
     if (zoomNodePath === 'Root') return treeRoot;
@@ -976,11 +976,10 @@ const ExportTreeFolder = ({ node, level = 0, selectedDecks, onToggle, themeMode 
   return (
     <div className="flex flex-col select-none relative">
       <div
-        className={`flex items-center justify-between py-2 px-3 rounded-[1.2rem] transition-all duration-200 cursor-pointer group my-1 mx-1 ${
-          isChecked
+        className={`flex items-center justify-between py-2 px-3 rounded-[1.2rem] transition-all duration-200 cursor-pointer group my-1 mx-1 ${isChecked
             ? (themeMode === 'dark' ? 'neu-item-pressed-dark border border-blue-500/50 text-blue-300' : 'neu-item-pressed-light border border-blue-300/80 text-blue-900 font-bold')
             : (themeMode === 'dark' ? 'neu-item-dark text-gray-300 hover:border-gray-700' : 'neu-item-light text-gray-700 hover:border-blue-300/80')
-        }`}
+          }`}
         style={{ marginLeft: `${level * 18 + 4}px` }}
       >
         {/* Horizontal connector line for non-root child items */}
@@ -1020,11 +1019,10 @@ const ExportTreeFolder = ({ node, level = 0, selectedDecks, onToggle, themeMode 
           </label>
         </div>
 
-        <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-lg shrink-0 select-none ${
-          isChecked
+        <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-lg shrink-0 select-none ${isChecked
             ? (themeMode === 'dark' ? 'neu-pressed-dark text-blue-400 border border-blue-500/30' : 'neu-pressed-light text-blue-700 border border-blue-200')
             : (themeMode === 'dark' ? 'neu-pressed-dark text-gray-400 border border-gray-800' : 'neu-pressed-light text-gray-500 border border-gray-200/50')
-        }`}>
+          }`}>
           {node.tCCount}
         </span>
       </div>
@@ -1083,11 +1081,10 @@ const NeumorphicSelect = ({ value, onChange, options, themeMode = 'light', place
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full p-2.5 rounded-xl flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${
-          themeMode === 'dark'
+        className={`w-full p-2.5 rounded-xl flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${themeMode === 'dark'
             ? 'neu-pressed-dark text-white border border-gray-800 hover:border-gray-700'
             : 'neu-pressed-light text-gray-800 border border-gray-200/80 hover:border-gray-300'
-        }`}
+          }`}
       >
         <span className="truncate pr-2">{selectedOption?.label || placeholder}</span>
         <ChevronDown className={`w-4 h-4 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-blue-500' : (themeMode === 'dark' ? 'text-gray-400' : 'text-gray-500')}`} />
@@ -1095,11 +1092,10 @@ const NeumorphicSelect = ({ value, onChange, options, themeMode = 'light', place
 
       {isOpen && (
         <div
-          className={`absolute left-0 right-0 top-full mt-1.5 z-50 p-1.5 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 ${
-            themeMode === 'dark'
+          className={`absolute left-0 right-0 top-full mt-1.5 z-50 p-1.5 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 ${themeMode === 'dark'
               ? 'neu-card-dark border border-gray-800 bg-slate-900/95 backdrop-blur-md'
               : 'neu-card-light border border-gray-200 bg-white/95 backdrop-blur-md'
-          }`}
+            }`}
         >
           <div className="max-h-56 overflow-y-auto custom-scrollbar space-y-1">
             {options.map((opt) => {
@@ -1112,11 +1108,10 @@ const NeumorphicSelect = ({ value, onChange, options, themeMode = 'light', place
                     onChange(opt.value);
                     setIsOpen(false);
                   }}
-                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-between transition ${
-                    isSelected
+                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-between transition ${isSelected
                       ? (themeMode === 'dark' ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600')
                       : (themeMode === 'dark' ? 'hover:bg-gray-800/60 text-gray-300' : 'hover:bg-gray-100 text-gray-700')
-                  }`}
+                    }`}
                 >
                   <span className="truncate">{opt.label}</span>
                   {isSelected && <Check className="w-3.5 h-3.5 text-blue-500 shrink-0 ml-2" />}
@@ -1255,12 +1250,12 @@ const TreeFolder = ({ node, level = 0, selectedPath, onSelect, onAdd, onRename, 
           >
             {hasChildren ? (
               isOpen ? <ChevronDown className={`w-3.5 h-3.5 ${isSelected ? (themeMode === 'dark' ? 'text-blue-400' : 'text-blue-600') : ''}`} />
-                     : <ChevronRight className={`w-3.5 h-3.5 ${isSelected ? (themeMode === 'dark' ? 'text-blue-400' : 'text-blue-600') : ''}`} />
+                : <ChevronRight className={`w-3.5 h-3.5 ${isSelected ? (themeMode === 'dark' ? 'text-blue-400' : 'text-blue-600') : ''}`} />
             ) : <div className="w-3.5 h-3.5" />}
           </div>
 
           <FolderIcon className={`w-4 h-4 shrink-0 transition ${isSelected ? (themeMode === 'dark' ? 'text-blue-400' : 'text-blue-600') : (themeMode === 'dark' ? 'text-gray-400 group-hover:text-blue-400' : 'text-blue-500/80 group-hover:text-blue-600')}`} />
-          
+
           <div className="flex flex-col min-w-0 flex-grow">
             <span className={`text-[11px] font-bold truncate tracking-tight ${isSelected ? (themeMode === 'dark' ? 'text-white font-extrabold' : 'text-blue-950 font-extrabold') : (themeMode === 'dark' ? 'text-gray-200' : 'text-gray-800')}`}>
               {node.name}
@@ -1277,54 +1272,48 @@ const TreeFolder = ({ node, level = 0, selectedPath, onSelect, onAdd, onRename, 
             <div className="ml-auto relative" ref={menuRef}>
               <button
                 onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
-                className={`p-1.5 rounded-xl transition-all ${
-                  isSelected
+                className={`p-1.5 rounded-xl transition-all ${isSelected
                     ? (themeMode === 'dark' ? 'hover:bg-blue-500/20 text-blue-300' : 'hover:bg-blue-200/50 text-blue-800')
                     : (themeMode === 'dark' ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-200/60 text-gray-500')
-                } ${showMenu ? (themeMode === 'dark' ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600') : ''}`}
+                  } ${showMenu ? (themeMode === 'dark' ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600') : ''}`}
               >
                 <MoreVertical className="w-3.5 h-3.5" />
               </button>
 
               {showMenu && (
                 <div
-                  className={`absolute right-0 top-full mt-1 border shadow-2xl rounded-2xl p-1 z-[100] flex flex-col min-w-[120px] animate-in fade-in zoom-in-95 duration-200 ${
-                    themeMode === 'dark' ? 'neu-card-dark border-gray-700 text-gray-200' : 'neu-card-light border-gray-200 text-gray-800'
-                  }`}
+                  className={`absolute right-0 top-full mt-1 border shadow-2xl rounded-2xl p-1 z-[100] flex flex-col min-w-[120px] animate-in fade-in zoom-in-95 duration-200 ${themeMode === 'dark' ? 'neu-card-dark border-gray-700 text-gray-200' : 'neu-card-light border-gray-200 text-gray-800'
+                    }`}
                   onClick={(e) => e.stopPropagation()}
                 >
                   {onToggleMove && (
                     <button
                       onClick={(e) => { e.stopPropagation(); onToggleMove(node.path); setShowMenu(false); }}
-                      className={`flex items-center gap-2 p-2.5 rounded-xl text-[10px] font-black uppercase transition ${
-                        themeMode === 'dark' ? 'hover:bg-blue-900/40 text-blue-400' : 'hover:bg-blue-50 text-blue-600'
-                      }`}
+                      className={`flex items-center gap-2 p-2.5 rounded-xl text-[10px] font-black uppercase transition ${themeMode === 'dark' ? 'hover:bg-blue-900/40 text-blue-400' : 'hover:bg-blue-50 text-blue-600'
+                        }`}
                     >
                       <Move className="w-3.5 h-3.5" /> Move
                     </button>
                   )}
                   <button
                     onClick={(e) => { e.stopPropagation(); onRename(node.path); setShowMenu(false); }}
-                    className={`flex items-center gap-2 p-2.5 rounded-xl text-[10px] font-black uppercase transition ${
-                      themeMode === 'dark' ? 'hover:bg-gray-800 text-gray-300' : 'hover:bg-gray-100 text-gray-700'
-                    }`}
+                    className={`flex items-center gap-2 p-2.5 rounded-xl text-[10px] font-black uppercase transition ${themeMode === 'dark' ? 'hover:bg-gray-800 text-gray-300' : 'hover:bg-gray-100 text-gray-700'
+                      }`}
                   >
                     <Edit3 className="w-3.5 h-3.5" /> Rename
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); onAdd(node.path); setIsOpen(true); setShowMenu(false); }}
-                    className={`flex items-center gap-2 p-2.5 rounded-xl text-[10px] font-black uppercase transition ${
-                      themeMode === 'dark' ? 'hover:bg-blue-900/40 text-blue-400' : 'hover:bg-blue-50 text-blue-600'
-                    }`}
+                    className={`flex items-center gap-2 p-2.5 rounded-xl text-[10px] font-black uppercase transition ${themeMode === 'dark' ? 'hover:bg-blue-900/40 text-blue-400' : 'hover:bg-blue-50 text-blue-600'
+                      }`}
                   >
                     <Plus className="w-3.5 h-3.5" /> Subfolder
                   </button>
                   <div className={`h-px my-1 ${themeMode === 'dark' ? 'bg-gray-800' : 'bg-gray-200/60'}`} />
                   <button
                     onClick={(e) => { e.stopPropagation(); onDelete(node.path); setShowMenu(false); }}
-                    className={`flex items-center gap-2 p-2.5 rounded-xl text-[10px] font-black uppercase transition ${
-                      themeMode === 'dark' ? 'hover:bg-red-900/40 text-red-400' : 'hover:bg-red-50 text-red-500'
-                    }`}
+                    className={`flex items-center gap-2 p-2.5 rounded-xl text-[10px] font-black uppercase transition ${themeMode === 'dark' ? 'hover:bg-red-900/40 text-red-400' : 'hover:bg-red-50 text-red-500'
+                      }`}
                   >
                     <Trash2 className="w-3.5 h-3.5" /> Delete
                   </button>
@@ -1340,11 +1329,10 @@ const TreeFolder = ({ node, level = 0, selectedPath, onSelect, onAdd, onRename, 
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
-          className={`py-1.5 mx-1 text-[10px] uppercase tracking-wider font-bold text-center border-2 border-dashed rounded-xl mb-2 transition ${
-            isDragOver
+          className={`py-1.5 mx-1 text-[10px] uppercase tracking-wider font-bold text-center border-2 border-dashed rounded-xl mb-2 transition ${isDragOver
               ? (themeMode === 'dark' ? 'border-blue-500 bg-blue-500/10 text-blue-400' : 'border-blue-500 bg-blue-50 text-blue-700')
               : (themeMode === 'dark' ? 'border-gray-800 text-gray-500 hover:border-gray-700' : 'border-gray-200 text-gray-400 hover:border-gray-300')
-          }`}
+            }`}
         >
           {isDragOver ? "Drop to Root" : "Drag to Root"}
         </div>
@@ -3278,7 +3266,7 @@ export default function App() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDraggingFile, setIsDraggingFile] = useState(false);
-  const [cloudPages, setCloudPages] = useState([]); // List of {id, base64, deck} from cloud
+  const [libraryPages, setLibraryPages] = useState([]); // List of {id, base64, deck} from local DB
   const getInitialTab = () => {
     const hash = window.location.hash.replace(/^#\/?/, '');
     const VALID_TABS = [
@@ -4244,8 +4232,8 @@ export default function App() {
 
             {pairingStatus && (
               <div className={`mt-3 p-3 rounded-xl border text-[10px] font-bold ${pairingStatus.type === 'error' ? (isDark ? 'neu-pressed-dark border-red-500/30 text-red-400' : 'bg-red-50 border-red-200 text-red-700') :
-                  pairingStatus.type === 'success' ? (isDark ? 'neu-pressed-dark border-green-500/30 text-green-400' : 'bg-green-50 border-green-200 text-green-700') :
-                    (isDark ? 'neu-pressed-dark border-blue-500/30 text-blue-400' : 'bg-blue-50 border-blue-200 text-blue-700')
+                pairingStatus.type === 'success' ? (isDark ? 'neu-pressed-dark border-green-500/30 text-green-400' : 'bg-green-50 border-green-200 text-green-700') :
+                  (isDark ? 'neu-pressed-dark border-blue-500/30 text-blue-400' : 'bg-blue-50 border-blue-200 text-blue-700')
                 }`}>
                 {pairingStatus.message}
               </div>
@@ -5394,7 +5382,11 @@ export default function App() {
   }, [isResizingLeft, isResizingCenter, isResizingDeck, colWidths.left]);
   const [isApiKeyVisible, setIsApiKeyVisible] = useState(false);
   const [hoveredCardIdFromImage, setHoveredCardIdFromImage] = useState(null);
+  const [hoveredQueuePageId, setHoveredQueuePageId] = useState(null);
   const [selectedPages, setSelectedPages] = useState(new Set());
+  const [mobileSelectionMode, setMobileSelectionMode] = useState(false);
+  const [mobileLibrarySearch, setMobileLibrarySearch] = useState('');
+  const [mobileLibrarySearchOpen, setMobileLibrarySearchOpen] = useState(false);
   const [moveDialog, setMoveDialog] = useState({ isOpen: false, targetPath: '' });
   const [pdfDialog, setPdfDialog] = useState({ isOpen: false, file: null, numPages: 0, mappings: [], rotations: {}, isConverting: false });
   const [loadedPdfDoc, setLoadedPdfDoc] = useState(null);
@@ -5690,10 +5682,10 @@ export default function App() {
     };
 
     deckPaths.forEach(addPathAndAncestors);
-    cloudPages.forEach(p => { if (p.deck) addPathAndAncestors(p.deck); });
+    libraryPages.forEach(p => { if (p.deck) addPathAndAncestors(p.deck); });
     cards.forEach(c => { if (c.deck) addPathAndAncestors(c.deck); });
     return Array.from(pathsSet).sort();
-  }, [deckPaths, cloudPages, cards]);
+  }, [deckPaths, libraryPages, cards]);
 
   useEffect(() => {
     if (effectiveDeckPaths.length > deckPaths.length) {
@@ -5714,6 +5706,27 @@ export default function App() {
   // IMAGE PREVIEW STATE
   const [activeQueueId, setActiveQueueId] = useState(null);
   const [hoveredCardCoordinates, setHoveredCardCoordinates] = useState(null);
+
+  const getCardBoundingBox = (card) => {
+    if (!card) return null;
+    if (card.ymin !== undefined && card.xmin !== undefined && card.ymax !== undefined && card.xmax !== undefined) {
+      return { ymin: Number(card.ymin), xmin: Number(card.xmin), ymax: Number(card.ymax), xmax: Number(card.xmax) };
+    }
+    if (card.img_box) {
+      if (Array.isArray(card.img_box) && card.img_box.length === 4) {
+        const [ymin, xmin, ymax, xmax] = card.img_box;
+        return { ymin: Number(ymin), xmin: Number(xmin), ymax: Number(ymax), xmax: Number(xmax) };
+      } else if (typeof card.img_box === 'object' && card.img_box.ymin !== undefined) {
+        return {
+          ymin: Number(card.img_box.ymin),
+          xmin: Number(card.img_box.xmin),
+          ymax: Number(card.img_box.ymax),
+          xmax: Number(card.img_box.xmax)
+        };
+      }
+    }
+    return null;
+  };
 
   // MODALS
   const [editingCard, setEditingCard] = useState(null);
@@ -5898,6 +5911,16 @@ export default function App() {
       window.location.hash = path;
     }
   }, [currentTab, mobileLibraryLevel, companionSubTab, analyticsSubTab, selectedPytSubject, selectedLoggerSubject, selectedSubjectTrackerSubject]);
+
+  // Reset mobile library selection & search whenever the level changes away from 'pages'
+  useEffect(() => {
+    if (mobileLibraryLevel !== 'pages') {
+      setMobileSelectionMode(false);
+      setMobileLibrarySearch('');
+      setMobileLibrarySearchOpen(false);
+      setSelectedPages(new Set());
+    }
+  }, [mobileLibraryLevel]);
 
   const fileInputRef = useRef(null);
   const dashboardPreviewRef = useRef(null);
@@ -6215,22 +6238,28 @@ export default function App() {
       const x = (((e.clientX - rect.left)) / rect.width) * 1000;
       const y = (((e.clientY - rect.top)) / rect.height) * 1000;
 
-      const found = pageCards.find(c =>
-        c &&
-        x >= (c.xmin || 0) && x <= (c.xmax || 0) &&
-        y >= (c.ymin || 0) && y <= (c.ymax || 0)
-      );
+      const found = pageCards.find(c => {
+        const box = getCardBoundingBox(c);
+        if (!box) return false;
+        return x >= box.xmin && x <= box.xmax && y >= box.ymin && y <= box.ymax;
+      });
 
       if (found) {
         if (found.id !== hoveredCardIdFromImage) {
           setHoveredCardIdFromImage(found.id);
+          const box = getCardBoundingBox(found);
+          if (box) setHoveredCardCoordinates(box);
+
           const cardEl = document.getElementById(`card-${found.id}`);
           if (cardEl) {
             cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
           }
         }
       } else {
-        if (hoveredCardIdFromImage) setHoveredCardIdFromImage(null);
+        if (hoveredCardIdFromImage) {
+          setHoveredCardIdFromImage(null);
+          setHoveredCardCoordinates(null);
+        }
       }
     } catch (err) {
       console.error("Image hover error:", err);
@@ -6537,7 +6566,7 @@ export default function App() {
     try {
       const localPages = await getLocalPages();
       const sortedPages = (localPages || []).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-      setCloudPages(sortedPages);
+      setLibraryPages(sortedPages);
       setPendingPageCount(sortedPages.filter(p => p.isPending).length);
       pagesLoaded.current = true;
     } catch (err) {
@@ -6600,8 +6629,19 @@ export default function App() {
         getLocalKV('trash_pages'),
         getLocalKV('trash_cards')
       ]);
-      setTrashPages((tPages || []).sort((a, b) => (b.deletedAt || 0) - (a.deletedAt || 0)));
-      setTrashCards((tCards || []).sort((a, b) => (b.deletedAt || 0) - (a.deletedAt || 0)));
+      const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+      const validPages = (tPages || []).filter(p => (p.deletedAt || Date.now()) > thirtyDaysAgo);
+      const validCards = (tCards || []).filter(c => (c.deletedAt || Date.now()) > thirtyDaysAgo);
+
+      if (validPages.length !== (tPages || []).length) {
+        await setLocalKV('trash_pages', validPages);
+      }
+      if (validCards.length !== (tCards || []).length) {
+        await setLocalKV('trash_cards', validCards);
+      }
+
+      setTrashPages(validPages.sort((a, b) => (b.deletedAt || 0) - (a.deletedAt || 0)));
+      setTrashCards(validCards.sort((a, b) => (b.deletedAt || 0) - (a.deletedAt || 0)));
       trashLoaded.current = true;
     } catch (err) {
       console.error('[LocalDB] Failed to load trash:', err);
@@ -7362,24 +7402,14 @@ JSON Format:
   };
 
   const handleEmptyRecycleBin = async () => {
-    if (!user || !db) return;
     if (trashPages.length === 0 && trashCards.length === 0) {
       alert("Recycle bin is already empty.");
       return;
     }
     if (confirm("Are you sure you want to permanently empty the Recycle Bin? This action cannot be undone.")) {
-      const batch = writeBatch(db);
-      const nowTs = Date.now();
-      trashPages.forEach(page => {
-        batch.delete(doc(db, 'artifacts', appId, 'users', user.uid, 'trash_pages', page.id));
-        batch.set(doc(db, 'artifacts', appId, 'users', user.uid, 'deleted_records', page.id), { id: page.id, type: 'page', deletedAt: nowTs });
-      });
-      trashCards.forEach(card => {
-        batch.delete(doc(db, 'artifacts', appId, 'users', user.uid, 'trash_cards', card.id));
-        batch.set(doc(db, 'artifacts', appId, 'users', user.uid, 'deleted_records', card.id), { id: card.id, type: 'card', deletedAt: nowTs });
-      });
       try {
-        await batch.commit();
+        await setLocalKV('trash_pages', []);
+        await setLocalKV('trash_cards', []);
         setTrashPages([]);
         setTrashCards([]);
         alert("Recycle bin emptied successfully!");
@@ -7387,6 +7417,48 @@ JSON Format:
         console.error("Failed to empty recycle bin:", err);
         alert("Failed to empty recycle bin: " + err.message);
       }
+    }
+  };
+
+  const handlePermanentDeletePage = async (pageId) => {
+    if (confirm("Permanently delete this page? This action cannot be undone.")) {
+      try {
+        const currentTrash = (await getLocalKV('trash_pages')) || [];
+        const updatedTrash = currentTrash.filter(p => p.id !== pageId);
+        await setLocalKV('trash_pages', updatedTrash);
+        setTrashPages(updatedTrash);
+      } catch (err) {
+        console.error("Failed to delete page permanently:", err);
+      }
+    }
+  };
+
+  const handlePermanentDeleteCard = async (cardId) => {
+    if (confirm("Permanently delete this card? This action cannot be undone.")) {
+      try {
+        const currentTrash = (await getLocalKV('trash_cards')) || [];
+        const updatedTrash = currentTrash.filter(c => c.id !== cardId);
+        await setLocalKV('trash_cards', updatedTrash);
+        setTrashCards(updatedTrash);
+      } catch (err) {
+        console.error("Failed to delete card permanently:", err);
+      }
+    }
+  };
+
+  const handleRestoreCard = async (card) => {
+    try {
+      const { deletedAt, ...restoredCard } = card;
+      await saveLocalCard(restoredCard);
+      const currentTrash = (await getLocalKV('trash_cards')) || [];
+      const updatedTrash = currentTrash.filter(c => c.id !== card.id);
+      await setLocalKV('trash_cards', updatedTrash);
+      setTrashCards(updatedTrash);
+      setCards(prev => [restoredCard, ...prev.filter(c => c.id !== card.id)].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)));
+      setTotalCardCount(prev => prev + 1);
+    } catch (err) {
+      console.error("[Restore] Card restore failed:", err);
+      alert("Failed to restore card: " + err.message);
     }
   };
 
@@ -10213,15 +10285,15 @@ JSON Format:
   };
 
   // Derived state for the current folder view
-  const uniqueCloudPages = useMemo(() => {
+  const uniqueLibraryPages = useMemo(() => {
     const map = new Map();
-    (cloudPages || []).forEach(p => {
+    (libraryPages || []).forEach(p => {
       if (p && p.id && !map.has(p.id)) {
         map.set(p.id, p);
       }
     });
     return Array.from(map.values());
-  }, [cloudPages]);
+  }, [libraryPages]);
 
   const folderPages = useMemo(() => {
     if (selectedTags.length > 0) {
@@ -10230,17 +10302,17 @@ JSON Format:
         const formattedTags = c.tags.map(t => t.trim().startsWith('#') ? t.trim() : `#${t.trim()}`);
         return selectedTags.every(st => formattedTags.includes(st));
       }).map(c => c.pageId));
-      return uniqueCloudPages.filter(p => matchedPageIds.has(p.id));
+      return uniqueLibraryPages.filter(p => matchedPageIds.has(p.id));
     }
     if (hierarchy === 'PENDING_REVIEW') {
-      return uniqueCloudPages.filter(p => p.isPending);
+      return uniqueLibraryPages.filter(p => p.isPending);
     }
     if (hierarchy === 'COMPANION_SCANS') {
-      return uniqueCloudPages.filter(p => p.isCompanionScan);
+      return uniqueLibraryPages.filter(p => p.isCompanionScan);
     }
     // Show only pages belonging directly to this folder (subfolder items appear inside subfolders)
-    return uniqueCloudPages.filter(p => p.deck === hierarchy);
-  }, [uniqueCloudPages, hierarchy, selectedTags, cards]);
+    return uniqueLibraryPages.filter(p => p.deck === hierarchy);
+  }, [uniqueLibraryPages, hierarchy, selectedTags, cards]);
 
   // Auto-scroll to card when highlighted from search or image
   useEffect(() => {
@@ -10396,8 +10468,8 @@ JSON Format:
     const totalCardsCount = cards.length;
 
     // Processed Pages Completion Rate
-    const totalPagesCount = cloudPages.length;
-    const approvedPagesCount = cloudPages.filter(p => !p.isPending).length;
+    const totalPagesCount = libraryPages.length;
+    const approvedPagesCount = libraryPages.filter(p => !p.isPending).length;
     const pageCompletionRate = totalPagesCount === 0 ? 0 : Math.round((approvedPagesCount / totalPagesCount) * 100);
 
     // Active Tags (Unique Concepts)
@@ -10441,7 +10513,7 @@ JSON Format:
       averagePassRate,
       retentionRate,
     };
-  }, [cards, cloudPages, studyLogs]);
+  }, [cards, libraryPages, studyLogs]);
 
   // Autocomplete suggestions: flatten all tracked topics with their subject prefix
   const autocompleteSuggestions = useMemo(() => {
@@ -13311,6 +13383,10 @@ JSON Format:
           setAutoBackupRetention(data.autoBackupRetention);
           localStorage.setItem("pyt_auto_backup_ret", data.autoBackupRetention);
         }
+        if (data.imageStorageMode !== undefined) {
+          setImageStorageMode(data.imageStorageMode);
+          localStorage.setItem("pyt_image_storage_mode", data.imageStorageMode);
+        }
       }
     }).catch(err => console.error("[LocalDB] Error fetching credentials:", err));
   }, []);
@@ -13325,7 +13401,8 @@ JSON Format:
         githubPatToken: githubPatToken || '',
         autoBackupEnabled,
         autoBackupFrequency,
-        autoBackupRetention
+        autoBackupRetention,
+        imageStorageMode
       };
       await saveLocalSetting('apiKeys', payload);
 
@@ -14999,7 +15076,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
         }
         return p;
       });
-      setCloudPages(updatedPages);
+      setLibraryPages(updatedPages);
       await saveLocalPages(updatedPages);
 
       const allLocalCards = await getLocalCards();
@@ -15073,7 +15150,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       const remainingPages = (allLocalPages || []).filter(p => !targetPageIds.has(p.id));
       const remainingCards = (allLocalCards || []).filter(c => !targetCardIds.has(c.id));
 
-      setCloudPages(remainingPages);
+      setLibraryPages(remainingPages);
       await replaceAllLocalPages(remainingPages);
 
       setCards(remainingCards);
@@ -15144,7 +15221,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
         }
         return p;
       });
-      setCloudPages(updatedPages);
+      setLibraryPages(updatedPages);
       await saveLocalPages(updatedPages);
 
       const allLocalCards = await getLocalCards();
@@ -15623,7 +15700,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
 
   const processTriagePage = async (pageId) => {
     if (isProcessing) return;
-    const pageObj = cloudPages.find(p => p.id === pageId);
+    const pageObj = libraryPages.find(p => p.id === pageId);
     if (!pageObj) {
       alert("Page not found in cloud pages.");
       return;
@@ -15731,33 +15808,54 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     setCurrentTab('cards');
   };
 
-  const sendAllToWebDirectly = async () => {
-    if (!user || queue.length === 0) return;
-    setIsSaving(true);
-    setOperationProgress({
-      show: true,
-      title: 'Sending to Triage',
-      message: 'Uploading pages directly to cloud triage...',
-      current: 0,
-      total: queue.length
-    });
-    let processed = 0;
+  const rotateQueuePage = async (id, deltaDegrees) => {
+    if (!id) return;
+    const item = queue.find(q => q.id === id);
+    if (!item || !item.base64) return;
+
     try {
-      const itemsCopy = [...queue];
-      for (let item of itemsCopy) {
-        await saveQueueItemToCloud(item.id, true);
-        processed++;
-        setOperationProgress(prev => ({
-          ...prev,
-          current: processed
-        }));
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = item.base64;
+      await new Promise((resolve) => {
+        img.onload = resolve;
+        img.onerror = resolve;
+      });
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const angle = (deltaDegrees % 360 + 360) % 360;
+
+      if (angle === 90 || angle === 270) {
+        canvas.width = img.height || 800;
+        canvas.height = img.width || 600;
+      } else {
+        canvas.width = img.width || 600;
+        canvas.height = img.height || 800;
       }
-      alert("Successfully sent all pages to web triage!");
+
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate((angle * Math.PI) / 180);
+      ctx.drawImage(img, -img.width / 2, -img.height / 2);
+
+      const rotatedBase64 = canvas.toDataURL('image/jpeg', 0.95);
+      const currentRot = item.rotation || item.pageRotation || 0;
+      const nextRot = (currentRot + deltaDegrees % 360 + 360) % 360;
+
+      setQueue(prev => prev.map(q => {
+        if (q.id === id) {
+          return {
+            ...q,
+            base64: rotatedBase64,
+            imageUrl: rotatedBase64,
+            rotation: nextRot,
+            pageRotation: nextRot
+          };
+        }
+        return q;
+      }));
     } catch (err) {
-      alert("Failed to send pages: " + err.message);
-    } finally {
-      setIsSaving(false);
-      setOperationProgress({ show: false, title: '', message: '', current: 0, total: 0 });
+      console.error("Error physically rotating queue image:", err);
     }
   };
 
@@ -15808,7 +15906,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     console.log(`[Delete] Initializing local delete for page: ${id} | Delete Cards: ${shouldDeleteCards}`);
 
     try {
-      const page = cloudPages.find(p => p.id === id);
+      const page = libraryPages.find(p => p.id === id);
 
       // 1. Move Page to Local Trash KV
       if (page) {
@@ -15847,8 +15945,8 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       }
 
       // Update local state
-      const wasP = cloudPages.find(p => p.id === id)?.isPending;
-      setCloudPages(prev => prev.filter(p => p.id !== id));
+      const wasP = libraryPages.find(p => p.id === id)?.isPending;
+      setLibraryPages(prev => prev.filter(p => p.id !== id));
       if (wasP) setPendingPageCount(prev => Math.max(0, prev - 1));
 
       if (shouldDeleteCards && linkedCards.length > 0) {
@@ -15909,7 +16007,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       }
 
       // Update local state
-      setCloudPages(prev => [restoredPageData, ...prev.filter(p => p.id !== page.id)].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)));
+      setLibraryPages(prev => [restoredPageData, ...prev.filter(p => p.id !== page.id)].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)));
       setTrashPages(updatedTrashPages);
 
       if (shouldRestoreCards && restoredCards.length > 0) {
@@ -16101,7 +16199,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       loadedFolderPaths.current.clear();
 
       // 3. Update React state immediately
-      setCloudPages(prev => [newPage, ...prev.filter(p => p.id !== newPage.id)].sort((a, b) => b.createdAt - a.createdAt));
+      setLibraryPages(prev => [newPage, ...prev.filter(p => p.id !== newPage.id)].sort((a, b) => b.createdAt - a.createdAt));
       if (_savedCards.length > 0) {
         setCards(prev => [..._savedCards, ...prev.filter(c => !_savedCards.some(sc => sc.id === c.id))].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)));
         setTotalCardCount(prev => Math.max(prev + _savedCards.length, cards.length + _savedCards.length));
@@ -16220,7 +16318,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     if (!user || !db) return;
     try {
       setIsSaving(true);
-      const pageToApprove = cloudPages.find(p => p.id === pageId);
+      const pageToApprove = libraryPages.find(p => p.id === pageId);
       const finalDeck = customDeck || pageToApprove?.deck || hierarchy;
 
       // 1. Approve Page
@@ -16240,7 +16338,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       await Promise.all(cardPromises);
 
       // Optimistic updates
-      setCloudPages(prev => prev.map(p => p.id === pageId ? { ...p, isPending: false, deck: finalDeck } : p));
+      setLibraryPages(prev => prev.map(p => p.id === pageId ? { ...p, isPending: false, deck: finalDeck } : p));
       setPendingPageCount(prev => Math.max(0, prev - 1));
       setCards(prev => prev.map(c => c.pageId === pageId ? { ...c, isPending: false, deck: finalDeck } : c));
       const oldDeck = pageToApprove?.deck || '';
@@ -16269,7 +16367,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     if (!user || !db || !confirm("Are you sure you want to discard ALL pending captures? This cannot be undone.")) return;
     try {
       setIsSaving(true);
-      const pendingPages = cloudPages.filter(p => p.isPending);
+      const pendingPages = libraryPages.filter(p => p.isPending);
       for (const page of pendingPages) {
         // Delete Page
         await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'pages', page.id));
@@ -16281,7 +16379,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       }
       // Optimistic updates
       const pendingPageIds = new Set(pendingPages.map(p => p.id));
-      setCloudPages(prev => prev.filter(p => !pendingPageIds.has(p.id)));
+      setLibraryPages(prev => prev.filter(p => !pendingPageIds.has(p.id)));
       setPendingPageCount(0);
       const pendingCardIds = new Set(cards.filter(c => pendingPageIds.has(c.pageId)).map(c => c.id));
       const discardedCards = cards.filter(c => pendingPageIds.has(c.pageId));
@@ -16326,7 +16424,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
   const findCardImageSrc = (card) => {
     if (!card) return null;
     const pageId = card.pageId || card.queueId;
-    const pageObj = pageId ? (cloudPages.find(p => p.id === pageId) || queue.find(q => q.id === pageId)) : null;
+    const pageObj = pageId ? (libraryPages.find(p => p.id === pageId) || queue.find(q => q.id === pageId)) : null;
     return (pageObj ? (pageObj.imageUrl || pageObj.base64) : null) || card.imageUrl || card.base64 || card.sourceImageUrl || null;
   };
 
@@ -17459,7 +17557,7 @@ Return your response strictly as a JSON object matching this schema:
       }
 
       // 3. Update React state
-      setCloudPages(prev => prev.map(p => ids.includes(p.id) ? { ...p, deck: target, updatedAt: nowTime } : p));
+      setLibraryPages(prev => prev.map(p => ids.includes(p.id) ? { ...p, deck: target, updatedAt: nowTime } : p));
       setCards(prev => prev.map(c => (ids.includes(c.pageId) || ids.includes(c.queueId) || affectedCards.some(ac => ac.id === c.id)) ? { ...c, deck: target, updatedAt: nowTime } : c));
 
       // 4. Recalculate deck and subject counts locally
@@ -17502,8 +17600,8 @@ Return your response strictly as a JSON object matching this schema:
   };
 
   const activeQueueItem = queue.find(q => q.id === activeQueueId);
-  const activeCloudPage = cloudPages.find(p => p.id === activeQueueId);
-  const activeImageObj = activeQueueItem || activeCloudPage;
+  const activeLibraryPage = libraryPages.find(p => p.id === activeQueueId);
+  const activeImageObj = activeQueueItem || activeLibraryPage;
 
   const pageCards = activeQueueId
     ? (activeQueueItem?.generatedCards || cards.filter(c => c.pageId === activeQueueId || c.queueId === activeQueueId))
@@ -20159,16 +20257,59 @@ Return your response strictly as a JSON object matching this schema:
                             <button onClick={() => setQueue([])} className={`text-[10px] font-bold uppercase ${settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}`}>Clear</button>
                           </div>
 
-                          <button
+                          <UiverseButton
                             onClick={processQueue}
                             disabled={isProcessing}
-                            className={`w-full flex items-center justify-center gap-3 p-4 rounded-2xl font-black text-sm transition-all active:scale-95 mb-3
-                      ${isProcessing ? (settingsThemeMode === 'dark' ? 'neu-pressed-dark text-gray-500' : 'neu-pressed-light text-gray-400') : (settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light')}
-                    `}
+                            fullWidth
+                            size="lg"
+                            themeMode={settingsThemeMode}
+                            icon={isProcessing ? <Loader2 className="w-5 h-5 animate-spin text-blue-400" /> : <Play className="w-5 h-5 text-blue-400" />}
+                            className="mb-3"
                           >
-                            {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Play className="w-5 h-5" />}
-                            {isProcessing ? 'AI is Thinking...' : `Start Analysis (${queue.length})`}
-                          </button>
+                            {isProcessing ? 'AI Thinking...' : `Start Analysis (${queue.length})`}
+                          </UiverseButton>
+
+                          {/* Mobile Prompt Template Selector */}
+                          <div className={`p-3.5 rounded-2xl mb-3 transition-colors ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200/60'}`}>
+                            <label className={`block text-[9px] font-black uppercase tracking-widest mb-1.5 text-left ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                              Prompt Template
+                            </label>
+                            <NeumorphicSelect
+                              value={generationPromptId}
+                              onChange={(val) => setGenerationPromptId(val)}
+                              options={[
+                                { value: 'default', label: 'Default Medical Prompt' },
+                                ...customPrompts.map(p => ({ value: p.id, label: p.name }))
+                              ]}
+                              themeMode={settingsThemeMode}
+                              placeholder="Select Prompt Template..."
+                            />
+                            {(() => {
+                              const currentPromptName = generationPromptId === 'default'
+                                ? 'Default Medical Prompt'
+                                : (customPrompts.find(p => p.id === generationPromptId)?.name || '');
+                              const isHighYield = currentPromptName.toLowerCase().includes('high-yield');
+                              if (isHighYield) {
+                                const subjects = Array.from(new Set(pytTopicsList.map(p => p.subject).filter(Boolean)));
+                                return (
+                                  <div className="mt-2.5 animate-in slide-in-from-top-2 duration-200">
+                                    <label className={`block text-[9px] font-black uppercase tracking-widest mb-1 text-left ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Select Subject</label>
+                                    <NeumorphicSelect
+                                      value={selectedGenerationSubject}
+                                      onChange={(val) => setSelectedGenerationSubject(val)}
+                                      options={[
+                                        { value: '', label: '-- Choose Subject --' },
+                                        ...subjects.map(sub => ({ value: sub, label: sub }))
+                                      ]}
+                                      themeMode={settingsThemeMode}
+                                      placeholder="Choose Subject..."
+                                    />
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </div>
 
                           {/* Mobile Autosave Toggle */}
                           <div className={`flex items-center justify-between p-3.5 rounded-2xl mb-3 transition-colors ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200/60'}`}>
@@ -20210,10 +20351,11 @@ Return your response strictly as a JSON object matching this schema:
                                   name="mobile-image-storage-mode"
                                   value="local"
                                   checked={imageStorageMode === 'local'}
-                                  onChange={() => {
+                                  onChange={async () => {
                                     setImageStorageMode('local');
                                     localStorage.setItem("pyt_image_storage_mode", 'local');
-                                    saveLocalSetting('apiKeys', { imageStorageMode: 'local' });
+                                    const existing = (await getLocalSetting('apiKeys')) || {};
+                                    await saveLocalSetting('apiKeys', { ...existing, imageStorageMode: 'local' });
                                   }}
                                 />
                                 <span className={settingsThemeMode === 'dark' ? 'neu-radio-span-dark' : 'neu-radio-span-light'}>
@@ -20227,10 +20369,11 @@ Return your response strictly as a JSON object matching this schema:
                                   name="mobile-image-storage-mode"
                                   value="cloud"
                                   checked={imageStorageMode === 'cloud'}
-                                  onChange={() => {
+                                  onChange={async () => {
                                     setImageStorageMode('cloud');
                                     localStorage.setItem("pyt_image_storage_mode", 'cloud');
-                                    saveLocalSetting('apiKeys', { imageStorageMode: 'cloud' });
+                                    const existing = (await getLocalSetting('apiKeys')) || {};
+                                    await saveLocalSetting('apiKeys', { ...existing, imageStorageMode: 'cloud' });
                                   }}
                                 />
                                 <span className={settingsThemeMode === 'dark' ? 'neu-radio-span-dark' : 'neu-radio-span-light'}>
@@ -20241,142 +20384,165 @@ Return your response strictly as a JSON object matching this schema:
                             </div>
                           </div>
 
-                          <button
-                            onClick={sendAllToWebDirectly}
-                            disabled={isProcessing || isSaving}
-                            className={`w-full flex items-center justify-center gap-3 p-4 rounded-2xl font-black text-sm transition-all active:scale-95 mb-6
-                      ${isProcessing || isSaving ? (settingsThemeMode === 'dark' ? 'neu-pressed-dark text-gray-500' : 'neu-pressed-light text-gray-400') : 'bg-amber-600 text-white shadow-lg shadow-amber-600/30'}
-                    `}
+                          {/* Mobile Queue Pages Grid (Max 4 per row, uniform auto-scale for < 4, without round buttons & without deck selector) */}
+                          <div
+                            className="grid gap-2.5 max-h-[350px] overflow-y-auto pr-1 custom-scrollbar"
+                            style={{
+                              gridTemplateColumns: `repeat(${Math.min(Math.max(queue.length, 1), 4)}, minmax(0, 1fr))`
+                            }}
                           >
-                            {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-                            Send to Web Directly
-                          </button>
-
-                          <div className="space-y-3 max-h-[250px] overflow-y-auto pr-1 custom-scrollbar">
                             <AnimatePresence mode="popLayout">
-                              {queue.map(item => (
-                                <motion.div
-                                  key={item.id}
-                                  layout
-                                  initial={{ opacity: 0, scale: 0.92, y: 16 }}
-                                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                                  exit={{ opacity: 0, scale: 0.9, height: 0, opacity: 0, padding: 0 }}
-                                  transition={{ type: "spring", stiffness: 180, damping: 22, mass: 0.8 }}
-                                  whileHover={{ scale: 1.02 }}
-                                  whileTap={{ scale: 0.97 }}
-                                  onClick={() => setActiveQueueId(item.id)}
-                                  className={`p-3 rounded-2xl border transition-all flex flex-col gap-2 cursor-pointer ${activeQueueId === item.id ? (settingsThemeMode === 'dark' ? 'neu-pressed-dark border-blue-500/50' : 'neu-pressed-light border-blue-400') : (settingsThemeMode === 'dark' ? 'neu-card-dark border-gray-800' : 'neu-card-light border-gray-200')}`}
-                                >
-                                  <div className="flex items-center gap-3 w-full">
-                                    <div className={`w-10 h-10 rounded-xl overflow-hidden shrink-0 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
-                                      <img src={item.base64} className="w-full h-full object-cover" alt="" />
+                              {queue.map(item => {
+                                const isSelected = activeQueueId === item.id;
+                                const isHovered = hoveredQueuePageId === item.id;
+
+                                return (
+                                  <motion.div
+                                    key={item.id}
+                                    layout
+                                    initial={{ opacity: 0, y: 12 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.9, height: 0, opacity: 0, padding: 0 }}
+                                    transition={{ duration: 0.2, ease: "easeOut" }}
+                                    whileTap={{ scale: 0.97 }}
+                                    onMouseEnter={() => setHoveredQueuePageId(item.id)}
+                                    onMouseLeave={() => setHoveredQueuePageId(null)}
+                                    onClick={() => setActiveQueueId(item.id)}
+                                    className={`p-2.5 rounded-2xl border transition-all flex flex-col justify-between items-center text-center cursor-pointer relative group ${isSelected || isHovered
+                                        ? (settingsThemeMode === 'dark' ? 'neu-pressed-dark ring-2 ring-blue-500 border-blue-500' : 'neu-pressed-light ring-2 ring-blue-500 border-blue-400')
+                                        : (settingsThemeMode === 'dark' ? 'neu-card-dark border-gray-800 hover:border-gray-700' : 'neu-card-light border-gray-200 hover:border-gray-300')
+                                      }`}
+                                  >
+                                    <div className={`w-full aspect-[4/3] rounded-xl overflow-hidden mb-2 relative flex items-center justify-center p-0.5 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
+                                      <img
+                                        src={item.base64}
+                                        style={{
+                                          transform: `rotate(${item.rotation || item.pageRotation || 0}deg)`,
+                                          transition: 'transform 0.3s ease'
+                                        }}
+                                        className="w-full h-full object-cover rounded-lg"
+                                        alt={item.fileName}
+                                      />
                                     </div>
-                                    <div className="flex-grow min-w-0 text-left">
-                                      <div className={`text-[10px] font-bold truncate ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>{item.fileName}</div>
-                                      <div className="flex items-center gap-2 mt-1">
-                                        {item.status === 'processing' && <div className="h-1 flex-grow bg-blue-500/20 rounded-full overflow-hidden"><div className="h-full bg-blue-500 w-1/2 animate-pulse" /></div>}
-                                        {item.status === 'done' && <span className="text-[9px] text-emerald-500 font-black">READY ({item.generatedCards?.length || 0})</span>}
-                                        {item.status === 'pending' && <span className={`text-[9px] font-bold ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>QUEUED</span>}
+                                    <div className="w-full min-w-0">
+                                      <div className={`text-[9px] font-black truncate ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>{item.fileName}</div>
+                                      <div className="flex items-center justify-center gap-1 mt-1">
+                                        {item.status === 'processing' && <div className="h-1 w-full bg-blue-500/20 rounded-full overflow-hidden"><div className="h-full bg-blue-500 w-1/2" /></div>}
+                                        {item.status === 'done' && <span className="text-[8px] text-emerald-500 font-black">READY ({item.generatedCards?.length || 0})</span>}
+                                        {item.status === 'pending' && <span className={`text-[8px] font-bold ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>QUEUED</span>}
                                         {item.status === 'error' && (
-                                          <button onClick={() => retryItem(item.id)} className="text-[9px] text-red-500 font-black hover:underline cursor-pointer">
-                                            FAILED (RETRY)
+                                          <button onClick={(e) => { e.stopPropagation(); retryItem(item.id); }} className="text-[8px] text-red-500 font-black hover:underline cursor-pointer">
+                                            RETRY
                                           </button>
                                         )}
                                       </div>
                                     </div>
-                                    {item.status === 'done' && (
-                                      <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                                        <button
-                                          onClick={() => regeneratePageWithGemini(item.id)}
-                                          disabled={isProcessing}
-                                          className={`p-2 rounded-xl transition-all active:scale-95 disabled:opacity-50 ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-purple-400' : 'neu-btn-light text-purple-600'}`}
-                                          title="Regenerate this page using Gemini AI pipeline"
-                                        >
-                                          <Sparkles className="w-4 h-4 text-purple-400" />
-                                        </button>
-                                        <div className={`p-2 rounded-xl ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'}`}>
-                                          <CheckCircle className="w-4 h-4 text-white" />
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                  <div className={`flex items-center gap-1.5 w-full pt-1.5 border-t ${settingsThemeMode === 'dark' ? 'border-gray-800' : 'border-gray-200'}`} onClick={(e) => e.stopPropagation()}>
-                                    <Folder className={`w-3 h-3 shrink-0 ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
-                                    <select
-                                      value={item.deck || hierarchy}
-                                      onChange={(e) => {
-                                        const nextDeck = e.target.value;
-                                        setQueue(prev => prev.map(q => q.id === item.id ? { ...q, deck: nextDeck, hasCustomDeck: true } : q));
-                                      }}
-                                      className={`text-[9px] rounded px-1.5 py-0.5 flex-grow truncate outline-none cursor-pointer font-bold ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white border border-gray-800' : 'neu-pressed-light text-gray-800 border border-gray-200'}`}
-                                    >
-                                      {effectiveDeckPaths.map(p => (
-                                        <option key={p} value={p} className={settingsThemeMode === 'dark' ? 'bg-slate-900 text-white' : ''}>{p.replace(/::/g, ' ➔ ')}</option>
-                                      ))}
-                                    </select>
-                                  </div>
-                                </motion.div>
-                              ))}
+                                  </motion.div>
+                                );
+                              })}
                             </AnimatePresence>
                           </div>
                         </div>
                       )}
 
-                      {/* Dropzone Card */}
-                      <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-6 rounded-[2rem] text-center`}>
-                        {/* Selected Deck Selector for Mobile */}
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex flex-col text-left">
-                            <span className={`text-[10px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Target Folder</span>
-                            <span className={`text-xs font-black truncate max-w-[180px] ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>{hierarchy}</span>
+                      {/* Dropzone Card - Hidden when pages are in queue ready for processing */}
+                      {queue.length === 0 && (
+                        <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-6 rounded-[2rem] text-center`}>
+                          {/* Selected Deck Selector for Mobile */}
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex flex-col text-left">
+                              <span className={`text-[10px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Target Folder</span>
+                              <span className={`text-xs font-black truncate max-w-[180px] ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>{hierarchy}</span>
+                            </div>
+                            <button
+                              onClick={() => setShowMobileFolderTree(!showMobileFolderTree)}
+                              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400' : 'neu-btn-light text-blue-600'}`}
+                            >
+                              <Folder className="w-3.5 h-3.5" />
+                              {showMobileFolderTree ? 'Hide' : 'Select'}
+                            </button>
                           </div>
-                          <button
-                            onClick={() => setShowMobileFolderTree(!showMobileFolderTree)}
-                            className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400' : 'neu-btn-light text-blue-600'}`}
-                          >
-                            <Folder className="w-3.5 h-3.5" />
-                            {showMobileFolderTree ? 'Hide' : 'Select'}
-                          </button>
-                        </div>
 
-                        {showMobileFolderTree && (
-                          <div className={`p-3.5 px-3.5 rounded-2xl mb-4 text-left max-h-[250px] overflow-y-auto custom-scrollbar ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200'}`}>
-                            <TreeFolder
-                              node={buildTree(effectiveDeckPaths, cloudPages, deckCardCounts)}
-                              level={0}
-                              selectedPath={hierarchy}
-                              onSelect={(path) => { setHierarchy(path); setShowMobileFolderTree(false); }}
-                              onAdd={(path) => setNewFolderDialog({ isOpen: true, basePath: path, input: '' })}
-                              onRename={(path) => setRenameDialog({ isOpen: true, path, input: path.split('::').pop() })}
-                              onDelete={handleDeleteFolder}
-                              onMoveNode={handleMoveNode}
-                              isMobileMoveMode={!!movingNode}
-                              onToggleMove={(path) => setMovingNode(movingNode === path ? null : path)}
-                              themeMode={settingsThemeMode}
-                            />
-                          </div>
-                        )}
+                          {showMobileFolderTree && (
+                            <div className={`p-3.5 px-3.5 rounded-2xl mb-4 text-left max-h-[250px] overflow-y-auto custom-scrollbar ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200'}`}>
+                              <TreeFolder
+                                node={buildTree(effectiveDeckPaths, libraryPages, deckCardCounts)}
+                                level={0}
+                                selectedPath={hierarchy}
+                                themeMode={settingsThemeMode}
+                                onSelect={(path) => { setHierarchy(path); setShowMobileFolderTree(false); }}
+                                onAdd={(path) => setNewFolderDialog({ isOpen: true, basePath: path, input: '' })}
+                                onRename={(path) => setRenameDialog({ isOpen: true, path, input: path.split('::').pop() })}
+                                onDelete={handleDeleteFolder}
+                                onMoveNode={handleMoveNode}
+                                isMobileMoveMode={!!movingNode}
+                                onToggleMove={(path) => setMovingNode(movingNode === path ? null : path)}
+                                themeMode={settingsThemeMode}
+                              />
+                            </div>
+                          )}
 
-                        <label className={`flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-[2rem] transition-all cursor-pointer group ${isUploading
+                          <label className={`flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-[2rem] transition-all cursor-pointer group ${isUploading
                             ? (settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-800 cursor-not-allowed' : 'neu-pressed-light border-gray-300 cursor-not-allowed')
                             : (settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-700 hover:border-blue-400' : 'neu-pressed-light border-gray-300 hover:border-blue-500')
-                          }`}>
-                          <div className={`w-14 h-14 rounded-full flex items-center justify-center mb-3 transition ${isUploading ? 'bg-gray-400 animate-pulse' : (settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light')
                             }`}>
-                            {isUploading ? <Loader2 className="w-7 h-7 text-white animate-spin" /> : <UploadCloud className="w-7 h-7 text-white" />}
-                          </div>
-                          <span className={`font-black text-sm ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>{isUploading ? 'Uploading...' : 'New Capture'}</span>
-                          <span className={`text-[10px] font-bold mt-1 ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{isUploading ? 'Converting files for AI...' : 'Tap to add pages to current deck'}</span>
-                          {!isUploading && <input type="file" multiple accept="image/*,application/pdf" className="hidden" onChange={handleFileSelect} />}
-                        </label>
-                      </div>
+                            <div className={`w-14 h-14 rounded-full flex items-center justify-center mb-3 transition ${isUploading ? 'bg-gray-400' : (settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light')
+                              }`}>
+                              {isUploading ? <Loader2 className="w-7 h-7 text-white animate-spin" /> : <UploadCloud className="w-7 h-7 text-white" />}
+                            </div>
+                            <span className={`font-black text-sm ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>{isUploading ? 'Uploading...' : 'New Capture'}</span>
+                            <span className={`text-[10px] font-bold mt-1 ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{isUploading ? 'Converting files for AI...' : 'Tap to add pages to current deck'}</span>
+                            {!isUploading && <input type="file" multiple accept="image/*,application/pdf" className="hidden" onChange={handleFileSelect} />}
+                          </label>
+                        </div>
+                      )}
 
                       {/* Workspace / Preview Section */}
                       {activeQueueId && (
                         <div className="space-y-4 animate-in slide-in-from-bottom-4 duration-500">
-                          <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-2.5 rounded-3xl overflow-hidden`}>
-                            <div className={`aspect-[3/4] rounded-2xl overflow-hidden relative ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
-                              <img src={activeImageObj?.imageUrl || activeImageObj?.base64} className="w-full h-full object-cover" alt="" />
+                          <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-4 rounded-3xl overflow-hidden flex flex-col gap-3`}>
+                            {/* Rotation Controls Toolbar */}
+                            <div className="flex items-center justify-between gap-2 px-1">
+                              <span className={`text-[10px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
+                                Rotate Page {(activeQueueItem?.rotation || activeQueueItem?.pageRotation || 0) > 0 ? `(${activeQueueItem?.rotation || activeQueueItem?.pageRotation}°)` : ''}
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    rotateQueuePage(activeQueueId, -90);
+                                  }}
+                                  title="Rotate 90° anti-clockwise"
+                                  className={`px-3 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1.5 transition active:scale-95 cursor-pointer shadow-sm ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400 border border-blue-500/30' : 'neu-btn-light text-blue-600 border border-blue-200'
+                                    }`}
+                                >
+                                  <RotateCcw className="w-4 h-4 text-blue-500 shrink-0" />
+                                  <span>Anti-Clockwise</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    rotateQueuePage(activeQueueId, 90);
+                                  }}
+                                  title="Rotate 90° clockwise"
+                                  className={`px-3 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1.5 transition active:scale-95 cursor-pointer shadow-sm ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400 border border-blue-500/30' : 'neu-btn-light text-blue-600 border border-blue-200'
+                                    }`}
+                                >
+                                  <RotateCw className="w-4 h-4 text-blue-500 shrink-0" />
+                                  <span>Clockwise</span>
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Image Container with physically rotated image */}
+                            <div className={`aspect-[3/4] rounded-2xl overflow-hidden relative flex items-center justify-center p-2 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
+                              <img
+                                src={activeImageObj?.imageUrl || activeImageObj?.base64}
+                                className="max-w-full max-h-full object-contain"
+                                alt="Page Preview"
+                              />
                             </div>
                           </div>
 
@@ -20390,31 +20556,72 @@ Return your response strictly as a JSON object matching this schema:
 
                             {/* Cards Display */}
                             <AnimatePresence mode="popLayout">
-                              {(queue.find(q => q.id === activeQueueId)?.generatedCards || pageCards).map((card, idx) => (
-                                <motion.div
-                                  key={card.id || idx}
-                                  layout
-                                  initial={{ opacity: 0, y: 20, scale: 0.96 }}
-                                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                                  exit={{ opacity: 0, scale: 0.92, height: 0, opacity: 0 }}
-                                  transition={{ duration: 0.6, delay: idx * 0.05, ease: [0.22, 1, 0.36, 1] }}
-                                  whileHover={{ scale: 1.015, y: -2 }}
-                                  whileTap={{ scale: 0.98 }}
-                                  className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-white' : 'neu-card-light text-gray-900'} p-4 rounded-2xl space-y-2`}
-                                >
-                                  <div className="flex items-center justify-between">
-                                    <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full inline-block ${settingsThemeMode === 'dark' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}>{card.type}</span>
-                                  </div>
-                                  {card.type === 'Cloze' ? (
-                                    <div className={`text-sm font-medium leading-relaxed ${settingsThemeMode === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>{card.text}</div>
-                                  ) : (
-                                    <div className="space-y-1">
-                                      <div className={`text-sm font-black leading-tight ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>{card.front}</div>
-                                      <div className={`text-xs font-medium ${settingsThemeMode === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>{card.back}</div>
+                              {(queue.find(q => q.id === activeQueueId)?.generatedCards || pageCards).map((card, idx) => {
+                                const isCardHovered = hoveredCardIdFromImage === card.id || hoveredQueuePageId === activeQueueId;
+                                return (
+                                  <motion.div
+                                    key={card.id || idx}
+                                    layout
+                                    initial={{ opacity: 0, y: 16 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.95, height: 0 }}
+                                    transition={{ duration: 0.25, delay: idx * 0.02, ease: "easeOut" }}
+                                    onMouseEnter={() => setHoveredCardIdFromImage(card.id)}
+                                    onMouseLeave={() => setHoveredCardIdFromImage(null)}
+                                    className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-white' : 'neu-card-light text-gray-900'} p-4 rounded-2xl space-y-2 cursor-pointer transition-colors duration-200 relative group ${isCardHovered ? 'ring-2 ring-blue-500 border-blue-500' : ''
+                                      }`}
+                                  >
+                                    <div className="flex items-center justify-between w-full">
+                                      <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full inline-block ${settingsThemeMode === 'dark' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}>{card.type}</span>
+
+                                      {/* Mobile Card Edit and Delete Action Buttons */}
+                                      <div className="flex items-center gap-1.5 z-10" onClick={(e) => e.stopPropagation()}>
+                                        <button
+                                          onClick={() => setEditingCard(card)}
+                                          className={`p-1.5 rounded-xl transition-colors ${settingsThemeMode === 'dark' ? 'hover:bg-blue-500/20 text-blue-400' : 'hover:bg-blue-50 text-blue-600'}`}
+                                          title="Edit Card"
+                                        >
+                                          <Edit3 className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button
+                                          onClick={() => {
+                                            if (activeQueueId) {
+                                              const queueItem = queue.find(q => q.id === activeQueueId);
+                                              if (queueItem && queueItem.generatedCards) {
+                                                setQueue(prev => prev.map(q => {
+                                                  if (q.id === activeQueueId) {
+                                                    return {
+                                                      ...q,
+                                                      generatedCards: q.generatedCards.filter(c => (c.id ? c.id !== card.id : c.text !== card.text))
+                                                    };
+                                                  }
+                                                  return q;
+                                                }));
+                                                return;
+                                              }
+                                            }
+                                            if (card.id) {
+                                              deleteCard(card.id);
+                                            }
+                                          }}
+                                          className={`p-1.5 rounded-xl transition-colors ${settingsThemeMode === 'dark' ? 'hover:bg-red-500/20 text-red-400' : 'hover:bg-red-50 text-red-600'}`}
+                                          title="Delete Card"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
                                     </div>
-                                  )}
-                                </motion.div>
-                              ))}
+                                    {card.type === 'Cloze' ? (
+                                      <div className={`text-sm font-medium leading-relaxed ${settingsThemeMode === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>{card.text}</div>
+                                    ) : (
+                                      <div className="space-y-1">
+                                        <div className={`text-sm font-black leading-tight ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>{card.front}</div>
+                                        <div className={`text-xs font-medium ${settingsThemeMode === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>{card.back}</div>
+                                      </div>
+                                    )}
+                                  </motion.div>
+                                );
+                              })}
                             </AnimatePresence>
                             {(queue.find(q => q.id === activeQueueId)?.generatedCards || pageCards).length === 0 && (
                               <div className={`p-10 text-center italic text-sm ${settingsThemeMode === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
@@ -20423,55 +20630,53 @@ Return your response strictly as a JSON object matching this schema:
                             )}
 
                             {/* Action Buttons for Queue Items vs Saved Items */}
-                            {activeQueueItem?.status === 'done' ? (
+                            {activeQueueItem ? (
                               <div className="pt-6 space-y-3 pb-20">
-                                <button
-                                  disabled={isProcessing || isSaving}
-                                  onClick={() => regeneratePageWithGemini(activeQueueId)}
-                                  className={`w-full p-4 rounded-2xl text-xs font-black flex items-center justify-center gap-2 active:scale-95 transition disabled:opacity-50 ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-purple-400' : 'neu-btn-light text-purple-600'}`}
-                                >
-                                  {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
-                                  Regenerate Page with Gemini AI
-                                </button>
+                                {activeQueueItem.status === 'done' && (
+                                  <>
+                                    <button
+                                      disabled={isProcessing || isSaving}
+                                      onClick={() => regeneratePageWithGemini(activeQueueId)}
+                                      className={`w-full p-4 rounded-2xl text-xs font-black flex items-center justify-center gap-2 active:scale-95 transition disabled:opacity-50 ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-purple-400' : 'neu-btn-light text-purple-600'}`}
+                                    >
+                                      {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+                                      Regenerate Page
+                                    </button>
 
-                                <button
-                                  disabled={isSaving}
-                                  onClick={() => saveQueueItemToCloud(activeQueueId)}
-                                  className={`w-full p-5 rounded-2xl text-xs font-black flex items-center justify-center gap-2 active:scale-95 transition disabled:opacity-50 ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'}`}
-                                >
-                                  <CheckCircle className="w-5 h-5" /> Save Instantly to Library
-                                </button>
+                                    <UiverseButton
+                                      onClick={() => saveQueueItemToCloud(activeQueueId)}
+                                      disabled={isSaving}
+                                      fullWidth
+                                      size="lg"
+                                      themeMode={settingsThemeMode}
+                                      isSuccess={isSaving}
+                                      successText="Saved Page!"
+                                      icon={<CheckCircle className="w-5 h-5 text-emerald-400" />}
+                                    >
+                                      Save This Page to Library
+                                    </UiverseButton>
 
-                                <button
-                                  disabled={isSaving || queue.filter(q => q.status === 'done').length === 0}
-                                  onClick={saveAllProcessedToCloud}
-                                  className={`w-full p-5 rounded-2xl text-xs font-black flex items-center justify-center gap-2 active:scale-95 transition disabled:opacity-50 ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'}`}
-                                >
-                                  <Layers className="w-5 h-5" /> Save All to Library
-                                </button>
-
-                                <button
-                                  disabled={isSaving}
-                                  onClick={() => saveQueueItemToCloud(activeQueueId)}
-                                  className={`w-full p-5 rounded-2xl text-xs font-black flex items-center justify-center gap-2 active:scale-95 transition disabled:opacity-50 ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'}`}
-                                >
-                                  <CheckCircle className="w-5 h-5" /> Save Selected Pages to Library
-                                </button>
-
-                                <button
-                                  disabled={isSaving || queue.length === 0}
-                                  onClick={sendAllToWebDirectly}
-                                  className={`w-full p-5 rounded-2xl text-xs font-black flex items-center justify-center gap-2 active:scale-95 transition disabled:opacity-50 ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'}`}
-                                >
-                                  <Send className="w-5 h-5" /> Send All to Web
-                                </button>
+                                    <UiverseButton
+                                      onClick={saveAllProcessedToCloud}
+                                      disabled={isSaving || queue.filter(q => q.status === 'done').length === 0}
+                                      fullWidth
+                                      size="lg"
+                                      themeMode={settingsThemeMode}
+                                      isSuccess={isSaving}
+                                      successText="Saved All Pages!"
+                                      icon={<Layers className="w-5 h-5 text-blue-400" />}
+                                    >
+                                      Save All Pages to Library
+                                    </UiverseButton>
+                                  </>
+                                )}
 
                                 <button
                                   disabled={isSaving}
                                   onClick={() => removeQueueItem(activeQueueId)}
                                   className={`w-full p-4 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center gap-2 transition disabled:opacity-50 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-red-400 border border-red-500/30' : 'neu-pressed-light text-red-600 border border-red-200'}`}
                                 >
-                                  <Trash2 className="w-4 h-4" /> Discard Generation
+                                  <Trash2 className="w-4 h-4" /> Remove this page from processing queue
                                 </button>
                               </div>
                             ) : activeImageObj && (
@@ -20492,82 +20697,335 @@ Return your response strictly as a JSON object matching this schema:
                   )}
 
                   {currentTab === 'library' && (
-                    <div className="space-y-4">
+                    <motion.div
+                      initial={{ opacity: 0, y: 12, scale: 0.99 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -12, scale: 0.99 }}
+                      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                      className="space-y-4"
+                    >
                       {mobileLibraryLevel === 'folders' && (
-                        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 min-h-[300px]">
-                          <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Select Folder</div>
-                          <div className="space-y-1">
-                            <TreeFolder
-                              node={buildTree(effectiveDeckPaths, cloudPages, deckCardCounts)}
-                              level={0}
-                              selectedPath={hierarchy}
-                              onSelect={(path) => {
-                                setHierarchy(path);
-                                setMobileLibraryLevel('pages');
-                              }}
-                              onAdd={(path) => setNewFolderDialog({ isOpen: true, basePath: path, input: '' })}
-                              onRename={(path) => setRenameDialog({ isOpen: true, path, input: path.split('::').pop() })}
-                              onDelete={handleDeleteFolder}
-                              onMoveNode={handleMoveNode}
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.97 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ duration: 0.3 }}
+                          className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-white border-gray-800/80' : 'neu-card-light text-gray-900 border-white/80'} rounded-3xl p-5 shadow-xl min-h-[300px] space-y-4`}
+                        >
+                          {/* Search bar — same searchQuery/searchResults as desktop */}
+                          <div className={`relative flex items-center rounded-2xl ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
+                            <Search className="w-4 h-4 absolute left-3.5 text-gray-400" />
+                            <input
+                              type="text"
+                              value={searchQuery}
+                              onChange={e => setSearchQuery(e.target.value)}
+                              placeholder="Search cards across library…"
+                              className={`w-full pl-10 pr-9 py-3 bg-transparent border-none text-sm outline-none font-medium ${settingsThemeMode === 'dark' ? 'text-white placeholder-gray-500' : 'text-gray-800 placeholder-gray-400'}`}
                             />
-                          </div>
-                        </div>
-                      )}
-
-                      {mobileLibraryLevel === 'pages' && (
-                        <div className="flex flex-col gap-4">
-                          <div className="flex items-center justify-between">
-                            <button onClick={() => setMobileLibraryLevel('folders')} className="text-blue-600 flex items-center gap-1 text-xs font-bold">
-                              <ChevronLeft className="w-4 h-4" /> Folders
-                            </button>
-                            <span className="text-[10px] font-black text-gray-400 uppercase truncate max-w-[150px]">{hierarchy}</span>
+                            {searchQuery && (
+                              <button onClick={() => setSearchQuery('')} className="absolute right-3 text-gray-400 active:scale-90 transition">
+                                <X className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
 
-                          <div className="grid grid-cols-2 gap-3">
-                            {folderPages.map(page => (
-                              <div
-                                key={page.id}
-                                onClick={() => { setActiveQueueId(page.id); setMobileLibraryLevel('cards'); }}
-                                className="aspect-square bg-gray-100 rounded-2xl overflow-hidden border border-gray-200 active:scale-95 transition relative group"
-                              >
-                                <img src={page.imageUrl || page.base64} className="w-full h-full object-cover" alt="" />
-                                {page.isPending && (
-                                  <div className="absolute top-2 right-2 bg-orange-600 text-white text-[7px] font-black uppercase px-2 py-0.5 rounded-full shadow-lg border border-white/20 z-10 animate-pulse flex items-center gap-1">
-                                    <div className="w-1 h-1 bg-white rounded-full" /> Triage
-                                  </div>
-                                )}
-                                <div className="absolute inset-0 bg-black/20 group-active:bg-black/40 transition-colors" />
-                                <div className="absolute bottom-2 left-2 right-2 text-[8px] text-white font-bold truncate bg-black/40 backdrop-blur-md p-1 rounded">
-                                  {page.fileName}
+                          {/* Search results (global across all cards) */}
+                          {searchQuery.trim() ? (
+                            <div className="space-y-3 max-h-[60vh] overflow-y-auto pb-2" style={{ scrollbarWidth: 'none' }}>
+                              <p className={`text-[10px] font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                                {searchResults.length} result{searchResults.length !== 1 ? 's' : ''} for "{searchQuery}"
+                              </p>
+                              {searchResults.length === 0 ? (
+                                <div className={`flex flex-col items-center justify-center py-12 rounded-2xl ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
+                                  <Search className="w-10 h-10 mb-2 opacity-20" />
+                                  <p className="text-sm font-bold uppercase tracking-widest opacity-40">No cards found</p>
                                 </div>
-                              </div>
-                            ))}
-                          </div>
-                          {folderPages.length === 0 && (
-                            <div className="flex flex-col items-center justify-center py-16 text-gray-400 opacity-50">
-                              <ImageIcon className="w-12 h-12 mb-2" />
-                              <p className="text-sm">Empty Folder</p>
+                              ) : searchResults.map(card => (
+                                <motion.div
+                                  key={card.id}
+                                  whileTap={{ scale: 0.98 }}
+                                  onClick={() => {
+                                    setHierarchy(card.deck || hierarchy || (deckPaths[0] || 'General'));
+                                    setActiveQueueId(card.pageId);
+                                    setSearchQuery('');
+                                    setMobileLibraryLevel('cards');
+                                  }}
+                                  className={`p-3.5 rounded-2xl cursor-pointer border transition-all ${settingsThemeMode === 'dark' ? 'neu-item-dark border-gray-800 hover:border-blue-500/40' : 'neu-item-light border-white hover:border-blue-400/40'}`}
+                                >
+                                  <div className="flex items-center justify-between mb-1.5">
+                                    <span className="text-[8px] font-black uppercase tracking-widest bg-blue-500/15 text-blue-500 px-2 py-0.5 rounded-full">{card.type}</span>
+                                    <span className={`text-[8px] font-bold truncate max-w-[110px] ${settingsThemeMode === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                                      {card.deck?.split('::').pop() || 'Uncategorized'}
+                                    </span>
+                                  </div>
+                                  {card.type === 'Cloze' ? (
+                                    <div className={`text-xs font-medium leading-snug line-clamp-2 ${settingsThemeMode === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{card.text}</div>
+                                  ) : (
+                                    <div className="space-y-0.5">
+                                      <div className={`text-xs font-bold leading-snug line-clamp-1 ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>{card.front}</div>
+                                      <div className={`text-[10px] font-medium line-clamp-1 ${settingsThemeMode === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>{card.back}</div>
+                                    </div>
+                                  )}
+                                </motion.div>
+                              ))}
                             </div>
+                          ) : (
+                            <>
+                              <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                <Layers className="w-3.5 h-3.5 text-blue-500" /> Select Deck Folder
+                              </div>
+                              <div className={`space-y-1 p-2 rounded-2xl ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
+                                <TreeFolder
+                                  node={buildTree(effectiveDeckPaths, libraryPages, deckCardCounts)}
+                                  level={0}
+                                  selectedPath={hierarchy}
+                                  themeMode={settingsThemeMode}
+                                  onSelect={(path) => {
+                                    setHierarchy(path);
+                                    setMobileLibraryLevel('pages');
+                                  }}
+                                  onAdd={(path) => setNewFolderDialog({ isOpen: true, basePath: path, input: '' })}
+                                  onRename={(path) => setRenameDialog({ isOpen: true, path, input: path.split('::').pop() })}
+                                  onDelete={handleDeleteFolder}
+                                  onMoveNode={handleMoveNode}
+                                />
+                              </div>
+                            </>
                           )}
-                        </div>
+                        </motion.div>
                       )}
+
+                      {mobileLibraryLevel === 'pages' && (() => {
+                        const allMobileSelected = folderPages.length > 0 && folderPages.every(p => selectedPages.has(p.id));
+                        const someMobileSelected = folderPages.some(p => selectedPages.has(p.id));
+                        const mobileSelectedCount = folderPages.filter(p => selectedPages.has(p.id)).length;
+
+                        const exitMobileSelection = () => {
+                          setMobileSelectionMode(false);
+                          setSelectedPages(new Set());
+                        };
+
+                        const handleSelectAllMobile = () => {
+                          if (allMobileSelected) {
+                            const newSet = new Set(selectedPages);
+                            folderPages.forEach(p => newSet.delete(p.id));
+                            setSelectedPages(newSet);
+                            if (newSet.size === 0) setMobileSelectionMode(false);
+                          } else {
+                            const newSet = new Set(selectedPages);
+                            folderPages.forEach(p => newSet.add(p.id));
+                            setSelectedPages(newSet);
+                          }
+                        };
+
+                        // Long-press: store per-page timer in a stable Map to survive re-renders
+                        if (!window.__mobileLpTimers) window.__mobileLpTimers = {};
+                        const makeLongPressProps = (pageId) => ({
+                          onTouchStart: (e) => {
+                            window.__mobileLpTimers[pageId] = setTimeout(() => {
+                              delete window.__mobileLpTimers[pageId];
+                              if (navigator.vibrate) navigator.vibrate(50);
+                              setMobileSelectionMode(true);
+                              setSelectedPages(prev => { const s = new Set(prev); s.add(pageId); return s; });
+                            }, 520);
+                          },
+                          onTouchMove: () => { clearTimeout(window.__mobileLpTimers[pageId]); delete window.__mobileLpTimers[pageId]; },
+                          onTouchEnd: () => { clearTimeout(window.__mobileLpTimers[pageId]); delete window.__mobileLpTimers[pageId]; },
+                          onContextMenu: (e) => e.preventDefault(),
+                        });
+
+                        return (
+                          <motion.div
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            transition={{ duration: 0.3 }}
+                            className="flex flex-col gap-3 pb-28"
+                          >
+                            {/* ── Header ── */}
+                            {mobileSelectionMode ? (
+                              /* Selection mode header */
+                              <div className={`flex items-center justify-between px-1 py-2 rounded-2xl ${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'}`}>
+                                <button
+                                  onClick={handleSelectAllMobile}
+                                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition active:scale-95"
+                                >
+                                  <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition ${allMobileSelected ? 'bg-blue-500 border-blue-500' : someMobileSelected ? 'bg-blue-500/40 border-blue-500' : settingsThemeMode === 'dark' ? 'border-gray-600' : 'border-gray-300'}`}>
+                                    {allMobileSelected && <Check className="w-3 h-3 text-white" />}
+                                    {!allMobileSelected && someMobileSelected && <div className="w-2 h-0.5 bg-white rounded-full" />}
+                                  </div>
+                                  <span className={settingsThemeMode === 'dark' ? 'text-gray-200' : 'text-gray-700'}>
+                                    {mobileSelectedCount > 0 ? `${mobileSelectedCount} Selected` : 'Select All'}
+                                  </span>
+                                </button>
+                                <button
+                                  onClick={exitMobileSelection}
+                                  className={`px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition active:scale-95 ${settingsThemeMode === 'dark' ? 'text-blue-400 bg-blue-500/10' : 'text-blue-600 bg-blue-50'}`}
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : (
+                              /* Normal header */
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => {
+                                    setMobileLibraryLevel('folders');
+                                    setMobileLibrarySearch('');
+                                    setMobileLibrarySearchOpen(false);
+                                  }}
+                                  className="text-blue-500 flex items-center gap-1 text-xs font-black uppercase tracking-wider bg-blue-500/10 px-3 py-1.5 rounded-xl transition active:scale-95 shrink-0"
+                                >
+                                  <ChevronLeft className="w-4 h-4" /> Folders
+                                </button>
+                                <span className={`text-[10px] font-black uppercase truncate flex-1 min-w-0 ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{hierarchy}</span>
+                              </div>
+                            )}
+
+                            {/* ── Long-press hint (first time) ── */}
+                            {!mobileSelectionMode && folderPages.length > 0 && (
+                              <p className={`text-[9px] font-bold text-center uppercase tracking-widest opacity-40 -mt-1 ${settingsThemeMode === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                                Long press a page to select
+                              </p>
+                            )}
+
+                            {/* ── Pages Grid ── */}
+                            <div className="grid grid-cols-2 gap-3">
+                              <AnimatePresence>
+                                {folderPages.map(page => {
+                                  const isPageSelected = selectedPages.has(page.id);
+                                  const lp = makeLongPressProps(page.id);
+                                  return (
+                                    <motion.div
+                                      key={page.id}
+                                      layout
+                                      initial={{ opacity: 0, scale: 0.95 }}
+                                      animate={{ opacity: 1, scale: 1 }}
+                                      exit={{ opacity: 0, scale: 0.9 }}
+                                      transition={{ duration: 0.2 }}
+                                      className={`aspect-square rounded-2xl overflow-hidden cursor-pointer relative select-none ${isPageSelected
+                                        ? 'ring-[3px] ring-blue-500 shadow-lg shadow-blue-500/20'
+                                        : settingsThemeMode === 'dark' ? 'neu-item-dark border border-gray-800' : 'neu-item-light border border-white'
+                                      }`}
+                                      onClick={() => {
+                                        if (mobileSelectionMode) {
+                                          setSelectedPages(prev => {
+                                            const s = new Set(prev);
+                                            if (s.has(page.id)) { s.delete(page.id); if (s.size === 0) setMobileSelectionMode(false); }
+                                            else s.add(page.id);
+                                            return s;
+                                          });
+                                        } else {
+                                          setActiveQueueId(page.id);
+                                          setMobileLibraryLevel('cards');
+                                        }
+                                      }}
+                                      {...lp}
+                                    >
+                                      <img
+                                        src={page.imageUrl || page.base64}
+                                        className={`w-full h-full object-cover transition-all duration-300 ${isPageSelected ? 'scale-105 brightness-75' : ''}`}
+                                        alt=""
+                                        draggable={false}
+                                      />
+
+                                      {/* Triage badge */}
+                                      {page.isPending && !mobileSelectionMode && (
+                                        <div className="absolute top-2 right-2 bg-orange-600 text-white text-[7px] font-black uppercase px-2 py-0.5 rounded-full shadow-lg border border-white/20 z-10 animate-pulse flex items-center gap-1">
+                                          <div className="w-1 h-1 bg-white rounded-full" /> Triage
+                                        </div>
+                                      )}
+
+                                      {/* Selection checkbox overlay */}
+                                      {mobileSelectionMode && (
+                                        <div className="absolute top-2.5 left-2.5 z-10">
+                                          <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shadow-lg transition-all duration-150 ${isPageSelected ? 'bg-blue-500 border-blue-500 scale-110' : 'bg-black/40 border-white/80 backdrop-blur-sm'}`}>
+                                            {isPageSelected && <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />}
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {/* Dark scrim + label */}
+                                      <div className={`absolute inset-0 transition-colors duration-200 ${mobileSelectionMode ? 'bg-black/10' : 'bg-black/20 group-active:bg-black/40'}`} />
+                                      <div className="absolute bottom-2 left-2 right-2 text-[8px] text-white font-bold truncate bg-black/50 backdrop-blur-md p-1.5 rounded-xl border border-white/10">
+                                        {page.fileName}
+                                      </div>
+                                    </motion.div>
+                                  );
+                                })}
+                              </AnimatePresence>
+                            </div>
+
+                            {/* Empty state */}
+                            {folderPages.length === 0 && (
+                              <div className={`flex flex-col items-center justify-center py-16 rounded-3xl ${settingsThemeMode === 'dark' ? 'neu-card-dark text-gray-500' : 'neu-card-light text-gray-400'}`}>
+                                <ImageIcon className="w-12 h-12 mb-2 opacity-30" />
+                                <p className="text-sm font-bold uppercase tracking-widest opacity-50">Empty Folder</p>
+                              </div>
+                            )}
+
+                            {/* ── Fixed Bottom Action Bar (appears when items selected) ── */}
+                            <AnimatePresence>
+                              {mobileSelectionMode && mobileSelectedCount > 0 && (
+                                <motion.div
+                                  initial={{ y: 120, opacity: 0 }}
+                                  animate={{ y: 0, opacity: 1 }}
+                                  exit={{ y: 120, opacity: 0 }}
+                                  transition={{ type: 'spring', stiffness: 400, damping: 35 }}
+                                  className="fixed bottom-[72px] left-0 right-0 z-[60] px-4"
+                                >
+                                  <div className={`rounded-[1.75rem] p-3 shadow-2xl border flex items-center gap-2 ${settingsThemeMode === 'dark' ? 'bg-[#1a1f2b]/95 border-gray-700/80 backdrop-blur-xl' : 'bg-white/95 border-gray-200/80 backdrop-blur-xl'}`}>
+                                    {/* Count pill */}
+                                    <div className="bg-blue-500 text-white text-[10px] font-black px-3 py-1.5 rounded-xl shrink-0">
+                                      {mobileSelectedCount}
+                                    </div>
+
+                                    {/* Move */}
+                                    <motion.button
+                                      whileTap={{ scale: 0.94 }}
+                                      onClick={() => setMoveDialog({ isOpen: true, targetPath: '' })}
+                                      className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-2xl text-[11px] font-black uppercase tracking-wider transition border ${settingsThemeMode === 'dark' ? 'bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20' : 'bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100'}`}
+                                    >
+                                      <Move className="w-3.5 h-3.5" /> Move
+                                    </motion.button>
+
+                                    {/* Delete */}
+                                    <motion.button
+                                      whileTap={{ scale: 0.94 }}
+                                      onClick={handleBulkDelete}
+                                      className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-2xl text-[11px] font-black uppercase tracking-wider transition border ${settingsThemeMode === 'dark' ? 'bg-red-500/10 text-red-400 border-red-500/30 hover:bg-red-500/20' : 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100'}`}
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" /> Delete
+                                    </motion.button>
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </motion.div>
+                        );
+                      })()}
+
 
                       {mobileLibraryLevel === 'cards' && (
-                        <div className="flex flex-col gap-4">
+                        <motion.div
+                          initial={{ opacity: 0, x: 20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.3 }}
+                          className="flex flex-col gap-4"
+                        >
                           <div className="flex items-center justify-between px-1">
-                            <button onClick={() => { setActiveQueueId(null); setMobileLibraryLevel('pages'); }} className="text-blue-600 flex items-center gap-1 text-xs font-bold bg-blue-50 px-3 py-1.5 rounded-xl">
+                            <button onClick={() => { setActiveQueueId(null); setMobileLibraryLevel('pages'); }} className="text-blue-500 flex items-center gap-1 text-xs font-black uppercase tracking-wider bg-blue-500/10 px-3 py-1.5 rounded-xl transition active:scale-95">
                               <ChevronLeft className="w-4 h-4" /> {currentFolderName}
                             </button>
                             <button
                               disabled={isSaving}
                               onClick={() => setDeleteConfirmDialog({ isOpen: true, pageIds: [activeQueueId], isBulk: false })}
-                              className="text-red-600 p-2 bg-red-50 rounded-xl"
+                              className="text-red-500 p-2.5 bg-red-500/10 hover:bg-red-500/20 rounded-xl transition active:scale-95"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
 
-                          <div className="bg-gray-100 rounded-2xl aspect-[3/4] overflow-hidden relative shadow-inner">
+                          <div className={`rounded-3xl aspect-[3/4] overflow-hidden relative shadow-xl ${settingsThemeMode === 'dark' ? 'neu-card-dark border-gray-800' : 'neu-card-light border-white'}`}>
                             <img src={activeImageObj?.imageUrl || activeImageObj?.base64} className="w-full h-full object-cover" alt="" />
                           </div>
 
@@ -20576,22 +21034,27 @@ Return your response strictly as a JSON object matching this schema:
                               <span>Generated Cards ({pageCards.length})</span>
                             </h3>
                             {pageCards.map(card => (
-                              <div key={card.id} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 space-y-2 border-l-4 border-l-blue-500">
-                                <span className="text-[8px] font-black uppercase tracking-widest bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full inline-block">{card.type}</span>
+                              <motion.div
+                                key={card.id}
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                className={`p-4 rounded-2xl space-y-2 border-l-4 border-l-blue-500 ${settingsThemeMode === 'dark' ? 'neu-item-dark text-white border-y border-r border-gray-800' : 'neu-item-light text-gray-900 border-y border-r border-white'}`}
+                              >
+                                <span className="text-[8px] font-black uppercase tracking-widest bg-blue-500/15 text-blue-500 px-2 py-0.5 rounded-full inline-block">{card.type}</span>
                                 {card.type === 'Cloze' ? (
-                                  <div className="text-sm text-gray-800 leading-relaxed font-medium">{card.text}</div>
+                                  <div className="text-sm leading-relaxed font-medium">{card.text}</div>
                                 ) : (
                                   <div className="space-y-1">
-                                    <div className="text-sm text-gray-800 font-black leading-tight">{card.front}</div>
-                                    <div className="text-xs text-blue-600 font-medium">{card.back}</div>
+                                    <div className="text-sm font-black leading-tight">{card.front}</div>
+                                    <div className="text-xs text-blue-500 font-medium">{card.back}</div>
                                   </div>
                                 )}
-                              </div>
+                              </motion.div>
                             ))}
                           </div>
-                        </div>
+                        </motion.div>
                       )}
-                    </div>
+                    </motion.div>
                   )}
 
                   {/* STUDY ROOM COMPANION VIEW */}
@@ -21771,10 +22234,10 @@ Return your response strictly as a JSON object matching this schema:
                                                       {...prov.draggableProps}
                                                       {...prov.dragHandleProps}
                                                       className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-xs font-bold transition select-none ${snapshot.isDragging
-                                                          ? 'border-blue-400 shadow-lg shadow-blue-500/20 scale-105'
-                                                          : settingsThemeMode === 'dark'
-                                                            ? 'neu-pressed-dark border-slate-700/80'
-                                                            : 'neu-pressed-light border-slate-200'
+                                                        ? 'border-blue-400 shadow-lg shadow-blue-500/20 scale-105'
+                                                        : settingsThemeMode === 'dark'
+                                                          ? 'neu-pressed-dark border-slate-700/80'
+                                                          : 'neu-pressed-light border-slate-200'
                                                         }`}
                                                     >
                                                       <span className="text-gray-400 text-base leading-none">⠿</span>
@@ -21849,12 +22312,19 @@ Return your response strictly as a JSON object matching this schema:
                                 <div key={page.id} className="bg-white p-3 rounded-2xl border border-gray-200 shadow-sm">
                                   <div className="aspect-square bg-gray-100 rounded-xl overflow-hidden mb-2 relative">
                                     <img src={page.imageUrl || page.base64} className="w-full h-full object-cover opacity-50" alt="" />
-                                    <div className="absolute inset-0 flex items-center justify-center">
+                                    <div className="absolute inset-0 flex items-center justify-center gap-1">
                                       <button
                                         onClick={() => setRestoreConfirmDialog({ isOpen: true, page: page })}
-                                        className="bg-green-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-black uppercase shadow-lg active:scale-95"
+                                        className="bg-green-600 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase shadow-lg active:scale-95"
                                       >
                                         Restore
+                                      </button>
+                                      <button
+                                        onClick={() => handlePermanentDeletePage(page.id)}
+                                        className="bg-red-600 text-white p-1.5 rounded-lg text-[10px] font-black uppercase shadow-lg active:scale-95"
+                                        title="Delete Permanently"
+                                      >
+                                        <X className="w-3.5 h-3.5" />
                                       </button>
                                     </div>
                                   </div>
@@ -21881,18 +22351,21 @@ Return your response strictly as a JSON object matching this schema:
                                   <div className="text-[11px] text-gray-800 font-medium leading-tight mb-2">
                                     {card.type === 'Cloze' ? card.text : card.front}
                                   </div>
-                                  <button
-                                    onClick={async () => {
-                                      const batch = writeBatch(db);
-                                      const newCardId = generateId();
-                                      batch.set(doc(db, 'artifacts', appId, 'users', user.uid, 'flashcards', newCardId), { ...card, id: newCardId, createdAt: Date.now() });
-                                      batch.delete(doc(db, 'artifacts', appId, 'users', user.uid, 'trash_cards', card.id));
-                                      await batch.commit();
-                                    }}
-                                    className="w-full py-2 bg-green-50 text-green-600 rounded-xl text-[9px] font-black uppercase"
-                                  >
-                                    Restore Card
-                                  </button>
+                                  <div className="flex gap-2">
+                                    <button
+                                      onClick={() => handleRestoreCard(card)}
+                                      className="flex-1 py-2 bg-green-50 text-green-600 hover:bg-green-100 rounded-xl text-[9px] font-black uppercase transition"
+                                    >
+                                      Restore Card
+                                    </button>
+                                    <button
+                                      onClick={() => handlePermanentDeleteCard(card.id)}
+                                      className="px-3 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl text-[9px] font-black uppercase transition"
+                                      title="Delete Permanently"
+                                    >
+                                      Delete
+                                    </button>
+                                  </div>
                                 </div>
                               ))}
                             </div>
@@ -22005,7 +22478,7 @@ Return your response strictly as a JSON object matching this schema:
                             <div className="overflow-x-auto">
                               <HierarchicalSunburst
                                 deckPaths={deckPaths}
-                                cloudPages={cloudPages}
+                                cloudPages={libraryPages}
                                 deckCardCounts={deckCardCounts}
                                 onSelectDeck={(deckPath) => {
                                   if (deckPath === 'Root') {
@@ -22656,7 +23129,7 @@ Return your response strictly as a JSON object matching this schema:
                         </div>
                         <div className="overflow-y-auto max-h-[220px] border border-gray-55 rounded-xl bg-gray-50/50 p-3 custom-scrollbar text-xs">
                           <ExportTreeFolder
-                            node={buildTree(allDecks, cloudPages, deckCardCounts)}
+                            node={buildTree(allDecks, libraryPages, deckCardCounts)}
                             selectedDecks={selectedDecksToExport}
                             onToggle={(targetPaths, checked) => {
                               setSelectedDecksToExport(prev => {
@@ -24152,11 +24625,10 @@ Return your response strictly as a JSON object matching this schema:
                         animate={{ opacity: 1, x: 0, scale: 1 }}
                         exit={{ opacity: 0, x: -10, scale: 0.85 }}
                         transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                        className={`fixed z-[99999] pointer-events-none ${
-                          settingsThemeMode === 'dark'
+                        className={`fixed z-[99999] pointer-events-none ${settingsThemeMode === 'dark'
                             ? 'bg-[#242832] text-white border-1.5 border-sky-400/40 shadow-[0_6px_22px_rgba(56,189,248,0.35)]'
                             : 'bg-white text-slate-900 border-1.5 border-blue-500/35 shadow-[0_6px_22px_rgba(37,99,235,0.25)]'
-                        } px-4 py-1.5 rounded-full font-black text-xs whitespace-nowrap flex items-center justify-center`}
+                          } px-4 py-1.5 rounded-full font-black text-xs whitespace-nowrap flex items-center justify-center`}
                         style={{
                           left: '88px',
                           top: `${sidebarTooltip.top}px`,
@@ -24486,7 +24958,7 @@ Return your response strictly as a JSON object matching this schema:
                                 <div className={`min-h-0 flex-grow flex flex-col transition-all duration-300 ${isExpanded ? 'opacity-100 mt-3' : 'opacity-0 h-0 overflow-hidden pointer-events-none'}`}>
                                   <div className={`min-h-0 flex-grow overflow-y-auto rounded-2xl p-3.5 mb-2 custom-scrollbar ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200/60'}`}>
                                     <TreeFolder
-                                      node={buildTree(effectiveDeckPaths, cloudPages, deckCardCounts)}
+                                      node={buildTree(effectiveDeckPaths, libraryPages, deckCardCounts)}
                                       level={0}
                                       selectedPath={hierarchy}
                                       onSelect={setHierarchy}
@@ -24604,15 +25076,6 @@ Return your response strictly as a JSON object matching this schema:
                                     </span>
                                   </h2>
                                   <div className="flex gap-2 items-center">
-                                    {queue.some(q => q.status === 'done') && (
-                                      <button
-                                        onClick={(e) => { e.stopPropagation(); saveAllProcessedToCloud(); }}
-                                        disabled={isProcessing || isSaving}
-                                        className={`px-3 py-1 rounded-xl text-xs font-black flex items-center gap-1.5 transition ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'} disabled:opacity-50`}
-                                      >
-                                        <Save className="w-3 h-3" /> Save All
-                                      </button>
-                                    )}
                                     <button
                                       onClick={(e) => { e.stopPropagation(); processQueue(); }}
                                       disabled={isProcessing || queue.filter(q => q.status === 'pending').length === 0}
@@ -24719,8 +25182,8 @@ Return your response strictly as a JSON object matching this schema:
                                             whileTap={{ scale: 0.98 }}
                                             onClick={() => setActiveQueueId(item.id)}
                                             className={`p-2.5 rounded-2xl border transition-all flex items-center gap-3 cursor-pointer ${activeQueueId === item.id
-                                                ? (settingsThemeMode === 'dark' ? 'neu-pressed-dark border-blue-500/50 text-white' : 'neu-pressed-light border-blue-400 text-gray-900')
-                                                : (settingsThemeMode === 'dark' ? 'neu-item-dark text-gray-300 hover:border-gray-700' : 'neu-item-light text-gray-700 hover:border-blue-300/80')
+                                              ? (settingsThemeMode === 'dark' ? 'neu-pressed-dark border-blue-500/50 text-white' : 'neu-pressed-light border-blue-400 text-gray-900')
+                                              : (settingsThemeMode === 'dark' ? 'neu-item-dark text-gray-300 hover:border-gray-700' : 'neu-item-light text-gray-700 hover:border-blue-300/80')
                                               }`}
                                           >
                                             <div className={`w-8 h-8 rounded-xl overflow-hidden shrink-0 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
@@ -24730,9 +25193,9 @@ Return your response strictly as a JSON object matching this schema:
                                               <div className={`text-xs font-bold truncate ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>{item.fileName}</div>
                                               <div className="flex items-center gap-1.5 mt-0.5">
                                                 <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${item.status === 'done' ? 'bg-green-500/20 text-green-400' :
-                                                    item.status === 'processing' ? 'bg-blue-500/20 text-blue-400 animate-pulse' :
-                                                      item.status === 'error' ? 'bg-red-500/20 text-red-400' :
-                                                        (settingsThemeMode === 'dark' ? 'bg-gray-800 text-gray-400' : 'bg-gray-200 text-gray-600')
+                                                  item.status === 'processing' ? 'bg-blue-500/20 text-blue-400 animate-pulse' :
+                                                    item.status === 'error' ? 'bg-red-500/20 text-red-400' :
+                                                      (settingsThemeMode === 'dark' ? 'bg-gray-800 text-gray-400' : 'bg-gray-200 text-gray-600')
                                                   }`}>
                                                   {item.status}
                                                 </span>
@@ -24812,31 +25275,18 @@ Return your response strictly as a JSON object matching this schema:
                                     onMouseUp={handleImageMouseUp}
                                     onMouseLeave={() => { setHoveredCardIdFromImage(null); setIsPanning(false); }}
                                   />
-                                  {/* Highlight from Card Hover */}
-                                  {hoveredCardCoordinates?.ymin !== undefined && (
-                                    <div
-                                      className="absolute border-2 border-yellow-400 bg-yellow-300/40 rounded transition-all duration-200 pointer-events-none shadow-[0_0_10px_rgba(250,204,21,0.6)]"
-                                      style={{
-                                        top: `${(hoveredCardCoordinates?.ymin || 0) / 10}%`,
-                                        left: `${(hoveredCardCoordinates?.xmin || 0) / 10}%`,
-                                        height: `${((hoveredCardCoordinates?.ymax || 0) - (hoveredCardCoordinates?.ymin || 0)) / 10}%`,
-                                        width: `${((hoveredCardCoordinates?.xmax || 0) - (hoveredCardCoordinates?.xmin || 0)) / 10}%`,
-                                      }}
-                                    />
-                                  )}
-                                  {/* Highlight from Image Hover (Inverse) */}
+                                  {/* Bi-Directional Bounding Box Highlight Overlay */}
                                   {(() => {
-                                    if (!hoveredCardIdFromImage || !pageCards) return null;
-                                    const c = pageCards.find(card => card?.id === hoveredCardIdFromImage);
-                                    if (!c || c.ymin === undefined) return null;
+                                    const activeBox = hoveredCardCoordinates || (hoveredCardIdFromImage ? getCardBoundingBox(pageCards?.find(c => c?.id === hoveredCardIdFromImage)) : null);
+                                    if (!activeBox) return null;
                                     return (
                                       <div
-                                        className="absolute border-2 border-blue-400 bg-blue-300/40 rounded pointer-events-none shadow-[0_0_10px_rgba(59,130,246,0.6)]"
+                                        className="absolute border-2 border-blue-500 bg-blue-400/35 rounded-lg pointer-events-none shadow-[0_0_15px_rgba(59,130,246,0.7)] z-20 transition-all duration-150"
                                         style={{
-                                          top: `${c.ymin / 10}%`,
-                                          left: `${c.xmin / 10}%`,
-                                          height: `${(c.ymax - c.ymin) / 10}%`,
-                                          width: `${(c.xmax - c.xmin) / 10}%`,
+                                          top: `${activeBox.ymin / 10}%`,
+                                          left: `${activeBox.xmin / 10}%`,
+                                          height: `${(activeBox.ymax - activeBox.ymin) / 10}%`,
+                                          width: `${(activeBox.xmax - activeBox.xmin) / 10}%`,
                                         }}
                                       />
                                     );
@@ -24860,35 +25310,56 @@ Return your response strictly as a JSON object matching this schema:
                           className={`h-full ${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-4 flex flex-col min-w-[220px] flex-1 overflow-hidden`}
                         >
                           <div className={`flex flex-col gap-3 mb-4 shrink-0 pb-4 border-b ${settingsThemeMode === 'dark' ? 'border-gray-800' : 'border-gray-200/60'}`}>
-                            <h2 className={`text-base font-black flex items-center gap-2 uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>
-                              <CheckCircle className="w-5 h-5 text-emerald-500" /> Current Page Cards ({pageCards.length})
-                            </h2>
-                            <div className="flex flex-wrap gap-2">
-                              {activeQueueItem?.status === 'done' && (
-                                <>
-                                  <button
-                                    disabled={isProcessing}
-                                    onClick={() => regeneratePageWithGemini(activeQueueId)}
-                                    className={`px-4 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50 ${settingsThemeMode === 'dark' ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'bg-purple-600 hover:bg-purple-700 text-white'} shadow-md`}
-                                    title="Re-run full Gemini AI pipeline to regenerate cards for this page"
-                                  >
-                                    {isProcessing ? <Loader2 className="w-4 h-4 animate-spin text-purple-200" /> : <Sparkles className="w-4 h-4 text-purple-200" />}
-                                    Regenerate Page with Gemini
-                                  </button>
-
-                                  <button
-                                    onClick={() => saveQueueItemToCloud(activeQueueId)}
-                                    className={`px-5 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 transition-all active:scale-95 ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'}`}
-                                  >
-                                    <Save className="w-4 h-4" /> Save to "{currentFolderName}" & Library
-                                  </button>
-                                </>
-                              )}
-
-                              <div className={`ml-auto flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-xl font-mono ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400 border border-blue-500/30' : 'neu-pressed-light text-blue-700 border border-blue-200/50'}`}>
+                            <div className="flex items-center justify-between gap-2">
+                              <h2 className={`text-base font-black flex items-center gap-2 uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>
+                                <CheckCircle className="w-5 h-5 text-emerald-500" /> Current Page Cards ({pageCards.length})
+                              </h2>
+                              <div className={`flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-xl font-mono ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400 border border-blue-500/30' : 'neu-pressed-light text-blue-700 border border-blue-200/50'}`}>
                                 <Folder className="w-3 h-3" /> {hierarchy === 'PENDING_REVIEW' ? 'Triage Queue' : hierarchy}
                               </div>
                             </div>
+
+                            {activeQueueItem?.status === 'done' && (
+                              <div className="grid grid-cols-3 gap-2 w-full items-center">
+                                <button
+                                  disabled={isProcessing || isSaving}
+                                  onClick={() => regeneratePageWithGemini(activeQueueId)}
+                                  className={`h-[36px] w-full px-2 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all active:scale-95 disabled:opacity-50 ${settingsThemeMode === 'dark' ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'bg-purple-600 hover:bg-purple-700 text-white'} shadow-md`}
+                                  title="Re-run full Gemini AI pipeline to regenerate cards for this page"
+                                >
+                                  {isProcessing ? <Loader2 className="w-4 h-4 animate-spin text-purple-200" /> : <Sparkles className="w-4 h-4 text-purple-200" />}
+                                  <span className="truncate">Regenerate</span>
+                                </button>
+
+                                <UiverseButton
+                                  icon={<Save className="w-4 h-4 text-blue-500" />}
+                                  onClick={() => saveQueueItemToCloud(activeQueueId)}
+                                  size="sm"
+                                  themeMode={settingsThemeMode}
+                                  isSuccess={isSaving}
+                                  successText="Saved!"
+                                  disabled={isSaving}
+                                  fullWidth
+                                  className="w-full"
+                                >
+                                  Save
+                                </UiverseButton>
+
+                                <UiverseButton
+                                  icon={<CheckCircle className="w-4 h-4 text-emerald-500" />}
+                                  onClick={saveAllProcessedToCloud}
+                                  size="sm"
+                                  themeMode={settingsThemeMode}
+                                  isSuccess={isSaving}
+                                  successText="Saved All!"
+                                  disabled={isSaving || queue.filter(q => q.status === 'done').length === 0}
+                                  fullWidth
+                                  className="w-full"
+                                >
+                                  Save All
+                                </UiverseButton>
+                              </div>
+                            )}
                           </div>
                           <div className="flex-grow overflow-y-auto p-3.5 space-y-4 custom-scrollbar">
                             {(!activeQueueId || !activeQueueItem) ? (
@@ -24905,38 +25376,63 @@ Return your response strictly as a JSON object matching this schema:
                                   </div>
                                 ) : (
                                   <AnimatePresence mode="popLayout">
-                                    {pageCards.map((card, idx) => (
-                                      <motion.div
-                                        key={card.id || idx}
-                                        layout
-                                        initial={{ opacity: 0, y: 20, scale: 0.96 }}
-                                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                                        exit={{ opacity: 0, scale: 0.92, height: 0, opacity: 0 }}
-                                        transition={{ duration: 0.6, delay: idx * 0.04, ease: [0.22, 1, 0.36, 1] }}
-                                        whileHover={{ scale: 1.015, y: -2 }}
-                                        whileTap={{ scale: 0.98 }}
-                                        id={`card-${card.id}`}
-                                        onMouseEnter={() => card.ymin !== undefined && setHoveredCardCoordinates({ ymin: card.ymin, xmin: card.xmin, ymax: card.ymax, xmax: card.xmax })}
-                                        onMouseLeave={() => setHoveredCardCoordinates(null)}
-                                        className={`p-3.5 rounded-2xl relative group cursor-pointer transition ${hoveredCardIdFromImage === card.id
-                                            ? (settingsThemeMode === 'dark' ? 'neu-pressed-dark border-blue-500/50 text-white scale-[1.02]' : 'neu-pressed-light border-blue-400 text-gray-900 scale-[1.02]')
-                                            : (settingsThemeMode === 'dark' ? 'neu-card-dark text-gray-200 border border-gray-800/60 hover:border-blue-500/30' : 'neu-card-light text-gray-800 border border-gray-200/60 hover:border-blue-300')
-                                          }`}
-                                      >
-                                        <div className={`absolute top-2.5 right-2.5 flex gap-1 opacity-0 group-hover:opacity-100 transition p-1 rounded-xl z-10 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
-                                          <button onClick={() => setEditingCard(card)} className={`p-1 rounded-lg transition ${settingsThemeMode === 'dark' ? 'text-blue-400 hover:bg-blue-500/20' : 'text-blue-600 hover:bg-blue-100'}`} title="Edit Card"><Edit3 className="w-3.5 h-3.5" /></button>
-                                          <button onClick={() => deleteCard(card.id)} className={`p-1 rounded-lg transition ${settingsThemeMode === 'dark' ? 'text-red-400 hover:bg-red-500/20' : 'text-red-600 hover:bg-red-100'}`} title="Delete Card"><Trash2 className="w-3.5 h-3.5" /></button>
-                                        </div>
-                                        <div className={`text-[10px] font-black uppercase tracking-wider inline-block px-2 py-0.5 rounded-full mb-2 ${settingsThemeMode === 'dark' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}>{card.type}</div>
-                                        {card.type === 'Cloze' ? (
-                                          <div className={`text-xs leading-relaxed ${settingsThemeMode === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}><span className={`font-bold ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Text:</span> {card.text}</div>
-                                        ) : (
-                                          <div className="space-y-1">
-                                            <div className="text-xs text-gray-800"><span className="font-semibold text-gray-500">Back:</span> {card.back}</div>
-                                          </div>
-                                        )}
-                                      </motion.div>
-                                    ))}
+                                    <div className="cards">
+                                      {pageCards.map((card, idx) => {
+                                        let colorClass = 'blue';
+                                        if (card.type === 'Cloze') colorClass = 'blue';
+                                        else if (card.type === 'Q&A' || card.type === 'Front/Back') colorClass = 'green';
+                                        else if (card.type === 'Image Occlusion' || card.has_image || card.include_image) colorClass = 'purple';
+                                        else colorClass = 'red';
+
+                                        return (
+                                          <motion.div
+                                            key={card.id || idx}
+                                            layout
+                                            initial={{ opacity: 0, y: 15, scale: 0.96 }}
+                                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                                            exit={{ opacity: 0, scale: 0.9, height: 0 }}
+                                            transition={{ duration: 0.4, delay: idx * 0.03 }}
+                                            id={`card-${card.id}`}
+                                            onMouseEnter={() => card.ymin !== undefined && setHoveredCardCoordinates({ ymin: card.ymin, xmin: card.xmin, ymax: card.ymax, xmax: card.xmax })}
+                                            onMouseLeave={() => setHoveredCardCoordinates(null)}
+                                            className={`card ${colorClass} group relative ${hoveredCardIdFromImage === card.id ? 'ring-2 ring-blue-500 shadow-lg scale-[0.98]' : ''}`}
+                                          >
+                                            <div className="flex items-center justify-between gap-2 mb-2.5 w-full">
+                                              <div className="flex items-center gap-1.5 flex-wrap">
+                                                <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full ${colorClass === 'blue' ? 'bg-blue-500/15 text-blue-500 border border-blue-500/25' :
+                                                    colorClass === 'green' ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/25' :
+                                                      colorClass === 'purple' ? 'bg-purple-500/15 text-purple-500 border border-purple-500/25' :
+                                                        'bg-red-500/15 text-red-500 border border-red-500/25'
+                                                  }`}>
+                                                  {card.type}
+                                                </span>
+                                                {Boolean(card.has_image || (card.img_box && (Array.isArray(card.img_box) ? card.img_box.length === 4 : card.img_box.ymin !== undefined)) || card.include_image) && (
+                                                  <span className="text-[9px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-500 border border-emerald-500/25 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                                    <ImageIcon className="w-2.5 h-2.5 text-emerald-500" /> Image
+                                                  </span>
+                                                )}
+                                              </div>
+                                              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition z-10">
+                                                <button onClick={(e) => { e.stopPropagation(); setEditingCard(card); }} className="p-1 rounded-lg hover:bg-blue-500/20 text-blue-500 transition-colors" title="Edit Card"><Edit3 className="w-3.5 h-3.5" /></button>
+                                                <button onClick={(e) => { e.stopPropagation(); deleteCard(card.id); }} className="p-1 rounded-lg hover:bg-red-500/20 text-red-500 transition-colors" title="Delete Card"><Trash2 className="w-3.5 h-3.5" /></button>
+                                              </div>
+                                            </div>
+
+                                            {card.type === 'Cloze' ? (
+                                              <div>
+                                                <p className="tip">{card.text}</p>
+                                                <p className="second-text">Cloze Deletion Flashcard</p>
+                                              </div>
+                                            ) : (
+                                              <div>
+                                                <p className="tip">{card.front || card.question}</p>
+                                                <p className="second-text">{card.back || card.answer}</p>
+                                              </div>
+                                            )}
+                                          </motion.div>
+                                        );
+                                      })}
+                                    </div>
                                   </AnimatePresence>
                                 )}
                               </>
@@ -24990,14 +25486,7 @@ Return your response strictly as a JSON object matching this schema:
                                         <RotateCcw className="w-4 h-4" />
                                       </button>
                                       <button
-                                        onClick={async () => {
-                                          if (confirm("Permanently delete this page?")) {
-                                            const currentTrash = (await getLocalKV('trash_pages')) || [];
-                                            const updatedTrash = currentTrash.filter(p => p.id !== page.id);
-                                            await setLocalKV('trash_pages', updatedTrash);
-                                            setTrashPages(updatedTrash);
-                                          }
-                                        }}
+                                        onClick={() => handlePermanentDeletePage(page.id)}
                                         className="p-2 text-red-600 hover:bg-red-50 rounded-xl transition" title="Delete Permanently"
                                       >
                                         <X className="w-4 h-4" />
@@ -25024,27 +25513,16 @@ Return your response strictly as a JSON object matching this schema:
                                       <span className="text-[8px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">{card.type}</span>
                                       <div className="flex gap-1">
                                         <button
-                                          onClick={async () => {
-                                            const { deletedAt, ...restoredCard } = card;
-                                            await saveLocalCard(restoredCard);
-                                            const currentTrash = (await getLocalKV('trash_cards')) || [];
-                                            const updatedTrash = currentTrash.filter(c => c.id !== card.id);
-                                            await setLocalKV('trash_cards', updatedTrash);
-                                            setTrashCards(updatedTrash);
-                                            setCards(prev => [restoredCard, ...prev.filter(c => c.id !== card.id)].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)));
-                                            setTotalCardCount(prev => prev + 1);
-                                          }}
+                                          onClick={() => handleRestoreCard(card)}
                                           className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition"
+                                          title="Restore"
                                         >
                                           <RotateCcw className="w-3 h-3" />
                                         </button>
                                         <button
-                                          onClick={async () => {
-                                            if (confirm("Permanently delete this card?")) {
-                                              await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'trash_cards', card.id));
-                                            }
-                                          }}
+                                          onClick={() => handlePermanentDeleteCard(card.id)}
                                           className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition"
+                                          title="Delete Permanently"
                                         >
                                           <X className="w-3 h-3" />
                                         </button>
@@ -25060,32 +25538,46 @@ Return your response strictly as a JSON object matching this schema:
                       </div>
                     )}
 
-                    {currentTab === 'about' && (
-                      <div className="h-full p-4 lg:p-6 max-w-[1200px] mx-auto w-full overflow-y-auto custom-scrollbar pb-24 lg:pb-12">
-                        <AboutDashboard />
-                      </div>
-                    )}
-
                     {/* LIBRARY VIEW (FOLDERS & GALLERY) */}
                     {currentTab === 'library' && (
-                      <div className="h-full p-6 flex flex-col lg:flex-row gap-6 max-w-[1600px] mx-auto w-full overflow-hidden">
+                      <motion.div
+                        initial={{ opacity: 0, y: 15, scale: 0.99 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -15, scale: 0.99 }}
+                        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                        className="h-full p-4 lg:p-6 flex flex-col lg:flex-row gap-6 max-w-[1600px] mx-auto w-full overflow-hidden"
+                      >
                         {/* Left: Folders */}
-                        <div className="w-full lg:w-1/4 bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
+                        <motion.div
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.4, delay: 0.05 }}
+                          className={`w-full lg:w-1/4 p-5 rounded-3xl flex flex-col overflow-hidden shadow-xl ${settingsThemeMode === 'dark' ? 'neu-card-dark border-gray-800/80 text-white' : 'neu-card-light border-white/80 text-gray-900'
+                            }`}
+                        >
                           <div className="flex justify-between items-center mb-4">
-                            <h2 className="font-semibold flex items-center gap-2 text-sm text-gray-800">
-                              <Layers className="w-4 h-4 text-blue-600" /> Deck Hierarchy
+                            <h2 className={`font-black flex items-center gap-2 text-sm ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-800'}`}>
+                              <Layers className="w-4 h-4 text-blue-500" /> Deck Hierarchy
                             </h2>
-                            <button onClick={() => setNewFolderDialog({ isOpen: true, basePath: '', input: '' })} className="p-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100">
+                            <motion.button
+                              whileHover={{ scale: 1.08 }}
+                              whileTap={{ scale: 0.92 }}
+                              onClick={() => setNewFolderDialog({ isOpen: true, basePath: '', input: '' })}
+                              className={`p-2 rounded-xl transition ${settingsThemeMode === 'dark' ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+                                }`}
+                              title="New Folder"
+                            >
                               <Plus className="w-4 h-4" />
-                            </button>
+                            </motion.button>
                           </div>
-                          <div className="flex-grow overflow-y-auto border border-gray-100 rounded-lg p-2 bg-gray-50">
-
+                          <div className={`flex-grow overflow-y-auto rounded-2xl p-3 custom-scrollbar ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'
+                            }`}>
 
                             <TreeFolder
-                              node={buildTree(effectiveDeckPaths, cloudPages, deckCardCounts)}
+                              node={buildTree(effectiveDeckPaths, libraryPages, deckCardCounts)}
                               level={0}
                               selectedPath={hierarchy}
+                              themeMode={settingsThemeMode}
                               onSelect={(path) => {
                                 setHierarchy(path);
                                 // Clear selected tag filter if clicking a folder
@@ -25098,22 +25590,24 @@ Return your response strictly as a JSON object matching this schema:
                             />
 
                             {/* Smart Tags Section */}
-                            <div className="mt-6 pt-6 border-t border-gray-200">
+                            <div className={`mt-6 pt-5 border-t ${settingsThemeMode === 'dark' ? 'border-gray-800/80' : 'border-gray-200/80'}`}>
                               <div className="flex items-center justify-between mb-3">
-                                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                                  <Tag className="w-3.5 h-3.5 text-blue-600 animate-pulse" /> Smart Tags
+                                <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                  <Tag className="w-3.5 h-3.5 text-blue-500 animate-pulse" /> Smart Tags
                                 </h3>
                                 <div className="flex items-center gap-2">
-                                  <button
+                                  <motion.button
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
                                     onClick={() => setAutoTagDialog({ isOpen: true })}
-                                    className="flex items-center gap-1 text-[9px] font-black uppercase text-blue-600 bg-blue-50 border border-blue-150 hover:bg-blue-100 px-2.5 py-1 rounded-full transition shadow-sm active:scale-95 duration-100"
+                                    className="flex items-center gap-1 text-[9px] font-black uppercase text-blue-500 bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/20 px-2.5 py-1 rounded-full transition shadow-sm"
                                   >
-                                    <Sparkles className="w-2.5 h-2.5 text-blue-600" /> Auto-Tag
-                                  </button>
+                                    <Sparkles className="w-2.5 h-2.5 text-blue-500" /> Auto-Tag
+                                  </motion.button>
                                   {selectedTags.length > 0 && (
                                     <button
                                       onClick={() => setSelectedTags([])}
-                                      className="text-[9px] font-black uppercase text-blue-600 hover:underline"
+                                      className="text-[9px] font-black uppercase text-blue-500 hover:underline"
                                     >
                                       Clear ({selectedTags.length})
                                     </button>
@@ -25123,7 +25617,7 @@ Return your response strictly as a JSON object matching this schema:
                               {allTags.length === 0 ? (
                                 <div className="text-[10px] text-gray-400 italic px-2">No tags created yet. Edit cards to add tags!</div>
                               ) : (
-                                <div className="space-y-1.5 max-h-[220px] overflow-y-auto pr-1">
+                                <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1 custom-scrollbar">
                                   {allTags.map(tag => {
                                     const activeFolderCards = cards.filter(card => {
                                       if (!hierarchy) return true;
@@ -25140,8 +25634,10 @@ Return your response strictly as a JSON object matching this schema:
                                     const isSelected = selectedTags.includes(tag);
 
                                     return (
-                                      <button
+                                      <motion.button
                                         key={tag}
+                                        whileHover={{ scale: 1.02, x: 2 }}
+                                        whileTap={{ scale: 0.98 }}
                                         onClick={() => {
                                           if (isSelected) {
                                             setSelectedTags(prev => prev.filter(t => t !== tag));
@@ -25150,78 +25646,90 @@ Return your response strictly as a JSON object matching this schema:
                                             setActiveQueueId(null);
                                           }
                                         }}
-                                        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition text-xs font-bold
-                                ${isSelected
-                                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
-                                            : 'bg-white text-gray-700 border border-gray-100 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200'
-                                          }
-                              `}
+                                        className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all text-xs font-bold ${isSelected
+                                            ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/30'
+                                            : settingsThemeMode === 'dark'
+                                              ? 'neu-item-dark text-gray-200 hover:text-blue-400'
+                                              : 'neu-item-light text-gray-700 hover:text-blue-600'
+                                          }`}
                                       >
                                         <span className="truncate">{tag}</span>
-                                        <span className={`text-[9px] px-2 py-0.5 rounded-full font-black transition-colors
-                                ${isSelected ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-600'}
-                              `}>
+                                        <span className={`text-[9px] px-2 py-0.5 rounded-full font-black transition-colors ${isSelected ? 'bg-white/20 text-white' : 'bg-blue-500/15 text-blue-500'
+                                          }`}>
                                           {tagCardCount}
                                         </span>
-                                      </button>
+                                      </motion.button>
                                     );
                                   })}
                                 </div>
                               )}
                             </div>
                           </div>
-                        </div>
+                        </motion.div>
 
                         {/* Center: Gallery */}
-                        <div className="w-full lg:w-3/4 flex flex-col gap-6 overflow-hidden">
-                          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex-grow flex flex-col overflow-hidden">
-                            <div className="flex items-center justify-between mb-6">
+                        <motion.div
+                          initial={{ opacity: 0, x: 20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.4, delay: 0.08 }}
+                          className="w-full lg:w-3/4 flex flex-col gap-6 overflow-hidden"
+                        >
+                          <div className={`flex-grow flex flex-col overflow-hidden p-6 rounded-3xl shadow-xl ${settingsThemeMode === 'dark' ? 'neu-card-dark border-gray-800/80 text-white' : 'neu-card-light border-white/80 text-gray-900'
+                            }`}>
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-4 border-b border-gray-200/40 dark:border-gray-800/60">
                               <div>
-                                <h2 className="text-2xl font-black text-gray-900 tracking-tight">{currentFolderName}</h2>
-                                <div className="text-xs text-gray-500 font-mono mt-1">{hierarchy}</div>
+                                <h2 className={`text-2xl font-black tracking-tight ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>{currentFolderName}</h2>
+                                <div className="text-xs text-gray-400 font-mono mt-0.5">{hierarchy}</div>
                               </div>
-                              <div className="flex items-center gap-3">
-                                <div className="relative group">
-                                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition-colors" />
+                              <div className="flex items-center gap-2.5 flex-wrap">
+                                <div className={`relative group flex-grow md:flex-grow-0 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'} rounded-xl`}>
+                                  <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
                                   <input
                                     type="text"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     placeholder="Search cards..."
-                                    className="pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none w-48 transition-all"
+                                    className="pl-9 pr-8 py-2.5 bg-transparent border-none text-xs outline-none w-44 lg:w-56 transition-all"
                                   />
                                   {searchQuery && (
-                                    <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                                      <X className="w-3 h-3" />
+                                    <button onClick={() => setSearchQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                      <X className="w-3.5 h-3.5" />
                                     </button>
                                   )}
                                 </div>
                                 {selectedPages.size > 0 && (
                                   <>
-                                    <button
+                                    <motion.button
+                                      whileHover={{ scale: 1.04 }}
+                                      whileTap={{ scale: 0.96 }}
                                       onClick={handleBulkDelete}
-                                      className="bg-red-100 text-red-700 border border-red-200 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-red-200 transition"
+                                      className="bg-red-500/15 text-red-500 border border-red-500/20 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 hover:bg-red-500/25 transition shadow-sm"
                                     >
-                                      <Trash2 className="w-4 h-4" /> Delete Selected ({selectedPages.size})
-                                    </button>
-                                    <button
+                                      <Trash2 className="w-3.5 h-3.5" /> Delete ({selectedPages.size})
+                                    </motion.button>
+                                    <motion.button
+                                      whileHover={{ scale: 1.04 }}
+                                      whileTap={{ scale: 0.96 }}
                                       onClick={() => setMoveDialog({ isOpen: true, targetPath: '' })}
-                                      className="bg-orange-100 text-orange-700 border border-orange-200 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-orange-200 transition"
+                                      className="bg-amber-500/15 text-amber-500 border border-amber-500/20 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 hover:bg-amber-500/25 transition shadow-sm"
                                     >
-                                      <Move className="w-4 h-4" /> Move Selected ({selectedPages.size})
-                                    </button>
+                                      <Move className="w-3.5 h-3.5" /> Move ({selectedPages.size})
+                                    </motion.button>
                                   </>
                                 )}
-                                <button
+                                <UiverseButton
+                                  icon={<Download className="w-3.5 h-3.5 text-blue-400" />}
                                   onClick={() => {
                                     setSelectedDecksToExport([hierarchy]);
                                     setCurrentTab('export');
                                   }}
                                   disabled={selectedFolderCardCount === 0}
-                                  className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition shadow-lg shadow-blue-600/20 active:scale-95"
+                                  size="sm"
+                                  themeMode={settingsThemeMode}
+                                  variant={settingsThemeMode === 'dark' ? 'dark' : 'default'}
                                 >
-                                  <Download className="w-4 h-4" /> Export Folder ({selectedFolderCardCount})
-                                </button>
+                                  Export ({selectedFolderCardCount})
+                                </UiverseButton>
                               </div>
                             </div>
 
@@ -25230,55 +25738,58 @@ Return your response strictly as a JSON object matching this schema:
                                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                                   <div className="flex items-center justify-between">
                                     <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest">Search Results ({searchResults.length})</h3>
-                                    <button onClick={() => setSearchQuery('')} className="text-xs text-blue-600 font-bold hover:underline">Clear Search</button>
+                                    <button onClick={() => setSearchQuery('')} className="text-xs text-blue-500 font-bold hover:underline">Clear Search</button>
                                   </div>
                                   {searchResults.length === 0 ? (
-                                    <div className="bg-gray-50 rounded-2xl p-20 text-center text-gray-400 border border-dashed border-gray-200">
+                                    <div className={`rounded-3xl p-16 text-center text-gray-400 border border-dashed ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-gray-200'}`}>
                                       <Search className="w-12 h-12 mx-auto mb-4 opacity-20" />
                                       <p className="text-sm">No cards matching "{searchQuery}"</p>
                                     </div>
                                   ) : (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                       {searchResults.map(card => (
-                                        <div
+                                        <motion.div
                                           key={card.id}
+                                          whileHover={{ scale: 1.025, y: -2 }}
+                                          whileTap={{ scale: 0.98 }}
+                                          transition={{ type: 'spring', stiffness: 300, damping: 25 }}
                                           onClick={() => {
                                             setHierarchy(card.deck || hierarchy || (deckPaths[0] || 'General'));
                                             setActiveQueueId(card.pageId);
                                             setSearchQuery('');
-                                            // Highlight the card immediately
                                             setHoveredCardIdFromImage(card.id);
                                             if (card.ymin !== undefined) {
                                               setHoveredCardCoordinates({ ymin: card.ymin, xmin: card.xmin, ymax: card.ymax, xmax: card.xmax });
                                             }
                                           }}
-                                          className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl hover:border-blue-500 transition-all group cursor-pointer relative"
+                                          className={`p-5 rounded-2xl transition-all duration-200 group cursor-pointer relative ${settingsThemeMode === 'dark' ? 'neu-item-dark border border-gray-800/60 hover:border-blue-500/50' : 'neu-item-light border border-white/80 hover:border-blue-400/50'
+                                            }`}
                                         >
                                           <div className="flex justify-between items-start mb-3">
                                             <div className="flex flex-wrap items-center gap-1.5">
-                                              <span className="text-[9px] font-black uppercase tracking-widest bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">{card.type}</span>
+                                              <span className="text-[9px] font-black uppercase tracking-widest bg-blue-500/15 text-blue-500 px-2 py-0.5 rounded-full">{card.type}</span>
                                               {Boolean(card.has_image || (card.img_box && (Array.isArray(card.img_box) ? card.img_box.length === 4 : card.img_box.ymin !== undefined)) || card.include_image) && (
-                                                <span className="text-[9px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-full flex items-center gap-1">
-                                                  <ImageIcon className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" /> Image Attached
+                                                <span className="text-[9px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-500 border border-emerald-500/25 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                                  <ImageIcon className="w-2.5 h-2.5 text-emerald-500" /> Image Attached
                                                 </span>
                                               )}
                                             </div>
-                                            <div className="text-[8px] font-black text-gray-400 uppercase tracking-widest bg-gray-50 px-2 py-0.5 rounded-full flex items-center gap-1 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                            <div className="text-[8px] font-black text-gray-400 uppercase tracking-widest bg-gray-500/10 px-2 py-0.5 rounded-full flex items-center gap-1 group-hover:bg-blue-600 group-hover:text-white transition-colors">
                                               <Folder className="w-2.5 h-2.5" /> {card.deck?.split('::').pop() || 'Uncategorized'}
                                             </div>
                                           </div>
                                           {card.type === 'Cloze' ? (
-                                            <div className="text-sm text-gray-800 leading-relaxed font-medium">{card.text}</div>
+                                            <div className="text-sm leading-relaxed font-medium">{card.text}</div>
                                           ) : (
                                             <div className="space-y-2">
-                                              <div className="text-sm text-gray-800 font-bold">{card.front}</div>
-                                              <div className="text-xs text-blue-600 font-medium">{card.back}</div>
+                                              <div className="text-sm font-bold">{card.front}</div>
+                                              <div className="text-xs text-blue-500 font-medium">{card.back}</div>
                                             </div>
                                           )}
-                                          <div className="mt-4 pt-3 border-t border-gray-50 text-[10px] text-gray-400 font-mono truncate">
+                                          <div className="mt-4 pt-3 border-t border-gray-500/10 text-[10px] text-gray-400 font-mono truncate">
                                             PATH: {card.deck}
                                           </div>
-                                        </div>
+                                        </motion.div>
                                       ))}
                                     </div>
                                   )}
@@ -25286,11 +25797,16 @@ Return your response strictly as a JSON object matching this schema:
                               ) : activeQueueId && (activeImageObj || pageCards.length > 0) ? (
                                 <div className="flex flex-col lg:flex-row gap-4 h-full overflow-hidden">
                                   {/* Side-by-side view for saved page */}
-                                  <div className="lg:w-1/2 bg-gray-900 rounded-2xl overflow-hidden relative border border-gray-800">
+                                  <div className="lg:w-1/2 bg-gray-950 rounded-3xl overflow-hidden relative border border-gray-800 shadow-2xl">
                                     <div className="absolute top-4 left-4 z-10">
-                                      <button onClick={() => setActiveQueueId(null)} className="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white p-2 rounded-xl transition border border-white/10 flex items-center gap-2 text-xs font-bold">
+                                      <motion.button
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={() => setActiveQueueId(null)}
+                                        className="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white px-3 py-2 rounded-xl transition border border-white/10 flex items-center gap-2 text-xs font-bold shadow-lg"
+                                      >
                                         <ChevronLeft className="w-4 h-4" /> Back to Gallery
-                                      </button>
+                                      </motion.button>
                                     </div>
                                     {!activeImageObj ? (
                                       <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-gray-950 text-gray-500 text-center">
@@ -25316,7 +25832,7 @@ Return your response strictly as a JSON object matching this schema:
                                             <img
                                               src={activeImageObj.imageUrl || activeImageObj.base64}
                                               alt="Page Inspection"
-                                              className={`w-full h-auto rounded ${zoomLevel > 1 ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
+                                              className={`w-full h-auto rounded-2xl ${zoomLevel > 1 ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
                                               onMouseMove={handleImageMouseMove}
                                               onMouseDown={handleImageMouseDown}
                                               onMouseUp={handleImageMouseUp}
@@ -25325,7 +25841,7 @@ Return your response strictly as a JSON object matching this schema:
                                             {/* Highlight from Card Hover */}
                                             {hoveredCardCoordinates?.ymin !== undefined && (
                                               <div
-                                                className="absolute border-2 border-yellow-400 bg-yellow-300/40 rounded transition-all duration-200 pointer-events-none"
+                                                className="absolute border-2 border-yellow-400 bg-yellow-300/40 rounded transition-all duration-200 pointer-events-none shadow-[0_0_12px_rgba(250,204,21,0.6)]"
                                                 style={{
                                                   top: `${(hoveredCardCoordinates?.ymin || 0) / 10}%`,
                                                   left: `${(hoveredCardCoordinates?.xmin || 0) / 10}%`,
@@ -25341,7 +25857,7 @@ Return your response strictly as a JSON object matching this schema:
                                               if (!c || c.ymin === undefined) return null;
                                               return (
                                                 <div
-                                                  className="absolute border-2 border-blue-400 bg-blue-300/40 rounded pointer-events-none shadow-[0_0_10px_rgba(59,130,246,0.6)]"
+                                                  className="absolute border-2 border-blue-400 bg-blue-300/40 rounded pointer-events-none shadow-[0_0_12px_rgba(59,130,246,0.6)]"
                                                   style={{
                                                     top: `${c.ymin / 10}%`,
                                                     left: `${c.xmin / 10}%`,
@@ -25359,89 +25875,149 @@ Return your response strictly as a JSON object matching this schema:
                                   <div className="lg:w-1/2 flex flex-col gap-4 overflow-hidden">
                                     <div className="flex justify-between items-center">
                                       <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">Cards from this page</h3>
-                                      <div className="flex items-center gap-2">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        {pageCards.length > 0 && (
+                                          <UiverseButton
+                                            icon={<CheckCircle className="w-3.5 h-3.5 text-emerald-500" />}
+                                            onClick={() => saveQueueItemToCloud(activeQueueId)}
+                                            size="sm"
+                                            themeMode={settingsThemeMode}
+                                            isSuccess={isSaving}
+                                            successText="Saved All!"
+                                          >
+                                            Save All
+                                          </UiverseButton>
+                                        )}
+
+                                        {activeQueueItem?.status === 'done' && (
+                                          <UiverseButton
+                                            icon={<Save className="w-3.5 h-3.5 text-blue-500" />}
+                                            onClick={() => saveQueueItemToCloud(activeQueueId)}
+                                            size="sm"
+                                            themeMode={settingsThemeMode}
+                                            isSuccess={isSaving}
+                                            successText="Saved!"
+                                          >
+                                            Save
+                                          </UiverseButton>
+                                        )}
+
                                         {activeImageObj?.isPending && (
                                           <>
-                                            <button
+                                            <motion.button
+                                              whileHover={{ scale: 1.05 }}
+                                              whileTap={{ scale: 0.95 }}
                                               onClick={() => processTriagePage(activeImageObj.id)}
                                               disabled={isProcessing || isSaving}
-                                              className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-blue-600/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+                                              className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-blue-600/20 transition-all disabled:opacity-50"
                                             >
                                               {isProcessing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
                                               {pageCards.length === 0 ? 'Process Cards' : 'Reprocess Cards'}
-                                            </button>
-                                            <button
+                                            </motion.button>
+                                            <motion.button
+                                              whileHover={{ scale: 1.05 }}
+                                              whileTap={{ scale: 0.95 }}
                                               onClick={() => setApproveDialog({ isOpen: true, pageId: activeImageObj.id, targetDeck: activeImageObj.deck || hierarchy })}
                                               disabled={isSaving || isProcessing}
-                                              className="flex items-center gap-2 px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-orange-600/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+                                              className="flex items-center gap-2 px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-orange-600/20 transition-all disabled:opacity-50"
                                             >
                                               {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
                                               Approve & Move
-                                            </button>
+                                            </motion.button>
                                           </>
                                         )}
                                         {activeImageObj && (
-                                          <button
+                                          <motion.button
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
                                             onClick={() => handleRegenerateLibraryPage(activeImageObj)}
-                                            className="flex items-center gap-2 px-3 py-1.5 bg-purple-50 text-purple-600 hover:bg-purple-100 border border-purple-200/60 rounded-xl text-[10px] font-black uppercase transition-all shadow-sm active:scale-95 hover:scale-105"
+                                            className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 text-purple-500 hover:bg-purple-500/20 border border-purple-500/20 rounded-xl text-[10px] font-black uppercase transition-all shadow-sm"
                                             title="Send page to Card Generator queue to regenerate flashcards for its folder"
                                           >
                                             <RefreshCw className="w-3 h-3" />
                                             Regenerate Cards
-                                          </button>
+                                          </motion.button>
                                         )}
-                                        <button
+                                        <motion.button
+                                          whileHover={{ scale: 1.05 }}
+                                          whileTap={{ scale: 0.95 }}
                                           onClick={() => setDeleteConfirmDialog({ isOpen: true, pageIds: [activeQueueId], isBulk: false })}
-                                          className="flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl text-[10px] font-black uppercase transition-all"
+                                          className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-xl text-[10px] font-black uppercase transition-all"
                                           title="Delete Page"
                                         >
                                           <Trash2 className="w-3 h-3" />
                                           Delete Page
-                                        </button>
+                                        </motion.button>
                                       </div>
                                     </div>
                                     <div className="overflow-y-auto pr-2 space-y-3 custom-scrollbar">
                                       {pageCards.length === 0 ? (
-                                        <div className="flex flex-col items-center justify-center p-8 py-16 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                                        <div className={`flex flex-col items-center justify-center p-8 py-16 text-center rounded-3xl border border-dashed ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-gray-200'
+                                          }`}>
                                           <Sparkles className="w-8 h-8 text-blue-500 mb-3 opacity-40 animate-pulse" />
-                                          <p className="text-xs font-bold text-gray-500">No cards generated for this page yet.</p>
-                                          <p className="text-[10px] text-gray-400 mt-1">Click "Process Cards" above to extract medical concepts with AI.</p>
+                                          <p className="text-xs font-bold text-gray-400">No cards generated for this page yet.</p>
+                                          <p className="text-[10px] text-gray-500 mt-1">Click "Process Cards" above to extract medical concepts with AI.</p>
                                         </div>
                                       ) : (
-                                        pageCards.map(card => (
-                                          <div
-                                            key={card.id}
-                                            id={`card-${card.id}`}
-                                            onMouseEnter={() => card.ymin !== undefined && setHoveredCardCoordinates({ ymin: card.ymin, xmin: card.xmin, ymax: card.ymax, xmax: card.xmax })}
-                                            onMouseLeave={() => setHoveredCardCoordinates(null)}
-                                            className={`p-4 border rounded-2xl shadow-sm transition-all group relative
-                                    ${hoveredCardIdFromImage === card.id
-                                                ? 'border-blue-500 bg-blue-50/50 ring-2 ring-blue-500 ring-opacity-20 scale-[1.02] shadow-md'
-                                                : 'border-gray-100 bg-white hover:shadow-md'}
-                                  `}
-                                          >
-                                            <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition bg-white/80 p-1 rounded-lg border border-gray-100 shadow-sm z-10">
-                                              <button onClick={(e) => { e.stopPropagation(); setEditingCard(card); }} className="p-1 text-blue-600 hover:bg-blue-100 rounded-md transition-colors"><Edit3 className="w-3 h-3" /></button>
-                                              <button onClick={(e) => { e.stopPropagation(); deleteCard(card.id); }} className="p-1 text-red-600 hover:bg-red-100 rounded-md transition-colors"><Trash2 className="w-3 h-3" /></button>
-                                            </div>
-                                            <div className="flex items-center gap-1.5 mb-2">
-                                              <span className="text-[9px] font-black uppercase tracking-widest bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">{card.type}</span>
-                                              {Boolean(card.has_image || (card.img_box && (Array.isArray(card.img_box) ? card.img_box.length === 4 : card.img_box.ymin !== undefined)) || card.include_image) && (
-                                                <span className="text-[9px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-full flex items-center gap-1">
-                                                  <ImageIcon className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" /> Image
-                                                </span>
-                                              )}
-                                            </div>
-                                            {card.type === 'Cloze' ? (
-                                              <div className="text-sm text-gray-800">{card.text}</div>
-                                            ) : (
-                                              <div className="space-y-1">
-                                                <div className="text-sm text-gray-800 font-medium">{card.front}</div>
-                                                <div className="text-xs text-blue-600">{card.back}</div>
-                                              </div>
-                                            )}
+                                        <AnimatePresence mode="popLayout">
+                                          <div className="cards">
+                                            {pageCards.map((card, idx) => {
+                                              let colorClass = 'blue';
+                                              if (card.type === 'Cloze') colorClass = 'blue';
+                                              else if (card.type === 'Q&A' || card.type === 'Front/Back') colorClass = 'green';
+                                              else if (card.type === 'Image Occlusion' || card.has_image || card.include_image) colorClass = 'purple';
+                                              else colorClass = 'red';
+
+                                              return (
+                                                <motion.div
+                                                  key={card.id || idx}
+                                                  layout
+                                                  initial={{ opacity: 0, y: 15, scale: 0.96 }}
+                                                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                  exit={{ opacity: 0, scale: 0.9, height: 0 }}
+                                                  transition={{ duration: 0.4, delay: idx * 0.03 }}
+                                                  id={`card-${card.id}`}
+                                                  onMouseEnter={() => card.ymin !== undefined && setHoveredCardCoordinates({ ymin: card.ymin, xmin: card.xmin, ymax: card.ymax, xmax: card.xmax })}
+                                                  onMouseLeave={() => setHoveredCardCoordinates(null)}
+                                                  className={`card ${colorClass} group relative ${hoveredCardIdFromImage === card.id ? 'ring-2 ring-blue-500 shadow-lg scale-[0.98]' : ''}`}
+                                                >
+                                                  <div className="flex items-center justify-between gap-2 mb-2.5 w-full">
+                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                      <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full ${colorClass === 'blue' ? 'bg-blue-500/15 text-blue-500 border border-blue-500/25' :
+                                                          colorClass === 'green' ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/25' :
+                                                            colorClass === 'purple' ? 'bg-purple-500/15 text-purple-500 border border-purple-500/25' :
+                                                              'bg-red-500/15 text-red-500 border border-red-500/25'
+                                                        }`}>
+                                                        {card.type || 'BASIC'}
+                                                      </span>
+                                                      {Boolean(card.has_image || (card.img_box && (Array.isArray(card.img_box) ? card.img_box.length === 4 : card.img_box.ymin !== undefined)) || card.include_image) && (
+                                                        <span className="text-[9px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-500 border border-emerald-500/25 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                                          <ImageIcon className="w-2.5 h-2.5 text-emerald-500" /> Image
+                                                        </span>
+                                                      )}
+                                                    </div>
+                                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition z-10">
+                                                      <button onClick={(e) => { e.stopPropagation(); setEditingCard(card); }} className="p-1 rounded-lg hover:bg-blue-500/20 text-blue-500 transition-colors" title="Edit Card"><Edit3 className="w-3.5 h-3.5" /></button>
+                                                      <button onClick={(e) => { e.stopPropagation(); deleteCard(card.id); }} className="p-1 rounded-lg hover:bg-red-500/20 text-red-500 transition-colors" title="Delete Card"><Trash2 className="w-3.5 h-3.5" /></button>
+                                                    </div>
+                                                  </div>
+
+                                                  {card.type === 'Cloze' ? (
+                                                    <div>
+                                                      <p className="tip">{card.text}</p>
+                                                      <p className="second-text">Cloze Deletion Flashcard</p>
+                                                    </div>
+                                                  ) : (
+                                                    <div>
+                                                      <p className="tip">{card.front || card.question}</p>
+                                                      <p className="second-text">{card.back || card.answer}</p>
+                                                    </div>
+                                                  )}
+                                                </motion.div>
+                                              );
+                                            })}
                                           </div>
-                                        ))
+                                        </AnimatePresence>
                                       )}
                                     </div>
                                   </div>
@@ -25450,17 +26026,17 @@ Return your response strictly as a JSON object matching this schema:
                                 <>
                                   {hierarchy === 'COMPANION_SCANS' ? (
                                     <div className="space-y-6">
-                                      <div className="flex justify-between items-center pb-3 border-b border-gray-150">
+                                      <div className="flex justify-between items-center pb-3 border-b border-gray-200/50 dark:border-gray-800/50">
                                         <div>
-                                          <h3 className="text-sm font-black text-gray-800 flex items-center gap-2 uppercase tracking-widest text-[10px]">
-                                            <Camera className="w-4 h-4 text-orange-500" /> Mobile Scans Inbox ({folderPages.length})
+                                          <h3 className="text-sm font-black flex items-center gap-2 uppercase tracking-widest text-[10px]">
+                                            <Camera className="w-4 h-4 text-amber-500" /> Mobile Scans Inbox ({folderPages.length})
                                           </h3>
-                                          <p className="text-[10px] text-gray-500 font-medium mt-1">Review, rename, choose target decks, and process medical document pages uploaded from your phone.</p>
+                                          <p className="text-[10px] text-gray-400 font-medium mt-1">Review, rename, choose target decks, and process medical document pages uploaded from your phone.</p>
                                         </div>
                                       </div>
 
                                       {folderPages.length === 0 ? (
-                                        <div className="bg-gray-50 border border-dashed border-gray-200 rounded-3xl p-20 text-center text-gray-400">
+                                        <div className={`rounded-3xl p-20 text-center text-gray-400 border border-dashed ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-gray-200'}`}>
                                           <Camera className="w-16 h-16 mx-auto mb-4 opacity-10" />
                                           <p className="text-sm font-bold uppercase tracking-widest opacity-40">Inbox is empty</p>
                                           <p className="text-[10px] mt-2">Use the Mobile Scanner tab in the Study Companion to snap and upload pages.</p>
@@ -25468,7 +26044,7 @@ Return your response strictly as a JSON object matching this schema:
                                       ) : (
                                         <div className="space-y-4">
                                           {/* Bulk Actions Header */}
-                                          <div className="bg-gray-50/50 p-4 rounded-2xl border border-gray-200/50 flex flex-wrap items-center justify-between gap-3 animate-in fade-in duration-200">
+                                          <div className={`p-4 rounded-2xl flex flex-wrap items-center justify-between gap-3 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
                                             <div className="flex items-center gap-2">
                                               <input
                                                 type="checkbox"
@@ -25483,14 +26059,16 @@ Return your response strictly as a JSON object matching this schema:
                                                 id="select-all-inbox"
                                                 className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
                                               />
-                                              <label htmlFor="select-all-inbox" className="text-xs font-black uppercase tracking-wider text-gray-600 cursor-pointer select-none">
+                                              <label htmlFor="select-all-inbox" className="text-xs font-black uppercase tracking-wider cursor-pointer select-none">
                                                 Select All ({folderPages.length})
                                               </label>
                                             </div>
 
                                             {selectedInboxPageIds.length > 0 && (
-                                              <div className="flex items-center gap-2.5 animate-in slide-in-from-right-3 duration-250">
-                                                <button
+                                              <div className="flex items-center gap-2.5">
+                                                <motion.button
+                                                  whileHover={{ scale: 1.04 }}
+                                                  whileTap={{ scale: 0.96 }}
                                                   onClick={async () => {
                                                     const selectedPages = folderPages.filter(p => selectedInboxPageIds.includes(p.id));
                                                     const updatedInboxPages = selectedPages.map(page => {
@@ -25499,8 +26077,7 @@ Return your response strictly as a JSON object matching this schema:
                                                     });
                                                     await saveLocalPages(updatedInboxPages);
 
-                                                    // Update local state
-                                                    setCloudPages(prev => prev.map(p => {
+                                                    setLibraryPages(prev => prev.map(p => {
                                                       if (selectedInboxPageIds.includes(p.id)) {
                                                         const finalDeck = p.deck === 'Mobile Scans Inbox' ? 'General' : (p.deck || 'General');
                                                         return { ...p, deck: finalDeck, isCompanionScan: false, isPending: false };
@@ -25511,15 +26088,17 @@ Return your response strictly as a JSON object matching this schema:
                                                     setSelectedInboxPageIds([]);
                                                     setCurrentTab('dashboard');
                                                   }}
-                                                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black uppercase text-[10px] tracking-wider rounded-xl shadow-lg shadow-blue-500/10 flex items-center gap-1.5 transition active:scale-95"
+                                                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black uppercase text-[10px] tracking-wider rounded-xl shadow-lg shadow-blue-500/20 flex items-center gap-1.5 transition"
                                                 >
                                                   <Sparkles className="w-3.5 h-3.5" /> Process Selected ({selectedInboxPageIds.length}) 🧠
-                                                </button>
+                                                </motion.button>
 
-                                                <button
+                                                <motion.button
+                                                  whileHover={{ scale: 1.04 }}
+                                                  whileTap={{ scale: 0.96 }}
                                                   onClick={async () => {
                                                     if (confirm(`Are you sure you want to discard the ${selectedInboxPageIds.length} selected pages?`)) {
-                                                      setCloudPages(prev => prev.filter(p => !selectedInboxPageIds.includes(p.id)));
+                                                      setLibraryPages(prev => prev.filter(p => !selectedInboxPageIds.includes(p.id)));
 
                                                       for (let id of selectedInboxPageIds) {
                                                         await deleteLocalPage(id);
@@ -25527,10 +26106,10 @@ Return your response strictly as a JSON object matching this schema:
                                                       setSelectedInboxPageIds([]);
                                                     }
                                                   }}
-                                                  className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-650 font-black uppercase text-[10px] tracking-wider rounded-xl transition active:scale-95 flex items-center gap-1.5"
+                                                  className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 font-black uppercase text-[10px] tracking-wider rounded-xl transition flex items-center gap-1.5"
                                                 >
                                                   <Trash2 className="w-3.5 h-3.5" /> Discard Selected ({selectedInboxPageIds.length})
-                                                </button>
+                                                </motion.button>
                                               </div>
                                             )}
                                           </div>
@@ -25539,14 +26118,14 @@ Return your response strictly as a JSON object matching this schema:
                                             {folderPages.map(page => {
                                               const isSelected = selectedInboxPageIds.includes(page.id);
                                               return (
-                                                <div
+                                                <motion.div
                                                   key={page.id}
-                                                  className={`bg-white rounded-3xl border p-5 shadow-sm hover:shadow-xl hover:border-blue-500 transition-all flex flex-col md:flex-row gap-5 relative
-                                          ${isSelected ? 'border-blue-500 ring-2 ring-blue-500/15 bg-blue-50/5' : 'border-gray-100'}
-                                        `}
+                                                  whileHover={{ scale: 1.01 }}
+                                                  className={`rounded-3xl p-5 shadow-sm transition-all flex flex-col md:flex-row gap-5 relative ${isSelected ? 'border-2 border-blue-500 ring-4 ring-blue-500/15' : 'border border-gray-500/20'
+                                                    } ${settingsThemeMode === 'dark' ? 'neu-item-dark text-white' : 'neu-item-light text-gray-900'}`}
                                                 >
                                                   {/* Select Checkbox at Top-Left */}
-                                                  <div className="absolute top-4 left-4 z-10 bg-white/90 backdrop-blur-sm p-1.5 rounded-lg border border-gray-200/50 shadow-sm flex items-center justify-center">
+                                                  <div className="absolute top-4 left-4 z-10 bg-black/40 backdrop-blur-md p-1.5 rounded-xl border border-white/10 shadow-sm flex items-center justify-center">
                                                     <input
                                                       type="checkbox"
                                                       checked={isSelected}
@@ -25562,13 +26141,13 @@ Return your response strictly as a JSON object matching this schema:
                                                   </div>
 
                                                   {/* Left/Top Image Preview */}
-                                                  <div className="md:w-1/3 aspect-[3/4] bg-gray-900 rounded-2xl overflow-hidden relative shadow-inner shrink-0 group/img">
+                                                  <div className="md:w-1/3 aspect-[3/4] bg-gray-950 rounded-2xl overflow-hidden relative shadow-inner shrink-0 group/img border border-gray-800">
                                                     <img src={page.base64 || page.imageUrl} className="w-full h-full object-cover group-hover/img:scale-105 transition duration-500" alt="Scan" />
                                                     <a
                                                       href={page.base64 || page.imageUrl}
                                                       target="_blank"
                                                       rel="noreferrer"
-                                                      className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-black uppercase tracking-wider"
+                                                      className="absolute inset-0 bg-black/50 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-black uppercase tracking-wider"
                                                     >
                                                       View Full Scan
                                                     </a>
@@ -25586,10 +26165,11 @@ Return your response strictly as a JSON object matching this schema:
                                                           onChange={async (e) => {
                                                             const newName = e.target.value;
                                                             const updated = { ...page, fileName: newName };
-                                                            setCloudPages(prev => prev.map(p => p.id === page.id ? updated : p));
+                                                            setLibraryPages(prev => prev.map(p => p.id === page.id ? updated : p));
                                                             await saveLocalPage(updated);
                                                           }}
-                                                          className="w-full p-2.5 bg-gray-50 border border-gray-100 rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none text-xs font-bold text-gray-800"
+                                                          className={`w-full p-2.5 rounded-xl outline-none text-xs font-bold ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-gray-800'
+                                                            }`}
                                                           placeholder="Enter descriptive page name..."
                                                         />
                                                       </div>
@@ -25608,10 +26188,11 @@ Return your response strictly as a JSON object matching this schema:
                                                               isCompanionScan: isInbox,
                                                               isPending: isInbox
                                                             };
-                                                            setCloudPages(prev => prev.map(p => p.id === page.id ? updated : p));
+                                                            setLibraryPages(prev => prev.map(p => p.id === page.id ? updated : p));
                                                             await saveLocalPage(updated);
                                                           }}
-                                                          className="w-full p-2.5 bg-gray-50 border border-gray-100 rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none text-xs font-bold text-gray-700 cursor-pointer"
+                                                          className={`w-full p-2.5 rounded-xl outline-none text-xs font-bold cursor-pointer ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-gray-700'
+                                                            }`}
                                                         >
                                                           <option value="Mobile Scans Inbox">📥 Scanner Inbox (Keep in Inbox)</option>
                                                           {effectiveDeckPaths.map(path => (
@@ -25621,15 +26202,15 @@ Return your response strictly as a JSON object matching this schema:
                                                       </div>
                                                     </div>
 
-                                                    <div className="flex gap-2 pt-2 border-t border-gray-50">
+                                                    <div className="flex gap-2 pt-2 border-t border-gray-500/10">
                                                       <button
                                                         onClick={async () => {
                                                           if (confirm("Are you sure you want to discard this scanned document page?")) {
-                                                            setCloudPages(prev => prev.filter(p => p.id !== page.id));
+                                                            setLibraryPages(prev => prev.filter(p => p.id !== page.id));
                                                             await deleteLocalPage(page.id);
                                                           }
                                                         }}
-                                                        className="p-2.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl transition active:scale-95 flex items-center justify-center"
+                                                        className="p-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl transition active:scale-95 flex items-center justify-center"
                                                         title="Discard Scan"
                                                       >
                                                         <Trash2 className="w-4 h-4" />
@@ -25645,7 +26226,7 @@ Return your response strictly as a JSON object matching this schema:
                                                           };
                                                           await saveLocalPage(updatedPage);
 
-                                                          setCloudPages(prev => prev.map(p => p.id === page.id ? updatedPage : p));
+                                                          setLibraryPages(prev => prev.map(p => p.id === page.id ? updatedPage : p));
 
                                                           const newQueueItem = {
                                                             id: page.id,
@@ -25661,16 +26242,15 @@ Return your response strictly as a JSON object matching this schema:
                                                           setQueue(newQueue);
                                                           setActiveQueueId(page.id);
 
-
                                                           setCurrentTab('home');
                                                         }}
-                                                        className="flex-grow py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black uppercase text-[9px] tracking-wider rounded-xl shadow-lg shadow-blue-500/10 flex items-center justify-center gap-1.5 transition active:scale-95"
+                                                        className="flex-grow py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black uppercase text-[9px] tracking-wider rounded-xl shadow-lg shadow-blue-500/20 flex items-center justify-center gap-1.5 transition active:scale-95"
                                                       >
                                                         <Sparkles className="w-3.5 h-3.5" /> Process with Gemini AI 🧠
                                                       </button>
                                                     </div>
                                                   </div>
-                                                </div>
+                                                </motion.div>
                                               );
                                             })}
                                           </div>
@@ -25698,16 +26278,16 @@ Return your response strictly as a JSON object matching this schema:
                                           return (
                                             <div className="flex justify-between items-center mb-4">
                                               <div className="flex items-center gap-3">
-                                                <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2 uppercase tracking-widest text-[10px]">
-                                                  <Grid className="w-4 h-4" /> Saved Pages ({folderPages.length})
+                                                <h3 className="text-sm font-black text-gray-400 flex items-center gap-2 uppercase tracking-widest text-[10px]">
+                                                  <Grid className="w-4 h-4 text-blue-500" /> Saved Pages ({folderPages.length})
                                                 </h3>
                                                 {folderPages.length > 0 && (
                                                   <button
                                                     type="button"
                                                     onClick={handleSelectAllFolderPages}
                                                     className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-[10px] font-bold border transition-all active:scale-95 cursor-pointer ${allFolderPagesSelected
-                                                        ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/20 hover:bg-blue-700'
-                                                        : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 hover:border-gray-300'
+                                                        ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20'
+                                                        : settingsThemeMode === 'dark' ? 'neu-item-dark text-gray-300 border-gray-700' : 'neu-item-light text-gray-700 border-gray-200'
                                                       }`}
                                                   >
                                                     <input
@@ -25726,54 +26306,60 @@ Return your response strictly as a JSON object matching this schema:
                                           );
                                         })()}
                                         {(folderPages.length === 0 && directSubfolders.length === 0) ? (
-                                          <div className="bg-gray-50 border border-dashed border-gray-200 rounded-3xl p-20 text-center text-gray-400">
+                                          <div className={`rounded-3xl p-20 text-center text-gray-400 border border-dashed ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-gray-200'}`}>
                                             <ImageIcon className="w-16 h-16 mx-auto mb-4 opacity-10" />
                                             <p className="text-sm font-bold uppercase tracking-widest opacity-40">Folder is empty</p>
                                             <p className="text-[10px] mt-2">Start by uploading a medical PDF or image.</p>
                                           </div>
                                         ) : (
-                                          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+                                          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
                                             {/* FOLDERS FIRST */}
                                             {directSubfolders.map(sub => {
-                                              const tree = buildTree(effectiveDeckPaths, cloudPages, deckCardCounts);
+                                              const tree = buildTree(effectiveDeckPaths, libraryPages, deckCardCounts);
                                               let current = tree;
                                               const parts = sub.path.split('::');
                                               parts.forEach(p => { if (current.children[p]) current = current.children[p]; });
 
                                               return (
-                                                <div
+                                                <motion.div
                                                   key={sub.path}
+                                                  whileHover={{ scale: 1.03, y: -2 }}
+                                                  whileTap={{ scale: 0.97 }}
                                                   onClick={() => setHierarchy(sub.path)}
-                                                  className="aspect-[4/3] bg-white border border-gray-100 rounded-3xl p-5 shadow-sm hover:shadow-2xl hover:border-blue-500 transition-all cursor-pointer group flex flex-col justify-between"
+                                                  className={`aspect-[4/3] rounded-3xl p-5 shadow-sm hover:shadow-xl transition-all cursor-pointer group flex flex-col justify-between ${settingsThemeMode === 'dark' ? 'neu-item-dark border border-gray-800 hover:border-blue-500/50' : 'neu-item-light border border-white hover:border-blue-400/50'
+                                                    }`}
                                                 >
-                                                  <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300">
+                                                  <div className="w-12 h-12 bg-blue-500/15 text-blue-500 rounded-2xl flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300">
                                                     <Folder className="w-6 h-6" />
                                                   </div>
                                                   <div className="min-w-0">
-                                                    <div className="text-xs font-black text-gray-900 truncate group-hover:text-blue-600 transition-colors">{sub.name}</div>
+                                                    <div className="text-xs font-black truncate group-hover:text-blue-500 transition-colors">{sub.name}</div>
                                                     <div className="flex items-center gap-3 mt-1.5 opacity-60">
-                                                      <span className="flex items-center gap-1 text-[8px] font-black uppercase text-gray-500">
+                                                      <span className="flex items-center gap-1 text-[8px] font-black uppercase text-gray-400">
                                                         <ImageIcon className="w-2.5 h-2.5" /> {current.tPCount}
                                                       </span>
-                                                      <span className="flex items-center gap-1 text-[8px] font-black uppercase text-gray-500">
+                                                      <span className="flex items-center gap-1 text-[8px] font-black uppercase text-gray-400">
                                                         <Layers className="w-2.5 h-2.5" /> {current.tCCount}
                                                       </span>
                                                     </div>
                                                   </div>
-                                                </div>
+                                                </motion.div>
                                               );
                                             })}
 
                                             {folderPages.map(page => (
-                                              <div
+                                              <motion.div
                                                 key={page.id}
+                                                whileHover={{ scale: 1.03, y: -2 }}
+                                                whileTap={{ scale: 0.97 }}
                                                 onClick={(e) => {
                                                   if (e.target.closest('.selection-checkbox')) return;
                                                   setActiveQueueId(page.id);
                                                 }}
-                                                className={`aspect-[3/4] bg-gray-100 rounded-2xl overflow-hidden border transition-all cursor-pointer relative group shadow-sm hover:shadow-xl
-                                        ${selectedPages.has(page.id) ? 'border-blue-600 ring-4 ring-blue-500/20' : 'border-gray-200 hover:border-blue-500'}
-                                      `}
+                                                className={`aspect-[3/4] rounded-2xl overflow-hidden cursor-pointer relative group shadow-sm hover:shadow-xl ${selectedPages.has(page.id)
+                                                    ? 'ring-4 ring-blue-500/30 border-2 border-blue-500'
+                                                    : settingsThemeMode === 'dark' ? 'neu-item-dark border border-gray-800' : 'neu-item-light border border-white'
+                                                  }`}
                                               >
                                                 <img
                                                   src={page.base64 || page.imageUrl}
@@ -25793,13 +26379,13 @@ Return your response strictly as a JSON object matching this schema:
                                                     className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-gray-300 transition cursor-pointer"
                                                   />
                                                 </div>
-                                                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 pt-12 flex flex-col justify-end text-left">
+                                                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-4 pt-12 flex flex-col justify-end text-left">
                                                   <span className="text-[10px] font-black text-white uppercase truncate tracking-wider">{page.fileName || 'Untitled Page'}</span>
                                                   <span className="text-[8px] text-gray-300 font-bold mt-0.5">
                                                     {cards.filter(c => c.pageId === page.id).length} Cards
                                                   </span>
                                                 </div>
-                                              </div>
+                                              </motion.div>
                                             ))}
                                           </div>
                                         )}
@@ -25808,62 +26394,100 @@ Return your response strictly as a JSON object matching this schema:
                                   )}
 
                                   <div>
-                                    <h3 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2 uppercase tracking-widest text-[10px]">
-                                      <Layers className="w-4 h-4" /> All Cards in Folder ({pageCards.length})
+                                    <h3 className="text-sm font-black text-gray-400 mb-4 flex items-center gap-2 uppercase tracking-widest text-[10px]">
+                                      <Layers className="w-4 h-4 text-blue-500" /> All Cards in Folder ({pageCards.length})
                                     </h3>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                      {pageCards.map(card => (
-                                        <div key={card.id} className="p-4 border border-gray-100 bg-white rounded-2xl shadow-sm hover:shadow-md transition-all group">
-                                          <div className="flex justify-between items-start mb-2">
-                                            <div className="flex flex-wrap items-center gap-1.5">
-                                              <span className="text-[9px] font-black uppercase tracking-widest bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">{card.type}</span>
-                                              {card.tags && card.tags.map(tag => {
-                                                const cleanTag = tag.trim().startsWith('#') ? tag.trim() : `#${tag.trim()}`;
-                                                return (
-                                                  <span
-                                                    key={cleanTag}
-                                                    onClick={(e) => {
-                                                      e.stopPropagation();
-                                                      if (selectedTags.includes(cleanTag)) {
-                                                        setSelectedTags(prev => prev.filter(t => t !== cleanTag));
-                                                      } else {
-                                                        setSelectedTags(prev => [...prev, cleanTag]);
+                                      <AnimatePresence mode="popLayout">
+                                        {pageCards.map((card, idx) => {
+                                          const isCardHovered = hoveredCardIdFromImage === card.id;
+                                          return (
+                                            <motion.div
+                                              key={card.id || idx}
+                                              layout
+                                              initial={{ opacity: 0, y: 16 }}
+                                              animate={{ opacity: 1, y: 0 }}
+                                              exit={{ opacity: 0, scale: 0.95, height: 0 }}
+                                              transition={{ duration: 0.25, delay: idx * 0.02, ease: "easeOut" }}
+                                              onMouseEnter={() => setHoveredCardIdFromImage(card.id)}
+                                              onMouseLeave={() => setHoveredCardIdFromImage(null)}
+                                              className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-white' : 'neu-card-light text-gray-900'} p-4 rounded-2xl space-y-2 cursor-pointer transition-colors duration-200 relative group ${isCardHovered ? 'ring-2 ring-blue-500 border-blue-500' : ''
+                                                }`}
+                                            >
+                                              <div className="flex items-center justify-between w-full">
+                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                  <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full inline-block ${card.type === 'Cloze'
+                                                      ? (settingsThemeMode === 'dark' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-100')
+                                                      : (settingsThemeMode === 'dark' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-red-50 text-red-600 border border-red-100')
+                                                    }`}>
+                                                    {card.type || 'BASIC'}
+                                                  </span>
+                                                  {card.tags && card.tags.map(tag => {
+                                                    const cleanTag = tag.trim().startsWith('#') ? tag.trim() : `#${tag.trim()}`;
+                                                    return (
+                                                      <span
+                                                        key={cleanTag}
+                                                        onClick={(e) => {
+                                                          e.stopPropagation();
+                                                          if (selectedTags.includes(cleanTag)) {
+                                                            setSelectedTags(prev => prev.filter(t => t !== cleanTag));
+                                                          } else {
+                                                            setSelectedTags(prev => [...prev, cleanTag]);
+                                                          }
+                                                        }}
+                                                        className={`text-[8px] font-bold px-1.5 py-0.5 rounded transition cursor-pointer ${selectedTags.includes(cleanTag)
+                                                            ? 'bg-blue-600 text-white font-black'
+                                                            : settingsThemeMode === 'dark' ? 'bg-gray-800 text-gray-300 hover:text-blue-400' : 'bg-gray-100 text-gray-600 hover:bg-blue-50 hover:text-blue-600'
+                                                          }`}
+                                                      >
+                                                        {cleanTag}
+                                                      </span>
+                                                    );
+                                                  })}
+                                                </div>
+
+                                                <div className="flex items-center gap-1.5 z-10" onClick={(e) => e.stopPropagation()}>
+                                                  <button
+                                                    onClick={() => setEditingCard(card)}
+                                                    className={`p-1.5 rounded-xl transition-colors ${settingsThemeMode === 'dark' ? 'hover:bg-blue-500/20 text-blue-400' : 'hover:bg-blue-50 text-blue-600'}`}
+                                                    title="Edit Card"
+                                                  >
+                                                    <Edit3 className="w-3.5 h-3.5" />
+                                                  </button>
+                                                  <button
+                                                    onClick={() => {
+                                                      if (card.id) {
+                                                        deleteCard(card.id);
                                                       }
                                                     }}
-                                                    className={`text-[8px] font-bold px-1.5 py-0.5 rounded transition cursor-pointer
-                                            ${selectedTags.includes(cleanTag) ? 'bg-blue-600 text-white font-black' : 'bg-gray-100 text-gray-600 hover:bg-blue-50 hover:text-blue-600'}
-                                          `}
+                                                    className={`p-1.5 rounded-xl transition-colors ${settingsThemeMode === 'dark' ? 'hover:bg-red-500/20 text-red-400' : 'hover:bg-red-50 text-red-600'}`}
+                                                    title="Delete Card"
                                                   >
-                                                    {cleanTag}
-                                                  </span>
-                                                );
-                                              })}
-                                            </div>
-                                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition">
-                                              <button onClick={() => setEditingCard(card)} className="p-1 text-gray-400 hover:text-blue-600"><Edit3 className="w-3 h-3" /></button>
-                                              <button onClick={() => deleteCard(card.id)} className="p-1 text-gray-400 hover:text-red-600"><Trash2 className="w-3 h-3" /></button>
-                                            </div>
-                                          </div>
-                                          {card.type === 'Cloze' ? (
-                                            <div className="text-sm text-gray-800 leading-relaxed">{card.text}</div>
-                                          ) : (
-                                            <div className="space-y-2">
-                                              <div className="text-xs font-bold text-gray-500 uppercase text-[9px]">Question</div>
-                                              <div className="text-sm text-gray-800">{card.front}</div>
-                                              <div className="text-xs font-bold text-gray-500 uppercase text-[9px] pt-1">Answer</div>
-                                              <div className="text-sm text-blue-700 font-medium">{card.back}</div>
-                                            </div>
-                                          )}
-                                        </div>
-                                      ))}
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                  </button>
+                                                </div>
+                                              </div>
+
+                                              {card.type === 'Cloze' ? (
+                                                <div className={`text-sm font-medium leading-relaxed ${settingsThemeMode === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>{card.text}</div>
+                                              ) : (
+                                                <div className="space-y-1">
+                                                  <div className={`text-sm font-black leading-tight ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>{card.front || card.question}</div>
+                                                  <div className={`text-xs font-medium ${settingsThemeMode === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>{card.back || card.answer}</div>
+                                                </div>
+                                              )}
+                                            </motion.div>
+                                          );
+                                        })}
+                                      </AnimatePresence>
                                     </div>
                                   </div>
                                 </>
                               )}
                             </div>
                           </div>
-                        </div>
-                      </div>
+                        </motion.div>
+                      </motion.div>
                     )}
 
                     {/* STUDY VIEW */}
@@ -27468,7 +28092,7 @@ Return your response strictly as a JSON object matching this schema:
                             {/* Hierarchical Sunburst Database Explorer */}
                             <HierarchicalSunburst
                               deckPaths={deckPaths}
-                              cloudPages={cloudPages}
+                              cloudPages={libraryPages}
                               deckCardCounts={deckCardCounts}
                               onSelectDeck={(deckPath) => {
                                 if (deckPath === 'Root') {
@@ -29791,7 +30415,7 @@ Return your response strictly as a JSON object matching this schema:
                               {/* Scrollable Hierarchy Tree Container */}
                               <div className="flex-grow overflow-y-auto max-h-[350px] xl:max-h-none xl:h-[350px] border border-gray-100 rounded-2xl bg-gray-50/40 p-4 custom-scrollbar">
                                 <ExportTreeFolder
-                                  node={buildTree(allDecks, cloudPages, deckCardCounts)}
+                                  node={buildTree(allDecks, libraryPages, deckCardCounts)}
                                   selectedDecks={selectedDecksToExport}
                                   onToggle={(targetPaths, checked) => {
                                     setSelectedDecksToExport(prev => {
@@ -33306,9 +33930,10 @@ Return your response strictly as a JSON object matching this schema:
                     </div>
                     <div className={`p-6 max-h-[350px] overflow-y-auto custom-scrollbar ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border-y border-gray-800' : 'neu-pressed-light border-y border-gray-200/60'}`}>
                       <TreeFolder
-                        node={buildTree(effectiveDeckPaths, cloudPages, deckCardCounts)}
+                        node={buildTree(effectiveDeckPaths, libraryPages, deckCardCounts)}
                         level={0}
                         selectedPath={moveDialog.targetPath}
+                        themeMode={settingsThemeMode}
                         onSelect={(path) => setMoveDialog(prev => ({ ...prev, targetPath: path }))}
                         onAdd={() => { }}
                         onRename={() => { }}
@@ -33787,7 +34412,7 @@ Return your response strictly as a JSON object matching this schema:
                     {/* Scrollable folder tree */}
                     <div className={`flex-grow overflow-y-auto custom-scrollbar pr-2 mb-4 rounded-2xl p-3 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200/60'}`}>
                       <TreeFolder
-                        node={buildTree(effectiveDeckPaths, cloudPages, deckCardCounts)}
+                        node={buildTree(effectiveDeckPaths, libraryPages, deckCardCounts)}
                         level={0}
                         selectedPath={pdfFolderPickerTempPath}
                         onSelect={(path) => setPdfFolderPickerTempPath(path)}

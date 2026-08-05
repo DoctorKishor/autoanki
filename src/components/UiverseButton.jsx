@@ -1,19 +1,20 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Check } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Save, Check } from 'lucide-react';
 
 /**
- * UiverseButton Component
- * Renders Uiverse.io 00Kubi animated 3D button with Framer Motion tactile feedback & inline success confirmation.
+ * UiverseButton Component / Neumorphic Save & Save All Button
+ * Renders high-fidelity dual-theme Neumorphic Animated Save & Save All Button
+ * featuring letter wave animations, gradient spin backdrops, and active success transitions.
  */
 export const UiverseButton = ({
-  children,
+  children = 'Save',
   icon,
   onClick,
   type = 'button',
   size = 'md', // 'sm' | 'md' | 'lg'
   fullWidth = false,
-  variant = 'default', // 'default' | 'primary' | 'accent' | 'danger' | 'success' | 'dark' | 'light'
+  variant = 'default',
   themeMode = 'light', // 'light' | 'dark'
   isSuccess = false,
   successText = 'Saved!',
@@ -23,7 +24,7 @@ export const UiverseButton = ({
   title,
   ...props
 }) => {
-  // Format children into animated spans with --i animation delay variables
+  // Split label string into individual letter spans with --i delay property
   const renderTextSpans = (text) => {
     if (typeof text !== 'string') {
       return <span>{text}</span>;
@@ -36,14 +37,18 @@ export const UiverseButton = ({
     ));
   };
 
-  const sizeClass = size === 'lg' ? 'uiverse-btn-lg' : size === 'sm' ? 'uiverse-btn-sm' : '';
-  const fullWidthClass = fullWidth ? 'uiverse-btn-full' : '';
-  const variantClass = variant !== 'default' ? `uiverse-btn-${variant}` : '';
-  const themeClass = themeMode === 'dark' ? 'uiverse-btn-dark' : 'uiverse-btn-light';
-  const successClass = isSuccess ? 'uiverse-btn-success-active border-emerald-400/50' : '';
+  const sizeClass =
+    size === 'lg'
+      ? 'animated-save-btn-lg'
+      : size === 'sm'
+      ? 'animated-save-btn-sm'
+      : 'animated-save-btn-md';
 
-  const activeIcon = isSuccess ? successIcon : icon;
-  const activeText = isSuccess ? successText : children;
+  const fullWidthClass = fullWidth ? 'animated-save-btn-full' : '';
+  const themeClass = themeMode === 'dark' ? 'animated-save-btn-dark' : 'animated-save-btn-light';
+  const successStateClass = isSuccess ? 'state-saved' : '';
+
+  const defaultIcon = icon || <Save className="w-4 h-4 text-blue-500" />;
 
   return (
     <motion.button
@@ -51,34 +56,31 @@ export const UiverseButton = ({
       onClick={onClick}
       disabled={disabled || isSuccess}
       title={title}
-      whileHover={{ scale: disabled ? 1 : 1.02, y: disabled ? 0 : -2 }}
+      whileHover={{ scale: disabled ? 1 : 1.02 }}
       whileTap={{ scale: disabled ? 1 : 0.97 }}
-      transition={{ type: 'spring', stiffness: 140, damping: 20, mass: 1 }}
-      className={`uiverse-00kubi-btn ${sizeClass} ${fullWidthClass} ${variantClass} ${themeClass} ${successClass} ${className} ${
+      transition={{ type: 'spring', stiffness: 220, damping: 20 }}
+      className={`animated-save-btn ${sizeClass} ${fullWidthClass} ${themeClass} ${successStateClass} ${className} ${
         disabled ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''
       }`}
       {...props}
     >
-      <div className="outline"></div>
-      <div className="state">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={isSuccess ? 'success' : 'idle'}
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            transition={{ duration: 0.3 }}
-            className="flex items-center justify-center gap-1.5"
-          >
-            {activeIcon && <div className="icon">{activeIcon}</div>}
-            <p className={isSuccess ? 'text-emerald-500 font-black' : ''}>
-              {renderTextSpans(activeText)}
-            </p>
-          </motion.div>
-        </AnimatePresence>
+      <div className="wrap">
+        <div className={`state state--default ${isSuccess ? 'hidden' : 'flex'}`}>
+          {defaultIcon && <div className="icon">{defaultIcon}</div>}
+          <p>{renderTextSpans(children)}</p>
+        </div>
+
+        <div className={`state state--added ${isSuccess ? 'flex' : 'hidden'}`}>
+          <div className="icon">{successIcon}</div>
+          <p>{renderTextSpans(successText)}</p>
+        </div>
       </div>
+      <div className="bg"></div>
+      <div className="bg-spin"></div>
+      <div className="bg-gradient"></div>
     </motion.button>
   );
 };
 
 export default UiverseButton;
+

@@ -43,15 +43,19 @@
   - [x] **2.3 Purged Image Occlusion & Firebase Sync** (Removed image occlusion requirement & Firebase sync retries per user instruction; 100% offline IndexedDB saving)
   - [x] **2.4 Local Cloze & Q&A AI Flashcard Saving with All 12 Gemini Parameters** (Save all 12 Gemini schema parameters directly to IndexedDB via `saveLocalCard`)
 
-### 3. 📚 Library & Decks Manager (`library`) — [COMPLETED]
-- [x] **Library & Decks Manager Local DB Transition (7 Key Points)**
+### 3. 📚 Library & Decks Manager (`library`) — [IN PROGRESS]
+- [ ] **Library & Decks Manager Local DB Transition (11 Key Points)**
   - [x] **3.1 Subject & Topic Hierarchy Trees** (`saveLocalSetting('hierarchy', { paths })` handles create, drag & drop move, rename, and delete 100% in IndexedDB)
   - [x] **3.2 Initial Card & Page Counts** (Replaced `getCountFromServer` with `getLocalCards().length` on mount)
   - [x] **3.3 Folder Cards Loader** (Replaced `loadFolderCards` range queries with local IndexedDB filtering via `getLocalCards()`)
   - [x] **3.4 Global Flashcard Loader** (Replaced `loadAllCards` delta sync queries with `getLocalCards()`)
   - [x] **3.5 Scans / Pages Loader** (Replaced `loadPages` delta sync queries with `getLocalPages()`)
-  - [x] **3.6 Trash & Recovery Loader** (Replaced `loadTrash` Firestore queries with `getLocalKV('trash_pages')` & `getLocalKV('trash_cards')`)
-  - [x] **3.7 Bulk Page Move & Deletion** (Replaced `handleBulkMove`, `deletePage`, `deleteCard`, and `batchUpdateCardCounts` with local IndexedDB functions `saveLocalPages`, `saveLocalCards`, `deleteLocalPage`, `deleteLocalCard`, and `saveLocalSetting`)
+  - [x] **3.6 Trash & Recovery Loader** (Replaced `loadTrash` Firestore queries with `getLocalKV('trash_pages')` & `getLocalKV('trash_cards')`, added automatic 30-day purge)
+  - [x] **3.7 Bulk Page Move, Deletion & Recycle Bin Actions** (Replaced `handleBulkMove`, `deletePage`, `deleteCard`, `handleEmptyRecycleBin`, `handleRestoreCard`, `handlePermanentDeletePage`, `handlePermanentDeleteCard` with local IndexedDB operations; removed all Firebase Firestore batches and calls)
+  - [x] **3.8 State Variable Naming Cleanup** (Refactored `cloudPages` -> `libraryPages` across the application to clarify 100% offline IndexedDB architecture)
+  - [x] **3.9 Dual Storage Mode (Local DB vs. ImgBB Cloud)** (User can select Local DB base64/Blob storage or ImgBB Cloud in settings; both modes persist 100% of pages and cards locally to IndexedDB)
+  - [ ] **3.10 Offline Study Logs & Analytics Persistence** (Migrate `loadStudyLogs` from Cloud Firestore `artifacts/.../studyLogs` to IndexedDB `saveLocalSetting('studyLogs', logs)`)
+  - [ ] **3.11 Offline Guest User Context** (Remove mandatory `if (!user)` cloud auth checks in library operations, defaulting to `DEFAULT_LOCAL_USER`)
 
 ### 4. 🧠 Study & Anki Review (`study`)
 - [ ] **Flashcard Review Session**
