@@ -25748,7 +25748,7 @@ Return your response strictly as a JSON object matching this schema:
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -15, scale: 0.99 }}
                         transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                        className="h-full p-4 lg:p-6 flex flex-col lg:flex-row gap-6 max-w-[1600px] mx-auto w-full overflow-hidden"
+                        className="h-full p-5 lg:p-8 flex flex-col lg:flex-row gap-6 max-w-[1600px] mx-auto w-full overflow-y-auto overflow-x-hidden custom-scrollbar"
                       >
                         {/* Left: Folders */}
                         <motion.div
