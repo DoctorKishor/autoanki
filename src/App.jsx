@@ -1188,6 +1188,18 @@ const TreeFolder = ({ node, level = 0, selectedPath, onSelect, onAdd, onRename, 
     e.preventDefault();
     e.stopPropagation();
 
+    // Auto-scroll scrollable parent container during drag
+    const scrollContainer = e.currentTarget.closest('.overflow-y-auto');
+    if (scrollContainer) {
+      const containerRect = scrollContainer.getBoundingClientRect();
+      const edgeThreshold = 50; // px from top or bottom edge
+      if (e.clientY - containerRect.top < edgeThreshold) {
+        scrollContainer.scrollTop -= 10;
+      } else if (containerRect.bottom - e.clientY < edgeThreshold) {
+        scrollContainer.scrollTop += 10;
+      }
+    }
+
     const rect = e.currentTarget.getBoundingClientRect();
     const y = e.clientY - rect.top;
     let position = 'inside';
@@ -1338,6 +1350,16 @@ const TreeFolder = ({ node, level = 0, selectedPath, onSelect, onAdd, onRename, 
           onDragOver={(e) => {
             e.preventDefault();
             e.stopPropagation();
+            const scrollContainer = e.currentTarget.closest('.overflow-y-auto');
+            if (scrollContainer) {
+              const containerRect = scrollContainer.getBoundingClientRect();
+              const edgeThreshold = 50;
+              if (e.clientY - containerRect.top < edgeThreshold) {
+                scrollContainer.scrollTop -= 10;
+              } else if (containerRect.bottom - e.clientY < edgeThreshold) {
+                scrollContainer.scrollTop += 10;
+              }
+            }
             e.dataTransfer.dropEffect = 'move';
             if (!isRootDragOver) setIsRootDragOver(true);
           }}
@@ -15119,8 +15141,13 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
         }
         return p;
       });
-      setLibraryPages(updatedPages);
-      await saveLocalPages(updatedPages);
+      setLibraryPages(prev => (prev || []).map(p => {
+        if (p.deck === draggedPath || (p.deck && p.deck.startsWith(`${draggedPath}::`))) {
+          return { ...p, deck: p.deck.replace(draggedPath, newBasePath) };
+        }
+        return p;
+      }));
+      await replaceAllLocalPages(updatedPages);
 
       const allLocalCards = await getLocalCards();
       const updatedCards = (allLocalCards || []).map(c => {
@@ -15131,8 +15158,22 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
         }
         return c;
       });
-      setCards(updatedCards);
-      await saveLocalCards(updatedCards);
+      setCards(prev => (prev || []).map(c => {
+        if (c.deck === draggedPath || (c.deck && c.deck.startsWith(`${draggedPath}::`))) {
+          const nextDeck = c.deck.replace(draggedPath, newBasePath);
+          const nextTags = updateFolderTagsOnMove(c.tags || [], c.deck, nextDeck);
+          return { ...c, deck: nextDeck, tags: nextTags, updatedAt: nowTime };
+        }
+        return c;
+      }));
+      await replaceAllLocalCards(updatedCards);
+
+      setQueue(prev => (prev || []).map(q => {
+        if (q.deck === draggedPath || (q.deck && q.deck.startsWith(`${draggedPath}::`))) {
+          return { ...q, deck: q.deck.replace(draggedPath, newBasePath) };
+        }
+        return q;
+      }));
 
       // Update pre-aggregated counts
       const nextDeckCounts = { ...deckCardCounts };
@@ -15264,8 +15305,13 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
         }
         return p;
       });
-      setLibraryPages(updatedPages);
-      await saveLocalPages(updatedPages);
+      setLibraryPages(prev => (prev || []).map(p => {
+        if (p.deck === oldPath || (p.deck && p.deck.startsWith(`${oldPath}::`))) {
+          return { ...p, deck: p.deck.replace(oldPath, newPath) };
+        }
+        return p;
+      }));
+      await replaceAllLocalPages(updatedPages);
 
       const allLocalCards = await getLocalCards();
       const updatedCards = (allLocalCards || []).map(c => {
@@ -15276,8 +15322,22 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
         }
         return c;
       });
-      setCards(updatedCards);
-      await saveLocalCards(updatedCards);
+      setCards(prev => (prev || []).map(c => {
+        if (c.deck === oldPath || (c.deck && c.deck.startsWith(`${oldPath}::`))) {
+          const nextDeck = c.deck.replace(oldPath, newPath);
+          const nextTags = updateFolderTagsOnMove(c.tags || [], c.deck, nextDeck);
+          return { ...c, deck: nextDeck, tags: nextTags, updatedAt: nowTime };
+        }
+        return c;
+      }));
+      await replaceAllLocalCards(updatedCards);
+
+      setQueue(prev => (prev || []).map(q => {
+        if (q.deck === oldPath || (q.deck && q.deck.startsWith(`${oldPath}::`))) {
+          return { ...q, deck: q.deck.replace(oldPath, newPath) };
+        }
+        return q;
+      }));
 
       // Update pre-aggregated counts
       const nextDeckCounts = { ...deckCardCounts };
