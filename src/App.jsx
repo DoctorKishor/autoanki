@@ -26691,6 +26691,11 @@ Return your response strictly as a JSON object matching this schema:
                                                       settingsThemeMode === 'dark' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'bg-purple-50 text-purple-600 border border-purple-100'
                                                     }`}>Manual</span>
                                                   )}
+                                                  {Boolean(card.has_image || (card.img_box && (Array.isArray(card.img_box) ? card.img_box.length === 4 : card.img_box.ymin !== undefined)) || card.include_image) && (
+                                                    <span className="text-[9px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-500 border border-emerald-500/25 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                                      <ImageIcon className="w-2.5 h-2.5 text-emerald-500" /> Image Attached
+                                                    </span>
+                                                  )}
                                                   {card.tags && card.tags.map(tag => {
                                                     const cleanTag = tag.trim().startsWith('#') ? tag.trim() : `#${tag.trim()}`;
                                                     return (

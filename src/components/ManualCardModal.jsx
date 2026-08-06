@@ -2,7 +2,8 @@ import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Plus, Layers, Image as ImageIcon, Folder, Tag, Save, ChevronDown,
-  BookOpen, Edit3, Scissors, RefreshCw, Check, AlertCircle, Upload, FileImage
+  BookOpen, Edit3, Scissors, RefreshCw, Check, AlertCircle, Upload, FileImage,
+  Clipboard, Layout
 } from 'lucide-react';
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -330,6 +331,9 @@ export default function ManualCardModal({
     tags: [],
     pageId: '',
     customImage: null,
+    imageSide: 'back',
+    has_image: false,
+    include_image: false,
     imgBox: { ymin: 100, xmin: 100, ymax: 700, xmax: 900 },
     isManual: true,
     source: 'manual',
@@ -339,6 +343,9 @@ export default function ManualCardModal({
   const [tagInput, setTagInput] = useState('');
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [conflictModalOpen, setConflictModalOpen] = useState(false);
+
   const clozeRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -349,17 +356,21 @@ export default function ManualCardModal({
   useEffect(() => {
     if (isOpen) {
       if (initialCard) {
+        const hasImg = Boolean(initialCard.pageId || initialCard.imageUrl || initialCard.base64 || initialCard.customImage || initialCard.has_image);
         setForm({
           ...EMPTY,
           ...initialCard,
+          imageSide: initialCard.imageSide || initialCard.imageLocation || 'back',
           imgBox: initialCard.imgBox || {
             ymin: initialCard.ymin ?? 100,
             xmin: initialCard.xmin ?? 100,
             ymax: initialCard.ymax ?? 700,
             xmax: initialCard.xmax ?? 900,
           },
-          pageId: initialCard.pageId || '',
-          customImage: initialCard.customImage || initialCard.imageUrl || null,
+          pageId: initialCard.pageId || (initialCard.customImage ? 'custom_upload' : ''),
+          customImage: initialCard.customImage || initialCard.imageUrl || initialCard.base64 || null,
+          has_image: hasImg,
+          include_image: hasImg,
           isManual: true,
           source: 'manual',
         });
@@ -368,9 +379,67 @@ export default function ManualCardModal({
       }
       setErrors({});
       setTagInput('');
+      setIsDraggingOver(false);
+      setConflictModalOpen(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, defaultDeck]);
+
+  // Image Drag & Drop / Paste Processing
+  const processImageFile = (file) => {
+    if (!file || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const base64 = evt.target?.result;
+      if (base64) {
+        setForm(f => ({
+          ...f,
+          pageId: 'custom_upload',
+          customImage: base64,
+          imageUrl: base64,
+          has_image: true,
+          include_image: true,
+          imgBox: { ymin: 100, xmin: 100, ymax: 700, xmax: 900 }
+        }));
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer.types && Array.from(e.dataTransfer.types).includes('Files')) {
+      setIsDraggingOver(true);
+    }
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) processImageFile(file);
+  };
+
+  const handlePaste = (e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        e.preventDefault();
+        const blob = items[i].getAsFile();
+        if (blob) processImageFile(blob);
+        break;
+      }
+    }
+  };
 
   // Filter note pages by selected target deck
   const folderPages = useMemo(() => {
@@ -388,7 +457,7 @@ export default function ManualCardModal({
   const pageOptions = useMemo(() => {
     const opts = [
       { value: '', label: '— No page linked —' },
-      { value: '__upload_custom__', label: '📷 Upload Custom Image...', icon: Upload },
+      { value: '__upload_custom__', label: '📷 Upload / Paste / Drop Custom Image...', icon: Upload },
     ];
     folderPages.forEach(p => {
       opts.push({
@@ -398,7 +467,7 @@ export default function ManualCardModal({
       });
     });
     if (form.pageId === 'custom_upload' && form.customImage) {
-      opts.splice(1, 0, { value: 'custom_upload', label: 'Custom Uploaded Image', icon: FileImage });
+      opts.splice(1, 0, { value: 'custom_upload', label: 'Custom Uploaded / Pasted Image', icon: FileImage });
     }
     return opts;
   }, [folderPages, form.pageId, form.customImage]);
@@ -438,53 +507,74 @@ export default function ManualCardModal({
   // File Upload Handler
   const handleFileUpload = (e) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      const base64 = evt.target?.result;
-      if (base64) {
-        setForm(f => ({
-          ...f,
-          pageId: 'custom_upload',
-          customImage: base64,
-          imageUrl: base64,
-          imgBox: { ymin: 100, xmin: 100, ymax: 700, xmax: 900 }
-        }));
-      }
-    };
-    reader.readAsDataURL(file);
+    if (file) processImageFile(file);
   };
 
   const validate = () => {
     const e = {};
     if (!form.deck || !form.deck.trim()) e.deck = 'Target deck is required.';
+    
+    // Validate current type requirements
     if (form.type === 'Cloze' && !form.text.trim()) e.text = 'Cloze content is required.';
-    if (form.type === 'Basic' && !form.front.trim()) e.front = 'Front is required.';
-    if (form.type === 'Basic' && !form.back.trim()) e.back = 'Back is required.';
+    if (form.type === 'Basic') {
+      if (!form.front.trim()) e.front = 'Front (Question) is required.';
+      if (!form.back.trim()) e.back = 'Back (Answer) is required.';
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
-  const handleSave = async () => {
+  // Trigger Save with Conflict Detection (Dual filling check)
+  const handleSaveClick = () => {
     if (!validate()) return;
+
+    const hasBasicContent = Boolean(form.front.trim() || form.back.trim());
+    const hasClozeContent = Boolean(form.text.trim());
+
+    // Dual filling conflict detected
+    if (hasBasicContent && hasClozeContent) {
+      setConflictModalOpen(true);
+      return;
+    }
+
+    executeSave(form.type);
+  };
+
+  const executeSave = async (chosenType) => {
     setSaving(true);
     try {
+      const finalType = chosenType || form.type;
+      const hasImg = Boolean(form.pageId && linkedImageSrc);
+      const boxArr = hasImg ? [form.imgBox.ymin, form.imgBox.xmin, form.imgBox.ymax, form.imgBox.xmax] : null;
+
       const payload = {
         ...form,
-        ...(form.pageId ? {
-          ymin: form.imgBox.ymin,
-          xmin: form.imgBox.xmin,
-          ymax: form.imgBox.ymax,
-          xmax: form.imgBox.xmax,
+        type: finalType,
+        // Discard unselected format content
+        ...(finalType === 'Basic' ? { text: '' } : { front: '', back: '' }),
+        // Automatic Image Tagging and Metadata Structure for Export
+        has_image: hasImg,
+        include_image: hasImg,
+        img_box: boxArr,
+        ymin: hasImg ? form.imgBox.ymin : undefined,
+        xmin: hasImg ? form.imgBox.xmin : undefined,
+        ymax: hasImg ? form.imgBox.ymax : undefined,
+        xmax: hasImg ? form.imgBox.xmax : undefined,
+        imageSide: form.imageSide || 'back',
+        imageLocation: form.imageSide || 'back',
+        ...(form.pageId === 'custom_upload' && form.customImage ? {
+          imageUrl: form.customImage,
+          base64: form.customImage,
         } : {}),
       };
+
       await onSave(payload);
       onClose();
     } catch (err) {
       console.error('[ManualCardModal] save failed', err);
     } finally {
       setSaving(false);
+      setConflictModalOpen(false);
     }
   };
 
@@ -533,6 +623,10 @@ export default function ManualCardModal({
         exit={{ opacity: 0 }}
         className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[300]"
         onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+        onPaste={handlePaste}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
       >
         <motion.div
           key="manual-card-panel"
@@ -540,8 +634,19 @@ export default function ManualCardModal({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-          className={`${dark ? 'neu-card-dark text-white border border-gray-800' : 'neu-card-light text-gray-900 border border-white'} rounded-3xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[92vh]`}
+          className={`${dark ? 'neu-card-dark text-white border border-gray-800' : 'neu-card-light text-gray-900 border border-white'} rounded-3xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[92vh] relative overflow-hidden ${
+            isDraggingOver ? 'ring-4 ring-blue-500 ring-offset-2' : ''
+          }`}
         >
+          {/* File Drag-and-Drop Overlay Indicator */}
+          {isDraggingOver && (
+            <div className="absolute inset-0 bg-blue-600/90 backdrop-blur-md z-[350] flex flex-col items-center justify-center text-white p-6 text-center animate-in fade-in duration-200">
+              <Upload className="w-16 h-16 mb-3 animate-bounce" />
+              <h3 className="text-xl font-black uppercase tracking-wider">Drop Image Here</h3>
+              <p className="text-xs text-blue-100 mt-1">Image will be attached and cropped for this card</p>
+            </div>
+          )}
+
           {/* Hidden File Input */}
           <input
             type="file"
@@ -562,7 +667,7 @@ export default function ManualCardModal({
                   {isEdit ? 'Edit Card' : 'Create Manual Flashcard'}
                 </h3>
                 <p className={`text-[10px] mt-0.5 ${dark ? 'text-gray-500' : 'text-gray-400'}`}>
-                  Saved directly to your local database
+                  Drag & Drop or Paste images anywhere in modal (Ctrl+V)
                 </p>
               </div>
             </div>
@@ -683,12 +788,12 @@ export default function ManualCardModal({
               </div>
             )}
 
-            {/* Link to Note Page (Neumorphic Dropdown + Deck Filter + Custom Upload) */}
+            {/* Link to Note Page & Image Setup */}
             <div className={`rounded-2xl p-4 border space-y-3 ${dark ? 'border-gray-800 bg-white/3' : 'border-gray-200/60 bg-gray-50/60'}`}>
               <div className="flex items-center justify-between">
                 <label className={`${lbl} mb-0 flex items-center gap-1.5`}>
                   <ImageIcon className="w-3 h-3 text-emerald-500" />
-                  Link to Note Page
+                  Link or Upload Image
                   <span className={`text-[8px] px-2 py-0.5 rounded-full font-bold ${dark ? 'bg-gray-800 text-gray-400' : 'bg-gray-200 text-gray-600'}`}>
                     {folderPages.length} pages in folder
                   </span>
@@ -696,10 +801,10 @@ export default function ManualCardModal({
                 {form.pageId && (
                   <button
                     type="button"
-                    onClick={() => setForm(f => ({ ...f, pageId: '', customImage: null }))}
+                    onClick={() => setForm(f => ({ ...f, pageId: '', customImage: null, has_image: false, include_image: false }))}
                     className={`text-[10px] font-bold flex items-center gap-1 ${dark ? 'text-red-400 hover:text-red-300' : 'text-red-500 hover:text-red-700'}`}
                   >
-                    <X className="w-3 h-3" />Unlink
+                    <X className="w-3 h-3" />Unlink Image
                   </button>
                 )}
               </div>
@@ -710,11 +815,42 @@ export default function ManualCardModal({
                 onChange={handlePageSelectChange}
                 options={pageOptions}
                 themeMode={themeMode}
-                placeholder="Select page from current folder..."
+                placeholder="Select page or upload/paste custom image..."
                 icon={ImageIcon}
               />
 
-              {/* Crop Tool Overlay for Linked or Custom Image */}
+              {/* Image Side / Location Selector */}
+              {form.pageId && linkedImageSrc && (
+                <div className="pt-2">
+                  <label className={lbl}><Layout className="w-3 h-3 inline mr-1" />Image Location in Card</label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, imageSide: 'front' }))}
+                      className={`flex-1 py-2 rounded-xl text-xs font-bold transition border flex items-center justify-center gap-1.5 ${
+                        form.imageSide === 'front'
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20'
+                          : dark ? 'neu-btn-dark text-gray-300' : 'neu-btn-light text-gray-700'
+                      }`}
+                    >
+                      Front (Question Side)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, imageSide: 'back' }))}
+                      className={`flex-1 py-2 rounded-xl text-xs font-bold transition border flex items-center justify-center gap-1.5 ${
+                        (form.imageSide || 'back') === 'back'
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20'
+                          : dark ? 'neu-btn-dark text-gray-300' : 'neu-btn-light text-gray-700'
+                      }`}
+                    >
+                      Back (Answer Side)
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Crop Tool Overlay */}
               <AnimatePresence>
                 {form.pageId && linkedImageSrc && (
                   <motion.div
@@ -735,9 +871,6 @@ export default function ManualCardModal({
                         <RefreshCw className="w-3 h-3" />Reset Box
                       </button>
                     </div>
-                    <p className={`text-[9px] ${dark ? 'text-gray-500' : 'text-gray-400'}`}>
-                      Drag the box or corner handles to set the exact crop region exported with this card.
-                    </p>
                     <CropOverlay
                       imageSrc={linkedImageSrc}
                       imgBox={form.imgBox}
@@ -793,7 +926,7 @@ export default function ManualCardModal({
             </button>
             <button
               type="button"
-              onClick={handleSave}
+              onClick={handleSaveClick}
               disabled={saving}
               className={`flex items-center gap-2 px-8 py-2.5 text-xs font-black uppercase tracking-wider rounded-2xl transition disabled:opacity-60 ${dark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'}`}
             >
@@ -805,6 +938,62 @@ export default function ManualCardModal({
           </div>
         </motion.div>
       </motion.div>
+
+      {/* Conflict Dialog Modal (Dual Type Filling) */}
+      {conflictModalOpen && (
+        <motion.div
+          key="conflict-modal-backdrop"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-[400]"
+        >
+          <motion.div
+            key="conflict-modal-panel"
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            className={`p-6 rounded-3xl max-w-md w-full border shadow-2xl space-y-4 text-center ${
+              dark ? 'neu-card-dark text-white border-gray-800' : 'neu-card-light text-gray-900 border-white'
+            }`}
+          >
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-500">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-base font-black uppercase tracking-wider">Format Conflict Detected</h3>
+              <p className={`text-xs mt-1.5 leading-relaxed ${dark ? 'text-gray-400' : 'text-gray-600'}`}>
+                You have entered text in both <strong>Basic (Front/Back)</strong> and <strong>Cloze</strong> fields. Which flashcard format would you like to save?
+              </p>
+            </div>
+            <div className="flex flex-col gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => executeSave('Basic')}
+                className="w-full py-3 bg-red-600 hover:bg-red-700 text-white rounded-2xl text-xs font-black uppercase tracking-wider shadow-lg shadow-red-600/20 transition flex items-center justify-center gap-2"
+              >
+                <BookOpen className="w-4 h-4" /> Save as Basic Card (Discard Cloze)
+              </button>
+              <button
+                type="button"
+                onClick={() => executeSave('Cloze')}
+                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-xs font-black uppercase tracking-wider shadow-lg shadow-blue-600/20 transition flex items-center justify-center gap-2"
+              >
+                <Scissors className="w-4 h-4" /> Save as Cloze Card (Discard Basic)
+              </button>
+              <button
+                type="button"
+                onClick={() => setConflictModalOpen(false)}
+                className={`w-full py-2.5 rounded-2xl text-xs font-bold transition ${
+                  dark ? 'neu-btn-dark text-gray-400' : 'neu-btn-light text-gray-600'
+                }`}
+              >
+                Cancel & Keep Editing
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
     </AnimatePresence>
   );
 }
