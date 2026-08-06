@@ -3313,6 +3313,7 @@ export default function App() {
   const pagesLoaded = useRef(false);      // true when pages collection was fetched
   const studyLogsLoaded = useRef(false);      // true when studyLogs collection was fetched
   const trashLoaded = useRef(false);      // true when trash collections were fetched
+  const isFolderMoveInProgress = useRef(false); // suppresses AutoHeal during folder move/rename
   const statsCountInitialized = useRef(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -5739,6 +5740,9 @@ export default function App() {
   }, [deckPaths, libraryPages, cards]);
 
   useEffect(() => {
+    // Skip AutoHeal while a folder move/rename is in progress to prevent race-condition duplicates
+    if (isFolderMoveInProgress.current) return;
+
     if (effectiveDeckPaths.length > deckPaths.length) {
       const missing = effectiveDeckPaths.filter(p => !deckPaths.includes(p));
       if (missing.length > 0) {
@@ -15091,66 +15095,56 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       newBasePath = targetParent ? `${targetParent}::${draggedName}` : draggedName;
     }
 
-    // 1. Update deckPaths state with order
-    const finalPaths = (() => {
-      const others = deckPaths.filter(p => p !== draggedPath && !p.startsWith(`${draggedPath}::`));
+    // Guard AutoHeal during the move to prevent race-condition duplicates
+    isFolderMoveInProgress.current = true;
 
-      let updated;
-      if (targetPath === '') {
-        updated = [...others, draggedPath];
-      } else {
-        const targetIdx = others.indexOf(targetPath);
-        if (targetIdx === -1) {
-          updated = [...others, draggedPath];
-        } else if (position === 'above') {
-          updated = [...others.slice(0, targetIdx), draggedPath, ...others.slice(targetIdx)];
-        } else if (position === 'below') {
-          updated = [...others.slice(0, targetIdx + 1), draggedPath, ...others.slice(targetIdx + 1)];
-        } else {
-          updated = [...others, draggedPath];
-        }
-      }
-
-      const final = updated.map(p => {
-        if (p === draggedPath) return newBasePath;
-        return p;
-      });
-
-      const children = deckPaths.filter(p => p.startsWith(`${draggedPath}::`));
-      children.forEach(child => {
-        final.push(child.replace(draggedPath, newBasePath));
-      });
-
-      return Array.from(new Set(final.filter(Boolean)));
-    })();
-
-    setDeckPaths(finalPaths);
-    await updateHierarchySetting({ paths: finalPaths });
-
-    if (hierarchy === draggedPath || hierarchy.startsWith(`${draggedPath}::`)) {
-      setHierarchy(hierarchy.replace(draggedPath, newBasePath));
-    }
-
-    // 2. Update local Pages & Cards in IndexedDB (non-destructive)
     try {
+      // --- STEP 1: Compute all new state synchronously from current React state ---
       const nowTime = Date.now();
-      const allLocalPages = await getLocalPages();
-      const updatedPages = (allLocalPages || []).map(p => {
+
+      // 1a. Compute new deckPaths
+      const finalPaths = (() => {
+        const others = deckPaths.filter(p => p !== draggedPath && !p.startsWith(`${draggedPath}::`));
+
+        let updated;
+        if (targetPath === '') {
+          updated = [...others, draggedPath];
+        } else {
+          const targetIdx = others.indexOf(targetPath);
+          if (targetIdx === -1) {
+            updated = [...others, draggedPath];
+          } else if (position === 'above') {
+            updated = [...others.slice(0, targetIdx), draggedPath, ...others.slice(targetIdx)];
+          } else if (position === 'below') {
+            updated = [...others.slice(0, targetIdx + 1), draggedPath, ...others.slice(targetIdx + 1)];
+          } else {
+            updated = [...others, draggedPath];
+          }
+        }
+
+        const final = updated.map(p => {
+          if (p === draggedPath) return newBasePath;
+          return p;
+        });
+
+        const children = deckPaths.filter(p => p.startsWith(`${draggedPath}::`));
+        children.forEach(child => {
+          final.push(child.replace(draggedPath, newBasePath));
+        });
+
+        return Array.from(new Set(final.filter(Boolean)));
+      })();
+
+      // 1b. Compute new pages from current React state
+      const newLibraryPages = (libraryPages || []).map(p => {
         if (p.deck === draggedPath || (p.deck && p.deck.startsWith(`${draggedPath}::`))) {
           return { ...p, deck: p.deck.replace(draggedPath, newBasePath) };
         }
         return p;
       });
-      setLibraryPages(prev => (prev || []).map(p => {
-        if (p.deck === draggedPath || (p.deck && p.deck.startsWith(`${draggedPath}::`))) {
-          return { ...p, deck: p.deck.replace(draggedPath, newBasePath) };
-        }
-        return p;
-      }));
-      await replaceAllLocalPages(updatedPages);
 
-      const allLocalCards = await getLocalCards();
-      const updatedCards = (allLocalCards || []).map(c => {
+      // 1c. Compute new cards from current React state
+      const newCards = (cards || []).map(c => {
         if (c.deck === draggedPath || (c.deck && c.deck.startsWith(`${draggedPath}::`))) {
           const nextDeck = c.deck.replace(draggedPath, newBasePath);
           const nextTags = updateFolderTagsOnMove(c.tags || [], c.deck, nextDeck);
@@ -15158,24 +15152,16 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
         }
         return c;
       });
-      setCards(prev => (prev || []).map(c => {
-        if (c.deck === draggedPath || (c.deck && c.deck.startsWith(`${draggedPath}::`))) {
-          const nextDeck = c.deck.replace(draggedPath, newBasePath);
-          const nextTags = updateFolderTagsOnMove(c.tags || [], c.deck, nextDeck);
-          return { ...c, deck: nextDeck, tags: nextTags, updatedAt: nowTime };
-        }
-        return c;
-      }));
-      await replaceAllLocalCards(updatedCards);
 
-      setQueue(prev => (prev || []).map(q => {
+      // 1d. Compute new queue from current React state
+      const newQueue = (queue || []).map(q => {
         if (q.deck === draggedPath || (q.deck && q.deck.startsWith(`${draggedPath}::`))) {
           return { ...q, deck: q.deck.replace(draggedPath, newBasePath) };
         }
         return q;
-      }));
+      });
 
-      // Update pre-aggregated counts
+      // 1e. Compute new deck counts
       const nextDeckCounts = { ...deckCardCounts };
       const nextSubjectCounts = { ...subjectCardCounts };
       let countsChanged = false;
@@ -15200,17 +15186,55 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
           }
         }
       });
+
+      // --- STEP 2: Apply ALL React state updates synchronously (before any awaits) ---
+      // This ensures effectiveDeckPaths sees a consistent snapshot with no stale old paths,
+      // preventing AutoHeal from re-adding the moved folder's old location.
+      setDeckPaths(finalPaths);
+      setLibraryPages(newLibraryPages);
+      setCards(newCards);
+      setQueue(newQueue);
       if (countsChanged) {
         setDeckCardCounts(nextDeckCounts);
         setSubjectCardCounts(nextSubjectCounts);
-        await updateHierarchySetting({
-          paths: finalPaths,
-          deckCardCounts: nextDeckCounts,
-          subjectCardCounts: nextSubjectCounts
-        });
       }
+      if (hierarchy === draggedPath || hierarchy.startsWith(`${draggedPath}::`)) {
+        setHierarchy(hierarchy.replace(draggedPath, newBasePath));
+      }
+
+      // --- STEP 3: Persist to IndexedDB (async, after state is already correct) ---
+      await updateHierarchySetting({
+        paths: finalPaths,
+        ...(countsChanged ? { deckCardCounts: nextDeckCounts, subjectCardCounts: nextSubjectCounts } : {})
+      });
+
+      // Sync pages to IndexedDB: merge updated page decks over DB records
+      const allLocalPages = await getLocalPages();
+      const updatedPages = (allLocalPages || []).map(p => {
+        if (p.deck === draggedPath || (p.deck && p.deck.startsWith(`${draggedPath}::`))) {
+          return { ...p, deck: p.deck.replace(draggedPath, newBasePath) };
+        }
+        return p;
+      });
+      await replaceAllLocalPages(updatedPages);
+
+      // Sync cards to IndexedDB
+      const allLocalCards = await getLocalCards();
+      const updatedCards = (allLocalCards || []).map(c => {
+        if (c.deck === draggedPath || (c.deck && c.deck.startsWith(`${draggedPath}::`))) {
+          const nextDeck = c.deck.replace(draggedPath, newBasePath);
+          const nextTags = updateFolderTagsOnMove(c.tags || [], c.deck, nextDeck);
+          return { ...c, deck: nextDeck, tags: nextTags, updatedAt: nowTime };
+        }
+        return c;
+      });
+      await replaceAllLocalCards(updatedCards);
+
     } catch (err) {
       console.error("Failed to migrate data for moved folder locally:", err);
+    } finally {
+      // Always lift the AutoHeal guard after move is fully complete
+      isFolderMoveInProgress.current = false;
     }
   };
 
@@ -15278,43 +15302,31 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
 
     const newPath = [...oldParts.slice(0, -1), newName.trim()].join('::');
 
-    // 1. Update deckPaths locally
-    const nextPaths = Array.from(new Set(deckPaths.map(path => {
-      if (path === oldPath) return newPath;
-      if (path.startsWith(`${oldPath}::`)) {
-        return path.replace(oldPath, newPath);
-      }
-      return path;
-    }).filter(Boolean)));
+    // Guard AutoHeal during rename to prevent race-condition duplicates
+    isFolderMoveInProgress.current = true;
 
-    setDeckPaths(nextPaths);
-    await updateHierarchySetting({ paths: nextPaths });
-
-    // 2. Update hierarchy selection
-    if (hierarchy === oldPath || hierarchy.startsWith(`${oldPath}::`)) {
-      setHierarchy(hierarchy.replace(oldPath, newPath));
-    }
-
-    // 3. Update Cards and Pages locally in IndexedDB (non-destructive)
     try {
       const nowTime = Date.now();
-      const allLocalPages = await getLocalPages();
-      const updatedPages = (allLocalPages || []).map(p => {
+
+      // 1. Compute new deckPaths
+      const nextPaths = Array.from(new Set(deckPaths.map(path => {
+        if (path === oldPath) return newPath;
+        if (path.startsWith(`${oldPath}::`)) {
+          return path.replace(oldPath, newPath);
+        }
+        return path;
+      }).filter(Boolean)));
+
+      // 2. Compute new pages from current React state
+      const newLibraryPages = (libraryPages || []).map(p => {
         if (p.deck === oldPath || (p.deck && p.deck.startsWith(`${oldPath}::`))) {
           return { ...p, deck: p.deck.replace(oldPath, newPath) };
         }
         return p;
       });
-      setLibraryPages(prev => (prev || []).map(p => {
-        if (p.deck === oldPath || (p.deck && p.deck.startsWith(`${oldPath}::`))) {
-          return { ...p, deck: p.deck.replace(oldPath, newPath) };
-        }
-        return p;
-      }));
-      await replaceAllLocalPages(updatedPages);
 
-      const allLocalCards = await getLocalCards();
-      const updatedCards = (allLocalCards || []).map(c => {
+      // 3. Compute new cards from current React state
+      const newCards = (cards || []).map(c => {
         if (c.deck === oldPath || (c.deck && c.deck.startsWith(`${oldPath}::`))) {
           const nextDeck = c.deck.replace(oldPath, newPath);
           const nextTags = updateFolderTagsOnMove(c.tags || [], c.deck, nextDeck);
@@ -15322,24 +15334,16 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
         }
         return c;
       });
-      setCards(prev => (prev || []).map(c => {
-        if (c.deck === oldPath || (c.deck && c.deck.startsWith(`${oldPath}::`))) {
-          const nextDeck = c.deck.replace(oldPath, newPath);
-          const nextTags = updateFolderTagsOnMove(c.tags || [], c.deck, nextDeck);
-          return { ...c, deck: nextDeck, tags: nextTags, updatedAt: nowTime };
-        }
-        return c;
-      }));
-      await replaceAllLocalCards(updatedCards);
 
-      setQueue(prev => (prev || []).map(q => {
+      // 4. Compute new queue from current React state
+      const newQueue = (queue || []).map(q => {
         if (q.deck === oldPath || (q.deck && q.deck.startsWith(`${oldPath}::`))) {
           return { ...q, deck: q.deck.replace(oldPath, newPath) };
         }
         return q;
-      }));
+      });
 
-      // Update pre-aggregated counts
+      // 5. Compute new deck counts
       const nextDeckCounts = { ...deckCardCounts };
       const nextSubjectCounts = { ...subjectCardCounts };
       let countsChanged = false;
@@ -15364,17 +15368,50 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
           }
         }
       });
+
+      // --- Apply ALL React state updates synchronously first ---
+      setDeckPaths(nextPaths);
+      setLibraryPages(newLibraryPages);
+      setCards(newCards);
+      setQueue(newQueue);
       if (countsChanged) {
         setDeckCardCounts(nextDeckCounts);
         setSubjectCardCounts(nextSubjectCounts);
-        await updateHierarchySetting({
-          paths: nextPaths,
-          deckCardCounts: nextDeckCounts,
-          subjectCardCounts: nextSubjectCounts
-        });
       }
+      if (hierarchy === oldPath || hierarchy.startsWith(`${oldPath}::`)) {
+        setHierarchy(hierarchy.replace(oldPath, newPath));
+      }
+
+      // --- Persist to IndexedDB (async, after state is already correct) ---
+      await updateHierarchySetting({
+        paths: nextPaths,
+        ...(countsChanged ? { deckCardCounts: nextDeckCounts, subjectCardCounts: nextSubjectCounts } : {})
+      });
+
+      const allLocalPages = await getLocalPages();
+      const updatedPages = (allLocalPages || []).map(p => {
+        if (p.deck === oldPath || (p.deck && p.deck.startsWith(`${oldPath}::`))) {
+          return { ...p, deck: p.deck.replace(oldPath, newPath) };
+        }
+        return p;
+      });
+      await replaceAllLocalPages(updatedPages);
+
+      const allLocalCards = await getLocalCards();
+      const updatedCards = (allLocalCards || []).map(c => {
+        if (c.deck === oldPath || (c.deck && c.deck.startsWith(`${oldPath}::`))) {
+          const nextDeck = c.deck.replace(oldPath, newPath);
+          const nextTags = updateFolderTagsOnMove(c.tags || [], c.deck, nextDeck);
+          return { ...c, deck: nextDeck, tags: nextTags, updatedAt: nowTime };
+        }
+        return c;
+      });
+      await replaceAllLocalCards(updatedCards);
+
     } catch (err) {
       console.error("Failed to rename folder locally:", err);
+    } finally {
+      isFolderMoveInProgress.current = false;
     }
     setRenameDialog({ isOpen: false, path: '', input: '' });
   };
