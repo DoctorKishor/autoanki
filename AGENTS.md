@@ -46,3 +46,11 @@ All UI components, buttons, color schemes, theme modes (Light: `#e6ecf5`, Dark: 
 - Run `npm run build` after making changes to verify zero compilation errors.
 - Once the build succeeds cleanly, make a Git commit to the `local-db-transition` branch with a simple, clear message describing what was changed.
 - Explain what was transitioned in simple, non-technical terms, and wait for the user's next explicit command before touching anything else.
+
+---
+
+### 4.5 Thorough Auditing, Radical Transparency & Non-Sugarcoating Policy
+- **Exhaustive Dependency Auditing**: When transitioning any UI function, page, or menu to LocalDB, perform a complete, exhaustive codebase audit for **ALL** primary handlers, secondary options, modals, background syncs, exports, auto-taggers, and bulk actions linked to that feature. Do **NOT** leave any secondary or hidden Firebase calls behind.
+- **Zero Sugarcoating or False Claims**: Never claim that a page or feature is "completely cleared of Firebase" unless every single read, write, batch update, document reference, and listener across the entire subsystem has been individually inspected, verified, and refactored to IndexedDB (`localDb.js`).
+- **Full Transparency on Uncertainty**: If any ambiguity exists, or if any secondary action connected to the feature still relies on Firebase, state it explicitly and honestly to the user immediately. Do not hide, gloss over, or sugarcoat remaining dependencies.
+
