@@ -819,6 +819,25 @@ export default function ManualCardModal({
                 icon={ImageIcon}
               />
 
+              {/* Mobile Quick Upload/Pick Photo Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (fileInputRef.current) {
+                    fileInputRef.current.value = '';
+                    fileInputRef.current.click();
+                  }
+                }}
+                className={`w-full py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition ${
+                  dark
+                    ? 'neu-btn-dark text-blue-400 border-blue-500/30 hover:bg-blue-500/10'
+                    : 'neu-btn-light text-blue-600 border-blue-200 hover:bg-blue-50'
+                }`}
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span>Choose Photo from Device / Camera</span>
+              </button>
+
               {/* Image Side / Location Selector */}
               {form.pageId && linkedImageSrc && (
                 <div className="pt-2">
