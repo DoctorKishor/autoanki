@@ -25875,7 +25875,7 @@ Return your response strictly as a JSON object matching this schema:
                           initial={{ opacity: 0, x: 20 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ duration: 0.4, delay: 0.08 }}
-                          className="w-full lg:w-3/4 flex flex-col gap-6 overflow-hidden"
+                          className="w-full lg:w-3/4 flex flex-col gap-6 p-1 overflow-visible"
                         >
                           <div className={`flex-grow flex flex-col overflow-hidden p-6 rounded-3xl shadow-xl ${settingsThemeMode === 'dark' ? 'neu-card-dark border-gray-800/80 text-white' : 'neu-card-light border-white/80 text-gray-900'
                             }`}>
