@@ -15856,15 +15856,26 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     });
 
     try {
-      // 1. Delete existing cards associated with this page
+      // 1. Delete existing cards associated with this page locally
       const associatedCards = cards.filter(c => c.pageId === pageId || c.queueId === pageId);
       if (associatedCards.length > 0) {
-        const batch = writeBatch(db);
+        const associatedCardIds = new Set(associatedCards.map(c => c.id));
+        setCards(prev => prev.filter(c => !associatedCardIds.has(c.id)));
         for (let card of associatedCards) {
-          const cardDoc = doc(db, 'artifacts', appId, 'users', user.uid, 'flashcards', card.id);
-          batch.delete(cardDoc);
+          await deleteLocalCard(card.id);
         }
-        await batch.commit();
+        if (user && db) {
+          try {
+            const batch = writeBatch(db);
+            for (let card of associatedCards) {
+              const cardDoc = doc(db, 'artifacts', appId, 'users', user.uid, 'flashcards', card.id);
+              batch.delete(cardDoc);
+            }
+            await batch.commit();
+          } catch (cloudErr) {
+            console.warn("[CloudSync] Cloud deletion for regenerated page cards failed (deleted locally):", cloudErr);
+          }
+        }
       }
 
       // 2. Call Gemini
@@ -17078,18 +17089,34 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
         link.click();
         document.body.removeChild(link);
 
-        // 4. Update Database Tracking in Firestore
-        setExportProgressText("Syncing export status directly to cloud database...");
+        // 4. Update Database Tracking in Local DB & React State
+        setExportProgressText("Updating export status in Local DB...");
+        const nowExportTime = Date.now();
+        const exportCardIds = new Set(cardsToUse.map(c => c.id));
+        const updatedExportCards = (cards || []).filter(c => exportCardIds.has(c.id)).map(c => ({
+          ...c,
+          exported: true,
+          exportedAt: nowExportTime
+        }));
+        if (updatedExportCards.length > 0) {
+          setCards(prev => prev.map(c => exportCardIds.has(c.id) ? { ...c, exported: true, exportedAt: nowExportTime } : c));
+          await saveLocalCards(updatedExportCards);
+        }
+
         if (user && db) {
-          const batch = writeBatch(db);
-          cardsToUse.forEach(card => {
-            const cardRef = doc(db, 'artifacts', appId, 'users', user.uid, 'flashcards', card.id);
-            batch.set(cardRef, {
-              exported: true,
-              exportedAt: Date.now()
-            }, { merge: true });
-          });
-          await batch.commit();
+          try {
+            const batch = writeBatch(db);
+            cardsToUse.forEach(card => {
+              const cardRef = doc(db, 'artifacts', appId, 'users', user.uid, 'flashcards', card.id);
+              batch.set(cardRef, {
+                exported: true,
+                exportedAt: nowExportTime
+              }, { merge: true });
+            });
+            await batch.commit();
+          } catch (cloudErr) {
+            console.warn("[CloudSync] Export tracking sync to cloud failed (saved locally):", cloudErr);
+          }
         }
 
         setIsExporting(false);
@@ -17305,7 +17332,19 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     link.click();
     document.body.removeChild(link);
 
-    // Sync export tracking status in Firestore
+    // Sync export tracking status in Local DB & React State
+    const nowExportTime = Date.now();
+    const exportCardIds = new Set(cardsToUse.map(c => c.id));
+    const updatedExportCards = (cards || []).filter(c => exportCardIds.has(c.id)).map(c => ({
+      ...c,
+      exported: true,
+      exportedAt: nowExportTime
+    }));
+    if (updatedExportCards.length > 0) {
+      setCards(prev => prev.map(c => exportCardIds.has(c.id) ? { ...c, exported: true, exportedAt: nowExportTime } : c));
+      await saveLocalCards(updatedExportCards);
+    }
+
     if (user && db) {
       try {
         const batch = writeBatch(db);
@@ -17313,12 +17352,12 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
           const cardRef = doc(db, 'artifacts', appId, 'users', user.uid, 'flashcards', card.id);
           batch.set(cardRef, {
             exported: true,
-            exportedAt: Date.now()
+            exportedAt: nowExportTime
           }, { merge: true });
         });
         await batch.commit();
       } catch (trackErr) {
-        console.error("Tracking update failed:", trackErr);
+        console.warn("[CloudSync] Export tracking update failed (saved locally):", trackErr);
       }
     }
 
@@ -17355,13 +17394,11 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
   };
 
   const handleAutoTag = async (mode) => {
-    if (!user) return;
     setIsSaving(true);
     setAutoTagDialog({ isOpen: false });
 
     try {
-      let updatedCount = 0;
-      const batch = writeBatch(db);
+      const updatedCardsMap = new Map();
 
       if (mode === 'folder') {
         const pendingFolderCards = cards.filter(c => c.folderTagged !== true);
@@ -17376,7 +17413,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
         setOperationProgress({
           show: true,
           title: 'Applying Folder Tags',
-          message: 'Scanning deck structure and preparing batch writes...',
+          message: 'Scanning deck structure and processing local updates...',
           current: 0,
           total: totalCards
         });
@@ -17407,15 +17444,18 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
             ]);
             const finalTags = Array.from(merged).map(t => `#${t}`);
 
-            const cardDoc = doc(db, 'artifacts', appId, 'users', user.uid, 'flashcards', card.id);
-            batch.set(cardDoc, { tags: finalTags, folderTagged: true }, { merge: true });
-            updatedCount++;
+            updatedCardsMap.set(card.id, {
+              ...card,
+              tags: finalTags,
+              folderTagged: true,
+              updatedAt: Date.now()
+            });
           }
         }
         setOperationProgress(prev => ({ ...prev, current: totalCards }));
       } else if (mode === 'ai') {
         if (!geminiApiKey) {
-          alert("Please enter a stimulated Gemini API key in settings to use AI Auto-Tagging.");
+          alert("Please enter a valid Gemini API key in settings to use AI Auto-Tagging.");
           setIsSaving(false);
           return;
         }
@@ -17618,7 +17658,7 @@ Return your response strictly as a JSON object matching this schema:
 
           if (parsed && parsed.tags) {
             for (const item of parsed.tags) {
-              const card = cards.find(c => c.id === item.id);
+              const card = cards.find(c => c.id === item.id) || pendingAiCards.find(c => c.id === item.id);
               if (card) {
                 const currentTags = card.tags || [];
                 const merged = new Set();
@@ -17636,10 +17676,13 @@ Return your response strictly as a JSON object matching this schema:
                 });
 
                 const finalTags = Array.from(merged);
-
-                const cardDoc = doc(db, 'artifacts', appId, 'users', user.uid, 'flashcards', card.id);
-                batch.set(cardDoc, { tags: finalTags, aiTagged: true }, { merge: true });
-                updatedCount++;
+                const existingInMap = updatedCardsMap.get(card.id);
+                updatedCardsMap.set(card.id, {
+                  ...(existingInMap || card),
+                  tags: finalTags,
+                  aiTagged: true,
+                  updatedAt: Date.now()
+                });
               }
             }
           }
@@ -17651,13 +17694,33 @@ Return your response strictly as a JSON object matching this schema:
           }));
         }
 
-        setOperationProgress({ show: true, title: 'AI Smart Tagging', message: 'Saving tags to cloud...', current: totalToTag, total: totalToTag });
+        setOperationProgress({ show: true, title: 'AI Smart Tagging', message: 'Saving tags locally...', current: totalToTag, total: totalToTag });
       }
 
-      if (updatedCount > 0) {
-        await batch.commit();
+      const updatedCardsList = Array.from(updatedCardsMap.values());
+      if (updatedCardsList.length > 0) {
+        // 1. Update React state immediately
+        setCards(prev => prev.map(c => updatedCardsMap.get(c.id) || c));
+
+        // 2. Persist to IndexedDB (offline local storage)
+        await saveLocalCards(updatedCardsList);
+
+        // 3. Optional background cloud sync (if online and logged in)
+        if (user && db) {
+          try {
+            const batch = writeBatch(db);
+            updatedCardsList.forEach(card => {
+              const cardDoc = doc(db, 'artifacts', appId, 'users', user.uid, 'flashcards', card.id);
+              batch.set(cardDoc, { tags: card.tags, folderTagged: card.folderTagged, aiTagged: card.aiTagged }, { merge: true });
+            });
+            await batch.commit();
+          } catch (cloudErr) {
+            console.warn("[CloudSync] Auto-tag cloud sync failed (saved locally to IndexedDB):", cloudErr);
+          }
+        }
+
         setOperationProgress({ show: false, title: '', message: '', current: 0, total: 0 });
-        alert(`Successfully auto-tagged ${updatedCount} cards!`);
+        alert(`Successfully auto-tagged ${updatedCardsList.length} cards locally!`);
       } else {
         setOperationProgress({ show: false, title: '', message: '', current: 0, total: 0 });
         alert("All cards are already tagged or up-to-date.");
