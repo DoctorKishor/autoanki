@@ -1052,8 +1052,8 @@ body,
 .cards {
   display: flex;
   flex-direction: column;
-  gap: 15px;
-  padding: 4px;
+  gap: 16px;
+  padding: 14px;
 }
 
 /* 3. Unified Card */

@@ -25820,7 +25820,7 @@ Return your response strictly as a JSON object matching this schema:
                               {allTags.length === 0 ? (
                                 <div className="text-[10px] text-gray-400 italic px-2">No tags created yet. Edit cards to add tags!</div>
                               ) : (
-                                <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1 custom-scrollbar">
+                                <div className="space-y-2.5 max-h-[240px] overflow-y-auto p-2 pr-2.5 custom-scrollbar">
                                   {allTags.map(tag => {
                                     const activeFolderCards = cards.filter(card => {
                                       if (!hierarchy) return true;
@@ -25857,7 +25857,7 @@ Return your response strictly as a JSON object matching this schema:
                                           }`}
                                       >
                                         <span className="truncate">{tag}</span>
-                                        <span className={`text-[9px] px-2 py-0.5 rounded-full font-black transition-colors ${isSelected ? 'bg-white/20 text-white' : 'bg-blue-500/15 text-blue-500'
+                                        <span className={`text-[9px] px-2.5 py-1 rounded-full font-black transition-colors ${isSelected ? 'bg-white/20 text-white' : 'bg-blue-500/15 text-blue-500'
                                           }`}>
                                           {tagCardCount}
                                         </span>
@@ -25936,7 +25936,7 @@ Return your response strictly as a JSON object matching this schema:
                               </div>
                             </div>
 
-                            <div className="flex-grow overflow-y-auto pr-2 custom-scrollbar">
+                            <div className="flex-grow overflow-y-auto p-3.5 pr-4 custom-scrollbar">
                               {searchQuery.trim() ? (
                                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                                   <div className="flex items-center justify-between">
@@ -25949,7 +25949,7 @@ Return your response strictly as a JSON object matching this schema:
                                       <p className="text-sm">No cards matching "{searchQuery}"</p>
                                     </div>
                                   ) : (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 p-2">
                                       {searchResults.map(card => (
                                         <motion.div
                                           key={card.id}
@@ -26600,7 +26600,7 @@ Return your response strictly as a JSON object matching this schema:
                                     <h3 className="text-sm font-black text-gray-400 mb-4 flex items-center gap-2 uppercase tracking-widest text-[10px]">
                                       <Layers className="w-4 h-4 text-blue-500" /> All Cards in Folder ({pageCards.length})
                                     </h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 p-2.5">
                                       <AnimatePresence mode="popLayout">
                                         {pageCards.map((card, idx) => {
                                           const isCardHovered = hoveredCardIdFromImage === card.id;
@@ -26614,12 +26614,12 @@ Return your response strictly as a JSON object matching this schema:
                                               transition={{ duration: 0.25, delay: idx * 0.02, ease: "easeOut" }}
                                               onMouseEnter={() => setHoveredCardIdFromImage(card.id)}
                                               onMouseLeave={() => setHoveredCardIdFromImage(null)}
-                                              className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-white' : 'neu-card-light text-gray-900'} p-4 rounded-2xl space-y-2 cursor-pointer transition-colors duration-200 relative group ${isCardHovered ? 'ring-2 ring-blue-500 border-blue-500' : ''
+                                              className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-white' : 'neu-card-light text-gray-900'} p-5 rounded-2xl space-y-3 cursor-pointer transition-all duration-200 relative group ${isCardHovered ? 'ring-2 ring-blue-500 border-blue-500 shadow-xl' : ''
                                                 }`}
                                             >
                                               <div className="flex items-center justify-between w-full">
-                                                <div className="flex items-center gap-1.5 flex-wrap">
-                                                  <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full inline-block ${card.type === 'Cloze'
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                  <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full inline-block ${card.type === 'Cloze'
                                                       ? (settingsThemeMode === 'dark' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-100')
                                                       : (settingsThemeMode === 'dark' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-red-50 text-red-600 border border-red-100')
                                                     }`}>
@@ -26638,9 +26638,9 @@ Return your response strictly as a JSON object matching this schema:
                                                             setSelectedTags(prev => [...prev, cleanTag]);
                                                           }
                                                         }}
-                                                        className={`text-[8px] font-bold px-1.5 py-0.5 rounded transition cursor-pointer ${selectedTags.includes(cleanTag)
-                                                            ? 'bg-blue-600 text-white font-black'
-                                                            : settingsThemeMode === 'dark' ? 'bg-gray-800 text-gray-300 hover:text-blue-400' : 'bg-gray-100 text-gray-600 hover:bg-blue-50 hover:text-blue-600'
+                                                        className={`text-[9px] font-bold px-2.5 py-1 rounded-lg transition cursor-pointer ${selectedTags.includes(cleanTag)
+                                                            ? 'bg-blue-600 text-white font-black shadow-md shadow-blue-500/20'
+                                                            : settingsThemeMode === 'dark' ? 'bg-gray-800/90 text-gray-300 hover:text-blue-400 hover:bg-gray-700/80' : 'bg-gray-100 text-gray-600 hover:bg-blue-50 hover:text-blue-600'
                                                           }`}
                                                       >
                                                         {cleanTag}
