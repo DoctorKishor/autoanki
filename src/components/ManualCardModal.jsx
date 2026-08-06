@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Plus, Layers, Image as ImageIcon, Folder, Tag, Save, ChevronDown,
   BookOpen, Edit3, Scissors, RefreshCw, Check, AlertCircle, Upload, FileImage,
-  Clipboard, Layout
+  Clipboard, Layout, Minimize2, Maximize2, Sparkles
 } from 'lucide-react';
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -345,7 +345,9 @@ export default function ManualCardModal({
   const [errors, setErrors] = useState({});
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [conflictModalOpen, setConflictModalOpen] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
 
+  const dragCounterRef = useRef(0);
   const clozeRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -381,51 +383,126 @@ export default function ManualCardModal({
       setTagInput('');
       setIsDraggingOver(false);
       setConflictModalOpen(false);
+      setIsMinimized(false);
+      dragCounterRef.current = 0;
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, defaultDeck]);
 
-  // Image Drag & Drop / Paste Processing
+  // Set image state helper
+  const applyImageState = (imageSrc) => {
+    if (!imageSrc) return;
+    setForm(f => ({
+      ...f,
+      pageId: 'custom_upload',
+      customImage: imageSrc,
+      imageUrl: imageSrc,
+      has_image: true,
+      include_image: true,
+      imgBox: { ymin: 100, xmin: 100, ymax: 700, xmax: 900 }
+    }));
+  };
+
+  // Process Local File or Web Image URL
   const processImageFile = (file) => {
     if (!file || !file.type.startsWith('image/')) return;
     const reader = new FileReader();
     reader.onload = (evt) => {
-      const base64 = evt.target?.result;
-      if (base64) {
-        setForm(f => ({
-          ...f,
-          pageId: 'custom_upload',
-          customImage: base64,
-          imageUrl: base64,
-          has_image: true,
-          include_image: true,
-          imgBox: { ymin: 100, xmin: 100, ymax: 700, xmax: 900 }
-        }));
-      }
+      applyImageState(evt.target?.result);
     };
     reader.readAsDataURL(file);
+  };
+
+  const processImageSrc = (src) => {
+    if (!src) return;
+    if (src.startsWith('data:image')) {
+      applyImageState(src);
+      return;
+    }
+    // Attempt fetching web image to convert to Base64
+    fetch(src)
+      .then(res => res.blob())
+      .then(blob => {
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          if (evt.target?.result) applyImageState(evt.target.result);
+        };
+        reader.readAsDataURL(blob);
+      })
+      .catch(() => {
+        // Fallback to direct URL if CORS fails
+        applyImageState(src);
+      });
+  };
+
+  // Process any DataTransfer object (Local Files or Web Browser Drag-and-Drop)
+  const processDroppedData = (dataTransfer) => {
+    if (!dataTransfer) return;
+
+    // 1. Check local files first
+    if (dataTransfer.files && dataTransfer.files.length > 0) {
+      const file = dataTransfer.files[0];
+      if (file.type.startsWith('image/')) {
+        processImageFile(file);
+        return;
+      }
+    }
+
+    // 2. Check HTML data for web images dragged from other browser tabs
+    const htmlData = dataTransfer.getData('text/html');
+    if (htmlData) {
+      try {
+        const doc = new DOMParser().parseFromString(htmlData, 'text/html');
+        const imgEl = doc.querySelector('img');
+        if (imgEl && imgEl.src) {
+          processImageSrc(imgEl.src);
+          return;
+        }
+      } catch (err) {
+        console.warn('Failed to parse dropped HTML data', err);
+      }
+    }
+
+    // 3. Check URI list or plain text URL (e.g. dragging image link or URL)
+    const uriData = dataTransfer.getData('text/uri-list') || dataTransfer.getData('text/plain');
+    if (uriData && (uriData.startsWith('http') || uriData.startsWith('data:image'))) {
+      const firstUrl = uriData.trim().split('\n')[0];
+      processImageSrc(firstUrl);
+      return;
+    }
+  };
+
+  // Stable Non-Blinking Drag Event Handlers
+  const handleDragEnter = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current += 1;
+    if (e.dataTransfer.types && e.dataTransfer.types.length > 0) {
+      setIsDraggingOver(true);
+    }
   };
 
   const handleDragOver = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.dataTransfer.types && Array.from(e.dataTransfer.types).includes('Files')) {
-      setIsDraggingOver(true);
-    }
   };
 
   const handleDragLeave = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDraggingOver(false);
+    dragCounterRef.current -= 1;
+    if (dragCounterRef.current <= 0) {
+      dragCounterRef.current = 0;
+      setIsDraggingOver(false);
+    }
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
     e.stopPropagation();
+    dragCounterRef.current = 0;
     setIsDraggingOver(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) processImageFile(file);
+    processDroppedData(e.dataTransfer);
   };
 
   const handlePaste = (e) => {
@@ -436,7 +513,15 @@ export default function ManualCardModal({
         e.preventDefault();
         const blob = items[i].getAsFile();
         if (blob) processImageFile(blob);
-        break;
+        return;
+      }
+    }
+    // Check if plain text pasted is an image URL
+    const textData = e.clipboardData?.getData('text/plain');
+    if (textData && (textData.startsWith('http://') || textData.startsWith('https://') || textData.startsWith('data:image/'))) {
+      const trimmed = textData.trim();
+      if (trimmed.match(/\.(jpeg|jpg|gif|png|webp|svg)/i) || trimmed.startsWith('data:image/')) {
+        processImageSrc(trimmed);
       }
     }
   };
@@ -457,7 +542,7 @@ export default function ManualCardModal({
   const pageOptions = useMemo(() => {
     const opts = [
       { value: '', label: '— No page linked —' },
-      { value: '__upload_custom__', label: '📷 Upload / Paste / Drop Custom Image...', icon: Upload },
+      { value: '__upload_custom__', label: '📷 Upload / Drag Custom Image...', icon: Upload },
     ];
     folderPages.forEach(p => {
       opts.push({
@@ -467,7 +552,7 @@ export default function ManualCardModal({
       });
     });
     if (form.pageId === 'custom_upload' && form.customImage) {
-      opts.splice(1, 0, { value: 'custom_upload', label: 'Custom Uploaded / Pasted Image', icon: FileImage });
+      opts.splice(1, 0, { value: 'custom_upload', label: 'Custom Uploaded / Dropped Image', icon: FileImage });
     }
     return opts;
   }, [folderPages, form.pageId, form.customImage]);
@@ -514,7 +599,6 @@ export default function ManualCardModal({
     const e = {};
     if (!form.deck || !form.deck.trim()) e.deck = 'Target deck is required.';
     
-    // Validate current type requirements
     if (form.type === 'Cloze' && !form.text.trim()) e.text = 'Cloze content is required.';
     if (form.type === 'Basic') {
       if (!form.front.trim()) e.front = 'Front (Question) is required.';
@@ -616,347 +700,416 @@ export default function ManualCardModal({
 
   return (
     <AnimatePresence>
-      <motion.div
-        key="manual-card-backdrop"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[300]"
-        onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-        onPaste={handlePaste}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-      >
+      {/* ── MINIMIZED DRAFT FLOATING BAR ── */}
+      {isMinimized ? (
         <motion.div
-          key="manual-card-panel"
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-          className={`${dark ? 'neu-card-dark text-white border border-gray-800' : 'neu-card-light text-gray-900 border border-white'} rounded-3xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[92vh] relative overflow-hidden ${
-            isDraggingOver ? 'ring-4 ring-blue-500 ring-offset-2' : ''
-          }`}
+          key="manual-card-minimized"
+          initial={{ y: 80, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 80, opacity: 0 }}
+          className="fixed bottom-20 md:bottom-6 right-4 left-4 md:left-auto md:w-96 z-[350]"
         >
-          {/* File Drag-and-Drop Overlay Indicator */}
-          {isDraggingOver && (
-            <div className="absolute inset-0 bg-blue-600/90 backdrop-blur-md z-[350] flex flex-col items-center justify-center text-white p-6 text-center animate-in fade-in duration-200">
-              <Upload className="w-16 h-16 mb-3 animate-bounce" />
-              <h3 className="text-xl font-black uppercase tracking-wider">Drop Image Here</h3>
-              <p className="text-xs text-blue-100 mt-1">Image will be attached and cropped for this card</p>
-            </div>
-          )}
-
-          {/* Hidden File Input */}
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileUpload}
-            accept="image/*"
-            className="hidden"
-          />
-
-          {/* Header */}
-          <div className={`px-6 py-5 border-b flex items-center justify-between shrink-0 ${dark ? 'border-gray-800' : 'border-gray-200/60'}`}>
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-purple-500/15 rounded-xl flex items-center justify-center">
-                <Edit3 className="w-4 h-4 text-purple-500" />
+          <div className={`p-3.5 rounded-2xl shadow-2xl border flex items-center justify-between gap-3 backdrop-blur-xl ${
+            dark ? 'neu-card-dark bg-[#1a1f2b]/95 text-white border-gray-700/80' : 'neu-card-light bg-white/95 text-gray-900 border-gray-200'
+          }`}>
+            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+              <div className="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center shrink-0 border border-purple-500/30">
+                <Edit3 className="w-4 h-4" />
               </div>
-              <div>
-                <h3 className={`font-black uppercase tracking-widest text-xs ${dark ? 'text-white' : 'text-gray-900'}`}>
-                  {isEdit ? 'Edit Card' : 'Create Manual Flashcard'}
-                </h3>
-                <p className={`text-[10px] mt-0.5 ${dark ? 'text-gray-500' : 'text-gray-400'}`}>
-                  Drag & Drop or Paste images anywhere in modal (Ctrl+V)
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-wider truncate">
+                    {isEdit ? 'Editing Card Draft' : 'New Card Draft'}
+                  </span>
+                  <span className="text-[8px] font-mono px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400 shrink-0">
+                    {form.type}
+                  </span>
+                </div>
+                <p className={`text-[9px] truncate font-mono mt-0.5 ${dark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  Deck: {form.deck || 'General'}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[9px] font-black uppercase tracking-wider bg-purple-500/15 text-purple-500 border border-purple-500/25 px-2.5 py-1 rounded-full">
-                Manual
-              </span>
-              <button onClick={onClose} className={`p-1.5 rounded-xl transition ${dark ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'}`}>
-                <X className="w-5 h-5" />
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsMinimized(false)}
+                className={`p-2 rounded-xl text-blue-500 hover:bg-blue-500/15 transition active:scale-95`}
+                title="Expand Card Creator"
+              >
+                <Maximize2 className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className={`p-2 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-500/15 transition active:scale-95`}
+                title="Discard Draft & Close"
+              >
+                <X className="w-4 h-4" />
               </button>
             </div>
           </div>
-
-          {/* Body */}
-          <div className="p-6 overflow-y-auto flex-grow space-y-5 custom-scrollbar" style={{ scrollbarWidth: 'none' }}>
-
-            {/* Card Type Toggle */}
-            <div>
-              <label className={lbl}>Card Type</label>
-              <div className="flex gap-2">
-                {['Basic', 'Cloze'].map(type => (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => setForm(f => ({ ...f, type }))}
-                    className={`flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition border flex items-center justify-center gap-1.5 ${
-                      form.type === type
-                        ? type === 'Basic'
-                          ? 'bg-red-500 text-white border-red-500 shadow-md shadow-red-500/20'
-                          : 'bg-blue-500 text-white border-blue-500 shadow-md shadow-blue-500/20'
-                        : dark
-                          ? 'neu-btn-dark text-gray-300 border-gray-700'
-                          : 'neu-btn-light text-gray-600 border-gray-200'
-                    }`}
-                  >
-                    {type === 'Basic' ? <BookOpen className="w-3.5 h-3.5" /> : <Scissors className="w-3.5 h-3.5" />}
-                    {type}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Target Deck (Custom Neumorphic Select) */}
-            <div>
-              <label className={lbl}>
-                <Folder className="w-3 h-3 inline mr-1" />Target Deck / Folder
-              </label>
-              <NeumorphicSelect
-                value={form.deck}
-                onChange={handleDeckChange}
-                options={deckOptions}
-                themeMode={themeMode}
-                placeholder="Select target deck..."
-                icon={Folder}
-                allowCustomInput
-                customInputPlaceholder="Enter new folder path (e.g. Brain::Anatomy)..."
-              />
-              {errors.deck && <p className={errTxt}><AlertCircle className="w-3 h-3 inline mr-1" />{errors.deck}</p>}
-            </div>
-
-            {/* Card Content */}
-            {form.type === 'Cloze' ? (
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className={`${lbl} mb-0`}>
-                    <Scissors className="w-3 h-3 inline mr-1" />Cloze Content
-                  </label>
-                  <button
-                    type="button"
-                    onClick={handleInsertCloze}
-                    title="Highlight text then click to wrap in {{c1::...}}"
-                    className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider transition ${
-                      dark ? 'bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 border border-blue-500/30'
-                           : 'bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200'
-                    }`}
-                  >
-                    <Scissors className="w-3 h-3" />
-                    {'Cloze {c1::...}'}
-                  </button>
-                </div>
-                <textarea
-                  ref={clozeRef}
-                  rows={5}
-                  value={form.text}
-                  onChange={e => { setForm(f => ({ ...f, text: e.target.value })); setErrors(er => ({ ...er, text: '' })); }}
-                  placeholder="Type content here, highlight a word/phrase and click Cloze button to insert deletion markers..."
-                  className={`${inp} leading-relaxed resize-y`}
-                />
-                {errors.text && <p className={errTxt}><AlertCircle className="w-3 h-3 inline mr-1" />{errors.text}</p>}
-                <p className={`text-[9px] mt-1.5 ${dark ? 'text-gray-500' : 'text-gray-400'}`}>
-                  {'Tip: Highlight text then click Cloze to wrap as {{c1::...}}. Each click increments the ordinal (c1, c2, c3...).'}
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div>
-                  <label className={lbl}>Front (Question)</label>
-                  <textarea
-                    rows={3}
-                    value={form.front}
-                    onChange={e => { setForm(f => ({ ...f, front: e.target.value })); setErrors(er => ({ ...er, front: '' })); }}
-                    placeholder="What is the question?"
-                    className={`${inp} font-bold resize-y`}
-                  />
-                  {errors.front && <p className={errTxt}><AlertCircle className="w-3 h-3 inline mr-1" />{errors.front}</p>}
-                </div>
-                <div>
-                  <label className={lbl}>Back (Answer)</label>
-                  <textarea
-                    rows={3}
-                    value={form.back}
-                    onChange={e => { setForm(f => ({ ...f, back: e.target.value })); setErrors(er => ({ ...er, back: '' })); }}
-                    placeholder="The answer..."
-                    className={`${inp} resize-y`}
-                  />
-                  {errors.back && <p className={errTxt}><AlertCircle className="w-3 h-3 inline mr-1" />{errors.back}</p>}
-                </div>
+        </motion.div>
+      ) : (
+        /* ── EXPANDED MODAL ── */
+        <motion.div
+          key="manual-card-backdrop"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[300]"
+          onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+          onPaste={handlePaste}
+          onDragEnter={handleDragEnter}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          <motion.div
+            key="manual-card-panel"
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            className={`${dark ? 'neu-card-dark text-white border border-gray-800' : 'neu-card-light text-gray-900 border border-white'} rounded-3xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[92vh] relative overflow-hidden ${
+              isDraggingOver ? 'ring-4 ring-blue-500' : ''
+            }`}
+          >
+            {/* Stable File/Web Image Drag-and-Drop Overlay */}
+            {isDraggingOver && (
+              <div className="absolute inset-0 bg-blue-600/90 backdrop-blur-md z-[350] flex flex-col items-center justify-center text-white p-6 text-center animate-in fade-in duration-200 pointer-events-none">
+                <Upload className="w-16 h-16 mb-3 animate-bounce text-white" />
+                <h3 className="text-xl font-black uppercase tracking-wider text-white">Drop Image Here</h3>
+                <p className="text-xs text-blue-100 mt-1">Local files or web browser images will be attached</p>
               </div>
             )}
 
-            {/* Link to Note Page & Image Setup */}
-            <div className={`rounded-2xl p-4 border space-y-3 ${dark ? 'border-gray-800 bg-white/3' : 'border-gray-200/60 bg-gray-50/60'}`}>
-              <div className="flex items-center justify-between">
-                <label className={`${lbl} mb-0 flex items-center gap-1.5`}>
-                  <ImageIcon className="w-3 h-3 text-emerald-500" />
-                  Link or Upload Image
-                  <span className={`text-[8px] px-2 py-0.5 rounded-full font-bold ${dark ? 'bg-gray-800 text-gray-400' : 'bg-gray-200 text-gray-600'}`}>
-                    {folderPages.length} pages in folder
-                  </span>
-                </label>
-                {form.pageId && (
-                  <button
-                    type="button"
-                    onClick={() => setForm(f => ({ ...f, pageId: '', customImage: null, has_image: false, include_image: false }))}
-                    className={`text-[10px] font-bold flex items-center gap-1 ${dark ? 'text-red-400 hover:text-red-300' : 'text-red-500 hover:text-red-700'}`}
-                  >
-                    <X className="w-3 h-3" />Unlink Image
-                  </button>
-                )}
+            {/* Hidden File Input */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileUpload}
+              accept="image/*"
+              className="hidden"
+            />
+
+            {/* Header */}
+            <div className={`px-6 py-4 sm:py-5 border-b flex items-center justify-between shrink-0 ${dark ? 'border-gray-800' : 'border-gray-200/60'}`}>
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-8 h-8 bg-purple-500/15 rounded-xl flex items-center justify-center shrink-0">
+                  <Edit3 className="w-4 h-4 text-purple-500" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className={`font-black uppercase tracking-widest text-xs truncate ${dark ? 'text-white' : 'text-gray-900'}`}>
+                    {isEdit ? 'Edit Card' : 'Create Manual Flashcard'}
+                  </h3>
+                  <p className={`text-[10px] truncate mt-0.5 ${dark ? 'text-gray-500' : 'text-gray-400'}`}>
+                    Drag web/local images or paste anywhere (Ctrl+V)
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="hidden sm:inline-block text-[9px] font-black uppercase tracking-wider bg-purple-500/15 text-purple-500 border border-purple-500/25 px-2.5 py-1 rounded-full">
+                  Manual
+                </span>
+                {/* Minimize Button */}
+                <button
+                  type="button"
+                  onClick={() => setIsMinimized(true)}
+                  className={`p-1.5 rounded-xl transition ${dark ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'}`}
+                  title="Minimize Draft"
+                >
+                  <Minimize2 className="w-4 h-4" />
+                </button>
+                {/* Close Button */}
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className={`p-1.5 rounded-xl transition ${dark ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'}`}
+                  title="Close"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 overflow-y-auto flex-grow space-y-5 custom-scrollbar" style={{ scrollbarWidth: 'none' }}>
+
+              {/* Card Type Toggle */}
+              <div>
+                <label className={lbl}>Card Type</label>
+                <div className="flex gap-2">
+                  {['Basic', 'Cloze'].map(type => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, type }))}
+                      className={`flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition border flex items-center justify-center gap-1.5 ${
+                        form.type === type
+                          ? type === 'Basic'
+                            ? 'bg-red-500 text-white border-red-500 shadow-md shadow-red-500/20'
+                            : 'bg-blue-500 text-white border-blue-500 shadow-md shadow-blue-500/20'
+                          : dark
+                            ? 'neu-btn-dark text-gray-300 border-gray-700'
+                            : 'neu-btn-light text-gray-600 border-gray-200'
+                      }`}
+                    >
+                      {type === 'Basic' ? <BookOpen className="w-3.5 h-3.5" /> : <Scissors className="w-3.5 h-3.5" />}
+                      {type}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              {/* Neumorphic Page Select Dropdown */}
-              <NeumorphicSelect
-                value={form.pageId}
-                onChange={handlePageSelectChange}
-                options={pageOptions}
-                themeMode={themeMode}
-                placeholder="Select page or upload/paste custom image..."
-                icon={ImageIcon}
-              />
+              {/* Target Deck (Custom Neumorphic Select) */}
+              <div>
+                <label className={lbl}>
+                  <Folder className="w-3 h-3 inline mr-1" />Target Deck / Folder
+                </label>
+                <NeumorphicSelect
+                  value={form.deck}
+                  onChange={handleDeckChange}
+                  options={deckOptions}
+                  themeMode={themeMode}
+                  placeholder="Select target deck..."
+                  icon={Folder}
+                  allowCustomInput
+                  customInputPlaceholder="Enter new folder path (e.g. Brain::Anatomy)..."
+                />
+                {errors.deck && <p className={errTxt}><AlertCircle className="w-3 h-3 inline mr-1" />{errors.deck}</p>}
+              </div>
 
-              {/* Mobile Quick Upload/Pick Photo Button */}
-              <button
-                type="button"
-                onClick={() => {
-                  if (fileInputRef.current) {
-                    fileInputRef.current.value = '';
-                    fileInputRef.current.click();
-                  }
-                }}
-                className={`w-full py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition ${
-                  dark
-                    ? 'neu-btn-dark text-blue-400 border-blue-500/30 hover:bg-blue-500/10'
-                    : 'neu-btn-light text-blue-600 border-blue-200 hover:bg-blue-50'
-                }`}
-              >
-                <Upload className="w-3.5 h-3.5" />
-                <span>Choose Photo from Device / Camera</span>
-              </button>
-
-              {/* Image Side / Location Selector */}
-              {form.pageId && linkedImageSrc && (
-                <div className="pt-2">
-                  <label className={lbl}><Layout className="w-3 h-3 inline mr-1" />Image Location in Card</label>
-                  <div className="flex gap-2">
+              {/* Card Content */}
+              {form.type === 'Cloze' ? (
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className={`${lbl} mb-0`}>
+                      <Scissors className="w-3 h-3 inline mr-1" />Cloze Content
+                    </label>
                     <button
                       type="button"
-                      onClick={() => setForm(f => ({ ...f, imageSide: 'front' }))}
-                      className={`flex-1 py-2 rounded-xl text-xs font-bold transition border flex items-center justify-center gap-1.5 ${
-                        form.imageSide === 'front'
-                          ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20'
-                          : dark ? 'neu-btn-dark text-gray-300' : 'neu-btn-light text-gray-700'
+                      onClick={handleInsertCloze}
+                      title="Highlight text then click to wrap in {{c1::...}}"
+                      className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider transition ${
+                        dark ? 'bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 border border-blue-500/30'
+                             : 'bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200'
                       }`}
                     >
-                      Front (Question Side)
+                      <Scissors className="w-3 h-3" />
+                      {'Cloze {c1::...}'}
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setForm(f => ({ ...f, imageSide: 'back' }))}
-                      className={`flex-1 py-2 rounded-xl text-xs font-bold transition border flex items-center justify-center gap-1.5 ${
-                        (form.imageSide || 'back') === 'back'
-                          ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20'
-                          : dark ? 'neu-btn-dark text-gray-300' : 'neu-btn-light text-gray-700'
-                      }`}
-                    >
-                      Back (Answer Side)
-                    </button>
+                  </div>
+                  <textarea
+                    ref={clozeRef}
+                    rows={5}
+                    value={form.text}
+                    onChange={e => { setForm(f => ({ ...f, text: e.target.value })); setErrors(er => ({ ...er, text: '' })); }}
+                    placeholder="Type content here, highlight a word/phrase and click Cloze button to insert deletion markers..."
+                    className={`${inp} leading-relaxed resize-y`}
+                  />
+                  {errors.text && <p className={errTxt}><AlertCircle className="w-3 h-3 inline mr-1" />{errors.text}</p>}
+                  <p className={`text-[9px] mt-1.5 ${dark ? 'text-gray-500' : 'text-gray-400'}`}>
+                    {'Tip: Highlight text then click Cloze to wrap as {{c1::...}}. Each click increments the ordinal (c1, c2, c3...).'}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <label className={lbl}>Front (Question)</label>
+                    <textarea
+                      rows={3}
+                      value={form.front}
+                      onChange={e => { setForm(f => ({ ...f, front: e.target.value })); setErrors(er => ({ ...er, front: '' })); }}
+                      placeholder="What is the question?"
+                      className={`${inp} font-bold resize-y`}
+                    />
+                    {errors.front && <p className={errTxt}><AlertCircle className="w-3 h-3 inline mr-1" />{errors.front}</p>}
+                  </div>
+                  <div>
+                    <label className={lbl}>Back (Answer)</label>
+                    <textarea
+                      rows={3}
+                      value={form.back}
+                      onChange={e => { setForm(f => ({ ...f, back: e.target.value })); setErrors(er => ({ ...er, back: '' })); }}
+                      placeholder="The answer..."
+                      className={`${inp} resize-y`}
+                    />
+                    {errors.back && <p className={errTxt}><AlertCircle className="w-3 h-3 inline mr-1" />{errors.back}</p>}
                   </div>
                 </div>
               )}
 
-              {/* Crop Tool Overlay */}
-              <AnimatePresence>
-                {form.pageId && linkedImageSrc && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="overflow-hidden space-y-2 pt-2"
-                  >
-                    <div className="flex items-center justify-between">
-                      <p className={`text-[10px] font-black uppercase tracking-wider ${dark ? 'text-gray-400' : 'text-gray-500'}`}>
-                        Set Image Crop Region
-                      </p>
+              {/* Link to Note Page & Image Setup */}
+              <div className={`rounded-2xl p-4 border space-y-3 ${dark ? 'border-gray-800 bg-white/3' : 'border-gray-200/60 bg-gray-50/60'}`}>
+                <div className="flex items-center justify-between">
+                  <label className={`${lbl} mb-0 flex items-center gap-1.5`}>
+                    <ImageIcon className="w-3 h-3 text-emerald-500" />
+                    Link or Upload Image
+                    <span className={`text-[8px] px-2 py-0.5 rounded-full font-bold ${dark ? 'bg-gray-800 text-gray-400' : 'bg-gray-200 text-gray-600'}`}>
+                      {folderPages.length} pages in folder
+                    </span>
+                  </label>
+                  {form.pageId && (
+                    <button
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, pageId: '', customImage: null, has_image: false, include_image: false }))}
+                      className={`text-[10px] font-bold flex items-center gap-1 ${dark ? 'text-red-400 hover:text-red-300' : 'text-red-500 hover:text-red-700'}`}
+                    >
+                      <X className="w-3 h-3" />Unlink Image
+                    </button>
+                  )}
+                </div>
+
+                {/* Neumorphic Page Select Dropdown */}
+                <NeumorphicSelect
+                  value={form.pageId}
+                  onChange={handlePageSelectChange}
+                  options={pageOptions}
+                  themeMode={themeMode}
+                  placeholder="Select page or upload/drag custom image..."
+                  icon={ImageIcon}
+                />
+
+                {/* Mobile Quick Upload/Pick Photo Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (fileInputRef.current) {
+                      fileInputRef.current.value = '';
+                      fileInputRef.current.click();
+                    }
+                  }}
+                  className={`w-full py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition ${
+                    dark
+                      ? 'neu-btn-dark text-blue-400 border-blue-500/30 hover:bg-blue-500/10'
+                      : 'neu-btn-light text-blue-600 border-blue-200 hover:bg-blue-50'
+                  }`}
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Choose Photo from Device / Camera</span>
+                </button>
+
+                {/* Image Side / Location Selector ONLY FOR BASIC CARDS */}
+                {form.pageId && linkedImageSrc && form.type === 'Basic' && (
+                  <div className="pt-2 animate-in fade-in duration-200">
+                    <label className={lbl}><Layout className="w-3 h-3 inline mr-1" />Image Location in Card</label>
+                    <div className="flex gap-2">
                       <button
                         type="button"
-                        onClick={() => setForm(f => ({ ...f, imgBox: { ymin: 100, xmin: 100, ymax: 700, xmax: 900 } }))}
-                        className={`flex items-center gap-1 text-[10px] font-bold ${dark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-500 hover:text-blue-700'}`}
+                        onClick={() => setForm(f => ({ ...f, imageSide: 'front' }))}
+                        className={`flex-1 py-2 rounded-xl text-xs font-bold transition border flex items-center justify-center gap-1.5 ${
+                          form.imageSide === 'front'
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20'
+                            : dark ? 'neu-btn-dark text-gray-300' : 'neu-btn-light text-gray-700'
+                        }`}
                       >
-                        <RefreshCw className="w-3 h-3" />Reset Box
+                        Front (Question Side)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setForm(f => ({ ...f, imageSide: 'back' }))}
+                        className={`flex-1 py-2 rounded-xl text-xs font-bold transition border flex items-center justify-center gap-1.5 ${
+                          (form.imageSide || 'back') === 'back'
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20'
+                            : dark ? 'neu-btn-dark text-gray-300' : 'neu-btn-light text-gray-700'
+                        }`}
+                      >
+                        Back (Answer Side)
                       </button>
                     </div>
-                    <CropOverlay
-                      imageSrc={linkedImageSrc}
-                      imgBox={form.imgBox}
-                      onChange={imgBox => setForm(f => ({ ...f, imgBox }))}
-                    />
-                  </motion.div>
+                  </div>
                 )}
-              </AnimatePresence>
-            </div>
 
-            {/* Tags */}
-            <div>
-              <label className={lbl}>
-                <Tag className="w-3 h-3 inline mr-1" />Tags
-              </label>
-              <div className="flex flex-wrap gap-1.5 mb-2">
-                {form.tags.map(tag => {
-                  const display = tag.startsWith('#') ? tag : `#${tag}`;
-                  return (
-                    <span key={tag} className={`flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-full font-bold ${dark ? 'neu-pressed-dark text-blue-400 border border-blue-500/30' : 'neu-pressed-light text-blue-600 border border-blue-100'}`}>
-                      {display}
-                      <button type="button" onClick={() => removeTag(tag)} className="hover:text-red-400 transition">
-                        <X className="w-2.5 h-2.5" />
-                      </button>
-                    </span>
-                  );
-                })}
+                {/* Crop Tool Overlay */}
+                <AnimatePresence>
+                  {form.pageId && linkedImageSrc && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="overflow-hidden space-y-2 pt-2"
+                    >
+                      <div className="flex items-center justify-between">
+                        <p className={`text-[10px] font-black uppercase tracking-wider ${dark ? 'text-gray-400' : 'text-gray-500'}`}>
+                          Set Image Crop Region
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setForm(f => ({ ...f, imgBox: { ymin: 100, xmin: 100, ymax: 700, xmax: 900 } }))}
+                          className={`flex items-center gap-1 text-[10px] font-bold ${dark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-500 hover:text-blue-700'}`}
+                        >
+                          <RefreshCw className="w-3 h-3" />Reset Box
+                        </button>
+                      </div>
+                      <CropOverlay
+                        imageSrc={linkedImageSrc}
+                        imgBox={form.imgBox}
+                        onChange={imgBox => setForm(f => ({ ...f, imgBox }))}
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
-              <input
-                type="text"
-                value={tagInput}
-                placeholder="Add tag (press Enter or comma)..."
-                onChange={e => setTagInput(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter' || e.key === ',') {
-                    e.preventDefault();
-                    addTag(tagInput);
-                  }
-                }}
-                className={inp}
-              />
-            </div>
-          </div>
 
-          {/* Footer */}
-          <div className={`px-6 py-5 border-t flex justify-between items-center gap-4 shrink-0 ${dark ? 'border-gray-800' : 'border-gray-200/60'}`}>
-            <button
-              type="button"
-              onClick={onClose}
-              className={`px-6 py-2.5 text-xs font-bold rounded-2xl transition ${dark ? 'neu-btn-dark text-gray-300' : 'neu-btn-light text-gray-600'}`}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleSaveClick}
-              disabled={saving}
-              className={`flex items-center gap-2 px-8 py-2.5 text-xs font-black uppercase tracking-wider rounded-2xl transition disabled:opacity-60 ${dark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'}`}
-            >
-              {saving
-                ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /><span>Saving...</span></>
-                : <><Save className="w-3.5 h-3.5" /><span>{isEdit ? 'Update Card' : 'Create Card'}</span></>
-              }
-            </button>
-          </div>
+              {/* Tags */}
+              <div>
+                <label className={lbl}>
+                  <Tag className="w-3 h-3 inline mr-1" />Tags
+                </label>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {form.tags.map(tag => {
+                    const display = tag.startsWith('#') ? tag : `#${tag}`;
+                    return (
+                      <span key={tag} className={`flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-full font-bold ${dark ? 'neu-pressed-dark text-blue-400 border border-blue-500/30' : 'neu-pressed-light text-blue-600 border border-blue-100'}`}>
+                        {display}
+                        <button type="button" onClick={() => removeTag(tag)} className="hover:text-red-400 transition">
+                          <X className="w-2.5 h-2.5" />
+                        </button>
+                      </span>
+                    );
+                  })}
+                </div>
+                <input
+                  type="text"
+                  value={tagInput}
+                  placeholder="Add tag (press Enter or comma)..."
+                  onChange={e => setTagInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ',') {
+                      e.preventDefault();
+                      addTag(tagInput);
+                    }
+                  }}
+                  className={inp}
+                />
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className={`px-6 py-5 border-t flex justify-between items-center gap-4 shrink-0 ${dark ? 'border-gray-800' : 'border-gray-200/60'}`}>
+              <button
+                type="button"
+                onClick={onClose}
+                className={`px-6 py-2.5 text-xs font-bold rounded-2xl transition ${dark ? 'neu-btn-dark text-gray-300' : 'neu-btn-light text-gray-600'}`}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveClick}
+                disabled={saving}
+                className={`flex items-center gap-2 px-8 py-2.5 text-xs font-black uppercase tracking-wider rounded-2xl transition disabled:opacity-60 ${dark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'}`}
+              >
+                {saving
+                  ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /><span>Saving...</span></>
+                  : <><Save className="w-3.5 h-3.5" /><span>{isEdit ? 'Update Card' : 'Create Card'}</span></>
+                }
+              </button>
+            </div>
+          </motion.div>
         </motion.div>
-      </motion.div>
+      )}
 
       {/* Conflict Dialog Modal (Dual Type Filling) */}
       {conflictModalOpen && (
