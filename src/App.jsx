@@ -31,6 +31,7 @@ import { getPytTopics, upsertPytTopics } from './utils/pytService';
 import { calculateEfficiencyScore, calculateWeightedConcentration } from './utils/campCalculations';
 import { ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import ExportImageVerificationModal from './components/ExportImageVerificationModal';
+import ManualCardModal from './components/ManualCardModal';
 import { cropAndMaskDiagram } from './utils/imageCropper';
 import { getLocalSetting, saveLocalSetting, getLocalCards, saveLocalCards, replaceAllLocalCards, saveLocalCard, deleteLocalCard, getLocalPages, saveLocalPages, replaceAllLocalPages, saveLocalPage, deleteLocalPage, getLocalKV, setLocalKV } from './services/localDb';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -5785,6 +5786,8 @@ export default function App() {
 
   // MODALS
   const [editingCard, setEditingCard] = useState(null);
+  const [isManualCardModalOpen, setIsManualCardModalOpen] = useState(false);
+  const [manualCardInitial, setManualCardInitial] = useState(null);
   const [newFolderDialog, setNewFolderDialog] = useState({ isOpen: false, basePath: '', input: '' });
   const [renameDialog, setRenameDialog] = useState({ isOpen: false, path: '', input: '' });
   const [zoomLevel, setZoomLevel] = useState(1);
@@ -16175,6 +16178,41 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     }
   };
 
+  // --- MANUAL CARD CREATION ---
+  const openManualCardModal = (initialCard = null) => {
+    setManualCardInitial(initialCard);
+    setIsManualCardModalOpen(true);
+  };
+
+  const saveManualCard = async (cardData) => {
+    const now = Date.now();
+    const newCard = {
+      id: cardData.id || `manual_${now}_${Math.random().toString(36).slice(2)}`,
+      createdAt: cardData.createdAt || now,
+      updatedAt: now,
+      isManual: true,
+      source: 'manual',
+      ...cardData,
+    };
+    try {
+      await saveLocalCard(newCard);
+      if (cardData.id) {
+        // Edit mode
+        setCards(prev => prev.map(c => c.id === newCard.id ? { ...c, ...newCard } : c));
+      } else {
+        // Create mode
+        setCards(prev => [newCard, ...prev]);
+        setTotalCardCount(prev => prev + 1);
+        if (newCard.deck) {
+          batchUpdateCardCounts({ [newCard.deck]: 1 });
+        }
+      }
+    } catch (err) {
+      console.error('[ManualCard] Failed to save:', err);
+      alert('Failed to save card: ' + err.message);
+    }
+  };
+
   const saveEditedCard = async () => {
     if (!editingCard) return;
 
@@ -20907,7 +20945,18 @@ Return your response strictly as a JSON object matching this schema:
                       transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
                       className="space-y-4"
                     >
-                      {mobileLibraryLevel === 'folders' && (
+                      {/* Mobile Add Card FAB - always visible in library */}
+              <motion.button
+                whileHover={{ scale: 1.06 }}
+                whileTap={{ scale: 0.94 }}
+                onClick={() => openManualCardModal(null)}
+                className="fixed bottom-24 right-5 z-[80] w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-2xl shadow-purple-500/30 flex items-center justify-center border-2 border-white/20"
+                title="Add Manual Flashcard"
+              >
+                <Plus className="w-6 h-6" />
+              </motion.button>
+
+              {mobileLibraryLevel === 'folders' && (
                         <motion.div
                           initial={{ opacity: 0, scale: 0.97 }}
                           animate={{ opacity: 1, scale: 1 }}
@@ -25921,6 +25970,15 @@ Return your response strictly as a JSON object matching this schema:
                                   </>
                                 )}
                                 <UiverseButton
+                                  icon={<Plus className="w-3.5 h-3.5 text-purple-400" />}
+                                  onClick={() => openManualCardModal(null)}
+                                  size="sm"
+                                  themeMode={settingsThemeMode}
+                                  variant={settingsThemeMode === 'dark' ? 'dark' : 'default'}
+                                >
+                                  Add Card
+                                </UiverseButton>
+                                <UiverseButton
                                   icon={<Download className="w-3.5 h-3.5 text-blue-400" />}
                                   onClick={() => {
                                     setSelectedDecksToExport([hierarchy]);
@@ -25975,6 +26033,9 @@ Return your response strictly as a JSON object matching this schema:
                                                 <span className="text-[9px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-500 border border-emerald-500/25 px-2 py-0.5 rounded-full flex items-center gap-1">
                                                   <ImageIcon className="w-2.5 h-2.5 text-emerald-500" /> Image Attached
                                                 </span>
+                                              )}
+                                              {card.isManual && (
+                                                <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${settingsThemeMode === 'dark' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'bg-purple-50 text-purple-600 border border-purple-100'}`}>Manual</span>
                                               )}
                                             </div>
                                             <div className="text-[8px] font-black text-gray-400 uppercase tracking-widest bg-gray-500/10 px-2 py-0.5 rounded-full flex items-center gap-1 group-hover:bg-blue-600 group-hover:text-white transition-colors">
@@ -26200,7 +26261,7 @@ Return your response strictly as a JSON object matching this schema:
                                                       )}
                                                     </div>
                                                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition z-10">
-                                                      <button onClick={(e) => { e.stopPropagation(); setEditingCard(card); }} className="p-1 rounded-lg hover:bg-blue-500/20 text-blue-500 transition-colors" title="Edit Card"><Edit3 className="w-3.5 h-3.5" /></button>
+                                                      <button onClick={(e) => { e.stopPropagation(); card.isManual ? openManualCardModal(card) : setEditingCard(card); }} className="p-1 rounded-lg hover:bg-blue-500/20 text-blue-500 transition-colors" title="Edit Card"><Edit3 className="w-3.5 h-3.5" /></button>
                                                       <button onClick={(e) => { e.stopPropagation(); deleteCard(card.id); }} className="p-1 rounded-lg hover:bg-red-500/20 text-red-500 transition-colors" title="Delete Card"><Trash2 className="w-3.5 h-3.5" /></button>
                                                     </div>
                                                   </div>
@@ -26625,6 +26686,11 @@ Return your response strictly as a JSON object matching this schema:
                                                     }`}>
                                                     {card.type || 'BASIC'}
                                                   </span>
+                                                  {card.isManual && (
+                                                    <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full inline-block ${
+                                                      settingsThemeMode === 'dark' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'bg-purple-50 text-purple-600 border border-purple-100'
+                                                    }`}>Manual</span>
+                                                  )}
                                                   {card.tags && card.tags.map(tag => {
                                                     const cleanTag = tag.trim().startsWith('#') ? tag.trim() : `#${tag.trim()}`;
                                                     return (
@@ -26651,7 +26717,7 @@ Return your response strictly as a JSON object matching this schema:
 
                                                 <div className="flex items-center gap-1.5 z-10" onClick={(e) => e.stopPropagation()}>
                                                   <button
-                                                    onClick={() => setEditingCard(card)}
+                                                    onClick={() => card.isManual ? openManualCardModal(card) : setEditingCard(card)}
                                                     className={`p-1.5 rounded-xl transition-colors ${settingsThemeMode === 'dark' ? 'hover:bg-blue-500/20 text-blue-400' : 'hover:bg-blue-50 text-blue-600'}`}
                                                     title="Edit Card"
                                                   >
@@ -33545,6 +33611,17 @@ Return your response strictly as a JSON object matching this schema:
                   </div>
                 </div>
               )}
+
+              <ManualCardModal
+                isOpen={isManualCardModalOpen}
+                onClose={() => setIsManualCardModalOpen(false)}
+                onSave={saveManualCard}
+                themeMode={settingsThemeMode}
+                defaultDeck={hierarchy || ''}
+                deckPaths={effectiveDeckPaths}
+                libraryPages={libraryPages}
+                initialCard={manualCardInitial}
+              />
 
               {editingCard && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
