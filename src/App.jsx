@@ -1149,18 +1149,25 @@ const OrbitalLoader = ({ themeMode = 'light', size = 'normal' }) => {
   );
 };
 
-const TreeFolder = ({ node, level = 0, selectedPath, onSelect, onAdd, onRename, onDelete, onMoveNode, isMobileMoveMode, onToggleMove, showCounts = true, hideActions = false, themeMode = 'light' }) => {
+const TreeFolder = ({ node, level = 0, selectedPath, onSelect, onAdd, onRename, onDelete, onMoveNode, isMobileMoveMode, onToggleMove, showCounts = true, hideActions = false, themeMode = 'light', activeMenuPath, setActiveMenuPath }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
+  const [isRootDragOver, setIsRootDragOver] = useState(false);
+  const [localActiveMenuPath, setLocalActiveMenuPath] = useState(null);
+
+  const menuPath = activeMenuPath !== undefined ? activeMenuPath : localActiveMenuPath;
+  const setMenuPath = setActiveMenuPath || setLocalActiveMenuPath;
+
   const menuRef = useRef(null);
   const hasChildren = Object.keys(node.children).length > 0;
   const isSelected = selectedPath === node.path;
+  const showMenu = menuPath === node.path;
+  const hasActiveChildMenu = Boolean(menuPath && (menuPath === node.path || menuPath.startsWith(node.path + '::')));
 
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setShowMenu(false);
+        if (showMenu) setMenuPath(null);
       }
     };
     if (showMenu) {
@@ -1169,7 +1176,7 @@ const TreeFolder = ({ node, level = 0, selectedPath, onSelect, onAdd, onRename, 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showMenu]);
+  }, [showMenu, setMenuPath]);
 
   const handleDragStart = (e) => {
     e.stopPropagation();
@@ -1194,7 +1201,9 @@ const TreeFolder = ({ node, level = 0, selectedPath, onSelect, onAdd, onRename, 
 
   const handleDragLeave = (e) => {
     e.stopPropagation();
-    setIsDragOver(false);
+    if (e.currentTarget && !e.currentTarget.contains(e.relatedTarget)) {
+      setIsDragOver(false);
+    }
   };
 
   const handleDrop = (e) => {
@@ -1211,7 +1220,7 @@ const TreeFolder = ({ node, level = 0, selectedPath, onSelect, onAdd, onRename, 
   const FolderIcon = (hasChildren && isOpen) ? FolderOpen : Folder;
 
   return (
-    <div className="select-none group relative">
+    <div className={`select-none group relative ${hasActiveChildMenu ? 'z-50' : 'z-0'}`}>
       {!node.isRoot && (
         <div
           draggable={!hideActions}
@@ -1271,7 +1280,7 @@ const TreeFolder = ({ node, level = 0, selectedPath, onSelect, onAdd, onRename, 
           {!hideActions && (
             <div className="ml-auto relative" ref={menuRef}>
               <button
-                onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
+                onClick={(e) => { e.stopPropagation(); setMenuPath(showMenu ? null : node.path); }}
                 className={`p-1.5 rounded-xl transition-all ${isSelected
                     ? (themeMode === 'dark' ? 'hover:bg-blue-500/20 text-blue-300' : 'hover:bg-blue-200/50 text-blue-800')
                     : (themeMode === 'dark' ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-200/60 text-gray-500')
@@ -1288,7 +1297,7 @@ const TreeFolder = ({ node, level = 0, selectedPath, onSelect, onAdd, onRename, 
                 >
                   {onToggleMove && (
                     <button
-                      onClick={(e) => { e.stopPropagation(); onToggleMove(node.path); setShowMenu(false); }}
+                      onClick={(e) => { e.stopPropagation(); onToggleMove(node.path); setMenuPath(null); }}
                       className={`flex items-center gap-2 p-2.5 rounded-xl text-[10px] font-black uppercase transition ${themeMode === 'dark' ? 'hover:bg-blue-900/40 text-blue-400' : 'hover:bg-blue-50 text-blue-600'
                         }`}
                     >
@@ -1296,14 +1305,14 @@ const TreeFolder = ({ node, level = 0, selectedPath, onSelect, onAdd, onRename, 
                     </button>
                   )}
                   <button
-                    onClick={(e) => { e.stopPropagation(); onRename(node.path); setShowMenu(false); }}
+                    onClick={(e) => { e.stopPropagation(); onRename(node.path); setMenuPath(null); }}
                     className={`flex items-center gap-2 p-2.5 rounded-xl text-[10px] font-black uppercase transition ${themeMode === 'dark' ? 'hover:bg-gray-800 text-gray-300' : 'hover:bg-gray-100 text-gray-700'
                       }`}
                   >
                     <Edit3 className="w-3.5 h-3.5" /> Rename
                   </button>
                   <button
-                    onClick={(e) => { e.stopPropagation(); onAdd(node.path); setIsOpen(true); setShowMenu(false); }}
+                    onClick={(e) => { e.stopPropagation(); onAdd(node.path); setIsOpen(true); setMenuPath(null); }}
                     className={`flex items-center gap-2 p-2.5 rounded-xl text-[10px] font-black uppercase transition ${themeMode === 'dark' ? 'hover:bg-blue-900/40 text-blue-400' : 'hover:bg-blue-50 text-blue-600'
                       }`}
                   >
@@ -1311,7 +1320,7 @@ const TreeFolder = ({ node, level = 0, selectedPath, onSelect, onAdd, onRename, 
                   </button>
                   <div className={`h-px my-1 ${themeMode === 'dark' ? 'bg-gray-800' : 'bg-gray-200/60'}`} />
                   <button
-                    onClick={(e) => { e.stopPropagation(); onDelete(node.path); setShowMenu(false); }}
+                    onClick={(e) => { e.stopPropagation(); onDelete(node.path); setMenuPath(null); }}
                     className={`flex items-center gap-2 p-2.5 rounded-xl text-[10px] font-black uppercase transition ${themeMode === 'dark' ? 'hover:bg-red-900/40 text-red-400' : 'hover:bg-red-50 text-red-500'
                       }`}
                   >
@@ -1326,15 +1335,33 @@ const TreeFolder = ({ node, level = 0, selectedPath, onSelect, onAdd, onRename, 
 
       {node.isRoot && !hideActions && (
         <div
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          className={`py-1.5 mx-1 text-[10px] uppercase tracking-wider font-bold text-center border-2 border-dashed rounded-xl mb-2 transition ${isDragOver
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            e.dataTransfer.dropEffect = 'move';
+            if (!isRootDragOver) setIsRootDragOver(true);
+          }}
+          onDragLeave={(e) => {
+            e.stopPropagation();
+            if (e.currentTarget && !e.currentTarget.contains(e.relatedTarget)) {
+              setIsRootDragOver(false);
+            }
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsRootDragOver(false);
+            const draggedPath = e.dataTransfer.getData('text/plain');
+            if (draggedPath) {
+              onMoveNode(draggedPath, '', 'inside');
+            }
+          }}
+          className={`py-1.5 mx-1 text-[10px] uppercase tracking-wider font-bold text-center border-2 border-dashed rounded-xl mb-2 transition ${isRootDragOver
               ? (themeMode === 'dark' ? 'border-blue-500 bg-blue-500/10 text-blue-400' : 'border-blue-500 bg-blue-50 text-blue-700')
               : (themeMode === 'dark' ? 'border-gray-800 text-gray-500 hover:border-gray-700' : 'border-gray-200 text-gray-400 hover:border-gray-300')
             }`}
         >
-          {isDragOver ? "Drop to Root" : "Drag to Root"}
+          {isRootDragOver ? "Drop to Root" : "Drag to Root"}
         </div>
       )}
 
@@ -1345,7 +1372,7 @@ const TreeFolder = ({ node, level = 0, selectedPath, onSelect, onAdd, onRename, 
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-            className="overflow-hidden relative flex flex-col py-0.5 px-0.5"
+            className={`relative flex flex-col py-0.5 px-0.5 ${isOpen || node.isRoot ? 'overflow-visible' : 'overflow-hidden'}`}
           >
             {/* Vertical connector guide line for subfolders */}
             {!node.isRoot && (
@@ -1371,6 +1398,8 @@ const TreeFolder = ({ node, level = 0, selectedPath, onSelect, onAdd, onRename, 
                   showCounts={showCounts}
                   hideActions={hideActions}
                   themeMode={themeMode}
+                  activeMenuPath={menuPath}
+                  setActiveMenuPath={setMenuPath}
                 />
               ))}
             </div>
@@ -15015,13 +15044,21 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
   };
 
   const handleMoveNode = async (draggedPath, targetPath, position = 'inside') => {
-    if (draggedPath === targetPath) return;
+    if (!draggedPath || draggedPath === targetPath) return;
 
-    // Prevent nesting inside self or children
-    if (position === 'inside' && targetPath.startsWith(`${draggedPath}::`)) return;
+    if (targetPath === '' || targetPath === 'Root') {
+      targetPath = '';
+      position = 'inside';
+    }
 
     const draggedParts = draggedPath.split('::');
     const draggedName = draggedParts[draggedParts.length - 1];
+
+    // If draggedPath is already a top-level root folder and target is root (''), nothing to do
+    if (targetPath === '' && draggedPath === draggedName) return;
+
+    // Prevent nesting inside self or children
+    if (position === 'inside' && targetPath && targetPath.startsWith(`${draggedPath}::`)) return;
 
     let newBasePath;
     if (position === 'inside') {
@@ -15035,15 +15072,21 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     // 1. Update deckPaths state with order
     const finalPaths = (() => {
       const others = deckPaths.filter(p => p !== draggedPath && !p.startsWith(`${draggedPath}::`));
-      const targetIdx = others.indexOf(targetPath);
 
       let updated;
-      if (position === 'above') {
-        updated = [...others.slice(0, targetIdx), draggedPath, ...others.slice(targetIdx)];
-      } else if (position === 'below') {
-        updated = [...others.slice(0, targetIdx + 1), draggedPath, ...others.slice(targetIdx + 1)];
-      } else {
+      if (targetPath === '') {
         updated = [...others, draggedPath];
+      } else {
+        const targetIdx = others.indexOf(targetPath);
+        if (targetIdx === -1) {
+          updated = [...others, draggedPath];
+        } else if (position === 'above') {
+          updated = [...others.slice(0, targetIdx), draggedPath, ...others.slice(targetIdx)];
+        } else if (position === 'below') {
+          updated = [...others.slice(0, targetIdx + 1), draggedPath, ...others.slice(targetIdx + 1)];
+        } else {
+          updated = [...others, draggedPath];
+        }
       }
 
       const final = updated.map(p => {
