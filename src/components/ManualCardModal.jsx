@@ -348,15 +348,16 @@ export default function ManualCardModal({
   const [isMinimized, setIsMinimized] = useState(false);
 
   const dragCounterRef = useRef(0);
+  const prevIsOpenRef = useRef(false);
   const clozeRef = useRef(null);
   const fileInputRef = useRef(null);
 
   const dark = themeMode === 'dark';
   const isEdit = Boolean(initialCard?.id);
 
-  // Initialize form state when opened
+  // Initialize form state ONLY when modal transitions from closed to open
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !prevIsOpenRef.current) {
       if (initialCard) {
         const hasImg = Boolean(initialCard.pageId || initialCard.imageUrl || initialCard.base64 || initialCard.customImage || initialCard.has_image);
         setForm({
@@ -386,8 +387,9 @@ export default function ManualCardModal({
       setIsMinimized(false);
       dragCounterRef.current = 0;
     }
+    prevIsOpenRef.current = isOpen;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, defaultDeck]);
+  }, [isOpen, initialCard]);
 
   // Set image state helper
   const applyImageState = (imageSrc) => {
