@@ -1,11 +1,13 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Plus, Layers, Image as ImageIcon, Folder, Tag, Save, ChevronDown,
-  BookOpen, Edit3, Scissors, RefreshCw, Check, AlertCircle
+  BookOpen, Edit3, Scissors, RefreshCw, Check, AlertCircle, Upload, FileImage
 } from 'lucide-react';
 
+// ──────────────────────────────────────────────────────────────────────────────
 // Helpers
+// ──────────────────────────────────────────────────────────────────────────────
 function nextClozeOrdinal(text) {
   const matches = [...(text || '').matchAll(/\{\{c(\d+)::/g)];
   if (matches.length === 0) return 1;
@@ -13,54 +15,213 @@ function nextClozeOrdinal(text) {
   return max + 1;
 }
 
-const clamp1000 = v => Math.max(0, Math.min(1000, Math.round(v)));
+// ──────────────────────────────────────────────────────────────────────────────
+// NeumorphicSelect Component (Custom Neumorphic Dropdown)
+// ──────────────────────────────────────────────────────────────────────────────
+function NeumorphicSelect({
+  value,
+  onChange,
+  options = [],
+  themeMode = 'light',
+  placeholder = 'Select option...',
+  icon: IconComponent,
+  allowCustomInput = false,
+  customInputPlaceholder = 'Type custom path...'
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isCustomMode, setIsCustomMode] = useState(false);
+  const [customVal, setCustomVal] = useState('');
+  const ref = useRef(null);
+  const dark = themeMode === 'dark';
 
-// CropOverlay Component
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (ref.current && !ref.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedOption = options.find(o => String(o.value) === String(value));
+
+  return (
+    <div ref={ref} className="relative w-full text-left">
+      {isCustomMode ? (
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={customVal}
+            onChange={e => setCustomVal(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                if (customVal.trim()) {
+                  onChange(customVal.trim());
+                  setIsCustomMode(false);
+                }
+              }
+            }}
+            placeholder={customInputPlaceholder}
+            autoFocus
+            className={`w-full p-2.5 rounded-xl text-xs font-mono font-bold outline-none border transition ${
+              dark ? 'neu-pressed-dark text-white border-blue-500/50' : 'neu-pressed-light text-gray-800 border-blue-400'
+            }`}
+          />
+          <button
+            type="button"
+            onClick={() => {
+              if (customVal.trim()) onChange(customVal.trim());
+              setIsCustomMode(false);
+            }}
+            className="px-3 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold shrink-0 hover:bg-blue-700 transition"
+          >
+            Done
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsCustomMode(false)}
+            className={`px-2.5 py-2 rounded-xl text-xs font-bold shrink-0 transition ${
+              dark ? 'neu-btn-dark text-gray-400' : 'neu-btn-light text-gray-500'
+            }`}
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className={`w-full p-3 rounded-xl flex items-center justify-between text-xs font-bold transition-all cursor-pointer border ${
+            dark
+              ? 'neu-pressed-dark text-white border-gray-800 hover:border-gray-700'
+              : 'neu-pressed-light text-gray-800 border border-gray-200/80 hover:border-gray-300'
+          }`}
+        >
+          <div className="flex items-center gap-2 truncate pr-2">
+            {IconComponent && <IconComponent className="w-3.5 h-3.5 text-blue-500 shrink-0" />}
+            <span className="truncate">
+              {selectedOption ? selectedOption.label : (value || placeholder)}
+            </span>
+          </div>
+          <ChevronDown className={`w-4 h-4 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-blue-500' : (dark ? 'text-gray-400' : 'text-gray-500')}`} />
+        </button>
+      )}
+
+      {isOpen && !isCustomMode && (
+        <div
+          className={`absolute left-0 right-0 top-full mt-1.5 z-50 p-1.5 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 ${
+            dark
+              ? 'neu-card-dark border border-gray-800 bg-[#1e232d]/98 backdrop-blur-md'
+              : 'neu-card-light border border-gray-200 bg-white/98 backdrop-blur-md'
+          }`}
+        >
+          <div className="max-h-60 overflow-y-auto custom-scrollbar space-y-1" style={{ scrollbarWidth: 'none' }}>
+            {options.map((opt) => {
+              const isSelected = String(opt.value) === String(value);
+              return (
+                <button
+                  key={opt.value || opt.label}
+                  type="button"
+                  onClick={() => {
+                    onChange(opt.value);
+                    setIsOpen(false);
+                  }}
+                  className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold flex items-center justify-between transition ${
+                    isSelected
+                      ? (dark ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600')
+                      : (dark ? 'hover:bg-gray-800/60 text-gray-300' : 'hover:bg-gray-100 text-gray-700')
+                  }`}
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    {opt.icon && <opt.icon className="w-3.5 h-3.5 text-blue-400 shrink-0" />}
+                    <span className="truncate">{opt.label}</span>
+                  </div>
+                  {isSelected && <Check className="w-3.5 h-3.5 text-blue-500 shrink-0 ml-2" />}
+                </button>
+              );
+            })}
+
+            {allowCustomInput && (
+              <button
+                type="button"
+                onClick={() => {
+                  setCustomVal('');
+                  setIsCustomMode(true);
+                  setIsOpen(false);
+                }}
+                className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition text-blue-500 ${
+                  dark ? 'hover:bg-blue-500/10' : 'hover:bg-blue-50'
+                }`}
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Create Custom Folder Path...</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Robust 1:1 Zero-Drift Image Crop Overlay Component
+// ──────────────────────────────────────────────────────────────────────────────
 function CropOverlay({ imageSrc, imgBox, onChange }) {
   const containerRef = useRef(null);
   const isDragging = useRef(false);
-  const dragStart = useRef({ x: 0, y: 0 });
   const dragHandle = useRef(null);
-  const boxRef = useRef(imgBox);
-
-  useEffect(() => { boxRef.current = imgBox; }, [imgBox]);
-
-  const getPct = useCallback((e) => {
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect) return { x: 0, y: 0 };
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    return {
-      x: clamp1000(((clientX - rect.left) / rect.width) * 1000),
-      y: clamp1000(((clientY - rect.top) / rect.height) * 1000),
-    };
-  }, []);
+  const startMouse = useRef({ x: 0, y: 0 });
+  const startBox = useRef({ xmin: 100, xmax: 900, ymin: 100, ymax: 700 });
+  const containerSize = useRef({ w: 1, h: 1 });
 
   const onMouseMove = useCallback((e) => {
     if (!isDragging.current) return;
     if (e.cancelable) e.preventDefault();
-    const cur = getPct(e);
-    const dx = cur.x - dragStart.current.x;
-    const dy = cur.y - dragStart.current.y;
-    dragStart.current = cur;
-    const b = { ...boxRef.current };
-    const h = dragHandle.current;
-    if (h === 'move') {
-      const w = b.xmax - b.xmin;
-      const ht = b.ymax - b.ymin;
-      b.xmin = clamp1000(b.xmin + dx);
-      b.xmax = clamp1000(b.xmin + w);
-      b.ymin = clamp1000(b.ymin + dy);
-      b.ymax = clamp1000(b.ymin + ht);
+
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+    const deltaX = ((clientX - startMouse.current.x) / containerSize.current.w) * 1000;
+    const deltaY = ((clientY - startMouse.current.y) / containerSize.current.h) * 1000;
+
+    const sb = startBox.current;
+    const handle = dragHandle.current;
+    let b = { ...sb };
+
+    if (handle === 'move') {
+      const boxW = sb.xmax - sb.xmin;
+      const boxH = sb.ymax - sb.ymin;
+
+      let newXmin = Math.max(0, Math.min(1000 - boxW, sb.xmin + deltaX));
+      let newYmin = Math.max(0, Math.min(1000 - boxH, sb.ymin + deltaY));
+
+      b = {
+        xmin: Math.round(newXmin),
+        ymin: Math.round(newYmin),
+        xmax: Math.round(newXmin + boxW),
+        ymax: Math.round(newYmin + boxH),
+      };
     } else {
-      if (h.includes('e')) b.xmax = clamp1000(Math.max(b.xmin + 20, b.xmax + dx));
-      if (h.includes('w')) b.xmin = clamp1000(Math.min(b.xmax - 20, b.xmin + dx));
-      if (h.includes('s')) b.ymax = clamp1000(Math.max(b.ymin + 20, b.ymax + dy));
-      if (h.includes('n')) b.ymin = clamp1000(Math.min(b.ymax - 20, b.ymin + dy));
+      const MIN_SIZE = 40;
+      if (handle.includes('w')) {
+        b.xmin = Math.round(Math.max(0, Math.min(sb.xmax - MIN_SIZE, sb.xmin + deltaX)));
+      }
+      if (handle.includes('e')) {
+        b.xmax = Math.round(Math.min(1000, Math.max(sb.xmin + MIN_SIZE, sb.xmax + deltaX)));
+      }
+      if (handle.includes('n')) {
+        b.ymin = Math.round(Math.max(0, Math.min(sb.ymax - MIN_SIZE, sb.ymin + deltaY)));
+      }
+      if (handle.includes('s')) {
+        b.ymax = Math.round(Math.min(1000, Math.max(sb.ymin + MIN_SIZE, sb.ymax + deltaY)));
+      }
     }
-    boxRef.current = b;
+
     onChange(b);
-  }, [getPct, onChange]);
+  }, [onChange]);
 
   const onMouseUp = useCallback(() => {
     isDragging.current = false;
@@ -72,14 +233,25 @@ function CropOverlay({ imageSrc, imgBox, onChange }) {
 
   const onMouseDown = useCallback((e, handle) => {
     e.preventDefault();
+    e.stopPropagation();
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
     isDragging.current = true;
     dragHandle.current = handle;
-    dragStart.current = getPct(e);
+
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+    startMouse.current = { x: clientX, y: clientY };
+    startBox.current = { ...imgBox };
+    containerSize.current = { w: Math.max(1, rect.width), h: Math.max(1, rect.height) };
+
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
     window.addEventListener('touchmove', onMouseMove, { passive: false });
     window.addEventListener('touchend', onMouseUp);
-  }, [getPct, onMouseMove, onMouseUp]);
+  }, [imgBox, onMouseMove, onMouseUp]);
 
   if (!imageSrc) return null;
 
@@ -88,17 +260,31 @@ function CropOverlay({ imageSrc, imgBox, onChange }) {
   const top  = `${ymin / 10}%`;
   const w    = `${(xmax - xmin) / 10}%`;
   const h    = `${(ymax - ymin) / 10}%`;
-  const handleStyle = 'absolute w-4 h-4 rounded-full bg-blue-500 border-2 border-white shadow-lg cursor-pointer z-10 -translate-x-1/2 -translate-y-1/2';
+
+  const handleStyle = 'absolute w-4 h-4 rounded-full bg-blue-500 border-2 border-white shadow-xl cursor-pointer z-20 -translate-x-1/2 -translate-y-1/2 hover:scale-125 transition-transform';
 
   return (
-    <div ref={containerRef} className="relative w-full select-none overflow-hidden rounded-xl" style={{ touchAction: 'none' }}>
-      <img src={imageSrc} alt="source" className="w-full h-auto block rounded-xl" draggable={false} />
+    <div ref={containerRef} className="relative w-full select-none overflow-hidden rounded-2xl border border-gray-700/50 shadow-inner bg-black/80" style={{ touchAction: 'none' }}>
+      <img src={imageSrc} alt="source" className="w-full h-auto block rounded-2xl opacity-90" draggable={false} />
+      
+      {/* Dark overlay outside crop */}
+      <div className="absolute inset-0 bg-black/50 pointer-events-none" style={{
+        clipPath: `polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, ${left} ${top}, ${left} calc(${top} + ${h}), calc(${left} + ${w}) calc(${top} + ${h}), calc(${left} + ${w}) ${top}, ${left} ${top})`
+      }} />
+
+      {/* Crop Box */}
       <div
-        className="absolute border-2 border-blue-400 cursor-move"
+        className="absolute border-2 border-blue-400 bg-blue-500/10 cursor-move shadow-[0_0_15px_rgba(59,130,246,0.3)]"
         style={{ left, top, width: w, height: h }}
         onMouseDown={e => onMouseDown(e, 'move')}
         onTouchStart={e => onMouseDown(e, 'move')}
       >
+        {/* Grid lines */}
+        <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 pointer-events-none opacity-40">
+          {[...Array(9)].map((_, i) => <div key={i} className="border border-blue-200/50" />)}
+        </div>
+
+        {/* Resize Handles */}
         {[
           { pos: { top: '0%',   left: '0%'   }, handle: 'nw', cursor: 'nw-resize' },
           { pos: { top: '0%',   left: '100%' }, handle: 'ne', cursor: 'ne-resize' },
@@ -109,23 +295,27 @@ function CropOverlay({ imageSrc, imgBox, onChange }) {
             key={handle}
             className={handleStyle}
             style={{ ...pos, cursor }}
-            onMouseDown={e => { e.stopPropagation(); onMouseDown(e, handle); }}
-            onTouchStart={e => { e.stopPropagation(); onMouseDown(e, handle); }}
+            onMouseDown={e => onMouseDown(e, handle)}
+            onTouchStart={e => onMouseDown(e, handle)}
           />
         ))}
       </div>
-      <div className="absolute bottom-2 right-2 bg-black/60 text-white text-[9px] font-mono px-2 py-1 rounded-lg backdrop-blur-sm pointer-events-none">
-        [{Math.round(xmin)},{Math.round(ymin)}] - [{Math.round(xmax)},{Math.round(ymax)}]
+
+      <div className="absolute bottom-2.5 right-2.5 bg-black/80 text-white text-[9px] font-mono px-2.5 py-1 rounded-lg backdrop-blur-md border border-white/10 pointer-events-none shadow-md">
+        Crop: [${Math.round(xmin)},${Math.round(ymin)}] → [${Math.round(xmax)},${Math.round(ymax)}]
       </div>
     </div>
   );
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+// Main ManualCardModal Component
+// ──────────────────────────────────────────────────────────────────────────────
 export default function ManualCardModal({
   isOpen,
   onClose,
   onSave,
-  themeMode,
+  themeMode = 'light',
   defaultDeck = '',
   deckPaths = [],
   libraryPages = [],
@@ -133,12 +323,13 @@ export default function ManualCardModal({
 }) {
   const EMPTY = {
     type: 'Basic',
-    deck: defaultDeck,
+    deck: defaultDeck || (deckPaths[0] || 'General'),
     front: '',
     back: '',
     text: '',
     tags: [],
     pageId: '',
+    customImage: null,
     imgBox: { ymin: 100, xmin: 100, ymax: 700, xmax: 900 },
     isManual: true,
     source: 'manual',
@@ -149,10 +340,12 @@ export default function ManualCardModal({
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
   const clozeRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const dark = themeMode === 'dark';
   const isEdit = Boolean(initialCard?.id);
 
+  // Initialize form state when opened
   useEffect(() => {
     if (isOpen) {
       if (initialCard) {
@@ -166,11 +359,12 @@ export default function ManualCardModal({
             xmax: initialCard.xmax ?? 900,
           },
           pageId: initialCard.pageId || '',
+          customImage: initialCard.customImage || initialCard.imageUrl || null,
           isManual: true,
           source: 'manual',
         });
       } else {
-        setForm({ ...EMPTY, deck: defaultDeck });
+        setForm({ ...EMPTY, deck: defaultDeck || (deckPaths[0] || 'General') });
       }
       setErrors({});
       setTagInput('');
@@ -178,12 +372,93 @@ export default function ManualCardModal({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, defaultDeck]);
 
+  // Filter note pages by selected target deck
+  const folderPages = useMemo(() => {
+    if (!form.deck) return libraryPages;
+    return libraryPages.filter(p => p.deck === form.deck);
+  }, [libraryPages, form.deck]);
+
+  // Build deck select options
+  const deckOptions = useMemo(() => {
+    const set = new Set([...deckPaths, form.deck].filter(Boolean));
+    return Array.from(set).map(d => ({ value: d, label: d, icon: Folder }));
+  }, [deckPaths, form.deck]);
+
+  // Build page select options (filtered by deck + Upload Own Image action)
+  const pageOptions = useMemo(() => {
+    const opts = [
+      { value: '', label: '— No page linked —' },
+      { value: '__upload_custom__', label: '📷 Upload Custom Image...', icon: Upload },
+    ];
+    folderPages.forEach(p => {
+      opts.push({
+        value: p.id,
+        label: p.fileName ? `${p.fileName}` : `Page ${p.id.slice(0, 8)}`,
+        icon: FileImage
+      });
+    });
+    if (form.pageId === 'custom_upload' && form.customImage) {
+      opts.splice(1, 0, { value: 'custom_upload', label: 'Custom Uploaded Image', icon: FileImage });
+    }
+    return opts;
+  }, [folderPages, form.pageId, form.customImage]);
+
+  // Find linked image source
   const linkedPage = libraryPages.find(p => p.id === form.pageId);
-  const linkedImageSrc = linkedPage ? (linkedPage.imageUrl || linkedPage.base64) : null;
+  const linkedImageSrc = form.pageId === 'custom_upload'
+    ? form.customImage
+    : (linkedPage ? (linkedPage.imageUrl || linkedPage.base64) : null);
+
+  // Handle deck change: if pageId doesn't belong to new deck, reset page link
+  const handleDeckChange = (newDeck) => {
+    setForm(f => {
+      const isCustom = f.pageId === 'custom_upload';
+      const isPageInNewDeck = libraryPages.some(p => p.id === f.pageId && p.deck === newDeck);
+      return {
+        ...f,
+        deck: newDeck,
+        pageId: (isCustom || isPageInNewDeck) ? f.pageId : ''
+      };
+    });
+    setErrors(er => ({ ...er, deck: '' }));
+  };
+
+  // Handle Page Selection or Custom Image Upload trigger
+  const handlePageSelectChange = (val) => {
+    if (val === '__upload_custom__') {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+        fileInputRef.current.click();
+      }
+      return;
+    }
+    setForm(f => ({ ...f, pageId: val }));
+  };
+
+  // File Upload Handler
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const base64 = evt.target?.result;
+      if (base64) {
+        setForm(f => ({
+          ...f,
+          pageId: 'custom_upload',
+          customImage: base64,
+          imageUrl: base64,
+          imgBox: { ymin: 100, xmin: 100, ymax: 700, xmax: 900 }
+        }));
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   const validate = () => {
     const e = {};
-    if (!form.deck.trim()) e.deck = 'Target deck is required.';
+    if (!form.deck || !form.deck.trim()) e.deck = 'Target deck is required.';
     if (form.type === 'Cloze' && !form.text.trim()) e.text = 'Cloze content is required.';
     if (form.type === 'Basic' && !form.front.trim()) e.front = 'Front is required.';
     if (form.type === 'Basic' && !form.back.trim()) e.back = 'Back is required.';
@@ -222,7 +497,7 @@ export default function ManualCardModal({
     const selected = currentText.slice(start, end);
     if (!selected.trim()) return;
     const n = nextClozeOrdinal(currentText);
-    const wrapped = `{{c${n}::${selected}}}`;
+    const wrapped = `{{\c${n}::${selected}}}`;
     const newText = currentText.slice(0, start) + wrapped + currentText.slice(end);
     setForm(f => ({ ...f, text: newText }));
     setTimeout(() => {
@@ -267,6 +542,15 @@ export default function ManualCardModal({
           transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
           className={`${dark ? 'neu-card-dark text-white border border-gray-800' : 'neu-card-light text-gray-900 border border-white'} rounded-3xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[92vh]`}
         >
+          {/* Hidden File Input */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+            accept="image/*"
+            className="hidden"
+          />
+
           {/* Header */}
           <div className={`px-6 py-5 border-b flex items-center justify-between shrink-0 ${dark ? 'border-gray-800' : 'border-gray-200/60'}`}>
             <div className="flex items-center gap-3">
@@ -278,7 +562,7 @@ export default function ManualCardModal({
                   {isEdit ? 'Edit Card' : 'Create Manual Flashcard'}
                 </h3>
                 <p className={`text-[10px] mt-0.5 ${dark ? 'text-gray-500' : 'text-gray-400'}`}>
-                  Saved directly to your local library
+                  Saved directly to your local database
                 </p>
               </div>
             </div>
@@ -293,15 +577,16 @@ export default function ManualCardModal({
           </div>
 
           {/* Body */}
-          <div className="p-6 overflow-y-auto flex-grow space-y-5" style={{ scrollbarWidth: 'none' }}>
+          <div className="p-6 overflow-y-auto flex-grow space-y-5 custom-scrollbar" style={{ scrollbarWidth: 'none' }}>
 
-            {/* Card Type */}
+            {/* Card Type Toggle */}
             <div>
               <label className={lbl}>Card Type</label>
               <div className="flex gap-2">
                 {['Basic', 'Cloze'].map(type => (
                   <button
                     key={type}
+                    type="button"
                     onClick={() => setForm(f => ({ ...f, type }))}
                     className={`flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition border flex items-center justify-center gap-1.5 ${
                       form.type === type
@@ -320,24 +605,21 @@ export default function ManualCardModal({
               </div>
             </div>
 
-            {/* Target Deck */}
+            {/* Target Deck (Custom Neumorphic Select) */}
             <div>
               <label className={lbl}>
                 <Folder className="w-3 h-3 inline mr-1" />Target Deck / Folder
               </label>
-              <div className="relative">
-                <input
-                  list="deck-datalist-manual"
-                  value={form.deck}
-                  onChange={e => { setForm(f => ({ ...f, deck: e.target.value })); setErrors(er => ({ ...er, deck: '' })); }}
-                  placeholder="e.g. Cerebellum or Cerebellum::Anatomy"
-                  className={`${inp} pr-8`}
-                />
-                <datalist id="deck-datalist-manual">
-                  {deckPaths.map(d => <option key={d} value={d} />)}
-                </datalist>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
-              </div>
+              <NeumorphicSelect
+                value={form.deck}
+                onChange={handleDeckChange}
+                options={deckOptions}
+                themeMode={themeMode}
+                placeholder="Select target deck..."
+                icon={Folder}
+                allowCustomInput
+                customInputPlaceholder="Enter new folder path (e.g. Brain::Anatomy)..."
+              />
               {errors.deck && <p className={errTxt}><AlertCircle className="w-3 h-3 inline mr-1" />{errors.deck}</p>}
             </div>
 
@@ -349,6 +631,7 @@ export default function ManualCardModal({
                     <Scissors className="w-3 h-3 inline mr-1" />Cloze Content
                   </label>
                   <button
+                    type="button"
                     onClick={handleInsertCloze}
                     title="Highlight text then click to wrap in {{c1::...}}"
                     className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider transition ${
@@ -362,7 +645,7 @@ export default function ManualCardModal({
                 </div>
                 <textarea
                   ref={clozeRef}
-                  rows={6}
+                  rows={5}
                   value={form.text}
                   onChange={e => { setForm(f => ({ ...f, text: e.target.value })); setErrors(er => ({ ...er, text: '' })); }}
                   placeholder="Type content here, highlight a word/phrase and click Cloze button to insert deletion markers..."
@@ -400,60 +683,60 @@ export default function ManualCardModal({
               </div>
             )}
 
-            {/* Link to Page */}
+            {/* Link to Note Page (Neumorphic Dropdown + Deck Filter + Custom Upload) */}
             <div className={`rounded-2xl p-4 border space-y-3 ${dark ? 'border-gray-800 bg-white/3' : 'border-gray-200/60 bg-gray-50/60'}`}>
               <div className="flex items-center justify-between">
                 <label className={`${lbl} mb-0 flex items-center gap-1.5`}>
                   <ImageIcon className="w-3 h-3 text-emerald-500" />
                   Link to Note Page
-                  <span className={`text-[8px] px-1.5 py-0.5 rounded-full ${dark ? 'bg-gray-700 text-gray-400' : 'bg-gray-200 text-gray-500'}`}>optional</span>
+                  <span className={`text-[8px] px-2 py-0.5 rounded-full font-bold ${dark ? 'bg-gray-800 text-gray-400' : 'bg-gray-200 text-gray-600'}`}>
+                    {folderPages.length} pages in folder
+                  </span>
                 </label>
                 {form.pageId && (
                   <button
-                    onClick={() => setForm(f => ({ ...f, pageId: '' }))}
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, pageId: '', customImage: null }))}
                     className={`text-[10px] font-bold flex items-center gap-1 ${dark ? 'text-red-400 hover:text-red-300' : 'text-red-500 hover:text-red-700'}`}
                   >
                     <X className="w-3 h-3" />Unlink
                   </button>
                 )}
               </div>
-              <div className="relative">
-                <select
-                  value={form.pageId}
-                  onChange={e => setForm(f => ({ ...f, pageId: e.target.value }))}
-                  className={`${inp} appearance-none pr-8`}
-                >
-                  <option value="">— No page linked —</option>
-                  {libraryPages.map(p => (
-                    <option key={p.id} value={p.id}>
-                      {p.fileName || p.id}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
-              </div>
 
+              {/* Neumorphic Page Select Dropdown */}
+              <NeumorphicSelect
+                value={form.pageId}
+                onChange={handlePageSelectChange}
+                options={pageOptions}
+                themeMode={themeMode}
+                placeholder="Select page from current folder..."
+                icon={ImageIcon}
+              />
+
+              {/* Crop Tool Overlay for Linked or Custom Image */}
               <AnimatePresence>
                 {form.pageId && linkedImageSrc && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
-                    className="overflow-hidden space-y-2"
+                    className="overflow-hidden space-y-2 pt-2"
                   >
                     <div className="flex items-center justify-between">
                       <p className={`text-[10px] font-black uppercase tracking-wider ${dark ? 'text-gray-400' : 'text-gray-500'}`}>
                         Set Image Crop Region
                       </p>
                       <button
+                        type="button"
                         onClick={() => setForm(f => ({ ...f, imgBox: { ymin: 100, xmin: 100, ymax: 700, xmax: 900 } }))}
                         className={`flex items-center gap-1 text-[10px] font-bold ${dark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-500 hover:text-blue-700'}`}
                       >
-                        <RefreshCw className="w-3 h-3" />Reset
+                        <RefreshCw className="w-3 h-3" />Reset Box
                       </button>
                     </div>
                     <p className={`text-[9px] ${dark ? 'text-gray-500' : 'text-gray-400'}`}>
-                      Drag the box or handles to define the crop area exported with this card.
+                      Drag the box or corner handles to set the exact crop region exported with this card.
                     </p>
                     <CropOverlay
                       imageSrc={linkedImageSrc}
@@ -463,12 +746,6 @@ export default function ManualCardModal({
                   </motion.div>
                 )}
               </AnimatePresence>
-
-              {form.pageId && !linkedImageSrc && (
-                <p className={`text-[10px] ${dark ? 'text-gray-500' : 'text-gray-400'}`}>
-                  This page has no image preview but the card will be linked by ID.
-                </p>
-              )}
             </div>
 
             {/* Tags */}
@@ -482,7 +759,7 @@ export default function ManualCardModal({
                   return (
                     <span key={tag} className={`flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-full font-bold ${dark ? 'neu-pressed-dark text-blue-400 border border-blue-500/30' : 'neu-pressed-light text-blue-600 border border-blue-100'}`}>
                       {display}
-                      <button onClick={() => removeTag(tag)} className="hover:text-red-400 transition">
+                      <button type="button" onClick={() => removeTag(tag)} className="hover:text-red-400 transition">
                         <X className="w-2.5 h-2.5" />
                       </button>
                     </span>
@@ -508,12 +785,14 @@ export default function ManualCardModal({
           {/* Footer */}
           <div className={`px-6 py-5 border-t flex justify-between items-center gap-4 shrink-0 ${dark ? 'border-gray-800' : 'border-gray-200/60'}`}>
             <button
+              type="button"
               onClick={onClose}
               className={`px-6 py-2.5 text-xs font-bold rounded-2xl transition ${dark ? 'neu-btn-dark text-gray-300' : 'neu-btn-light text-gray-600'}`}
             >
               Cancel
             </button>
             <button
+              type="button"
               onClick={handleSave}
               disabled={saving}
               className={`flex items-center gap-2 px-8 py-2.5 text-xs font-black uppercase tracking-wider rounded-2xl transition disabled:opacity-60 ${dark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'}`}
