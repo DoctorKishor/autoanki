@@ -25936,7 +25936,7 @@ Return your response strictly as a JSON object matching this schema:
                               </div>
                             </div>
 
-                            <div className="flex-grow overflow-y-auto p-3.5 pr-4 custom-scrollbar">
+                            <div className="flex-grow overflow-y-auto p-4 pt-2 pb-16 pr-4 custom-scrollbar">
                               {searchQuery.trim() ? (
                                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                                   <div className="flex items-center justify-between">
@@ -26600,7 +26600,7 @@ Return your response strictly as a JSON object matching this schema:
                                     <h3 className="text-sm font-black text-gray-400 mb-4 flex items-center gap-2 uppercase tracking-widest text-[10px]">
                                       <Layers className="w-4 h-4 text-blue-500" /> All Cards in Folder ({pageCards.length})
                                     </h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 p-2.5">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 p-3 pb-14">
                                       <AnimatePresence mode="popLayout">
                                         {pageCards.map((card, idx) => {
                                           const isCardHovered = hoveredCardIdFromImage === card.id;
