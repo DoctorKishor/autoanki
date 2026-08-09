@@ -17141,21 +17141,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
           await saveLocalCards(updatedExportCards);
         }
 
-        if (user && db) {
-          try {
-            const batch = writeBatch(db);
-            cardsToUse.forEach(card => {
-              const cardRef = doc(db, 'artifacts', appId, 'users', user.uid, 'flashcards', card.id);
-              batch.set(cardRef, {
-                exported: true,
-                exportedAt: nowExportTime
-              }, { merge: true });
-            });
-            await batch.commit();
-          } catch (cloudErr) {
-            console.warn("[CloudSync] Export tracking sync to cloud failed (saved locally):", cloudErr);
-          }
-        }
+        // Exporter status persisted locally to IndexedDB via saveLocalCards above
 
         setIsExporting(false);
         setIsExportDialogOpen(false);
@@ -17383,21 +17369,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       await saveLocalCards(updatedExportCards);
     }
 
-    if (user && db) {
-      try {
-        const batch = writeBatch(db);
-        cardsToUse.forEach(card => {
-          const cardRef = doc(db, 'artifacts', appId, 'users', user.uid, 'flashcards', card.id);
-          batch.set(cardRef, {
-            exported: true,
-            exportedAt: nowExportTime
-          }, { merge: true });
-        });
-        await batch.commit();
-      } catch (trackErr) {
-        console.warn("[CloudSync] Export tracking update failed (saved locally):", trackErr);
-      }
-    }
+    // Exporter status persisted locally to IndexedDB via saveLocalCards above
 
     setIsExportDialogOpen(false);
     setExportSuccessGuide({
@@ -17743,19 +17715,7 @@ Return your response strictly as a JSON object matching this schema:
         // 2. Persist to IndexedDB (offline local storage)
         await saveLocalCards(updatedCardsList);
 
-        // 3. Optional background cloud sync (if online and logged in)
-        if (user && db) {
-          try {
-            const batch = writeBatch(db);
-            updatedCardsList.forEach(card => {
-              const cardDoc = doc(db, 'artifacts', appId, 'users', user.uid, 'flashcards', card.id);
-              batch.set(cardDoc, { tags: card.tags, folderTagged: card.folderTagged, aiTagged: card.aiTagged }, { merge: true });
-            });
-            await batch.commit();
-          } catch (cloudErr) {
-            console.warn("[CloudSync] Auto-tag cloud sync failed (saved locally to IndexedDB):", cloudErr);
-          }
-        }
+        // Auto-tagged tags persisted locally to IndexedDB via saveLocalCards above
 
         setOperationProgress({ show: false, title: '', message: '', current: 0, total: 0 });
         alert(`Successfully auto-tagged ${updatedCardsList.length} cards locally!`);
@@ -31019,13 +30979,17 @@ Return your response strictly as a JSON object matching this schema:
                                   };
 
                                   const handleKeepBoth = async () => {
-                                    if (!user) return;
                                     try {
-                                      const docRefA = doc(db, 'artifacts', appId, 'users', user.uid, 'flashcards', cardA.id);
-                                      await setDoc(docRefA, { keepBoth: true }, { merge: true });
+                                      const cardAUpdated = { ...cardA, keepBoth: true };
+                                      const cardBUpdated = { ...cardB, keepBoth: true };
 
-                                      const docRefB = doc(db, 'artifacts', appId, 'users', user.uid, 'flashcards', cardB.id);
-                                      await setDoc(docRefB, { keepBoth: true }, { merge: true });
+                                      setCards(prev => prev.map(c => {
+                                        if (c.id === cardA.id) return cardAUpdated;
+                                        if (c.id === cardB.id) return cardBUpdated;
+                                        return c;
+                                      }));
+
+                                      await saveLocalCards([cardAUpdated, cardBUpdated]);
 
                                       setIgnoredConflicts(prev => {
                                         const next = new Set(prev);
@@ -31037,19 +31001,20 @@ Return your response strictly as a JSON object matching this schema:
                                         setSelectedConflictIndex(prev => prev - 1);
                                       }
                                     } catch (err) {
-                                      alert("Failed to save decision to the cloud: " + err.message);
+                                      console.error("[LocalDB] Failed to save keepBoth decision:", err);
+                                      alert("Failed to save decision locally: " + err.message);
                                     }
                                   };
 
                                   const handleMerge = async () => {
-                                    if (!user) return;
                                     try {
-                                      const docRefA = doc(db, 'artifacts', appId, 'users', user.uid, 'flashcards', cardA.id);
                                       const mergedBack = `${cardA.back || ''}\n\n--- MERGED ADDITIONAL DETAILS ---\n${cardB.back || cardB.text || ''}`;
-                                      await setDoc(docRefA, { back: mergedBack }, { merge: true });
+                                      const cardAUpdated = { ...cardA, back: mergedBack };
 
-                                      const docRefB = doc(db, 'artifacts', appId, 'users', user.uid, 'flashcards', cardB.id);
-                                      await deleteDoc(docRefB);
+                                      setCards(prev => prev.filter(c => c.id !== cardB.id).map(c => c.id === cardA.id ? cardAUpdated : c));
+
+                                      await saveLocalCard(cardAUpdated);
+                                      await deleteLocalCard(cardB.id);
 
                                       setIgnoredConflicts(prev => {
                                         const next = new Set(prev);
@@ -31061,22 +31026,23 @@ Return your response strictly as a JSON object matching this schema:
                                         setSelectedConflictIndex(prev => prev - 1);
                                       }
                                     } catch (err) {
-                                      alert("Failed to merge cards: " + err.message);
+                                      console.error("[LocalDB] Failed to merge cards:", err);
+                                      alert("Failed to merge cards locally: " + err.message);
                                     }
                                   };
 
                                   const handleRephrase = async () => {
-                                    if (!user) return;
                                     try {
-                                      const docRefB = doc(db, 'artifacts', appId, 'users', user.uid, 'flashcards', cardB.id);
                                       const currentFront = cardB.front || cardB.text || '';
-                                      const refinedFront = `[Context: ${cardB.deck.split('::').pop()}] ${currentFront}`;
+                                      const deckName = (cardB.deck || '').split('::').pop() || 'Card';
+                                      const refinedFront = `[Context: ${deckName}] ${currentFront}`;
+                                      const cardBUpdated = cardB.front
+                                        ? { ...cardB, front: refinedFront }
+                                        : { ...cardB, text: refinedFront };
 
-                                      if (cardB.front) {
-                                        await setDoc(docRefB, { front: refinedFront }, { merge: true });
-                                      } else {
-                                        await setDoc(docRefB, { text: refinedFront }, { merge: true });
-                                      }
+                                      setCards(prev => prev.map(c => c.id === cardB.id ? cardBUpdated : c));
+
+                                      await saveLocalCard(cardBUpdated);
 
                                       setIgnoredConflicts(prev => {
                                         const next = new Set(prev);
@@ -31088,7 +31054,8 @@ Return your response strictly as a JSON object matching this schema:
                                         setSelectedConflictIndex(prev => prev - 1);
                                       }
                                     } catch (err) {
-                                      alert("Failed to refine card: " + err.message);
+                                      console.error("[LocalDB] Failed to refine card:", err);
+                                      alert("Failed to refine card locally: " + err.message);
                                     }
                                   };
 
