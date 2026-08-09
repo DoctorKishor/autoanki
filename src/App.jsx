@@ -7402,74 +7402,11 @@ export default function App() {
 
     setIsPytPdfScanning(true);
     setIsPdfScanMinimized(false);
-    setPytPdfScanProgress("Splitting PDF into 20-page parts...");
-
-    let uploadedParts = [];
-    const cleanTextbookFolder = materialName.trim().replace(/[^a-zA-Z0-9_\-.]/g, "_");
 
     try {
-      // 2. Split PDF and upload parts
-      try {
-        const fullArrayBuffer = await file.arrayBuffer();
-        const parts = await splitPdfIntoParts(fullArrayBuffer, 20);
-        console.log(`[PDF Split] Split into ${parts.length} parts.`);
-
-        for (let i = 0; i < parts.length; i++) {
-          const part = parts[i];
-          setPytPdfScanProgress(`Uploading part ${part.partNum} of ${parts.length} to GitHub...`);
-          const partBlob = new Blob([part.bytes], { type: 'application/pdf' });
-          const partPath = `textbooks/${cleanTextbookFolder}/part_${part.partNum}.pdf`;
-          let downloadUrl = "";
-          try {
-            downloadUrl = await uploadPdfToGithub(partBlob, partPath);
-            console.log(`Uploaded part ${part.partNum} to GitHub. URL:`, downloadUrl);
-          } catch (uploadErr) {
-            console.warn(`GitHub upload failed for part ${part.partNum}, trying Firebase Storage...`, uploadErr);
-            setPytPdfScanProgress(`Uploading part ${part.partNum} of ${parts.length} to Firebase Storage...`);
-            const storageRef = ref(storage, `textbooks/${user.uid}/${cleanTextbookFolder}/part_${part.partNum}.pdf`);
-            await uploadBytes(storageRef, partBlob);
-            downloadUrl = await getDownloadURL(storageRef);
-            console.log(`Uploaded part ${part.partNum} to Firebase Storage. URL:`, downloadUrl);
-          }
-          uploadedParts.push({
-            partNum: part.partNum,
-            url: downloadUrl,
-            startPage: part.startPage,
-            endPage: part.endPage
-          });
-        }
-
-        // Save textbook parts metadata to local IndexedDB
-        const textbookCleanId = cleanTextbookFolder.toLowerCase();
-        const totalPagesCount = parts[parts.length - 1].endPage;
-        const textbookMetadata = {
-          id: textbookCleanId,
-          name: materialName.trim(),
-          totalPages: totalPagesCount,
-          parts: uploadedParts.map(p => ({
-            partNum: p.partNum,
-            url: p.url,
-            startPage: p.startPage,
-            endPage: p.endPage
-          }))
-        };
-        const currentMeta = await getLocalTextbooksMetadata();
-        const updatedMeta = [...currentMeta.filter(m => m.id !== textbookCleanId), textbookMetadata];
-        await saveLocalTextbooksMetadata(updatedMeta);
-        setTextbooksMetadata(updatedMeta);
-        console.log("Saved textbook metadata to local DB:", textbookMetadata);
-
-      } catch (err) {
-        console.error("Textbook split/upload failed, falling back to local-only mapping:", err);
-        if (!window.confirm("Textbook upload failed. Would you like to proceed with scanning anyway? (You will only be able to view it on this device).")) {
-          setIsPytPdfScanning(false);
-          return;
-        }
-      }
-
       setPytPdfScanProgress("Loading PDF document pages...");
 
-      // 3. Load PDF via PDF.js
+      // 2. Load PDF via PDF.js directly from in-memory ArrayBuffer
       const arrayBuffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
       const totalPages = pdf.numPages;
@@ -7483,7 +7420,7 @@ export default function App() {
         newPageMappings[topic] = new Set();
       });
 
-      // 4. Batch Process pages
+      // 3. Batch Process pages
       const batchSize = 5;
       const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -7515,7 +7452,7 @@ export default function App() {
 
         if (imagesInBatch.length === 0) continue;
 
-        // 5. Send to Gemini
+        // 4. Send to Gemini
         try {
           const prompt = `You are a medical textbook indexer. You will be given a list of target topics and images of consecutive pages from a textbook.
 For each topic in the target list, determine if it is discussed, explained, or mentioned on any of these pages. Note that topics might not match the query word-for-word, so look for synonyms, clinical concepts, or contextual mentions.
@@ -7593,15 +7530,15 @@ JSON Format:
           console.error(`Failed to scan batch starting at ${pageIdx}:`, err);
         }
 
-        // Wait 4.5 seconds to respect the 15 RPM free tier limit
+        // Wait 4.5 seconds to respect rate limits
         if (pageIdx + batchSize <= totalPages) {
           setPytPdfScanProgress(`Rate limit delay... waiting 4.5s (page ${pageIdx} of ${totalPages})`);
           await sleep(4500);
         }
       }
 
-      // 6. Save the results to Firestore without overwriting other textbook sources
-      setPytPdfScanProgress("Saving page mappings to cloud...");
+      // 5. Save the results to Local IndexedDB
+      setPytPdfScanProgress("Saving page mappings to local database...");
 
       const progressDoc = userPytProgress.find(p => p.id === docId);
       const currentPagesMap = progressDoc ? (progressDoc.pages_map || {}) : {};
@@ -7628,56 +7565,19 @@ JSON Format:
         const previousPages = baseMap[topic] || [];
         const filteredPrevious = previousPages.filter(p => p.source.toLowerCase() !== materialName.trim().toLowerCase());
 
-        if (uploadedParts && uploadedParts.length > 0) {
-          // Group pages by part
-          const pagesByPart = {};
-          sortedPages.forEach(bookPage => {
-            // Translate logical book page to original physical page
-            const physicalPage = bookPage + parsedOffset;
-
-            // Find which part contains this physical page
-            const part = uploadedParts.find(up => physicalPage >= up.startPage && physicalPage <= up.endPage);
-            if (!part) return;
-
-            if (!pagesByPart[part.partNum]) {
-              pagesByPart[part.partNum] = {
-                part,
-                pages: []
-              };
-            }
-            pagesByPart[part.partNum].pages.push(bookPage);
-          });
-
-          const partEntries = Object.values(pagesByPart).map(({ part, pages }) => {
-            return {
-              source: materialName.trim(),
-              pages: pages.join(", "),
-              url: part.url,
-              // offset formula: partOffset = bookOffset - partStartPage + 1
-              offset: parsedOffset - part.startPage + 1
-            };
-          });
-
-          newPagesMap[topic] = [
-            ...filteredPrevious,
-            ...partEntries
-          ];
-        } else {
-          // Local fallback
-          const pagesString = sortedPages.join(", ");
-          newPagesMap[topic] = [
-            ...filteredPrevious,
-            {
-              source: materialName.trim(),
-              pages: pagesString,
-              url: "",
-              offset: parsedOffset
-            }
-          ];
-        }
+        const pagesString = sortedPages.join(", ");
+        newPagesMap[topic] = [
+          ...filteredPrevious,
+          {
+            source: materialName.trim(),
+            pages: pagesString,
+            url: "",
+            offset: parsedOffset
+          }
+        ];
       });
 
-      console.log(`[PDF Scan] Saving pages_map to Local DB. Subject: "${subject}", DocId: "${docId}", Replacing: ${replacingBookName || 'none'}, Topics with matches:`, Object.keys(newPagesMap).filter(k => newPagesMap[k]?.length > 0));
+      console.log(`[PDF Scan] Saving pages_map to Local DB. Subject: "${subject}", DocId: "${docId}", Replacing: ${replacingBookName || 'none'}`);
       setUserPytProgress(prev => prev.map(p => p.id === docId ? { ...p, pages_map: newPagesMap } : p));
 
       await saveLocalPytProgressDoc(docId, {
@@ -7685,7 +7585,7 @@ JSON Format:
         pages_map: newPagesMap
       });
 
-      alert(`Textbook mapping complete! Mapped pages for textbook "${materialName}" successfully.`);
+      alert(`Textbook mapping complete! Page numbers for "${materialName}" successfully extracted and saved locally.`);
     } catch (err) {
       console.error("Textbook scanning pipeline failed:", err);
       alert("Error scanning textbook PDF: " + err.message);
