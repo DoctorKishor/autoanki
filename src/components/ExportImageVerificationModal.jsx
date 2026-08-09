@@ -608,6 +608,8 @@ export default function ExportImageVerificationModal({
 
   if (!isOpen) return null;
 
+  const totalIncludedImages = Object.values(cardConfigs).filter(c => c.includeImage).length;
+
   // Minimized Widget Rendering
   if (isMinimized) {
     return (
@@ -694,7 +696,7 @@ export default function ExportImageVerificationModal({
     onClose();
   };
 
-  const totalIncludedImages = Object.values(cardConfigs).filter(c => c.includeImage).length;
+
 
   return (
     <div className="fixed inset-0 z-[250] flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-md overflow-y-auto">
