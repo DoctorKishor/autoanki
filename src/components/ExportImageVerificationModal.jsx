@@ -292,6 +292,18 @@ function FineTuneCropModal({
 
   return (
     <div className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-md p-2 sm:p-4 animate-in fade-in duration-200">
+      
+      {/* Mobile Floating Preview (renders in empty space above bottom modal) */}
+      {showLivePreview && (
+        <div className="md:hidden absolute top-[4dvh] left-1/2 -translate-x-1/2 w-[70vw] max-w-[280px] aspect-[4/3] bg-black rounded-2xl border border-slate-700/80 overflow-hidden flex flex-col p-1 shadow-2xl z-[310] pointer-events-none animate-in slide-in-from-top-4 duration-300">
+          {cropPreview ? (
+            <img src={cropPreview} alt="Crop Preview" className="w-full h-full object-contain" />
+          ) : (
+            <span className="text-[10px] text-slate-400 m-auto">Previewing...</span>
+          )}
+        </div>
+      )}
+
       <div
         className="w-full max-w-7xl flex flex-col rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden border"
         style={{
@@ -429,32 +441,40 @@ function FineTuneCropModal({
                 <div className="absolute top-1/2 -right-2 -translate-y-1/2 w-2.5 h-8 bg-blue-500 border border-white rounded-full cursor-ew-resize shadow" onMouseDown={(e) => handlePointerDown(e, 'e')} onTouchStart={(e) => handlePointerDown(e, 'e')} />
               </div>
             </div>
-
-            {/* Mobile-optimized floating preview thumbnail overlay (hides layout sidebar on small devices) */}
-            {showLivePreview && (
-              <div className="md:hidden absolute bottom-3 right-3 w-28 sm:w-36 aspect-4/3 bg-black rounded-lg border border-slate-700 overflow-hidden flex flex-col p-0.5 shadow-xl pointer-events-none z-50">
-                {cropPreview ? (
-                  <img src={cropPreview} alt="Crop Preview" className="w-full h-full object-contain" />
-                ) : (
-                  <span className="text-[9px] text-gray-500 m-auto">Previewing...</span>
-                )}
-              </div>
-            )}
           </div>
 
           {/* Live Preview Sidebar (only visible on desktop / tablet) */}
-          <div className="hidden md:flex w-80 lg:w-96 shrink-0 h-full bg-slate-900 border-l border-slate-800 flex-col p-4 gap-3 overflow-y-auto">
-            <span className="text-xs font-black text-gray-300 uppercase tracking-wider flex items-center gap-1.5 shrink-0">
+          <div
+            className="hidden md:flex w-80 lg:w-96 shrink-0 h-full flex-col p-4 gap-3 overflow-y-auto border-l"
+            style={{
+              background: isDark ? '#1a1f26' : '#d2dbe6',
+              borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'
+            }}
+          >
+            <span className={`text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shrink-0 ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
               <Eye className="w-4 h-4 text-blue-400" /> Cropped Result Preview
             </span>
-            <div className="aspect-4/3 min-h-[200px] bg-black rounded-xl overflow-hidden border border-slate-750 flex items-center justify-center p-1 shadow-inner shrink-0">
+            <div
+              className="aspect-4/3 min-h-[200px] rounded-xl overflow-hidden flex items-center justify-center p-1 shadow-inner shrink-0 border"
+              style={{
+                background: isDark ? '#101216' : '#e6ecf5',
+                borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'
+              }}
+            >
               {cropPreview ? (
                 <img src={cropPreview} alt="Crop Preview" className="w-full h-full object-contain" />
               ) : (
                 <span className="text-[10px] text-slate-500">Generating preview...</span>
               )}
             </div>
-            <div className="text-[10px] text-slate-400 font-mono space-y-1 bg-slate-950 p-2.5 rounded-lg border border-slate-850 shrink-0">
+            <div
+              className="text-[10px] font-mono space-y-1 p-2.5 rounded-xl shrink-0 border"
+              style={{
+                background: isDark ? '#121418' : '#e6ecf5',
+                color: isDark ? '#94a3b8' : '#475569',
+                borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'
+              }}
+            >
               <div className="flex justify-between"><span>Top: {ymin}</span> <span>Left: {xmin}</span></div>
               <div className="flex justify-between"><span>Bottom: {ymax}</span> <span>Right: {xmax}</span></div>
             </div>
@@ -1035,6 +1055,7 @@ export default function ExportImageVerificationModal({
           sourceImageUrl={resolveCardImageSrc(fineTuneState.card)}
           currentImgBox={fineTuneState.currentImgBox}
           onSaveCrop={(newBox) => handleSaveCrop(fineTuneState.cardId, newBox)}
+          themeMode={themeMode}
         />
       )}
     </div>
