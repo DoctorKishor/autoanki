@@ -24777,7 +24777,7 @@ Return your response strictly as a JSON object matching this schema:
                           className={`neu-action-item ${settingsThemeMode === 'dark' ? 'dark-theme' : 'light-theme'} ${isActive ? 'active' : ''} w-full flex items-center gap-3 px-2 py-1.5 rounded-2xl group relative`}
                         >
                           <div className="neu-action-icon-box">
-                            <IconComp className={`w-5 h-5 shrink-0 ${item.id === 'export' && isActive ? 'animate-bounce' : ''}`} />
+                            <IconComp className="w-5 h-5 shrink-0" />
                           </div>
                           {isSidebarExpanded && (
                             <span className={`text-xs font-black tracking-wide truncate transition-colors ${isActive ? (settingsThemeMode === 'dark' ? 'text-blue-400' : 'text-blue-600') : (settingsThemeMode === 'dark' ? 'text-gray-300 group-hover:text-white' : 'text-gray-700 group-hover:text-gray-900')}`}>
