@@ -91,11 +91,11 @@
   - [ ] Workout duration & intensity logs
   - [ ] Live health metrics correlation engine
 
-### 9. 🏷️ PYT Manager (`pytManager`)
-- [ ] **Previous Year Topics Manager**
-  - [ ] NEET PG / INICET question bank tagging
-  - [ ] High-yield topic categorization
-  - [ ] PYT subject mapping
+### [x] 9. 🏷️ PYT Manager (`pytManager`) — [COMPLETED]
+- [x] **Previous Year Topics Manager**
+  - [x] Transferred `pyt_topics` storage completely to IndexedDB (`STORES.PYT_DATA`) via `saveLocalPytTopic` and `getAllLocalPytTopics`
+  - [x] Purged all Firebase Firestore collection references, listeners, and auto-migrations for `pyt_topics`
+  - [x] Rethemed Desktop and Mobile PYT Manager views to dual-themed Neumorphism design system
 
 ### 10. 📝 PYT Logger (`pytLogger`)
 - [ ] **PYT Practice Session Logger**
