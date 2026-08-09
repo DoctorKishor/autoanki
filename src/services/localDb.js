@@ -333,6 +333,48 @@ export async function deleteLocalPage(pageId) {
   return filtered;
 }
 
+// --- CUSTOM PROMPTS STORAGE ---
+export async function getLocalPrompts() {
+  const prompts = await getLocalKV('custom_prompts', []);
+  return prompts || [];
+}
+
+export async function replaceAllLocalPrompts(promptsArray) {
+  const finalArray = Array.isArray(promptsArray) ? promptsArray : [];
+  await setLocalKV('custom_prompts', finalArray);
+  return finalArray;
+}
+
+export async function saveLocalPrompts(promptsInput) {
+  if (!Array.isArray(promptsInput) || promptsInput.length === 0) return getLocalPrompts();
+  const existing = await getLocalPrompts();
+  const merged = [...existing];
+  
+  promptsInput.forEach(p => {
+    const idx = merged.findIndex(item => item.id === p.id);
+    if (idx !== -1) {
+      merged[idx] = { ...merged[idx], ...p };
+    } else {
+      merged.push(p);
+    }
+  });
+  
+  await setLocalKV('custom_prompts', merged);
+  return merged;
+}
+
+export async function saveLocalPrompt(promptObj) {
+  if (!promptObj || !promptObj.id) return null;
+  return saveLocalPrompts([promptObj]);
+}
+
+export async function deleteLocalPrompt(promptId) {
+  const prompts = await getLocalPrompts();
+  const filtered = prompts.filter(p => p.id !== promptId);
+  await replaceAllLocalPrompts(filtered);
+  return filtered;
+}
+
 export default {
   initDB,
   STORES,
@@ -366,5 +408,10 @@ export default {
   saveLocalPages,
   replaceAllLocalPages,
   saveLocalPage,
-  deleteLocalPage
+  deleteLocalPage,
+  getLocalPrompts,
+  replaceAllLocalPrompts,
+  saveLocalPrompts,
+  saveLocalPrompt,
+  deleteLocalPrompt
 };

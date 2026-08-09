@@ -34,7 +34,7 @@ import ExportImageVerificationModal from './components/ExportImageVerificationMo
 import ManualCardModal from './components/ManualCardModal';
 import ConflictInspectorModal from './components/ConflictInspectorModal';
 import { cropAndMaskDiagram } from './utils/imageCropper';
-import { getLocalSetting, saveLocalSetting, getLocalCards, saveLocalCards, replaceAllLocalCards, saveLocalCard, deleteLocalCard, getLocalPages, saveLocalPages, replaceAllLocalPages, saveLocalPage, deleteLocalPage, getLocalKV, setLocalKV } from './services/localDb';
+import { getLocalSetting, saveLocalSetting, getLocalCards, saveLocalCards, replaceAllLocalCards, saveLocalCard, deleteLocalCard, getLocalPages, saveLocalPages, replaceAllLocalPages, saveLocalPage, deleteLocalPage, getLocalKV, setLocalKV, getLocalPrompts, saveLocalPrompt, deleteLocalPrompt } from './services/localDb';
 import { motion, AnimatePresence } from 'framer-motion';
 import UiverseButton from './components/UiverseButton';
 import UiverseGlassRadio from './components/UiverseGlassRadio';
@@ -14903,39 +14903,25 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     return basePromptContent;
   }, [generationPromptId, customPrompts, selectedGenerationSubject, pytTopicsList]);
 
-  // --- FETCH CUSTOM PROMPTS & ACTIVE PROMPT SETTING FROM CLOUD ---
+  // --- FETCH CUSTOM PROMPTS & ACTIVE PROMPT SETTING FROM LOCAL DB ---
   useEffect(() => {
-    if (!user || !db) {
-      setCustomPrompts([]);
-      setActivePromptId('default');
-      return;
-    }
-
-    const promptsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'custom_prompts');
-    const unsubscribePrompts = onSnapshot(promptsRef, (snapshot) => {
-      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setCustomPrompts(list);
-    }, (error) => {
-      console.error("Error fetching custom prompts:", error);
-    });
-
-    const activePromptDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'activePrompt');
-    const unsubscribeActivePrompt = onSnapshot(activePromptDocRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        if (data.activePromptId) {
-          setActivePromptId(data.activePromptId);
-        }
+    async function loadLocalPrompts() {
+      try {
+        const list = await getLocalPrompts();
+        setCustomPrompts(list);
+      } catch (err) {
+        console.error("Error loading local prompts from IndexedDB:", err);
       }
-    }, (error) => {
-      console.error("Error fetching active prompt settings:", error);
-    });
 
-    return () => {
-      unsubscribePrompts();
-      unsubscribeActivePrompt();
-    };
-  }, [user]);
+      try {
+        const activeId = await getLocalSetting('activePromptId', 'default');
+        setActivePromptId(activeId || 'default');
+      } catch (err) {
+        console.error("Error loading local active prompt setting from IndexedDB:", err);
+      }
+    }
+    loadLocalPrompts();
+  }, []);
 
   // Keep systemPrompt updated with the active prompt content
   useEffect(() => {
@@ -14967,15 +14953,15 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
 
   // --- CUSTOM PROMPT FUNCTIONS ---
   const saveCustomPrompt = async (id, name, content) => {
-    if (!user || !db) return;
     if (id === 'default') {
       alert("The default prompt is read-only. Please create a custom prompt to save modifications.");
       return;
     }
-    const promptDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'custom_prompts', id);
     try {
-      await setDoc(promptDocRef, { name, content, updatedAt: Date.now() }, { merge: true });
-      alert("Prompt saved to cloud successfully!");
+      const updatedPrompt = { id, name, content, updatedAt: Date.now() };
+      await saveLocalPrompt(updatedPrompt);
+      setCustomPrompts(prev => prev.map(p => p.id === id ? { ...p, ...updatedPrompt } : p));
+      alert("Prompt saved successfully!");
     } catch (error) {
       console.error("Error saving custom prompt:", error);
       alert("Failed to save prompt: " + error.message);
@@ -14983,12 +14969,11 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
   };
 
   const createCustomPrompt = async (name = 'New Custom Prompt', content = DEFAULT_PROMPT) => {
-    if (!user || !db) return;
-    const promptsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'custom_prompts');
     const newId = generateId();
     try {
-      const promptDocRef = doc(promptsRef, newId);
-      await setDoc(promptDocRef, { name, content, createdAt: Date.now(), updatedAt: Date.now() });
+      const newPrompt = { id: newId, name, content, createdAt: Date.now(), updatedAt: Date.now() };
+      await saveLocalPrompt(newPrompt);
+      setCustomPrompts(prev => [...prev, newPrompt]);
       setSelectedPromptId(newId);
       setEditingPromptName(name);
       setEditingPromptContent(content);
@@ -15001,18 +14986,16 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
   };
 
   const deleteCustomPrompt = async (id) => {
-    if (!user || !db) return;
     if (id === 'default') return;
     if (!confirm("Are you sure you want to delete this custom prompt?")) return;
 
     try {
-      const promptDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'custom_prompts', id);
-      await deleteDoc(promptDocRef);
+      await deleteLocalPrompt(id);
+      setCustomPrompts(prev => prev.filter(p => p.id !== id));
 
       // If deleted active prompt, reset active to default
       if (activePromptId === id) {
-        const activePromptDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'activePrompt');
-        await setDoc(activePromptDocRef, { activePromptId: 'default' }, { merge: true });
+        await saveLocalSetting('activePromptId', 'default');
         setActivePromptId('default');
       }
 
@@ -15029,12 +15012,8 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
 
   const selectActivePrompt = async (id) => {
     try {
-      if (user && db) {
-        const activePromptDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'activePrompt');
-        await setDoc(activePromptDocRef, { activePromptId: id }, { merge: true });
-      }
+      await saveLocalSetting('activePromptId', id);
       setActivePromptId(id);
-      saveLocalSetting('activePromptId', id);
 
       let targetContent = DEFAULT_PROMPT;
       if (id !== 'default') {
