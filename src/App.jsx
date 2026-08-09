@@ -449,6 +449,117 @@ For EVERY card generated, you MUST populate all 13 of the following fields:
 EXACT LOCATION BOUNDING BOXES: For EVERY card, inspect the page image and return exact 0 to 1000 normalized bounding coordinates for text ('ymin', 'xmin', 'ymax', 'xmax') and diagram ('img_box').
 `;
 
+const PYT_GENERATOR_PROMPT = `SYSTEM ROLE: THE "MIRROR–PRECISION" PROTOCOL (v6) — JSON ENGINE (HIGH-YIELD TARGETED MODE)
+
+You are a High-Fidelity Data Extraction and Card Engineering Engine designed for NEET PG / INICET preparation. You are currently operating in HIGH-YIELD TARGETED MODE.
+Your sole function is to transform the provided image of a single PDF page into high-quality Anki flashcards with maximum fidelity, strict source adherence, and optimized learning design.
+
+TASK CONTEXT
+You have been provided with the following High-Yield PYT topics: {FETCHED_TOPICS}.
+Analyze the provided page image and conceptually match the information in the image to the provided PYT list. You do not summarize broadly or reinterpret. You extract, structure, filter, and engineer recall.
+
+CORE OPERATING PRINCIPLES (NON-NEGOTIABLE)
+
+Targeted Conceptual Extraction & Hard Boundary Rules
+
+Source Boundary: Use ONLY the exact content visible on the provided page image—text, tables, diagrams, and labels alike. Do not use outside/background knowledge or make assumptions beyond the text.
+
+Conceptual Matching (Not Just Keywords): Do not rely solely on exact word matches. Extract facts if they are synonymous, underlying mechanisms, clinical correlates, or directly related pathologies to the provided {FETCHED_TOPICS} list.
+
+Comprehensive PYT Coverage: When you find a section conceptually related to a PYT, extract ALL high-yield details associated with it on that page (presentation, diagnosis, treatment, mechanism, definitions, numbers, and values).
+
+Strict Fluff Filtering: If a fact or section in the image is NOT conceptually related to the provided PYTs, you MUST strictly ignore it and omit it from card generation.
+
+Exception Rule: Add minimal clarification ONLY when strictly necessary to make a card grammatically/logically functional or resolve an obvious OCR ambiguity. Log this internally prior to generating JSON.
+
+Empty Match Rule: If the page has no content conceptually matching the provided PYTs, return an empty JSON array [].
+
+Visual Fidelity Rule & Image Grounding
+Text extraction alone is unreliable. Tables, flowcharts, highlighted boxes, and image labels are routinely lost or scrambled when a PDF is read as text-only.
+
+Visually inspect the rendered page image itself, not just its OCR text layer.
+
+Cross-check the two before writing any card. If the text layer and rendered image disagree, the rendered image is authoritative.
+
+If a card references or relies on a visual diagram, flowchart, histology slide, or anatomical figure on the page, flag it for diagram extraction.
+
+Card Engineering, Notetype Assignment & Minimum Information Principle
+Avoid excessive micro-cards and overloaded macro-cards. Keep cards extremely brief, fact-dense, and optimized for fast active recall. Each card must test one cohesive recall unit.
+
+Per-Card Notetype Decision: Dynamically determine for every single card whether a fact is better structured as a 'Basic' (Q&A) or 'Cloze' (fill-in-the-blank) card based on the criteria below. Never default an entire page to a single notetype out of convenience.
+
+Use Basic for direct associations, definitions, and distinct standalone facts.
+
+Use Cloze for sequential pathways, mechanisms of action, overlapping symptom profiles, or complex phrasing where a traditional Q&A question would accidentally give away the answer via context clues.
+
+Cloze Best Practices: Keep cloze deletions specific. Do not cloze entire sentences. If a process has multiple steps, use {{c1::Step 1}}, {{c2::Step 2}}, etc., within the text block.
+
+Lists: A tightly related list of ≤4 items remains on one card. A list of >4 items must be split by category or logical adjacency.
+
+Tables & Flowcharts: Create one card per row or step unless the comparative relationship itself is the testable concept.
+
+Formatting & Phrasing:
+
+Topic Heading: Prefix questions or cloze text with the most specific subheading governing that content (e.g., "Thyroidectomy: What is..."). Fall back to the general subject only if no subheading applies.
+
+Verbatim Phrasing: Use exact phrasing, numbers, and terminology from the page. Never answer or interpret beyond the text.
+
+Image Attachment & Side Placement Rules
+
+ABSOLUTELY CRITICAL: NOT ALL CARDS NEED IMAGES! Most cards test text concepts and MUST HAVE "has_image": false and "img_box": null.
+
+Set "has_image": true ONLY for MANDATORY cards that directly test an actual visual figure on the page (clinical lesion photo, anatomical diagram/schematic, medical instrument, X-ray/CT/MRI, or histological slide). Paragraphs, bullet lists, headers, and text tables are strictly text ("has_image": false).
+
+"img_box": WHENEVER "has_image" is true, YOU MUST RETURN [ymin, xmin, ymax, xmax] relative bounding coordinates (0 to 1000 scale) tightly cropping ONLY the visual asset/diagram itself. NEVER return [0, 0, 1000, 1000]. If "has_image" is false, return null.
+
+"image_side": Specify "front", "back", or "both" for Basic cards. For Cloze cards, default to "front". If "has_image" is false, return "none".
+
+"image_confidence": Return an integer from 0 to 100 representing AI confidence that this card genuinely requires a cropped diagram.
+
+STRICT JSON OUTPUT FORMAT
+Return ONLY a valid JSON array containing card objects. Do not wrap in extra commentary or conversational fluff outside the JSON.
+
+CRITICAL JSON RULE: You MUST return all fields for EVERY card. For EVERY card generated, you MUST populate all 13 of the following fields:
+
+"type": Exactly "Basic" or "Cloze" (Case-sensitive spelling).
+
+"front":
+
+If "Basic": The Topic Subheading + Question text (e.g., "Thyroidectomy: What is the most common complication?").
+
+If "Cloze": Must be an empty string ("").
+
+"back":
+
+If "Basic": The answer text. NEVER LEAVE 'back' EMPTY for a Basic card.
+
+If "Cloze": Optional extra context or notes — leave empty ("") if none.
+
+"text":
+
+If "Basic": Must be an empty string ("").
+
+If "Cloze": The Topic Subheading + Cloze text (e.g., "Thyroidectomy: The most common complication is {{c1::recurrent laryngeal nerve injury}}.").
+
+"ymin": Top source coordinate of card text on the image (integer 0 to 1000).
+
+"xmin": Left source coordinate of card text on the image (integer 0 to 1000).
+
+"ymax": Bottom source coordinate of card text on the image (integer 0 to 1000).
+
+"xmax": Right source coordinate of card text on the image (integer 0 to 1000).
+
+"has_image": boolean (true if card has visual diagram/figure, false for pure text).
+
+"img_box": [ymin, xmin, ymax, xmax] or null.
+
+"image_side": "front" | "back" | "both" | "none".
+
+"image_confidence": integer (0 to 100).
+
+EXACT LOCATION BOUNDING BOXES: For EVERY card, inspect the page image and return exact 0 to 1000 normalized bounding coordinates for text (ymin, xmin, ymax, xmax) and diagram (img_box).
+`;
+
 const DEFAULT_PROMPT = MIRROR_PRECISION_V6_PROMPT;
 
 // --- SPACED REPETITION SCHEDULER (SM-2) ---
@@ -14877,10 +14988,11 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     }
   }, [selectedPytSubject, pytTopicsList, pytSyncState]);
 
-  // Helper to dynamically build generation prompt and perform placeholder replacements
   const getGenerationPrompt = useCallback(() => {
     let basePromptContent = DEFAULT_PROMPT;
-    if (generationPromptId !== 'default') {
+    if (generationPromptId === 'pyt_generator') {
+      basePromptContent = PYT_GENERATOR_PROMPT;
+    } else if (generationPromptId !== 'default') {
       const found = customPrompts.find(p => p.id === generationPromptId);
       if (found) {
         basePromptContent = found.content || '';
@@ -14889,6 +15001,8 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
 
     const currentPromptName = generationPromptId === 'default'
       ? 'Default Medical Anki Creator'
+      : generationPromptId === 'pyt_generator'
+      ? 'High-Yield PYT Generator'
       : (customPrompts.find(p => p.id === generationPromptId)?.name || '');
 
     const isHighYield = currentPromptName.toLowerCase().includes('high-yield');
@@ -14927,6 +15041,8 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
   useEffect(() => {
     if (activePromptId === 'default') {
       setSystemPrompt(DEFAULT_PROMPT);
+    } else if (activePromptId === 'pyt_generator') {
+      setSystemPrompt(PYT_GENERATOR_PROMPT);
     } else {
       const activePrompt = customPrompts.find(p => p.id === activePromptId);
       if (activePrompt) {
@@ -14942,6 +15058,9 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     if (selectedPromptId === 'default') {
       setEditingPromptName('Default Medical Anki Creator');
       setEditingPromptContent(DEFAULT_PROMPT);
+    } else if (selectedPromptId === 'pyt_generator') {
+      setEditingPromptName('High-Yield PYT Generator');
+      setEditingPromptContent(PYT_GENERATOR_PROMPT);
     } else {
       const prompt = customPrompts.find(p => p.id === selectedPromptId);
       if (prompt) {
@@ -14953,8 +15072,8 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
 
   // --- CUSTOM PROMPT FUNCTIONS ---
   const saveCustomPrompt = async (id, name, content) => {
-    if (id === 'default') {
-      alert("The default prompt is read-only. Please create a custom prompt to save modifications.");
+    if (id === 'default' || id === 'pyt_generator') {
+      alert("This built-in prompt is read-only. Please create a custom prompt to save modifications.");
       return;
     }
     try {
@@ -14986,7 +15105,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
   };
 
   const deleteCustomPrompt = async (id) => {
-    if (id === 'default') return;
+    if (id === 'default' || id === 'pyt_generator') return;
     if (!confirm("Are you sure you want to delete this custom prompt?")) return;
 
     try {
@@ -15016,7 +15135,9 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       setActivePromptId(id);
 
       let targetContent = DEFAULT_PROMPT;
-      if (id !== 'default') {
+      if (id === 'pyt_generator') {
+        targetContent = PYT_GENERATOR_PROMPT;
+      } else if (id !== 'default') {
         const found = customPrompts.find(p => p.id === id);
         if (found) targetContent = found.content;
       }
@@ -20460,6 +20581,7 @@ Return your response strictly as a JSON object matching this schema:
                               onChange={(val) => setGenerationPromptId(val)}
                               options={[
                                 { value: 'default', label: 'Default Medical Prompt' },
+                                { value: 'pyt_generator', label: 'High-Yield PYT Generator' },
                                 ...customPrompts.map(p => ({ value: p.id, label: p.name }))
                               ]}
                               themeMode={settingsThemeMode}
@@ -20468,6 +20590,8 @@ Return your response strictly as a JSON object matching this schema:
                             {(() => {
                               const currentPromptName = generationPromptId === 'default'
                                 ? 'Default Medical Prompt'
+                                : generationPromptId === 'pyt_generator'
+                                ? 'High-Yield PYT Generator'
                                 : (customPrompts.find(p => p.id === generationPromptId)?.name || '');
                               const isHighYield = currentPromptName.toLowerCase().includes('high-yield');
                               if (isHighYield) {
@@ -23521,6 +23645,23 @@ Return your response strictly as a JSON object matching this schema:
                               <p className="text-[9px] text-gray-500 line-clamp-1">Standard NEET PG/INICET Anki card generator prompt.</p>
                             </div>
 
+                            {/* PYT Generator Prompt Option */}
+                            <div
+                              onClick={() => setSelectedPromptId('pyt_generator')}
+                              className={`p-3 rounded-xl cursor-pointer border transition-all duration-200 flex flex-col gap-1 ${selectedPromptId === 'pyt_generator'
+                                ? 'bg-blue-50/50 border-blue-500 shadow-sm'
+                                : 'border-gray-100 hover:bg-gray-50/50 hover:border-gray-200'
+                                }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-black text-gray-900 truncate">High-Yield PYT Generator</span>
+                                {activePromptId === 'pyt_generator' && (
+                                  <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider">Active</span>
+                                )}
+                              </div>
+                              <p className="text-[9px] text-gray-500 line-clamp-1">Custom system instructions optimized for producing High-Yield PYTs.</p>
+                            </div>
+
                             {/* Custom Prompts list */}
                             {customPrompts.map(prompt => (
                               <div
@@ -23568,18 +23709,18 @@ Return your response strictly as a JSON object matching this schema:
                             )}
                           </div>
 
-                          {selectedPromptId === 'default' && (
+                          {(selectedPromptId === 'default' || selectedPromptId === 'pyt_generator') && (
                             <div className="bg-amber-50/50 border border-amber-200/60 rounded-xl p-3 flex gap-2 text-amber-800">
                               <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                               <div className="text-[10px]">
-                                <p className="font-bold">System Default (Read-only)</p>
+                                <p className="font-bold">{selectedPromptId === 'default' ? 'System Default (Read-only)' : 'High-Yield PYT Generator (Read-only)'}</p>
                                 <p className="mt-0.5 opacity-90">To customize, click **Duplicate** to create an editable custom copy.</p>
                               </div>
                             </div>
                           )}
 
                           <div className="space-y-3">
-                            {selectedPromptId !== 'default' && (
+                            {selectedPromptId !== 'default' && selectedPromptId !== 'pyt_generator' && (
                               <div>
                                 <label className="block text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">Prompt Name</label>
                                 <input
@@ -23598,11 +23739,11 @@ Return your response strictly as a JSON object matching this schema:
                                 rows={8}
                                 value={editingPromptContent}
                                 onChange={(e) => {
-                                  if (selectedPromptId !== 'default') {
+                                  if (selectedPromptId !== 'default' && selectedPromptId !== 'pyt_generator') {
                                     setEditingPromptContent(e.target.value);
                                   }
                                 }}
-                                readOnly={selectedPromptId === 'default'}
+                                readOnly={selectedPromptId === 'default' || selectedPromptId === 'pyt_generator'}
                                 className="w-full p-3 border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none text-xs font-mono leading-relaxed bg-gray-50 text-gray-800"
                                 placeholder="Enter prompt content here..."
                               />
@@ -23610,7 +23751,7 @@ Return your response strictly as a JSON object matching this schema:
 
                             <div className="flex justify-between items-center pt-1">
                               <div>
-                                {selectedPromptId !== 'default' && (
+                                {selectedPromptId !== 'default' && selectedPromptId !== 'pyt_generator' && (
                                   <button
                                     onClick={() => deleteCustomPrompt(selectedPromptId)}
                                     className="px-2 py-1.5 rounded-lg text-[10px] font-bold text-red-500 hover:bg-red-50 transition"
@@ -23624,6 +23765,8 @@ Return your response strictly as a JSON object matching this schema:
                                   onClick={() => {
                                     if (selectedPromptId === 'default') {
                                       createCustomPrompt("Duplicate of Default", DEFAULT_PROMPT);
+                                    } else if (selectedPromptId === 'pyt_generator') {
+                                      createCustomPrompt("Duplicate of High-Yield PYT", PYT_GENERATOR_PROMPT);
                                     } else {
                                       createCustomPrompt("Duplicate of " + editingPromptName, editingPromptContent);
                                     }
@@ -23632,7 +23775,7 @@ Return your response strictly as a JSON object matching this schema:
                                 >
                                   Duplicate
                                 </button>
-                                {selectedPromptId !== 'default' && (
+                                {selectedPromptId !== 'default' && selectedPromptId !== 'pyt_generator' && (
                                   <>
                                     <button
                                       onClick={() => {
@@ -25192,6 +25335,7 @@ Return your response strictly as a JSON object matching this schema:
                                   onChange={(val) => setGenerationPromptId(val)}
                                   options={[
                                     { value: 'default', label: 'Default Medical Prompt' },
+                                    { value: 'pyt_generator', label: 'High-Yield PYT Generator' },
                                     ...customPrompts.map(p => ({ value: p.id, label: p.name }))
                                   ]}
                                   themeMode={settingsThemeMode}
@@ -25202,6 +25346,8 @@ Return your response strictly as a JSON object matching this schema:
                               {(() => {
                                 const currentPromptName = generationPromptId === 'default'
                                   ? 'Default Medical Prompt'
+                                  : generationPromptId === 'pyt_generator'
+                                  ? 'High-Yield PYT Generator'
                                   : (customPrompts.find(p => p.id === generationPromptId)?.name || '');
                                 const isHighYield = currentPromptName.toLowerCase().includes('high-yield');
                                 if (isHighYield) {
@@ -30810,7 +30956,7 @@ Return your response strictly as a JSON object matching this schema:
                             <div className="flex items-center justify-between">
                               <h3 className="text-sm font-black uppercase text-gray-400 tracking-wider">Available Prompts</h3>
                               <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider">
-                                {customPrompts.length + 1}
+                                {customPrompts.length + 2}
                               </span>
                             </div>
 
@@ -30837,6 +30983,23 @@ Return your response strictly as a JSON object matching this schema:
                                   )}
                                 </div>
                                 <p className="text-[10px] text-gray-500 line-clamp-2">Standard NEET PG/INICET Anki card generator prompt.</p>
+                              </div>
+
+                              {/* PYT Generator Prompt Option */}
+                              <div
+                                onClick={() => setSelectedPromptId('pyt_generator')}
+                                className={`p-4 rounded-2xl cursor-pointer border transition-all duration-200 flex flex-col gap-1.5 ${selectedPromptId === 'pyt_generator'
+                                  ? 'bg-blue-50/50 border-blue-500 shadow-sm'
+                                  : 'border-gray-100 hover:bg-gray-50/50 hover:border-gray-200'
+                                  }`}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs font-black text-gray-900 truncate">High-Yield PYT Generator</span>
+                                  {activePromptId === 'pyt_generator' && (
+                                    <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider">Active</span>
+                                  )}
+                                </div>
+                                <p className="text-[10px] text-gray-500 line-clamp-2">Custom system instructions optimized for producing High-Yield PYTs.</p>
                               </div>
 
                               {/* Custom Prompts list */}
@@ -30887,18 +31050,18 @@ Return your response strictly as a JSON object matching this schema:
                               )}
                             </div>
 
-                            {selectedPromptId === 'default' && (
+                            {(selectedPromptId === 'default' || selectedPromptId === 'pyt_generator') && (
                               <div className="bg-amber-50/50 border border-amber-200/60 rounded-2xl p-4 flex gap-3 text-amber-800 animate-in slide-in-from-top duration-200">
                                 <Info className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                                 <div className="text-xs">
-                                  <p className="font-bold">System Default Prompt (Read-only)</p>
+                                  <p className="font-bold">{selectedPromptId === 'default' ? 'System Default Prompt (Read-only)' : 'High-Yield PYT Generator Prompt (Read-only)'}</p>
                                   <p className="mt-1 opacity-90">To modify these instructions, click the **Duplicate** button below to create an editable custom copy.</p>
                                 </div>
                               </div>
                             )}
 
                             <div className="space-y-4">
-                              {selectedPromptId !== 'default' && (
+                              {selectedPromptId !== 'default' && selectedPromptId !== 'pyt_generator' && (
                                 <div>
                                   <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Prompt Name</label>
                                   <input
@@ -30914,14 +31077,14 @@ Return your response strictly as a JSON object matching this schema:
                               <div>
                                 <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">System Instructions</label>
                                 <textarea
-                                  rows={selectedPromptId === 'default' ? 18 : 15}
+                                  rows={(selectedPromptId === 'default' || selectedPromptId === 'pyt_generator') ? 18 : 15}
                                   value={editingPromptContent}
                                   onChange={(e) => {
-                                    if (selectedPromptId !== 'default') {
+                                    if (selectedPromptId !== 'default' && selectedPromptId !== 'pyt_generator') {
                                       setEditingPromptContent(e.target.value);
                                     }
                                   }}
-                                  readOnly={selectedPromptId === 'default'}
+                                  readOnly={selectedPromptId === 'default' || selectedPromptId === 'pyt_generator'}
                                   className="w-full p-4 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 outline-none text-xs font-mono leading-relaxed bg-gray-50 text-gray-800"
                                   placeholder="Enter prompt content here..."
                                 />
@@ -30929,7 +31092,7 @@ Return your response strictly as a JSON object matching this schema:
 
                               <div className="flex justify-between items-center pt-2">
                                 <div>
-                                  {selectedPromptId !== 'default' && (
+                                  {selectedPromptId !== 'default' && selectedPromptId !== 'pyt_generator' && (
                                     <button
                                       onClick={() => deleteCustomPrompt(selectedPromptId)}
                                       className="px-4 py-2 rounded-xl text-xs font-bold text-red-500 hover:bg-red-50 transition"
