@@ -115,8 +115,10 @@ When rendering action buttons inside card/column headers (e.g. *Current Page Car
 
 ---
 
-## 6. Framer Motion Interaction Standards
+## 6. Framer Motion Interaction & Entrance Standards
 
+- **Framer Motion Everywhere**: Framer Motion entrance animations are **required everywhere** across all pages, views, panels, modals, and tab views.
+- **Unique Staggered Component Animations**: Components within a page or view must NOT enter simultaneously. Each individual card, panel, widget, header control bar, and list container MUST use its own `motion.div` with unique staggered delays (`0.05s`, `0.15s`, `0.25s`), directional vectors (`y: -12`, `y: 16`, `x: -12`), and soft scaling (`scale: 0.98 -> 1`).
 - **Hover Transition**: `whileHover={{ scale: 1.02 }}`
 - **Tap / Active Transition**: `whileTap={{ scale: 0.97 }}`
 - **Spring Physics Config**: `{ type: 'spring', stiffness: 220, damping: 20 }`

@@ -11,6 +11,9 @@ All UI components, buttons, color schemes, theme modes (Light: `#e6ecf5`, Dark: 
 4. **Save Actions**:
    - `Save Page` calls `saveQueueItemToCloud(activeQueueId)` (or `saveLocalPage`)
    - `Save All` calls `saveAllProcessedToCloud()` (handles both local database saving & cloud saving).
+5. **Framer Motion Everywhere & Unique Component Staggering**:
+   - Framer Motion entrance animations are **required everywhere** across all pages, views, panels, and modals.
+   - **Unique Per-Component Animations**: Every sub-component, card, header, control bar, widget, and list container within a page **MUST** have its own unique, staggered `motion.div` entrance animation rather than everything appearing at once (using staggered delays e.g. `0.05s`, `0.15s`, `0.25s`, directional vectors `y: -12`/`y: 16`/`x: -12`, and soft scaling `scale: 0.98 -> 1`).
 
 ---
 
