@@ -151,6 +151,58 @@ function FineTuneCropModal({
     );
   }
 
+  const initialTouchDistanceRef = useRef(null);
+  const initialZoomScaleRef = useRef(1);
+  const initialPanOffsetRef = useRef({ x: 0, y: 0 });
+  const initialMidpointRef = useRef({ x: 0, y: 0 });
+
+  const handleTouchStart = (e) => {
+    if (e.touches.length === 2) {
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+      initialTouchDistanceRef.current = dist;
+      initialZoomScaleRef.current = zoomScaleRef.current;
+      initialPanOffsetRef.current = { ...panOffsetRef.current };
+      const midX = (t1.clientX + t2.clientX) / 2;
+      const midY = (t1.clientY + t2.clientY) / 2;
+      initialMidpointRef.current = { x: midX, y: midY };
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (e.touches.length === 2 && initialTouchDistanceRef.current) {
+      e.preventDefault();
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const currentDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+      const ratio = currentDist / initialTouchDistanceRef.current;
+      const newScale = Math.min(4, Math.max(1, parseFloat((initialZoomScaleRef.current * ratio).toFixed(2))));
+      
+      if (containerRef.current && workspaceRef.current) {
+        const midX = (t1.clientX + t2.clientX) / 2;
+        const midY = (t1.clientY + t2.clientY) / 2;
+        const deltaX = midX - initialMidpointRef.current.x;
+        const deltaY = midY - initialMidpointRef.current.y;
+        const scaleRatio = newScale / initialZoomScaleRef.current;
+        const newPan = {
+          x: initialPanOffsetRef.current.x * scaleRatio + deltaX,
+          y: initialPanOffsetRef.current.y * scaleRatio + deltaY
+        };
+        setZoomScale(newScale);
+        zoomScaleRef.current = newScale;
+        setPanOffset(newPan);
+        panOffsetRef.current = newPan;
+      }
+    }
+  };
+
+  const handleTouchEnd = (e) => {
+    if (e.touches.length < 2) {
+      initialTouchDistanceRef.current = null;
+    }
+  };
+
   const handlePointerDown = (e, handleType) => {
     e.preventDefault();
     e.stopPropagation();
@@ -160,7 +212,8 @@ function FineTuneCropModal({
     dragStartRef.current = {
       mouseX: clientX,
       mouseY: clientY,
-      initialBox: [...box]
+      initialBox: [...box],
+      initialPan: { ...panOffsetRef.current }
     };
 
     const handlePointerMove = (moveEvt) => {
@@ -170,6 +223,18 @@ function FineTuneCropModal({
 
       const currX = moveEvt.clientX || moveEvt.touches?.[0]?.clientX || 0;
       const currY = moveEvt.clientY || moveEvt.touches?.[0]?.clientY || 0;
+
+      if (isDraggingRef.current === 'pan') {
+        const moveDeltaX = currX - dragStartRef.current.mouseX;
+        const moveDeltaY = currY - dragStartRef.current.mouseY;
+        const newPan = {
+          x: dragStartRef.current.initialPan.x + moveDeltaX,
+          y: dragStartRef.current.initialPan.y + moveDeltaY
+        };
+        setPanOffset(newPan);
+        panOffsetRef.current = newPan;
+        return;
+      }
 
       const deltaX = ((currX - dragStartRef.current.mouseX) / rect.width) * 1000;
       const deltaY = ((currY - dragStartRef.current.mouseY) / rect.height) * 1000;
@@ -303,12 +368,23 @@ function FineTuneCropModal({
         </div>
 
         {/* Modal Body */}
-        <div className="flex-1 overflow-hidden flex flex-col md:flex-row bg-slate-950 relative">
+        <div className="flex-1 overflow-hidden flex flex-col md:flex-row relative" style={{ background: isDark ? '#1a1f26' : '#d2dbe6' }}>
           
           {/* Main Interactive Zoom Box Area */}
           <div
             ref={workspaceRef}
-            className="flex-1 relative overflow-hidden flex items-center justify-center p-2 bg-slate-950 h-[48vh] sm:h-[55vh]"
+            className="flex-1 relative overflow-hidden flex items-center justify-center p-2 h-[48vh] sm:h-[55vh]"
+            style={{ background: bgBase }}
+            onMouseDown={(e) => handlePointerDown(e, 'pan')}
+            onTouchStart={(e) => {
+              if (e.touches.length === 1) {
+                handlePointerDown(e, 'pan');
+              } else {
+                handleTouchStart(e);
+              }
+            }}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
           >
             {/* Toggle live preview button overlay in the workspace */}
             <button
@@ -755,10 +831,10 @@ export default function ExportImageVerificationModal({
 
         {/* ── TAB NAV ── */}
         <div
-          className="px-3 sm:px-6 py-2 sm:py-3 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between shrink-0 border-b"
+          className="px-3 sm:px-6 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between shrink-0 border-b"
           style={{ borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }}
         >
-          <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-0.5">
+          <div className="flex items-center gap-3 overflow-x-auto custom-scrollbar py-3 px-1.5">
             {[
               { key: 'uncertain', label: `AI Suggested (${uncertainCards.length})`, icon: <AlertTriangle className="w-3.5 h-3.5" />, active: 'bg-amber-500 text-white shadow-md shadow-amber-500/30' },
               { key: 'confirmed', label: `Confirmed (${confirmedCards.length})`, icon: <CheckCircle2 className="w-3.5 h-3.5" />, active: 'bg-emerald-600 text-white shadow-md shadow-emerald-600/25' },

@@ -16711,7 +16711,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     }
 
     // Intercept for AI diagram image verification before compile if cards have extracted images
-    if (format === 'apkg' && includeImages && !overrideCards && cardsToUse.some(c => c.has_image || c.img_box || c.image_confidence !== undefined)) {
+    if (format === 'apkg' && includeImages && manualReviewImages && !overrideCards && cardsToUse.some(c => c.has_image || c.img_box || c.image_confidence !== undefined)) {
       setVerificationModalCards(cardsToUse);
       setIsExportDialogOpen(false);
       setIsImageVerificationModalOpen(true);
