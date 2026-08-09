@@ -20685,7 +20685,7 @@ Return your response strictly as a JSON object matching this schema:
                       initial={{ opacity: 0, y: 24, scale: 0.98 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -16, scale: 0.98 }}
-                      transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+                      transition={{ duration: 2.0, ease: [0.22, 1, 0.36, 1] }}
                       className={`space-y-6 min-h-full transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'}`}
                     >
                       {/* Dashboard Stats */}
@@ -21161,7 +21161,7 @@ Return your response strictly as a JSON object matching this schema:
                       initial={{ opacity: 0, y: 12, scale: 0.99 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -12, scale: 0.99 }}
-                      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                      transition={{ duration: 2.0, ease: [0.16, 1, 0.3, 1] }}
                       className="space-y-4"
                     >
                       {/* Mobile Add Card FAB - always visible in library */}
@@ -22295,7 +22295,7 @@ Return your response strictly as a JSON object matching this schema:
                       initial={{ opacity: 0, y: 15 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -15 }}
-                      transition={{ duration: 0.3, ease: 'easeOut' }}
+                      transition={{ duration: 2.0, ease: 'easeOut' }}
                       className={`space-y-4 pb-8 transition-colors duration-300 p-2 rounded-2xl smooth-settings-scroll ${settingsThemeMode === 'dark' ? 'neu-bg-dark' : 'neu-bg-light'
                         }`}
                     >
@@ -23547,7 +23547,7 @@ Return your response strictly as a JSON object matching this schema:
                     <motion.div
                       initial={{ opacity: 0, y: 16, scale: 0.99 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
-                      transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                      transition={{ duration: 2.0, ease: [0.16, 1, 0.3, 1] }}
                       className={`space-y-5 text-left relative pb-32 px-1 pt-1`}
                     >
                       {/* Header */}
@@ -23770,7 +23770,7 @@ Return your response strictly as a JSON object matching this schema:
                     <motion.div
                       initial={{ opacity: 0, y: 16, scale: 0.99 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
-                      transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                      transition={{ duration: 2.0, ease: [0.16, 1, 0.3, 1] }}
                       className="space-y-4 text-left pb-24"
                     >
                       <div className="grid grid-cols-1 gap-5 items-start">
@@ -24000,7 +24000,7 @@ Return your response strictly as a JSON object matching this schema:
                     <motion.div
                       initial={{ opacity: 0, y: 16, scale: 0.99 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
-                      transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                      transition={{ duration: 2.0, ease: [0.16, 1, 0.3, 1] }}
                       className="space-y-4 text-left pb-24"
                     >
                       <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'} p-5 space-y-4`}>
@@ -24084,7 +24084,7 @@ Return your response strictly as a JSON object matching this schema:
                     <motion.div
                       initial={{ opacity: 0, y: 20, scale: 0.98 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
-                      transition={{ duration: 1.0, ease: [0.16, 1, 0.3, 1] }}
+                      transition={{ duration: 2.0, ease: [0.16, 1, 0.3, 1] }}
                       className="space-y-4 text-left pb-24"
                     >
                       <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'} p-5 space-y-4`}>
@@ -25413,7 +25413,7 @@ Return your response strictly as a JSON object matching this schema:
                         initial={{ opacity: 0, y: 24, scale: 0.98 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -16, scale: 0.98 }}
-                        transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+                        transition={{ duration: 2.0, ease: [0.22, 1, 0.36, 1] }}
                         className={`flex-grow p-4 pr-7 flex gap-4 max-w-[1920px] mx-auto w-full h-full overflow-hidden ${settingsThemeMode === 'dark' ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'}`}
                       >
                         {/* Left: Folders & Queue */}
@@ -26059,7 +26059,7 @@ Return your response strictly as a JSON object matching this schema:
                         initial={{ opacity: 0, y: 15, scale: 0.99 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -15, scale: 0.99 }}
-                        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                        transition={{ duration: 2.0, ease: [0.16, 1, 0.3, 1] }}
                         className="h-full p-5 lg:p-8 flex flex-col lg:flex-row gap-6 max-w-[1600px] mx-auto w-full overflow-y-auto overflow-x-hidden custom-scrollbar"
                       >
                         {/* Left: Folders */}
@@ -30872,7 +30872,7 @@ Return your response strictly as a JSON object matching this schema:
                       <motion.div
                         initial={{ opacity: 0, y: 16, scale: 0.99 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
-                        transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                        transition={{ duration: 2.0, ease: [0.16, 1, 0.3, 1] }}
                         className={`flex-grow flex flex-col overflow-hidden relative h-full w-full ${settingsThemeMode === 'dark' ? 'neu-bg-dark' : 'neu-bg-light'}`}
                       >
 
@@ -31154,7 +31154,7 @@ Return your response strictly as a JSON object matching this schema:
                       <motion.div
                         initial={{ opacity: 0, y: 16, scale: 0.99 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
-                        transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                        transition={{ duration: 2.0, ease: [0.16, 1, 0.3, 1] }}
                         className="flex-grow p-4 lg:p-6 flex flex-col gap-6 max-w-[1200px] mx-auto w-full overflow-y-auto pb-24 lg:pb-6 text-left"
                       >
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
@@ -31386,7 +31386,7 @@ Return your response strictly as a JSON object matching this schema:
                         initial={{ opacity: 0, y: 15 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -15 }}
-                        transition={{ duration: 0.3, ease: 'easeOut' }}
+                        transition={{ duration: 2.0, ease: 'easeOut' }}
                         className={`flex-grow w-full h-full overflow-y-auto smooth-settings-scroll transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-bg-dark' : 'neu-bg-light'
                           }`}
                       >
@@ -31715,7 +31715,7 @@ Return your response strictly as a JSON object matching this schema:
                       <motion.div
                         initial={{ opacity: 0, y: 16, scale: 0.99 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
-                        transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                        transition={{ duration: 2.0, ease: [0.16, 1, 0.3, 1] }}
                         className="flex-grow p-4 lg:p-6 flex flex-col gap-6 max-w-[800px] mx-auto w-full overflow-y-auto pb-24 lg:pb-6 text-left"
                       >
                         <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'} p-8 space-y-6`}>
@@ -31799,7 +31799,7 @@ Return your response strictly as a JSON object matching this schema:
                       <motion.div
                         initial={{ opacity: 0, y: 20, scale: 0.98 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
-                        transition={{ duration: 1.0, ease: [0.16, 1, 0.3, 1] }}
+                        transition={{ duration: 2.0, ease: [0.16, 1, 0.3, 1] }}
                         className="flex-grow p-4 lg:p-6 flex flex-col gap-6 max-w-[900px] mx-auto w-full overflow-y-auto pb-24 lg:pb-6 text-left"
                       >
                         <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'} p-8 space-y-6`}>
