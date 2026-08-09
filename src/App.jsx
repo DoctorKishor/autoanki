@@ -13259,23 +13259,15 @@ JSON Format:
                       <span className={`${isDark ? 'text-slate-400' : 'text-slate-500'} font-medium select-none`}>📖 {p.source}:</span>
                       <div className="flex flex-wrap gap-1">
                         {pageList.map((page, pageIdx) => (
-                          <button
+                          <span
                             key={pageIdx}
-                            onClick={() => {
-                              if (p.url) {
-                                handleOpenPdfViewer(p.url, page, p.source, p.offset);
-                              } else {
-                                alert("No GitHub PDF URL is associated with this scanned textbook mapping. Ensure GitHub credentials are saved in settings.");
-                              }
-                            }}
-                            className={`px-1.5 py-0.5 rounded transition cursor-pointer active:scale-90 font-mono text-[9px] ${isDark
-                                ? 'bg-blue-900/40 hover:bg-blue-800/60 text-blue-200'
-                                : 'bg-blue-100/60 hover:bg-blue-200/80 text-blue-700'
+                            className={`px-1.5 py-0.5 rounded font-mono text-[9px] font-bold ${isDark
+                                ? 'bg-blue-900/40 text-blue-200 border border-blue-800/40'
+                                : 'bg-blue-100/60 text-blue-700 border border-blue-200/60'
                               }`}
-                            title={`Open page ${page} of ${p.source} in-app`}
                           >
                             p.{page}
-                          </button>
+                          </span>
                         ))}
                       </div>
                     </div>
@@ -24010,14 +24002,10 @@ Return your response strictly as a JSON object matching this schema:
                                 <span className={`text-[9px] font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>📚 Linked Textbooks</span>
                                 {syncedTextbooks.map((book, idx) => (
                                   <div key={idx} className={`flex items-center gap-1.5 px-2.5 py-2 rounded-xl border ${settingsThemeMode === 'dark' ? 'neu-item-dark text-slate-100' : 'neu-item-light text-slate-800'}`}>
-                                    <button
-                                      onClick={() => handleOpenPdfViewer(book.url, "1", book.name, book.offset)}
-                                      className="flex-1 flex items-center gap-1.5 text-left min-w-0"
-                                      title={`Open ${book.name}`}
-                                    >
+                                    <div className="flex-1 flex items-center gap-1.5 min-w-0">
                                       <BookOpen className="w-3 h-3 text-blue-500 shrink-0" />
                                       <span className={`text-[10px] font-bold truncate ${settingsThemeMode === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>{book.name}</span>
-                                    </button>
+                                    </div>
                                     <label
                                       className="p-1 rounded-lg text-amber-500 hover:opacity-80 transition cursor-pointer shrink-0"
                                       title={`Replace ${book.name} with new PDF`}
@@ -31728,14 +31716,10 @@ Return your response strictly as a JSON object matching this schema:
                                   <span className={`text-[9px] font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>📚 Linked Textbooks</span>
                                   {syncedTextbooks.map((book, idx) => (
                                     <div key={idx} className={`flex items-center gap-2 px-3 py-2 rounded-xl border ${settingsThemeMode === 'dark' ? 'neu-item-dark text-slate-100' : 'neu-item-light text-slate-800'}`}>
-                                      <button
-                                        onClick={() => handleOpenPdfViewer(book.url, "1", book.name, book.offset)}
-                                        className="flex-1 flex items-center gap-2 text-left min-w-0"
-                                        title={`Open ${book.name}`}
-                                      >
+                                      <div className="flex-1 flex items-center gap-2 min-w-0">
                                         <BookOpen className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                                         <span className={`text-xs font-bold truncate ${settingsThemeMode === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>{book.name}</span>
-                                      </button>
+                                      </div>
                                       <label
                                         className="p-1.5 rounded-lg text-amber-500 hover:opacity-80 transition cursor-pointer shrink-0"
                                         title={`Replace ${book.name} with new PDF`}
