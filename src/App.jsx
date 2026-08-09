@@ -23283,63 +23283,64 @@ Return your response strictly as a JSON object matching this schema:
                     </div>
                   )}
 
-                  {/* EXPORTER HUB VIEW */}
+                  {/* EXPORTER HUB VIEW - MOBILE */}
                   {currentTab === 'export' && (
-                    <div className="space-y-6 text-left relative pb-32">
+                    <div className={`space-y-5 text-left relative pb-32 px-1 pt-1`}>
+
                       {/* Header */}
-                      <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
+                      <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-5 rounded-3xl`}>
                         <div className="flex items-center gap-3">
-                          <div className="bg-blue-600 text-white p-2.5 rounded-xl shadow-lg shadow-blue-500/20">
+                          <div className="bg-gradient-to-br from-blue-500 to-blue-700 text-white p-2.5 rounded-xl shadow-lg shadow-blue-500/30">
                             <Download className="w-5 h-5" />
                           </div>
                           <div>
-                            <h2 className="text-base font-black text-gray-900 tracking-tight">Exporter Hub</h2>
-                            <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">Compile deck packages and assets</p>
+                            <h2 className={`text-base font-black tracking-tight ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-800'}`}>Exporter Hub</h2>
+                            <p className={`text-[9px] font-bold uppercase tracking-wider mt-0.5 ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-400'}`}>Compile deck packages and assets</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 mt-4 px-3 py-1.5 bg-gray-50 border border-gray-100 rounded-xl font-mono text-[10px] font-bold text-gray-700 w-full justify-center">
+                        <div className={`flex items-center gap-2 mt-4 px-3 py-2 rounded-xl font-mono text-[10px] font-bold w-full justify-center ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-slate-300' : 'neu-pressed-light text-slate-600'}`}>
                           <Folder className="w-3.5 h-3.5 text-blue-500" />
-                          <span>{selectedDecksToExport.length === 1 ? selectedDecksToExport[0] : `${selectedDecksToExport.length} decks selected`}</span>
+                          <span className="truncate">{selectedDecksToExport.length === 1 ? selectedDecksToExport[0] : `${selectedDecksToExport.length} decks selected`}</span>
                         </div>
                       </div>
 
                       {/* Database Metrics Grid */}
-                      <div className="grid grid-cols-3 gap-2">
-                        <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-sm text-center">
-                          <span className="text-[8px] font-black uppercase text-gray-400 tracking-wider">Total</span>
-                          <div className="text-base font-black text-gray-800 mt-1">{totalInExport}</div>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className={`${settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'} p-3 rounded-2xl text-center`}>
+                          <span className={`text-[8px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-400'}`}>Total</span>
+                          <div className={`text-base font-black mt-1 ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-800'}`}>{totalInExport}</div>
                         </div>
-                        <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-sm text-center">
-                          <span className="text-[8px] font-black uppercase text-blue-500 tracking-wider">Exported</span>
-                          <div className="text-base font-black text-blue-600 mt-1">{exportedInExport}</div>
+                        <div className={`${settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'} p-3 rounded-2xl text-center`}>
+                          <span className="text-[8px] font-black uppercase tracking-wider text-blue-500">Exported</span>
+                          <div className="text-base font-black text-blue-500 mt-1">{exportedInExport}</div>
                         </div>
-                        <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-sm text-center">
-                          <span className="text-[8px] font-black uppercase text-orange-500 tracking-wider">New</span>
-                          <div className="text-base font-black text-orange-600 mt-1">{unexportedInExport}</div>
+                        <div className={`${settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'} p-3 rounded-2xl text-center`}>
+                          <span className="text-[8px] font-black uppercase tracking-wider text-orange-400">New</span>
+                          <div className="text-base font-black text-orange-400 mt-1">{unexportedInExport}</div>
                         </div>
                       </div>
 
                       {/* Deck Selection List */}
-                      <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col gap-3">
+                      <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-5 rounded-3xl flex flex-col gap-3`}>
                         <div>
-                          <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400">1. Decks to Export</label>
-                          <span className="text-[8px] text-gray-400 font-bold block mt-0.5">Select deck hierarchies to compile</span>
+                          <label className={`block text-[10px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-400'}`}>1. Decks to Export</label>
+                          <span className={`text-[8px] font-bold block mt-0.5 ${settingsThemeMode === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>Select deck hierarchies to compile</span>
                         </div>
                         <div className="flex gap-2">
                           <button
                             onClick={() => setSelectedDecksToExport(allDecks)}
-                            className="flex-1 py-1.5 px-2.5 border border-gray-100 rounded-lg text-[8px] font-black uppercase text-gray-500 hover:bg-gray-50 active:scale-95 transition"
+                            className={`flex-1 py-1.5 px-2.5 rounded-xl text-[8px] font-black uppercase active:scale-95 transition ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-500'}`}
                           >
                             Select All
                           </button>
                           <button
                             onClick={() => setSelectedDecksToExport([])}
-                            className="flex-1 py-1.5 px-2.5 border border-gray-100 rounded-lg text-[8px] font-black uppercase text-gray-500 hover:bg-gray-50 active:scale-95 transition"
+                            className={`flex-1 py-1.5 px-2.5 rounded-xl text-[8px] font-black uppercase active:scale-95 transition ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-500'}`}
                           >
                             Clear
                           </button>
                         </div>
-                        <div className="overflow-y-auto max-h-[220px] border border-gray-55 rounded-xl bg-gray-50/50 p-3 custom-scrollbar text-xs">
+                        <div className={`overflow-y-auto max-h-[220px] rounded-xl p-3 custom-scrollbar text-xs ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
                           <ExportTreeFolder
                             node={buildTree(allDecks, libraryPages, deckCardCounts)}
                             selectedDecks={selectedDecksToExport}
@@ -23358,99 +23359,67 @@ Return your response strictly as a JSON object matching this schema:
                       </div>
 
                       {/* Format selection */}
-                      <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col gap-4">
-                        <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400">2. Select Target Format</label>
-                        <div className="grid grid-cols-2 gap-2">
-                          <button
-                            onClick={() => setExportFormat('apkg')}
-                            className={`p-3 rounded-xl border flex flex-col justify-between h-20 text-left transition ${exportFormat === 'apkg' ? 'border-blue-600 bg-blue-50/50 text-blue-600 shadow-sm' : 'border-gray-100 bg-white text-gray-500'}`}
-                          >
-                            <Layers className="w-4 h-4 text-purple-500" />
-                            <div>
-                              <div className="text-[10px] font-black text-gray-900 leading-none">Anki Package (.apkg)</div>
-                            </div>
-                          </button>
-                          <button
-                            onClick={() => setExportFormat('anki')}
-                            className={`p-3 rounded-xl border flex flex-col justify-between h-20 text-left transition ${exportFormat === 'anki' ? 'border-blue-600 bg-blue-50/50 text-blue-600 shadow-sm' : 'border-gray-100 bg-white text-gray-500'}`}
-                          >
-                            <FileText className="w-4 h-4 text-orange-500" />
-                            <div>
-                              <div className="text-[10px] font-black text-gray-900 leading-none">Anki TSV</div>
-                            </div>
-                          </button>
-                          <button
-                            onClick={() => setExportFormat('notion')}
-                            className={`p-3 rounded-xl border flex flex-col justify-between h-20 text-left transition ${exportFormat === 'notion' ? 'border-blue-600 bg-blue-50/50 text-blue-600 shadow-sm' : 'border-gray-100 bg-white text-gray-500'}`}
-                          >
-                            <Grid className="w-4 h-4 text-blue-500" />
-                            <div>
-                              <div className="text-[10px] font-black text-gray-900 leading-none">Notion CSV</div>
-                            </div>
-                          </button>
-                          <button
-                            onClick={() => setExportFormat('pdf')}
-                            className={`p-3 rounded-xl border flex flex-col justify-between h-20 text-left transition ${exportFormat === 'pdf' ? 'border-blue-600 bg-blue-50/50 text-blue-600 shadow-sm' : 'border-gray-100 bg-white text-gray-500'}`}
-                          >
-                            <Layers className="w-4 h-4 text-green-500" />
-                            <div>
-                              <div className="text-[10px] font-black text-gray-900 leading-none">PDF Sheet</div>
-                            </div>
-                          </button>
+                      <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-5 rounded-3xl flex flex-col gap-4`}>
+                        <label className={`block text-[10px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-400'}`}>2. Select Target Format</label>
+                        <div className="grid grid-cols-2 gap-3">
+                          {[{id:'apkg',icon:<Layers className="w-4 h-4 text-purple-400"/>,label:'Anki Package (.apkg)'},{id:'anki',icon:<FileText className="w-4 h-4 text-orange-400"/>,label:'Anki TSV'},{id:'notion',icon:<Grid className="w-4 h-4 text-blue-400"/>,label:'Notion CSV'},{id:'pdf',icon:<Layers className="w-4 h-4 text-emerald-400"/>,label:'PDF Sheet'}].map(fmt => (
+                            <button
+                              key={fmt.id}
+                              onClick={() => setExportFormat(fmt.id)}
+                              className={`p-3 rounded-2xl flex flex-col justify-between h-20 text-left transition-all active:scale-95 ${
+                                exportFormat === fmt.id
+                                  ? 'bg-gradient-to-br from-blue-500/20 to-blue-600/10 border-2 border-blue-500 shadow-lg shadow-blue-500/10'
+                                  : settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'
+                              }`}
+                            >
+                              {fmt.icon}
+                              <div className={`text-[10px] font-black leading-none ${exportFormat === fmt.id ? 'text-blue-500' : settingsThemeMode === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>{fmt.label}</div>
+                            </button>
+                          ))}
                         </div>
                       </div>
 
                       {/* Scope Selection */}
-                      <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col gap-3">
-                        <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400">3. Filter Export Scope</label>
+                      <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-5 rounded-3xl flex flex-col gap-3`}>
+                        <label className={`block text-[10px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-400'}`}>3. Filter Export Scope</label>
                         <div className="grid grid-cols-3 gap-2">
-                          <button
-                            onClick={() => setExportScope('all')}
-                            className={`py-2 px-1 rounded-xl border text-[10px] font-black transition ${exportScope === 'all' ? 'border-blue-600 bg-blue-50/50 text-blue-600 shadow-sm' : 'border-gray-150 bg-white text-gray-500'}`}
-                          >
-                            All ({totalInExport})
-                          </button>
-                          <button
-                            onClick={() => setExportScope('unexported')}
-                            className={`py-2 px-1 rounded-xl border text-[10px] font-black transition ${exportScope === 'unexported' ? 'border-blue-600 bg-blue-50/50 text-blue-600 shadow-sm' : 'border-gray-155 bg-white text-gray-500'}`}
-                          >
-                            New ({unexportedInExport})
-                          </button>
-                          <button
-                            onClick={() => setExportScope('exported')}
-                            className={`py-2 px-1 rounded-xl border text-[10px] font-black transition ${exportScope === 'exported' ? 'border-blue-600 bg-blue-50/50 text-blue-600 shadow-sm' : 'border-gray-155 bg-white text-gray-500'}`}
-                          >
-                            Exported ({exportedInExport})
-                          </button>
+                          {[{val:'all',label:`All (${totalInExport})`},{val:'unexported',label:`New (${unexportedInExport})`},{val:'exported',label:`Done (${exportedInExport})`}].map(s => (
+                            <button
+                              key={s.val}
+                              onClick={() => setExportScope(s.val)}
+                              className={`py-2 px-1 rounded-xl text-[10px] font-black transition active:scale-95 ${
+                                exportScope === s.val
+                                  ? 'bg-gradient-to-br from-blue-500/20 to-blue-600/10 border-2 border-blue-500 text-blue-500 shadow-md shadow-blue-500/10'
+                                  : settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-500'
+                              }`}
+                            >
+                              {s.label}
+                            </button>
+                          ))}
                         </div>
                       </div>
 
                       {/* Bundle Check & Media Assets */}
-                      <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col gap-4">
-                        <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400">4. Pre-Flight & Media Asset Config</label>
+                      <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-5 rounded-3xl flex flex-col gap-4`}>
+                        <label className={`block text-[10px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-400'}`}>4. Pre-Flight & Media Asset Config</label>
 
                         {activeConflicts.length === 0 ? (
-                          <div className="bg-green-50 border border-green-200/60 p-3.5 rounded-2xl flex items-center gap-3">
-                            <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+                          <div className={`p-3.5 rounded-2xl flex items-center gap-3 ${settingsThemeMode === 'dark' ? 'bg-emerald-900/20 border border-emerald-700/40' : 'bg-green-50 border border-green-200/60'}`}>
+                            <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
                             <div>
-                              <span className="text-[10px] font-black text-green-950 block">✓ Bundle Clean</span>
-                              <span className="text-[8px] text-green-600 font-bold block mt-0.5">No duplicate card concepts detected!</span>
+                              <span className={`text-[10px] font-black block ${settingsThemeMode === 'dark' ? 'text-emerald-300' : 'text-green-900'}`}>✓ Bundle Clean</span>
+                              <span className={`text-[8px] font-bold block mt-0.5 ${settingsThemeMode === 'dark' ? 'text-emerald-400' : 'text-green-600'}`}>No duplicate card concepts detected!</span>
                             </div>
                           </div>
                         ) : (
-                          <div className="bg-orange-50/70 border border-orange-200 p-3.5 rounded-2xl flex flex-col gap-2">
+                          <div className={`p-3.5 rounded-2xl flex flex-col gap-2 ${settingsThemeMode === 'dark' ? 'bg-orange-900/20 border border-orange-700/40' : 'bg-orange-50/70 border border-orange-200'}`}>
                             <div className="flex items-center gap-2">
-                              <AlertTriangle className="w-4 h-4 text-orange-600 shrink-0" />
-                              <div>
-                                <span className="text-[10px] font-black text-orange-950 block">{activeConflicts.length} Conflicts Detected</span>
-                              </div>
+                              <AlertTriangle className="w-4 h-4 text-orange-400 shrink-0" />
+                              <span className={`text-[10px] font-black block ${settingsThemeMode === 'dark' ? 'text-orange-300' : 'text-orange-900'}`}>{activeConflicts.length} Conflicts Detected</span>
                             </div>
                             <button
-                              onClick={() => {
-                                setSelectedConflictIndex(0);
-                                setIsConflictInspectorOpen(true);
-                              }}
-                              className="w-full bg-orange-600 text-white font-black text-[9px] uppercase tracking-wider py-1.5 px-2 rounded-lg"
+                              onClick={() => { setSelectedConflictIndex(0); setIsConflictInspectorOpen(true); }}
+                              className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black text-[9px] uppercase tracking-wider py-1.5 px-2 rounded-xl active:scale-95 transition"
                             >
                               Resolve Conflicts
                             </button>
@@ -23458,29 +23427,28 @@ Return your response strictly as a JSON object matching this schema:
                         )}
 
                         {exportFormat === 'apkg' ? (
-                          <div className="border border-gray-100 rounded-2xl p-4 bg-gray-50/50 flex flex-col gap-3">
+                          <div className={`rounded-2xl p-4 flex flex-col gap-3 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
                             <div className="flex justify-between items-center">
                               <div>
-                                <span className="text-xs font-black text-gray-900 block">Include Clinical Images</span>
-                                <span className="text-[9px] text-gray-400 font-bold block mt-0.5">Embed cropped image figures into deck notes</span>
+                                <span className={`text-xs font-black block ${settingsThemeMode === 'dark' ? 'text-slate-200' : 'text-slate-800'}`}>Include Clinical Images</span>
+                                <span className={`text-[9px] font-bold block mt-0.5 ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-400'}`}>Embed cropped image figures into deck notes</span>
                               </div>
                               <button
                                 onClick={() => setIncludeImages(!includeImages)}
-                                className={`w-10 h-5 rounded-full p-0.5 transition-colors duration-200 focus:outline-none ${includeImages ? 'bg-blue-600' : 'bg-gray-300'}`}
+                                className={`w-10 h-5 rounded-full p-0.5 transition-colors duration-200 focus:outline-none ${includeImages ? 'bg-blue-500' : settingsThemeMode === 'dark' ? 'bg-slate-600' : 'bg-slate-300'}`}
                               >
                                 <div className={`w-4 h-4 rounded-full bg-white shadow-md transform duration-200 ${includeImages ? 'translate-x-5' : 'translate-x-0'}`} />
                               </button>
                             </div>
-
                             {includeImages && (
-                              <div className="border-t border-gray-200/60 pt-3 flex justify-between items-center animate-in fade-in duration-200">
+                              <div className={`border-t pt-3 flex justify-between items-center animate-in fade-in duration-200 ${settingsThemeMode === 'dark' ? 'border-slate-600/40' : 'border-slate-200/60'}`}>
                                 <div>
-                                  <span className="text-xs font-black text-gray-900 block">Review & Fine-Tune Images</span>
-                                  <span className="text-[9px] text-gray-400 font-bold block mt-0.5">Interactively drag or scale crops before export</span>
+                                  <span className={`text-xs font-black block ${settingsThemeMode === 'dark' ? 'text-slate-200' : 'text-slate-800'}`}>Review & Fine-Tune Images</span>
+                                  <span className={`text-[9px] font-bold block mt-0.5 ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-400'}`}>Interactively drag or scale crops before export</span>
                                 </div>
                                 <button
                                   onClick={() => setManualReviewImages(!manualReviewImages)}
-                                  className={`w-10 h-5 rounded-full p-0.5 transition-colors duration-200 focus:outline-none ${manualReviewImages ? 'bg-blue-600' : 'bg-gray-300'}`}
+                                  className={`w-10 h-5 rounded-full p-0.5 transition-colors duration-200 focus:outline-none ${manualReviewImages ? 'bg-blue-500' : settingsThemeMode === 'dark' ? 'bg-slate-600' : 'bg-slate-300'}`}
                                 >
                                   <div className={`w-4 h-4 rounded-full bg-white shadow-md transform duration-200 ${manualReviewImages ? 'translate-x-5' : 'translate-x-0'}`} />
                                 </button>
@@ -23488,23 +23456,31 @@ Return your response strictly as a JSON object matching this schema:
                             )}
                           </div>
                         ) : (
-                          <div className="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center text-gray-400">
-                            <ImageIcon className="w-8 h-8 mb-1 opacity-20" />
-                            <span className="text-[9px] font-bold">Selected format does not pack binary assets.</span>
+                          <div className={`p-4 rounded-2xl flex flex-col items-center justify-center text-center ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
+                            <ImageIcon className={`w-8 h-8 mb-1 opacity-20 ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`} />
+                            <span className={`text-[9px] font-bold ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-400'}`}>Selected format does not pack binary assets.</span>
                           </div>
                         )}
                       </div>
 
                       {/* Sticky bottom mobile download action bar */}
-                      <div className="fixed bottom-[72px] left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 px-5 py-4 shadow-lg z-45 flex items-center justify-between gap-3">
+                      <div className={`fixed bottom-[72px] left-0 right-0 backdrop-blur-md border-t px-5 py-4 shadow-lg z-45 flex items-center justify-between gap-3 ${
+                        settingsThemeMode === 'dark'
+                          ? 'bg-[#222730]/95 border-slate-600/40'
+                          : 'bg-[#e6ecf5]/95 border-slate-200/80'
+                      }`}>
                         <div className="min-w-0">
-                          <h3 className="text-xs font-black text-gray-900 truncate">Compile Deck</h3>
-                          <p className="text-[8px] text-gray-500 font-bold mt-0.5">{exportCount} cards in {exportFormat.toUpperCase()}</p>
+                          <h3 className={`text-xs font-black truncate ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-800'}`}>Compile Deck</h3>
+                          <p className={`text-[8px] font-bold mt-0.5 ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>{exportCount} cards in {exportFormat.toUpperCase()}</p>
                         </div>
                         <button
                           onClick={() => exportDeck(exportFormat)}
                           disabled={exportCount === 0}
-                          className="px-5 py-2.5 bg-blue-600 disabled:bg-gray-200 disabled:text-gray-400 text-white text-[10px] font-black rounded-xl transition shadow-md shadow-blue-600/25 flex items-center gap-1.5 active:scale-95"
+                          className={`px-5 py-2.5 text-[10px] font-black rounded-xl transition flex items-center gap-1.5 active:scale-95 ${
+                            exportCount === 0
+                              ? settingsThemeMode === 'dark' ? 'bg-slate-700 text-slate-500' : 'bg-slate-200 text-slate-400'
+                              : 'bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-lg shadow-blue-500/30'
+                          }`}
                         >
                           <Download className="w-3.5 h-3.5" /> Compile
                         </button>
@@ -23512,12 +23488,14 @@ Return your response strictly as a JSON object matching this schema:
 
                       {/* Mobile Export Progress Overlay */}
                       {isExporting && (
-                        <div className="fixed inset-0 bg-white/95 backdrop-blur-sm z-[200] flex flex-col items-center justify-center p-6 text-center">
+                        <div className={`fixed inset-0 backdrop-blur-sm z-[200] flex flex-col items-center justify-center p-6 text-center ${
+                          settingsThemeMode === 'dark' ? 'bg-[#222730]/95' : 'bg-[#e6ecf5]/95'
+                        }`}>
                           <div className="relative mb-4 flex items-center justify-center">
                             <OrbitalLoader themeMode={settingsThemeMode} size="large" />
                           </div>
-                          <h4 className="text-base font-black text-gray-900 tracking-tight mb-1">Generating Bundle Payload</h4>
-                          <p className="text-xs text-gray-500 font-bold max-w-xs">{exportProgressText || "Compiling databases, please wait..."}</p>
+                          <h4 className={`text-base font-black tracking-tight mb-1 ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-800'}`}>Generating Bundle Payload</h4>
+                          <p className={`text-xs font-bold max-w-xs ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>{exportProgressText || 'Compiling databases, please wait...'}</p>
                         </div>
                       )}
                     </div>
@@ -30564,59 +30542,59 @@ Return your response strictly as a JSON object matching this schema:
                       </div>
                     )}
 
-                    {/* EXPORTER HUB VIEW */}
+                    {/* EXPORTER HUB VIEW - DESKTOP */}
                     {currentTab === 'export' && (
-                      <div className="flex-grow flex flex-col overflow-hidden relative h-full w-full bg-gray-50/20">
+                      <div className={`flex-grow flex flex-col overflow-hidden relative h-full w-full ${settingsThemeMode === 'dark' ? 'neu-bg-dark' : 'neu-bg-light'}`}>
 
                         {/* Scrollable Settings Panel */}
-                        <div className="flex-grow overflow-y-auto p-4 lg:p-8 flex flex-col gap-6 max-w-[1400px] mx-auto w-full pb-36">
+                        <div className="flex-grow overflow-y-auto p-5 lg:p-8 flex flex-col gap-6 max-w-[1400px] mx-auto w-full pb-36 custom-scrollbar">
 
                           {/* Header */}
-                          <div className="flex justify-between items-center bg-white p-6 rounded-3xl border border-gray-200/80 shadow-sm shrink-0">
+                          <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} flex justify-between items-center p-6 rounded-3xl shrink-0`}>
                             <div className="flex items-center gap-4">
-                              <div className="bg-blue-600 text-white p-3.5 rounded-2xl shadow-xl shadow-blue-500/20">
+                              <div className="bg-gradient-to-br from-blue-500 to-blue-700 text-white p-3.5 rounded-2xl shadow-xl shadow-blue-500/30">
                                 <Download className="w-7 h-7" />
                               </div>
                               <div>
-                                <h2 className="text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2">
+                                <h2 className={`text-2xl font-black tracking-tight flex items-center gap-2 ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-800'}`}>
                                   Premium Exporter Hub
                                 </h2>
-                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">Configure layout, compile package files, and track export logs</p>
+                                <p className={`text-[10px] font-bold uppercase tracking-wider mt-0.5 ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-400'}`}>Configure layout, compile package files, and track export logs</p>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 border border-gray-150 rounded-2xl font-mono text-xs font-bold text-gray-700">
+                            <div className={`flex items-center gap-2 px-4 py-2 rounded-2xl font-mono text-xs font-bold ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-slate-300' : 'neu-pressed-light text-slate-600'}`}>
                               <Folder className="w-4 h-4 text-blue-500 shrink-0" />
-                              <span>{selectedDecksToExport.length === 1 ? selectedDecksToExport[0] : `${selectedDecksToExport.length} decks selected`}</span>
+                              <span className="truncate max-w-[200px]">{selectedDecksToExport.length === 1 ? selectedDecksToExport[0] : `${selectedDecksToExport.length} decks selected`}</span>
                             </div>
                           </div>
 
                           {/* Database Metrics Grid */}
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex flex-col justify-between hover:shadow-md transition">
-                              <span className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Hierarchy Total</span>
-                              <div className="flex items-baseline gap-2 mt-2">
-                                <span className="text-3xl font-black text-gray-800">{totalInExport}</span>
-                                <span className="text-xs text-gray-400 font-bold">cards</span>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                            <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-6 rounded-3xl flex flex-col justify-between`}>
+                              <span className={`text-[10px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-400'}`}>Hierarchy Total</span>
+                              <div className="flex items-baseline gap-2 mt-3">
+                                <span className={`text-3xl font-black ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-800'}`}>{totalInExport}</span>
+                                <span className={`text-xs font-bold ${settingsThemeMode === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>cards</span>
                               </div>
-                              <p className="text-[10px] text-gray-500 font-bold mt-2">All items matching selected decks structure</p>
+                              <p className={`text-[10px] font-bold mt-2 ${settingsThemeMode === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>All items matching selected decks structure</p>
                             </div>
 
-                            <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex flex-col justify-between hover:shadow-md transition">
-                              <span className="text-[10px] font-black uppercase text-blue-500 tracking-wider">Exported Logs</span>
-                              <div className="flex items-baseline gap-2 mt-2">
-                                <span className="text-3xl font-black text-blue-600">{exportedInExport}</span>
-                                <span className="text-xs text-blue-400 font-bold">completed</span>
+                            <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-6 rounded-3xl flex flex-col justify-between`}>
+                              <span className="text-[10px] font-black uppercase tracking-wider text-blue-500">Exported Logs</span>
+                              <div className="flex items-baseline gap-2 mt-3">
+                                <span className="text-3xl font-black text-blue-500">{exportedInExport}</span>
+                                <span className="text-xs font-bold text-blue-400">completed</span>
                               </div>
-                              <p className="text-[10px] text-green-600 font-bold mt-2">📊 {totalInExport > 0 ? Math.round((exportedInExport / totalInExport) * 100) : 0}% Sync completeness</p>
+                              <p className="text-[10px] text-emerald-500 font-bold mt-2">📊 {totalInExport > 0 ? Math.round((exportedInExport / totalInExport) * 100) : 0}% Sync completeness</p>
                             </div>
 
-                            <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex flex-col justify-between hover:shadow-md transition">
-                              <span className="text-[10px] font-black uppercase text-orange-500 tracking-wider">Remaining (New)</span>
-                              <div className="flex items-baseline gap-2 mt-2">
-                                <span className="text-3xl font-black text-orange-600">{unexportedInExport}</span>
-                                <span className="text-xs text-orange-400 font-bold">un-synced</span>
+                            <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-6 rounded-3xl flex flex-col justify-between`}>
+                              <span className="text-[10px] font-black uppercase tracking-wider text-orange-400">Remaining (New)</span>
+                              <div className="flex items-baseline gap-2 mt-3">
+                                <span className="text-3xl font-black text-orange-400">{unexportedInExport}</span>
+                                <span className="text-xs font-bold text-orange-300">un-synced</span>
                               </div>
-                              <p className="text-[10px] text-orange-500 font-bold mt-2">Ready to compile as new flashcards</p>
+                              <p className="text-[10px] text-orange-400 font-bold mt-2">Ready to compile as new flashcards</p>
                             </div>
                           </div>
 
@@ -30624,30 +30602,30 @@ Return your response strictly as a JSON object matching this schema:
                           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-stretch">
 
                             {/* COLUMN 1: Decks to Export Checklist */}
-                            <div className="bg-white p-6 rounded-[2rem] border border-gray-200 shadow-sm flex flex-col gap-4">
+                            <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-6 rounded-[2rem] flex flex-col gap-4`}>
                               <div>
-                                <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400">1. Decks to Export</label>
-                                <span className="text-[10px] text-gray-400 font-bold block mt-0.5">Select which deck hierarchies to compile</span>
+                                <label className={`block text-[10px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-400'}`}>1. Decks to Export</label>
+                                <span className={`text-[10px] font-bold block mt-0.5 ${settingsThemeMode === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>Select which deck hierarchies to compile</span>
                               </div>
 
                               {/* Selection Helper Buttons */}
                               <div className="flex gap-2 shrink-0">
                                 <button
                                   onClick={() => setSelectedDecksToExport(allDecks)}
-                                  className="flex-1 py-1.5 px-2.5 border border-gray-200 rounded-xl text-[9px] font-black uppercase text-gray-500 hover:bg-gray-50 transition active:scale-95"
+                                  className={`flex-1 py-1.5 px-2.5 rounded-xl text-[9px] font-black uppercase transition active:scale-95 ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-500'}`}
                                 >
                                   Select All
                                 </button>
                                 <button
                                   onClick={() => setSelectedDecksToExport([])}
-                                  className="flex-1 py-1.5 px-2.5 border border-gray-200 rounded-xl text-[9px] font-black uppercase text-gray-500 hover:bg-gray-50 transition active:scale-95"
+                                  className={`flex-1 py-1.5 px-2.5 rounded-xl text-[9px] font-black uppercase transition active:scale-95 ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-500'}`}
                                 >
                                   Clear
                                 </button>
                               </div>
 
                               {/* Scrollable Hierarchy Tree Container */}
-                              <div className="flex-grow overflow-y-auto max-h-[350px] xl:max-h-none xl:h-[350px] border border-gray-100 rounded-2xl bg-gray-50/40 p-4 custom-scrollbar">
+                              <div className={`flex-grow overflow-y-auto max-h-[350px] xl:max-h-none xl:h-[350px] rounded-2xl p-4 custom-scrollbar ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
                                 <ExportTreeFolder
                                   node={buildTree(allDecks, libraryPages, deckCardCounts)}
                                   selectedDecks={selectedDecksToExport}
@@ -30666,112 +30644,74 @@ Return your response strictly as a JSON object matching this schema:
                             </div>
 
                             {/* COLUMN 2: Select Target Format & Scope */}
-                            <div className="bg-white p-6 rounded-[2rem] border border-gray-200 shadow-sm flex flex-col gap-6 justify-between">
+                            <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-6 rounded-[2rem] flex flex-col gap-6 justify-between`}>
                               {/* Format Selector */}
                               <div>
-                                <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400 mb-3">2. Select Target Format</label>
+                                <label className={`block text-[10px] font-black uppercase tracking-wider mb-3 ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-400'}`}>2. Select Target Format</label>
                                 <div className="grid grid-cols-2 gap-3">
-                                  {/* APKG */}
-                                  <button
-                                    onClick={() => setExportFormat('apkg')}
-                                    className={`p-4 rounded-2xl border flex flex-col justify-between h-28 text-left transition ${exportFormat === 'apkg' ? 'border-blue-600 bg-blue-50/50 text-blue-600 shadow-md shadow-blue-100/50' : 'border-gray-200 hover:border-blue-300 bg-white text-gray-500'}`}
-                                  >
-                                    <Layers className="w-5 h-5 text-purple-500 animate-pulse" />
-                                    <div>
-                                      <div className="text-xs font-black text-gray-900 leading-none">Anki Package (.apkg)</div>
-                                      <div className="text-[8px] text-gray-400 font-bold mt-1">Highly recommended (WASM SQLite Zip)</div>
-                                    </div>
-                                  </button>
-
-                                  {/* TSV */}
-                                  <button
-                                    onClick={() => setExportFormat('anki')}
-                                    className={`p-4 rounded-2xl border flex flex-col justify-between h-28 text-left transition ${exportFormat === 'anki' ? 'border-blue-600 bg-blue-50/50 text-blue-600 shadow-md' : 'border-gray-200 hover:border-blue-300 bg-white text-gray-500'}`}
-                                  >
-                                    <FileText className="w-5 h-5 text-orange-500" />
-                                    <div>
-                                      <div className="text-xs font-black text-gray-900 leading-none">Anki TSV</div>
-                                      <div className="text-[8px] text-gray-400 font-bold mt-1">Simple tab-separated format</div>
-                                    </div>
-                                  </button>
-
-                                  {/* CSV */}
-                                  <button
-                                    onClick={() => setExportFormat('notion')}
-                                    className={`p-4 rounded-2xl border flex flex-col justify-between h-28 text-left transition ${exportFormat === 'notion' ? 'border-blue-600 bg-blue-50/50 text-blue-600 shadow-md' : 'border-gray-200 hover:border-blue-300 bg-white text-gray-500'}`}
-                                  >
-                                    <Grid className="w-5 h-5 text-blue-500" />
-                                    <div>
-                                      <div className="text-xs font-black text-gray-900 leading-none">Notion CSV</div>
-                                      <div className="text-[8px] text-gray-400 font-bold mt-1">Database layout backup</div>
-                                    </div>
-                                  </button>
-
-                                  {/* PDF */}
-                                  <button
-                                    onClick={() => setExportFormat('pdf')}
-                                    className={`p-4 rounded-2xl border flex flex-col justify-between h-28 text-left transition ${exportFormat === 'pdf' ? 'border-blue-600 bg-blue-50/50 text-blue-600 shadow-md' : 'border-gray-200 hover:border-blue-300 bg-white text-gray-500'}`}
-                                  >
-                                    <Layers className="w-5 h-5 text-green-500" />
-                                    <div>
-                                      <div className="text-xs font-black text-gray-900 leading-none">PDF Sheet</div>
-                                      <div className="text-[8px] text-gray-400 font-bold mt-1">Printable study-sheets</div>
-                                    </div>
-                                  </button>
+                                  {[{id:'apkg',icon:<Layers className="w-5 h-5 text-purple-400 animate-pulse"/>,label:'Anki Package (.apkg)',sub:'Highly recommended (WASM SQLite Zip)'},{id:'anki',icon:<FileText className="w-5 h-5 text-orange-400"/>,label:'Anki TSV',sub:'Simple tab-separated format'},{id:'notion',icon:<Grid className="w-5 h-5 text-blue-400"/>,label:'Notion CSV',sub:'Database layout backup'},{id:'pdf',icon:<Layers className="w-5 h-5 text-emerald-400"/>,label:'PDF Sheet',sub:'Printable study-sheets'}].map(fmt => (
+                                    <button
+                                      key={fmt.id}
+                                      onClick={() => setExportFormat(fmt.id)}
+                                      className={`p-4 rounded-2xl flex flex-col justify-between h-28 text-left transition-all active:scale-95 ${
+                                        exportFormat === fmt.id
+                                          ? 'bg-gradient-to-br from-blue-500/20 to-blue-600/10 border-2 border-blue-500 shadow-lg shadow-blue-500/10'
+                                          : settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'
+                                      }`}
+                                    >
+                                      {fmt.icon}
+                                      <div>
+                                        <div className={`text-xs font-black leading-none ${exportFormat === fmt.id ? 'text-blue-500' : settingsThemeMode === 'dark' ? 'text-slate-200' : 'text-slate-800'}`}>{fmt.label}</div>
+                                        <div className={`text-[8px] font-bold mt-1 ${settingsThemeMode === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>{fmt.sub}</div>
+                                      </div>
+                                    </button>
+                                  ))}
                                 </div>
                               </div>
 
                               {/* Scope Selector */}
                               <div>
-                                <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400 mb-2">3. Filter Export Scope</label>
+                                <label className={`block text-[10px] font-black uppercase tracking-wider mb-2 ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-400'}`}>3. Filter Export Scope</label>
                                 <div className="grid grid-cols-3 gap-2">
-                                  <button
-                                    onClick={() => setExportScope('all')}
-                                    className={`py-2.5 px-3 rounded-xl border text-xs font-black transition ${exportScope === 'all' ? 'border-blue-600 bg-blue-50/50 text-blue-600 shadow-sm' : 'border-gray-200 hover:border-blue-300 bg-white text-gray-500'}`}
-                                  >
-                                    All ({totalInExport})
-                                  </button>
-                                  <button
-                                    onClick={() => setExportScope('unexported')}
-                                    className={`py-2.5 px-3 rounded-xl border text-xs font-black transition ${exportScope === 'unexported' ? 'border-blue-600 bg-blue-50/50 text-blue-600 shadow-sm' : 'border-gray-200 hover:border-blue-300 bg-white text-gray-500'}`}
-                                  >
-                                    New ({unexportedInExport})
-                                  </button>
-                                  <button
-                                    onClick={() => setExportScope('exported')}
-                                    className={`py-2.5 px-3 rounded-xl border text-xs font-black transition ${exportScope === 'exported' ? 'border-blue-600 bg-blue-50/50 text-blue-600 shadow-sm' : 'border-gray-200 hover:border-blue-300 bg-white text-gray-500'}`}
-                                  >
-                                    Exported ({exportedInExport})
-                                  </button>
+                                  {[{val:'all',label:`All (${totalInExport})`},{val:'unexported',label:`New (${unexportedInExport})`},{val:'exported',label:`Done (${exportedInExport})`}].map(s => (
+                                    <button
+                                      key={s.val}
+                                      onClick={() => setExportScope(s.val)}
+                                      className={`py-2.5 px-3 rounded-xl text-xs font-black transition active:scale-95 ${
+                                        exportScope === s.val
+                                          ? 'bg-gradient-to-br from-blue-500/20 to-blue-600/10 border-2 border-blue-500 text-blue-500 shadow-md shadow-blue-500/10'
+                                          : settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-500'
+                                      }`}
+                                    >
+                                      {s.label}
+                                    </button>
+                                  ))}
                                 </div>
                               </div>
 
                               {/* Pre-Flight Check Panel */}
-                              <div className="border-t border-gray-100 pt-4 flex flex-col gap-3">
-                                <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400">Bundle Pre-Flight Check</label>
+                              <div className={`border-t pt-4 flex flex-col gap-3 ${settingsThemeMode === 'dark' ? 'border-slate-600/30' : 'border-slate-200/60'}`}>
+                                <label className={`block text-[10px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-400'}`}>Bundle Pre-Flight Check</label>
                                 {activeConflicts.length === 0 ? (
-                                  <div className="bg-green-50 border border-green-200/60 p-4 rounded-2xl flex items-center gap-3">
-                                    <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
+                                  <div className={`p-4 rounded-2xl flex items-center gap-3 ${settingsThemeMode === 'dark' ? 'bg-emerald-900/20 border border-emerald-700/40' : 'bg-green-50 border border-green-200/60'}`}>
+                                    <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
                                     <div>
-                                      <span className="text-xs font-black text-green-950 block">✓ Bundle Clean</span>
-                                      <span className="text-[9px] text-green-600 font-bold block mt-0.5">No duplicate card concepts detected in queue!</span>
+                                      <span className={`text-xs font-black block ${settingsThemeMode === 'dark' ? 'text-emerald-300' : 'text-green-900'}`}>✓ Bundle Clean</span>
+                                      <span className={`text-[9px] font-bold block mt-0.5 ${settingsThemeMode === 'dark' ? 'text-emerald-400' : 'text-green-600'}`}>No duplicate card concepts detected in queue!</span>
                                     </div>
                                   </div>
                                 ) : (
-                                  <div className="bg-orange-50/70 border border-orange-200 p-4 rounded-2xl flex flex-col gap-3 animate-pulse">
+                                  <div className={`p-4 rounded-2xl flex flex-col gap-3 ${settingsThemeMode === 'dark' ? 'bg-orange-900/20 border border-orange-700/40' : 'bg-orange-50/70 border border-orange-200'}`}>
                                     <div className="flex items-center gap-3">
-                                      <AlertTriangle className="w-5 h-5 text-orange-600 shrink-0" />
+                                      <AlertTriangle className="w-5 h-5 text-orange-400 shrink-0" />
                                       <div>
-                                        <span className="text-xs font-black text-orange-950 block">{activeConflicts.length} Concept Conflict{activeConflicts.length > 1 ? 's' : ''} Detected</span>
-                                        <span className="text-[9px] text-orange-600 font-bold block mt-0.5">Highly similar cards found in export queue!</span>
+                                        <span className={`text-xs font-black block ${settingsThemeMode === 'dark' ? 'text-orange-300' : 'text-orange-900'}`}>{activeConflicts.length} Concept Conflict{activeConflicts.length > 1 ? 's' : ''} Detected</span>
+                                        <span className={`text-[9px] font-bold block mt-0.5 ${settingsThemeMode === 'dark' ? 'text-orange-400' : 'text-orange-600'}`}>Highly similar cards found in export queue!</span>
                                       </div>
                                     </div>
                                     <button
-                                      onClick={() => {
-                                        setSelectedConflictIndex(0);
-                                        setIsConflictInspectorOpen(true);
-                                      }}
-                                      className="w-full bg-orange-600 hover:bg-orange-700 text-white font-black text-[10px] uppercase tracking-wider py-2 px-3 rounded-xl shadow-md shadow-orange-600/10 transition active:scale-95 duration-200 text-center"
+                                      onClick={() => { setSelectedConflictIndex(0); setIsConflictInspectorOpen(true); }}
+                                      className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black text-[10px] uppercase tracking-wider py-2 px-3 rounded-xl shadow-md shadow-orange-500/20 transition active:scale-95 duration-200 text-center"
                                     >
                                       Resolve Conflicts
                                     </button>
@@ -30781,34 +30721,34 @@ Return your response strictly as a JSON object matching this schema:
                             </div>
 
                             {/* COLUMN 3: Media Asset Config */}
-                            <div className="bg-white p-6 rounded-[2rem] border border-gray-200 shadow-sm flex flex-col gap-6 justify-between">
+                            <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-6 rounded-[2rem] flex flex-col gap-6 justify-between`}>
                               <div className="flex flex-col gap-6">
-                                <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400">4. Media Asset Configuration</label>
+                                <label className={`block text-[10px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-400'}`}>4. Media Asset Configuration</label>
 
                                 {exportFormat === 'apkg' ? (
-                                  <div className="border border-gray-150 rounded-2xl p-5 bg-gray-50/50 flex flex-col gap-4">
+                                  <div className={`rounded-2xl p-5 flex flex-col gap-4 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
                                     <div className="flex justify-between items-center">
                                       <div>
-                                        <span className="text-sm font-black text-gray-900 tracking-tight block">Include Clinical Images</span>
-                                        <span className="text-xs text-gray-400 font-medium block mt-0.5">Embed high-quality diagram figures into notes</span>
+                                        <span className={`text-sm font-black tracking-tight block ${settingsThemeMode === 'dark' ? 'text-slate-200' : 'text-slate-800'}`}>Include Clinical Images</span>
+                                        <span className={`text-xs font-medium block mt-0.5 ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-400'}`}>Embed high-quality diagram figures into notes</span>
                                       </div>
                                       <button
                                         onClick={() => setIncludeImages(!includeImages)}
-                                        className={`w-12 h-6 rounded-full p-0.5 transition-colors duration-200 focus:outline-none ${includeImages ? 'bg-blue-600' : 'bg-gray-300'}`}
+                                        className={`w-12 h-6 rounded-full p-0.5 transition-colors duration-200 focus:outline-none ${includeImages ? 'bg-blue-500' : settingsThemeMode === 'dark' ? 'bg-slate-600' : 'bg-slate-300'}`}
                                       >
                                         <div className={`w-5 h-5 rounded-full bg-white shadow-md transform duration-200 ${includeImages ? 'translate-x-6' : 'translate-x-0'}`} />
                                       </button>
                                     </div>
 
                                     {includeImages && (
-                                      <div className="border-t border-gray-200/70 pt-4 flex justify-between items-center animate-in fade-in duration-200">
+                                      <div className={`border-t pt-4 flex justify-between items-center animate-in fade-in duration-200 ${settingsThemeMode === 'dark' ? 'border-slate-600/40' : 'border-slate-200/70'}`}>
                                         <div>
-                                          <span className="text-sm font-black text-gray-900 tracking-tight block">Review & Fine-Tune Images</span>
-                                          <span className="text-xs text-gray-400 font-medium block mt-0.5">Interactively drag or scale crops before export</span>
+                                          <span className={`text-sm font-black tracking-tight block ${settingsThemeMode === 'dark' ? 'text-slate-200' : 'text-slate-800'}`}>Review & Fine-Tune Images</span>
+                                          <span className={`text-xs font-medium block mt-0.5 ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-400'}`}>Interactively drag or scale crops before export</span>
                                         </div>
                                         <button
                                           onClick={() => setManualReviewImages(!manualReviewImages)}
-                                          className={`w-12 h-6 rounded-full p-0.5 transition-colors duration-200 focus:outline-none shrink-0 ${manualReviewImages ? 'bg-blue-600' : 'bg-gray-300'}`}
+                                          className={`w-12 h-6 rounded-full p-0.5 transition-colors duration-200 focus:outline-none shrink-0 ${manualReviewImages ? 'bg-blue-500' : settingsThemeMode === 'dark' ? 'bg-slate-600' : 'bg-slate-300'}`}
                                         >
                                           <div className={`w-5 h-5 rounded-full bg-white shadow-md transform duration-200 ${manualReviewImages ? 'translate-x-6' : 'translate-x-0'}`} />
                                         </button>
@@ -30816,15 +30756,15 @@ Return your response strictly as a JSON object matching this schema:
                                     )}
                                   </div>
                                 ) : (
-                                  <div className="bg-gray-50 border border-gray-200/70 p-6 rounded-2xl flex flex-col items-center justify-center text-center text-gray-400">
-                                    <ImageIcon className="w-10 h-10 mb-2 opacity-20" />
-                                    <span className="text-xs font-bold leading-normal">Selected format does not pack binary assets.</span>
-                                    <span className="text-[10px] text-gray-400 mt-1">Anki package (.apkg) compiles embedded image assets natively.</span>
+                                  <div className={`p-6 rounded-2xl flex flex-col items-center justify-center text-center ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
+                                    <ImageIcon className={`w-10 h-10 mb-2 opacity-20 ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`} />
+                                    <span className={`text-xs font-bold leading-normal ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>Selected format does not pack binary assets.</span>
+                                    <span className={`text-[10px] mt-1 ${settingsThemeMode === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>Anki package (.apkg) compiles embedded image assets natively.</span>
                                   </div>
                                 )}
                               </div>
 
-                              <div className="bg-blue-50 border border-blue-100 p-4 rounded-2xl flex items-start gap-2.5 text-blue-800 text-[10px] font-medium leading-relaxed">
+                              <div className={`p-4 rounded-2xl flex items-start gap-2.5 text-[10px] font-medium leading-relaxed ${settingsThemeMode === 'dark' ? 'bg-blue-900/20 border border-blue-700/30 text-blue-300' : 'bg-blue-50 border border-blue-100 text-blue-800'}`}>
                                 <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
                                 <span>Multiple selected folders will be unified into one Anki deck file (.apkg) matching their parent namespaces.</span>
                               </div>
@@ -30834,19 +30774,27 @@ Return your response strictly as a JSON object matching this schema:
                         </div> {/* End of Scrollable Settings Panel */}
 
                         {/* Sticky Prominent Action Bar at the Bottom */}
-                        <div className="sticky bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-gray-200/80 px-6 lg:px-12 py-5 shadow-[0_-10px_30px_rgba(0,0,0,0.03)] z-40 flex flex-col md:flex-row items-center justify-between gap-4 shrink-0 max-w-[1400px] mx-auto w-full rounded-t-[2.5rem] border-x border-gray-200/60">
+                        <div className={`sticky bottom-0 left-0 right-0 backdrop-blur-md border-t px-6 lg:px-12 py-5 z-40 flex flex-col md:flex-row items-center justify-between gap-4 shrink-0 max-w-[1400px] mx-auto w-full rounded-t-[2.5rem] border-x ${
+                          settingsThemeMode === 'dark'
+                            ? 'bg-[#222730]/95 border-slate-600/40 shadow-[0_-10px_30px_rgba(0,0,0,0.25)]'
+                            : 'bg-[#e6ecf5]/95 border-slate-200/80 shadow-[0_-10px_30px_rgba(0,0,0,0.04)]'
+                        }`}>
                           <div>
-                            <h3 className="text-sm font-black text-gray-900 tracking-tight flex items-center gap-2">
-                              <Layers className="w-4 h-4 text-blue-600 animate-pulse" /> Ready for Compilation
+                            <h3 className={`text-sm font-black tracking-tight flex items-center gap-2 ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-800'}`}>
+                              <Layers className="w-4 h-4 text-blue-500 animate-pulse" /> Ready for Compilation
                             </h3>
-                            <p className="text-[10px] text-gray-500 font-bold mt-0.5">
+                            <p className={`text-[10px] font-bold mt-0.5 ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
                               Compiling {exportCount} cards from {selectedDecksToExport.length} selected decks in {exportFormat.toUpperCase()} format.
                             </p>
                           </div>
                           <button
                             onClick={() => exportDeck(exportFormat)}
                             disabled={exportCount === 0}
-                            className="w-full md:w-auto px-8 py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:hover:bg-gray-200 disabled:text-gray-400 disabled:shadow-none text-white text-xs font-black rounded-2xl transition shadow-xl shadow-blue-600/25 flex items-center justify-center gap-2.5 active:scale-95 duration-200"
+                            className={`w-full md:w-auto px-8 py-3.5 text-xs font-black rounded-2xl transition flex items-center justify-center gap-2.5 active:scale-95 duration-200 ${
+                              exportCount === 0
+                                ? settingsThemeMode === 'dark' ? 'bg-slate-700 text-slate-500' : 'bg-slate-200 text-slate-400'
+                                : 'bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-xl shadow-blue-500/30 hover:from-blue-600 hover:to-blue-800'
+                            }`}
                           >
                             <Download className="w-4 h-4" /> Compile & Download Package ({exportCount} cards)
                           </button>
@@ -30854,13 +30802,15 @@ Return your response strictly as a JSON object matching this schema:
 
                         {/* Progress compiling layer overlay */}
                         {isExporting && (
-                          <div className="absolute inset-0 bg-white/95 backdrop-blur-sm z-[200] flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-200">
+                          <div className={`absolute inset-0 backdrop-blur-sm z-[200] flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-200 ${
+                            settingsThemeMode === 'dark' ? 'bg-[#222730]/95' : 'bg-[#e6ecf5]/95'
+                          }`}>
                             <div className="relative mb-6">
-                              <div className="w-20 h-20 rounded-full border-4 border-blue-100 border-t-blue-600 animate-spin"></div>
-                              <Download className="w-8 h-8 text-blue-600 absolute inset-0 m-auto animate-pulse" />
+                              <div className={`w-20 h-20 rounded-full border-4 border-t-blue-500 animate-spin ${settingsThemeMode === 'dark' ? 'border-slate-600' : 'border-blue-100'}`}></div>
+                              <Download className="w-8 h-8 text-blue-500 absolute inset-0 m-auto animate-pulse" />
                             </div>
-                            <h4 className="text-xl font-black text-gray-900 tracking-tight mb-2">Generating Bundle Payload</h4>
-                            <p className="text-sm text-gray-500 font-bold max-w-sm">{exportProgressText || "Compiling databases and cropping images, please wait..."}</p>
+                            <h4 className={`text-xl font-black tracking-tight mb-2 ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-800'}`}>Generating Bundle Payload</h4>
+                            <p className={`text-sm font-bold max-w-sm ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>{exportProgressText || 'Compiling databases and cropping images, please wait...'}</p>
                           </div>
                         )}
 
