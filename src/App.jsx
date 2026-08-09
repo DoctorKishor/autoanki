@@ -13309,6 +13309,7 @@ JSON Format:
     const pages = item.pages || [];
     const isEditingPages = pytEditingPagesTopic === topic;
     const isMerging = pytMergingSourceTopic === topic;
+    const isDark = settingsThemeMode === 'dark';
 
     const docId = selectedLoggerSubject.trim().toLowerCase();
     const progressDoc = userPytProgress.find(p => p.id === docId);
@@ -13317,42 +13318,42 @@ JSON Format:
       .filter(o => o.name.toLowerCase() !== topic.toLowerCase())
       .map(o => o.name);
 
-    let badgeBg = 'bg-slate-100 text-slate-700 border-slate-200';
-    let cardBorder = 'border-gray-200 bg-white';
+    let badgeBg = isDark ? 'bg-slate-800/80 text-slate-300 border-slate-700' : 'bg-slate-100 text-slate-700 border-slate-200';
     if (count === 1) {
-      badgeBg = 'bg-amber-100 text-amber-700 border-amber-200';
-      cardBorder = 'border-amber-200 bg-amber-50/5';
+      badgeBg = isDark ? 'bg-amber-950/70 text-amber-300 border-amber-800/60' : 'bg-amber-100 text-amber-700 border-amber-200';
     } else if (count === 2) {
-      badgeBg = 'bg-blue-100 text-blue-700 border-blue-200';
-      cardBorder = 'border-blue-200 bg-blue-50/5';
+      badgeBg = isDark ? 'bg-blue-950/70 text-blue-300 border-blue-800/60' : 'bg-blue-100 text-blue-700 border-blue-200';
     } else if (count >= 3) {
-      badgeBg = 'bg-emerald-100 text-emerald-700 border-emerald-200';
-      cardBorder = 'border-emerald-200 bg-emerald-50/5';
+      badgeBg = isDark ? 'bg-emerald-950/70 text-emerald-300 border-emerald-800/60' : 'bg-emerald-100 text-emerald-700 border-emerald-200';
     }
 
     return (
       <div
         key={topic}
-        className={`flex flex-col p-4 rounded-2xl border transition-all ${cardBorder} shadow-sm hover:shadow-md gap-3`}
+        className={`flex flex-col p-4 rounded-2xl transition-all gap-3 ${isDark ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'
+          }`}
       >
         <div className="flex items-start justify-between gap-3">
           <div className="flex-grow min-w-0">
-            <h3 className={`font-black text-gray-800 leading-snug ${isMobile ? 'text-xs' : 'text-sm'}`}>{topic}</h3>
+            <h3 className={`font-black leading-snug ${isDark ? 'text-slate-100' : 'text-slate-900'} ${isMobile ? 'text-xs' : 'text-sm'}`}>{topic}</h3>
 
-            <span className={`inline-block text-[9px] font-black uppercase tracking-wider px-2 py-0.5 mt-2 rounded-full border ${badgeBg}`}>
+            <span className={`inline-block text-[9px] font-black uppercase tracking-wider px-2.5 py-0.5 mt-2 rounded-full border ${badgeBg}`}>
               Revised {count} {count === 1 ? 'time' : 'times'}
             </span>
 
-            <div className="mt-2 flex flex-wrap gap-1.5 items-center">
+            <div className="mt-2.5 flex flex-wrap gap-1.5 items-center">
               {pages.length > 0 ? (
                 pages.map((p, pIdx) => {
                   const pageList = String(p.pages).split(',').map(s => s.trim()).filter(Boolean);
                   return (
                     <div
                       key={pIdx}
-                      className="bg-blue-50 text-blue-700 border border-blue-100 rounded-lg px-2 py-0.5 text-[10px] font-bold flex items-center gap-1.5"
+                      className={`px-2 py-1 text-[10px] font-bold flex items-center gap-1.5 rounded-lg border ${isDark
+                          ? 'neu-item-dark text-blue-300 border-slate-700/60'
+                          : 'bg-blue-50 text-blue-700 border-blue-100/80'
+                        }`}
                     >
-                      <span className="text-slate-500 font-medium select-none">📖 {p.source}:</span>
+                      <span className={`${isDark ? 'text-slate-400' : 'text-slate-500'} font-medium select-none`}>📖 {p.source}:</span>
                       <div className="flex flex-wrap gap-1">
                         {pageList.map((page, pageIdx) => (
                           <button
@@ -13364,7 +13365,10 @@ JSON Format:
                                 alert("No GitHub PDF URL is associated with this scanned textbook mapping. Ensure GitHub credentials are saved in settings.");
                               }
                             }}
-                            className="bg-blue-100/60 hover:bg-blue-200/80 hover:text-blue-900 text-blue-700 px-1 py-0.5 rounded transition cursor-pointer active:scale-90 font-mono text-[9px]"
+                            className={`px-1.5 py-0.5 rounded transition cursor-pointer active:scale-90 font-mono text-[9px] ${isDark
+                                ? 'bg-blue-900/40 hover:bg-blue-800/60 text-blue-200'
+                                : 'bg-blue-100/60 hover:bg-blue-200/80 text-blue-700'
+                              }`}
                             title={`Open page ${page} of ${p.source} in-app`}
                           >
                             p.{page}
@@ -13375,22 +13379,24 @@ JSON Format:
                   );
                 })
               ) : (
-                <span className="text-[10px] text-gray-400 font-bold italic">No pages assigned</span>
+                <span className={`text-[10px] font-bold italic ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>No pages assigned</span>
               )}
             </div>
           </div>
 
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0">
             <button
               onClick={() => handlePytCountChange(selectedLoggerSubject, topic, Math.max(0, count - 1))}
-              className="p-2 rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition active:scale-95"
+              className={`p-2 rounded-xl transition active:scale-95 ${isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
+                }`}
               title="Decrement revision count"
             >
               <Minus className="w-4 h-4" />
             </button>
             <button
               onClick={() => handlePytCountChange(selectedLoggerSubject, topic, count + 1)}
-              className="p-2 rounded-xl border border-gray-250 bg-blue-50 text-blue-600 hover:bg-blue-100 transition active:scale-95"
+              className={`p-2 rounded-xl transition active:scale-95 ${isDark ? 'neu-btn-accent-dark text-white' : 'neu-btn-accent-light text-white'
+                }`}
               title="Increment revision count"
             >
               <Plus className="w-4 h-4" />
@@ -13398,14 +13404,16 @@ JSON Format:
           </div>
         </div>
 
-        <div className="flex items-center gap-3 pt-2 border-t border-gray-100 text-xs font-bold text-gray-505">
+        <div className={`flex items-center gap-2 pt-2.5 border-t ${isDark ? 'border-slate-800' : 'border-slate-200/80'} text-xs font-bold`}>
           <button
             onClick={() => {
               setPytEditingPagesTopic(isEditingPages ? null : topic);
               setPytNewPageSource('');
               setPytNewPagePages('');
             }}
-            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border transition ${isEditingPages ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-200 hover:bg-gray-50 text-gray-600'
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition text-xs ${isEditingPages
+                ? (isDark ? 'neu-btn-accent-dark text-white border-transparent' : 'bg-blue-600 border-blue-600 text-white')
+                : (isDark ? 'neu-btn-dark text-slate-300 border-transparent' : 'neu-btn-light text-slate-700 border-transparent')
               }`}
           >
             <BookOpen className="w-3.5 h-3.5" />
@@ -13414,7 +13422,9 @@ JSON Format:
 
           <button
             onClick={() => setPytMergingSourceTopic(isMerging ? null : topic)}
-            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border transition ${isMerging ? 'bg-orange-600 border-orange-600 text-white' : 'border-gray-200 hover:bg-gray-50 text-gray-600'
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition text-xs ${isMerging
+                ? 'bg-orange-600 border-orange-600 text-white'
+                : (isDark ? 'neu-btn-dark text-slate-300 border-transparent' : 'neu-btn-light text-slate-700 border-transparent')
               }`}
           >
             <GitMerge className="w-3.5 h-3.5" />
@@ -13423,13 +13433,15 @@ JSON Format:
         </div>
 
         {isEditingPages && (
-          <div className="bg-gray-50 border border-gray-150 rounded-xl p-3.5 mt-1 space-y-3 animate-in slide-in-from-top-2 duration-150">
-            <h4 className="text-[10px] font-black uppercase tracking-wider text-gray-400">Manage Page Numbers</h4>
+          <div className={`p-3.5 mt-1 space-y-3 rounded-xl border animate-in slide-in-from-top-2 duration-150 ${isDark ? 'neu-pressed-dark text-slate-100 border-[#2b323e]' : 'neu-pressed-light text-slate-800 border-white/60'
+            }`}>
+            <h4 className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Manage Page Numbers</h4>
             {pages.length > 0 && (
-              <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
+              <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1 no-scrollbar">
                 {pages.map((p, pIdx) => (
-                  <div key={pIdx} className="flex items-center justify-between bg-white border border-gray-200 rounded-lg p-2 text-xs">
-                    <span className="font-bold text-gray-700 truncate max-w-[80%]">
+                  <div key={pIdx} className={`flex items-center justify-between p-2 text-xs rounded-lg border ${isDark ? 'neu-item-dark text-slate-200 border-slate-700/50' : 'bg-white border-slate-200 text-slate-800'
+                    }`}>
+                    <span className="font-bold truncate max-w-[80%]">
                       {p.source} (p. {p.pages})
                     </span>
                     <button
@@ -13437,7 +13449,7 @@ JSON Format:
                         const updated = pages.filter((_, idx) => idx !== pIdx);
                         handleSavePytPages(selectedLoggerSubject, topic, updated);
                       }}
-                      className="text-gray-400 hover:text-red-500 p-0.5 rounded transition"
+                      className="text-slate-400 hover:text-red-500 p-0.5 rounded transition"
                       title="Remove page assignment"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -13449,23 +13461,25 @@ JSON Format:
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="block text-[8px] font-black uppercase text-gray-400 mb-1">Source / Ref</label>
+                <label className={`block text-[8px] font-black uppercase mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Source / Ref</label>
                 <input
                   type="text"
                   placeholder="e.g. Marrow, First Aid"
                   value={pytNewPageSource}
                   onChange={(e) => setPytNewPageSource(e.target.value)}
-                  className="w-full p-2 border border-gray-200 rounded-lg text-xs outline-none bg-white font-bold"
+                  className={`w-full p-2 rounded-lg text-xs outline-none font-bold border ${isDark ? 'neu-pressed-dark text-slate-100 border-transparent placeholder-slate-500' : 'neu-pressed-light text-slate-800 border-transparent placeholder-slate-400'
+                    }`}
                 />
               </div>
               <div>
-                <label className="block text-[8px] font-black uppercase text-gray-400 mb-1">Page Numbers</label>
+                <label className={`block text-[8px] font-black uppercase mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Page Numbers</label>
                 <input
                   type="text"
                   placeholder="e.g. 10-15, 230"
                   value={pytNewPagePages}
                   onChange={(e) => setPytNewPagePages(e.target.value)}
-                  className="w-full p-2 border border-gray-200 rounded-lg text-xs outline-none bg-white font-bold"
+                  className={`w-full p-2 rounded-lg text-xs outline-none font-bold border ${isDark ? 'neu-pressed-dark text-slate-100 border-transparent placeholder-slate-500' : 'neu-pressed-light text-slate-800 border-transparent placeholder-slate-400'
+                    }`}
                 />
               </div>
             </div>
@@ -13478,7 +13492,8 @@ JSON Format:
                 setPytNewPagePages('');
               }}
               disabled={!pytNewPageSource.trim() || !pytNewPagePages.trim()}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-black text-xs py-2 rounded-lg transition"
+              className={`w-full font-black text-xs py-2 rounded-lg transition active:scale-95 text-white disabled:opacity-50 ${isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+                }`}
             >
               Add Page Number
             </button>
@@ -13486,9 +13501,10 @@ JSON Format:
         )}
 
         {isMerging && (
-          <div className="bg-orange-50/50 border border-orange-200/80 rounded-xl p-3.5 mt-1 space-y-3 animate-in slide-in-from-top-2 duration-150">
-            <h4 className="text-[10px] font-black uppercase tracking-wider text-orange-700">Merge Topic</h4>
-            <p className="text-[10px] text-gray-500">Select target topic to consolidate '{topic}' into. Counts and page numbers will sum up.</p>
+          <div className={`p-3.5 mt-1 space-y-3 rounded-xl border animate-in slide-in-from-top-2 duration-150 ${isDark ? 'neu-pressed-dark text-slate-100 border-[#2b323e]' : 'neu-pressed-light text-slate-800 border-white/60'
+            }`}>
+            <h4 className="text-[10px] font-black uppercase tracking-wider text-orange-500">Merge Topic</h4>
+            <p className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Select target topic to consolidate '{topic}' into. Counts and page numbers will sum up.</p>
             {otherTopics.length > 0 ? (
               <div className="space-y-2">
                 <select
@@ -13499,7 +13515,8 @@ JSON Format:
                       setPytMergingSourceTopic(null);
                     }
                   }}
-                  className="w-full p-2 border border-gray-200 rounded-lg text-xs outline-none bg-white font-bold"
+                  className={`w-full p-2 rounded-lg text-xs outline-none font-bold border ${isDark ? 'bg-[#1b1f26] text-slate-100 border-slate-700' : 'bg-white text-slate-800 border-slate-200'
+                    }`}
                   defaultValue=""
                 >
                   <option value="" disabled>-- Select Target Topic --</option>
@@ -13509,11 +13526,12 @@ JSON Format:
                 </select>
               </div>
             ) : (
-              <p className="text-[10px] text-gray-450 italic">No other topics to merge with.</p>
+              <p className={`text-[10px] italic ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>No other topics to merge with.</p>
             )}
             <button
               onClick={() => setPytMergingSourceTopic(null)}
-              className="w-full bg-white border border-gray-200 hover:bg-gray-50 text-gray-650 font-bold text-xs py-1.5 rounded-lg transition"
+              className={`w-full font-bold text-xs py-1.5 rounded-lg transition ${isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-700'
+                }`}
             >
               Cancel
             </button>
@@ -24063,34 +24081,39 @@ Return your response strictly as a JSON object matching this schema:
 
                   {/* PYT LOGGER VIEW (Mobile) */}
                   {currentTab === 'pytLogger' && (
-                    <div className="space-y-4 text-left pb-24 animate-in fade-in duration-200">
-                      <div className="bg-white/80 backdrop-blur-xl p-5 rounded-3xl shadow-xl border border-white/40 space-y-4">
-                        <div className="flex flex-col gap-2 pb-3 border-b border-gray-100">
+                    <motion.div
+                      initial={{ opacity: 0, y: 20, scale: 0.98 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      transition={{ duration: 1.0, ease: [0.16, 1, 0.3, 1] }}
+                      className="space-y-4 text-left pb-24"
+                    >
+                      <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'} p-5 space-y-4`}>
+                        <div className={`flex flex-col gap-2 pb-3 border-b ${settingsThemeMode === 'dark' ? 'border-slate-800' : 'border-slate-200/80'}`}>
                           <div className="flex items-center gap-2">
-                            <div className="bg-blue-100 p-2 rounded-xl text-blue-600">
+                            <div className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'} p-2 rounded-xl`}>
                               <CheckCircle2 className="w-5 h-5" />
                             </div>
                             <div>
-                              <h2 className="text-sm font-black text-gray-900 tracking-tight">PYT Logger</h2>
-                              <p className="text-[10px] text-gray-500">Track and increment your revision counts for each subject topic</p>
+                              <h2 className={`text-sm font-black tracking-tight ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>PYT Logger</h2>
+                              <p className={`text-[10px] ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>Track and increment your revision counts for each subject topic</p>
                             </div>
                           </div>
                           <div className="flex flex-col gap-2 pt-1">
                             {syncedTextbooks.length > 0 && (
                               <div className="space-y-1.5">
-                                <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">📚 Linked Textbooks</span>
+                                <span className={`text-[9px] font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>📚 Linked Textbooks</span>
                                 {syncedTextbooks.map((book, idx) => (
-                                  <div key={idx} className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-xl px-2.5 py-2">
+                                  <div key={idx} className={`flex items-center gap-1.5 px-2.5 py-2 rounded-xl border ${settingsThemeMode === 'dark' ? 'neu-item-dark text-slate-100' : 'neu-item-light text-slate-800'}`}>
                                     <button
                                       onClick={() => handleOpenPdfViewer(book.url, "1", book.name, book.offset)}
                                       className="flex-1 flex items-center gap-1.5 text-left min-w-0"
                                       title={`Open ${book.name}`}
                                     >
                                       <BookOpen className="w-3 h-3 text-blue-500 shrink-0" />
-                                      <span className="text-[10px] font-bold text-gray-700 truncate">{book.name}</span>
+                                      <span className={`text-[10px] font-bold truncate ${settingsThemeMode === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>{book.name}</span>
                                     </button>
                                     <label
-                                      className="p-1 rounded-lg text-amber-500 hover:bg-amber-50 transition cursor-pointer shrink-0"
+                                      className="p-1 rounded-lg text-amber-500 hover:opacity-80 transition cursor-pointer shrink-0"
                                       title={`Replace ${book.name} with new PDF`}
                                     >
                                       <RefreshCw className="w-3 h-3" />
@@ -24123,7 +24146,7 @@ Return your response strictly as a JSON object matching this schema:
                                     </label>
                                     <button
                                       onClick={() => handleDeleteTextbook(book.name)}
-                                      className="p-1 rounded-lg text-red-400 hover:bg-red-50 transition shrink-0"
+                                      className="p-1 rounded-lg text-red-400 hover:opacity-80 transition shrink-0"
                                       title={`Delete ${book.name} mappings`}
                                     >
                                       <Trash2 className="w-3 h-3" />
@@ -24132,7 +24155,7 @@ Return your response strictly as a JSON object matching this schema:
                                 ))}
                               </div>
                             )}
-                            <label className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider shadow-sm cursor-pointer active:scale-95 transition">
+                            <label className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider cursor-pointer active:scale-95 transition ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'}`}>
                               <UploadCloud className="w-3.5 h-3.5" />
                               Scan PDF
                               <input
@@ -24173,38 +24196,35 @@ Return your response strictly as a JSON object matching this schema:
 
                         <div className="grid grid-cols-1 gap-3">
                           <div>
-                            <label className="block text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">Select Subject to Track</label>
-                            <select
+                            <label className={`block text-[9px] font-black uppercase tracking-widest mb-1 ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>Select Subject to Track</label>
+                            <NeumorphicDropdown
                               value={selectedLoggerSubject}
-                              onChange={(e) => setSelectedLoggerSubject(e.target.value)}
-                              className="w-full p-2.5 border border-gray-200 rounded-xl outline-none text-xs font-bold bg-gray-50 text-gray-800 focus:ring-4 focus:ring-blue-500/10"
-                            >
-                              {["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"].map(sub => (
-                                <option key={sub} value={sub}>{sub}</option>
-                              ))}
-                            </select>
+                              onChange={(val) => setSelectedLoggerSubject(val)}
+                              options={["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"]}
+                              isDark={settingsThemeMode === 'dark'}
+                            />
                           </div>
 
                           <div>
-                            <label className="block text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">Search Topics</label>
+                            <label className={`block text-[9px] font-black uppercase tracking-widest mb-1 ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>Search Topics</label>
                             <div className="relative">
-                              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                              <Search className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`} />
                               <input
                                 type="text"
                                 value={loggerSearch}
                                 onChange={(e) => setLoggerSearch(e.target.value)}
                                 placeholder="Search topic name..."
-                                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-xs font-medium focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition"
+                                className={`w-full pl-10 pr-4 py-2 rounded-xl text-xs font-medium outline-none transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-slate-100 border-[#2b323e] placeholder-slate-500' : 'neu-pressed-light text-slate-800 border-white/60 placeholder-slate-400'}`}
                               />
                             </div>
                           </div>
 
                           <div>
-                            <label className="block text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">Sort Order</label>
+                            <label className={`block text-[9px] font-black uppercase tracking-widest mb-1 ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>Sort Order</label>
                             <select
                               value={pytSortType}
                               onChange={(e) => setPytSortType(e.target.value)}
-                              className="w-full p-2.5 border border-gray-200 rounded-xl outline-none text-xs font-bold bg-gray-50 text-gray-800 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500"
+                              className={`w-full p-2.5 rounded-xl outline-none text-xs font-bold transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-slate-100 border-[#2b323e]' : 'neu-pressed-light text-slate-800 border-white/60'}`}
                             >
                               <option value="alphabetical">Alphabetical (A-Z)</option>
                               <option value="page">Page Number (Ascending)</option>
@@ -24215,15 +24235,15 @@ Return your response strictly as a JSON object matching this schema:
                         </div>
 
                         {/* Extra Filters Bar */}
-                        <div className="flex flex-col gap-2 pt-1 border-t border-gray-100">
+                        <div className={`flex flex-col gap-2 pt-1 border-t ${settingsThemeMode === 'dark' ? 'border-slate-800' : 'border-slate-200/80'}`}>
                           <button
                             onClick={() => setPytShowOnlyDuplicates(!pytShowOnlyDuplicates)}
                             className={`flex items-center justify-center gap-2 px-3 py-2 rounded-xl border text-[10px] font-black transition w-full ${pytShowOnlyDuplicates
-                              ? 'bg-orange-50 border-orange-300 text-orange-700 shadow-sm'
-                              : 'bg-white border-gray-200 hover:bg-gray-50 text-gray-650'
+                              ? (settingsThemeMode === 'dark' ? 'bg-amber-950/80 border-amber-800 text-amber-300' : 'bg-amber-50 border-amber-300 text-amber-700 shadow-sm')
+                              : (settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300 border-transparent' : 'neu-btn-light text-slate-700 border-transparent')
                               }`}
                           >
-                            <AlertTriangle className="w-3.5 h-3.5 text-orange-500" />
+                            <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
                             Show Only Duplicates
                           </button>
 
@@ -24239,7 +24259,7 @@ Return your response strictly as a JSON object matching this schema:
                                     handleResetMergedPyt(selectedLoggerSubject);
                                   }
                                 }}
-                                className="text-[10px] font-black text-red-500 hover:text-red-750 py-1.5 rounded-lg hover:bg-red-50 transition w-full text-center"
+                                className={`text-[10px] font-black py-2 rounded-xl transition w-full text-center ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-red-400 hover:text-red-300' : 'neu-btn-light text-red-600 hover:text-red-700'}`}
                               >
                                 Reset Merged Topics
                               </button>
@@ -24251,14 +24271,14 @@ Return your response strictly as a JSON object matching this schema:
                       {/* Topic Checklist Grid */}
                       <div className="space-y-3">
                         {pytProcessedList.length === 0 ? (
-                          <div className="bg-white/80 p-8 rounded-3xl border border-gray-100 text-center space-y-2">
-                            <p className="text-xs font-bold text-gray-500">No topics found matching current filters.</p>
+                          <div className={`p-8 rounded-3xl border text-center space-y-2 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-slate-400 border-[#2b323e]' : 'neu-pressed-light text-slate-500 border-white/60'}`}>
+                            <p className="text-xs font-bold">No topics found matching current filters.</p>
                           </div>
                         ) : (
                           pytProcessedList.map(item => renderPytLoggerCard(item, true))
                         )}
                       </div>
-                    </div>
+                    </motion.div>
                   )}
 
                   {/* STUDY SCHEDULER VIEW (Mobile) */}
@@ -31776,34 +31796,39 @@ Return your response strictly as a JSON object matching this schema:
 
                     {/* PYT LOGGER VIEW (Desktop) */}
                     {currentTab === 'pytLogger' && (
-                      <div className="flex-grow p-4 lg:p-6 flex flex-col gap-6 max-w-[900px] mx-auto w-full overflow-y-auto pb-24 lg:pb-6 text-left animate-in fade-in duration-200">
-                        <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-200 space-y-6">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-gray-150 gap-4">
+                      <motion.div
+                        initial={{ opacity: 0, y: 20, scale: 0.98 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        transition={{ duration: 1.0, ease: [0.16, 1, 0.3, 1] }}
+                        className="flex-grow p-4 lg:p-6 flex flex-col gap-6 max-w-[900px] mx-auto w-full overflow-y-auto pb-24 lg:pb-6 text-left"
+                      >
+                        <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'} p-8 space-y-6`}>
+                          <div className={`flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b ${settingsThemeMode === 'dark' ? 'border-slate-800' : 'border-slate-200/80'} gap-4`}>
                             <div className="flex items-center gap-3">
-                              <div className="bg-blue-100 p-3 rounded-2xl text-blue-600">
+                              <div className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'} p-3 rounded-2xl`}>
                                 <CheckCircle2 className="w-6 h-6" />
                               </div>
                               <div>
-                                <h2 className="text-lg font-black text-gray-900 tracking-tight">PYT Logger</h2>
-                                <p className="text-xs text-gray-500">Track and increment your revision counts for each subject topic</p>
+                                <h2 className={`text-lg font-black tracking-tight ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>PYT Logger</h2>
+                                <p className={`text-xs ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>Track and increment your revision counts for each subject topic</p>
                               </div>
                             </div>
                             <div className="flex flex-wrap items-center gap-3">
                               {syncedTextbooks.length > 0 && (
                                 <div className="flex flex-col gap-1.5 w-full">
-                                  <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">📚 Linked Textbooks</span>
+                                  <span className={`text-[9px] font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>📚 Linked Textbooks</span>
                                   {syncedTextbooks.map((book, idx) => (
-                                    <div key={idx} className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
+                                    <div key={idx} className={`flex items-center gap-2 px-3 py-2 rounded-xl border ${settingsThemeMode === 'dark' ? 'neu-item-dark text-slate-100' : 'neu-item-light text-slate-800'}`}>
                                       <button
                                         onClick={() => handleOpenPdfViewer(book.url, "1", book.name, book.offset)}
                                         className="flex-1 flex items-center gap-2 text-left min-w-0"
                                         title={`Open ${book.name}`}
                                       >
                                         <BookOpen className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                                        <span className="text-xs font-bold text-gray-700 truncate">{book.name}</span>
+                                        <span className={`text-xs font-bold truncate ${settingsThemeMode === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>{book.name}</span>
                                       </button>
                                       <label
-                                        className="p-1.5 rounded-lg text-amber-500 hover:bg-amber-50 transition cursor-pointer shrink-0"
+                                        className="p-1.5 rounded-lg text-amber-500 hover:opacity-80 transition cursor-pointer shrink-0"
                                         title={`Replace ${book.name} with new PDF`}
                                       >
                                         <RefreshCw className="w-3.5 h-3.5" />
@@ -31836,7 +31861,7 @@ Return your response strictly as a JSON object matching this schema:
                                       </label>
                                       <button
                                         onClick={() => handleDeleteTextbook(book.name)}
-                                        className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 transition shrink-0"
+                                        className="p-1.5 rounded-lg text-red-400 hover:opacity-80 transition shrink-0"
                                         title={`Delete ${book.name} mappings`}
                                       >
                                         <Trash2 className="w-3.5 h-3.5" />
@@ -31845,7 +31870,7 @@ Return your response strictly as a JSON object matching this schema:
                                   ))}
                                 </div>
                               )}
-                              <label className="flex items-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-md shadow-blue-600/15 cursor-pointer active:scale-95 transition">
+                              <label className={`flex items-center gap-2 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-wider cursor-pointer active:scale-95 transition ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'}`}>
                                 <UploadCloud className="w-4 h-4" />
                                 Scan Textbook PDF
                                 <input
@@ -31886,38 +31911,35 @@ Return your response strictly as a JSON object matching this schema:
 
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
-                              <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">Select Subject to Track</label>
-                              <select
+                              <label className={`block text-xs font-black uppercase tracking-widest mb-2 ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>Select Subject to Track</label>
+                              <NeumorphicDropdown
                                 value={selectedLoggerSubject}
-                                onChange={(e) => setSelectedLoggerSubject(e.target.value)}
-                                className="w-full p-3.5 border border-gray-200 rounded-xl outline-none text-sm font-bold bg-gray-50 text-gray-800 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500"
-                              >
-                                {["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"].map(sub => (
-                                  <option key={sub} value={sub}>{sub}</option>
-                                ))}
-                              </select>
+                                onChange={(val) => setSelectedLoggerSubject(val)}
+                                options={["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"]}
+                                isDark={settingsThemeMode === 'dark'}
+                              />
                             </div>
 
                             <div>
-                              <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">Search Topics</label>
+                              <label className={`block text-xs font-black uppercase tracking-widest mb-2 ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>Search Topics</label>
                               <div className="relative">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                <Search className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`} />
                                 <input
                                   type="text"
                                   value={loggerSearch}
                                   onChange={(e) => setLoggerSearch(e.target.value)}
                                   placeholder="Search topic name..."
-                                  className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl text-sm font-medium focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition"
+                                  className={`w-full pl-11 pr-4 py-3 rounded-xl text-sm font-medium outline-none transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-slate-100 border-[#2b323e] placeholder-slate-500' : 'neu-pressed-light text-slate-800 border-white/60 placeholder-slate-400'}`}
                                 />
                               </div>
                             </div>
 
                             <div>
-                              <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">Sort Order</label>
+                              <label className={`block text-xs font-black uppercase tracking-widest mb-2 ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>Sort Order</label>
                               <select
                                 value={pytSortType}
                                 onChange={(e) => setPytSortType(e.target.value)}
-                                className="w-full p-3.5 border border-gray-200 rounded-xl outline-none text-sm font-bold bg-gray-50 text-gray-800 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500"
+                                className={`w-full p-3.5 rounded-xl outline-none text-sm font-bold transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-slate-100 border-[#2b323e]' : 'neu-pressed-light text-slate-800 border-white/60'}`}
                               >
                                 <option value="alphabetical">Alphabetical (A-Z)</option>
                                 <option value="page">Page Number (Ascending)</option>
@@ -31928,15 +31950,15 @@ Return your response strictly as a JSON object matching this schema:
                           </div>
 
                           {/* Extra Filters Bar */}
-                          <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+                          <div className={`flex flex-wrap items-center justify-between gap-3 pt-2 border-t ${settingsThemeMode === 'dark' ? 'border-slate-800' : 'border-slate-200/80'}`}>
                             <button
                               onClick={() => setPytShowOnlyDuplicates(!pytShowOnlyDuplicates)}
-                              className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-black transition ${pytShowOnlyDuplicates
-                                ? 'bg-orange-50 border-orange-300 text-orange-700 shadow-sm'
-                                : 'bg-white border-gray-200 hover:bg-gray-50 text-gray-650'
+                              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-black transition ${pytShowOnlyDuplicates
+                                ? (settingsThemeMode === 'dark' ? 'bg-amber-950/80 border-amber-800 text-amber-300' : 'bg-amber-50 border-amber-300 text-amber-700 shadow-sm')
+                                : (settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300 border-transparent' : 'neu-btn-light text-slate-700 border-transparent')
                                 }`}
                             >
-                              <AlertTriangle className="w-4 h-4 text-orange-500" />
+                              <AlertTriangle className="w-4 h-4 text-amber-500" />
                               Show Only Duplicates
                             </button>
 
@@ -31952,7 +31974,7 @@ Return your response strictly as a JSON object matching this schema:
                                       handleResetMergedPyt(selectedLoggerSubject);
                                     }
                                   }}
-                                  className="text-xs font-black text-red-500 hover:text-red-750 px-3 py-2 rounded-lg hover:bg-red-50 transition"
+                                  className={`text-xs font-black px-4 py-2.5 rounded-xl transition ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-red-400 hover:text-red-300' : 'neu-btn-light text-red-600 hover:text-red-700'}`}
                                 >
                                   Reset Merged Topics
                                 </button>
@@ -31963,9 +31985,9 @@ Return your response strictly as a JSON object matching this schema:
                           {/* Topic Checklist Grid */}
                           <div className="pt-2">
                             {pytProcessedList.length === 0 ? (
-                              <div className="bg-gray-50/50 p-12 rounded-3xl border border-gray-150 text-center space-y-3">
-                                <p className="text-sm font-bold text-gray-500">No topics found matching current filters.</p>
-                                <p className="text-xs text-gray-400">Make sure to add topics first, or clear search queries/filters.</p>
+                              <div className={`p-12 rounded-3xl border text-center space-y-3 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-slate-400 border-[#2b323e]' : 'neu-pressed-light text-slate-500 border-white/60'}`}>
+                                <p className="text-sm font-bold">No topics found matching current filters.</p>
+                                <p className="text-xs opacity-75">Make sure to add topics first, or clear search queries/filters.</p>
                               </div>
                             ) : (
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -31974,7 +31996,7 @@ Return your response strictly as a JSON object matching this schema:
                             )}
                           </div>
                         </div>
-                      </div>
+                      </motion.div>
                     )}
 
                     {/* STUDY SCHEDULER VIEW (Desktop) */}
