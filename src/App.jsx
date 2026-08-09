@@ -24037,7 +24037,7 @@ Return your response strictly as a JSON object matching this schema:
                           </div>
 
                           <div className="relative">
-                            <label className={`block text-[9px] font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} mb-1`}>Pasted Topics from Excel</label>
+                            <label className={`block text-[9px] font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} mb-1`}>Pasted Topics</label>
                             {isPytLoading ? (
                               <div className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'} flex flex-col items-center justify-center p-8 rounded-xl`}>
                                 <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
@@ -24048,7 +24048,7 @@ Return your response strictly as a JSON object matching this schema:
                                 rows={10}
                                 value={pytText}
                                 onChange={(e) => setPytText(e.target.value)}
-                                placeholder="Paste your Excel PYT list here (e.g. topic name per line)..."
+                                placeholder="Paste your PYT list here (one topic per line)..."
                                 className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-slate-100 border-[#2b323e]' : 'neu-pressed-light text-slate-800 border-white/60'} w-full p-3 rounded-xl outline-none text-xs font-mono leading-relaxed transition no-scrollbar`}
                               />
                             )}
@@ -31750,7 +31750,7 @@ Return your response strictly as a JSON object matching this schema:
                             </div>
 
                             <div className="relative">
-                              <label className={`block text-xs font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} mb-2`}>Pasted Topics from Excel</label>
+                              <label className={`block text-xs font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} mb-2`}>Pasted Topics</label>
                               {isPytLoading ? (
                                 <div className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'} flex flex-col items-center justify-center p-12 rounded-xl`}>
                                   <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
@@ -31761,7 +31761,7 @@ Return your response strictly as a JSON object matching this schema:
                                   rows={12}
                                   value={pytText}
                                   onChange={(e) => setPytText(e.target.value)}
-                                  placeholder="Paste your Excel PYT list here (e.g. topic name per line)..."
+                                  placeholder="Paste your PYT list here (one topic per line)..."
                                   className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-slate-100 border-[#2b323e]' : 'neu-pressed-light text-slate-800 border-white/60'} w-full p-4 rounded-xl outline-none text-sm font-mono leading-relaxed transition no-scrollbar`}
                                 />
                               )}
