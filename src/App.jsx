@@ -13303,7 +13303,7 @@ JSON Format:
     );
   };
 
-  const renderPytLoggerCard = (item, isMobile) => {
+  const renderPytLoggerCard = (item, isMobile, idx = 0) => {
     const topic = item.name;
     const count = item.count;
     const pages = item.pages || [];
@@ -13328,8 +13328,11 @@ JSON Format:
     }
 
     return (
-      <div
+      <motion.div
         key={topic}
+        initial={{ opacity: 0, y: 18, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.5, delay: Math.min(0.6 + idx * 0.04, 1.5), ease: [0.16, 1, 0.3, 1] }}
         className={`flex flex-col p-4 rounded-2xl transition-all gap-3 ${isDark ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'
           }`}
       >
@@ -13537,7 +13540,7 @@ JSON Format:
             </button>
           </div>
         )}
-      </div>
+      </motion.div>
     );
   };
 
@@ -20689,7 +20692,7 @@ Return your response strictly as a JSON object matching this schema:
                       className={`space-y-6 min-h-full transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'}`}
                     >
                       {/* Dashboard Stats */}
-                      <div className="grid grid-cols-2 gap-3">
+                      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.15, ease: [0.16, 1, 0.3, 1] }} className="grid grid-cols-2 gap-3">
                         <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }} className={`${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'} p-5 rounded-3xl text-white`}>
                           <div className="text-[10px] font-black opacity-80 uppercase tracking-widest mb-1">Library</div>
                           <div className="text-2xl font-black">{cards.length} Cards</div>
@@ -20698,7 +20701,7 @@ Return your response strictly as a JSON object matching this schema:
                           <div className={`text-[10px] font-black uppercase tracking-widest mb-1 ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Queue</div>
                           <div className="text-2xl font-black">{queue.length} Items</div>
                         </motion.div>
-                      </div>
+                      </motion.div>
 
                       {/* ACTIVE PROCESSING / QUEUE - HIGHER PRIORITY */}
                       {queue.length > 0 && (
@@ -23551,7 +23554,7 @@ Return your response strictly as a JSON object matching this schema:
                       className={`space-y-5 text-left relative pb-32 px-1 pt-1`}
                     >
                       {/* Header */}
-                      <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-5 rounded-3xl`}>
+                      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.1, ease: [0.16, 1, 0.3, 1] }} className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-5 rounded-3xl`}>
                         <div className="flex items-center gap-3">
                           <div className="bg-gradient-to-br from-blue-500 to-blue-700 text-white p-2.5 rounded-xl shadow-lg shadow-blue-500/30">
                             <Download className="w-5 h-5" />
@@ -23565,10 +23568,10 @@ Return your response strictly as a JSON object matching this schema:
                           <Folder className="w-3.5 h-3.5 text-blue-500" />
                           <span className="truncate">{selectedDecksToExport.length === 1 ? selectedDecksToExport[0] : `${selectedDecksToExport.length} decks selected`}</span>
                         </div>
-                      </div>
+                      </motion.div>
 
                       {/* Database Metrics Grid */}
-                      <div className="grid grid-cols-3 gap-3">
+                      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.25, ease: [0.16, 1, 0.3, 1] }} className="grid grid-cols-3 gap-3">
                         <div className={`${settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'} p-3 rounded-2xl text-center`}>
                           <span className={`text-[8px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-400'}`}>Total</span>
                           <div className={`text-base font-black mt-1 ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-800'}`}>{totalInExport}</div>
@@ -23581,7 +23584,7 @@ Return your response strictly as a JSON object matching this schema:
                           <span className="text-[8px] font-black uppercase tracking-wider text-orange-400">New</span>
                           <div className="text-base font-black text-orange-400 mt-1">{unexportedInExport}</div>
                         </div>
-                      </div>
+                      </motion.div>
 
                       {/* Deck Selection List */}
                       <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-5 rounded-3xl flex flex-col gap-3`}>
@@ -23776,7 +23779,7 @@ Return your response strictly as a JSON object matching this schema:
                       <div className="grid grid-cols-1 gap-5 items-start">
 
                         {/* PROMPTS LIST PANEL */}
-                        <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'} p-5 space-y-4`}>
+                        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.15, ease: [0.16, 1, 0.3, 1] }} className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'} p-5 space-y-4`}>
                           <div className="flex items-center justify-between">
                             <h3 className={`text-[10px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>Available Prompts</h3>
                             <span className={`${settingsThemeMode === 'dark' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' : 'bg-blue-50 text-blue-700 border border-blue-200'} px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider`}>
@@ -23863,7 +23866,7 @@ Return your response strictly as a JSON object matching this schema:
                               </div>
                             ))}
                           </div>
-                        </div>
+                        </motion.div>
 
                         {/* PROMPT EDITOR PANEL */}
                         <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'} p-5 space-y-4`}>
@@ -24004,7 +24007,7 @@ Return your response strictly as a JSON object matching this schema:
                       className="space-y-4 text-left pb-24"
                     >
                       <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'} p-5 space-y-4`}>
-                        <div className={`flex items-center gap-2 pb-3 border-b ${settingsThemeMode === 'dark' ? 'border-slate-800' : 'border-slate-200/80'}`}>
+                        <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.1, ease: [0.16, 1, 0.3, 1] }} className={`flex items-center gap-2 pb-3 border-b ${settingsThemeMode === 'dark' ? 'border-slate-800' : 'border-slate-200/80'}`}>
                           <div className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'} p-2 rounded-xl`}>
                             <BookOpen className="w-5 h-5" />
                           </div>
@@ -24012,10 +24015,10 @@ Return your response strictly as a JSON object matching this schema:
                             <h2 className={`text-sm font-black tracking-tight ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>PYT Manager</h2>
                             <p className={`text-[10px] ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>Subject-wise Previous Year Topics management (Offline Database)</p>
                           </div>
-                        </div>
+                        </motion.div>
 
                         <div className="space-y-3">
-                          <div>
+                          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}>
                             <label className={`block text-[9px] font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} mb-1`}>Select Subject</label>
                             <NeumorphicDropdown
                               value={selectedPytSubject}
@@ -24023,9 +24026,9 @@ Return your response strictly as a JSON object matching this schema:
                               options={["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"]}
                               isDark={settingsThemeMode === 'dark'}
                             />
-                          </div>
+                          </motion.div>
 
-                          <div className="relative">
+                          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.4, ease: [0.16, 1, 0.3, 1] }} className="relative">
                             <label className={`block text-[9px] font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} mb-1`}>Pasted Topics</label>
                             {isPytLoading ? (
                               <div className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'} flex flex-col items-center justify-center p-8 rounded-xl`}>
@@ -24041,9 +24044,12 @@ Return your response strictly as a JSON object matching this schema:
                                 className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-slate-100 border-[#2b323e]' : 'neu-pressed-light text-slate-800 border-white/60'} w-full p-3 rounded-xl outline-none text-xs font-mono leading-relaxed transition no-scrollbar`}
                               />
                             )}
-                          </div>
+                          </motion.div>
 
-                          <button
+                          <motion.button
+                            initial={{ opacity: 0, y: 16, scale: 0.96 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            transition={{ duration: 0.6, delay: 0.55, ease: [0.16, 1, 0.3, 1] }}
                             onClick={async () => {
                               if (!selectedPytSubject) return;
                               setIsPytSaving(true);
@@ -24073,7 +24079,7 @@ Return your response strictly as a JSON object matching this schema:
                                 Save PYT Topics
                               </>
                             )}
-                          </button>
+                          </motion.button>
                         </div>
                       </div>
                     </motion.div>
@@ -24275,7 +24281,7 @@ Return your response strictly as a JSON object matching this schema:
                             <p className="text-xs font-bold">No topics found matching current filters.</p>
                           </div>
                         ) : (
-                          pytProcessedList.map(item => renderPytLoggerCard(item, true))
+                          pytProcessedList.map((item, idx) => renderPytLoggerCard(item, true, idx))
                         )}
                       </div>
                     </motion.div>
@@ -25417,7 +25423,10 @@ Return your response strictly as a JSON object matching this schema:
                         className={`flex-grow p-4 pr-7 flex gap-4 max-w-[1920px] mx-auto w-full h-full overflow-hidden ${settingsThemeMode === 'dark' ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'}`}
                       >
                         {/* Left: Folders & Queue */}
-                        <div
+                        <motion.div
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.8, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
                           className="flex flex-col gap-5 min-w-[220px] shrink-0 h-full overflow-y-auto p-3.5 custom-scrollbar"
                           style={{ width: `${colWidths.left}%` }}
                         >
@@ -25731,7 +25740,7 @@ Return your response strictly as a JSON object matching this schema:
                               </div>
                             );
                           })()}
-                        </div>
+                        </motion.div>
 
                         {/* Resize Handle 1 */}
                         <div
@@ -26066,7 +26075,7 @@ Return your response strictly as a JSON object matching this schema:
                         <motion.div
                           initial={{ opacity: 0, x: -20 }}
                           animate={{ opacity: 1, x: 0 }}
-                          transition={{ duration: 0.4, delay: 0.05 }}
+                          transition={{ duration: 0.8, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
                           className={`w-full lg:w-1/4 p-5 rounded-3xl flex flex-col overflow-hidden shadow-xl ${settingsThemeMode === 'dark' ? 'neu-card-dark border-gray-800/80 text-white' : 'neu-card-light border-white/80 text-gray-900'
                             }`}
                         >
@@ -30880,7 +30889,7 @@ Return your response strictly as a JSON object matching this schema:
                         <div className="flex-grow overflow-y-auto p-5 lg:p-8 flex flex-col gap-6 max-w-[1400px] mx-auto w-full pb-36 custom-scrollbar">
 
                           {/* Header */}
-                          <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} flex justify-between items-center p-6 rounded-3xl shrink-0`}>
+                          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.1, ease: [0.16, 1, 0.3, 1] }} className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} flex justify-between items-center p-6 rounded-3xl shrink-0`}>
                             <div className="flex items-center gap-4">
                               <div className="bg-gradient-to-br from-blue-500 to-blue-700 text-white p-3.5 rounded-2xl shadow-xl shadow-blue-500/30">
                                 <Download className="w-7 h-7" />
@@ -30896,10 +30905,10 @@ Return your response strictly as a JSON object matching this schema:
                               <Folder className="w-4 h-4 text-blue-500 shrink-0" />
                               <span className="truncate max-w-[200px]">{selectedDecksToExport.length === 1 ? selectedDecksToExport[0] : `${selectedDecksToExport.length} decks selected`}</span>
                             </div>
-                          </div>
+                          </motion.div>
 
                           {/* Database Metrics Grid */}
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.25, ease: [0.16, 1, 0.3, 1] }} className="grid grid-cols-1 md:grid-cols-3 gap-5">
                             <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-6 rounded-3xl flex flex-col justify-between`}>
                               <span className={`text-[10px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-400'}`}>Hierarchy Total</span>
                               <div className="flex items-baseline gap-2 mt-3">
@@ -30926,7 +30935,7 @@ Return your response strictly as a JSON object matching this schema:
                               </div>
                               <p className="text-[10px] text-orange-400 font-bold mt-2">Ready to compile as new flashcards</p>
                             </div>
-                          </div>
+                          </motion.div>
 
                           {/* Main settings layout split */}
                           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-stretch">
@@ -31160,7 +31169,7 @@ Return your response strictly as a JSON object matching this schema:
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
 
                           {/* PROMPTS LIST PANEL */}
-                          <div className={`md:col-span-1 ${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'} p-6 space-y-4`}>
+                          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8, delay: 0.15, ease: [0.16, 1, 0.3, 1] }} className={`md:col-span-1 ${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'} p-6 space-y-4`}>
                             <div className="flex items-center justify-between">
                               <h3 className={`text-sm font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>Available Prompts</h3>
                               <span className={`${settingsThemeMode === 'dark' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' : 'bg-blue-50 text-blue-700 border border-blue-200'} px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider`}>
@@ -31247,7 +31256,7 @@ Return your response strictly as a JSON object matching this schema:
                                 </div>
                               ))}
                             </div>
-                          </div>
+                          </motion.div>
 
                           {/* PROMPT EDITOR PANEL */}
                           <div className={`md:col-span-2 ${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'} p-6 space-y-6`}>
@@ -31719,7 +31728,7 @@ Return your response strictly as a JSON object matching this schema:
                         className="flex-grow p-4 lg:p-6 flex flex-col gap-6 max-w-[800px] mx-auto w-full overflow-y-auto pb-24 lg:pb-6 text-left"
                       >
                         <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'} p-8 space-y-6`}>
-                          <div className={`flex items-center gap-3 pb-4 border-b ${settingsThemeMode === 'dark' ? 'border-slate-800' : 'border-slate-200/80'}`}>
+                          <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.1, ease: [0.16, 1, 0.3, 1] }} className={`flex items-center gap-3 pb-4 border-b ${settingsThemeMode === 'dark' ? 'border-slate-800' : 'border-slate-200/80'}`}>
                             <div className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'} p-3 rounded-2xl`}>
                               <BookOpen className="w-6 h-6" />
                             </div>
@@ -31727,7 +31736,7 @@ Return your response strictly as a JSON object matching this schema:
                               <h2 className={`text-lg font-black tracking-tight ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>PYT Manager</h2>
                               <p className={`text-xs ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>Subject-wise Previous Year Topics management (Offline Database)</p>
                             </div>
-                          </div>
+                          </motion.div>
 
                           <div className="space-y-4">
                             <div>
@@ -31991,7 +32000,7 @@ Return your response strictly as a JSON object matching this schema:
                               </div>
                             ) : (
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {pytProcessedList.map(item => renderPytLoggerCard(item, false))}
+                                {pytProcessedList.map((item, idx) => renderPytLoggerCard(item, false, idx))}
                               </div>
                             )}
                           </div>
