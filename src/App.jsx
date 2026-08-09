@@ -560,6 +560,58 @@ If "Cloze": The Topic Subheading + Cloze text (e.g., "Thyroidectomy: The most co
 EXACT LOCATION BOUNDING BOXES: For EVERY card, inspect the page image and return exact 0 to 1000 normalized bounding coordinates for text (ymin, xmin, ymax, xmax) and diagram (img_box).
 `;
 
+const QBANK_ENGINE_PROMPT = `SYSTEM ROLE: THE "MIRROR–PRECISION" PROTOCOL (v6) — QBANK ERROR ENGINE
+
+You are a High-Fidelity Anki Card Engineering Engine optimized specifically for NEET PG / INICET QBank incorrect-question review (Marrow / PrepLadder / eGurukul). 
+Your task is to analyze the provided screenshot—which may contain either a full QBank item (stem, options, and explanation) OR an EXPLANATION-ONLY section—and convert it into a MAXIMUM OF 2 HIGH-YIELD ANKI CARDS.
+
+CORE CONSTRAINTS & OPERATING PRINCIPLES
+
+1. Strict Card Limit (Hard Ceiling):
+   - Generate AT MOST 2 cards per screenshot.
+   - If the content represents a single simple concept or definition, generate ONLY 1 card.
+   - Never generate more than 2 cards under any circumstances.
+
+2. Adaptive Extraction Strategy:
+   - CASE A: Full Question Visible (Stem + Options + Explanation)
+     * Card 1 (Scenario/Trigger): Focuses strictly on the core clinical or methodological scenario tested in the stem.
+     * Card 2 (Key Pearl): Focuses on the core explanation rule or critical differentiator between options.
+   - CASE B: Explanation-Only Visible (No Question Stem)
+     * Extract up to 2 cards focusing exclusively on the core definitions, bolded high-yield facts, mechanisms, or diagnostic criteria presented in the explanation text.
+     * Derive topic subheadings directly from the subject/heading or leading bold concepts in the text.
+
+3. Source Adherence & Minimum Information Principle:
+   - Base all content strictly on the provided image. Do not extrapolate, guess missing stems, or add unmentioned external facts.
+   - Wording must be concise, punchy, and optimized for rapid active recall.
+   - Strip out fluff, option percentages, user metadata, interface buttons, and non-essential stem details.
+
+4. Card Notetype Assignment (Basic vs. Cloze):
+   - Dynamically select Basic or Cloze depending on what promotes faster recall.
+   - Basic (Q&A): Front contains Topic Subheading + Question. Back contains Answer.
+   - Cloze: Front/Back are empty (""). Text contains Topic Subheading + Cloze markup {{c1::...}}.
+
+5. Visual Assets:
+   - Set "has_image": true ONLY if the image contains an indispensable visual asset (histology slide, clinical image, radiograph, diagram, flowchart).
+   - Text options, tables of text, and pure explanation text are strictly "has_image": false.
+
+STRICT JSON OUTPUT FORMAT
+Return ONLY a valid JSON array containing up to 2 card objects. Do not include conversational text or markdown wrap outside the JSON.
+
+For EVERY card, you MUST populate all 13 fields:
+
+1. "type": "Basic" or "Cloze"
+2. "front": Question text if Basic; empty string ("") if Cloze.
+3. "back": Answer text if Basic (NEVER empty for Basic); optional extra context or empty string ("") if Cloze.
+4. "text": Empty string ("") if Basic; Cloze-marked text if Cloze.
+5. "ymin": Integer (0 to 1000) for top boundary of source text.
+6. "xmin": Integer (0 to 1000) for left boundary of source text.
+7. "ymax": Integer (0 to 1000) for bottom boundary of source text.
+8. "xmax": Integer (0 to 1000) for right boundary of source text.
+9. "has_image": boolean (true/false).
+10. "img_box": [ymin, xmin, ymax, xmax] coordinates if has_image is true; otherwise null.
+11. "image_side": "front" | "back" | "both" | "none".
+12. "image_confidence": Integer (0 to 100).`;
+
 const DEFAULT_PROMPT = MIRROR_PRECISION_V6_PROMPT;
 
 // --- SPACED REPETITION SCHEDULER (SM-2) ---
@@ -14992,6 +15044,8 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     let basePromptContent = DEFAULT_PROMPT;
     if (generationPromptId === 'pyt_generator') {
       basePromptContent = PYT_GENERATOR_PROMPT;
+    } else if (generationPromptId === 'qbank_engine') {
+      basePromptContent = QBANK_ENGINE_PROMPT;
     } else if (generationPromptId !== 'default') {
       const found = customPrompts.find(p => p.id === generationPromptId);
       if (found) {
@@ -15003,6 +15057,8 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       ? 'Default Medical Anki Creator'
       : generationPromptId === 'pyt_generator'
       ? 'High-Yield PYT Generator'
+      : generationPromptId === 'qbank_engine'
+      ? 'Q-Bank engine/ error log'
       : (customPrompts.find(p => p.id === generationPromptId)?.name || '');
 
     const isHighYield = currentPromptName.toLowerCase().includes('high-yield');
@@ -15043,6 +15099,8 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       setSystemPrompt(DEFAULT_PROMPT);
     } else if (activePromptId === 'pyt_generator') {
       setSystemPrompt(PYT_GENERATOR_PROMPT);
+    } else if (activePromptId === 'qbank_engine') {
+      setSystemPrompt(QBANK_ENGINE_PROMPT);
     } else {
       const activePrompt = customPrompts.find(p => p.id === activePromptId);
       if (activePrompt) {
@@ -15061,6 +15119,9 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     } else if (selectedPromptId === 'pyt_generator') {
       setEditingPromptName('High-Yield PYT Generator');
       setEditingPromptContent(PYT_GENERATOR_PROMPT);
+    } else if (selectedPromptId === 'qbank_engine') {
+      setEditingPromptName('Q-Bank engine/ error log');
+      setEditingPromptContent(QBANK_ENGINE_PROMPT);
     } else {
       const prompt = customPrompts.find(p => p.id === selectedPromptId);
       if (prompt) {
@@ -15072,7 +15133,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
 
   // --- CUSTOM PROMPT FUNCTIONS ---
   const saveCustomPrompt = async (id, name, content) => {
-    if (id === 'default' || id === 'pyt_generator') {
+    if (id === 'default' || id === 'pyt_generator' || id === 'qbank_engine') {
       alert("This built-in prompt is read-only. Please create a custom prompt to save modifications.");
       return;
     }
@@ -15105,7 +15166,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
   };
 
   const deleteCustomPrompt = async (id) => {
-    if (id === 'default' || id === 'pyt_generator') return;
+    if (id === 'default' || id === 'pyt_generator' || id === 'qbank_engine') return;
     if (!confirm("Are you sure you want to delete this custom prompt?")) return;
 
     try {
@@ -15137,6 +15198,8 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       let targetContent = DEFAULT_PROMPT;
       if (id === 'pyt_generator') {
         targetContent = PYT_GENERATOR_PROMPT;
+      } else if (id === 'qbank_engine') {
+        targetContent = QBANK_ENGINE_PROMPT;
       } else if (id !== 'default') {
         const found = customPrompts.find(p => p.id === id);
         if (found) targetContent = found.content;
@@ -20582,6 +20645,7 @@ Return your response strictly as a JSON object matching this schema:
                               options={[
                                 { value: 'default', label: 'Default Medical Prompt' },
                                 { value: 'pyt_generator', label: 'High-Yield PYT Generator' },
+                                { value: 'qbank_engine', label: 'Q-Bank engine/ error log' },
                                 ...customPrompts.map(p => ({ value: p.id, label: p.name }))
                               ]}
                               themeMode={settingsThemeMode}
@@ -20592,6 +20656,8 @@ Return your response strictly as a JSON object matching this schema:
                                 ? 'Default Medical Prompt'
                                 : generationPromptId === 'pyt_generator'
                                 ? 'High-Yield PYT Generator'
+                                : generationPromptId === 'qbank_engine'
+                                ? 'Q-Bank engine/ error log'
                                 : (customPrompts.find(p => p.id === generationPromptId)?.name || '');
                               const isHighYield = currentPromptName.toLowerCase().includes('high-yield');
                               if (isHighYield) {
@@ -23616,7 +23682,7 @@ Return your response strictly as a JSON object matching this schema:
                           <div className="flex items-center justify-between">
                             <h3 className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Available Prompts</h3>
                             <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider">
-                              {customPrompts.length + 1}
+                              {customPrompts.length + 3}
                             </span>
                           </div>
 
@@ -23660,6 +23726,23 @@ Return your response strictly as a JSON object matching this schema:
                                 )}
                               </div>
                               <p className="text-[9px] text-gray-500 line-clamp-1">Custom system instructions optimized for producing High-Yield PYTs.</p>
+                            </div>
+
+                            {/* Q-Bank Engine Prompt Option */}
+                            <div
+                              onClick={() => setSelectedPromptId('qbank_engine')}
+                              className={`p-3 rounded-xl cursor-pointer border transition-all duration-200 flex flex-col gap-1 ${selectedPromptId === 'qbank_engine'
+                                ? 'bg-blue-50/50 border-blue-500 shadow-sm'
+                                : 'border-gray-100 hover:bg-gray-50/50 hover:border-gray-200'
+                                }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-black text-gray-900 truncate">Q-Bank engine/ error log</span>
+                                {activePromptId === 'qbank_engine' && (
+                                  <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider">Active</span>
+                                )}
+                              </div>
+                              <p className="text-[9px] text-gray-500 line-clamp-1">Custom instructions optimized for NEET PG/INICET QBank incorrect-question review.</p>
                             </div>
 
                             {/* Custom Prompts list */}
@@ -23709,18 +23792,24 @@ Return your response strictly as a JSON object matching this schema:
                             )}
                           </div>
 
-                          {(selectedPromptId === 'default' || selectedPromptId === 'pyt_generator') && (
+                          {(selectedPromptId === 'default' || selectedPromptId === 'pyt_generator' || selectedPromptId === 'qbank_engine') && (
                             <div className="bg-amber-50/50 border border-amber-200/60 rounded-xl p-3 flex gap-2 text-amber-800">
                               <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                               <div className="text-[10px]">
-                                <p className="font-bold">{selectedPromptId === 'default' ? 'System Default (Read-only)' : 'High-Yield PYT Generator (Read-only)'}</p>
+                                <p className="font-bold">
+                                  {selectedPromptId === 'default' 
+                                    ? 'System Default (Read-only)' 
+                                    : selectedPromptId === 'pyt_generator'
+                                    ? 'High-Yield PYT Generator (Read-only)'
+                                    : 'Q-Bank engine/ error log (Read-only)'}
+                                </p>
                                 <p className="mt-0.5 opacity-90">To customize, click **Duplicate** to create an editable custom copy.</p>
                               </div>
                             </div>
                           )}
 
                           <div className="space-y-3">
-                            {selectedPromptId !== 'default' && selectedPromptId !== 'pyt_generator' && (
+                            {selectedPromptId !== 'default' && selectedPromptId !== 'pyt_generator' && selectedPromptId !== 'qbank_engine' && (
                               <div>
                                 <label className="block text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">Prompt Name</label>
                                 <input
@@ -23739,11 +23828,11 @@ Return your response strictly as a JSON object matching this schema:
                                 rows={8}
                                 value={editingPromptContent}
                                 onChange={(e) => {
-                                  if (selectedPromptId !== 'default' && selectedPromptId !== 'pyt_generator') {
+                                  if (selectedPromptId !== 'default' && selectedPromptId !== 'pyt_generator' && selectedPromptId !== 'qbank_engine') {
                                     setEditingPromptContent(e.target.value);
                                   }
                                 }}
-                                readOnly={selectedPromptId === 'default' || selectedPromptId === 'pyt_generator'}
+                                readOnly={selectedPromptId === 'default' || selectedPromptId === 'pyt_generator' || selectedPromptId === 'qbank_engine'}
                                 className="w-full p-3 border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none text-xs font-mono leading-relaxed bg-gray-50 text-gray-800"
                                 placeholder="Enter prompt content here..."
                               />
@@ -23751,7 +23840,7 @@ Return your response strictly as a JSON object matching this schema:
 
                             <div className="flex justify-between items-center pt-1">
                               <div>
-                                {selectedPromptId !== 'default' && selectedPromptId !== 'pyt_generator' && (
+                                {selectedPromptId !== 'default' && selectedPromptId !== 'pyt_generator' && selectedPromptId !== 'qbank_engine' && (
                                   <button
                                     onClick={() => deleteCustomPrompt(selectedPromptId)}
                                     className="px-2 py-1.5 rounded-lg text-[10px] font-bold text-red-500 hover:bg-red-50 transition"
@@ -23767,6 +23856,8 @@ Return your response strictly as a JSON object matching this schema:
                                       createCustomPrompt("Duplicate of Default", DEFAULT_PROMPT);
                                     } else if (selectedPromptId === 'pyt_generator') {
                                       createCustomPrompt("Duplicate of High-Yield PYT", PYT_GENERATOR_PROMPT);
+                                    } else if (selectedPromptId === 'qbank_engine') {
+                                      createCustomPrompt("Duplicate of Q-Bank Engine", QBANK_ENGINE_PROMPT);
                                     } else {
                                       createCustomPrompt("Duplicate of " + editingPromptName, editingPromptContent);
                                     }
@@ -23775,7 +23866,7 @@ Return your response strictly as a JSON object matching this schema:
                                 >
                                   Duplicate
                                 </button>
-                                {selectedPromptId !== 'default' && selectedPromptId !== 'pyt_generator' && (
+                                {selectedPromptId !== 'default' && selectedPromptId !== 'pyt_generator' && selectedPromptId !== 'qbank_engine' && (
                                   <>
                                     <button
                                       onClick={() => {
@@ -25336,6 +25427,7 @@ Return your response strictly as a JSON object matching this schema:
                                   options={[
                                     { value: 'default', label: 'Default Medical Prompt' },
                                     { value: 'pyt_generator', label: 'High-Yield PYT Generator' },
+                                    { value: 'qbank_engine', label: 'Q-Bank engine/ error log' },
                                     ...customPrompts.map(p => ({ value: p.id, label: p.name }))
                                   ]}
                                   themeMode={settingsThemeMode}
@@ -25348,6 +25440,8 @@ Return your response strictly as a JSON object matching this schema:
                                   ? 'Default Medical Prompt'
                                   : generationPromptId === 'pyt_generator'
                                   ? 'High-Yield PYT Generator'
+                                  : generationPromptId === 'qbank_engine'
+                                  ? 'Q-Bank engine/ error log'
                                   : (customPrompts.find(p => p.id === generationPromptId)?.name || '');
                                 const isHighYield = currentPromptName.toLowerCase().includes('high-yield');
                                 if (isHighYield) {
@@ -30956,7 +31050,7 @@ Return your response strictly as a JSON object matching this schema:
                             <div className="flex items-center justify-between">
                               <h3 className="text-sm font-black uppercase text-gray-400 tracking-wider">Available Prompts</h3>
                               <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider">
-                                {customPrompts.length + 2}
+                                {customPrompts.length + 3}
                               </span>
                             </div>
 
@@ -31000,6 +31094,23 @@ Return your response strictly as a JSON object matching this schema:
                                   )}
                                 </div>
                                 <p className="text-[10px] text-gray-500 line-clamp-2">Custom system instructions optimized for producing High-Yield PYTs.</p>
+                              </div>
+
+                              {/* Q-Bank Engine Prompt Option */}
+                              <div
+                                onClick={() => setSelectedPromptId('qbank_engine')}
+                                className={`p-4 rounded-2xl cursor-pointer border transition-all duration-200 flex flex-col gap-1.5 ${selectedPromptId === 'qbank_engine'
+                                  ? 'bg-blue-50/50 border-blue-500 shadow-sm'
+                                  : 'border-gray-100 hover:bg-gray-50/50 hover:border-gray-200'
+                                  }`}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs font-black text-gray-900 truncate">Q-Bank engine/ error log</span>
+                                  {activePromptId === 'qbank_engine' && (
+                                    <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider">Active</span>
+                                  )}
+                                </div>
+                                <p className="text-[10px] text-gray-500 line-clamp-2">Custom instructions optimized for NEET PG/INICET QBank incorrect-question review.</p>
                               </div>
 
                               {/* Custom Prompts list */}
@@ -31050,18 +31161,24 @@ Return your response strictly as a JSON object matching this schema:
                               )}
                             </div>
 
-                            {(selectedPromptId === 'default' || selectedPromptId === 'pyt_generator') && (
+                            {(selectedPromptId === 'default' || selectedPromptId === 'pyt_generator' || selectedPromptId === 'qbank_engine') && (
                               <div className="bg-amber-50/50 border border-amber-200/60 rounded-2xl p-4 flex gap-3 text-amber-800 animate-in slide-in-from-top duration-200">
                                 <Info className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                                 <div className="text-xs">
-                                  <p className="font-bold">{selectedPromptId === 'default' ? 'System Default Prompt (Read-only)' : 'High-Yield PYT Generator Prompt (Read-only)'}</p>
+                                  <p className="font-bold">
+                                    {selectedPromptId === 'default' 
+                                      ? 'System Default Prompt (Read-only)' 
+                                      : selectedPromptId === 'pyt_generator'
+                                      ? 'High-Yield PYT Generator Prompt (Read-only)'
+                                      : 'Q-Bank engine/ error log (Read-only)'}
+                                  </p>
                                   <p className="mt-1 opacity-90">To modify these instructions, click the **Duplicate** button below to create an editable custom copy.</p>
                                 </div>
                               </div>
                             )}
 
                             <div className="space-y-4">
-                              {selectedPromptId !== 'default' && selectedPromptId !== 'pyt_generator' && (
+                              {selectedPromptId !== 'default' && selectedPromptId !== 'pyt_generator' && selectedPromptId !== 'qbank_engine' && (
                                 <div>
                                   <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Prompt Name</label>
                                   <input
@@ -31077,14 +31194,14 @@ Return your response strictly as a JSON object matching this schema:
                               <div>
                                 <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">System Instructions</label>
                                 <textarea
-                                  rows={(selectedPromptId === 'default' || selectedPromptId === 'pyt_generator') ? 18 : 15}
+                                  rows={(selectedPromptId === 'default' || selectedPromptId === 'pyt_generator' || selectedPromptId === 'qbank_engine') ? 18 : 15}
                                   value={editingPromptContent}
                                   onChange={(e) => {
-                                    if (selectedPromptId !== 'default' && selectedPromptId !== 'pyt_generator') {
+                                    if (selectedPromptId !== 'default' && selectedPromptId !== 'pyt_generator' && selectedPromptId !== 'qbank_engine') {
                                       setEditingPromptContent(e.target.value);
                                     }
                                   }}
-                                  readOnly={selectedPromptId === 'default' || selectedPromptId === 'pyt_generator'}
+                                  readOnly={selectedPromptId === 'default' || selectedPromptId === 'pyt_generator' || selectedPromptId === 'qbank_engine'}
                                   className="w-full p-4 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 outline-none text-xs font-mono leading-relaxed bg-gray-50 text-gray-800"
                                   placeholder="Enter prompt content here..."
                                 />
@@ -31092,7 +31209,7 @@ Return your response strictly as a JSON object matching this schema:
 
                               <div className="flex justify-between items-center pt-2">
                                 <div>
-                                  {selectedPromptId !== 'default' && selectedPromptId !== 'pyt_generator' && (
+                                  {selectedPromptId !== 'default' && selectedPromptId !== 'pyt_generator' && selectedPromptId !== 'qbank_engine' && (
                                     <button
                                       onClick={() => deleteCustomPrompt(selectedPromptId)}
                                       className="px-4 py-2 rounded-xl text-xs font-bold text-red-500 hover:bg-red-50 transition"
@@ -31106,6 +31223,10 @@ Return your response strictly as a JSON object matching this schema:
                                     onClick={() => {
                                       if (selectedPromptId === 'default') {
                                         createCustomPrompt("Duplicate of Default", DEFAULT_PROMPT);
+                                      } else if (selectedPromptId === 'pyt_generator') {
+                                        createCustomPrompt("Duplicate of High-Yield PYT", PYT_GENERATOR_PROMPT);
+                                      } else if (selectedPromptId === 'qbank_engine') {
+                                        createCustomPrompt("Duplicate of Q-Bank Engine", QBANK_ENGINE_PROMPT);
                                       } else {
                                         createCustomPrompt("Duplicate of " + editingPromptName, editingPromptContent);
                                       }
@@ -31114,7 +31235,7 @@ Return your response strictly as a JSON object matching this schema:
                                   >
                                     Duplicate
                                   </button>
-                                  {selectedPromptId !== 'default' && (
+                                  {selectedPromptId !== 'default' && selectedPromptId !== 'pyt_generator' && selectedPromptId !== 'qbank_engine' && (
                                     <>
                                       <button
                                         onClick={() => {
