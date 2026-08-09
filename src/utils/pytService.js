@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { getLocalPytTopic, saveLocalPytTopic } from '../services/localDb';
 
 /**
  * Normalizes the subject name to be case-insensitive for document ID.
@@ -11,8 +11,8 @@ export const normalizeSubjectName = (name) => {
 };
 
 /**
- * Fetches the PYT topics for a specific subject name.
- * @param {import('firebase/firestore').Firestore} db
+ * Fetches the PYT topics for a specific subject name from local IndexedDB.
+ * @param {any} db (deprecated parameter kept for signature compatibility)
  * @param {string} appId
  * @param {string} userId
  * @param {string} subjectName
@@ -21,17 +21,12 @@ export const normalizeSubjectName = (name) => {
 export const getPytTopics = async (db, appId, userId, subjectName) => {
   const docId = normalizeSubjectName(subjectName);
   if (!docId) return null;
-  const docRef = doc(db, 'artifacts', appId, 'users', userId, 'pyt_topics', docId);
-  const docSnap = await getDoc(docRef);
-  if (docSnap.exists()) {
-    return docSnap.data();
-  }
-  return null;
+  return getLocalPytTopic(docId);
 };
 
 /**
- * Sets/updates the PYT topics for a specific subject name.
- * @param {import('firebase/firestore').Firestore} db
+ * Sets/updates the PYT topics for a specific subject name in local IndexedDB.
+ * @param {any} db (deprecated parameter kept for signature compatibility)
  * @param {string} appId
  * @param {string} userId
  * @param {string} subjectName
@@ -41,9 +36,5 @@ export const getPytTopics = async (db, appId, userId, subjectName) => {
 export const upsertPytTopics = async (db, appId, userId, subjectName, topicsText) => {
   const docId = normalizeSubjectName(subjectName);
   if (!docId) throw new Error("Invalid subject name");
-  const docRef = doc(db, 'artifacts', appId, 'users', userId, 'pyt_topics', docId);
-  await setDoc(docRef, {
-    subject: subjectName.trim(),
-    topics: topicsText || ''
-  }, { merge: true });
+  await saveLocalPytTopic(subjectName, topicsText);
 };

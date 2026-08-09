@@ -375,6 +375,36 @@ export async function deleteLocalPrompt(promptId) {
   return filtered;
 }
 
+// --- PYT TOPICS HELPERS ---
+export async function saveLocalPytTopic(subjectName, topicsText) {
+  if (!subjectName) return null;
+  const key = subjectName.trim().toLowerCase();
+  const item = {
+    key,
+    id: key,
+    subject: subjectName.trim(),
+    topics: topicsText || '',
+    updatedAt: new Date().toISOString()
+  };
+  return putLocalItem(STORES.PYT_DATA, item);
+}
+
+export async function getLocalPytTopic(subjectName) {
+  if (!subjectName) return null;
+  const key = subjectName.trim().toLowerCase();
+  return getLocalItem(STORES.PYT_DATA, key);
+}
+
+export async function getAllLocalPytTopics() {
+  return getAllLocalItems(STORES.PYT_DATA);
+}
+
+export async function deleteLocalPytTopic(subjectName) {
+  if (!subjectName) return false;
+  const key = subjectName.trim().toLowerCase();
+  return deleteLocalItem(STORES.PYT_DATA, key);
+}
+
 export default {
   initDB,
   STORES,
@@ -413,5 +443,9 @@ export default {
   replaceAllLocalPrompts,
   saveLocalPrompts,
   saveLocalPrompt,
-  deleteLocalPrompt
+  deleteLocalPrompt,
+  saveLocalPytTopic,
+  getLocalPytTopic,
+  getAllLocalPytTopics,
+  deleteLocalPytTopic
 };

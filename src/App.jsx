@@ -34,7 +34,7 @@ import ExportImageVerificationModal from './components/ExportImageVerificationMo
 import ManualCardModal from './components/ManualCardModal';
 import ConflictInspectorModal from './components/ConflictInspectorModal';
 import { cropAndMaskDiagram } from './utils/imageCropper';
-import { getLocalSetting, saveLocalSetting, getLocalCards, saveLocalCards, replaceAllLocalCards, saveLocalCard, deleteLocalCard, getLocalPages, saveLocalPages, replaceAllLocalPages, saveLocalPage, deleteLocalPage, getLocalKV, setLocalKV, getLocalPrompts, saveLocalPrompt, deleteLocalPrompt } from './services/localDb';
+import { getLocalSetting, saveLocalSetting, getLocalCards, saveLocalCards, replaceAllLocalCards, saveLocalCard, deleteLocalCard, getLocalPages, saveLocalPages, replaceAllLocalPages, saveLocalPage, deleteLocalPage, getLocalKV, setLocalKV, getLocalPrompts, saveLocalPrompt, deleteLocalPrompt, getAllLocalPytTopics, saveLocalPytTopic } from './services/localDb';
 import { motion, AnimatePresence } from 'framer-motion';
 import UiverseButton from './components/UiverseButton';
 import UiverseGlassRadio from './components/UiverseGlassRadio';
@@ -13807,20 +13807,16 @@ JSON Format:
 
 
 
-  // Bind global functions for subject-wise PYT topic management
+  // Bind global functions for subject-wise PYT topic management (offline-first IndexedDB)
   useEffect(() => {
     window.getPytTopics = async (subjectName) => {
-      if (!db || !targetUid) {
-        console.error("Database or user not initialized yet.");
-        return null;
-      }
       return getPytTopics(db, appId, targetUid, subjectName);
     };
     window.upsertPytTopics = async (subjectName, topicsText) => {
-      if (!db || !targetUid) {
-        throw new Error("Database or user not initialized yet.");
-      }
-      return upsertPytTopics(db, appId, targetUid, subjectName, topicsText);
+      const result = await upsertPytTopics(db, appId, targetUid, subjectName, topicsText);
+      const updatedList = await getAllLocalPytTopics();
+      setPytTopicsList(updatedList || []);
+      return result;
     };
     return () => {
       delete window.getPytTopics;
@@ -13828,52 +13824,22 @@ JSON Format:
     };
   }, [db, targetUid]);
 
-  // Establish listener on pyt_topics collection to sync subjects & topics
+  // Load PYT topics from IndexedDB local database
   useEffect(() => {
-    if (!db || !targetUid) {
-      setPytTopicsList([]);
-      return;
-    }
-    const pytCollectionRef = collection(db, 'artifacts', appId, 'users', targetUid, 'pyt_topics');
-    const unsubscribe = onSnapshot(pytCollectionRef, (snapshot) => {
-      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setPytTopicsList(list);
-    }, (error) => {
-      console.error("Error listening to pyt_topics collection:", error);
-    });
-    return () => unsubscribe();
-  }, [db, targetUid]);
-
-  // Automatic one-time migration of PYT topics from root '/pyt_topics' to user-scoped path
-  useEffect(() => {
-    if (!db || !user) return;
-
-    const runMigration = async () => {
-      const migrationFlag = localStorage.getItem(`pyt_migration_done_${user.uid}`);
-      if (migrationFlag === 'true') return;
-
+    let isMounted = true;
+    const loadPytTopicsFromLocal = async () => {
       try {
-        const { collection, getDocs, doc, setDoc } = await import('firebase/firestore');
-        const rootCollectionRef = collection(db, 'pyt_topics');
-        const snapshot = await getDocs(rootCollectionRef);
-
-        if (!snapshot.empty) {
-          console.log(`Migrating ${snapshot.docs.length} PYT topics to user-scoped path...`);
-          for (const docSnap of snapshot.docs) {
-            const data = docSnap.data();
-            const scopedDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'pyt_topics', docSnap.id);
-            await setDoc(scopedDocRef, data, { merge: true });
-          }
-          console.log("PYT topics migration completed successfully!");
+        const list = await getAllLocalPytTopics();
+        if (isMounted) {
+          setPytTopicsList(list || []);
         }
-        localStorage.setItem(`pyt_migration_done_${user.uid}`, 'true');
       } catch (err) {
-        console.warn("PYT topics auto-migration skipped or not permitted in this environment:", err.message);
+        console.error("Error loading PYT topics from IndexedDB:", err);
       }
     };
-
-    runMigration();
-  }, [db, user]);
+    loadPytTopicsFromLocal();
+    return () => { isMounted = false; };
+  }, []);
 
   // Establish listener on user_pyt_progress subcollection to sync subject progress
   useEffect(() => {
@@ -23964,40 +23930,40 @@ Return your response strictly as a JSON object matching this schema:
                     </div>
                   )}
 
-                  {/* PYT MANAGER VIEW (Mobile) */}
+                  {/* PYT MANAGER VIEW (Desktop) */}
                   {currentTab === 'pytManager' && (
                     <div className="space-y-4 text-left pb-24 animate-in fade-in duration-200">
-                      <div className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 space-y-4">
-                        <div className="flex items-center gap-2 pb-3 border-b border-gray-100">
-                          <div className="bg-blue-100 p-2 rounded-xl text-blue-600">
+                      <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'} p-5 space-y-4`}>
+                        <div className={`flex items-center gap-2 pb-3 border-b ${settingsThemeMode === 'dark' ? 'border-slate-800' : 'border-slate-200/80'}`}>
+                          <div className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'} p-2 rounded-xl`}>
                             <BookOpen className="w-5 h-5" />
                           </div>
                           <div>
-                            <h2 className="text-sm font-black text-gray-900 tracking-tight">PYT Manager</h2>
-                            <p className="text-[10px] text-gray-500">Subject-wise Previous Year Topics management</p>
+                            <h2 className={`text-sm font-black tracking-tight ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>PYT Manager</h2>
+                            <p className={`text-[10px] ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>Subject-wise Previous Year Topics management (Offline Database)</p>
                           </div>
                         </div>
 
                         <div className="space-y-3">
                           <div>
-                            <label className="block text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">Select Subject</label>
+                            <label className={`block text-[9px] font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} mb-1`}>Select Subject</label>
                             <select
                               value={selectedPytSubject}
                               onChange={(e) => setSelectedPytSubject(e.target.value)}
-                              className="w-full p-2.5 border border-gray-200 rounded-xl outline-none text-xs font-bold bg-gray-50 text-gray-800 focus:ring-4 focus:ring-blue-500/10"
+                              className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-slate-100 border-[#2b323e]' : 'neu-pressed-light text-slate-800 border-white/60'} w-full p-2.5 rounded-xl outline-none text-xs font-bold transition`}
                             >
                               {["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"].map(sub => (
-                                <option key={sub} value={sub}>{sub}</option>
+                                <option key={sub} value={sub} className={settingsThemeMode === 'dark' ? 'bg-[#222730] text-slate-100' : 'bg-white text-slate-800'}>{sub}</option>
                               ))}
                             </select>
                           </div>
 
                           <div className="relative">
-                            <label className="block text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">Pasted Topics from Excel</label>
+                            <label className={`block text-[9px] font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} mb-1`}>Pasted Topics from Excel</label>
                             {isPytLoading ? (
-                              <div className="flex flex-col items-center justify-center p-8 border border-gray-200 rounded-xl bg-gray-50/50">
-                                <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
-                                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-2">Fetching from Firebase...</span>
+                              <div className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'} flex flex-col items-center justify-center p-8 rounded-xl`}>
+                                <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
+                                <span className={`text-[10px] font-bold uppercase tracking-wider mt-2 ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>Loading Topics...</span>
                               </div>
                             ) : (
                               <textarea
@@ -24005,7 +23971,7 @@ Return your response strictly as a JSON object matching this schema:
                                 value={pytText}
                                 onChange={(e) => setPytText(e.target.value)}
                                 placeholder="Paste your Excel PYT list here (e.g. topic name per line)..."
-                                className="w-full p-3 border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none text-xs font-mono leading-relaxed bg-gray-50 text-gray-800"
+                                className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-slate-100 border-[#2b323e]' : 'neu-pressed-light text-slate-800 border-white/60'} w-full p-3 rounded-xl outline-none text-xs font-mono leading-relaxed transition no-scrollbar`}
                               />
                             )}
                           </div>
@@ -24016,6 +23982,8 @@ Return your response strictly as a JSON object matching this schema:
                               setIsPytSaving(true);
                               try {
                                 await upsertPytTopics(db, appId, targetUid, selectedPytSubject, pytText);
+                                const updatedList = await getAllLocalPytTopics();
+                                setPytTopicsList(updatedList || []);
                                 alert(`PYT Topics for ${selectedPytSubject} saved successfully!`);
                               } catch (err) {
                                 console.error(err);
@@ -24025,17 +23993,17 @@ Return your response strictly as a JSON object matching this schema:
                               }
                             }}
                             disabled={isPytSaving || isPytLoading}
-                            className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-black text-xs py-2.5 px-4 rounded-xl shadow-md shadow-blue-600/10 transition-all duration-200 active:scale-95 shrink-0"
+                            className={`w-full flex items-center justify-center gap-2 ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'} font-black text-xs py-2.5 px-4 rounded-xl transition active:scale-95 shrink-0 disabled:opacity-50`}
                           >
                             {isPytSaving ? (
                               <>
                                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                Saving to Firebase...
+                                Saving PYT Topics...
                               </>
                             ) : (
                               <>
                                 <Save className="w-3.5 h-3.5" />
-                                Save to Firebase
+                                Save PYT Topics
                               </>
                             )}
                           </button>
@@ -31666,37 +31634,37 @@ Return your response strictly as a JSON object matching this schema:
                     {/* PYT MANAGER VIEW (Desktop) */}
                     {currentTab === 'pytManager' && (
                       <div className="flex-grow p-4 lg:p-6 flex flex-col gap-6 max-w-[800px] mx-auto w-full overflow-y-auto pb-24 lg:pb-6 text-left animate-in fade-in duration-200">
-                        <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-200 space-y-6">
-                          <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
-                            <div className="bg-blue-100 p-3 rounded-2xl text-blue-600">
+                        <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'} p-8 space-y-6`}>
+                          <div className={`flex items-center gap-3 pb-4 border-b ${settingsThemeMode === 'dark' ? 'border-slate-800' : 'border-slate-200/80'}`}>
+                            <div className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'} p-3 rounded-2xl`}>
                               <BookOpen className="w-6 h-6" />
                             </div>
                             <div>
-                              <h2 className="text-lg font-black text-gray-900 tracking-tight">PYT Manager</h2>
-                              <p className="text-xs text-gray-500">Subject-wise Previous Year Topics management</p>
+                              <h2 className={`text-lg font-black tracking-tight ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>PYT Manager</h2>
+                              <p className={`text-xs ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>Subject-wise Previous Year Topics management (Offline Database)</p>
                             </div>
                           </div>
 
                           <div className="space-y-4">
                             <div>
-                              <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">Select Subject</label>
+                              <label className={`block text-xs font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} mb-2`}>Select Subject</label>
                               <select
                                 value={selectedPytSubject}
                                 onChange={(e) => setSelectedPytSubject(e.target.value)}
-                                className="w-full p-3 border border-gray-200 rounded-xl outline-none text-sm font-bold bg-gray-50 text-gray-800 focus:ring-4 focus:ring-blue-500/10"
+                                className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-slate-100 border-[#2b323e]' : 'neu-pressed-light text-slate-800 border-white/60'} w-full p-3 rounded-xl outline-none text-sm font-bold transition`}
                               >
                                 {["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"].map(sub => (
-                                  <option key={sub} value={sub}>{sub}</option>
+                                  <option key={sub} value={sub} className={settingsThemeMode === 'dark' ? 'bg-[#222730] text-slate-100' : 'bg-white text-slate-800'}>{sub}</option>
                                 ))}
                               </select>
                             </div>
 
                             <div className="relative">
-                              <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">Pasted Topics from Excel</label>
+                              <label className={`block text-xs font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} mb-2`}>Pasted Topics from Excel</label>
                               {isPytLoading ? (
-                                <div className="flex flex-col items-center justify-center p-12 border border-gray-200 rounded-xl bg-gray-50/50">
-                                  <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-                                  <span className="text-xs text-gray-400 font-bold uppercase tracking-wider mt-3">Fetching from Firebase...</span>
+                                <div className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'} flex flex-col items-center justify-center p-12 rounded-xl`}>
+                                  <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+                                  <span className={`text-xs font-bold uppercase tracking-wider mt-3 ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>Loading Topics...</span>
                                 </div>
                               ) : (
                                 <textarea
@@ -31704,7 +31672,7 @@ Return your response strictly as a JSON object matching this schema:
                                   value={pytText}
                                   onChange={(e) => setPytText(e.target.value)}
                                   placeholder="Paste your Excel PYT list here (e.g. topic name per line)..."
-                                  className="w-full p-4 border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none text-sm font-mono leading-relaxed bg-gray-50 text-gray-800"
+                                  className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-slate-100 border-[#2b323e]' : 'neu-pressed-light text-slate-800 border-white/60'} w-full p-4 rounded-xl outline-none text-sm font-mono leading-relaxed transition no-scrollbar`}
                                 />
                               )}
                             </div>
@@ -31715,6 +31683,8 @@ Return your response strictly as a JSON object matching this schema:
                                 setIsPytSaving(true);
                                 try {
                                   await upsertPytTopics(db, appId, targetUid, selectedPytSubject, pytText);
+                                  const updatedList = await getAllLocalPytTopics();
+                                  setPytTopicsList(updatedList || []);
                                   alert(`PYT Topics for ${selectedPytSubject} saved successfully!`);
                                 } catch (err) {
                                   console.error(err);
@@ -31724,17 +31694,17 @@ Return your response strictly as a JSON object matching this schema:
                                 }
                               }}
                               disabled={isPytSaving || isPytLoading}
-                              className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-black text-sm py-3 px-6 rounded-2xl shadow-lg shadow-blue-600/15 transition-all duration-200 active:scale-98 shrink-0"
+                              className={`w-full flex items-center justify-center gap-2 ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'} font-black text-sm py-3 px-6 rounded-2xl transition active:scale-95 shrink-0 disabled:opacity-50`}
                             >
                               {isPytSaving ? (
                                 <>
                                   <Loader2 className="w-4 h-4 animate-spin" />
-                                  Saving to Firebase...
+                                  Saving PYT Topics...
                                 </>
                               ) : (
                                 <>
                                   <Save className="w-4 h-4" />
-                                  Save to Firebase
+                                  Save PYT Topics
                                 </>
                               )}
                             </button>
