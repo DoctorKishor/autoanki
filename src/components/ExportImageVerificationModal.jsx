@@ -29,6 +29,10 @@ function FineTuneCropModal({
   const workspaceRef = useRef(null);
   const isDraggingRef = useRef(null); // null | 'move' | 'nw' | 'ne' | 'sw' | 'se' | 'n' | 's' | 'w' | 'e'
   const dragStartRef = useRef({ mouseX: 0, mouseY: 0, initialBox: [0, 0, 1000, 1000] });
+  const initialTouchDistanceRef = useRef(null);
+  const initialZoomScaleRef = useRef(1);
+  const initialPanOffsetRef = useRef({ x: 0, y: 0 });
+  const initialMidpointRef = useRef({ x: 0, y: 0 });
 
   const isDark = themeMode === 'dark';
   const bgBase = isDark ? '#222730' : '#e6ecf5';
@@ -151,10 +155,6 @@ function FineTuneCropModal({
     );
   }
 
-  const initialTouchDistanceRef = useRef(null);
-  const initialZoomScaleRef = useRef(1);
-  const initialPanOffsetRef = useRef({ x: 0, y: 0 });
-  const initialMidpointRef = useRef({ x: 0, y: 0 });
 
   const handleTouchStart = (e) => {
     if (e.touches.length === 2) {
