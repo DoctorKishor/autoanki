@@ -425,9 +425,12 @@ export default function ExportImageVerificationModal({
   cards = [],
   sourceImageUrl,
   findCardImageSrc,
-  onConfirmExport
+  onConfirmExport,
+  themeMode = 'light'
 }) {
-  const [activeTab, setActiveTab] = useState('uncertain'); // 'confirmed' | 'uncertain' | 'textonly'
+  const isDark = themeMode === 'dark';
+  const bgBase = isDark ? '#222730' : '#e6ecf5';
+  const [activeTab, setActiveTab] = useState('uncertain');
   const [cardConfigs, setCardConfigs] = useState({});
   const [previewImages, setPreviewImages] = useState({});
   const [isGenerating, setIsGenerating] = useState(false);
@@ -558,102 +561,38 @@ export default function ExportImageVerificationModal({
 
   if (!isOpen) return null;
 
-  // Filter cards by category
-  const confirmedCards = cards.filter((c, idx) => {
-    const id = c.id || `card_${idx}`;
-    const cfg = cardConfigs[id];
-    return cfg && (c.has_image || cfg.imgBox) && cfg.confidence >= 70;
-  });
-
-  const uncertainCards = cards.filter((c, idx) => {
-    const id = c.id || `card_${idx}`;
-    const cfg = cardConfigs[id];
-    return cfg && (c.has_image || cfg.imgBox) && cfg.confidence < 70;
-  });
-
-  const textOnlyCards = cards.filter((c, idx) => {
-    const id = c.id || `card_${idx}`;
-    const cfg = cardConfigs[id];
-    return cfg && !c.has_image && !cfg.imgBox;
-  });
-
+  const confirmedCards = cards.filter((c, idx) => { const id = c.id || `card_${idx}`; const cfg = cardConfigs[id]; return cfg && (c.has_image || cfg.imgBox) && cfg.confidence >= 70; });
+  const uncertainCards = cards.filter((c, idx) => { const id = c.id || `card_${idx}`; const cfg = cardConfigs[id]; return cfg && (c.has_image || cfg.imgBox) && cfg.confidence < 70; });
+  const textOnlyCards  = cards.filter((c, idx) => { const id = c.id || `card_${idx}`; const cfg = cardConfigs[id]; return cfg && !c.has_image && !cfg.imgBox; });
   const displayedCards = activeTab === 'confirmed' ? confirmedCards : activeTab === 'uncertain' ? uncertainCards : textOnlyCards;
 
-  const toggleIncludeImage = (id) => {
-    setCardConfigs(prev => ({
-      ...prev,
-      [id]: { ...prev[id], includeImage: !prev[id]?.includeImage }
-    }));
-  };
-
-  const setSide = (id, side) => {
-    setCardConfigs(prev => ({
-      ...prev,
-      [id]: { ...prev[id], imageSide: side }
-    }));
-  };
-
-  const updateCardText = (id, field, value) => {
-    setCardConfigs(prev => ({
-      ...prev,
-      [id]: { ...prev[id], [field]: value }
-    }));
-  };
+  const toggleIncludeImage = (id) => setCardConfigs(prev => ({ ...prev, [id]: { ...prev[id], includeImage: !prev[id]?.includeImage } }));
+  const setSide = (id, side) => setCardConfigs(prev => ({ ...prev, [id]: { ...prev[id], imageSide: side } }));
+  const updateCardText = (id, field, value) => setCardConfigs(prev => ({ ...prev, [id]: { ...prev[id], [field]: value } }));
 
   const handleApproveAllUncertain = () => {
     setCardConfigs(prev => {
       const next = { ...prev };
-      uncertainCards.forEach((c, idx) => {
-        const id = c.id || `card_${idx}`;
-        if (next[id]) {
-          next[id].includeImage = true;
-        }
-      });
+      uncertainCards.forEach((c, idx) => { const id = c.id || `card_${idx}`; if (next[id]) next[id].includeImage = true; });
       return next;
     });
   };
 
-  // Open Fine-Tune modal for a specific card
   const handleOpenFineTune = (card, id) => {
     const cfg = cardConfigs[id] || {};
-    setFineTuneState({
-      isOpen: true,
-      cardId: id,
-      card: card,
-      currentImgBox: cfg.imgBox || [0, 0, 1000, 1000]
-    });
+    setFineTuneState({ isOpen: true, cardId: id, card, currentImgBox: cfg.imgBox || [0, 0, 1000, 1000] });
   };
 
-  // Callback when crop box fine-tuned
   const handleSaveCrop = async (id, newImgBox) => {
     const card = cards.find((c, idx) => (c.id || `card_${idx}`) === id);
     const imgSrc = resolveCardImageSrc(card);
-
-    setCardConfigs(prev => ({
-      ...prev,
-      [id]: {
-        ...prev[id],
-        imgBox: newImgBox,
-        includeImage: true
-      }
-    }));
-
+    setCardConfigs(prev => ({ ...prev, [id]: { ...prev[id], imgBox: newImgBox, includeImage: true } }));
     if (imgSrc) {
       try {
         const cfg = cardConfigs[id] || {};
-        const dataUrl = await cropAndMaskDiagram(
-          imgSrc,
-          newImgBox,
-          [],
-          cfg.imageSide || 'back',
-          card?.type || 'Basic'
-        );
-        if (dataUrl) {
-          setPreviewImages(prev => ({ ...prev, [id]: dataUrl }));
-        }
-      } catch (err) {
-        console.error("Error updating preview after fine-tune crop:", err);
-      }
+        const dataUrl = await cropAndMaskDiagram(imgSrc, newImgBox, [], cfg.imageSide || 'back', card?.type || 'Basic');
+        if (dataUrl) setPreviewImages(prev => ({ ...prev, [id]: dataUrl }));
+      } catch (err) { console.error('Error updating preview after fine-tune crop:', err); }
     }
   };
 
@@ -661,126 +600,111 @@ export default function ExportImageVerificationModal({
     const processedCards = cards.map((card, idx) => {
       const id = card.id || `card_${idx}`;
       const cfg = cardConfigs[id] || {};
-      const finalFront = cfg.front !== undefined ? cfg.front : card.front;
-      const finalBack = cfg.back !== undefined ? cfg.back : card.back;
-      const finalText = cfg.text !== undefined ? cfg.text : card.text;
       const includeImg = Boolean(cfg.includeImage);
-
       return {
         ...card,
-        front: finalFront,
-        back: finalBack,
-        text: finalText,
-        has_image: includeImg,
-        include_image: includeImg,
+        front: cfg.front !== undefined ? cfg.front : card.front,
+        back: cfg.back !== undefined ? cfg.back : card.back,
+        text: cfg.text !== undefined ? cfg.text : card.text,
+        has_image: includeImg, include_image: includeImg,
         img_box: includeImg ? cfg.imgBox : null,
         image_side: cfg.imageSide || card.image_side || 'back',
         cropped_data_url: includeImg ? (previewImages[id] || null) : null
       };
     });
-
-    // Await the full export pipeline (Firestore batch + file download)
-    // before closing the modal so the async zip/download isn't aborted.
-    try {
-      await onConfirmExport(processedCards);
-    } catch (err) {
-      console.error('[ExportVerificationModal] Export pipeline error:', err);
-    }
+    try { await onConfirmExport(processedCards); } catch (err) { console.error('[ExportVerificationModal] Export pipeline error:', err); }
     onClose();
   };
 
   const totalIncludedImages = Object.values(cardConfigs).filter(c => c.includeImage).length;
 
   return (
-    <div className="fixed inset-0 z-[250] flex items-center justify-center bg-black/75 backdrop-blur-md p-4 overflow-y-auto">
-      <div className="bg-white dark:bg-gray-900 w-full max-w-5xl rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-800 flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200">
-        
-        {/* Header */}
-        <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gray-50/80 dark:bg-gray-800/50 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-bold shrink-0">
-              <ImageIcon className="w-5 h-5" />
+    <div className="fixed inset-0 z-[250] flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-md overflow-y-auto">
+      <div
+        className="w-full max-w-5xl flex flex-col animate-in zoom-in-95 slide-in-from-bottom-4 sm:slide-in-from-bottom-0 duration-300 sm:rounded-3xl rounded-t-3xl shadow-2xl overflow-hidden"
+        style={{
+          maxHeight: '94dvh',
+          background: bgBase,
+          border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(255,255,255,0.7)',
+          boxShadow: isDark
+            ? '0 32px 80px rgba(0,0,0,0.6), 6px 6px 14px #171a20, -6px -6px 14px #2d3440'
+            : '0 32px 80px rgba(0,0,0,0.15), 6px 6px 14px #c2c8d4, -6px -6px 14px #ffffff'
+        }}
+      >
+
+        {/* ── COMPACT HEADER ── */}
+        <div
+          className="px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between shrink-0 border-b"
+          style={{ borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }}
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0 ${isDark ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-500/10 text-amber-600'}`}>
+              <ImageIcon className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
-              <h2 className="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2 flex-wrap">
-                Pre-Export Image Verification
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 font-bold">
-                  {totalIncludedImages} Images Selected
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className={`text-sm sm:text-lg font-black tracking-tight leading-tight ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+                  Pre-Export Image Verification
+                </h2>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-black shrink-0 ${isDark ? 'bg-blue-500/20 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>
+                  {totalIncludedImages} Selected
                 </span>
-              </h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                Review AI-cropped diagrams, fine-tune crop areas (drag & scale), and side placement before export.
+              </div>
+              {/* Description hidden on mobile to reclaim vertical space */}
+              <p className={`text-[10px] mt-0.5 hidden sm:block ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                Review AI-cropped diagrams, fine-tune crop areas (drag &amp; scale), and side placement before export.
               </p>
             </div>
           </div>
-
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center justify-center text-gray-400 hover:text-gray-600 transition shrink-0"
+            className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition ${isDark ? 'hover:bg-slate-700 text-slate-400 hover:text-slate-200' : 'hover:bg-slate-200 text-slate-400 hover:text-slate-700'}`}
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         </div>
 
-        {/* Tab Navigation Header */}
-        <div className="px-6 py-3 bg-gray-50/60 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 flex flex-wrap items-center justify-between gap-3 shrink-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={() => setActiveTab('uncertain')}
-              className={`px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-2 ${
-                activeTab === 'uncertain'
-                  ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-amber-50 hover:text-amber-600'
-              }`}
-            >
-              <AlertTriangle className="w-3.5 h-3.5" />
-              AI Suggested / Uncertain ({uncertainCards.length})
-            </button>
-
-            <button
-              onClick={() => setActiveTab('confirmed')}
-              className={`px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-2 ${
-                activeTab === 'confirmed'
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-emerald-50 hover:text-emerald-600'
-              }`}
-            >
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              Confirmed Images ({confirmedCards.length})
-            </button>
-
-            <button
-              onClick={() => setActiveTab('textonly')}
-              className={`px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-2 ${
-                activeTab === 'textonly'
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-blue-50 hover:text-blue-600'
-              }`}
-            >
-              <FileText className="w-3.5 h-3.5" />
-              Text Only ({textOnlyCards.length})
-            </button>
+        {/* ── TAB NAV ── */}
+        <div
+          className="px-3 sm:px-6 py-2 sm:py-3 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between shrink-0 border-b"
+          style={{ borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }}
+        >
+          <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-0.5">
+            {[
+              { key: 'uncertain', label: `AI Suggested (${uncertainCards.length})`, icon: <AlertTriangle className="w-3.5 h-3.5" />, active: 'bg-amber-500 text-white shadow-md shadow-amber-500/30' },
+              { key: 'confirmed', label: `Confirmed (${confirmedCards.length})`, icon: <CheckCircle2 className="w-3.5 h-3.5" />, active: 'bg-emerald-600 text-white shadow-md shadow-emerald-600/25' },
+              { key: 'textonly', label: `Text Only (${textOnlyCards.length})`, icon: <FileText className="w-3.5 h-3.5" />, active: 'bg-blue-600 text-white shadow-md shadow-blue-600/25' },
+            ].map(t => (
+              <button
+                key={t.key}
+                onClick={() => setActiveTab(t.key)}
+                className={`flex-shrink-0 px-3 py-2 rounded-xl text-[11px] sm:text-xs font-black transition-all flex items-center gap-1.5 active:scale-95 ${
+                  activeTab === t.key ? t.active : isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
+                }`}
+              >
+                {t.icon}{t.label}
+              </button>
+            ))}
           </div>
-
           {activeTab === 'uncertain' && uncertainCards.length > 0 && (
             <button
               onClick={handleApproveAllUncertain}
-              className="text-xs font-black bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-xl transition shadow-md shadow-amber-500/20"
+              className="w-full sm:w-auto flex-shrink-0 text-[11px] sm:text-xs font-black bg-amber-500 hover:bg-amber-600 active:scale-95 text-white px-4 py-2 rounded-xl transition shadow-md shadow-amber-500/25"
             >
               Approve All Suggested
             </button>
           )}
         </div>
 
-        {/* Content Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        {/* ── CONTENT BODY ── */}
+        <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-4 custom-scrollbar">
           {isGenerating ? (
-            <div className="py-16 text-center text-gray-400 flex flex-col items-center justify-center gap-3">
+            <div className="py-12 text-center flex flex-col items-center justify-center gap-3">
               <Sparkles className="w-8 h-8 text-amber-500 animate-spin" />
-              <p className="text-sm font-bold text-gray-600 dark:text-gray-300">Auto-cropping diagrams & masking front labels...</p>
+              <p className={`text-sm font-bold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>Auto-cropping diagrams &amp; masking front labels...</p>
             </div>
           ) : displayedCards.length === 0 ? (
-            <div className="py-12 text-center text-gray-400 dark:text-gray-600 font-bold text-sm">
+            <div className={`py-12 text-center font-bold text-sm ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
               No cards in this category.
             </div>
           ) : (
@@ -789,189 +713,155 @@ export default function ExportImageVerificationModal({
               const cfg = cardConfigs[id] || {};
               const previewImg = previewImages[id];
               const cardImgSrc = resolveCardImageSrc(card);
+              const hasImageBlock = !!(cfg.imgBox || card.has_image || cfg.includeImage || cardImgSrc);
 
               return (
                 <div
                   key={id}
-                  className={`p-4 rounded-2xl border transition-all flex flex-col md:flex-row gap-4 items-start ${
-                    cfg.includeImage
-                      ? 'border-blue-200 dark:border-blue-900 bg-blue-50/20 dark:bg-blue-950/10'
-                      : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900'
-                  }`}
+                  className="rounded-2xl p-1 transition-all"
+                  style={{
+                    background: bgBase,
+                    boxShadow: cfg.includeImage
+                      ? (isDark ? 'inset 2px 2px 6px #171a20, inset -2px -2px 6px #2d3440, 0 0 0 2px rgba(59,130,246,0.4)' : 'inset 2px 2px 6px #c5cbd6, inset -2px -2px 6px #ffffff, 0 0 0 2px rgba(59,130,246,0.3)')
+                      : (isDark ? 'inset 2px 2px 6px #171a20, inset -2px -2px 6px #2d3440' : 'inset 2px 2px 6px #c5cbd6, inset -2px -2px 6px #ffffff')
+                  }}
                 >
-                  {/* Card Content Text */}
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
-                        {card.type} Card
-                      </span>
-
+                  <div className="p-3 sm:p-4 rounded-xl flex flex-col gap-3">
+                    {/* Badges */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-lg ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>{card.type} Card</span>
                       {cfg.confidence > 0 && (
-                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                          cfg.confidence >= 70
-                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
-                            : 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
-                        }`}>
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${cfg.confidence >= 70 ? (isDark ? 'bg-emerald-900/40 text-emerald-300' : 'bg-emerald-100 text-emerald-700') : (isDark ? 'bg-amber-900/40 text-amber-300' : 'bg-amber-100 text-amber-700')}`}>
                           {cfg.confidence}% AI Confidence
                         </span>
                       )}
                     </div>
 
-                    {card.type === 'Basic' ? (
-                      <div className="space-y-2 text-xs">
-                        <div>
-                          <label className="text-[10px] font-black text-blue-500 uppercase tracking-wider flex items-center gap-1 mb-1">
-                            <Edit3 className="w-3 h-3" /> Question (Front)
-                          </label>
-                          <textarea
-                            value={cfg.front !== undefined ? cfg.front : (card.front || '')}
-                            onChange={(e) => updateCardText(id, 'front', e.target.value)}
-                            rows={2}
-                            placeholder="Enter question..."
-                            className="w-full text-xs font-bold text-gray-900 dark:text-white bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition resize-y shadow-xs"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] font-black text-emerald-500 uppercase tracking-wider flex items-center gap-1 mb-1">
-                            <Edit3 className="w-3 h-3" /> Answer (Back)
-                          </label>
-                          <textarea
-                            value={cfg.back !== undefined ? cfg.back : (card.back || '')}
-                            onChange={(e) => updateCardText(id, 'back', e.target.value)}
-                            rows={2}
-                            placeholder="Enter answer..."
-                            className="w-full text-xs font-semibold text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-2.5 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:outline-none transition resize-y shadow-xs"
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      <div>
-                        <label className="text-[10px] font-black text-purple-500 uppercase tracking-wider flex items-center gap-1 mb-1">
-                          <Edit3 className="w-3 h-3" /> Cloze Text
-                        </label>
-                        <textarea
-                          value={cfg.text !== undefined ? cfg.text : (card.text || '')}
-                          onChange={(e) => updateCardText(id, 'text', e.target.value)}
-                          rows={3}
-                          placeholder="Enter cloze text..."
-                          className="w-full text-xs font-bold text-gray-900 dark:text-white bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:outline-none transition resize-y font-mono shadow-xs"
-                        />
-                      </div>
-                    )}
+                    {/* Layout: image first on mobile, text alongside on desktop */}
+                    <div className={`flex flex-col sm:flex-row gap-3`}>
 
-                    {/* Add/Fine-tune Image Crop button for text-only cards */}
-                    {(!cfg.imgBox && cardImgSrc) && (
-                      <button
-                        onClick={() => handleOpenFineTune(card, id)}
-                        className="mt-2 text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1.5"
-                      >
-                        <Crop className="w-3.5 h-3.5" /> Add Manual Image Crop Box
-                      </button>
-                    )}
-                  </div>
+                      {/* IMAGE BLOCK — shown first on mobile */}
+                      {hasImageBlock && (
+                        <div
+                          className="w-full sm:w-72 lg:w-80 shrink-0 flex flex-col gap-2 p-3 rounded-2xl"
+                          style={{ boxShadow: isDark ? '3px 3px 7px #171a20, -3px -3px 7px #2d3440' : '3px 3px 7px #c2c8d4, -3px -3px 7px #ffffff' }}
+                        >
+                          {/* Image preview */}
+                          <div className="relative aspect-4/3 bg-gray-950 rounded-xl overflow-hidden flex items-center justify-center border border-gray-700 group shadow-inner">
+                            {previewImg || cardImgSrc ? (
+                              <img src={previewImg || cardImgSrc} alt="Cropped Diagram" className="object-contain w-full h-full" />
+                            ) : (
+                              <div className="flex flex-col items-center justify-center text-gray-400 p-2 text-center">
+                                <ImageIcon className="w-6 h-6 mb-1 opacity-40 animate-pulse text-blue-400" />
+                                <span className="text-[10px]">Loading Crop...</span>
+                              </div>
+                            )}
+                            {cfg.occlusions && cfg.occlusions.length > 0 && (card.type === 'Cloze' || cfg.imageSide === 'front' || cfg.imageSide === 'both') && (
+                              <span className="absolute top-1 right-1 text-[9px] bg-amber-500 text-white font-bold px-1.5 py-0.5 rounded shadow">{cfg.occlusions.length} Masked</span>
+                            )}
+                            {cardImgSrc && (
+                              <button
+                                onClick={() => handleOpenFineTune(card, id)}
+                                className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 text-white font-bold text-xs"
+                              >
+                                <Crop className="w-4 h-4 text-blue-400" /> Fine-Tune Crop Box
+                              </button>
+                            )}
+                          </div>
 
-                  {/* Image Preview & Controls */}
-                  {(cfg.imgBox || card.has_image || cfg.includeImage || cardImgSrc) && (
-                    <div className="w-full md:w-80 lg:w-[380px] shrink-0 flex flex-col gap-2.5 p-4 bg-gray-50 dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-xs">
-                      <div className="relative aspect-4/3 min-h-[200px] bg-gray-900 rounded-xl overflow-hidden flex items-center justify-center border border-gray-700 group shadow-inner">
-                        {previewImg || cardImgSrc ? (
-                          <img src={previewImg || cardImgSrc} alt="Cropped Diagram" className="object-contain w-full h-full" />
+                          {/* Fine-Tune button */}
+                          {cardImgSrc && (
+                            <button
+                              onClick={() => handleOpenFineTune(card, id)}
+                              className={`w-full py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 active:scale-95 ${isDark ? 'neu-btn-dark text-blue-400' : 'neu-btn-light text-blue-600'}`}
+                            >
+                              <Crop className="w-3.5 h-3.5" /> Fine-Tune Crop Box
+                            </button>
+                          )}
+
+                          {/* Attach-to side controls */}
+                          {card.type === 'Basic' && (
+                            <div className="flex items-center justify-between gap-1 text-[11px]">
+                              <span className={`font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Attach to:</span>
+                              <div className="flex items-center gap-1">
+                                {['front', 'back', 'both'].map(side => (
+                                  <button
+                                    key={side}
+                                    onClick={() => setSide(id, side)}
+                                    className={`px-2.5 py-1.5 rounded-lg font-black uppercase text-[10px] transition active:scale-95 ${cfg.imageSide === side ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30' : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}
+                                  >
+                                    {side}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Include toggle — big touch target */}
+                          <button
+                            onClick={() => toggleIncludeImage(id)}
+                            className={`w-full py-3 rounded-xl text-sm font-black flex items-center justify-center gap-2 transition active:scale-95 ${cfg.includeImage ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-md shadow-emerald-500/25' : isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-200 hover:bg-slate-300 text-slate-600'}`}
+                          >
+                            {cfg.includeImage ? <Check className="w-4 h-4" /> : null}
+                            {cfg.includeImage ? 'Image Included ✓' : 'Include Image'}
+                          </button>
+                        </div>
+                      )}
+
+                      {/* TEXT FIELDS */}
+                      <div className="flex-1 space-y-2">
+                        {card.type === 'Basic' ? (
+                          <div className="space-y-2 text-xs">
+                            <div>
+                              <label className="text-[10px] font-black text-blue-500 uppercase tracking-wider flex items-center gap-1 mb-1"><Edit3 className="w-3 h-3" /> Question (Front)</label>
+                              <textarea value={cfg.front !== undefined ? cfg.front : (card.front || '')} onChange={(e) => updateCardText(id, 'front', e.target.value)} rows={2} placeholder="Enter question..." className={`w-full text-xs font-bold rounded-xl p-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none transition resize-y ${isDark ? 'bg-slate-700 text-slate-100 border border-slate-600 focus:border-blue-500' : 'bg-white text-slate-800 border border-slate-200 focus:border-blue-500'}`} />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-black text-emerald-500 uppercase tracking-wider flex items-center gap-1 mb-1"><Edit3 className="w-3 h-3" /> Answer (Back)</label>
+                              <textarea value={cfg.back !== undefined ? cfg.back : (card.back || '')} onChange={(e) => updateCardText(id, 'back', e.target.value)} rows={2} placeholder="Enter answer..." className={`w-full text-xs font-semibold rounded-xl p-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none transition resize-y ${isDark ? 'bg-slate-700 text-slate-200 border border-slate-600 focus:border-emerald-500' : 'bg-white text-slate-700 border border-slate-200 focus:border-emerald-500'}`} />
+                            </div>
+                          </div>
                         ) : (
-                          <div className="flex flex-col items-center justify-center text-gray-400 p-2 text-center">
-                            <ImageIcon className="w-6 h-6 mb-1 opacity-40 animate-pulse text-blue-400" />
-                            <span className="text-[10px]">Loading Crop...</span>
+                          <div>
+                            <label className="text-[10px] font-black text-purple-500 uppercase tracking-wider flex items-center gap-1 mb-1"><Edit3 className="w-3 h-3" /> Cloze Text</label>
+                            <textarea value={cfg.text !== undefined ? cfg.text : (card.text || '')} onChange={(e) => updateCardText(id, 'text', e.target.value)} rows={3} placeholder="Enter cloze text..." className={`w-full text-xs font-bold rounded-xl p-2.5 focus:ring-2 focus:ring-purple-500 focus:outline-none transition resize-y font-mono ${isDark ? 'bg-slate-700 text-slate-100 border border-slate-600 focus:border-purple-500' : 'bg-white text-slate-800 border border-slate-200 focus:border-purple-500'}`} />
                           </div>
                         )}
-                        {cfg.occlusions && cfg.occlusions.length > 0 && (card.type === 'Cloze' || cfg.imageSide === 'front' || cfg.imageSide === 'both') && (
-                          <span className="absolute top-1 right-1 text-[9px] bg-amber-500 text-white font-bold px-1.5 py-0.5 rounded shadow">
-                            {cfg.occlusions.length} Masked
-                          </span>
-                        )}
-
-                        {/* Hover Overlay to Fine-Tune Crop */}
-                        {cardImgSrc && (
-                          <button
-                            onClick={() => handleOpenFineTune(card, id)}
-                            className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 text-white font-bold text-xs"
-                          >
-                            <Crop className="w-4 h-4 text-blue-400" /> Fine-Tune Crop Box
+                        {!cfg.imgBox && cardImgSrc && (
+                          <button onClick={() => handleOpenFineTune(card, id)} className={`mt-1 text-xs font-bold hover:underline flex items-center gap-1.5 ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
+                            <Crop className="w-3.5 h-3.5" /> Add Manual Image Crop Box
                           </button>
                         )}
                       </div>
-
-                      {/* Manual Fine-Tune Button */}
-                      {cardImgSrc && (
-                        <button
-                          onClick={() => handleOpenFineTune(card, id)}
-                          className="w-full py-1 rounded-lg text-[10px] font-bold bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition flex items-center justify-center gap-1.5"
-                        >
-                          <Crop className="w-3 h-3 text-blue-500" /> Fine-Tune Crop Box
-                        </button>
-                      )}
-
-                      {/* Side Placement Controls */}
-                      {card.type === 'Basic' && (
-                        <div className="flex items-center justify-between gap-1 text-[10px]">
-                          <span className="text-gray-500 dark:text-gray-400 font-bold">Attach to:</span>
-                          <div className="flex items-center gap-1">
-                            {['front', 'back', 'both'].map((side) => (
-                              <button
-                                key={side}
-                                onClick={() => setSide(id, side)}
-                                className={`px-2 py-0.5 rounded font-black uppercase transition ${
-                                  cfg.imageSide === side
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
-                                }`}
-                              >
-                                {side}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Include Checkbox */}
-                      <button
-                        onClick={() => toggleIncludeImage(id)}
-                        className={`w-full py-1.5 rounded-lg text-xs font-black flex items-center justify-center gap-1.5 transition ${
-                          cfg.includeImage
-                            ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
-                            : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 text-gray-700 dark:text-gray-300'
-                        }`}
-                      >
-                        {cfg.includeImage ? <Check className="w-3.5 h-3.5" /> : null}
-                        {cfg.includeImage ? 'Image Included' : 'Include Image'}
-                      </button>
                     </div>
-                  )}
+                  </div>
                 </div>
               );
             })
           )}
         </div>
 
-        {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50 flex items-center justify-between">
+        {/* ── FOOTER ── */}
+        <div
+          className="px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-3 shrink-0 border-t"
+          style={{ borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }}
+        >
           <button
             onClick={onClose}
-            className="px-4 py-2 text-xs font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition"
+            className={`px-4 py-2.5 text-xs font-bold rounded-xl transition active:scale-95 ${isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'}`}
           >
             Cancel
           </button>
-
           <button
             onClick={handleFinalExport}
-            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-blue-600/20 transition flex items-center gap-2 active:scale-95"
+            className="px-5 sm:px-6 py-2.5 bg-gradient-to-br from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-blue-600/30 transition flex items-center gap-2 active:scale-95"
           >
             <Download className="w-4 h-4" />
-            Proceed to Export ({totalIncludedImages} Images)
+            Export ({totalIncludedImages} Images)
           </button>
         </div>
-
       </div>
 
-      {/* Embedded Fine-Tune Crop Box Modal */}
       {fineTuneState.isOpen && (
         <FineTuneCropModal
           isOpen={fineTuneState.isOpen}
@@ -985,3 +875,5 @@ export default function ExportImageVerificationModal({
     </div>
   );
 }
+
+

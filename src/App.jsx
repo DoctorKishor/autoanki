@@ -23344,6 +23344,7 @@ Return your response strictly as a JSON object matching this schema:
                           <ExportTreeFolder
                             node={buildTree(allDecks, libraryPages, deckCardCounts)}
                             selectedDecks={selectedDecksToExport}
+                            themeMode={settingsThemeMode}
                             onToggle={(targetPaths, checked) => {
                               setSelectedDecksToExport(prev => {
                                 if (checked) {
@@ -30629,6 +30630,7 @@ Return your response strictly as a JSON object matching this schema:
                                 <ExportTreeFolder
                                   node={buildTree(allDecks, libraryPages, deckCardCounts)}
                                   selectedDecks={selectedDecksToExport}
+                                  themeMode={settingsThemeMode}
                                   onToggle={(targetPaths, checked) => {
                                     setSelectedDecksToExport(prev => {
                                       if (checked) {
@@ -33863,6 +33865,7 @@ Return your response strictly as a JSON object matching this schema:
               <ExportImageVerificationModal
                 isOpen={isImageVerificationModalOpen}
                 onClose={() => setIsImageVerificationModalOpen(false)}
+                themeMode={settingsThemeMode}
                 cards={verificationModalCards}
                 sourceImageUrl={verificationModalCards.length > 0 ? findCardImageSrc(verificationModalCards[0]) : null}
                 findCardImageSrc={findCardImageSrc}
