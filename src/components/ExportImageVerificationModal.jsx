@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   X, Check, AlertTriangle, Image as ImageIcon, Eye, EyeOff, Sparkles,
   Layers, CheckCircle2, ChevronRight, HelpCircle, FileText, Download, Crop, RotateCcw,
-  ZoomIn, ZoomOut, Edit3
+  ZoomIn, ZoomOut, Edit3, Minus, Maximize2
 } from 'lucide-react';
 import { cropAndMaskDiagram } from '../utils/imageCropper';
 
@@ -13,12 +13,15 @@ function FineTuneCropModal({
   card,
   sourceImageUrl,
   currentImgBox,
-  onSaveCrop
+  onSaveCrop,
+  themeMode = 'light'
 }) {
   const [box, setBox] = useState([0, 0, 1000, 1000]); // [ymin, xmin, ymax, xmax]
   const [cropPreview, setCropPreview] = useState(null);
   const [zoomScale, setZoomScale] = useState(1);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [showLivePreview, setShowLivePreview] = useState(true);
 
   const zoomScaleRef = useRef(1);
   const panOffsetRef = useRef({ x: 0, y: 0 });
@@ -27,9 +30,12 @@ function FineTuneCropModal({
   const isDraggingRef = useRef(null); // null | 'move' | 'nw' | 'ne' | 'sw' | 'se' | 'n' | 's' | 'w' | 'e'
   const dragStartRef = useRef({ mouseX: 0, mouseY: 0, initialBox: [0, 0, 1000, 1000] });
 
+  const isDark = themeMode === 'dark';
+  const bgBase = isDark ? '#222730' : '#e6ecf5';
+
   // Attach non-passive mouse wheel listener focused on mouse pointer position
   useEffect(() => {
-    if (!isOpen) {
+    if (!isOpen || isMinimized) {
       setZoomScale(1);
       setPanOffset({ x: 0, y: 0 });
       zoomScaleRef.current = 1;
@@ -87,7 +93,7 @@ function FineTuneCropModal({
     return () => {
       el.removeEventListener('wheel', handleWheelNative);
     };
-  }, [isOpen]);
+  }, [isOpen, isMinimized]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -102,7 +108,7 @@ function FineTuneCropModal({
 
   // Update real-time cropped preview thumbnail
   useEffect(() => {
-    if (!isOpen || !sourceImageUrl) return;
+    if (!isOpen || !sourceImageUrl || isMinimized) return;
     let isCurrent = true;
     cropAndMaskDiagram(sourceImageUrl, box, [], 'back', card?.type || 'Basic')
       .then(url => {
@@ -110,9 +116,40 @@ function FineTuneCropModal({
       })
       .catch(console.error);
     return () => { isCurrent = false; };
-  }, [box, sourceImageUrl, isOpen, card?.type]);
+  }, [box, sourceImageUrl, isOpen, card?.type, isMinimized]);
 
   if (!isOpen) return null;
+
+  // Minimized Widget Rendering
+  if (isMinimized) {
+    return (
+      <div
+        className="fixed bottom-4 left-4 z-[320] flex items-center gap-3 p-3 rounded-2xl shadow-2xl border cursor-pointer hover:scale-105 active:scale-95 transition-all duration-200"
+        style={{
+          background: bgBase,
+          borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+          boxShadow: isDark
+            ? '6px 6px 14px #171a20, -6px -6px 14px #2d3440'
+            : '6px 6px 14px #c2c8d4, -6px -6px 14px #ffffff'
+        }}
+        onClick={() => setIsMinimized(false)}
+      >
+        <div className={`p-2 rounded-xl ${isDark ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-500/10 text-blue-600'}`}>
+          <Crop className="w-5 h-5 animate-pulse" />
+        </div>
+        <div>
+          <span className={`text-[9px] uppercase font-black block tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Crop Editor</span>
+          <span className={`text-xs font-bold block ${isDark ? 'text-white' : 'text-slate-800'}`}>Tuning Crop Box</span>
+        </div>
+        <button
+          onClick={(e) => { e.stopPropagation(); setIsMinimized(false); }}
+          className="px-2.5 py-1 text-[10px] font-black text-blue-500 hover:underline uppercase tracking-wider ml-1"
+        >
+          Restore
+        </button>
+      </div>
+    );
+  }
 
   const handlePointerDown = (e, handleType) => {
     e.preventDefault();
@@ -189,28 +226,40 @@ function FineTuneCropModal({
   const heightPct = `${((ymax - ymin) / 1000) * 100}%`;
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-gray-900 w-full max-w-7xl rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-800 flex flex-col max-h-[94vh] overflow-hidden">
-        
+    <div className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-md p-2 sm:p-4 animate-in fade-in duration-200">
+      <div
+        className="w-full max-w-7xl flex flex-col rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden border"
+        style={{
+          maxHeight: '96dvh',
+          background: bgBase,
+          borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.1)',
+          boxShadow: isDark
+            ? '0 32px 80px rgba(0,0,0,0.6), 6px 6px 14px #171a20, -6px -6px 14px #2d3440'
+            : '0 32px 80px rgba(0,0,0,0.15), 6px 6px 14px #c2c8d4, -6px -6px 14px #ffffff'
+        }}
+      >
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gray-50 dark:bg-gray-800/60">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
-              <Crop className="w-5 h-5" />
+        <div
+          className="px-4 sm:px-6 py-2.5 sm:py-4 border-b flex items-center justify-between shrink-0"
+          style={{ borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }}
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${isDark ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-500/10 text-blue-600'}`}>
+              <Crop className="w-4 h-4 sm:w-5 h-5" />
             </div>
-            <div>
-              <h3 className="text-base font-black text-gray-900 dark:text-white flex items-center gap-2">
+            <div className="min-w-0">
+              <h3 className={`text-xs sm:text-base font-black tracking-tight leading-tight ${isDark ? 'text-white' : 'text-slate-800'}`}>
                 Fine-Tune Image Crop Box
               </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Scroll mouse wheel to zoom (focused on cursor). Drag glowing blue box or handles to crop.
+              <p className={`text-[10px] mt-0.5 hidden sm:block ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                Scroll mouse wheel or pinch to zoom. Drag glowing blue box or handles to adjust crop workspace.
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            {/* Zoom Controls Widget */}
-            <div className="flex items-center gap-1.5 bg-gray-200 dark:bg-gray-800 px-2.5 py-1 rounded-xl border border-gray-300 dark:border-gray-700 text-xs font-bold text-gray-700 dark:text-gray-200">
+          <div className="flex items-center gap-2">
+            {/* Zoom Controls */}
+            <div className={`flex items-center gap-1 px-1.5 py-0.5 sm:py-1 rounded-xl text-[10px] sm:text-xs font-bold ${isDark ? 'neu-pressed-dark text-slate-200' : 'neu-pressed-light text-slate-700'}`}>
               <button
                 onClick={() => {
                   setZoomScale(prev => {
@@ -219,54 +268,60 @@ function FineTuneCropModal({
                     return next;
                   });
                 }}
-                className="p-1 hover:bg-gray-300 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-300 transition"
+                className={`p-1 rounded transition hover:bg-black/10`}
                 title="Zoom Out"
               >
-                <ZoomOut className="w-3.5 h-3.5" />
+                <ZoomOut className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
               </button>
-
-              <span className="w-12 text-center font-mono text-[11px] font-black">{Math.round(zoomScale * 100)}%</span>
-
+              <span className="w-10 text-center font-mono text-[9px] sm:text-[11px] font-black">{Math.round(zoomScale * 100)}%</span>
               <button
-                onClick={() => {
-                  setZoomScale(prev => Math.min(4, parseFloat((prev + 0.25).toFixed(2))));
-                }}
-                className="p-1 hover:bg-gray-300 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-300 transition"
+                onClick={() => setZoomScale(prev => Math.min(4, parseFloat((prev + 0.25).toFixed(2))))}
+                className={`p-1 rounded transition hover:bg-black/10`}
                 title="Zoom In"
               >
-                <ZoomIn className="w-3.5 h-3.5" />
+                <ZoomIn className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
               </button>
-
-              {zoomScale > 1 && (
-                <button
-                  onClick={() => {
-                    setZoomScale(1);
-                    setPanOffset({ x: 0, y: 0 });
-                  }}
-                  className="ml-1 text-[10px] text-blue-500 font-black hover:underline"
-                >
-                  Reset
-                </button>
-              )}
             </div>
 
-            <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400">
-              <X className="w-5 h-5" />
+            {/* Minimize button */}
+            <button
+              onClick={() => setIsMinimized(true)}
+              className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-200 text-slate-500'}`}
+              title="Minimize Crop Editor"
+            >
+              <Minus className="w-4 h-4" />
+            </button>
+
+            {/* Close button */}
+            <button
+              onClick={onClose}
+              className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-200 text-slate-500'}`}
+            >
+              <X className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           </div>
         </div>
 
-        {/* Modal Body: Decoupled Workspace & Control Sidebar */}
-        <div className="flex-1 overflow-hidden flex flex-col md:flex-row bg-gray-950 relative">
+        {/* Modal Body */}
+        <div className="flex-1 overflow-hidden flex flex-col md:flex-row bg-slate-950 relative">
           
-          {/* Left Interactive Page Canvas Workspace */}
+          {/* Main Interactive Zoom Box Area */}
           <div
             ref={workspaceRef}
-            className="flex-1 h-full relative overflow-hidden flex items-center justify-center p-6 bg-gray-950"
+            className="flex-1 relative overflow-hidden flex items-center justify-center p-2 bg-slate-950 h-[48vh] sm:h-[55vh]"
           >
-            {/* Main Image & Interactive Drag Container */}
+            {/* Toggle live preview button overlay in the workspace */}
+            <button
+              onClick={() => setShowLivePreview(!showLivePreview)}
+              className="absolute top-2 left-2 z-50 p-2 rounded-xl bg-black/60 text-white hover:bg-black/80 flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider transition active:scale-95 shadow-lg border border-white/10"
+            >
+              {showLivePreview ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+              <span>{showLivePreview ? 'Hide Preview' : 'Show Preview'}</span>
+            </button>
+
+            {/* Main image container */}
             <div
-              className="relative inline-block max-w-full max-h-[75vh] select-none transition-transform duration-75 origin-top-left"
+              className="relative inline-block max-w-full max-h-[46vh] sm:max-h-[52vh] select-none transition-transform duration-75 origin-top-left"
               style={{
                 transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoomScale})`,
                 transformOrigin: '0 0'
@@ -276,117 +331,108 @@ function FineTuneCropModal({
               <img
                 src={sourceImageUrl}
                 alt="Source Page"
-                className="max-h-[75vh] object-contain rounded-xl shadow-2xl pointer-events-none block border border-gray-800"
+                className="max-h-[46vh] sm:max-h-[52vh] object-contain rounded-xl pointer-events-none block border border-slate-800"
               />
 
-              {/* Interactive Bounding Box */}
+              {/* Glowing Crop Bounding Box */}
               <div
                 className="absolute border-2 border-blue-500 bg-blue-500/10 cursor-move shadow-xl"
                 style={{ left: leftPct, top: topPct, width: widthPct, height: heightPct }}
                 onMouseDown={(e) => handlePointerDown(e, 'move')}
                 onTouchStart={(e) => handlePointerDown(e, 'move')}
               >
+                {/* Drag Handles */}
+                <div className="absolute -top-2.5 -left-2.5 w-5 h-5 bg-white border-2 border-blue-600 rounded-full cursor-nwse-resize shadow-lg hover:scale-125 transition-transform" onMouseDown={(e) => handlePointerDown(e, 'nw')} onTouchStart={(e) => handlePointerDown(e, 'nw')} />
+                <div className="absolute -top-2.5 -right-2.5 w-5 h-5 bg-white border-2 border-blue-600 rounded-full cursor-nesw-resize shadow-lg hover:scale-125 transition-transform" onMouseDown={(e) => handlePointerDown(e, 'ne')} onTouchStart={(e) => handlePointerDown(e, 'ne')} />
+                <div className="absolute -bottom-2.5 -left-2.5 w-5 h-5 bg-white border-2 border-blue-600 rounded-full cursor-nesw-resize shadow-lg hover:scale-125 transition-transform" onMouseDown={(e) => handlePointerDown(e, 'sw')} onTouchStart={(e) => handlePointerDown(e, 'sw')} />
+                <div className="absolute -bottom-2.5 -right-2.5 w-5 h-5 bg-white border-2 border-blue-600 rounded-full cursor-nwse-resize shadow-lg hover:scale-125 transition-transform" onMouseDown={(e) => handlePointerDown(e, 'se')} onTouchStart={(e) => handlePointerDown(e, 'se')} />
 
-                {/* Corner Drag Handles */}
-                <div
-                  className="absolute -top-2.5 -left-2.5 w-5 h-5 bg-white border-2 border-blue-600 rounded-full cursor-nwse-resize shadow-lg hover:scale-125 transition-transform"
-                  onMouseDown={(e) => handlePointerDown(e, 'nw')}
-                  onTouchStart={(e) => handlePointerDown(e, 'nw')}
-                />
-                <div
-                  className="absolute -top-2.5 -right-2.5 w-5 h-5 bg-white border-2 border-blue-600 rounded-full cursor-nesw-resize shadow-lg hover:scale-125 transition-transform"
-                  onMouseDown={(e) => handlePointerDown(e, 'ne')}
-                  onTouchStart={(e) => handlePointerDown(e, 'ne')}
-                />
-                <div
-                  className="absolute -bottom-2.5 -left-2.5 w-5 h-5 bg-white border-2 border-blue-600 rounded-full cursor-nesw-resize shadow-lg hover:scale-125 transition-transform"
-                  onMouseDown={(e) => handlePointerDown(e, 'sw')}
-                  onTouchStart={(e) => handlePointerDown(e, 'sw')}
-                />
-                <div
-                  className="absolute -bottom-2.5 -right-2.5 w-5 h-5 bg-white border-2 border-blue-600 rounded-full cursor-nwse-resize shadow-lg hover:scale-125 transition-transform"
-                  onMouseDown={(e) => handlePointerDown(e, 'se')}
-                  onTouchStart={(e) => handlePointerDown(e, 'se')}
-                />
-
-                {/* Edge Drag Handles */}
-                <div
-                  className="absolute -top-2 left-1/2 -translate-x-1/2 w-8 h-2.5 bg-blue-500 border border-white rounded-full cursor-ns-resize shadow"
-                  onMouseDown={(e) => handlePointerDown(e, 'n')}
-                  onTouchStart={(e) => handlePointerDown(e, 'n')}
-                />
-                <div
-                  className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-8 h-2.5 bg-blue-500 border border-white rounded-full cursor-ns-resize shadow"
-                  onMouseDown={(e) => handlePointerDown(e, 's')}
-                  onTouchStart={(e) => handlePointerDown(e, 's')}
-                />
-                <div
-                  className="absolute top-1/2 -left-2 -translate-y-1/2 w-2.5 h-8 bg-blue-500 border border-white rounded-full cursor-ew-resize shadow"
-                  onMouseDown={(e) => handlePointerDown(e, 'w')}
-                  onTouchStart={(e) => handlePointerDown(e, 'w')}
-                />
-                <div
-                  className="absolute top-1/2 -right-2 -translate-y-1/2 w-2.5 h-8 bg-blue-500 border border-white rounded-full cursor-ew-resize shadow"
-                  onMouseDown={(e) => handlePointerDown(e, 'e')}
-                  onTouchStart={(e) => handlePointerDown(e, 'e')}
-                />
+                <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-8 h-2.5 bg-blue-500 border border-white rounded-full cursor-ns-resize shadow" onMouseDown={(e) => handlePointerDown(e, 'n')} onTouchStart={(e) => handlePointerDown(e, 'n')} />
+                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-8 h-2.5 bg-blue-500 border border-white rounded-full cursor-ns-resize shadow" onMouseDown={(e) => handlePointerDown(e, 's')} onTouchStart={(e) => handlePointerDown(e, 's')} />
+                <div className="absolute top-1/2 -left-2 -translate-y-1/2 w-2.5 h-8 bg-blue-500 border border-white rounded-full cursor-ew-resize shadow" onMouseDown={(e) => handlePointerDown(e, 'w')} onTouchStart={(e) => handlePointerDown(e, 'w')} />
+                <div className="absolute top-1/2 -right-2 -translate-y-1/2 w-2.5 h-8 bg-blue-500 border border-white rounded-full cursor-ew-resize shadow" onMouseDown={(e) => handlePointerDown(e, 'e')} onTouchStart={(e) => handlePointerDown(e, 'e')} />
               </div>
             </div>
+
+            {/* Mobile-optimized floating preview thumbnail overlay (hides layout sidebar on small devices) */}
+            {showLivePreview && (
+              <div className="md:hidden absolute bottom-3 right-3 w-28 sm:w-36 aspect-4/3 bg-black rounded-lg border border-slate-700 overflow-hidden flex flex-col p-0.5 shadow-xl pointer-events-none z-50">
+                {cropPreview ? (
+                  <img src={cropPreview} alt="Crop Preview" className="w-full h-full object-contain" />
+                ) : (
+                  <span className="text-[9px] text-gray-500 m-auto">Previewing...</span>
+                )}
+              </div>
+            )}
           </div>
 
-          {/* Right Live Preview Sidebar */}
-          <div className="w-full md:w-80 lg:w-96 shrink-0 h-full bg-gray-900 border-l border-gray-800 flex flex-col p-4 gap-3 overflow-y-auto">
+          {/* Live Preview Sidebar (only visible on desktop / tablet) */}
+          <div className="hidden md:flex w-80 lg:w-96 shrink-0 h-full bg-slate-900 border-l border-slate-800 flex-col p-4 gap-3 overflow-y-auto">
             <span className="text-xs font-black text-gray-300 uppercase tracking-wider flex items-center gap-1.5 shrink-0">
               <Eye className="w-4 h-4 text-blue-400" /> Cropped Result Preview
             </span>
-            <div className="aspect-4/3 min-h-[210px] bg-black rounded-xl overflow-hidden border border-gray-700 flex items-center justify-center p-1 shadow-inner shrink-0">
+            <div className="aspect-4/3 min-h-[200px] bg-black rounded-xl overflow-hidden border border-slate-750 flex items-center justify-center p-1 shadow-inner shrink-0">
               {cropPreview ? (
                 <img src={cropPreview} alt="Crop Preview" className="w-full h-full object-contain" />
               ) : (
-                <span className="text-[10px] text-gray-500">Generating preview...</span>
+                <span className="text-[10px] text-slate-500">Generating preview...</span>
               )}
             </div>
-
-            <div className="text-[10px] text-gray-400 font-mono space-y-1 bg-gray-950 p-2.5 rounded-lg border border-gray-800 shrink-0">
+            <div className="text-[10px] text-slate-400 font-mono space-y-1 bg-slate-950 p-2.5 rounded-lg border border-slate-850 shrink-0">
               <div className="flex justify-between"><span>Top: {ymin}</span> <span>Left: {xmin}</span></div>
               <div className="flex justify-between"><span>Bottom: {ymax}</span> <span>Right: {xmax}</span></div>
             </div>
           </div>
         </div>
 
-        {/* Footer Bar with Action Buttons */}
-        <div className="px-6 py-3.5 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/60 flex flex-wrap items-center justify-between gap-3 shrink-0">
-          <button onClick={onClose} className="px-4 py-2 text-xs font-bold text-gray-500 hover:text-gray-800 dark:hover:text-white transition">
-            Cancel
-          </button>
-
-          <div className="flex items-center gap-2.5 flex-wrap">
+        {/* Footer actions */}
+        <div
+          className="px-4 py-3 border-t flex flex-col gap-2.5 shrink-0"
+          style={{
+            borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+            boxShadow: isDark ? 'inset 0 1px 0 rgba(255,255,255,0.02)' : 'none'
+          }}
+        >
+          {/* Mobile Grid: cancel + Select Entire Page + Reset AI + Apply */}
+          <div className="grid grid-cols-2 sm:flex sm:items-center sm:justify-between gap-2.5">
+            {/* Left buttons (mobile: top row of grid / sm: flex row) */}
             <button
-              onClick={() => setBox([0, 0, 1000, 1000])}
-              className="py-2 px-3 bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-xs font-bold rounded-xl border border-gray-200 dark:border-gray-600 transition flex items-center gap-1.5 shadow-xs active:scale-95"
+              onClick={onClose}
+              className={`py-2 px-4 text-xs font-bold rounded-xl transition-all active:scale-95 ${isDark ? 'neu-btn-dark text-slate-400' : 'neu-btn-light text-slate-500'}`}
             >
-              <span>Select Entire Page</span>
-              <span className="text-[9px] text-gray-500 dark:text-gray-400 font-mono bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">100%</span>
+              Cancel
             </button>
 
-            {card?.img_box && (
+            <button
+              onClick={() => setBox([0, 0, 1000, 1000])}
+              className={`py-2 px-3 text-xs font-bold rounded-xl transition-all active:scale-95 flex items-center justify-center gap-1.5 ${isDark ? 'neu-btn-dark text-slate-200' : 'neu-btn-light text-slate-700'}`}
+            >
+              <span>Entire Page</span>
+              <span className="text-[9px] font-mono text-blue-500 font-bold bg-blue-500/10 px-1 py-0.5 rounded">100%</span>
+            </button>
+
+            {/* Reset AI Crop (if card has it) */}
+            {card?.img_box ? (
               <button
                 onClick={() => setBox(Array.isArray(card.img_box) ? card.img_box : [card.img_box.ymin, card.img_box.xmin, card.img_box.ymax, card.img_box.xmax])}
-                className="py-2 px-3 bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 text-amber-600 dark:text-amber-400 text-xs font-bold rounded-xl border border-gray-200 dark:border-gray-600 transition flex items-center gap-1.5 shadow-xs active:scale-95"
+                className={`py-2 px-3 text-xs font-bold rounded-xl transition-all active:scale-95 flex items-center justify-center gap-1.5 ${isDark ? 'neu-btn-dark text-amber-400' : 'neu-btn-light text-amber-600'}`}
               >
-                <RotateCcw className="w-3.5 h-3.5 text-amber-500" />
-                <span>Reset to AI Crop</span>
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>AI Crop</span>
               </button>
+            ) : (
+              <div className="hidden sm:block" />
             )}
 
+            {/* Apply button */}
             <button
               onClick={() => {
                 onSaveCrop(box);
                 onClose();
               }}
-              className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-blue-600/20 transition active:scale-95 flex items-center gap-2"
+              className="py-2.5 px-5 bg-gradient-to-br from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-blue-500/30 transition-all active:scale-95 flex items-center justify-center gap-2"
             >
-              <Check className="w-4 h-4" /> Apply Fine-Tuned Crop
+              <Check className="w-4 h-4" /> Apply
             </button>
           </div>
         </div>
@@ -434,6 +480,7 @@ export default function ExportImageVerificationModal({
   const [cardConfigs, setCardConfigs] = useState({});
   const [previewImages, setPreviewImages] = useState({});
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
   const prevIsOpenRef = useRef(false);
 
   // Fine-tuning modal state
@@ -561,6 +608,37 @@ export default function ExportImageVerificationModal({
 
   if (!isOpen) return null;
 
+  // Minimized Widget Rendering
+  if (isMinimized) {
+    return (
+      <div
+        className="fixed bottom-4 right-4 z-[260] flex items-center gap-3 p-3 rounded-2xl shadow-2xl border cursor-pointer hover:scale-105 active:scale-95 transition-all duration-200"
+        style={{
+          background: bgBase,
+          borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+          boxShadow: isDark
+            ? '6px 6px 14px #171a20, -6px -6px 14px #2d3440'
+            : '6px 6px 14px #c2c8d4, -6px -6px 14px #ffffff'
+        }}
+        onClick={() => setIsMinimized(false)}
+      >
+        <div className={`p-2 rounded-xl ${isDark ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-500/10 text-amber-600'}`}>
+          <ImageIcon className="w-5 h-5 animate-pulse" />
+        </div>
+        <div>
+          <span className={`text-[9px] uppercase font-black block tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Verify Images</span>
+          <span className={`text-xs font-bold block ${isDark ? 'text-white' : 'text-slate-800'}`}>{totalIncludedImages} Selected</span>
+        </div>
+        <button
+          onClick={(e) => { e.stopPropagation(); setIsMinimized(false); }}
+          className="px-2.5 py-1 text-[10px] font-black text-blue-500 hover:underline uppercase tracking-wider ml-1"
+        >
+          Restore
+        </button>
+      </div>
+    );
+  }
+
   const confirmedCards = cards.filter((c, idx) => { const id = c.id || `card_${idx}`; const cfg = cardConfigs[id]; return cfg && (c.has_image || cfg.imgBox) && cfg.confidence >= 70; });
   const uncertainCards = cards.filter((c, idx) => { const id = c.id || `card_${idx}`; const cfg = cardConfigs[id]; return cfg && (c.has_image || cfg.imgBox) && cfg.confidence < 70; });
   const textOnlyCards  = cards.filter((c, idx) => { const id = c.id || `card_${idx}`; const cfg = cardConfigs[id]; return cfg && !c.has_image && !cfg.imgBox; });
@@ -656,12 +734,21 @@ export default function ExportImageVerificationModal({
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition ${isDark ? 'hover:bg-slate-700 text-slate-400 hover:text-slate-200' : 'hover:bg-slate-200 text-slate-400 hover:text-slate-700'}`}
-          >
-            <X className="w-4 h-4 sm:w-5 sm:h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsMinimized(true)}
+              className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition ${isDark ? 'hover:bg-slate-700 text-slate-400 hover:text-slate-200' : 'hover:bg-slate-200 text-slate-400 hover:text-slate-700'}`}
+              title="Minimize Verification"
+            >
+              <Minus className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
+            <button
+              onClick={onClose}
+              className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition ${isDark ? 'hover:bg-slate-700 text-slate-400 hover:text-slate-200' : 'hover:bg-slate-200 text-slate-400 hover:text-slate-700'}`}
+            >
+              <X className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
+          </div>
         </div>
 
         {/* ── TAB NAV ── */}
