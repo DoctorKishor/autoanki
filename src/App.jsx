@@ -34,7 +34,7 @@ import ExportImageVerificationModal from './components/ExportImageVerificationMo
 import ManualCardModal from './components/ManualCardModal';
 import ConflictInspectorModal from './components/ConflictInspectorModal';
 import { cropAndMaskDiagram } from './utils/imageCropper';
-import { getLocalSetting, saveLocalSetting, getLocalCards, saveLocalCards, replaceAllLocalCards, saveLocalCard, deleteLocalCard, getLocalPages, saveLocalPages, replaceAllLocalPages, saveLocalPage, deleteLocalPage, getLocalKV, setLocalKV, getLocalPrompts, saveLocalPrompt, deleteLocalPrompt, getAllLocalPytTopics, saveLocalPytTopic } from './services/localDb';
+import { getLocalSetting, saveLocalSetting, getLocalCards, saveLocalCards, replaceAllLocalCards, saveLocalCard, deleteLocalCard, getLocalPages, saveLocalPages, replaceAllLocalPages, saveLocalPage, deleteLocalPage, getLocalKV, setLocalKV, getLocalPrompts, saveLocalPrompt, deleteLocalPrompt, getAllLocalPytTopics, saveLocalPytTopic, getAllLocalPytProgress, saveLocalPytProgressDoc, getLocalTextbooksMetadata, saveLocalTextbooksMetadata } from './services/localDb';
 import { motion, AnimatePresence } from 'framer-motion';
 import UiverseButton from './components/UiverseButton';
 import UiverseGlassRadio from './components/UiverseGlassRadio';
@@ -7008,57 +7008,41 @@ export default function App() {
 
   // Handle PYT progress increment/decrement & database auto-save
   const handlePytCountChange = async (subject, topicName, newCount) => {
-    if (!db || !user) return;
     const docId = subject.trim().toLowerCase();
     if (!docId) return;
 
-    // 1. Optimistic UI update: local update
+    const existingDoc = userPytProgress.find(d => d.id === docId);
+    const currentMap = existingDoc ? existingDoc.progress_map || {} : {};
+    const updatedMap = {
+      ...currentMap,
+      [topicName]: newCount
+    };
+
+    // 1. Local state update
     setUserPytProgress(prev => {
-      const existingDoc = prev.find(d => d.id === docId);
-      if (existingDoc) {
-        return prev.map(d => {
-          if (d.id === docId) {
-            return {
-              ...d,
-              progress_map: {
-                ...(d.progress_map || {}),
-                [topicName]: newCount
-              }
-            };
-          }
-          return d;
-        });
+      const exists = prev.find(d => d.id === docId);
+      if (exists) {
+        return prev.map(d => d.id === docId ? { ...d, progress_map: updatedMap } : d);
       } else {
         return [
           ...prev,
           {
             id: docId,
             subject: subject.trim(),
-            progress_map: {
-              [topicName]: newCount
-            }
+            progress_map: updatedMap
           }
         ];
       }
     });
 
-    // 2. Sync to Firestore
-    const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'user_pyt_progress', docId);
+    // 2. Persist to local IndexedDB
     try {
-      const existingDoc = userPytProgress.find(d => d.id === docId);
-      const currentMap = existingDoc ? existingDoc.progress_map || {} : {};
-      const updatedMap = {
-        ...currentMap,
-        [topicName]: newCount
-      };
-
-      await setDoc(docRef, {
+      await saveLocalPytProgressDoc(docId, {
         subject: subject.trim(),
         progress_map: updatedMap
-      }, { merge: true });
-      fbTracker.write(1);
+      });
     } catch (err) {
-      console.error("Error saving PYT progress:", err);
+      console.error("Error saving PYT progress to local DB:", err);
     }
   };
 
@@ -7072,7 +7056,6 @@ export default function App() {
 
   // Merge duplicate topics: do NOT touch master topics list, just merge user-side via merged_topics mapping
   const handlePytMerge = async (subject, canonicalTopic, allVariants) => {
-    if (!db || !user) return;
     const docId = subject.trim().toLowerCase();
 
     const progressDoc = userPytProgress.find(p => p.id === docId);
@@ -7099,15 +7082,13 @@ export default function App() {
     ));
     setPytKeptSeparate(prev => prev.filter(k => k !== canonicalTopic.toLowerCase()));
 
-    // Persist to Firestore
+    // Persist to local IndexedDB
     try {
-      const progressRef = doc(db, 'artifacts', appId, 'users', user.uid, 'user_pyt_progress', docId);
-      await setDoc(progressRef, {
+      await saveLocalPytProgressDoc(docId, {
         subject: subject.trim(),
         merged_topics: newMergedMap,
         progress_map: newProgressMap
-      }, { merge: true });
-      fbTracker.write(1);
+      });
     } catch (err) {
       console.error('Error merging PYT topics:', err);
     }
@@ -7115,7 +7096,6 @@ export default function App() {
 
   // Manual option to merge arbitrary topics
   const handlePytManualMerge = async (subject, sourceTopic, targetTopic) => {
-    if (!db || !user) return;
     const docId = subject.trim().toLowerCase();
 
     const progressDoc = userPytProgress.find(p => p.id === docId);
@@ -7136,13 +7116,11 @@ export default function App() {
     ));
 
     try {
-      const progressRef = doc(db, 'artifacts', appId, 'users', user.uid, 'user_pyt_progress', docId);
-      await setDoc(progressRef, {
+      await saveLocalPytProgressDoc(docId, {
         subject: subject.trim(),
         merged_topics: newMergedMap,
         progress_map: newProgressMap
-      }, { merge: true });
-      fbTracker.write(1);
+      });
     } catch (err) {
       console.error("Error manual merging PYT topics:", err);
     }
@@ -7150,7 +7128,6 @@ export default function App() {
 
   // Reset/Unmerge all topics for a subject
   const handleResetMergedPyt = async (subject) => {
-    if (!db || !user) return;
     const docId = subject.trim().toLowerCase();
 
     setUserPytProgress(prev => prev.map(p => p.id === docId
@@ -7159,12 +7136,10 @@ export default function App() {
     ));
 
     try {
-      const progressRef = doc(db, 'artifacts', appId, 'users', user.uid, 'user_pyt_progress', docId);
-      await setDoc(progressRef, {
+      await saveLocalPytProgressDoc(docId, {
         subject: subject.trim(),
         merged_topics: {}
-      }, { merge: true });
-      fbTracker.write(1);
+      });
     } catch (err) {
       console.error("Error resetting merged topics:", err);
     }
@@ -7172,7 +7147,6 @@ export default function App() {
 
   // Save/Update assigned page numbers for a topic
   const handleSavePytPages = async (subject, topicName, updatedPagesArray) => {
-    if (!db || !user) return;
     const docId = subject.trim().toLowerCase();
 
     const progressDoc = userPytProgress.find(p => p.id === docId);
@@ -7185,12 +7159,10 @@ export default function App() {
     ));
 
     try {
-      const progressRef = doc(db, 'artifacts', appId, 'users', user.uid, 'user_pyt_progress', docId);
-      await setDoc(progressRef, {
+      await saveLocalPytProgressDoc(docId, {
         subject: subject.trim(),
         pages_map: newPagesMap
-      }, { merge: true });
-      fbTracker.write(1);
+      });
     } catch (err) {
       console.error("Error saving PYT page numbers:", err);
     }
@@ -7467,11 +7439,11 @@ export default function App() {
           });
         }
 
-        // Save textbook parts metadata to Firestore textbooks subcollection
+        // Save textbook parts metadata to local IndexedDB
         const textbookCleanId = cleanTextbookFolder.toLowerCase();
-        const textbookMetaRef = doc(db, 'artifacts', appId, 'users', user.uid, 'textbooks', textbookCleanId);
         const totalPagesCount = parts[parts.length - 1].endPage;
         const textbookMetadata = {
+          id: textbookCleanId,
           name: materialName.trim(),
           totalPages: totalPagesCount,
           parts: uploadedParts.map(p => ({
@@ -7481,8 +7453,11 @@ export default function App() {
             endPage: p.endPage
           }))
         };
-        await setDoc(textbookMetaRef, textbookMetadata, { merge: true });
-        console.log("Saved textbook metadata:", textbookMetadata);
+        const currentMeta = await getLocalTextbooksMetadata();
+        const updatedMeta = [...currentMeta.filter(m => m.id !== textbookCleanId), textbookMetadata];
+        await saveLocalTextbooksMetadata(updatedMeta);
+        setTextbooksMetadata(updatedMeta);
+        console.log("Saved textbook metadata to local DB:", textbookMetadata);
 
       } catch (err) {
         console.error("Textbook split/upload failed, falling back to local-only mapping:", err);
@@ -7702,17 +7677,14 @@ JSON Format:
         }
       });
 
-      console.log(`[PDF Scan] Saving pages_map to Firestore. Subject: "${subject}", DocId: "${docId}", Replacing: ${replacingBookName || 'none'}, Topics with matches:`, Object.keys(newPagesMap).filter(k => newPagesMap[k]?.length > 0));
+      console.log(`[PDF Scan] Saving pages_map to Local DB. Subject: "${subject}", DocId: "${docId}", Replacing: ${replacingBookName || 'none'}, Topics with matches:`, Object.keys(newPagesMap).filter(k => newPagesMap[k]?.length > 0));
       setUserPytProgress(prev => prev.map(p => p.id === docId ? { ...p, pages_map: newPagesMap } : p));
 
-
-      const progressRef = doc(db, 'artifacts', appId, 'users', user.uid, 'user_pyt_progress', docId);
-      await setDoc(progressRef, {
+      await saveLocalPytProgressDoc(docId, {
         subject: subject.trim(),
         pages_map: newPagesMap
-      }, { merge: true });
+      });
 
-      fbTracker.write(1);
       alert(`Textbook mapping complete! Mapped pages for textbook "${materialName}" successfully.`);
     } catch (err) {
       console.error("Textbook scanning pipeline failed:", err);
@@ -7726,7 +7698,6 @@ JSON Format:
 
   // Remove all page mappings for a textbook source from the current subject
   const handleDeleteTextbook = async (bookName) => {
-    if (!db || !user) return;
     if (!window.confirm(`Remove all page mappings for "${bookName}" from ${selectedLoggerSubject}? This cannot be undone.`)) return;
 
     const subject = selectedLoggerSubject;
@@ -7748,9 +7719,7 @@ JSON Format:
     setUserPytProgress(prev => prev.map(p => p.id === docId ? { ...p, pages_map: newPagesMap } : p));
 
     try {
-      const progressRef = doc(db, 'artifacts', appId, 'users', user.uid, 'user_pyt_progress', docId);
-      await setDoc(progressRef, { subject: subject.trim(), pages_map: newPagesMap }, { merge: true });
-      fbTracker.write(1);
+      await saveLocalPytProgressDoc(docId, { subject: subject.trim(), pages_map: newPagesMap });
     } catch (err) {
       console.error("Failed to delete textbook mapping:", err);
       alert("Error removing textbook: " + err.message);
@@ -13908,37 +13877,39 @@ JSON Format:
     return () => { isMounted = false; };
   }, []);
 
-  // Establish listener on user_pyt_progress subcollection to sync subject progress
+  // Load PYT subject progress from local IndexedDB
   useEffect(() => {
-    if (!db || !targetUid) {
-      setUserPytProgress([]);
-      return;
-    }
-    const userPytColRef = collection(db, 'artifacts', appId, 'users', targetUid, 'user_pyt_progress');
-    const unsubscribe = onSnapshot(userPytColRef, (snapshot) => {
-      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setUserPytProgress(list);
-    }, (error) => {
-      console.error("Error listening to user_pyt_progress collection:", error);
-    });
-    return () => unsubscribe();
-  }, [db, targetUid]);
+    let isMounted = true;
+    const loadPytProgressFromLocal = async () => {
+      try {
+        const list = await getAllLocalPytProgress();
+        if (isMounted) {
+          setUserPytProgress(list || []);
+        }
+      } catch (err) {
+        console.error("Error loading PYT progress from IndexedDB:", err);
+      }
+    };
+    loadPytProgressFromLocal();
+    return () => { isMounted = false; };
+  }, []);
 
-  // Establish listener on textbooks subcollection to sync textbooks metadata
+  // Load textbooks metadata from local IndexedDB
   useEffect(() => {
-    if (!db || !targetUid) {
-      setTextbooksMetadata([]);
-      return;
-    }
-    const textbooksColRef = collection(db, 'artifacts', appId, 'users', targetUid, 'textbooks');
-    const unsubscribe = onSnapshot(textbooksColRef, (snapshot) => {
-      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setTextbooksMetadata(list);
-    }, (error) => {
-      console.error("Error listening to textbooks collection:", error);
-    });
-    return () => unsubscribe();
-  }, [db, targetUid]);
+    let isMounted = true;
+    const loadTextbooksFromLocal = async () => {
+      try {
+        const list = await getLocalTextbooksMetadata();
+        if (isMounted) {
+          setTextbooksMetadata(list || []);
+        }
+      } catch (err) {
+        console.error("Error loading textbooks metadata from IndexedDB:", err);
+      }
+    };
+    loadTextbooksFromLocal();
+    return () => { isMounted = false; };
+  }, []);
 
   // Establish listener on subject_tracker subcollection to sync manually tracked topics
   useEffect(() => {

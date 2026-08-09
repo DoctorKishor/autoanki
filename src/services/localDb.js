@@ -405,6 +405,41 @@ export async function deleteLocalPytTopic(subjectName) {
   return deleteLocalItem(STORES.PYT_DATA, key);
 }
 
+// --- PYT LOGGER & PROGRESS HELPERS ---
+export async function getAllLocalPytProgress() {
+  const data = await getLocalKV('pyt_user_progress');
+  return Array.isArray(data) ? data : [];
+}
+
+export async function saveLocalPytProgressDoc(docId, docData) {
+  if (!docId) return null;
+  const currentList = await getAllLocalPytProgress();
+  const existingIdx = currentList.findIndex(d => d.id === docId);
+  let updatedList;
+  if (existingIdx >= 0) {
+    updatedList = [...currentList];
+    updatedList[existingIdx] = {
+      ...updatedList[existingIdx],
+      ...docData,
+      id: docId
+    };
+  } else {
+    updatedList = [...currentList, { id: docId, ...docData }];
+  }
+  await setLocalKV('pyt_user_progress', updatedList);
+  return updatedList;
+}
+
+export async function getLocalTextbooksMetadata() {
+  const data = await getLocalKV('textbooks_metadata');
+  return Array.isArray(data) ? data : [];
+}
+
+export async function saveLocalTextbooksMetadata(metadataArray) {
+  await setLocalKV('textbooks_metadata', metadataArray || []);
+  return metadataArray || [];
+}
+
 export default {
   initDB,
   STORES,
@@ -447,5 +482,9 @@ export default {
   saveLocalPytTopic,
   getLocalPytTopic,
   getAllLocalPytTopics,
-  deleteLocalPytTopic
+  deleteLocalPytTopic,
+  getAllLocalPytProgress,
+  saveLocalPytProgressDoc,
+  getLocalTextbooksMetadata,
+  saveLocalTextbooksMetadata
 };
