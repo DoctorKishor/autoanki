@@ -23741,75 +23741,75 @@ Return your response strictly as a JSON object matching this schema:
 
                   {/* PROMPT VIEW */}
                   {currentTab === 'prompt' && (
-                    <div className="space-y-4 text-left pb-24">
-                      <div className="grid grid-cols-1 gap-4 items-start">
+                    <div className="space-y-4 text-left pb-24 animate-in fade-in duration-200">
+                      <div className="grid grid-cols-1 gap-5 items-start">
 
                         {/* PROMPTS LIST PANEL */}
-                        <div className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 space-y-4 animate-in fade-in duration-200">
+                        <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'} p-5 space-y-4`}>
                           <div className="flex items-center justify-between">
-                            <h3 className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Available Prompts</h3>
-                            <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider">
+                            <h3 className={`text-[10px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>Available Prompts</h3>
+                            <span className={`${settingsThemeMode === 'dark' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' : 'bg-blue-50 text-blue-700 border border-blue-200'} px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider`}>
                               {customPrompts.length + 3}
                             </span>
                           </div>
 
                           <button
                             onClick={() => createCustomPrompt()}
-                            className="w-full flex items-center justify-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-600 font-black text-xs py-2.5 px-4 rounded-xl transition border border-dashed border-blue-200 active:scale-95"
+                            className={`w-full flex items-center justify-center gap-2 ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'} font-black text-xs py-2.5 px-4 rounded-xl transition active:scale-95`}
                           >
                             <Plus className="w-3.5 h-3.5" /> Add Custom Prompt
                           </button>
 
-                          <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
+                          <div className="space-y-3 max-h-[220px] overflow-y-auto no-scrollbar p-1">
                             {/* Default Prompt Option */}
                             <div
                               onClick={() => setSelectedPromptId('default')}
-                              className={`p-3 rounded-xl cursor-pointer border transition-all duration-200 flex flex-col gap-1 ${selectedPromptId === 'default'
-                                ? 'bg-blue-50/50 border-blue-500 shadow-sm'
-                                : 'border-gray-100 hover:bg-gray-50/50 hover:border-gray-200'
+                              className={`p-3.5 rounded-xl cursor-pointer transition-all duration-200 flex flex-col gap-1 ${selectedPromptId === 'default'
+                                ? settingsThemeMode === 'dark' ? 'neu-item-pressed-dark border border-blue-500/50' : 'neu-item-pressed-light border border-blue-500/50'
+                                : settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'
                                 }`}
                             >
                               <div className="flex items-center justify-between">
-                                <span className="text-xs font-black text-gray-900 truncate">Default Medical Prompt</span>
+                                <span className={`text-xs font-black truncate ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>Default Medical Prompt</span>
                                 {activePromptId === 'default' && (
-                                  <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider">Active</span>
+                                  <span className={`${settingsThemeMode === 'dark' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'} px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider`}>Active</span>
                                 )}
                               </div>
-                              <p className="text-[9px] text-gray-500 line-clamp-1">Standard NEET PG/INICET Anki card generator prompt.</p>
+                              <p className={`text-[9px] ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} line-clamp-1`}>Standard NEET PG/INICET Anki card generator prompt.</p>
                             </div>
 
                             {/* PYT Generator Prompt Option */}
                             <div
                               onClick={() => setSelectedPromptId('pyt_generator')}
-                              className={`p-3 rounded-xl cursor-pointer border transition-all duration-200 flex flex-col gap-1 ${selectedPromptId === 'pyt_generator'
-                                ? 'bg-blue-50/50 border-blue-500 shadow-sm'
-                                : 'border-gray-100 hover:bg-gray-50/50 hover:border-gray-200'
+                              className={`p-3.5 rounded-xl cursor-pointer transition-all duration-200 flex flex-col gap-1 ${selectedPromptId === 'pyt_generator'
+                                ? settingsThemeMode === 'dark' ? 'neu-item-pressed-dark border border-blue-500/50' : 'neu-item-pressed-light border border-blue-500/50'
+                                : settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'
                                 }`}
                             >
                               <div className="flex items-center justify-between">
-                                <span className="text-xs font-black text-gray-900 truncate">High-Yield PYT Generator</span>
+                                <span className={`text-xs font-black truncate ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>High-Yield PYT Generator</span>
                                 {activePromptId === 'pyt_generator' && (
-                                  <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider">Active</span>
+                                  <span className={`${settingsThemeMode === 'dark' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'} px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider`}>Active</span>
                                 )}
                               </div>
-                              <p className="text-[9px] text-gray-500 line-clamp-1">Custom system instructions optimized for producing High-Yield PYTs.</p>
+                              <p className={`text-[9px] ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} line-clamp-1`}>Custom system instructions optimized for producing High-Yield PYTs.</p>
                             </div>
 
                             {/* Q-Bank Engine Prompt Option */}
                             <div
                               onClick={() => setSelectedPromptId('qbank_engine')}
-                              className={`p-3 rounded-xl cursor-pointer border transition-all duration-200 flex flex-col gap-1 ${selectedPromptId === 'qbank_engine'
-                                ? 'bg-blue-50/50 border-blue-500 shadow-sm'
-                                : 'border-gray-100 hover:bg-gray-50/50 hover:border-gray-200'
+                              className={`p-3.5 rounded-xl cursor-pointer transition-all duration-200 flex flex-col gap-1 ${selectedPromptId === 'qbank_engine'
+                                ? settingsThemeMode === 'dark' ? 'neu-item-pressed-dark border border-blue-500/50' : 'neu-item-pressed-light border border-blue-500/50'
+                                : settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'
                                 }`}
                             >
                               <div className="flex items-center justify-between">
-                                <span className="text-xs font-black text-gray-900 truncate">Q-Bank engine/ error log</span>
+                                <span className={`text-xs font-black truncate ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>Q-Bank engine/ error log</span>
                                 {activePromptId === 'qbank_engine' && (
-                                  <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider">Active</span>
+                                  <span className={`${settingsThemeMode === 'dark' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'} px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider`}>Active</span>
                                 )}
                               </div>
-                              <p className="text-[9px] text-gray-500 line-clamp-1">Custom instructions optimized for NEET PG/INICET QBank incorrect-question review.</p>
+                              <p className={`text-[9px] ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} line-clamp-1`}>Custom instructions optimized for NEET PG/INICET QBank incorrect-question review.</p>
                             </div>
 
                             {/* Custom Prompts list */}
@@ -23817,42 +23817,42 @@ Return your response strictly as a JSON object matching this schema:
                               <div
                                 key={prompt.id}
                                 onClick={() => setSelectedPromptId(prompt.id)}
-                                className={`p-3 rounded-xl cursor-pointer border transition-all duration-200 flex flex-col gap-1 ${selectedPromptId === prompt.id
-                                  ? 'bg-blue-50/50 border-blue-500 shadow-sm'
-                                  : 'border-gray-100 hover:bg-gray-50/50 hover:border-gray-200'
+                                className={`p-3.5 rounded-xl cursor-pointer transition-all duration-200 flex flex-col gap-1 ${selectedPromptId === prompt.id
+                                  ? settingsThemeMode === 'dark' ? 'neu-item-pressed-dark border border-blue-500/50' : 'neu-item-pressed-light border border-blue-500/50'
+                                  : settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'
                                   }`}
                               >
                                 <div className="flex items-center justify-between">
-                                  <span className="text-xs font-black text-gray-900 truncate max-w-[70%]">{prompt.name || 'Untitled Prompt'}</span>
+                                  <span className={`text-xs font-black truncate max-w-[70%] ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>{prompt.name || 'Untitled Prompt'}</span>
                                   {activePromptId === prompt.id && (
-                                    <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider">Active</span>
+                                    <span className={`${settingsThemeMode === 'dark' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'} px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider`}>Active</span>
                                   )}
                                 </div>
-                                <p className="text-[9px] text-gray-500 line-clamp-1">{prompt.content || 'No instructions.'}</p>
+                                <p className={`text-[9px] ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} line-clamp-1`}>{prompt.content || 'No instructions.'}</p>
                               </div>
                             ))}
                           </div>
                         </div>
 
                         {/* PROMPT EDITOR PANEL */}
-                        <div className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 space-y-4">
-                          <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                        <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'} p-5 space-y-4`}>
+                          <div className={`flex items-center justify-between pb-3 border-b ${settingsThemeMode === 'dark' ? 'border-slate-800' : 'border-slate-200/80'}`}>
                             <div className="flex items-center gap-2">
-                              <div className="bg-blue-100 p-2 rounded-xl">
-                                <MessageSquare className="w-4 h-4 text-blue-600" />
+                              <div className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'} p-2 rounded-xl`}>
+                                <MessageSquare className="w-4 h-4" />
                               </div>
                               <div>
-                                <h2 className="text-sm font-black text-gray-900 tracking-tight">AI Instruction Editor</h2>
+                                <h2 className={`text-sm font-black tracking-tight ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>AI Instruction Editor</h2>
                               </div>
                             </div>
                             {activePromptId === selectedPromptId ? (
-                              <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider flex items-center gap-1">
+                              <span className={`${settingsThemeMode === 'dark' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-emerald-100 text-emerald-800'} px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-wider flex items-center gap-1`}>
                                 <Check className="w-3 h-3" /> Active
                               </span>
                             ) : (
                               <button
                                 onClick={() => selectActivePrompt(selectedPromptId)}
-                                className="bg-blue-600 hover:bg-blue-700 text-white font-black text-[9px] uppercase tracking-widest py-1.5 px-3 rounded-lg shadow-md shadow-blue-600/10 transition-all duration-200 active:scale-95 flex items-center gap-1"
+                                className={`${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'} font-black text-[9px] uppercase tracking-widest py-1.5 px-3 rounded-xl transition active:scale-95 flex items-center gap-1`}
                               >
                                 Use Prompt
                               </button>
@@ -23860,8 +23860,8 @@ Return your response strictly as a JSON object matching this schema:
                           </div>
 
                           {(selectedPromptId === 'default' || selectedPromptId === 'pyt_generator' || selectedPromptId === 'qbank_engine') && (
-                            <div className="bg-amber-50/50 border border-amber-200/60 rounded-xl p-3 flex gap-2 text-amber-800">
-                              <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                            <div className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-amber-500/30 text-amber-300' : 'neu-pressed-light border border-amber-300/60 text-amber-900'} rounded-xl p-3 flex gap-2`}>
+                              <Info className="w-4 h-4 shrink-0 mt-0.5" />
                               <div className="text-[10px]">
                                 <p className="font-bold">
                                   {selectedPromptId === 'default' 
@@ -23878,19 +23878,19 @@ Return your response strictly as a JSON object matching this schema:
                           <div className="space-y-3">
                             {selectedPromptId !== 'default' && selectedPromptId !== 'pyt_generator' && selectedPromptId !== 'qbank_engine' && (
                               <div>
-                                <label className="block text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">Prompt Name</label>
+                                <label className={`block text-[9px] font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} mb-1`}>Prompt Name</label>
                                 <input
                                   type="text"
                                   value={editingPromptName}
                                   onChange={(e) => setEditingPromptName(e.target.value)}
-                                  className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none text-xs font-bold bg-gray-50 text-gray-800"
+                                  className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-slate-100 border-[#2b323e] focus:border-blue-500/50' : 'neu-pressed-light text-slate-800 border-white/60 focus:border-blue-500/50'} w-full p-2.5 rounded-xl outline-none text-xs font-bold transition`}
                                   placeholder="e.g. Biology Fact Extractor"
                                 />
                               </div>
                             )}
 
                             <div>
-                              <label className="block text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">Instructions</label>
+                              <label className={`block text-[9px] font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} mb-1`}>Instructions</label>
                               <textarea
                                 rows={8}
                                 value={editingPromptContent}
@@ -23900,7 +23900,7 @@ Return your response strictly as a JSON object matching this schema:
                                   }
                                 }}
                                 readOnly={selectedPromptId === 'default' || selectedPromptId === 'pyt_generator' || selectedPromptId === 'qbank_engine'}
-                                className="w-full p-3 border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none text-xs font-mono leading-relaxed bg-gray-50 text-gray-800"
+                                className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-slate-100 border-[#2b323e] focus:border-blue-500/50' : 'neu-pressed-light text-slate-800 border-white/60 focus:border-blue-500/50'} w-full p-3 rounded-xl outline-none text-xs font-mono leading-relaxed transition no-scrollbar`}
                                 placeholder="Enter prompt content here..."
                               />
                             </div>
@@ -23910,13 +23910,13 @@ Return your response strictly as a JSON object matching this schema:
                                 {selectedPromptId !== 'default' && selectedPromptId !== 'pyt_generator' && selectedPromptId !== 'qbank_engine' && (
                                   <button
                                     onClick={() => deleteCustomPrompt(selectedPromptId)}
-                                    className="px-2 py-1.5 rounded-lg text-[10px] font-bold text-red-500 hover:bg-red-50 transition"
+                                    className={`${settingsThemeMode === 'dark' ? 'neu-btn-dark text-red-400 hover:text-red-300' : 'neu-btn-light text-red-600 hover:text-red-700'} px-3 py-1.5 rounded-xl text-[10px] font-bold transition active:scale-95`}
                                   >
                                     Delete
                                   </button>
                                 )}
                               </div>
-                              <div className="flex gap-1.5">
+                              <div className="flex gap-2">
                                 <button
                                   onClick={() => {
                                     if (selectedPromptId === 'default') {
@@ -23929,7 +23929,7 @@ Return your response strictly as a JSON object matching this schema:
                                       createCustomPrompt("Duplicate of " + editingPromptName, editingPromptContent);
                                     }
                                   }}
-                                  className="px-3 py-1.5 rounded-lg text-[10px] font-bold text-gray-500 hover:bg-gray-100 transition"
+                                  className={`${settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-700'} px-3 py-1.5 rounded-xl text-[10px] font-bold transition active:scale-95`}
                                 >
                                   Duplicate
                                 </button>
@@ -23943,13 +23943,13 @@ Return your response strictly as a JSON object matching this schema:
                                           setEditingPromptContent(original.content || '');
                                         }
                                       }}
-                                      className="px-3 py-1.5 rounded-lg text-[10px] font-bold text-gray-500 hover:bg-gray-100 transition"
+                                      className={`${settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-700'} px-3 py-1.5 rounded-xl text-[10px] font-bold transition active:scale-95`}
                                     >
                                       Reset
                                     </button>
                                     <button
                                       onClick={() => saveCustomPrompt(selectedPromptId, editingPromptName, editingPromptContent)}
-                                      className="px-4 py-1.5 rounded-lg text-[10px] font-bold bg-blue-600 text-white hover:bg-blue-700 transition"
+                                      className={`${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'} px-4 py-1.5 rounded-xl text-[10px] font-bold transition active:scale-95`}
                                     >
                                       Save
                                     </button>
@@ -31109,75 +31109,75 @@ Return your response strictly as a JSON object matching this schema:
 
                     {/* PROMPT VIEW */}
                     {currentTab === 'prompt' && (
-                      <div className="flex-grow p-4 lg:p-6 flex flex-col gap-6 max-w-[1200px] mx-auto w-full overflow-y-auto pb-24 lg:pb-6 text-left">
+                      <div className="flex-grow p-4 lg:p-6 flex flex-col gap-6 max-w-[1200px] mx-auto w-full overflow-y-auto pb-24 lg:pb-6 text-left animate-in fade-in duration-200">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
 
                           {/* PROMPTS LIST PANEL */}
-                          <div className="md:col-span-1 bg-white p-6 rounded-3xl shadow-sm border border-gray-200 space-y-4">
+                          <div className={`md:col-span-1 ${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'} p-6 space-y-4`}>
                             <div className="flex items-center justify-between">
-                              <h3 className="text-sm font-black uppercase text-gray-400 tracking-wider">Available Prompts</h3>
-                              <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider">
+                              <h3 className={`text-sm font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>Available Prompts</h3>
+                              <span className={`${settingsThemeMode === 'dark' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' : 'bg-blue-50 text-blue-700 border border-blue-200'} px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider`}>
                                 {customPrompts.length + 3}
                               </span>
                             </div>
 
                             <button
                               onClick={() => createCustomPrompt()}
-                              className="w-full flex items-center justify-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-600 font-black text-xs py-3 px-4 rounded-2xl transition border border-dashed border-blue-200 active:scale-95"
+                              className={`w-full flex items-center justify-center gap-2 ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'} font-black text-xs py-3 px-4 rounded-2xl transition active:scale-95`}
                             >
                               <Plus className="w-4 h-4" /> Add Custom Prompt
                             </button>
 
-                            <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
+                            <div className="space-y-3 max-h-[500px] overflow-y-auto no-scrollbar p-1">
                               {/* Default Prompt Option */}
                               <div
                                 onClick={() => setSelectedPromptId('default')}
-                                className={`p-4 rounded-2xl cursor-pointer border transition-all duration-200 flex flex-col gap-1.5 ${selectedPromptId === 'default'
-                                  ? 'bg-blue-50/50 border-blue-500 shadow-sm'
-                                  : 'border-gray-100 hover:bg-gray-50/50 hover:border-gray-200'
+                                className={`p-4 rounded-2xl cursor-pointer transition-all duration-200 flex flex-col gap-1.5 ${selectedPromptId === 'default'
+                                  ? settingsThemeMode === 'dark' ? 'neu-item-pressed-dark border border-blue-500/50' : 'neu-item-pressed-light border border-blue-500/50'
+                                  : settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'
                                   }`}
                               >
                                 <div className="flex items-center justify-between">
-                                  <span className="text-xs font-black text-gray-900 truncate">Default Medical Prompt</span>
+                                  <span className={`text-xs font-black truncate ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>Default Medical Prompt</span>
                                   {activePromptId === 'default' && (
-                                    <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider">Active</span>
+                                    <span className={`${settingsThemeMode === 'dark' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'} px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider`}>Active</span>
                                   )}
                                 </div>
-                                <p className="text-[10px] text-gray-500 line-clamp-2">Standard NEET PG/INICET Anki card generator prompt.</p>
+                                <p className={`text-[10px] ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} line-clamp-2`}>Standard NEET PG/INICET Anki card generator prompt.</p>
                               </div>
 
                               {/* PYT Generator Prompt Option */}
                               <div
                                 onClick={() => setSelectedPromptId('pyt_generator')}
-                                className={`p-4 rounded-2xl cursor-pointer border transition-all duration-200 flex flex-col gap-1.5 ${selectedPromptId === 'pyt_generator'
-                                  ? 'bg-blue-50/50 border-blue-500 shadow-sm'
-                                  : 'border-gray-100 hover:bg-gray-50/50 hover:border-gray-200'
+                                className={`p-4 rounded-2xl cursor-pointer transition-all duration-200 flex flex-col gap-1.5 ${selectedPromptId === 'pyt_generator'
+                                  ? settingsThemeMode === 'dark' ? 'neu-item-pressed-dark border border-blue-500/50' : 'neu-item-pressed-light border border-blue-500/50'
+                                  : settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'
                                   }`}
                               >
                                 <div className="flex items-center justify-between">
-                                  <span className="text-xs font-black text-gray-900 truncate">High-Yield PYT Generator</span>
+                                  <span className={`text-xs font-black truncate ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>High-Yield PYT Generator</span>
                                   {activePromptId === 'pyt_generator' && (
-                                    <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider">Active</span>
+                                    <span className={`${settingsThemeMode === 'dark' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'} px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider`}>Active</span>
                                   )}
                                 </div>
-                                <p className="text-[10px] text-gray-500 line-clamp-2">Custom system instructions optimized for producing High-Yield PYTs.</p>
+                                <p className={`text-[10px] ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} line-clamp-2`}>Custom system instructions optimized for producing High-Yield PYTs.</p>
                               </div>
 
                               {/* Q-Bank Engine Prompt Option */}
                               <div
                                 onClick={() => setSelectedPromptId('qbank_engine')}
-                                className={`p-4 rounded-2xl cursor-pointer border transition-all duration-200 flex flex-col gap-1.5 ${selectedPromptId === 'qbank_engine'
-                                  ? 'bg-blue-50/50 border-blue-500 shadow-sm'
-                                  : 'border-gray-100 hover:bg-gray-50/50 hover:border-gray-200'
+                                className={`p-4 rounded-2xl cursor-pointer transition-all duration-200 flex flex-col gap-1.5 ${selectedPromptId === 'qbank_engine'
+                                  ? settingsThemeMode === 'dark' ? 'neu-item-pressed-dark border border-blue-500/50' : 'neu-item-pressed-light border border-blue-500/50'
+                                  : settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'
                                   }`}
                               >
                                 <div className="flex items-center justify-between">
-                                  <span className="text-xs font-black text-gray-900 truncate">Q-Bank engine/ error log</span>
+                                  <span className={`text-xs font-black truncate ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>Q-Bank engine/ error log</span>
                                   {activePromptId === 'qbank_engine' && (
-                                    <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider">Active</span>
+                                    <span className={`${settingsThemeMode === 'dark' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'} px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider`}>Active</span>
                                   )}
                                 </div>
-                                <p className="text-[10px] text-gray-500 line-clamp-2">Custom instructions optimized for NEET PG/INICET QBank incorrect-question review.</p>
+                                <p className={`text-[10px] ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} line-clamp-2`}>Custom instructions optimized for NEET PG/INICET QBank incorrect-question review.</p>
                               </div>
 
                               {/* Custom Prompts list */}
@@ -31185,43 +31185,43 @@ Return your response strictly as a JSON object matching this schema:
                                 <div
                                   key={prompt.id}
                                   onClick={() => setSelectedPromptId(prompt.id)}
-                                  className={`p-4 rounded-2xl cursor-pointer border transition-all duration-200 flex flex-col gap-1.5 ${selectedPromptId === prompt.id
-                                    ? 'bg-blue-50/50 border-blue-500 shadow-sm'
-                                    : 'border-gray-100 hover:bg-gray-50/50 hover:border-gray-200'
+                                  className={`p-4 rounded-2xl cursor-pointer transition-all duration-200 flex flex-col gap-1.5 ${selectedPromptId === prompt.id
+                                    ? settingsThemeMode === 'dark' ? 'neu-item-pressed-dark border border-blue-500/50' : 'neu-item-pressed-light border border-blue-500/50'
+                                    : settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'
                                     }`}
                                 >
                                   <div className="flex items-center justify-between">
-                                    <span className="text-xs font-black text-gray-900 truncate max-w-[70%]">{prompt.name || 'Untitled Prompt'}</span>
+                                    <span className={`text-xs font-black truncate max-w-[70%] ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>{prompt.name || 'Untitled Prompt'}</span>
                                     {activePromptId === prompt.id && (
-                                      <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider">Active</span>
+                                      <span className={`${settingsThemeMode === 'dark' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'} px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider`}>Active</span>
                                     )}
                                   </div>
-                                  <p className="text-[10px] text-gray-500 line-clamp-2">{prompt.content || 'No instructions.'}</p>
+                                  <p className={`text-[10px] ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} line-clamp-2`}>{prompt.content || 'No instructions.'}</p>
                                 </div>
                               ))}
                             </div>
                           </div>
 
                           {/* PROMPT EDITOR PANEL */}
-                          <div className="md:col-span-2 bg-white p-6 rounded-3xl shadow-sm border border-gray-200 space-y-6">
-                            <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+                          <div className={`md:col-span-2 ${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'} p-6 space-y-6`}>
+                            <div className={`flex items-center justify-between pb-4 border-b ${settingsThemeMode === 'dark' ? 'border-slate-800' : 'border-slate-200/80'}`}>
                               <div className="flex items-center gap-3">
-                                <div className="bg-blue-100 p-2.5 rounded-2xl">
-                                  <MessageSquare className="w-5 h-5 text-blue-600" />
+                                <div className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'} p-2.5 rounded-2xl`}>
+                                  <MessageSquare className="w-5 h-5" />
                                 </div>
                                 <div>
-                                  <h2 className="text-lg font-black text-gray-900 tracking-tight">AI Instruction Editor</h2>
-                                  <p className="text-[10px] text-gray-500">Fine-tune extraction rules and format settings.</p>
+                                  <h2 className={`text-lg font-black tracking-tight ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>AI Instruction Editor</h2>
+                                  <p className={`text-[10px] ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>Fine-tune extraction rules and format settings.</p>
                                 </div>
                               </div>
                               {activePromptId === selectedPromptId ? (
-                                <span className="bg-emerald-100 text-emerald-800 px-3.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5">
+                                <span className={`${settingsThemeMode === 'dark' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-emerald-100 text-emerald-800'} px-3.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5`}>
                                   <Check className="w-3.5 h-3.5" /> Currently Active
                                 </span>
                               ) : (
                                 <button
                                   onClick={() => selectActivePrompt(selectedPromptId)}
-                                  className="bg-blue-600 hover:bg-blue-700 text-white font-black text-[10px] uppercase tracking-widest py-2 px-4 rounded-xl shadow-md shadow-blue-600/10 transition-all duration-200 active:scale-95 flex items-center gap-1.5"
+                                  className={`${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'} font-black text-[10px] uppercase tracking-widest py-2 px-4 rounded-xl transition active:scale-95 flex items-center gap-1.5`}
                                 >
                                   Use this Prompt
                                 </button>
@@ -31229,8 +31229,8 @@ Return your response strictly as a JSON object matching this schema:
                             </div>
 
                             {(selectedPromptId === 'default' || selectedPromptId === 'pyt_generator' || selectedPromptId === 'qbank_engine') && (
-                              <div className="bg-amber-50/50 border border-amber-200/60 rounded-2xl p-4 flex gap-3 text-amber-800 animate-in slide-in-from-top duration-200">
-                                <Info className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                              <div className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-amber-500/30 text-amber-300' : 'neu-pressed-light border border-amber-300/60 text-amber-900'} rounded-2xl p-4 flex gap-3 animate-in slide-in-from-top duration-200`}>
+                                <Info className="w-5 h-5 shrink-0 mt-0.5" />
                                 <div className="text-xs">
                                   <p className="font-bold">
                                     {selectedPromptId === 'default' 
@@ -31247,19 +31247,19 @@ Return your response strictly as a JSON object matching this schema:
                             <div className="space-y-4">
                               {selectedPromptId !== 'default' && selectedPromptId !== 'pyt_generator' && selectedPromptId !== 'qbank_engine' && (
                                 <div>
-                                  <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Prompt Name</label>
+                                  <label className={`block text-[10px] font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} mb-2`}>Prompt Name</label>
                                   <input
                                     type="text"
                                     value={editingPromptName}
                                     onChange={(e) => setEditingPromptName(e.target.value)}
-                                    className="w-full p-3.5 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 outline-none text-xs font-bold bg-gray-50 text-gray-800"
+                                    className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-slate-100 border-[#2b323e] focus:border-blue-500/50' : 'neu-pressed-light text-slate-800 border-white/60 focus:border-blue-500/50'} w-full p-3.5 rounded-2xl outline-none text-xs font-bold transition`}
                                     placeholder="e.g. Biology Fact Extractor"
                                   />
                                 </div>
                               )}
 
                               <div>
-                                <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">System Instructions</label>
+                                <label className={`block text-[10px] font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} mb-2`}>System Instructions</label>
                                 <textarea
                                   rows={(selectedPromptId === 'default' || selectedPromptId === 'pyt_generator' || selectedPromptId === 'qbank_engine') ? 18 : 15}
                                   value={editingPromptContent}
@@ -31269,7 +31269,7 @@ Return your response strictly as a JSON object matching this schema:
                                     }
                                   }}
                                   readOnly={selectedPromptId === 'default' || selectedPromptId === 'pyt_generator' || selectedPromptId === 'qbank_engine'}
-                                  className="w-full p-4 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 outline-none text-xs font-mono leading-relaxed bg-gray-50 text-gray-800"
+                                  className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-slate-100 border-[#2b323e] focus:border-blue-500/50' : 'neu-pressed-light text-slate-800 border-white/60 focus:border-blue-500/50'} w-full p-4 rounded-2xl outline-none text-xs font-mono leading-relaxed transition no-scrollbar`}
                                   placeholder="Enter prompt content here..."
                                 />
                               </div>
@@ -31279,7 +31279,7 @@ Return your response strictly as a JSON object matching this schema:
                                   {selectedPromptId !== 'default' && selectedPromptId !== 'pyt_generator' && selectedPromptId !== 'qbank_engine' && (
                                     <button
                                       onClick={() => deleteCustomPrompt(selectedPromptId)}
-                                      className="px-4 py-2 rounded-xl text-xs font-bold text-red-500 hover:bg-red-50 transition"
+                                      className={`${settingsThemeMode === 'dark' ? 'neu-btn-dark text-red-400 hover:text-red-300' : 'neu-btn-light text-red-600 hover:text-red-700'} px-4 py-2 rounded-xl text-xs font-bold transition active:scale-95`}
                                     >
                                       Delete Prompt
                                     </button>
@@ -31298,7 +31298,7 @@ Return your response strictly as a JSON object matching this schema:
                                         createCustomPrompt("Duplicate of " + editingPromptName, editingPromptContent);
                                       }
                                     }}
-                                    className="px-4 py-2 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-100 transition"
+                                    className={`${settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-700'} px-4 py-2 rounded-xl text-xs font-bold transition active:scale-95`}
                                   >
                                     Duplicate
                                   </button>
@@ -31312,13 +31312,13 @@ Return your response strictly as a JSON object matching this schema:
                                             setEditingPromptContent(original.content || '');
                                           }
                                         }}
-                                        className="px-4 py-2 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-100 transition"
+                                        className={`${settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-700'} px-4 py-2 rounded-xl text-xs font-bold transition active:scale-95`}
                                       >
                                         Reset Changes
                                       </button>
                                       <button
                                         onClick={() => saveCustomPrompt(selectedPromptId, editingPromptName, editingPromptContent)}
-                                        className="px-6 py-2 rounded-xl text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 transition shadow-lg shadow-blue-600/20"
+                                        className={`${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'} px-6 py-2 rounded-xl text-xs font-bold transition active:scale-95`}
                                       >
                                         Save Changes
                                       </button>
