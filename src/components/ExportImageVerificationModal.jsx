@@ -295,7 +295,7 @@ function FineTuneCropModal({
       
       {/* Mobile Floating Preview (renders in empty space above bottom modal) */}
       {showLivePreview && (
-        <div className="md:hidden absolute top-[4dvh] left-1/2 -translate-x-1/2 w-[70vw] max-w-[280px] aspect-[4/3] bg-black rounded-2xl border border-slate-700/80 overflow-hidden flex flex-col p-1 shadow-2xl z-[310] pointer-events-none animate-in slide-in-from-top-4 duration-300">
+        <div className="md:hidden absolute top-[3dvh] left-1/2 -translate-x-1/2 w-[85vw] max-w-[340px] aspect-[4/3] bg-black rounded-2xl border border-slate-700/80 overflow-hidden flex flex-col p-1 shadow-2xl z-[310] pointer-events-none animate-in slide-in-from-top-4 duration-300">
           {cropPreview ? (
             <img src={cropPreview} alt="Crop Preview" className="w-full h-full object-contain" />
           ) : (
