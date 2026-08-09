@@ -3355,6 +3355,73 @@ const QuickLogger = ({ todayLog, todayStr, db, user, appId, setStudyLogs }) => {
   );
 };
 
+const NeumorphicDropdown = ({ value, onChange, options, isDark, label }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedOption = options.find(o => (typeof o === 'string' ? o : o.value) === value);
+  const selectedLabel = typeof selectedOption === 'string' ? selectedOption : (selectedOption?.label || value || "Select subject...");
+
+  return (
+    <div className="relative w-full text-left" ref={containerRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={`${isDark ? 'neu-pressed-dark text-slate-100 border-[#2b323e]' : 'neu-pressed-light text-slate-800 border-white/60'} w-full p-2.5 rounded-xl outline-none text-xs font-bold transition flex items-center justify-between gap-2 shadow-inner`}
+      >
+        <span className="truncate">{selectedLabel}</span>
+        <ChevronDown className={`w-4 h-4 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-blue-500' : (isDark ? 'text-slate-400' : 'text-slate-500')}`} />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -6, scale: 0.98 }}
+            animate={{ opacity: 1, y: 4, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.98 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className={`absolute left-0 right-0 top-full z-50 mt-1 max-h-60 overflow-y-auto rounded-2xl p-1.5 shadow-2xl border ${isDark ? 'neu-card-dark border-slate-750/50 text-slate-100' : 'neu-card-light border-white/80 text-slate-800'} no-scrollbar`}
+          >
+            {options.map((opt) => {
+              const val = typeof opt === 'string' ? opt : opt.value;
+              const lbl = typeof opt === 'string' ? opt : opt.label;
+              const isSelected = val === value;
+              return (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => {
+                    onChange(val);
+                    setIsOpen(false);
+                  }}
+                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition flex items-center justify-between ${
+                    isSelected
+                      ? (isDark ? 'neu-pressed-dark text-blue-400 font-black' : 'neu-pressed-light text-blue-600 font-black')
+                      : (isDark ? 'hover:bg-slate-800/60 text-slate-200' : 'hover:bg-slate-200/50 text-slate-700')
+                  }`}
+                >
+                  <span className="truncate">{lbl}</span>
+                  {isSelected && <Check className="w-3.5 h-3.5 text-blue-500 shrink-0" />}
+                </button>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
 export default function App() {
 
   const formatAppDate = (dateStr) => {
@@ -23488,8 +23555,12 @@ Return your response strictly as a JSON object matching this schema:
 
                   {/* EXPORTER HUB VIEW - MOBILE */}
                   {currentTab === 'export' && (
-                    <div className={`space-y-5 text-left relative pb-32 px-1 pt-1`}>
-
+                    <motion.div
+                      initial={{ opacity: 0, y: 16, scale: 0.99 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                      className={`space-y-5 text-left relative pb-32 px-1 pt-1`}
+                    >
                       {/* Header */}
                       <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-5 rounded-3xl`}>
                         <div className="flex items-center gap-3">
@@ -23702,12 +23773,17 @@ Return your response strictly as a JSON object matching this schema:
                           <p className={`text-xs font-bold max-w-xs ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>{exportProgressText || 'Compiling databases, please wait...'}</p>
                         </div>
                       )}
-                    </div>
+                    </motion.div>
                   )}
 
                   {/* PROMPT VIEW */}
                   {currentTab === 'prompt' && (
-                    <div className="space-y-4 text-left pb-24 animate-in fade-in duration-200">
+                    <motion.div
+                      initial={{ opacity: 0, y: 16, scale: 0.99 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                      className="space-y-4 text-left pb-24"
+                    >
                       <div className="grid grid-cols-1 gap-5 items-start">
 
                         {/* PROMPTS LIST PANEL */}
@@ -23927,12 +24003,17 @@ Return your response strictly as a JSON object matching this schema:
                         </div>
 
                       </div>
-                    </div>
+                    </motion.div>
                   )}
 
-                  {/* PYT MANAGER VIEW (Desktop) */}
+                  {/* PYT MANAGER VIEW (Desktop View 1) */}
                   {currentTab === 'pytManager' && (
-                    <div className="space-y-4 text-left pb-24 animate-in fade-in duration-200">
+                    <motion.div
+                      initial={{ opacity: 0, y: 16, scale: 0.99 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                      className="space-y-4 text-left pb-24"
+                    >
                       <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'} p-5 space-y-4`}>
                         <div className={`flex items-center gap-2 pb-3 border-b ${settingsThemeMode === 'dark' ? 'border-slate-800' : 'border-slate-200/80'}`}>
                           <div className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'} p-2 rounded-xl`}>
@@ -23947,15 +24028,12 @@ Return your response strictly as a JSON object matching this schema:
                         <div className="space-y-3">
                           <div>
                             <label className={`block text-[9px] font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} mb-1`}>Select Subject</label>
-                            <select
+                            <NeumorphicDropdown
                               value={selectedPytSubject}
-                              onChange={(e) => setSelectedPytSubject(e.target.value)}
-                              className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-slate-100 border-[#2b323e]' : 'neu-pressed-light text-slate-800 border-white/60'} w-full p-2.5 rounded-xl outline-none text-xs font-bold transition`}
-                            >
-                              {["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"].map(sub => (
-                                <option key={sub} value={sub} className={settingsThemeMode === 'dark' ? 'bg-[#222730] text-slate-100' : 'bg-white text-slate-800'}>{sub}</option>
-                              ))}
-                            </select>
+                              onChange={(val) => setSelectedPytSubject(val)}
+                              options={["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"]}
+                              isDark={settingsThemeMode === 'dark'}
+                            />
                           </div>
 
                           <div className="relative">
@@ -24009,7 +24087,7 @@ Return your response strictly as a JSON object matching this schema:
                           </button>
                         </div>
                       </div>
-                    </div>
+                    </motion.div>
                   )}
 
                   {/* PYT LOGGER VIEW (Mobile) */}
@@ -30800,7 +30878,12 @@ Return your response strictly as a JSON object matching this schema:
 
                     {/* EXPORTER HUB VIEW - DESKTOP */}
                     {currentTab === 'export' && (
-                      <div className={`flex-grow flex flex-col overflow-hidden relative h-full w-full ${settingsThemeMode === 'dark' ? 'neu-bg-dark' : 'neu-bg-light'}`}>
+                      <motion.div
+                        initial={{ opacity: 0, y: 16, scale: 0.99 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                        className={`flex-grow flex flex-col overflow-hidden relative h-full w-full ${settingsThemeMode === 'dark' ? 'neu-bg-dark' : 'neu-bg-light'}`}
+                      >
 
                         {/* Scrollable Settings Panel */}
                         <div className="flex-grow overflow-y-auto p-5 lg:p-8 flex flex-col gap-6 max-w-[1400px] mx-auto w-full pb-36 custom-scrollbar">
@@ -31072,12 +31155,17 @@ Return your response strictly as a JSON object matching this schema:
                         )}
 
 
-                      </div>
+                      </motion.div>
                     )}
 
-                    {/* PROMPT VIEW */}
+                    {/* PROMPT VIEW (Desktop View 2) */}
                     {currentTab === 'prompt' && (
-                      <div className="flex-grow p-4 lg:p-6 flex flex-col gap-6 max-w-[1200px] mx-auto w-full overflow-y-auto pb-24 lg:pb-6 text-left animate-in fade-in duration-200">
+                      <motion.div
+                        initial={{ opacity: 0, y: 16, scale: 0.99 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                        className="flex-grow p-4 lg:p-6 flex flex-col gap-6 max-w-[1200px] mx-auto w-full overflow-y-auto pb-24 lg:pb-6 text-left"
+                      >
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
 
                           {/* PROMPTS LIST PANEL */}
@@ -31298,7 +31386,7 @@ Return your response strictly as a JSON object matching this schema:
                           </div>
 
                         </div>
-                      </div>
+                      </motion.div>
                     )}
 
                     {/* SETTINGS VIEW (Desktop) */}
@@ -31631,9 +31719,14 @@ Return your response strictly as a JSON object matching this schema:
                       </motion.div>
                     )}
 
-                    {/* PYT MANAGER VIEW (Desktop) */}
+                    {/* PYT MANAGER VIEW (Desktop View 2) */}
                     {currentTab === 'pytManager' && (
-                      <div className="flex-grow p-4 lg:p-6 flex flex-col gap-6 max-w-[800px] mx-auto w-full overflow-y-auto pb-24 lg:pb-6 text-left animate-in fade-in duration-200">
+                      <motion.div
+                        initial={{ opacity: 0, y: 16, scale: 0.99 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                        className="flex-grow p-4 lg:p-6 flex flex-col gap-6 max-w-[800px] mx-auto w-full overflow-y-auto pb-24 lg:pb-6 text-left"
+                      >
                         <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'} p-8 space-y-6`}>
                           <div className={`flex items-center gap-3 pb-4 border-b ${settingsThemeMode === 'dark' ? 'border-slate-800' : 'border-slate-200/80'}`}>
                             <div className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'} p-3 rounded-2xl`}>
@@ -31648,15 +31741,12 @@ Return your response strictly as a JSON object matching this schema:
                           <div className="space-y-4">
                             <div>
                               <label className={`block text-xs font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} mb-2`}>Select Subject</label>
-                              <select
+                              <NeumorphicDropdown
                                 value={selectedPytSubject}
-                                onChange={(e) => setSelectedPytSubject(e.target.value)}
-                                className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-slate-100 border-[#2b323e]' : 'neu-pressed-light text-slate-800 border-white/60'} w-full p-3 rounded-xl outline-none text-sm font-bold transition`}
-                              >
-                                {["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"].map(sub => (
-                                  <option key={sub} value={sub} className={settingsThemeMode === 'dark' ? 'bg-[#222730] text-slate-100' : 'bg-white text-slate-800'}>{sub}</option>
-                                ))}
-                              </select>
+                                onChange={(val) => setSelectedPytSubject(val)}
+                                options={["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"]}
+                                isDark={settingsThemeMode === 'dark'}
+                              />
                             </div>
 
                             <div className="relative">
@@ -31710,7 +31800,7 @@ Return your response strictly as a JSON object matching this schema:
                             </button>
                           </div>
                         </div>
-                      </div>
+                      </motion.div>
                     )}
 
                     {/* PYT LOGGER VIEW (Desktop) */}
