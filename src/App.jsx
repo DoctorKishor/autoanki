@@ -22780,12 +22780,6 @@ Return your response strictly as a JSON object matching this schema:
                     </div>
                   )}
 
-                  {currentTab === 'settings' && (
-                    <div className="space-y-4 text-left pb-24 animate-in fade-in duration-200">
-                      {renderSettingsView()}
-                    </div>
-                  )}
-
 
 
 
@@ -26100,12 +26094,6 @@ Return your response strictly as a JSON object matching this schema:
                       </div>
                     )}
 
-                    {/* SETTINGS VIEW */}
-                    {currentTab === 'settings' && (
-                      <div className="h-full p-4 lg:p-8 w-full overflow-y-auto custom-scrollbar">
-                        {renderSettingsView()}
-                      </div>
-                    )}
 
                     {/* LIBRARY VIEW (FOLDERS & GALLERY) */}
                     {currentTab === 'library' && (
