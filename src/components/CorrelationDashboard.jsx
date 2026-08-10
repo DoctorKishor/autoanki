@@ -243,13 +243,39 @@ Rest days: ${workoutComparisonData[1]?.count || 0}, avg study ${workoutCompariso
 
 Provide a concise, actionable 3-4 sentence analysis: (1) What does the correlation between ${activeStudyM.name} and ${activeHealthM.name} suggest? (2) One specific optimization tip for this student's recovery-study balance. Keep it medically grounded and motivational.`;
 
-      const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-      });
+      let modelList = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash'];
+      try {
+        const saved = localStorage.getItem('pyt_ai_feature_models');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed.autoTagging && Array.isArray(parsed.autoTagging) && parsed.autoTagging.length > 0) {
+            modelList = parsed.autoTagging;
+          } else if (parsed.cardGeneration && Array.isArray(parsed.cardGeneration) && parsed.cardGeneration.length > 0) {
+            modelList = parsed.cardGeneration;
+          }
+        }
+      } catch (e) {}
 
-      const data = await resp.json();
+      let data = null;
+      let lastErr = null;
+      for (const mName of modelList) {
+        try {
+          const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${mName}:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+          });
+          const resJson = await resp.json();
+          if (resJson.error) throw new Error(resJson.error.message);
+          data = resJson;
+          break;
+        } catch (errLoop) {
+          console.warn(`[Health Insights AI] Model ${mName} failed:`, errLoop);
+          lastErr = errLoop;
+        }
+      }
+
+      if (!data) throw lastErr || new Error("Health Insights AI model request failed.");
       const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'No analysis returned.';
       setAiInsight(text);
     } catch (err) {
