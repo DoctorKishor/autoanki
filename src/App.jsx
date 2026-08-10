@@ -390,14 +390,14 @@ const INDIAN_STATES = [
   "West Bengal"
 ];
 
-const MIRROR_PRECISION_V6_PROMPT = `SYSTEM ROLE: THE "MIRRORΓÇôPRECISION" PROTOCOL (v6) ΓÇö JSON ENGINE
+const MIRROR_PRECISION_V6_PROMPT = `SYSTEM ROLE: THE "MIRROR–PRECISION" PROTOCOL (v6) — JSON ENGINE
 You are a High-Fidelity Data Extraction and Card Engineering Engine designed for NEET PG / INICET preparation. Your sole function is to transform the provided image of a single PDF page into high-quality Anki flashcards with maximum fidelity and optimized learning design.
 You do not summarize. You do not reinterpret broadly. You extract, structure, and engineer recall.
 
 CORE OPERATING PRINCIPLES (NON-NEGOTIABLE)
 
 1. Source Restriction (Hard Boundary Rule)
-- Absolute Fidelity: Use ONLY the exact content visible on the provided page imageΓÇötext, tables, diagrams, and labels alike.
+- Absolute Fidelity: Use ONLY the exact content visible on the provided page image—text, tables, diagrams, and labels alike.
 - No External Context: Make no assumptions from other pages or chapters. Do not use outside/background knowledge, even on familiar topics. If a fact is not shown on that page, it does not exist for this task.
 - Exception Rule: Add minimal clarification ONLY when strictly necessary to:
   * Make a card grammatically or logically functional.
@@ -428,7 +428,7 @@ Text extraction alone is unreliable. Tables, flowcharts, highlighted boxes, and 
 4. Card Engineering, Notetype Assignment & Cloze Deletion Rule (Critical)
 Avoid excessive micro-cards and overloaded macro-cards. Each card must test one cohesive recall unit.
 
-- Per-Card Notetype Decision: Before drafting each card, analyze its content against the criteria below and commit to exactly one notetype ΓÇö Basic or Cloze. Make this decision independently for every card; never default an entire page to a single notetype out of convenience.
+- Per-Card Notetype Decision: Before drafting each card, analyze its content against the criteria below and commit to exactly one notetype — Basic or Cloze. Make this decision independently for every card; never default an entire page to a single notetype out of convenience.
 
 - When to use Basic (Q&A) vs. Cloze:
   * Use Basic for direct associations, definitions, and distinct standalone facts.
@@ -436,7 +436,7 @@ Avoid excessive micro-cards and overloaded macro-cards. Each card must test one 
 
 - Cloze Best Practices: Keep the cloze deletion specific. Do not cloze entire sentences. If a process has three steps, use {{c1::Step 1}}, {{c2::Step 2}}, and {{c3::Step 3}} within the same text block to generate overlapping cards.
 
-- Lists: A tightly related list of Γëñ4 items remains on one card. A list of >4 items must be split by category. If no natural subcategory exists, split into groups of Γëñ4 by logical adjacency.
+- Lists: A tightly related list of ≤4 items remains on one card. A list of >4 items must be split by category. If no natural subcategory exists, split into groups of ≤4 by logical adjacency.
 
 - Tables: Create one card per row if rows are independently testable; create one card with table structure if the comparative relationship itself is the testable concept.
 
@@ -464,7 +464,7 @@ For EVERY card generated, you MUST populate all 13 of the following fields:
    - If "Cloze": Must be an empty string ("").
 3. "back": 
    - If "Basic": The answer text. NEVER LEAVE 'back' EMPTY for a Basic card.
-   - If "Cloze": Optional extra context or notes ΓÇö leave empty ("") if none.
+   - If "Cloze": Optional extra context or notes — leave empty ("") if none.
 4. "text": 
    - If "Basic": Must be an empty string ("").
    - If "Cloze": The Topic Subheading + Cloze text (e.g., "Thyroidectomy: The most common complication is {{c1::recurrent laryngeal nerve injury}}.").
@@ -480,7 +480,7 @@ For EVERY card generated, you MUST populate all 13 of the following fields:
 EXACT LOCATION BOUNDING BOXES: For EVERY card, inspect the page image and return exact 0 to 1000 normalized bounding coordinates for text ('ymin', 'xmin', 'ymax', 'xmax') and diagram ('img_box').
 `;
 
-const PYT_GENERATOR_PROMPT = `SYSTEM ROLE: THE "MIRRORΓÇôPRECISION" PROTOCOL (v6) ΓÇö JSON ENGINE (HIGH-YIELD TARGETED MODE)
+const PYT_GENERATOR_PROMPT = `SYSTEM ROLE: THE "MIRROR–PRECISION" PROTOCOL (v6) — JSON ENGINE (HIGH-YIELD TARGETED MODE)
 
 You are a High-Fidelity Data Extraction and Card Engineering Engine designed for NEET PG / INICET preparation. You are currently operating in HIGH-YIELD TARGETED MODE.
 Your sole function is to transform the provided image of a single PDF page into high-quality Anki flashcards with maximum fidelity, strict source adherence, and optimized learning design.
@@ -493,7 +493,7 @@ CORE OPERATING PRINCIPLES (NON-NEGOTIABLE)
 
 Targeted Conceptual Extraction & Hard Boundary Rules
 
-Source Boundary: Use ONLY the exact content visible on the provided page imageΓÇötext, tables, diagrams, and labels alike. Do not use outside/background knowledge or make assumptions beyond the text.
+Source Boundary: Use ONLY the exact content visible on the provided page image—text, tables, diagrams, and labels alike. Do not use outside/background knowledge or make assumptions beyond the text.
 
 Conceptual Matching (Not Just Keywords): Do not rely solely on exact word matches. Extract facts if they are synonymous, underlying mechanisms, clinical correlates, or directly related pathologies to the provided {FETCHED_TOPICS} list.
 
@@ -525,7 +525,7 @@ Use Cloze for sequential pathways, mechanisms of action, overlapping symptom pro
 
 Cloze Best Practices: Keep cloze deletions specific. Do not cloze entire sentences. If a process has multiple steps, use {{c1::Step 1}}, {{c2::Step 2}}, etc., within the text block.
 
-Lists: A tightly related list of Γëñ4 items remains on one card. A list of >4 items must be split by category or logical adjacency.
+Lists: A tightly related list of ≤4 items remains on one card. A list of >4 items must be split by category or logical adjacency.
 
 Tables & Flowcharts: Create one card per row or step unless the comparative relationship itself is the testable concept.
 
@@ -564,7 +564,7 @@ If "Cloze": Must be an empty string ("").
 
 If "Basic": The answer text. NEVER LEAVE 'back' EMPTY for a Basic card.
 
-If "Cloze": Optional extra context or notes ΓÇö leave empty ("") if none.
+If "Cloze": Optional extra context or notes — leave empty ("") if none.
 
 "text":
 
@@ -591,7 +591,7 @@ If "Cloze": The Topic Subheading + Cloze text (e.g., "Thyroidectomy: The most co
 EXACT LOCATION BOUNDING BOXES: For EVERY card, inspect the page image and return exact 0 to 1000 normalized bounding coordinates for text (ymin, xmin, ymax, xmax) and diagram (img_box).
 `;
 
-const QBANK_ENGINE_PROMPT = `SYSTEM ROLE: THE "MIRRORΓÇôPRECISION" PROTOCOL (v6) ΓÇö QBANK PEARL ENGINE
+const QBANK_ENGINE_PROMPT = `SYSTEM ROLE: THE "MIRROR–PRECISION" PROTOCOL (v6) — QBANK PEARL ENGINE
 You are a High-Fidelity Data Extraction and Card Engineering Engine designed for NEET PG / INICET preparation. Your sole function is to transform the provided screenshot of a single QBank question (which may contain a full question stem, options, and explanation, OR an explanation-only view) into an ultra-high-yield Anki flashcard with maximum fidelity and optimized learning design.
 You do not summarize broadly. You do not reinterpret. You extract, structure, and engineer recall for error log analysis.
 
@@ -637,7 +637,7 @@ If the card references or relies on a visual diagram, flowchart, histology slide
 Card Engineering, Notetype Assignment & Cloze Deletion Rule (Critical)
 The single card generated must test one cohesive, high-yield recall unit optimized for fast active recall.
 
-Per-Card Notetype Decision: Analyze the selected pearl content against the criteria below and commit to exactly one notetype ΓÇö Basic or Cloze.
+Per-Card Notetype Decision: Analyze the selected pearl content against the criteria below and commit to exactly one notetype — Basic or Cloze.
 
 When to use Basic (Q&A) vs. Cloze:
 
@@ -647,7 +647,7 @@ Use Cloze for sequential pathways, mechanisms of action, overlapping symptom pro
 
 Cloze Best Practices: Keep the cloze deletion specific. Do not cloze entire sentences. Keep the deletion targeted strictly to the high-yield keyword, disease name, drug, or diagnostic criterion.
 
-Lists: If the single pearl involves a list, keep it strictly to Γëñ4 related items. If >4 items are present, select only the top critical diagnostic/clinical criteria.
+Lists: If the single pearl involves a list, keep it strictly to ≤4 items. If >4 items are present, select only the top critical diagnostic/clinical criteria.
 
 Formatting & Phrasing:
 
@@ -684,7 +684,7 @@ If "Cloze": Must be an empty string ("").
 
 If "Basic": The answer text. NEVER LEAVE 'back' EMPTY for a Basic card.
 
-If "Cloze": Optional extra context or notes ΓÇö leave empty ("") if none.
+If "Cloze": Optional extra context or notes — leave empty ("") if none.
 
 "text":
 
@@ -4651,6 +4651,8 @@ export default function App() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const [cardGenerationInputMode, setCardGenerationInputMode] = useState('image'); // 'image' | 'text'
+  const [rawTextInput, setRawTextInput] = useState('');
   const [libraryPages, setLibraryPages] = useState([]); // List of {id, base64, deck} from local DB
   const getInitialTab = () => {
     const hash = window.location.hash.replace(/^#\/?/, '');
@@ -21706,6 +21708,39 @@ Return your response strictly as a JSON object matching this schema:
                         </motion.div>
                       </motion.div>
 
+                      {/* Segmented Mode Switch */}
+                      <motion.div
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6, delay: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                        className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-2 rounded-2xl shrink-0`}
+                      >
+                        <div className={`grid grid-cols-2 gap-1.5 p-1 rounded-xl ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-gray-200/80'}`}>
+                          <button
+                            type="button"
+                            onClick={() => setCardGenerationInputMode('image')}
+                            className={`py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-200 active:scale-95 cursor-pointer ${
+                              cardGenerationInputMode === 'image'
+                                ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400 border border-blue-500/30' : 'neu-btn-light text-blue-600 border border-blue-200/70')
+                                : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200 font-bold' : 'text-gray-500 hover:text-gray-800 font-bold')
+                            }`}
+                          >
+                            <span>🖼️</span> Image Mode
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCardGenerationInputMode('text')}
+                            className={`py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-200 active:scale-95 cursor-pointer ${
+                              cardGenerationInputMode === 'text'
+                                ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400 border border-blue-500/30' : 'neu-btn-light text-blue-600 border border-blue-200/70')
+                                : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200 font-bold' : 'text-gray-500 hover:text-gray-800 font-bold')
+                            }`}
+                          >
+                            <span>📝</span> Raw Text Mode
+                          </button>
+                        </div>
+                      </motion.div>
+
                       {/* ACTIVE PROCESSING / QUEUE - HIGHER PRIORITY */}
                       {queue.length > 0 && (
                         <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark border border-gray-800 text-white' : 'neu-card-light border border-white text-gray-900'} rounded-[2.5rem] p-6 animate-in fade-in zoom-in duration-500`}>
@@ -21948,18 +21983,33 @@ Return your response strictly as a JSON object matching this schema:
                             </div>
                           )}
 
-                          <label className={`flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-[2rem] transition-all cursor-pointer group ${isUploading
-                            ? (settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-800 cursor-not-allowed' : 'neu-pressed-light border-gray-300 cursor-not-allowed')
-                            : (settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-700 hover:border-blue-400' : 'neu-pressed-light border-gray-300 hover:border-blue-500')
-                            }`}>
-                            <div className={`w-14 h-14 rounded-full flex items-center justify-center mb-3 transition ${isUploading ? 'bg-gray-400' : (settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light')
+                          {cardGenerationInputMode === 'image' ? (
+                            <label className={`flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-[2rem] transition-all cursor-pointer group ${isUploading
+                              ? (settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-800 cursor-not-allowed' : 'neu-pressed-light border-gray-300 cursor-not-allowed')
+                              : (settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-700 hover:border-blue-400' : 'neu-pressed-light border-gray-300 hover:border-blue-500')
                               }`}>
-                              {isUploading ? <Loader2 className="w-7 h-7 text-white animate-spin" /> : <UploadCloud className="w-7 h-7 text-white" />}
+                              <div className={`w-14 h-14 rounded-full flex items-center justify-center mb-3 transition ${isUploading ? 'bg-gray-400' : (settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light')
+                                }`}>
+                                {isUploading ? <Loader2 className="w-7 h-7 text-white animate-spin" /> : <UploadCloud className="w-7 h-7 text-white" />}
+                              </div>
+                              <span className={`font-black text-sm ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>{isUploading ? 'Uploading...' : 'New Capture'}</span>
+                              <span className={`text-[10px] font-bold mt-1 ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{isUploading ? 'Converting files for AI...' : 'Tap to add pages to current deck'}</span>
+                              {!isUploading && <input type="file" multiple accept="image/*,application/pdf" className="hidden" onChange={handleFileSelect} />}
+                            </label>
+                          ) : (
+                            <div className="text-left mt-2 space-y-2">
+                              <label className={`block text-[9px] font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                                Raw Text Flashcards
+                              </label>
+                              <textarea
+                                value={rawTextInput}
+                                onChange={(e) => setRawTextInput(e.target.value)}
+                                rows={8}
+                                className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-slate-100 border-[#2b323e] focus:border-blue-500/50' : 'neu-pressed-light text-slate-800 border-white/60 focus:border-blue-500/50'} w-full p-3.5 rounded-2xl outline-none text-xs font-mono leading-relaxed transition resize-y min-h-[180px] custom-scrollbar`}
+                                placeholder="Paste raw text flashcards here..."
+                              />
                             </div>
-                            <span className={`font-black text-sm ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>{isUploading ? 'Uploading...' : 'New Capture'}</span>
-                            <span className={`text-[10px] font-bold mt-1 ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{isUploading ? 'Converting files for AI...' : 'Tap to add pages to current deck'}</span>
-                            {!isUploading && <input type="file" multiple accept="image/*,application/pdf" className="hidden" onChange={handleFileSelect} />}
-                          </label>
+                          )}
                         </div>
                       )}
 
@@ -25980,6 +26030,38 @@ Return your response strictly as a JSON object matching this schema:
                           className="flex flex-col gap-5 min-w-[220px] shrink-0 h-full overflow-y-auto p-3.5 custom-scrollbar"
                           style={{ width: `${colWidths.left}%` }}
                         >
+                          {/* Segmented Mode Switch */}
+                          <motion.div
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.5, delay: 0.05 }}
+                            className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-2 rounded-2xl shrink-0`}
+                          >
+                            <div className={`grid grid-cols-2 gap-1.5 p-1 rounded-xl ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-gray-200/80'}`}>
+                              <button
+                                type="button"
+                                onClick={() => setCardGenerationInputMode('image')}
+                                className={`py-2 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-200 active:scale-95 cursor-pointer ${
+                                  cardGenerationInputMode === 'image'
+                                    ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400 border border-blue-500/30' : 'neu-btn-light text-blue-600 border border-blue-200/70')
+                                    : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200 font-bold' : 'text-gray-500 hover:text-gray-800 font-bold')
+                                }`}
+                              >
+                                <span>🖼️</span> Image Mode
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setCardGenerationInputMode('text')}
+                                className={`py-2 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-200 active:scale-95 cursor-pointer ${
+                                  cardGenerationInputMode === 'text'
+                                    ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400 border border-blue-500/30' : 'neu-btn-light text-blue-600 border border-blue-200/70')
+                                    : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200 font-bold' : 'text-gray-500 hover:text-gray-800 font-bold')
+                                }`}
+                              >
+                                <span>📝</span> Raw Text Mode
+                              </button>
+                            </div>
+                          </motion.div>
                           {(() => {
                             const isExpanded = isDeckCardHovered || isDeckCardClicked;
                             return (
@@ -26063,21 +26145,37 @@ Return your response strictly as a JSON object matching this schema:
                             <div className={`h-[1px] w-full ${settingsThemeMode === 'dark' ? 'bg-gray-800 group-hover:bg-blue-500' : 'bg-gray-200 group-hover:bg-blue-400'} mx-4`} />
                           </div>
 
-                          <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-4 shrink-0`}>
-                            <div
-                              className={`border-2 border-dashed rounded-2xl p-4 text-center transition cursor-pointer
-                      ${isDraggingFile ? (settingsThemeMode === 'dark' ? 'border-blue-400 neu-pressed-dark' : 'border-blue-500 neu-pressed-light') : (settingsThemeMode === 'dark' ? 'border-gray-700/60 neu-pressed-dark hover:border-blue-400' : 'border-gray-300 neu-pressed-light hover:border-blue-500')}
-                    `}
-                              onClick={() => fileInputRef.current.click()}
-                              onDragOver={(e) => { e.preventDefault(); setIsDraggingFile(true); }}
-                              onDragLeave={() => setIsDraggingFile(false)}
-                              onDrop={handleDropFiles}
-                            >
-                              <UploadCloud className={`w-6 h-6 mx-auto mb-1 ${isDraggingFile ? 'text-blue-500' : (settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500')}`} />
-                              <p className={`text-xs font-bold ${settingsThemeMode === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>Click or Drag Image</p>
+                          {/* Conditional Input Section: Image Dropzone VS Raw Text Area */}
+                          {cardGenerationInputMode === 'image' ? (
+                            <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-4 shrink-0`}>
+                              <div
+                                className={`border-2 border-dashed rounded-2xl p-4 text-center transition cursor-pointer
+                        ${isDraggingFile ? (settingsThemeMode === 'dark' ? 'border-blue-400 neu-pressed-dark' : 'border-blue-500 neu-pressed-light') : (settingsThemeMode === 'dark' ? 'border-gray-700/60 neu-pressed-dark hover:border-blue-400' : 'border-gray-300 neu-pressed-light hover:border-blue-500')}
+                      `}
+                                onClick={() => fileInputRef.current.click()}
+                                onDragOver={(e) => { e.preventDefault(); setIsDraggingFile(true); }}
+                                onDragLeave={() => setIsDraggingFile(false)}
+                                onDrop={handleDropFiles}
+                              >
+                                <UploadCloud className={`w-6 h-6 mx-auto mb-1 ${isDraggingFile ? 'text-blue-500' : (settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500')}`} />
+                                <p className={`text-xs font-bold ${settingsThemeMode === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>Click or Drag Image</p>
+                              </div>
+                              <input type="file" multiple accept="image/*,application/pdf" className="hidden" ref={fileInputRef} onChange={handleFileSelect} />
                             </div>
-                            <input type="file" multiple accept="image/*,application/pdf" className="hidden" ref={fileInputRef} onChange={handleFileSelect} />
-                          </div>
+                          ) : (
+                            <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-4 shrink-0`}>
+                              <label className={`block text-[9px] font-black uppercase tracking-widest mb-1.5 text-left ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                                Raw Text Flashcards
+                              </label>
+                              <textarea
+                                value={rawTextInput}
+                                onChange={(e) => setRawTextInput(e.target.value)}
+                                rows={8}
+                                className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-slate-100 border-[#2b323e] focus:border-blue-500/50' : 'neu-pressed-light text-slate-800 border-white/60 focus:border-blue-500/50'} w-full p-3.5 rounded-2xl outline-none text-xs font-mono leading-relaxed transition resize-y min-h-[160px] custom-scrollbar`}
+                                placeholder="Paste raw text flashcards here..."
+                              />
+                            </div>
+                          )}
 
                           {/* PROMPT SELECTORS */}
                           <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-4 shrink-0`}>
