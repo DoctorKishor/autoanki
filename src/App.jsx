@@ -4375,30 +4375,34 @@ export default function App() {
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
                 className="overflow-hidden space-y-6 pt-4 border-t border-gray-500/10"
               >
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <UiverseButton
-                    icon={<Download className="w-4 h-4 text-blue-500" />}
-                    onClick={handleExportBackup}
-                    fullWidth
-                    size="md"
-                    themeMode={settingsThemeMode}
-                    isSuccess={exportBackupState}
-                    successText="Exported!"
-                  >
-                    Export Backup (.json)
-                  </UiverseButton>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-xl mx-auto w-full">
+                  <div className="w-full sm:w-1/2 max-w-xs">
+                    <UiverseButton
+                      icon={<Download className="w-4 h-4 text-blue-500" />}
+                      onClick={handleExportBackup}
+                      fullWidth
+                      size="md"
+                      themeMode={settingsThemeMode}
+                      isSuccess={exportBackupState}
+                      successText="Exported!"
+                    >
+                      Export Backup (.json)
+                    </UiverseButton>
+                  </div>
 
-                  <UiverseButton
-                    icon={<Upload className="w-4 h-4 text-emerald-500" />}
-                    onClick={handleImportBackup}
-                    fullWidth
-                    size="md"
-                    themeMode={settingsThemeMode}
-                    isSuccess={importBackupState}
-                    successText="Imported!"
-                  >
-                    Import Backup File
-                  </UiverseButton>
+                  <div className="w-full sm:w-1/2 max-w-xs">
+                    <UiverseButton
+                      icon={<Upload className="w-4 h-4 text-emerald-500" />}
+                      onClick={handleImportBackup}
+                      fullWidth
+                      size="md"
+                      themeMode={settingsThemeMode}
+                      isSuccess={importBackupState}
+                      successText="Imported!"
+                    >
+                      Import Backup File
+                    </UiverseButton>
+                  </div>
                 </div>
 
                 {/* Sub-block: Automatic Background Backups */}
