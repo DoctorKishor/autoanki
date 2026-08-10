@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Plus, Layers, Image as ImageIcon, Folder, Tag, Save, ChevronDown,
   BookOpen, Edit3, Scissors, RefreshCw, Check, AlertCircle, Upload, FileImage,
-  Clipboard, Layout, Minimize2, Maximize2, Sparkles
+  Clipboard, Layout, Minimize2, Maximize2, Sparkles, Trash2
 } from 'lucide-react';
 
 // ──────────────────────────────────────────────────────────────────────────────
