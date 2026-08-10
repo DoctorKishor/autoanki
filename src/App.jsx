@@ -53,6 +53,37 @@ const BACKUP_RETENTION_OPTIONS = [
   { value: '10', label: 'Keep Last 10 Snapshots' },
 ];
 
+export const DEFAULT_AI_FEATURE_MODELS = {
+  cardGeneration: [
+    'gemini-3.5-flash-lite',
+    'gemini-3.5-flash',
+    'gemini-2.5-flash-lite',
+    'gemini-2.5-flash',
+    'gemini-2.0-flash'
+  ],
+  pageIndexing: [
+    'gemini-3.5-flash-lite',
+    'gemini-3.5-flash',
+    'gemini-2.5-flash-lite',
+    'gemini-2.5-flash',
+    'gemini-2.0-flash'
+  ],
+  studyScheduler: [
+    'gemini-3.5-flash-lite',
+    'gemini-3.5-flash',
+    'gemini-2.5-flash-lite',
+    'gemini-2.5-flash',
+    'gemini-2.0-flash'
+  ],
+  autoTagging: [
+    'gemini-3.5-flash-lite',
+    'gemini-3.5-flash',
+    'gemini-2.5-flash-lite',
+    'gemini-2.5-flash',
+    'gemini-2.0-flash'
+  ]
+};
+
 import {
   getAuth, signInAnonymously, onAuthStateChanged,
   GoogleAuthProvider, signInWithPopup, signOut, signInWithRedirect,
@@ -1789,7 +1820,7 @@ export const sanitizeCardForFirestore = (card) => {
 
 // onProgress: optional callback (msg: string) => void — called during rate-limit waits
 // so the progress modal can show a live countdown instead of a frozen UI.
-const callGeminiWithRetry = async (apiKey, prompt, base64Image, mimeType, retries = 5, onProgress = null) => {
+const callGeminiWithRetry = async (apiKey, prompt, base64Image, mimeType, retries = 5, onProgress = null, customModels = null) => {
   if (!apiKey) {
     throw new Error("Gemini API key is not configured. Please enter your Gemini API key in Settings.");
   }
@@ -1812,14 +1843,10 @@ const callGeminiWithRetry = async (apiKey, prompt, base64Image, mimeType, retrie
   }
 
   const rawDataBase64 = imgBase64.includes(',') ? imgBase64.split(',')[1] : imgBase64;
-  // Gemini model fallback chain: fastest / cheapest first, most capable last
-  const models = [
-    'gemini-3.5-flash-lite',
-    'gemini-3.5-flash',
-    'gemini-2.5-flash-lite',
-    'gemini-2.5-flash',
-    'gemini-2.0-flash'
-  ];
+  // Gemini model fallback chain: customizable per feature, fastest / cheapest first by default
+  const models = (customModels && Array.isArray(customModels) && customModels.length > 0)
+    ? customModels
+    : DEFAULT_AI_FEATURE_MODELS.cardGeneration;
 
   const payload = {
     contents: [{
@@ -1922,7 +1949,7 @@ const callGeminiWithRetry = async (apiKey, prompt, base64Image, mimeType, retrie
   throw lastError || new Error("Gemini AI request failed after retries.");
 };
 
-const callGeminiIndexExtractor = async (apiKey, base64Image, mimeType, retries = 5) => {
+const callGeminiIndexExtractor = async (apiKey, base64Image, mimeType, retries = 5, customModels = null) => {
   let imgBase64 = base64Image;
   if (base64Image && (base64Image.startsWith('http://') || base64Image.startsWith('https://'))) {
     try {
@@ -1972,7 +1999,9 @@ const callGeminiIndexExtractor = async (apiKey, base64Image, mimeType, retries =
     }
   };
 
-  const models = ['gemini-3.1-flash-lite', 'gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.0-flash'];
+  const models = (customModels && Array.isArray(customModels) && customModels.length > 0)
+    ? customModels
+    : DEFAULT_AI_FEATURE_MODELS.pageIndexing;
   for (let i = 0; i < retries; i++) {
     const model = models[i % models.length];
     try {
@@ -3584,6 +3613,525 @@ export default function App() {
   const [isEmailSigningIn, setIsEmailSigningIn] = useState(false);
   const [loginViewMode, setLoginViewMode] = useState('login'); // 'login' | 'forgot'
   const [emailSignInError, setEmailSignInError] = useState(null);
+
+  // --- AI FEATURE MODEL FALLBACK CONFIGURATION ---
+  const [aiFeatureModels, setAiFeatureModels] = useState(() => {
+    try {
+      const saved = localStorage.getItem('pyt_ai_feature_models');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
+          cardGeneration: parsed.cardGeneration || DEFAULT_AI_FEATURE_MODELS.cardGeneration,
+          pageIndexing: parsed.pageIndexing || DEFAULT_AI_FEATURE_MODELS.pageIndexing,
+          studyScheduler: parsed.studyScheduler || DEFAULT_AI_FEATURE_MODELS.studyScheduler,
+          autoTagging: parsed.autoTagging || DEFAULT_AI_FEATURE_MODELS.autoTagging
+        };
+      }
+    } catch (e) {
+      console.warn("Failed to parse pyt_ai_feature_models from localStorage:", e);
+    }
+    return DEFAULT_AI_FEATURE_MODELS;
+  });
+
+  const [activeSettingsFeatureKey, setActiveSettingsFeatureKey] = useState('cardGeneration');
+  const [customModelInput, setCustomModelInput] = useState('');
+
+  const getFeatureModelChain = useCallback((featureKey) => {
+    if (aiFeatureModels && Array.isArray(aiFeatureModels[featureKey]) && aiFeatureModels[featureKey].length > 0) {
+      return aiFeatureModels[featureKey];
+    }
+    return DEFAULT_AI_FEATURE_MODELS[featureKey] || ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.0-flash'];
+  }, [aiFeatureModels]);
+
+  const saveAiFeatureModelConfig = async (newConfig) => {
+    setAiFeatureModels(newConfig);
+    try {
+      localStorage.setItem('pyt_ai_feature_models', JSON.stringify(newConfig));
+      const currentKeys = (await getLocalSetting('apiKeys')) || {};
+      await saveLocalSetting('apiKeys', { ...currentKeys, aiFeatureModels: newConfig });
+    } catch (err) {
+      console.error("Failed to save AI feature models config:", err);
+    }
+  };
+
+  const handleMoveModelInChain = (featureKey, index, direction) => {
+    const chain = [...getFeatureModelChain(featureKey)];
+    const targetIdx = index + direction;
+    if (targetIdx < 0 || targetIdx >= chain.length) return;
+    const temp = chain[index];
+    chain[index] = chain[targetIdx];
+    chain[targetIdx] = temp;
+    saveAiFeatureModelConfig({ ...aiFeatureModels, [featureKey]: chain });
+  };
+
+  const handleRemoveModelFromChain = (featureKey, index) => {
+    const chain = [...getFeatureModelChain(featureKey)];
+    if (chain.length <= 1) {
+      alert("At least one model must remain in the fallback chain.");
+      return;
+    }
+    chain.splice(index, 1);
+    saveAiFeatureModelConfig({ ...aiFeatureModels, [featureKey]: chain });
+  };
+
+  const handleUpdateModelInChain = (featureKey, index, newModelName) => {
+    const chain = [...getFeatureModelChain(featureKey)];
+    chain[index] = newModelName.trim();
+    saveAiFeatureModelConfig({ ...aiFeatureModels, [featureKey]: chain });
+  };
+
+  const handleAddModelToChain = (featureKey, modelToAdd) => {
+    const val = (modelToAdd || customModelInput).trim();
+    if (!val) return;
+    const chain = [...getFeatureModelChain(featureKey)];
+    if (chain.includes(val)) {
+      alert(`Model "${val}" is already in the fallback chain.`);
+      return;
+    }
+    chain.push(val);
+    setCustomModelInput('');
+    saveAiFeatureModelConfig({ ...aiFeatureModels, [featureKey]: chain });
+  };
+
+  const handleResetFeatureChain = (featureKey) => {
+    const defaultChain = DEFAULT_AI_FEATURE_MODELS[featureKey] || DEFAULT_AI_FEATURE_MODELS.cardGeneration;
+    saveAiFeatureModelConfig({ ...aiFeatureModels, [featureKey]: defaultChain });
+  };
+
+  const handleResetAllFeatureChains = () => {
+    saveAiFeatureModelConfig(DEFAULT_AI_FEATURE_MODELS);
+  };
+
+  const renderSettingsView = () => {
+    const featureLabels = {
+      cardGeneration: { title: 'Flashcard Generation', icon: Sparkles, color: 'blue', desc: 'Models used when extracting Anki cards from page images and PDFs.' },
+      pageIndexing: { title: 'Textbook & PYT Indexing', icon: BookOpen, color: 'purple', desc: 'Models used for indexing textbook topics and scanning PYT pages.' },
+      studyScheduler: { title: 'Study Scheduler AI', icon: Calendar, color: 'indigo', desc: 'Models used for parsing uploaded study schedules into timetable slots.' },
+      autoTagging: { title: 'Auto-Tagging', icon: Tag, color: 'emerald', desc: 'Models used for generating smart clinical concept tags.' }
+    };
+
+    const activeChain = getFeatureModelChain(activeSettingsFeatureKey);
+    const activeMeta = featureLabels[activeSettingsFeatureKey] || featureLabels.cardGeneration;
+    const ActiveIcon = activeMeta.icon;
+
+    const PRESET_MODELS = [
+      'gemini-3.5-flash-lite',
+      'gemini-3.5-flash',
+      'gemini-3.1-flash-lite',
+      'gemini-2.5-flash-lite',
+      'gemini-2.5-flash',
+      'gemini-2.0-flash',
+      'gemini-1.5-pro',
+      'gemini-1.5-flash'
+    ];
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 16, scale: 0.99 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 2.0, ease: [0.16, 1, 0.3, 1] }}
+        className="space-y-6 text-left pb-28 max-w-5xl mx-auto w-full px-2 pt-2"
+      >
+        {/* Header Banner */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.05 }}
+          className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'} p-6 rounded-3xl space-y-2`}
+        >
+          <div className="flex items-center gap-3">
+            <div className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'} p-3 rounded-2xl`}>
+              <Settings className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className={`text-lg font-black tracking-tight ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>System Settings & AI Model Configurator</h1>
+              <p className={`text-xs ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>Manage your API credentials, theme preferences, and feature-wise Gemini fallback chains</p>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Section 1: API Keys & Credentials */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.15 }}
+          className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'} p-6 rounded-3xl space-y-5`}
+        >
+          <div className={`flex items-center gap-2 pb-3 border-b ${settingsThemeMode === 'dark' ? 'border-slate-800' : 'border-slate-200/80'}`}>
+            <Key className="w-5 h-5 text-blue-500" />
+            <h2 className="text-sm font-black uppercase tracking-wider">API Keys & Credentials</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* Gemini API Key */}
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <label className={`text-[10px] font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>Gemini API Key</label>
+                <a
+                  href="https://aistudio.google.com/app/apikey"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[9px] font-extrabold text-blue-500 hover:underline flex items-center gap-1"
+                >
+                  Get Key <ExternalLink className="w-2.5 h-2.5" />
+                </a>
+              </div>
+              <input
+                type="password"
+                value={geminiApiKey}
+                onChange={async (e) => {
+                  const val = e.target.value;
+                  setGeminiApiKey(val);
+                  localStorage.setItem("pyt_gemini_api_key", val);
+                  const existing = (await getLocalSetting('apiKeys')) || {};
+                  await saveLocalSetting('apiKeys', { ...existing, geminiApiKey: val });
+                }}
+                placeholder="AIzaSy..."
+                className={`w-full p-3 rounded-2xl outline-none text-xs font-mono transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white border-[#2b323e] focus:border-blue-500/50' : 'neu-pressed-light text-slate-800 border-white/60 focus:border-blue-500/50'}`}
+              />
+              <span className={`text-[9px] font-bold block ${geminiApiKey ? 'text-emerald-500' : 'text-amber-500'}`}>
+                {geminiApiKey ? '✓ Gemini API Key Configured' : '⚠️ API Key required for AI generation & indexing'}
+              </span>
+            </div>
+
+            {/* ImgBB API Key */}
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <label className={`text-[10px] font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>ImgBB API Key (Optional)</label>
+                <a
+                  href="https://api.imgbb.com/"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[9px] font-extrabold text-blue-500 hover:underline flex items-center gap-1"
+                >
+                  Get Key <ExternalLink className="w-2.5 h-2.5" />
+                </a>
+              </div>
+              <input
+                type="password"
+                value={imgbbApiKey}
+                onChange={async (e) => {
+                  const val = e.target.value;
+                  setImgbbApiKey(val);
+                  localStorage.setItem("pyt_imgbb_api_key", val);
+                  const existing = (await getLocalSetting('apiKeys')) || {};
+                  await saveLocalSetting('apiKeys', { ...existing, imgbbApiKey: val });
+                }}
+                placeholder="Enter ImgBB API key..."
+                className={`w-full p-3 rounded-2xl outline-none text-xs font-mono transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white border-[#2b323e] focus:border-blue-500/50' : 'neu-pressed-light text-slate-800 border-white/60 focus:border-blue-500/50'}`}
+              />
+              <span className="text-[9px] font-bold text-slate-400 block">
+                Used if uploading images to ImgBB cloud storage.
+              </span>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Section 2: App & Storage Preferences */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.25 }}
+          className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'} p-6 rounded-3xl space-y-5`}
+        >
+          <div className={`flex items-center gap-2 pb-3 border-b ${settingsThemeMode === 'dark' ? 'border-slate-800' : 'border-slate-200/80'}`}>
+            <Sliders className="w-5 h-5 text-indigo-500" />
+            <h2 className="text-sm font-black uppercase tracking-wider">App & Storage Preferences</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* Theme Mode Toggle */}
+            <div className={`p-4 rounded-2xl flex items-center justify-between ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
+              <div>
+                <div className="flex items-center gap-2">
+                  {settingsThemeMode === 'dark' ? <Moon className="w-4 h-4 text-purple-400" /> : <Sun className="w-4 h-4 text-amber-500" />}
+                  <span className="text-xs font-black">Theme Appearance</span>
+                </div>
+                <p className={`text-[9px] mt-1 font-bold ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Current mode: <span className="font-extrabold capitalize">{settingsThemeMode}</span> ({settingsThemeMode === 'dark' ? '#222730 Base' : 'Soft Light Neumorphic'})
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5 bg-slate-500/10 p-1 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => saveSettingsThemeMode('light')}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition ${settingsThemeMode === 'light' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500'}`}
+                >
+                  Light
+                </button>
+                <button
+                  type="button"
+                  onClick={() => saveSettingsThemeMode('dark')}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition ${settingsThemeMode === 'dark' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500'}`}
+                >
+                  Dark
+                </button>
+              </div>
+            </div>
+
+            {/* Image Storage Mode */}
+            <div className={`p-4 rounded-2xl flex items-center justify-between ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
+              <div>
+                <div className="flex items-center gap-2">
+                  <HardDrive className="w-4 h-4 text-emerald-500" />
+                  <span className="text-xs font-black">Image Storage Mode</span>
+                </div>
+                <p className={`text-[9px] mt-1 font-bold ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
+                  {imageStorageMode === 'local' ? '100% Offline IndexedDB Storage' : 'Cloud Remote Storage (ImgBB)'}
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5 bg-slate-500/10 p-1 rounded-xl">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setImageStorageMode('local');
+                    localStorage.setItem("pyt_image_storage_mode", 'local');
+                    const existing = (await getLocalSetting('apiKeys')) || {};
+                    await saveLocalSetting('apiKeys', { ...existing, imageStorageMode: 'local' });
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition ${imageStorageMode === 'local' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-500'}`}
+                >
+                  Local
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setImageStorageMode('cloud');
+                    localStorage.setItem("pyt_image_storage_mode", 'cloud');
+                    const existing = (await getLocalSetting('apiKeys')) || {};
+                    await saveLocalSetting('apiKeys', { ...existing, imageStorageMode: 'cloud' });
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition ${imageStorageMode === 'cloud' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500'}`}
+                >
+                  Cloud
+                </button>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Section 3: AI Feature Model Fallback Chains */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.35 }}
+          className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'} p-6 rounded-3xl space-y-6`}
+        >
+          <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b ${settingsThemeMode === 'dark' ? 'border-slate-800' : 'border-slate-200/80'}`}>
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-amber-500 animate-pulse" />
+              <div>
+                <h2 className="text-sm font-black uppercase tracking-wider">AI Models & Fallback Chain Configurator</h2>
+                <p className={`text-[10px] ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>Customize model endpoint strings, priority sequences, and fallback behavior per feature</p>
+              </div>
+            </div>
+
+            {/* Link to Official Google Models Docs */}
+            <a
+              href="https://ai.google.dev/gemini-api/docs/models"
+              target="_blank"
+              rel="noreferrer"
+              className={`px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 transition active:scale-95 border ${settingsThemeMode === 'dark' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20 hover:bg-blue-500/20' : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'}`}
+            >
+              <ExternalLink className="w-3 h-3" /> Official Gemini Models List
+            </a>
+          </div>
+
+          {/* Feature Selector Nav Tabs */}
+          <div className="flex gap-2 overflow-x-auto custom-scrollbar pb-1">
+            {Object.keys(featureLabels).map(fKey => {
+              const fMeta = featureLabels[fKey];
+              const FIcon = fMeta.icon;
+              const isSelected = activeSettingsFeatureKey === fKey;
+              const chainCount = getFeatureModelChain(fKey).length;
+              return (
+                <button
+                  key={fKey}
+                  type="button"
+                  onClick={() => setActiveSettingsFeatureKey(fKey)}
+                  className={`px-4 py-2.5 rounded-2xl flex items-center gap-2 text-xs font-black transition-all shrink-0 active:scale-95 ${
+                    isSelected
+                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20'
+                      : settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-700'
+                  }`}
+                >
+                  <FIcon className="w-3.5 h-3.5" />
+                  <span>{fMeta.title}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-mono ${isSelected ? 'bg-white/20 text-white' : 'bg-slate-500/15 text-slate-400'}`}>
+                    {chainCount}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Feature Details Banner */}
+          <div className={`p-4 rounded-2xl flex items-start gap-3 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-slate-200' : 'neu-pressed-light text-slate-700'}`}>
+            <ActiveIcon className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <h3 className="text-xs font-black uppercase tracking-wider">{activeMeta.title} Model Chain</h3>
+              <p className="text-[10px] leading-relaxed opacity-90">{activeMeta.desc}</p>
+            </div>
+          </div>
+
+          {/* Model Fallback List */}
+          <div className="space-y-3">
+            <div className="flex justify-between items-center px-1">
+              <span className={`text-[10px] font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
+                Priority Sequence ({activeChain.length} Models)
+              </span>
+              <button
+                type="button"
+                onClick={() => handleResetFeatureChain(activeSettingsFeatureKey)}
+                className={`text-[9px] font-black uppercase tracking-wider flex items-center gap-1 transition ${settingsThemeMode === 'dark' ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'}`}
+              >
+                <RotateCcw className="w-3 h-3" /> Reset Feature Chain
+              </button>
+            </div>
+
+            <div className="space-y-2.5">
+              {activeChain.map((modelName, idx) => {
+                const isFirst = idx === 0;
+                const isLast = idx === activeChain.length - 1;
+                return (
+                  <motion.div
+                    key={`${activeSettingsFeatureKey}_${idx}`}
+                    layout
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className={`p-3.5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 border transition-all ${
+                      isFirst
+                        ? settingsThemeMode === 'dark' ? 'neu-item-dark border-blue-500/40 bg-blue-500/5' : 'neu-item-light border-blue-400/50 bg-blue-50/40'
+                        : settingsThemeMode === 'dark' ? 'neu-item-dark border-slate-800' : 'neu-item-light border-slate-200'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 flex-grow">
+                      <span className={`px-2.5 py-1 rounded-xl text-[9px] font-mono font-black uppercase tracking-wider shrink-0 ${
+                        isFirst
+                          ? 'bg-blue-600 text-white shadow-md'
+                          : settingsThemeMode === 'dark' ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-700'
+                      }`}>
+                        {isFirst ? '#1 Primary' : `#${idx + 1} Fallback`}
+                      </span>
+
+                      {/* Editable Model Name Input */}
+                      <input
+                        type="text"
+                        value={modelName}
+                        onChange={(e) => handleUpdateModelInChain(activeSettingsFeatureKey, idx, e.target.value)}
+                        placeholder="e.g. gemini-3.5-flash-lite"
+                        className={`flex-grow p-2 px-3 rounded-xl outline-none text-xs font-mono font-bold transition ${
+                          settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white border-[#2b323e] focus:border-blue-500/50' : 'neu-pressed-light text-slate-800 border-white/60 focus:border-blue-500/50'
+                        }`}
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-1.5 justify-end shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleMoveModelInChain(activeSettingsFeatureKey, idx, -1)}
+                        disabled={isFirst}
+                        className={`p-2 rounded-xl text-xs transition active:scale-95 disabled:opacity-30 ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300 hover:text-white' : 'neu-btn-light text-slate-700 hover:text-slate-900'}`}
+                        title="Move Up in priority"
+                      >
+                        <ChevronUp className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleMoveModelInChain(activeSettingsFeatureKey, idx, 1)}
+                        disabled={isLast}
+                        className={`p-2 rounded-xl text-xs transition active:scale-95 disabled:opacity-30 ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300 hover:text-white' : 'neu-btn-light text-slate-700 hover:text-slate-900'}`}
+                        title="Move Down in priority"
+                      >
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveModelFromChain(activeSettingsFeatureKey, idx)}
+                        disabled={activeChain.length <= 1}
+                        className={`p-2 rounded-xl text-xs text-red-500 transition active:scale-95 disabled:opacity-30 ${settingsThemeMode === 'dark' ? 'neu-btn-dark hover:bg-red-500/20' : 'neu-btn-light hover:bg-red-50'}`}
+                        title="Remove model from chain"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Add Model to Chain Form */}
+          <div className={`p-4 rounded-2xl space-y-3 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
+            <label className={`block text-[10px] font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
+              Add Model Endpoint to Chain
+            </label>
+
+            <div className="flex flex-col sm:flex-row gap-3 items-center">
+              {/* Preset Selector */}
+              <div className="w-full sm:w-1/3">
+                <select
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      handleAddModelToChain(activeSettingsFeatureKey, e.target.value);
+                      e.target.value = '';
+                    }
+                  }}
+                  className={`w-full p-2.5 rounded-xl outline-none text-xs font-bold cursor-pointer ${settingsThemeMode === 'dark' ? 'neu-item-dark text-white' : 'neu-item-light text-slate-800'}`}
+                  defaultValue=""
+                >
+                  <option value="" disabled>➕ Select Preset Model...</option>
+                  {PRESET_MODELS.map(pm => (
+                    <option key={pm} value={pm} disabled={activeChain.includes(pm)}>{pm} {activeChain.includes(pm) ? '(Added)' : ''}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Custom Input */}
+              <div className="flex-grow flex gap-2 w-full sm:w-2/3">
+                <input
+                  type="text"
+                  value={customModelInput}
+                  onChange={(e) => setCustomModelInput(e.target.value)}
+                  placeholder="Or type custom model name (e.g. gemini-1.5-pro)..."
+                  className={`flex-grow p-2.5 rounded-xl outline-none text-xs font-mono font-bold transition ${settingsThemeMode === 'dark' ? 'neu-item-dark text-white' : 'neu-item-light text-slate-800'}`}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddModelToChain(activeSettingsFeatureKey);
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => handleAddModelToChain(activeSettingsFeatureKey)}
+                  className={`px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider flex items-center gap-1 transition active:scale-95 shrink-0 ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'}`}
+                >
+                  <Plus className="w-3.5 h-3.5" /> Add
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Reset All Features */}
+          <div className="pt-2 flex justify-end">
+            <button
+              type="button"
+              onClick={() => {
+                if (confirm("Reset model fallback chains for ALL AI features back to factory defaults?")) {
+                  handleResetAllFeatureChains();
+                }
+              }}
+              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 transition active:scale-95 ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-400 hover:text-slate-200' : 'neu-btn-light text-slate-600 hover:text-slate-900'}`}
+            >
+              <RotateCcw className="w-3 h-3" /> Reset All AI Features to Default
+            </button>
+          </div>
+        </motion.div>
+      </motion.div>
+    );
+  };
   const [isSendingReset, setIsSendingReset] = useState(false);
   const [resetStatus, setResetStatus] = useState(null); // { type: 'success' | 'error', text: string }
   const [settingsPassword, setSettingsPassword] = useState('');
@@ -7506,17 +8054,41 @@ JSON Format:
             }
           };
 
-          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${geminiApiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(contents)
-          });
+          const indexingModels = getFeatureModelChain('pageIndexing');
+          let resData = null;
+          let lastIndexingErr = null;
 
-          if (!response.ok) {
-            throw new Error(`Gemini API error: ${response.statusText}`);
+          for (let mIdx = 0; mIdx < indexingModels.length; mIdx++) {
+            const currentModel = indexingModels[mIdx];
+            try {
+              const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${geminiApiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(contents)
+              });
+
+              if (response.status === 429) {
+                console.warn(`[PDF Indexing] Model ${currentModel} hit 429 rate limit. Falling back to next model in chain...`);
+                await sleep(1500);
+                continue;
+              }
+
+              if (!response.ok) {
+                throw new Error(`Gemini API error (${response.status}): ${response.statusText}`);
+              }
+
+              resData = await response.json();
+              break;
+            } catch (err) {
+              lastIndexingErr = err;
+              console.warn(`[PDF Indexing] Model ${currentModel} failed for batch starting at ${pageIdx}:`, err);
+            }
           }
 
-          const resData = await response.json();
+          if (!resData) {
+            throw lastIndexingErr || new Error(`All fallback models in indexing chain failed for batch at page ${pageIdx}.`);
+          }
+
           let rawText = resData.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
           // Strip markdown code fences if present (e.g. ```json ... ```)
@@ -22209,463 +22781,12 @@ Return your response strictly as a JSON object matching this schema:
                   )}
 
                   {currentTab === 'settings' && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 15 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -15 }}
-                      transition={{ duration: 2.0, ease: 'easeOut' }}
-                      className={`space-y-4 pb-8 transition-colors duration-300 p-2 rounded-2xl smooth-settings-scroll ${settingsThemeMode === 'dark' ? 'neu-bg-dark' : 'neu-bg-light'
-                        }`}
-                    >
-                      {/* NEUMORPHIC THEME SWITCHER CARD (Mobile) */}
-                      <motion.div
-                        whileHover={{ y: -2 }}
-                        className={settingsThemeMode === 'dark' ? 'neu-card-dark p-5 space-y-3' : 'neu-card-light p-5 space-y-3'}
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-2.5">
-                            <div className={settingsThemeMode === 'dark' ? 'p-2 rounded-xl neu-pressed-dark text-amber-400' : 'p-2 rounded-xl neu-pressed-light text-amber-500'}>
-                              <Sparkles className="w-4 h-4" />
-                            </div>
-                            <div>
-                              <h3 className={`text-xs font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>Neumorphic Theme</h3>
-                              <p className={`text-[9px] font-medium ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Toggle tactile UI theme</p>
-                            </div>
-                          </div>
-
-                          {/* Uiverse Pill Toggle (Mobile) */}
-                          <div className="uiverse-wrapper shrink-0 p-0">
-                            <label className="pill-toggle cursor-pointer" title="Toggle Neumorphic Theme">
-                              <input
-                                type="checkbox"
-                                checked={settingsThemeMode === 'dark'}
-                                onChange={(e) => saveSettingsThemeMode(e.target.checked ? 'dark' : 'light')}
-                              />
-                              <div className="track flex items-center justify-between px-3.5">
-                                <Sun className="w-3.5 h-3.5 text-amber-500 z-0" />
-                                <Moon className="w-3.5 h-3.5 text-blue-400 z-0" />
-                                <div className="pill">
-                                  <div className="pill-surface flex items-center justify-center">
-                                    {settingsThemeMode === 'dark' ? (
-                                      <Moon className="w-3.5 h-3.5 text-blue-500 stroke-[2.5]" />
-                                    ) : (
-                                      <Sun className="w-3.5 h-3.5 text-amber-500 stroke-[2.5]" />
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            </label>
-                          </div>
-                        </div>
-                      </motion.div>
-
-                      {/* Unified Credentials Card (Mobile) */}
-                      <motion.div
-                        whileHover={{ y: -2 }}
-                        className={settingsThemeMode === 'dark' ? 'neu-card-dark p-5 space-y-4' : 'neu-card-light p-5 space-y-4'}
-                      >
-                        <div className="flex items-center justify-between">
-                          <h3 className={`text-xs font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>API & Integration Credentials</h3>
-                        </div>
-
-                        <div className="space-y-4">
-                          <div className="relative">
-                            <label className="text-[10px] font-black text-gray-400 uppercase block mb-1.5">Google Gemini API Key</label>
-                            <div className="relative">
-                              <input
-                                type={isApiKeyVisible ? "text" : "password"}
-                                value={geminiApiKey}
-                                onChange={(e) => setGeminiApiKey(e.target.value)}
-                                className={`w-full p-3 pr-12 text-xs font-bold outline-none font-mono ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-gray-800'
-                                  }`}
-                                placeholder="Paste key here..."
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setIsApiKeyVisible(!isApiKeyVisible)}
-                                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600 transition"
-                              >
-                                {isApiKeyVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                              </button>
-                            </div>
-                          </div>
-
-                          <div className="relative">
-                            <div className="flex justify-between items-center mb-1.5">
-                              <label className="text-[10px] font-black text-gray-400 uppercase">ImgBB API Key</label>
-                              <a href="https://api.imgbb.com/" target="_blank" rel="noopener noreferrer" className="text-[9px] font-bold text-blue-500 hover:underline">
-                                api.imgbb.com ↗
-                              </a>
-                            </div>
-                            <div className="relative">
-                              <input
-                                type={isImgbbKeyVisible ? "text" : "password"}
-                                value={imgbbApiKey}
-                                onChange={(e) => setImgbbApiKey(e.target.value)}
-                                className={`w-full p-3 pr-12 text-xs font-bold outline-none font-mono ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-gray-800'
-                                  }`}
-                                placeholder="Paste ImgBB key..."
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setIsImgbbKeyVisible(!isImgbbKeyVisible)}
-                                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-500 transition"
-                              >
-                                {isImgbbKeyVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                              </button>
-                            </div>
-                          </div>
-
-                          <div className="pt-4 border-t border-gray-500/10 space-y-3">
-                            <div className="flex items-center justify-between">
-                              <h4 className={`text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 ${settingsThemeMode === 'dark' ? 'text-gray-200' : 'text-gray-700'
-                                }`}>
-                                <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
-                                  <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
-                                </svg>
-                                GitHub PDF Sync
-                              </h4>
-                              <button
-                                type="button"
-                                onClick={() => setShowGithubHelpModal(true)}
-                                className="text-gray-400 hover:text-blue-500 transition p-1"
-                              >
-                                <HelpCircle className="w-4 h-4" />
-                              </button>
-                            </div>
-
-                            <div>
-                              <label className="text-[10px] font-black text-gray-400 uppercase block mb-1">Username</label>
-                              <input
-                                type="text"
-                                value={githubUsername}
-                                onChange={(e) => setGithubUsername(e.target.value)}
-                                className={`w-full p-3 text-xs font-bold outline-none ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-gray-800'
-                                  }`}
-                                placeholder="e.g. yourusername"
-                              />
-                            </div>
-                            <div>
-                              <label className="text-[10px] font-black text-gray-400 uppercase block mb-1">Repository</label>
-                              <input
-                                type="text"
-                                value={githubRepo}
-                                onChange={(e) => setGithubRepo(e.target.value)}
-                                className={`w-full p-3 text-xs font-bold outline-none ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-gray-800'
-                                  }`}
-                                placeholder="e.g. my-textbooks"
-                              />
-                            </div>
-                            <div>
-                              <label className="text-[10px] font-black text-gray-400 uppercase block mb-1">Access Token (PAT)</label>
-                              <div className="relative">
-                                <input
-                                  type={isGithubPatVisible ? "text" : "password"}
-                                  value={githubPatToken}
-                                  onChange={(e) => setGithubPatToken(e.target.value)}
-                                  className={`w-full p-3 pr-12 text-xs font-bold outline-none font-mono ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-gray-800'
-                                    }`}
-                                  placeholder="ghp_..."
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => setIsGithubPatVisible(!isGithubPatVisible)}
-                                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-500 transition"
-                                >
-                                  {isGithubPatVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="pt-3">
-                            <UiverseButton
-                              icon={<Save className={`w-4 h-4 ${settingsThemeMode === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />}
-                              onClick={saveAllCredentialsLocal}
-                              fullWidth
-                              size="sm"
-                              themeMode={settingsThemeMode}
-                              variant={settingsThemeMode === 'dark' ? 'dark' : 'default'}
-                              isSuccess={credentialsSavedState}
-                              successText="Saved!"
-                            >
-                              Save Credentials
-                            </UiverseButton>
-                          </div>
-                        </div>
-                      </motion.div>
-
-                      {/* Local App Backup & Restore Card (Mobile) */}
-                      <motion.div
-                        whileHover={{ y: -2 }}
-                        className={settingsThemeMode === 'dark' ? 'neu-card-dark p-5 space-y-4' : 'neu-card-light p-5 space-y-4'}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className={settingsThemeMode === 'dark' ? 'p-2 rounded-xl neu-pressed-dark text-blue-400' : 'p-2 rounded-xl neu-pressed-light text-blue-600'}>
-                              <Database className="w-4 h-4" />
-                            </div>
-                            <h3 className={`text-xs font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>Local Backup & Restore</h3>
-                          </div>
-                          <span className="px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 rounded-md text-[9px] font-black uppercase">
-                            Offline Vault
-                          </span>
-                        </div>
-
-                        <div className="grid grid-cols-1 gap-3">
-                          <UiverseButton
-                            icon={<Download className={`w-4 h-4 ${settingsThemeMode === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />}
-                            onClick={handleExportBackup}
-                            fullWidth
-                            size="sm"
-                            themeMode={settingsThemeMode}
-                            variant={settingsThemeMode === 'dark' ? 'dark' : 'default'}
-                            isSuccess={exportBackupState}
-                            successText="Exported!"
-                          >
-                            Export Backup (.json)
-                          </UiverseButton>
-
-                          <UiverseButton
-                            icon={<Upload className={`w-4 h-4 ${settingsThemeMode === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`} />}
-                            onClick={handleImportBackup}
-                            fullWidth
-                            size="sm"
-                            themeMode={settingsThemeMode}
-                            variant={settingsThemeMode === 'dark' ? 'dark' : 'default'}
-                            isSuccess={importBackupState}
-                            successText="Imported!"
-                          >
-                            Import Backup File
-                          </UiverseButton>
-                        </div>
-
-                        <div className="pt-4 border-t border-gray-500/10 space-y-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <h4 className={`text-[11px] font-bold ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>Automatic Backups</h4>
-                              <p className="text-[9px] text-gray-400 font-medium">Background snapshots in IndexedDB</p>
-                            </div>
-                            <label className="relative inline-flex items-center cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={autoBackupEnabled}
-                                onChange={(e) => saveBackupConfigLocal(e.target.checked, autoBackupFrequency, autoBackupRetention)}
-                                className="sr-only peer"
-                              />
-                              <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
-                            </label>
-                          </div>
-
-                          <AnimatePresence>
-                            {autoBackupEnabled && (
-                              <motion.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                exit={{ opacity: 0, height: 0 }}
-                                transition={{ duration: 0.3, ease: 'easeInOut' }}
-                                className={`space-y-3 p-4 rounded-xl text-left border overflow-hidden ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-gray-200'
-                                  }`}
-                              >
-                                <div>
-                                  <label className="block text-[9px] font-black uppercase tracking-widest text-gray-400 mb-2">Backup Frequency</label>
-                                  <UiverseGlassRadio
-                                    name="mobileBackupFrequency"
-                                    options={BACKUP_FREQUENCY_OPTIONS}
-                                    value={autoBackupFrequency}
-                                    onChange={(newVal) => saveBackupConfigLocal(autoBackupEnabled, newVal, autoBackupRetention)}
-                                    themeMode={settingsThemeMode}
-                                    size="sm"
-                                  />
-                                </div>
-
-                                <div className="pt-2">
-                                  <label className="block text-[9px] font-black uppercase tracking-widest text-gray-400 mb-2">Retention Policy</label>
-                                  <UiverseGlassRadio
-                                    name="mobileBackupRetention"
-                                    options={BACKUP_RETENTION_OPTIONS}
-                                    value={autoBackupRetention}
-                                    onChange={(newVal) => saveBackupConfigLocal(autoBackupEnabled, autoBackupFrequency, newVal)}
-                                    themeMode={settingsThemeMode}
-                                    size="sm"
-                                  />
-                                </div>
-
-                                <div className="pt-2 border-t border-blue-100 text-[9px] text-blue-800 font-medium flex items-center justify-between">
-                                  <span className="flex items-center gap-1">
-                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                                    Vault Active
-                                  </span>
-                                  <span className="text-gray-400">IndexedDB Engine</span>
-                                </div>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </div>
-                      </motion.div>
-
-                      {/* Bottom Navigation Configurator — Collapsible Uiverse Frame */}
-                      <div
-                        style={{
-                          borderRadius: '16px',
-                          boxShadow: settingsThemeMode === 'dark'
-                            ? '8px 8px 18px #171a20, -8px -8px 18px #2d3440, inset 0 0 0 1px rgba(255,255,255,0.05)'
-                            : '-8px -8px 15px rgba(255,255,255,0.85), 10px 10px 12px rgba(0,0,0,0.1), inset 8px 8px 15px rgba(255,255,255,0.6), inset 10px 10px 10px rgba(0,0,0,0.06)',
-                          background: settingsThemeMode === 'dark' ? '#222730' : '#e8eaf0',
-                          overflow: 'hidden',
-                        }}
-                      >
-                        {/* Collapsible Header — styled like switch-holder */}
-                        <button
-                          type="button"
-                          onClick={() => setNavTabsOpen(o => !o)}
-                          className="w-full flex items-center justify-between px-5 py-4 transition-all duration-200 active:scale-[0.99] cursor-pointer select-none"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-xl ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'}`}>
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-                              </svg>
-                            </div>
-                            <div className="text-left">
-                              <h3 className={`text-sm font-black leading-tight ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>Bottom Navigation Tabs</h3>
-                              <p className={`text-[10px] font-medium ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                                {draftNavIds.length} of 8 selected
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {navSaveToast && (
-                              <span className="text-[9px] font-black text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full animate-pulse">✓ Saved!</span>
-                            )}
-                            <motion.div
-                              animate={{ rotate: navTabsOpen ? 180 : 0 }}
-                              transition={{ duration: 0.25 }}
-                              className={`w-6 h-6 rounded-full flex items-center justify-center ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-gray-300' : 'neu-pressed-light text-gray-500'}`}
-                            >
-                              <ChevronDown className="w-3.5 h-3.5" />
-                            </motion.div>
-                          </div>
-                        </button>
-
-                        {/* Collapsible body */}
-                        <AnimatePresence initial={false}>
-                          {navTabsOpen && (
-                            <motion.div
-                              key="nav-tabs-body"
-                              initial={{ opacity: 0, height: 0 }}
-                              animate={{ opacity: 1, height: 'auto' }}
-                              exit={{ opacity: 0, height: 0 }}
-                              transition={{ duration: 0.3, ease: 'easeInOut' }}
-                              className="overflow-hidden"
-                            >
-                              <div
-                                className="px-4 pb-4 space-y-3"
-                                style={{
-                                  borderTop: settingsThemeMode === 'dark'
-                                    ? '1px solid rgba(255,255,255,0.06)'
-                                    : '1px solid rgba(0,0,0,0.07)',
-                                  paddingTop: '16px',
-                                }}
-                              >
-                                {/* 3D Neumorphic Switches */}
-                                <div className="space-y-2.5">
-                                  {ALL_MENUS.map(menu => {
-                                    const isChecked = draftNavIds.includes(menu.id);
-                                    const isDisabled = !isChecked && draftNavIds.length >= 8;
-                                    return (
-                                      <UiverseSwitch
-                                        key={menu.id}
-                                        id={`mobile-nav-switch-${menu.id}`}
-                                        label={menu.label}
-                                        checked={isChecked}
-                                        disabled={isDisabled}
-                                        themeMode={settingsThemeMode}
-                                        size="sm"
-                                        onChange={(val) => {
-                                          let newIds;
-                                          if (!val) {
-                                            newIds = draftNavIds.filter(id => id !== menu.id);
-                                          } else {
-                                            const order = ALL_MENUS.map(m => m.id);
-                                            const merged = [...draftNavIds, menu.id].sort((a, b) => order.indexOf(a) - order.indexOf(b));
-                                            newIds = merged;
-                                          }
-                                          setDraftNavIds(newIds);
-                                        }}
-                                      />
-                                    );
-                                  })}
-                                </div>
-
-                                {/* Drag-and-drop reorder */}
-                                {draftNavIds.length > 1 && (
-                                  <div className="pt-2" style={{ borderTop: settingsThemeMode === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.07)' }}>
-                                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2 pt-2">Drag to Reorder</p>
-                                    <DragDropContext onDragEnd={(result) => {
-                                      if (!result.destination) return;
-                                      const reordered = Array.from(draftNavIds);
-                                      const [moved] = reordered.splice(result.source.index, 1);
-                                      reordered.splice(result.destination.index, 0, moved);
-                                      setDraftNavIds(reordered);
-                                    }}>
-                                      <Droppable droppableId="nav-reorder" direction="vertical">
-                                        {(provided) => (
-                                          <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-2">
-                                            {draftNavIds.map((id, index) => {
-                                              const menu = ALL_MENUS.find(m => m.id === id);
-                                              if (!menu) return null;
-                                              return (
-                                                <Draggable key={id} draggableId={id} index={index}>
-                                                  {(prov, snapshot) => (
-                                                    <div
-                                                      ref={prov.innerRef}
-                                                      {...prov.draggableProps}
-                                                      {...prov.dragHandleProps}
-                                                      className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-xs font-bold transition select-none ${snapshot.isDragging
-                                                        ? 'border-blue-400 shadow-lg shadow-blue-500/20 scale-105'
-                                                        : settingsThemeMode === 'dark'
-                                                          ? 'neu-pressed-dark border-slate-700/80'
-                                                          : 'neu-pressed-light border-slate-200'
-                                                        }`}
-                                                    >
-                                                      <span className="text-gray-400 text-base leading-none">⠿</span>
-                                                      <span className={`flex-1 ${settingsThemeMode === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>{menu.label}</span>
-                                                      <span className="text-[9px] text-gray-400 font-bold"># {index + 1}</span>
-                                                    </div>
-                                                  )}
-                                                </Draggable>
-                                              );
-                                            })}
-                                            {provided.placeholder}
-                                          </div>
-                                        )}
-                                      </Droppable>
-                                    </DragDropContext>
-                                  </div>
-                                )}
-
-                                {/* Save Button */}
-                                <UiverseButton
-                                  icon={<Save className={`w-4 h-4 ${settingsThemeMode === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />}
-                                  onClick={() => saveBottomNavIds(draftNavIds)}
-                                  fullWidth
-                                  size="sm"
-                                  themeMode={settingsThemeMode}
-                                  variant={settingsThemeMode === 'dark' ? 'dark' : 'default'}
-                                  isSuccess={navSavedState}
-                                  successText="Saved!"
-                                >
-                                  Save Navigation
-                                </UiverseButton>
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </div>
-
-                    </motion.div>
+                    <div className="space-y-4 text-left pb-24 animate-in fade-in duration-200">
+                      {renderSettingsView()}
+                    </div>
                   )}
+
+
 
 
                   {currentTab === 'trash' && (
@@ -24929,6 +25050,12 @@ Return your response strictly as a JSON object matching this schema:
                       {renderSmartReviewTab(true)}
                     </div>
                   )}
+
+                  {currentTab === 'settings' && (
+                    <div className="space-y-4 text-left pb-24 animate-in fade-in duration-200">
+                      {renderSettingsView()}
+                    </div>
+                  )}
                 </main>
 
                 {/* DYNAMIC MOBILE NAVIGATION */}
@@ -25970,6 +26097,13 @@ Return your response strictly as a JSON object matching this schema:
                             )}
                           </div>
                         </div>
+                      </div>
+                    )}
+
+                    {/* SETTINGS VIEW */}
+                    {currentTab === 'settings' && (
+                      <div className="h-full p-4 lg:p-8 w-full overflow-y-auto custom-scrollbar">
+                        {renderSettingsView()}
                       </div>
                     )}
 
