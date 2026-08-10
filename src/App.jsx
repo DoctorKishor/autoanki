@@ -14337,7 +14337,7 @@ JSON Format:
                           : 'bg-blue-50 text-blue-700 border-blue-100/80'
                         }`}
                     >
-                      <span className={`${isDark ? 'text-slate-400' : 'text-slate-500'} font-medium select-none`}>≡ƒôû {p.source}:</span>
+                      <span className={`${isDark ? 'text-slate-400' : 'text-slate-500'} font-medium select-none`}>📖 {p.source}:</span>
                       <div className="flex flex-wrap gap-1">
                         {pageList.map((page, pageIdx) => (
                           <span
@@ -25420,18 +25420,18 @@ Return your response strictly as a JSON object matching this schema:
                               className="w-full p-3 border border-gray-200 rounded-2xl text-xs font-bold bg-white text-gray-800 outline-none"
                             >
 
-                              <option value="todayAgenda">≡ƒôà Today's Agenda</option>
-                              <option value="dailyNotes">≡ƒô¥ Daily Notes</option>
-                              <option value="timer">ΓÅ▒∩╕Å Countdown Timer</option>
-                              <option value="todaysStudyTime">≡ƒòÆ Today's Study Time</option>
-                              <option value="deckTarget">≡ƒôÜ Deck Stats</option>
-                              <option value="streaks">≡ƒöÑ Revision Streaks</option>
-                              <option value="analytics">≡ƒôè Adherence KPI</option>
-                              <option value="cardGenerator">ΓÜí Card Generator Queue</option>
-                              <option value="performanceFeed">≡ƒôê Revision Adherence Feed</option>
-                              <option value="studyRoom">≡ƒôû Study Room Status</option>
-                              <option value="correlation">≡ƒÆí Health Insights</option>
-                              <option value="campEfficiency">≡ƒÅå CAMP Study Efficiency</option>
+                              <option value="todayAgenda">📅 Today's Agenda</option>
+                              <option value="dailyNotes">📝 Daily Notes</option>
+                              <option value="timer">⏱️ Countdown Timer</option>
+                              <option value="todaysStudyTime">🕒 Today's Study Time</option>
+                              <option value="deckTarget">📚 Deck Stats</option>
+                              <option value="streaks">🔥 Revision Streaks</option>
+                              <option value="analytics">📊 Adherence KPI</option>
+                              <option value="cardGenerator">⚡ Card Generator Queue</option>
+                              <option value="performanceFeed">📈 Revision Adherence Feed</option>
+                              <option value="studyRoom">📖 Study Room Status</option>
+                              <option value="correlation">💡 Health Insights</option>
+                              <option value="campEfficiency">🏆 CAMP Study Efficiency</option>
                             </select>
                           </div>
 
@@ -25442,10 +25442,10 @@ Return your response strictly as a JSON object matching this schema:
                               onChange={(e) => setObsTheme(e.target.value)}
                               className="w-full p-3 border border-gray-200 rounded-2xl text-xs font-bold bg-white text-gray-800 outline-none"
                             >
-                              <option value="transparent">≡ƒæ╗ Transparent (Glass)</option>
-                              <option value="dark">≡ƒîæ Dark Card</option>
-                              <option value="light">ΓÿÇ∩╕Å Light Card</option>
-                              <option value="custom">≡ƒÄ¿ Fully Custom</option>
+                              <option value="transparent">👻 Transparent (Glass)</option>
+                              <option value="dark">🌑 Dark Card</option>
+                              <option value="light">☀️ Light Card</option>
+                              <option value="custom">🎨 Fully Custom</option>
                             </select>
                           </div>
 
@@ -32792,7 +32792,7 @@ Return your response strictly as a JSON object matching this schema:
                                   <span className="text-xs font-black tracking-tight">{sub}</span>
                                   <div className="flex justify-between items-center w-full mt-1">
                                     <span className={`text-[9px] truncate max-w-[70%] font-medium ${isSelected ? 'text-blue-100' : 'text-gray-400'}`}>
-                                      {primarySource ? `≡ƒôû ${primarySource}` : "No source set"}
+                                      {primarySource ? `📖 ${primarySource}` : "No source set"}
                                     </span>
                                     <span className={`text-[9px] font-black uppercase tracking-wider ${isSelected ? 'text-white bg-blue-700/50' : 'text-gray-655 bg-gray-100'} px-2 py-0.5 rounded-md`}>
                                       {topicsCount} {topicsCount === 1 ? 'topic' : 'topics'}
@@ -33184,18 +33184,18 @@ Return your response strictly as a JSON object matching this schema:
                                 className="w-full p-3 border border-gray-200 rounded-2xl text-xs font-bold bg-white text-gray-800 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 cursor-pointer"
                               >
 
-                                <option value="todayAgenda">≡ƒôà Today's Agenda Checklist</option>
-                                <option value="dailyNotes">≡ƒô¥ Daily Notes & Subjects</option>
-                                <option value="timer">ΓÅ▒∩╕Å Pomodoro / Countdown Timer</option>
-                                <option value="todaysStudyTime">≡ƒòÆ Today's Total Studied Time</option>
-                                <option value="deckTarget">≡ƒôÜ Deck Target & Library Stats</option>
-                                <option value="streaks">≡ƒöÑ Daily Revision Streak</option>
-                                <option value="analytics">≡ƒôè Study Adherence KPI</option>
-                                <option value="cardGenerator">ΓÜí Card Generator Queue</option>
-                                <option value="performanceFeed">≡ƒôê Revision Adherence Feed</option>
-                                <option value="studyRoom">≡ƒôû Active Card Study Room Status</option>
-                                <option value="correlation">≡ƒÆí Health correlation Insights</option>
-                                <option value="campEfficiency">≡ƒÅå CAMP Study Efficiency Tracker</option>
+                                <option value="todayAgenda">📅 Today's Agenda Checklist</option>
+                                <option value="dailyNotes">📝 Daily Notes & Subjects</option>
+                                <option value="timer">⏱️ Pomodoro / Countdown Timer</option>
+                                <option value="todaysStudyTime">🕒 Today's Total Studied Time</option>
+                                <option value="deckTarget">📚 Deck Target & Library Stats</option>
+                                <option value="streaks">🔥 Daily Revision Streak</option>
+                                <option value="analytics">📊 Study Adherence KPI</option>
+                                <option value="cardGenerator">⚡ Card Generator Queue</option>
+                                <option value="performanceFeed">📈 Revision Adherence Feed</option>
+                                <option value="studyRoom">📖 Active Card Study Room Status</option>
+                                <option value="correlation">💡 Health correlation Insights</option>
+                                <option value="campEfficiency">🏆 CAMP Study Efficiency Tracker</option>
                               </select>
                             </div>
 
