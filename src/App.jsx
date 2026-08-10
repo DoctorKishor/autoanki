@@ -7454,18 +7454,41 @@ export default function App() {
 
         // 4. Send to Gemini
         try {
-          const prompt = `You are a medical textbook indexer. You will be given a list of target topics and images of consecutive pages from a textbook.
-For each topic in the target list, determine if it is discussed, explained, or mentioned on any of these pages. Note that topics might not match the query word-for-word, so look for synonyms, clinical concepts, or contextual mentions.
-For each matched topic, identify the textbook page numbers (use the logical page number in this batch: ${imagesInBatch.map(img => `Image ${img.pageNumber - pageIdx + 1} represents textbook page ${img.pageNumber - parsedOffset}`).join(", ")}).
+          const prompt = `SYSTEM ROLE: HIGH-PRECISION MEDICAL INDEXING ENGINE
 
-Target topics to find:
+You are an expert medical textbook indexer for high-yield competitive exams (NEET PG / INI-CET).
+Your task is to analyze the provided consecutive textbook page images and accurately map each requested topic from the target list to its exact textbook page number(s).
+
+CORE INDEXING RULES (NON-NEGOTIABLE)
+
+1. Conceptual & Synonym Matching (High Sensitivity):
+   - Match topics based on clinical equivalence, not just verbatim wording.
+   - Include direct synonyms, underlying pathophysiology, specific drug classes, named clinical syndromes, diagnostic criteria, or classic signs directly corresponding to the target topic.
+   - Do NOT match passing, non-substantive single-word mentions or entries found purely within Table of Contents / Index pages. A valid match must contain actual clinical/textual context.
+
+2. Page Number Mapping & Logic (Hard Precision):
+   - Map each match using the official textbook page numbers defined in this batch:
+     ${imagesInBatch.map(img => `Image ${img.pageNumber - pageIdx + 1} represents textbook page ${img.pageNumber - parsedOffset}`).join(", ")}
+   - Cross-check the visual page header/footer printed on the page image with the mapping key above to resolve any offset ambiguity.
+   - If a topic spans across multiple pages in this batch, return ALL relevant page numbers in ascending order (e.g., [12, 13, 14]).
+
+3. Strict Exclusion (Zero Hallucination):
+   - If a target topic is NOT discussed, explained, or contextually referenced on any of these pages, DO NOT include it in the output array.
+   - Do NOT guess or infer topic locations based on external medical knowledge outside the provided images.
+
+4. Target Topics List:
 ${rawTopics.map(t => `- ${t}`).join("\n")}
 
-Format the response exactly as a JSON object containing a 'matches' array where each item has 'topicName' and 'pageNumbers' (an array of numbers representing pages where this topic is mentioned). If a topic is not found on these pages, DO NOT include it in the matches.
+STRICT JSON OUTPUT FORMAT
+Return ONLY a valid JSON object matching the exact schema below. Do not wrap the response in conversational text, commentary, or markdown formatting outside the JSON object.
+
 JSON Format:
 {
   "matches": [
-    { "topicName": "Topic Name Here", "pageNumbers": [12, 14] }
+    {
+      "topicName": "Exact Target Topic String From List",
+      "pageNumbers": [12, 14]
+    }
   ]
 }`;
 
