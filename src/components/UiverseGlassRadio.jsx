@@ -24,9 +24,6 @@ export function UiverseGlassRadio({
 
   return (
     <div className={`radio-input ${isDark ? 'dark-theme' : 'light-theme'}`}>
-      <div className="glass">
-        <div className="glass-inner"></div>
-      </div>
       <div className="selector">
         {options.map((opt, index) => {
           const isChecked = value === opt.value;
