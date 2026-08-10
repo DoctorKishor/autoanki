@@ -712,6 +712,24 @@ EXACT LOCATION BOUNDING BOXES: Inspect the screenshot image and return exact 0 t
 
 const DEFAULT_PROMPT = MIRROR_PRECISION_V6_PROMPT;
 
+const TEXT_DEFAULT_PROMPT = `You are an expert Anki card generator. Analyze the provided raw text passage, notes, or textbook excerpt, and generate high-yield Anki flashcards (both Basic Q&A and Cloze deletion cards).
+
+Return ONLY a valid JSON object matching the requested schema with a "cards" array.
+Each card object MUST have:
+- "type": "Basic" or "Cloze"
+- "front": "Question text (for Basic cards)"
+- "back": "Detailed answer (for Basic cards)"
+- "text": "Statement with {{c1::cloze deletion}} (for Cloze cards)"`;
+
+const TEXT_VERBATIM_JSON_PROMPT = `You are a strict verbatim 1:1 text-to-flashcard parser. Your job is to extract raw Q&A flashcards from the provided user text EXACTLY as written without summarizing or altering the text.
+
+Return ONLY a valid JSON object matching the requested schema with a "cards" array.
+Each card object MUST have:
+- "type": "Basic"
+- "front": "Exact question text"
+- "back": "Exact answer text"
+- "text": ""`;
+
 // --- SPACED REPETITION SCHEDULER (SM-2) ---
 const calculateSM2 = (card, rating) => {
   // rating: 1 (Again), 2 (Hard), 3 (Good), 4 (Easy)
@@ -4652,7 +4670,11 @@ export default function App() {
   const [isSaving, setIsSaving] = useState(false);
   const [isDraggingFile, setIsDraggingFile] = useState(false);
   const [cardGenerationInputMode, setCardGenerationInputMode] = useState('image'); // 'image' | 'text'
+  const [rawTextSubMode, setRawTextSubMode] = useState('pure'); // 'pure' | 'ai'
   const [rawTextInput, setRawTextInput] = useState('');
+  const [selectedTextPromptId, setSelectedTextPromptId] = useState('text_default');
+  const [promptCategoryTab, setPromptCategoryTab] = useState('image'); // 'image' | 'text'
+  const [isParsingText, setIsParsingText] = useState(false);
   const [libraryPages, setLibraryPages] = useState([]); // List of {id, base64, deck} from local DB
   const getInitialTab = () => {
     const hash = window.location.hash.replace(/^#\/?/, '');
@@ -16155,6 +16177,310 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     return basePromptContent;
   }, [generationPromptId, customPrompts, selectedGenerationSubject, pytTopicsList]);
 
+  // --- LOCAL REGEX RAW TEXT PARSER ---
+  const parseRawTextLocal = (text) => {
+    if (!text || !text.trim()) return [];
+    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const parsedCards = [];
+    let currentQ = '';
+    let currentA = '';
+    let collectingAns = false;
+
+    const qPrefixRegex = /^(?:Q\d*[\.:\s]*|\d+[\.:\)\s]+|\*+Q:?\*+)\s*(.*)/i;
+    const aPrefixRegex = /^(?:A(?:ns(?:wer)?)?[\.:\s]*|\*+A:?\*+)\s*(.*)/i;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const aMatch = line.match(aPrefixRegex);
+      if (aMatch) {
+        currentA = currentA ? `${currentA}\n${aMatch[1]}` : aMatch[1];
+        collectingAns = true;
+        continue;
+      }
+      const qMatch = line.match(qPrefixRegex);
+      if (qMatch) {
+        if (currentQ) {
+          parsedCards.push({
+            id: generateId(),
+            type: 'Basic',
+            front: currentQ.trim(),
+            back: currentA.trim() || 'No answer specified',
+            text: '',
+            source: 'local_regex'
+          });
+          currentQ = '';
+          currentA = '';
+        }
+        currentQ = qMatch[1] || line;
+        collectingAns = false;
+        continue;
+      }
+
+      if (collectingAns) {
+        currentA += `\n${line}`;
+      } else {
+        if (!currentQ) {
+          currentQ = line;
+        } else if (line.endsWith('?') || line.endsWith(':')) {
+          parsedCards.push({
+            id: generateId(),
+            type: 'Basic',
+            front: currentQ.trim(),
+            back: currentA.trim() || 'No answer specified',
+            text: '',
+            source: 'local_regex'
+          });
+          currentQ = line;
+          currentA = '';
+        } else {
+          currentA = currentA ? `${currentA}\n${line}` : line;
+          collectingAns = true;
+        }
+      }
+    }
+
+    if (currentQ) {
+      parsedCards.push({
+        id: generateId(),
+        type: 'Basic',
+        front: currentQ.trim(),
+        back: currentA.trim() || 'No answer specified',
+        text: '',
+        source: 'local_regex'
+      });
+    }
+
+    return parsedCards;
+  };
+
+  const handleParseRawText = () => {
+    if (!rawTextInput || !rawTextInput.trim()) {
+      alert("Please enter or paste some raw text flashcards first.");
+      return;
+    }
+    const parsed = parseRawTextLocal(rawTextInput);
+    if (parsed.length === 0) {
+      alert("No structured flashcards detected automatically. Try using 'Fix with AI' or switching to 'AI Extractor' mode.");
+      return;
+    }
+    const batchId = 'text-batch-' + Date.now();
+    const batchItem = {
+      id: batchId,
+      fileName: `Raw Text Batch (${parsed.length} Cards)`,
+      base64: '',
+      status: 'done',
+      isRawText: true,
+      rawContent: rawTextInput,
+      generatedCards: parsed
+    };
+    setQueue(prev => [batchItem, ...prev]);
+    setActiveQueueId(batchId);
+  };
+
+  const handleExtractRawTextWithAI = async (isVerbatimFix = false) => {
+    if (!rawTextInput || !rawTextInput.trim()) {
+      alert("Please enter or paste some raw text first.");
+      return;
+    }
+    if (!geminiApiKey) {
+      alert("Gemini API key is not configured. Please add your key in Settings.");
+      return;
+    }
+
+    setIsParsingText(true);
+    try {
+      let activePromptText = TEXT_DEFAULT_PROMPT;
+      if (isVerbatimFix) {
+        activePromptText = TEXT_VERBATIM_JSON_PROMPT;
+      } else if (selectedTextPromptId === 'text_verbatim_json') {
+        activePromptText = TEXT_VERBATIM_JSON_PROMPT;
+      } else if (selectedTextPromptId !== 'text_default') {
+        const customP = customPrompts.find(p => p.id === selectedTextPromptId);
+        if (customP) activePromptText = customP.content;
+      }
+
+      const getSavedCardGenModels = () => {
+        try {
+          const saved = localStorage.getItem('pyt_ai_feature_models');
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (parsed.cardGeneration && Array.isArray(parsed.cardGeneration) && parsed.cardGeneration.length > 0) {
+              return parsed.cardGeneration;
+            }
+          }
+        } catch (e) {}
+        return ['gemini-2.5-flash', 'gemini-1.5-flash'];
+      };
+
+      const models = getSavedCardGenModels();
+      const payloadPrompt = `${activePromptText}\n\n=== RAW TEXT TO EXTRACT ===\n${rawTextInput}`;
+
+      const payload = {
+        contents: [{ parts: [{ text: payloadPrompt }] }],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "OBJECT",
+            properties: {
+              cards: {
+                type: "ARRAY",
+                items: {
+                  type: "OBJECT",
+                  properties: {
+                    type: { type: "STRING", enum: ["Basic", "Cloze"] },
+                    front: { type: "STRING" },
+                    back: { type: "STRING" },
+                    text: { type: "STRING" }
+                  },
+                  required: ["type", "front", "back", "text"]
+                }
+              }
+            }
+          }
+        }
+      };
+
+      let aiResultCards = null;
+      let lastErr = null;
+
+      for (const mName of models) {
+        try {
+          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${mName}:generateContent?key=${geminiApiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const resJson = await res.json();
+          if (resJson.error) throw new Error(resJson.error.message);
+          const rawTextOut = resJson.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (rawTextOut) {
+            const parsed = JSON.parse(rawTextOut);
+            if (parsed && Array.isArray(parsed.cards)) {
+              aiResultCards = parsed.cards;
+              break;
+            }
+          }
+        } catch (mErr) {
+          console.warn(`[AI Text Extractor] Model ${mName} failed:`, mErr);
+          lastErr = mErr;
+        }
+      }
+
+      if (!aiResultCards) {
+        throw lastErr || new Error("Failed to extract cards via AI.");
+      }
+
+      const formattedCards = aiResultCards.map(c => ({
+        id: generateId(),
+        type: c.type || 'Basic',
+        front: c.front || '',
+        back: c.back || '',
+        text: c.text || '',
+        source: 'ai_text_extractor'
+      }));
+
+      const batchId = 'text-batch-' + Date.now();
+      const batchItem = {
+        id: batchId,
+        fileName: `Raw Text AI Batch (${formattedCards.length} Cards)`,
+        base64: '',
+        status: 'done',
+        isRawText: true,
+        rawContent: rawTextInput,
+        generatedCards: formattedCards
+      };
+
+      setQueue(prev => [batchItem, ...prev]);
+      setActiveQueueId(batchId);
+    } catch (err) {
+      console.error("Error during AI text extraction:", err);
+      alert("AI Text Extraction failed: " + err.message);
+    } finally {
+      setIsParsingText(false);
+    }
+  };
+
+  // --- BULK COMMIT RAW TEXT BATCH TO TARGET DECK (LOCALDB) ---
+  const commitRawTextBatchToTargetDeck = async (batchItem) => {
+    const itemToCommit = batchItem || queue.find(q => q.id === activeQueueId);
+    if (!itemToCommit || !itemToCommit.generatedCards || itemToCommit.generatedCards.length === 0) {
+      alert("No cards available in preview to commit.");
+      return;
+    }
+
+    const targetDeck = hierarchy || 'General';
+    setIsSaving(true);
+
+    try {
+      const nowTime = Date.now();
+
+      // Ensure target deck path is registered in local deck paths
+      if (!deckPaths.includes(targetDeck)) {
+        const nextPaths = Array.from(new Set([...deckPaths, targetDeck]));
+        setDeckPaths(nextPaths);
+        await updateHierarchySetting({ paths: nextPaths });
+      }
+
+      const cardsToSave = itemToCommit.generatedCards.map(rawCard => {
+        const cardId = (rawCard.id && typeof rawCard.id === 'string' && !rawCard.id.startsWith('text-')) ? rawCard.id : generateId();
+        return {
+          id: cardId,
+          pageId: null,
+          queueId: itemToCommit.id,
+          deck: targetDeck,
+          type: rawCard.type || 'Basic',
+          front: rawCard.front || '',
+          back: rawCard.back || '',
+          text: rawCard.text || '',
+          ymin: 0,
+          xmin: 0,
+          ymax: 1000,
+          xmax: 1000,
+          has_image: false,
+          img_box: null,
+          image_side: 'none',
+          image_confidence: 0,
+          createdAt: nowTime,
+          updatedAt: nowTime,
+          reviewState: rawCard.reviewState || {
+            repetitions: 0,
+            interval: 1,
+            easeFactor: 2.5,
+            nextReviewDue: nowTime
+          }
+        };
+      });
+
+      // Single bulk transaction write to IndexedDB
+      await saveLocalCards(cardsToSave);
+
+      // In-memory state update
+      setCards(prev => {
+        const existingIds = new Set(prev.map(c => c.id));
+        const newItems = cardsToSave.filter(c => !existingIds.has(c.id));
+        return [...prev, ...newItems];
+      });
+
+      // Update deck card count
+      batchUpdateCardCounts({ [targetDeck]: cardsToSave.length });
+
+      // Clear raw text input area & remove committed batch from queue
+      setQueue(prev => prev.filter(q => q.id !== itemToCommit.id));
+      if (activeQueueId === itemToCommit.id) {
+        setActiveQueueId(null);
+      }
+      setRawTextInput('');
+
+      allCardsLoaded.current = false;
+      alert(`📥 Successfully committed ${cardsToSave.length} cards to target deck "${targetDeck}"!`);
+    } catch (err) {
+      console.error("[Bulk Commit Error] Failed to write cards to localDb:", err);
+      alert("System Error: Could not commit cards to IndexedDB. " + (err.message || err.toString()));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // --- FETCH CUSTOM PROMPTS & ACTIVE PROMPT SETTING FROM LOCAL DB ---
   useEffect(() => {
     async function loadLocalPrompts() {
@@ -16204,6 +16530,12 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     } else if (selectedPromptId === 'qbank_engine') {
       setEditingPromptName('Q-Bank engine/ error log');
       setEditingPromptContent(QBANK_ENGINE_PROMPT);
+    } else if (selectedPromptId === 'text_default') {
+      setEditingPromptName('Default Text Extractor (Basic & Cloze)');
+      setEditingPromptContent(TEXT_DEFAULT_PROMPT);
+    } else if (selectedPromptId === 'text_verbatim_json') {
+      setEditingPromptName('Strict 1:1 Verbatim Q&A Extractor');
+      setEditingPromptContent(TEXT_VERBATIM_JSON_PROMPT);
     } else {
       const prompt = customPrompts.find(p => p.id === selectedPromptId);
       if (prompt) {
@@ -16215,12 +16547,13 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
 
   // --- CUSTOM PROMPT FUNCTIONS ---
   const saveCustomPrompt = async (id, name, content) => {
-    if (id === 'default' || id === 'pyt_generator' || id === 'qbank_engine') {
+    if (id === 'default' || id === 'pyt_generator' || id === 'qbank_engine' || id === 'text_default' || id === 'text_verbatim_json') {
       alert("This built-in prompt is read-only. Please create a custom prompt to save modifications.");
       return;
     }
     try {
-      const updatedPrompt = { id, name, content, updatedAt: Date.now() };
+      const existing = customPrompts.find(p => p.id === id);
+      const updatedPrompt = { id, name, content, type: existing?.type || promptCategoryTab, updatedAt: Date.now() };
       await saveLocalPrompt(updatedPrompt);
       setCustomPrompts(prev => prev.map(p => p.id === id ? { ...p, ...updatedPrompt } : p));
       alert("Prompt saved successfully!");
@@ -16230,15 +16563,20 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     }
   };
 
-  const createCustomPrompt = async (name = 'New Custom Prompt', content = DEFAULT_PROMPT) => {
+  const createCustomPrompt = async (name = null, content = null, type = promptCategoryTab) => {
+    const defaultName = `New Custom ${type === 'image' ? 'Image' : 'Text'} Prompt`;
+    const defaultContent = type === 'image' ? DEFAULT_PROMPT : TEXT_DEFAULT_PROMPT;
+    const promptName = name || defaultName;
+    const promptContent = content || defaultContent;
     const newId = generateId();
+
     try {
-      const newPrompt = { id: newId, name, content, createdAt: Date.now(), updatedAt: Date.now() };
+      const newPrompt = { id: newId, name: promptName, content: promptContent, type, createdAt: Date.now(), updatedAt: Date.now() };
       await saveLocalPrompt(newPrompt);
       setCustomPrompts(prev => [...prev, newPrompt]);
       setSelectedPromptId(newId);
-      setEditingPromptName(name);
-      setEditingPromptContent(content);
+      setEditingPromptName(promptName);
+      setEditingPromptContent(promptContent);
       alert("Custom prompt created successfully!");
       return newId;
     } catch (error) {
@@ -16248,7 +16586,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
   };
 
   const deleteCustomPrompt = async (id) => {
-    if (id === 'default' || id === 'pyt_generator' || id === 'qbank_engine') return;
+    if (id === 'default' || id === 'pyt_generator' || id === 'qbank_engine' || id === 'text_default' || id === 'text_verbatim_json') return;
     if (!confirm("Are you sure you want to delete this custom prompt?")) return;
 
     try {
@@ -21713,7 +22051,7 @@ Return your response strictly as a JSON object matching this schema:
                         initial={{ opacity: 0, y: 16 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.6, delay: 0.18, ease: [0.16, 1, 0.3, 1] }}
-                        className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-2 rounded-2xl shrink-0`}
+                        className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-2 rounded-2xl shrink-0 space-y-2`}
                       >
                         <div className={`grid grid-cols-2 gap-1.5 p-1 rounded-xl ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-gray-200/80'}`}>
                           <button
@@ -21739,6 +22077,34 @@ Return your response strictly as a JSON object matching this schema:
                             <span>📝</span> Raw Text Mode
                           </button>
                         </div>
+
+                        {/* Sub-Mode Toggle inside Raw Text Mode */}
+                        {cardGenerationInputMode === 'text' && (
+                          <div className={`grid grid-cols-2 gap-1.5 p-1 rounded-xl animate-in fade-in duration-300 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-gray-200/80'}`}>
+                            <button
+                              type="button"
+                              onClick={() => setRawTextSubMode('pure')}
+                              className={`py-2 px-2.5 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-95 cursor-pointer ${
+                                rawTextSubMode === 'pure'
+                                  ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-amber-400 border border-amber-500/30' : 'neu-btn-light text-amber-600 border border-amber-200/70')
+                                  : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-800')
+                              }`}
+                            >
+                              <span>⚡</span> Pure Parser
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setRawTextSubMode('ai')}
+                              className={`py-2 px-2.5 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-95 cursor-pointer ${
+                                rawTextSubMode === 'ai'
+                                  ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-purple-400 border border-purple-500/30' : 'neu-btn-light text-purple-600 border border-purple-200/70')
+                                  : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-800')
+                              }`}
+                            >
+                              <span>🧠</span> AI Extractor
+                            </button>
+                          </div>
+                        )}
                       </motion.div>
 
                       {/* ACTIVE PROCESSING / QUEUE - HIGHER PRIORITY */}
@@ -21997,17 +22363,68 @@ Return your response strictly as a JSON object matching this schema:
                               {!isUploading && <input type="file" multiple accept="image/*,application/pdf" className="hidden" onChange={handleFileSelect} />}
                             </label>
                           ) : (
-                            <div className="text-left mt-2 space-y-2">
+                            <div className="text-left mt-2 space-y-3">
                               <label className={`block text-[9px] font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                                Raw Text Flashcards
+                                Raw Text Flashcards ({rawTextSubMode === 'pure' ? '⚡ Pure Parser' : '🧠 AI Extractor'})
                               </label>
                               <textarea
                                 value={rawTextInput}
                                 onChange={(e) => setRawTextInput(e.target.value)}
                                 rows={8}
-                                className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-slate-100 border-[#2b323e] focus:border-blue-500/50' : 'neu-pressed-light text-slate-800 border-white/60 focus:border-blue-500/50'} w-full p-3.5 rounded-2xl outline-none text-xs font-mono leading-relaxed transition resize-y min-h-[180px] custom-scrollbar`}
+                                className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-slate-100 border-[#2b323e] focus:border-blue-500/50' : 'neu-pressed-light text-slate-800 border-white/60 focus:border-blue-500/50'} w-full p-3.5 rounded-2xl outline-none text-xs font-mono leading-relaxed transition resize-y min-h-[160px] custom-scrollbar`}
                                 placeholder="Paste raw text flashcards here..."
                               />
+
+                              {/* Mobile Text Prompt Selector when AI Extractor active */}
+                              {rawTextSubMode === 'ai' && (
+                                <div>
+                                  <label className={`block text-[9px] font-black uppercase tracking-widest mb-1 text-left ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                                    Text Prompt Template
+                                  </label>
+                                  <NeumorphicSelect
+                                    value={selectedTextPromptId}
+                                    onChange={(val) => setSelectedTextPromptId(val)}
+                                    options={[
+                                      { value: 'text_default', label: 'Default Text Extractor (Basic & Cloze)' },
+                                      { value: 'text_verbatim_json', label: 'Strict 1:1 Verbatim Q&A Extractor' },
+                                      ...customPrompts.filter(p => p.type === 'text').map(p => ({ value: p.id, label: p.name }))
+                                    ]}
+                                    themeMode={settingsThemeMode}
+                                    placeholder="Select Text Prompt..."
+                                  />
+                                </div>
+                              )}
+
+                              <div className="flex gap-2 pt-1">
+                                {rawTextSubMode === 'pure' ? (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={handleParseRawText}
+                                      className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'}`}
+                                    >
+                                      <Play className="w-3.5 h-3.5" /> Parse Raw Text
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleExtractRawTextWithAI(true)}
+                                      disabled={isParsingText}
+                                      className={`py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-purple-400 border border-purple-500/30' : 'neu-btn-light text-purple-600 border border-purple-200'}`}
+                                    >
+                                      {isParsingText ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />} Fix with AI
+                                    </button>
+                                  </>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleExtractRawTextWithAI(false)}
+                                    disabled={isParsingText}
+                                    className={`w-full py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'}`}
+                                  >
+                                    {isParsingText ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />} Extract Cards with AI
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           )}
                         </div>
@@ -22148,42 +22565,59 @@ Return your response strictly as a JSON object matching this schema:
                             {/* Action Buttons for Queue Items vs Saved Items */}
                             {activeQueueItem ? (
                               <div className="pt-6 space-y-3 pb-20">
-                                {activeQueueItem.status === 'done' && (
+                                {activeQueueItem.isRawText ? (
+                                  <UiverseButton
+                                    onClick={() => commitRawTextBatchToTargetDeck(activeQueueItem)}
+                                    disabled={isSaving || (activeQueueItem.generatedCards?.length || 0) === 0}
+                                    fullWidth
+                                    size="lg"
+                                    themeMode={settingsThemeMode}
+                                    isSuccess={isSaving}
+                                    successText="Committed!"
+                                    icon={<CheckCircle className="w-5 h-5 text-emerald-400" />}
+                                  >
+                                    Commit ({activeQueueItem.generatedCards?.length || 0}) Cards to Target Deck ({hierarchy})
+                                  </UiverseButton>
+                                ) : (
                                   <>
-                                    <button
-                                      disabled={isProcessing || isSaving}
-                                      onClick={() => regeneratePageWithGemini(activeQueueId)}
-                                      className={`w-full p-4 rounded-2xl text-xs font-black flex items-center justify-center gap-2 active:scale-95 transition disabled:opacity-50 ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-purple-400' : 'neu-btn-light text-purple-600'}`}
-                                    >
-                                      {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
-                                      Regenerate Page
-                                    </button>
+                                    {activeQueueItem.status === 'done' && (
+                                      <>
+                                        <button
+                                          disabled={isProcessing || isSaving}
+                                          onClick={() => regeneratePageWithGemini(activeQueueId)}
+                                          className={`w-full p-4 rounded-2xl text-xs font-black flex items-center justify-center gap-2 active:scale-95 transition disabled:opacity-50 ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-purple-400' : 'neu-btn-light text-purple-600'}`}
+                                        >
+                                          {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+                                          Regenerate Page
+                                        </button>
 
-                                    <UiverseButton
-                                      onClick={() => saveQueueItemToCloud(activeQueueId)}
-                                      disabled={isSaving}
-                                      fullWidth
-                                      size="lg"
-                                      themeMode={settingsThemeMode}
-                                      isSuccess={isSaving}
-                                      successText="Saved Page!"
-                                      icon={<CheckCircle className="w-5 h-5 text-emerald-400" />}
-                                    >
-                                      Save This Page to Library
-                                    </UiverseButton>
+                                        <UiverseButton
+                                          onClick={() => saveQueueItemToCloud(activeQueueId)}
+                                          disabled={isSaving}
+                                          fullWidth
+                                          size="lg"
+                                          themeMode={settingsThemeMode}
+                                          isSuccess={isSaving}
+                                          successText="Saved Page!"
+                                          icon={<CheckCircle className="w-5 h-5 text-emerald-400" />}
+                                        >
+                                          Save This Page to Library
+                                        </UiverseButton>
 
-                                    <UiverseButton
-                                      onClick={saveAllProcessedToCloud}
-                                      disabled={isSaving || queue.filter(q => q.status === 'done').length === 0}
-                                      fullWidth
-                                      size="lg"
-                                      themeMode={settingsThemeMode}
-                                      isSuccess={isSaving}
-                                      successText="Saved All Pages!"
-                                      icon={<Layers className="w-5 h-5 text-blue-400" />}
-                                    >
-                                      Save All Pages to Library
-                                    </UiverseButton>
+                                        <UiverseButton
+                                          onClick={saveAllProcessedToCloud}
+                                          disabled={isSaving || queue.filter(q => q.status === 'done').length === 0}
+                                          fullWidth
+                                          size="lg"
+                                          themeMode={settingsThemeMode}
+                                          isSuccess={isSaving}
+                                          successText="Saved All Pages!"
+                                          icon={<Layers className="w-5 h-5 text-blue-400" />}
+                                        >
+                                          Save All Pages to Library
+                                        </UiverseButton>
+                                      </>
+                                    )}
                                   </>
                                 )}
 
@@ -24381,88 +24815,168 @@ Return your response strictly as a JSON object matching this schema:
                           <div className="flex items-center justify-between">
                             <h3 className={`text-[10px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>Available Prompts</h3>
                             <span className={`${settingsThemeMode === 'dark' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' : 'bg-blue-50 text-blue-700 border border-blue-200'} px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider`}>
-                              {customPrompts.length + 3}
+                              {promptCategoryTab === 'image'
+                                ? (customPrompts.filter(p => !p.type || p.type === 'image').length + 3)
+                                : (customPrompts.filter(p => p.type === 'text').length + 2)
+                              }
                             </span>
                           </div>
 
+                          {/* Dual Prompt Collection Category Tab */}
+                          <div className={`grid grid-cols-2 gap-1.5 p-1 rounded-xl ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200'}`}>
+                            <button
+                              type="button"
+                              onClick={() => { setPromptCategoryTab('image'); setSelectedPromptId('default'); }}
+                              className={`py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition ${
+                                promptCategoryTab === 'image'
+                                  ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400 border border-blue-500/30' : 'neu-btn-light text-blue-600 border border-blue-200')
+                                  : (settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500')
+                              }`}
+                            >
+                              <span>🖼️</span> Image Extraction Prompts
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setPromptCategoryTab('text'); setSelectedPromptId('text_default'); }}
+                              className={`py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition ${
+                                promptCategoryTab === 'text'
+                                  ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-purple-400 border border-purple-500/30' : 'neu-btn-light text-purple-600 border border-purple-200')
+                                  : (settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500')
+                              }`}
+                            >
+                              <span>📝</span> Text Extraction Prompts
+                            </button>
+                          </div>
+
                           <button
-                            onClick={() => createCustomPrompt()}
+                            onClick={() => createCustomPrompt(null, null, promptCategoryTab)}
                             className={`w-full flex items-center justify-center gap-2 ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'} font-black text-xs py-2.5 px-4 rounded-xl transition active:scale-95`}
                           >
-                            <Plus className="w-3.5 h-3.5" /> Add Custom Prompt
+                            <Plus className="w-3.5 h-3.5" /> Add Custom {promptCategoryTab === 'image' ? 'Image' : 'Text'} Prompt
                           </button>
 
                           <div className="space-y-3 max-h-[220px] overflow-y-auto no-scrollbar p-1">
-                            {/* Default Prompt Option */}
-                            <div
-                              onClick={() => setSelectedPromptId('default')}
-                              className={`p-3.5 rounded-xl cursor-pointer transition-all duration-200 flex flex-col gap-1 ${selectedPromptId === 'default'
-                                ? settingsThemeMode === 'dark' ? 'neu-item-pressed-dark border border-blue-500/50' : 'neu-item-pressed-light border border-blue-500/50'
-                                : settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'
-                                }`}
-                            >
-                              <div className="flex items-center justify-between">
-                                <span className={`text-xs font-black truncate ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>Default Medical Prompt</span>
-                                {activePromptId === 'default' && (
-                                  <span className={`${settingsThemeMode === 'dark' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'} px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider`}>Active</span>
-                                )}
-                              </div>
-                              <p className={`text-[9px] ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} line-clamp-1`}>Standard NEET PG/INICET Anki card generator prompt.</p>
-                            </div>
-
-                            {/* PYT Generator Prompt Option */}
-                            <div
-                              onClick={() => setSelectedPromptId('pyt_generator')}
-                              className={`p-3.5 rounded-xl cursor-pointer transition-all duration-200 flex flex-col gap-1 ${selectedPromptId === 'pyt_generator'
-                                ? settingsThemeMode === 'dark' ? 'neu-item-pressed-dark border border-blue-500/50' : 'neu-item-pressed-light border border-blue-500/50'
-                                : settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'
-                                }`}
-                            >
-                              <div className="flex items-center justify-between">
-                                <span className={`text-xs font-black truncate ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>High-Yield PYT Generator</span>
-                                {activePromptId === 'pyt_generator' && (
-                                  <span className={`${settingsThemeMode === 'dark' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'} px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider`}>Active</span>
-                                )}
-                              </div>
-                              <p className={`text-[9px] ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} line-clamp-1`}>Custom system instructions optimized for producing High-Yield PYTs.</p>
-                            </div>
-
-                            {/* Q-Bank Engine Prompt Option */}
-                            <div
-                              onClick={() => setSelectedPromptId('qbank_engine')}
-                              className={`p-3.5 rounded-xl cursor-pointer transition-all duration-200 flex flex-col gap-1 ${selectedPromptId === 'qbank_engine'
-                                ? settingsThemeMode === 'dark' ? 'neu-item-pressed-dark border border-blue-500/50' : 'neu-item-pressed-light border border-blue-500/50'
-                                : settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'
-                                }`}
-                            >
-                              <div className="flex items-center justify-between">
-                                <span className={`text-xs font-black truncate ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>Q-Bank engine/ error log</span>
-                                {activePromptId === 'qbank_engine' && (
-                                  <span className={`${settingsThemeMode === 'dark' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'} px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider`}>Active</span>
-                                )}
-                              </div>
-                              <p className={`text-[9px] ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} line-clamp-1`}>Custom instructions optimized for NEET PG/INICET QBank incorrect-question review.</p>
-                            </div>
-
-                            {/* Custom Prompts list */}
-                            {customPrompts.map(prompt => (
-                              <div
-                                key={prompt.id}
-                                onClick={() => setSelectedPromptId(prompt.id)}
-                                className={`p-3.5 rounded-xl cursor-pointer transition-all duration-200 flex flex-col gap-1 ${selectedPromptId === prompt.id
-                                  ? settingsThemeMode === 'dark' ? 'neu-item-pressed-dark border border-blue-500/50' : 'neu-item-pressed-light border border-blue-500/50'
-                                  : settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'
-                                  }`}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <span className={`text-xs font-black truncate max-w-[70%] ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>{prompt.name || 'Untitled Prompt'}</span>
-                                  {activePromptId === prompt.id && (
-                                    <span className={`${settingsThemeMode === 'dark' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'} px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider`}>Active</span>
-                                  )}
+                            {promptCategoryTab === 'image' ? (
+                              <>
+                                {/* Default Prompt Option */}
+                                <div
+                                  onClick={() => setSelectedPromptId('default')}
+                                  className={`p-3.5 rounded-xl cursor-pointer transition-all duration-200 flex flex-col gap-1 ${selectedPromptId === 'default'
+                                    ? settingsThemeMode === 'dark' ? 'neu-item-pressed-dark border border-blue-500/50' : 'neu-item-pressed-light border border-blue-500/50'
+                                    : settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'
+                                    }`}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span className={`text-xs font-black truncate ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>Default Medical Prompt</span>
+                                    {activePromptId === 'default' && (
+                                      <span className={`${settingsThemeMode === 'dark' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'} px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider`}>Active</span>
+                                    )}
+                                  </div>
+                                  <p className={`text-[9px] ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} line-clamp-1`}>Standard NEET PG/INICET Anki card generator prompt.</p>
                                 </div>
-                                <p className={`text-[9px] ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} line-clamp-1`}>{prompt.content || 'No instructions.'}</p>
-                              </div>
-                            ))}
+
+                                {/* PYT Generator Prompt Option */}
+                                <div
+                                  onClick={() => setSelectedPromptId('pyt_generator')}
+                                  className={`p-3.5 rounded-xl cursor-pointer transition-all duration-200 flex flex-col gap-1 ${selectedPromptId === 'pyt_generator'
+                                    ? settingsThemeMode === 'dark' ? 'neu-item-pressed-dark border border-blue-500/50' : 'neu-item-pressed-light border border-blue-500/50'
+                                    : settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'
+                                    }`}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span className={`text-xs font-black truncate ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>High-Yield PYT Generator</span>
+                                    {activePromptId === 'pyt_generator' && (
+                                      <span className={`${settingsThemeMode === 'dark' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'} px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider`}>Active</span>
+                                    )}
+                                  </div>
+                                  <p className={`text-[9px] ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} line-clamp-1`}>Custom system instructions optimized for producing High-Yield PYTs.</p>
+                                </div>
+
+                                {/* Q-Bank Engine Prompt Option */}
+                                <div
+                                  onClick={() => setSelectedPromptId('qbank_engine')}
+                                  className={`p-3.5 rounded-xl cursor-pointer transition-all duration-200 flex flex-col gap-1 ${selectedPromptId === 'qbank_engine'
+                                    ? settingsThemeMode === 'dark' ? 'neu-item-pressed-dark border border-blue-500/50' : 'neu-item-pressed-light border border-blue-500/50'
+                                    : settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'
+                                    }`}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span className={`text-xs font-black truncate ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>Q-Bank engine/ error log</span>
+                                    {activePromptId === 'qbank_engine' && (
+                                      <span className={`${settingsThemeMode === 'dark' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'} px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider`}>Active</span>
+                                    )}
+                                  </div>
+                                  <p className={`text-[9px] ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} line-clamp-1`}>Custom instructions optimized for NEET PG/INICET QBank incorrect-question review.</p>
+                                </div>
+
+                                {/* Custom Image Prompts */}
+                                {customPrompts.filter(p => !p.type || p.type === 'image').map(prompt => (
+                                  <div
+                                    key={prompt.id}
+                                    onClick={() => setSelectedPromptId(prompt.id)}
+                                    className={`p-3.5 rounded-xl cursor-pointer transition-all duration-200 flex flex-col gap-1 ${selectedPromptId === prompt.id
+                                      ? settingsThemeMode === 'dark' ? 'neu-item-pressed-dark border border-blue-500/50' : 'neu-item-pressed-light border border-blue-500/50'
+                                      : settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'
+                                      }`}
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <span className={`text-xs font-black truncate max-w-[70%] ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>{prompt.name || 'Untitled Prompt'}</span>
+                                      {activePromptId === prompt.id && (
+                                        <span className={`${settingsThemeMode === 'dark' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'} px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider`}>Active</span>
+                                      )}
+                                    </div>
+                                    <p className={`text-[9px] ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} line-clamp-1`}>{prompt.content || 'No instructions.'}</p>
+                                  </div>
+                                ))}
+                              </>
+                            ) : (
+                              <>
+                                {/* Default Text Prompt Option */}
+                                <div
+                                  onClick={() => setSelectedPromptId('text_default')}
+                                  className={`p-3.5 rounded-xl cursor-pointer transition-all duration-200 flex flex-col gap-1 ${selectedPromptId === 'text_default'
+                                    ? settingsThemeMode === 'dark' ? 'neu-item-pressed-dark border border-purple-500/50' : 'neu-item-pressed-light border border-purple-500/50'
+                                    : settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'
+                                    }`}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span className={`text-xs font-black truncate ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>Default Text Extractor (Basic & Cloze)</span>
+                                  </div>
+                                  <p className={`text-[9px] ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} line-clamp-1`}>Standard AI extraction from textbook prose and raw notes.</p>
+                                </div>
+
+                                {/* Strict Verbatim Text Prompt Option */}
+                                <div
+                                  onClick={() => setSelectedPromptId('text_verbatim_json')}
+                                  className={`p-3.5 rounded-xl cursor-pointer transition-all duration-200 flex flex-col gap-1 ${selectedPromptId === 'text_verbatim_json'
+                                    ? settingsThemeMode === 'dark' ? 'neu-item-pressed-dark border border-purple-500/50' : 'neu-item-pressed-light border border-purple-500/50'
+                                    : settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'
+                                    }`}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span className={`text-xs font-black truncate ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>Strict 1:1 Verbatim Q&A Extractor</span>
+                                  </div>
+                                  <p className={`text-[9px] ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} line-clamp-1`}>Strict verbatim 1:1 formatting prompt for raw Q&A lists.</p>
+                                </div>
+
+                                {/* Custom Text Prompts */}
+                                {customPrompts.filter(p => p.type === 'text').map(prompt => (
+                                  <div
+                                    key={prompt.id}
+                                    onClick={() => setSelectedPromptId(prompt.id)}
+                                    className={`p-3.5 rounded-xl cursor-pointer transition-all duration-200 flex flex-col gap-1 ${selectedPromptId === prompt.id
+                                      ? settingsThemeMode === 'dark' ? 'neu-item-pressed-dark border border-purple-500/50' : 'neu-item-pressed-light border border-purple-500/50'
+                                      : settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'
+                                      }`}
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <span className={`text-xs font-black truncate max-w-[70%] ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>{prompt.name || 'Untitled Text Prompt'}</span>
+                                    </div>
+                                    <p className={`text-[9px] ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} line-clamp-1`}>{prompt.content || 'No instructions.'}</p>
+                                  </div>
+                                ))}
+                              </>
+                            )}
                           </div>
                         </motion.div>
 
@@ -24491,7 +25005,7 @@ Return your response strictly as a JSON object matching this schema:
                             )}
                           </div>
 
-                          {(selectedPromptId === 'default' || selectedPromptId === 'pyt_generator' || selectedPromptId === 'qbank_engine') && (
+                          {(selectedPromptId === 'default' || selectedPromptId === 'pyt_generator' || selectedPromptId === 'qbank_engine' || selectedPromptId === 'text_default' || selectedPromptId === 'text_verbatim_json') && (
                             <div className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-amber-500/30 text-amber-300' : 'neu-pressed-light border border-amber-300/60 text-amber-900'} rounded-xl p-3 flex gap-2`}>
                               <Info className="w-4 h-4 shrink-0 mt-0.5" />
                               <div className="text-[10px]">
@@ -24500,7 +25014,11 @@ Return your response strictly as a JSON object matching this schema:
                                     ? 'System Default (Read-only)' 
                                     : selectedPromptId === 'pyt_generator'
                                     ? 'High-Yield PYT Generator (Read-only)'
-                                    : 'Q-Bank engine/ error log (Read-only)'}
+                                    : selectedPromptId === 'qbank_engine'
+                                    ? 'Q-Bank engine/ error log (Read-only)'
+                                    : selectedPromptId === 'text_default'
+                                    ? 'Default Text Extractor (Read-only)'
+                                    : 'Strict 1:1 Verbatim Extractor (Read-only)'}
                                 </p>
                                 <p className="mt-0.5 opacity-90">To customize, click **Duplicate** to create an editable custom copy.</p>
                               </div>
@@ -26035,7 +26553,7 @@ Return your response strictly as a JSON object matching this schema:
                             initial={{ opacity: 0, y: -10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.5, delay: 0.05 }}
-                            className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-2 rounded-2xl shrink-0`}
+                            className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-2 rounded-2xl shrink-0 space-y-2`}
                           >
                             <div className={`grid grid-cols-2 gap-1.5 p-1 rounded-xl ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-gray-200/80'}`}>
                               <button
@@ -26061,6 +26579,34 @@ Return your response strictly as a JSON object matching this schema:
                                 <span>📝</span> Raw Text Mode
                               </button>
                             </div>
+
+                            {/* Sub-Mode Toggle inside Raw Text Mode */}
+                            {cardGenerationInputMode === 'text' && (
+                              <div className={`grid grid-cols-2 gap-1.5 p-1 rounded-xl animate-in fade-in duration-300 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-gray-200/80'}`}>
+                                <button
+                                  type="button"
+                                  onClick={() => setRawTextSubMode('pure')}
+                                  className={`py-1.5 px-2 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-95 cursor-pointer ${
+                                    rawTextSubMode === 'pure'
+                                      ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-amber-400 border border-amber-500/30' : 'neu-btn-light text-amber-600 border border-amber-200/70')
+                                      : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-800')
+                                  }`}
+                                >
+                                  <span>⚡</span> Pure Parser
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setRawTextSubMode('ai')}
+                                  className={`py-1.5 px-2 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-95 cursor-pointer ${
+                                    rawTextSubMode === 'ai'
+                                      ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-purple-400 border border-purple-500/30' : 'neu-btn-light text-purple-600 border border-purple-200/70')
+                                      : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-800')
+                                  }`}
+                                >
+                                  <span>🧠</span> AI Extractor
+                                </button>
+                              </div>
+                            )}
                           </motion.div>
                           {(() => {
                             const isExpanded = isDeckCardHovered || isDeckCardClicked;
@@ -26163,9 +26709,9 @@ Return your response strictly as a JSON object matching this schema:
                               <input type="file" multiple accept="image/*,application/pdf" className="hidden" ref={fileInputRef} onChange={handleFileSelect} />
                             </div>
                           ) : (
-                            <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-4 shrink-0`}>
+                            <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-4 shrink-0 space-y-3`}>
                               <label className={`block text-[9px] font-black uppercase tracking-widest mb-1.5 text-left ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                                Raw Text Flashcards
+                                Raw Text Flashcards ({rawTextSubMode === 'pure' ? '⚡ Pure Parser' : '🧠 AI Extractor'})
                               </label>
                               <textarea
                                 value={rawTextInput}
@@ -26174,58 +26720,79 @@ Return your response strictly as a JSON object matching this schema:
                                 className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-slate-100 border-[#2b323e] focus:border-blue-500/50' : 'neu-pressed-light text-slate-800 border-white/60 focus:border-blue-500/50'} w-full p-3.5 rounded-2xl outline-none text-xs font-mono leading-relaxed transition resize-y min-h-[160px] custom-scrollbar`}
                                 placeholder="Paste raw text flashcards here..."
                               />
+
+                              <div className="flex gap-2 pt-1">
+                                {rawTextSubMode === 'pure' ? (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={handleParseRawText}
+                                      className={`flex-1 py-2 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'}`}
+                                    >
+                                      <Play className="w-3.5 h-3.5" /> Parse Raw Text
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleExtractRawTextWithAI(true)}
+                                      disabled={isParsingText}
+                                      className={`py-2 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-purple-400 border border-purple-500/30' : 'neu-btn-light text-purple-600 border border-purple-200'}`}
+                                    >
+                                      {isParsingText ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />} Fix with AI
+                                    </button>
+                                  </>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleExtractRawTextWithAI(false)}
+                                    disabled={isParsingText}
+                                    className={`w-full py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'}`}
+                                  >
+                                    {isParsingText ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />} Extract Cards with AI
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           )}
 
-                          {/* PROMPT SELECTORS */}
-                          <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-4 shrink-0`}>
-                            <div className="space-y-3">
-                              <div>
-                                <label className={`block text-[9px] font-black uppercase tracking-widest mb-1 text-left ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Prompt Template</label>
-                                <NeumorphicSelect
-                                  value={generationPromptId}
-                                  onChange={(val) => setGenerationPromptId(val)}
-                                  options={[
-                                    { value: 'default', label: 'Default Medical Prompt' },
-                                    { value: 'pyt_generator', label: 'High-Yield PYT Generator' },
-                                    { value: 'qbank_engine', label: 'Q-Bank engine/ error log' },
-                                    ...customPrompts.map(p => ({ value: p.id, label: p.name }))
-                                  ]}
-                                  themeMode={settingsThemeMode}
-                                  placeholder="Select Prompt Template..."
-                                />
+                          {/* PROMPT SELECTORS - Shown for Image Mode OR (Raw Text Mode -> AI Extractor) */}
+                          {(cardGenerationInputMode === 'image' || (cardGenerationInputMode === 'text' && rawTextSubMode === 'ai')) && (
+                            <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-4 shrink-0`}>
+                              <div className="space-y-3">
+                                {cardGenerationInputMode === 'image' ? (
+                                  <div>
+                                    <label className={`block text-[9px] font-black uppercase tracking-widest mb-1 text-left ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Prompt Template</label>
+                                    <NeumorphicSelect
+                                      value={generationPromptId}
+                                      onChange={(val) => setGenerationPromptId(val)}
+                                      options={[
+                                        { value: 'default', label: 'Default Medical Prompt' },
+                                        { value: 'pyt_generator', label: 'High-Yield PYT Generator' },
+                                        { value: 'qbank_engine', label: 'Q-Bank engine/ error log' },
+                                        ...customPrompts.filter(p => !p.type || p.type === 'image').map(p => ({ value: p.id, label: p.name }))
+                                      ]}
+                                      themeMode={settingsThemeMode}
+                                      placeholder="Select Prompt Template..."
+                                    />
+                                  </div>
+                                ) : (
+                                  <div>
+                                    <label className={`block text-[9px] font-black uppercase tracking-widest mb-1 text-left ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Text Prompt Template</label>
+                                    <NeumorphicSelect
+                                      value={selectedTextPromptId}
+                                      onChange={(val) => setSelectedTextPromptId(val)}
+                                      options={[
+                                        { value: 'text_default', label: 'Default Text Extractor (Basic & Cloze)' },
+                                        { value: 'text_verbatim_json', label: 'Strict 1:1 Verbatim Q&A Extractor' },
+                                        ...customPrompts.filter(p => p.type === 'text').map(p => ({ value: p.id, label: p.name }))
+                                      ]}
+                                      themeMode={settingsThemeMode}
+                                      placeholder="Select Text Prompt..."
+                                    />
+                                  </div>
+                                )}
                               </div>
-
-                              {(() => {
-                                const currentPromptName = generationPromptId === 'default'
-                                  ? 'Default Medical Prompt'
-                                  : generationPromptId === 'pyt_generator'
-                                  ? 'High-Yield PYT Generator'
-                                  : generationPromptId === 'qbank_engine'
-                                  ? 'Q-Bank engine/ error log'
-                                  : (customPrompts.find(p => p.id === generationPromptId)?.name || '');
-                                const isHighYield = currentPromptName.toLowerCase().includes('high-yield');
-                                if (isHighYield) {
-                                  const subjects = Array.from(new Set(pytTopicsList.map(p => p.subject).filter(Boolean)));
-                                  return (
-                                    <div className="animate-in slide-in-from-top-2 duration-200">
-                                      <label className={`block text-[9px] font-black uppercase tracking-widest mb-1 text-left ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Select Subject</label>
-                                      <NeumorphicSelect
-                                        value={selectedGenerationSubject}
-                                        onChange={(val) => setSelectedGenerationSubject(val)}
-                                        options={[
-                                          { value: '', label: '-- Choose Subject --' },
-                                          ...subjects.map(sub => ({ value: sub, label: sub }))
-                                        ]}
-                                        themeMode={settingsThemeMode}
-                                        placeholder="Choose Subject..."
-                                      />
-                                    </div>
-                                  );
-                                }
-                              })()}
                             </div>
-                          </div>
+                          )}
 
                           {(() => {
                             const isExpanded = isQueueCardHovered || isQueueCardClicked;
@@ -26491,7 +27058,21 @@ Return your response strictly as a JSON object matching this schema:
                               </div>
                             </div>
 
-                            {activeQueueItem?.status === 'done' && (
+                            {activeQueueItem?.isRawText ? (
+                              <UiverseButton
+                                icon={<CheckCircle className="w-4 h-4 text-emerald-400" />}
+                                onClick={() => commitRawTextBatchToTargetDeck(activeQueueItem)}
+                                size="sm"
+                                themeMode={settingsThemeMode}
+                                isSuccess={isSaving}
+                                successText="Committed!"
+                                disabled={isSaving || (activeQueueItem.generatedCards?.length || 0) === 0}
+                                fullWidth
+                                className="w-full"
+                              >
+                                Commit ({activeQueueItem.generatedCards?.length || 0}) Cards to Target Deck ({hierarchy})
+                              </UiverseButton>
+                            ) : activeQueueItem?.status === 'done' && (
                               <div className="grid grid-cols-3 gap-2 w-full items-center">
                                 <button
                                   disabled={isProcessing || isSaving}
@@ -31823,88 +32404,168 @@ Return your response strictly as a JSON object matching this schema:
                             <div className="flex items-center justify-between">
                               <h3 className={`text-sm font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>Available Prompts</h3>
                               <span className={`${settingsThemeMode === 'dark' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' : 'bg-blue-50 text-blue-700 border border-blue-200'} px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider`}>
-                                {customPrompts.length + 3}
+                                {promptCategoryTab === 'image'
+                                  ? (customPrompts.filter(p => !p.type || p.type === 'image').length + 3)
+                                  : (customPrompts.filter(p => p.type === 'text').length + 2)
+                                }
                               </span>
                             </div>
 
+                            {/* Dual Prompt Collection Category Tab */}
+                            <div className={`grid grid-cols-2 gap-1.5 p-1 rounded-xl ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200'}`}>
+                              <button
+                                type="button"
+                                onClick={() => { setPromptCategoryTab('image'); setSelectedPromptId('default'); }}
+                                className={`py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition ${
+                                  promptCategoryTab === 'image'
+                                    ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400 border border-blue-500/30' : 'neu-btn-light text-blue-600 border border-blue-200')
+                                    : (settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500')
+                                }`}
+                              >
+                                <span>🖼️</span> Image Extraction Prompts
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => { setPromptCategoryTab('text'); setSelectedPromptId('text_default'); }}
+                                className={`py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition ${
+                                  promptCategoryTab === 'text'
+                                    ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-purple-400 border border-purple-500/30' : 'neu-btn-light text-purple-600 border border-purple-200')
+                                    : (settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500')
+                                }`}
+                              >
+                                <span>📝</span> Text Extraction Prompts
+                              </button>
+                            </div>
+
                             <button
-                              onClick={() => createCustomPrompt()}
+                              onClick={() => createCustomPrompt(null, null, promptCategoryTab)}
                               className={`w-full flex items-center justify-center gap-2 ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'} font-black text-xs py-3 px-4 rounded-2xl transition active:scale-95`}
                             >
-                              <Plus className="w-4 h-4" /> Add Custom Prompt
+                              <Plus className="w-4 h-4" /> Add Custom {promptCategoryTab === 'image' ? 'Image' : 'Text'} Prompt
                             </button>
 
                             <div className="space-y-3 max-h-[500px] overflow-y-auto no-scrollbar p-1">
-                              {/* Default Prompt Option */}
-                              <div
-                                onClick={() => setSelectedPromptId('default')}
-                                className={`p-4 rounded-2xl cursor-pointer transition-all duration-200 flex flex-col gap-1.5 ${selectedPromptId === 'default'
-                                  ? settingsThemeMode === 'dark' ? 'neu-item-pressed-dark border border-blue-500/50' : 'neu-item-pressed-light border border-blue-500/50'
-                                  : settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'
-                                  }`}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <span className={`text-xs font-black truncate ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>Default Medical Prompt</span>
-                                  {activePromptId === 'default' && (
-                                    <span className={`${settingsThemeMode === 'dark' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'} px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider`}>Active</span>
-                                  )}
-                                </div>
-                                <p className={`text-[10px] ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} line-clamp-2`}>Standard NEET PG/INICET Anki card generator prompt.</p>
-                              </div>
-
-                              {/* PYT Generator Prompt Option */}
-                              <div
-                                onClick={() => setSelectedPromptId('pyt_generator')}
-                                className={`p-4 rounded-2xl cursor-pointer transition-all duration-200 flex flex-col gap-1.5 ${selectedPromptId === 'pyt_generator'
-                                  ? settingsThemeMode === 'dark' ? 'neu-item-pressed-dark border border-blue-500/50' : 'neu-item-pressed-light border border-blue-500/50'
-                                  : settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'
-                                  }`}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <span className={`text-xs font-black truncate ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>High-Yield PYT Generator</span>
-                                  {activePromptId === 'pyt_generator' && (
-                                    <span className={`${settingsThemeMode === 'dark' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'} px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider`}>Active</span>
-                                  )}
-                                </div>
-                                <p className={`text-[10px] ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} line-clamp-2`}>Custom system instructions optimized for producing High-Yield PYTs.</p>
-                              </div>
-
-                              {/* Q-Bank Engine Prompt Option */}
-                              <div
-                                onClick={() => setSelectedPromptId('qbank_engine')}
-                                className={`p-4 rounded-2xl cursor-pointer transition-all duration-200 flex flex-col gap-1.5 ${selectedPromptId === 'qbank_engine'
-                                  ? settingsThemeMode === 'dark' ? 'neu-item-pressed-dark border border-blue-500/50' : 'neu-item-pressed-light border border-blue-500/50'
-                                  : settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'
-                                  }`}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <span className={`text-xs font-black truncate ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>Q-Bank engine/ error log</span>
-                                  {activePromptId === 'qbank_engine' && (
-                                    <span className={`${settingsThemeMode === 'dark' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'} px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider`}>Active</span>
-                                  )}
-                                </div>
-                                <p className={`text-[10px] ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} line-clamp-2`}>Custom instructions optimized for NEET PG/INICET QBank incorrect-question review.</p>
-                              </div>
-
-                              {/* Custom Prompts list */}
-                              {customPrompts.map(prompt => (
-                                <div
-                                  key={prompt.id}
-                                  onClick={() => setSelectedPromptId(prompt.id)}
-                                  className={`p-4 rounded-2xl cursor-pointer transition-all duration-200 flex flex-col gap-1.5 ${selectedPromptId === prompt.id
-                                    ? settingsThemeMode === 'dark' ? 'neu-item-pressed-dark border border-blue-500/50' : 'neu-item-pressed-light border border-blue-500/50'
-                                    : settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'
-                                    }`}
-                                >
-                                  <div className="flex items-center justify-between">
-                                    <span className={`text-xs font-black truncate max-w-[70%] ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>{prompt.name || 'Untitled Prompt'}</span>
-                                    {activePromptId === prompt.id && (
-                                      <span className={`${settingsThemeMode === 'dark' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'} px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider`}>Active</span>
-                                    )}
+                              {promptCategoryTab === 'image' ? (
+                                <>
+                                  {/* Default Prompt Option */}
+                                  <div
+                                    onClick={() => setSelectedPromptId('default')}
+                                    className={`p-4 rounded-2xl cursor-pointer transition-all duration-200 flex flex-col gap-1.5 ${selectedPromptId === 'default'
+                                      ? settingsThemeMode === 'dark' ? 'neu-item-pressed-dark border border-blue-500/50' : 'neu-item-pressed-light border border-blue-500/50'
+                                      : settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'
+                                      }`}
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <span className={`text-xs font-black truncate ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>Default Medical Prompt</span>
+                                      {activePromptId === 'default' && (
+                                        <span className={`${settingsThemeMode === 'dark' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'} px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider`}>Active</span>
+                                      )}
+                                    </div>
+                                    <p className={`text-[10px] ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} line-clamp-2`}>Standard NEET PG/INICET Anki card generator prompt.</p>
                                   </div>
-                                  <p className={`text-[10px] ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} line-clamp-2`}>{prompt.content || 'No instructions.'}</p>
-                                </div>
-                              ))}
+
+                                  {/* PYT Generator Prompt Option */}
+                                  <div
+                                    onClick={() => setSelectedPromptId('pyt_generator')}
+                                    className={`p-4 rounded-2xl cursor-pointer transition-all duration-200 flex flex-col gap-1.5 ${selectedPromptId === 'pyt_generator'
+                                      ? settingsThemeMode === 'dark' ? 'neu-item-pressed-dark border border-blue-500/50' : 'neu-item-pressed-light border border-blue-500/50'
+                                      : settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'
+                                      }`}
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <span className={`text-xs font-black truncate ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>High-Yield PYT Generator</span>
+                                      {activePromptId === 'pyt_generator' && (
+                                        <span className={`${settingsThemeMode === 'dark' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'} px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider`}>Active</span>
+                                      )}
+                                    </div>
+                                    <p className={`text-[10px] ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} line-clamp-2`}>Custom system instructions optimized for producing High-Yield PYTs.</p>
+                                  </div>
+
+                                  {/* Q-Bank Engine Prompt Option */}
+                                  <div
+                                    onClick={() => setSelectedPromptId('qbank_engine')}
+                                    className={`p-4 rounded-2xl cursor-pointer transition-all duration-200 flex flex-col gap-1.5 ${selectedPromptId === 'qbank_engine'
+                                      ? settingsThemeMode === 'dark' ? 'neu-item-pressed-dark border border-blue-500/50' : 'neu-item-pressed-light border border-blue-500/50'
+                                      : settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'
+                                      }`}
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <span className={`text-xs font-black truncate ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>Q-Bank engine/ error log</span>
+                                      {activePromptId === 'qbank_engine' && (
+                                        <span className={`${settingsThemeMode === 'dark' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'} px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider`}>Active</span>
+                                      )}
+                                    </div>
+                                    <p className={`text-[10px] ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} line-clamp-2`}>Custom instructions optimized for NEET PG/INICET QBank incorrect-question review.</p>
+                                  </div>
+
+                                  {/* Custom Image Prompts list */}
+                                  {customPrompts.filter(p => !p.type || p.type === 'image').map(prompt => (
+                                    <div
+                                      key={prompt.id}
+                                      onClick={() => setSelectedPromptId(prompt.id)}
+                                      className={`p-4 rounded-2xl cursor-pointer transition-all duration-200 flex flex-col gap-1.5 ${selectedPromptId === prompt.id
+                                        ? settingsThemeMode === 'dark' ? 'neu-item-pressed-dark border border-blue-500/50' : 'neu-item-pressed-light border border-blue-500/50'
+                                        : settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'
+                                        }`}
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <span className={`text-xs font-black truncate max-w-[70%] ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>{prompt.name || 'Untitled Prompt'}</span>
+                                        {activePromptId === prompt.id && (
+                                          <span className={`${settingsThemeMode === 'dark' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'} px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider`}>Active</span>
+                                        )}
+                                      </div>
+                                      <p className={`text-[10px] ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} line-clamp-2`}>{prompt.content || 'No instructions.'}</p>
+                                    </div>
+                                  ))}
+                                </>
+                              ) : (
+                                <>
+                                  {/* Default Text Prompt Option */}
+                                  <div
+                                    onClick={() => setSelectedPromptId('text_default')}
+                                    className={`p-4 rounded-2xl cursor-pointer transition-all duration-200 flex flex-col gap-1.5 ${selectedPromptId === 'text_default'
+                                      ? settingsThemeMode === 'dark' ? 'neu-item-pressed-dark border border-purple-500/50' : 'neu-item-pressed-light border border-purple-500/50'
+                                      : settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'
+                                      }`}
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <span className={`text-xs font-black truncate ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>Default Text Extractor (Basic & Cloze)</span>
+                                    </div>
+                                    <p className={`text-[10px] ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} line-clamp-2`}>Standard AI extraction from textbook prose and raw notes.</p>
+                                  </div>
+
+                                  {/* Strict Verbatim Text Prompt Option */}
+                                  <div
+                                    onClick={() => setSelectedPromptId('text_verbatim_json')}
+                                    className={`p-4 rounded-2xl cursor-pointer transition-all duration-200 flex flex-col gap-1.5 ${selectedPromptId === 'text_verbatim_json'
+                                      ? settingsThemeMode === 'dark' ? 'neu-item-pressed-dark border border-purple-500/50' : 'neu-item-pressed-light border border-purple-500/50'
+                                      : settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'
+                                      }`}
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <span className={`text-xs font-black truncate ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>Strict 1:1 Verbatim Q&A Extractor</span>
+                                    </div>
+                                    <p className={`text-[10px] ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} line-clamp-2`}>Strict verbatim 1:1 formatting prompt for raw Q&A lists.</p>
+                                  </div>
+
+                                  {/* Custom Text Prompts */}
+                                  {customPrompts.filter(p => p.type === 'text').map(prompt => (
+                                    <div
+                                      key={prompt.id}
+                                      onClick={() => setSelectedPromptId(prompt.id)}
+                                      className={`p-4 rounded-2xl cursor-pointer transition-all duration-200 flex flex-col gap-1.5 ${selectedPromptId === prompt.id
+                                        ? settingsThemeMode === 'dark' ? 'neu-item-pressed-dark border border-purple-500/50' : 'neu-item-pressed-light border border-purple-500/50'
+                                        : settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'
+                                        }`}
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <span className={`text-xs font-black truncate max-w-[70%] ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>{prompt.name || 'Untitled Text Prompt'}</span>
+                                      </div>
+                                      <p className={`text-[10px] ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} line-clamp-2`}>{prompt.content || 'No instructions.'}</p>
+                                    </div>
+                                  ))}
+                                </>
+                              )}
                             </div>
                           </motion.div>
 
@@ -31934,7 +32595,7 @@ Return your response strictly as a JSON object matching this schema:
                               )}
                             </div>
 
-                            {(selectedPromptId === 'default' || selectedPromptId === 'pyt_generator' || selectedPromptId === 'qbank_engine') && (
+                            {(selectedPromptId === 'default' || selectedPromptId === 'pyt_generator' || selectedPromptId === 'qbank_engine' || selectedPromptId === 'text_default' || selectedPromptId === 'text_verbatim_json') && (
                               <div className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-amber-500/30 text-amber-300' : 'neu-pressed-light border border-amber-300/60 text-amber-900'} rounded-2xl p-4 flex gap-3 animate-in slide-in-from-top duration-200`}>
                                 <Info className="w-5 h-5 shrink-0 mt-0.5" />
                                 <div className="text-xs">
@@ -31943,7 +32604,11 @@ Return your response strictly as a JSON object matching this schema:
                                       ? 'System Default Prompt (Read-only)' 
                                       : selectedPromptId === 'pyt_generator'
                                       ? 'High-Yield PYT Generator Prompt (Read-only)'
-                                      : 'Q-Bank engine/ error log (Read-only)'}
+                                      : selectedPromptId === 'qbank_engine'
+                                      ? 'Q-Bank engine/ error log (Read-only)'
+                                      : selectedPromptId === 'text_default'
+                                      ? 'Default Text Extractor (Read-only)'
+                                      : 'Strict 1:1 Verbatim Extractor (Read-only)'}
                                   </p>
                                   <p className="mt-1 opacity-90">To modify these instructions, click the **Duplicate** button below to create an editable custom copy.</p>
                                 </div>
