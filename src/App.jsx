@@ -3668,13 +3668,13 @@ export default function App() {
   };
 
   const handleSettingsSectionMouseEnter = (key) => {
-    if (!isMobileView) {
+    if (!isMobile) {
       setHoveredSettingsSection(key);
     }
   };
 
   const handleSettingsSectionMouseLeave = (key) => {
-    if (!isMobileView) {
+    if (!isMobile) {
       setHoveredSettingsSection(null);
     }
   };
@@ -3683,7 +3683,7 @@ export default function App() {
     if (pinnedSettingsSection) {
       return pinnedSettingsSection === key;
     }
-    if (!isMobileView) {
+    if (!isMobile) {
       return hoveredSettingsSection === key;
     }
     return false;
