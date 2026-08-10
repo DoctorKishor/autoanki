@@ -3784,15 +3784,9 @@ export default function App() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          onMouseEnter={() => setSettingsOpenSections(prev => ({ ...prev, theme: true }))}
-          onMouseLeave={() => setSettingsOpenSections(prev => ({ ...prev, theme: false }))}
-          className={settingsThemeMode === 'dark' ? 'neu-card-dark p-6 md:p-8 space-y-4 rounded-3xl overflow-hidden' : 'neu-card-light p-6 md:p-8 space-y-4 rounded-3xl overflow-hidden'}
+          className={settingsThemeMode === 'dark' ? 'neu-card-dark p-6 md:p-8 rounded-3xl' : 'neu-card-light p-6 md:p-8 rounded-3xl'}
         >
-          <button
-            type="button"
-            onClick={() => toggleSettingsSection('theme')}
-            className="w-full flex items-center justify-between text-left focus:outline-none select-none cursor-pointer"
-          >
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className={settingsThemeMode === 'dark' ? 'p-3 rounded-2xl neu-pressed-dark text-amber-400' : 'p-3 rounded-2xl neu-pressed-light text-amber-500'}>
                 <Sparkles className="w-5 h-5" />
@@ -3802,45 +3796,30 @@ export default function App() {
                 <p className={`text-xs font-medium ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Select a tactile Soft UI theme for your configuration workspace.</p>
               </div>
             </div>
-            <div className={`p-2.5 rounded-2xl transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-gray-300' : 'neu-pressed-light text-gray-500'}`}>
-              {settingsOpenSections.theme ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-            </div>
-          </button>
 
-          <AnimatePresence initial={false}>
-            {settingsOpenSections.theme && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.3, ease: 'easeInOut' }}
-                className="overflow-hidden pt-4 border-t border-gray-500/10 flex items-center justify-center py-2"
-              >
-                <div className="uiverse-wrapper shrink-0 p-0 flex justify-center items-center">
-                  <label className="pill-toggle cursor-pointer" title="Toggle Neumorphic Theme">
-                    <input
-                      type="checkbox"
-                      checked={settingsThemeMode === 'dark'}
-                      onChange={(e) => saveSettingsThemeMode(e.target.checked ? 'dark' : 'light')}
-                    />
-                    <div className="track flex items-center justify-between px-3.5">
-                      <Sun className="w-4 h-4 text-amber-500 z-0" />
-                      <Moon className="w-4 h-4 text-blue-400 z-0" />
-                      <div className="pill">
-                        <div className="pill-surface flex items-center justify-center">
-                          {settingsThemeMode === 'dark' ? (
-                            <Moon className="w-4 h-4 text-blue-500 stroke-[2.5]" />
-                          ) : (
-                            <Sun className="w-4 h-4 text-amber-500 stroke-[2.5]" />
-                          )}
-                        </div>
-                      </div>
+            <div className="uiverse-wrapper shrink-0 p-0">
+              <label className="pill-toggle cursor-pointer" title="Toggle Neumorphic Theme">
+                <input
+                  type="checkbox"
+                  checked={settingsThemeMode === 'dark'}
+                  onChange={(e) => saveSettingsThemeMode(e.target.checked ? 'dark' : 'light')}
+                />
+                <div className="track flex items-center justify-between px-3.5">
+                  <Sun className="w-4 h-4 text-amber-500 z-0" />
+                  <Moon className="w-4 h-4 text-blue-400 z-0" />
+                  <div className="pill">
+                    <div className="pill-surface flex items-center justify-center">
+                      {settingsThemeMode === 'dark' ? (
+                        <Moon className="w-4 h-4 text-blue-500 stroke-[2.5]" />
+                      ) : (
+                        <Sun className="w-4 h-4 text-amber-500 stroke-[2.5]" />
+                      )}
                     </div>
-                  </label>
+                  </div>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+              </label>
+            </div>
+          </div>
         </motion.div>
 
         {/* Section 2: API & Integration Credentials */}
