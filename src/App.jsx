@@ -11,7 +11,7 @@ import {
   Flame, Trophy, Award, Clock, BookOpen, Activity, Timer, Hourglass, ListChecks, GitMerge,
   Puzzle, Heart, Flag,
   Music, Quote, BarChart as BarChartIcon, Maximize2, MonitorPlay, GripVertical, Code2, Volume2, VolumeX,
-  ChevronUp, Edit2, Layout, ExternalLink, Minimize2, Brain, Sun, Moon
+  ChevronUp, Edit2, Layout, ExternalLink, Minimize2, Brain, Sun, Moon, HardDrive
 } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import JSZip from 'jszip';
