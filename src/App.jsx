@@ -3661,11 +3661,12 @@ export default function App() {
   const [activeSettingsFeatureKey, setActiveSettingsFeatureKey] = useState('cardGeneration');
   const [customModelInput, setCustomModelInput] = useState('');
   const [settingsOpenSections, setSettingsOpenSections] = useState({
-    theme: true,
-    apiKeys: true,
-    storagePrefs: true,
-    aiModels: true,
-    backup: true,
+    theme: false,
+    apiKeys: false,
+    storagePrefs: false,
+    aiModels: false,
+    backup: false,
+    mobileNav: false,
     security: false,
     reset: false
   });
@@ -3783,6 +3784,8 @@ export default function App() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
+          onMouseEnter={() => setSettingsOpenSections(prev => ({ ...prev, theme: true }))}
+          onMouseLeave={() => setSettingsOpenSections(prev => ({ ...prev, theme: false }))}
           className={settingsThemeMode === 'dark' ? 'neu-card-dark p-6 md:p-8 space-y-4 rounded-3xl overflow-hidden' : 'neu-card-light p-6 md:p-8 space-y-4 rounded-3xl overflow-hidden'}
         >
           <button
@@ -3811,12 +3814,9 @@ export default function App() {
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
-                className="overflow-hidden pt-3 border-t border-gray-500/10 flex items-center justify-between"
+                className="overflow-hidden pt-4 border-t border-gray-500/10 flex items-center justify-center py-2"
               >
-                <span className={`text-xs font-bold ${settingsThemeMode === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Current Mode: <span className="font-extrabold uppercase text-blue-500">{settingsThemeMode}</span>
-                </span>
-                <div className="uiverse-wrapper shrink-0 p-0">
+                <div className="uiverse-wrapper shrink-0 p-0 flex justify-center items-center">
                   <label className="pill-toggle cursor-pointer" title="Toggle Neumorphic Theme">
                     <input
                       type="checkbox"
@@ -3848,6 +3848,8 @@ export default function App() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.15 }}
+          onMouseEnter={() => setSettingsOpenSections(prev => ({ ...prev, apiKeys: true }))}
+          onMouseLeave={() => setSettingsOpenSections(prev => ({ ...prev, apiKeys: false }))}
           className={settingsThemeMode === 'dark' ? 'neu-card-dark p-6 md:p-8 space-y-4 rounded-3xl overflow-hidden' : 'neu-card-light p-6 md:p-8 space-y-4 rounded-3xl overflow-hidden'}
         >
           <button
@@ -4039,6 +4041,8 @@ export default function App() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
+          onMouseEnter={() => setSettingsOpenSections(prev => ({ ...prev, storagePrefs: true }))}
+          onMouseLeave={() => setSettingsOpenSections(prev => ({ ...prev, storagePrefs: false }))}
           className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'} p-6 md:p-8 rounded-3xl space-y-4 overflow-hidden`}
         >
           <button
@@ -4119,6 +4123,8 @@ export default function App() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.25 }}
+          onMouseEnter={() => setSettingsOpenSections(prev => ({ ...prev, aiModels: true }))}
+          onMouseLeave={() => setSettingsOpenSections(prev => ({ ...prev, aiModels: false }))}
           className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'} p-6 md:p-8 rounded-3xl space-y-6 overflow-hidden`}
         >
           <button
@@ -4357,7 +4363,9 @@ export default function App() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
-          className={settingsThemeMode === 'dark' ? 'neu-card-dark p-6 md:p-8 rounded-3xl space-y-4 overflow-hidden' : 'neu-card-light p-6 md:p-8 rounded-3xl space-y-4 overflow-hidden'}
+          onMouseEnter={() => setSettingsOpenSections(prev => ({ ...prev, backup: true }))}
+          onMouseLeave={() => setSettingsOpenSections(prev => ({ ...prev, backup: false }))}
+          className={settingsThemeMode === 'dark' ? 'neu-card-dark p-6 md:p-8 space-y-4 overflow-hidden' : 'neu-card-light p-6 md:p-8 space-y-4 overflow-hidden'}
         >
           <button
             type="button"
@@ -4488,142 +4496,146 @@ export default function App() {
           </AnimatePresence>
         </motion.div>
 
-        {/* Section 6: Mobile Bottom Navigation Bar Selector */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-          className={settingsThemeMode === 'dark' ? 'neu-card-dark rounded-3xl overflow-hidden p-6 md:p-8 space-y-4' : 'neu-card-light rounded-3xl overflow-hidden p-6 md:p-8 space-y-4'}
-        >
-          <button
-            type="button"
-            onClick={() => toggleSettingsSection('mobileNav')}
-            className="w-full flex items-center justify-between text-left focus:outline-none select-none cursor-pointer"
+        {/* Section 6: Mobile Bottom Navigation Bar Selector (Mobile View Exclusive) */}
+        {isMobileView && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+            onMouseEnter={() => setSettingsOpenSections(prev => ({ ...prev, mobileNav: true }))}
+            onMouseLeave={() => setSettingsOpenSections(prev => ({ ...prev, mobileNav: false }))}
+            className={settingsThemeMode === 'dark' ? 'neu-card-dark rounded-3xl overflow-hidden p-6 md:p-8 space-y-4' : 'neu-card-light rounded-3xl overflow-hidden p-6 md:p-8 space-y-4'}
           >
-            <div className="flex items-center gap-3">
-              <div className={`p-3 rounded-2xl ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'}`}>
-                <Menu className="w-5 h-5" />
-              </div>
-              <div className="text-left">
-                <h2 className={`text-base font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>Mobile Bottom Navigation Bar Selector</h2>
-                <p className={`text-xs font-medium ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                  {draftNavIds.length} of 8 selected · toggle visibility & drag to reorder
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              {navSaveToast && (
-                <span className="text-[9px] font-black text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">✓ Saved!</span>
-              )}
-              <div className={`p-2.5 rounded-2xl transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-gray-300' : 'neu-pressed-light text-gray-500'}`}>
-                {settingsOpenSections.mobileNav ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-              </div>
-            </div>
-          </button>
-
-          <AnimatePresence initial={false}>
-            {settingsOpenSections.mobileNav && (
-              <motion.div
-                key="settings-nav-tabs-body"
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.3, ease: 'easeInOut' }}
-                className="overflow-hidden pt-4 border-t border-gray-500/10 space-y-4"
-              >
-                <div className="grid grid-cols-1 gap-2.5">
-                  {ALL_MENUS.map(menu => {
-                    const isChecked = draftNavIds.includes(menu.id);
-                    const isDisabled = !isChecked && draftNavIds.length >= 8;
-                    return (
-                      <UiverseSwitch
-                        key={menu.id}
-                        id={`settings-nav-switch-${menu.id}`}
-                        label={menu.label}
-                        checked={isChecked}
-                        disabled={isDisabled}
-                        themeMode={settingsThemeMode}
-                        size="sm"
-                        onChange={(val) => {
-                          let newIds;
-                          if (!val) {
-                            newIds = draftNavIds.filter(id => id !== menu.id);
-                          } else {
-                            const order = ALL_MENUS.map(m => m.id);
-                            newIds = [...draftNavIds, menu.id].sort((a, b) => order.indexOf(a) - order.indexOf(b));
-                          }
-                          setDraftNavIds(newIds);
-                        }}
-                      />
-                    );
-                  })}
+            <button
+              type="button"
+              onClick={() => toggleSettingsSection('mobileNav')}
+              className="w-full flex items-center justify-between text-left focus:outline-none select-none cursor-pointer"
+            >
+              <div className="flex items-center gap-3">
+                <div className={`p-3 rounded-2xl ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'}`}>
+                  <Menu className="w-5 h-5" />
                 </div>
-
-                <div>
-                  <h4 className={`text-[10px] font-black uppercase tracking-wider mb-3 ${settingsThemeMode === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Drag to Reorder Active Items</h4>
-                  <DragDropContext onDragEnd={(result) => {
-                    if (!result.destination) return;
-                    const reordered = Array.from(draftNavIds);
-                    const [moved] = reordered.splice(result.source.index, 1);
-                    reordered.splice(result.destination.index, 0, moved);
-                    setDraftNavIds(reordered);
-                  }}>
-                    <Droppable droppableId="settings-nav-reorder" direction="vertical">
-                      {(provided) => (
-                        <div ref={provided.innerRef} {...provided.droppableProps} className="flex flex-col gap-2.5 w-full">
-                          {draftNavIds.map((id, index) => {
-                            const menu = ALL_MENUS.find(m => m.id === id);
-                            if (!menu) return null;
-                            return (
-                              <Draggable key={id} draggableId={`settings-nav-${id}`} index={index}>
-                                {(prov, snapshot) => (
-                                  <div
-                                    ref={prov.innerRef}
-                                    {...prov.draggableProps}
-                                    {...prov.dragHandleProps}
-                                    className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl border text-xs md:text-sm font-bold transition select-none ${
-                                      snapshot.isDragging
-                                        ? 'border-blue-400 shadow-lg shadow-blue-500/20 scale-[1.01]'
-                                        : settingsThemeMode === 'dark'
-                                          ? 'neu-pressed-dark border-slate-700/80'
-                                          : 'neu-pressed-light border-slate-200'
-                                    }`}
-                                  >
-                                    <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
-                                      <span className="text-gray-400 font-black cursor-grab text-sm shrink-0">⠿</span>
-                                      <span className={`truncate ${settingsThemeMode === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>{menu.label}</span>
-                                    </div>
-                                    <span className="text-[10px] font-mono px-2.5 py-1 rounded-xl bg-blue-500/10 text-blue-500 font-bold border border-blue-500/20 shrink-0">
-                                      Slot #{index + 1}
-                                    </span>
-                                  </div>
-                                )}
-                              </Draggable>
-                            );
-                          })}
-                          {provided.placeholder}
-                        </div>
-                      )}
-                    </Droppable>
-                  </DragDropContext>
+                <div className="text-left">
+                  <h2 className={`text-base font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>Mobile Bottom Navigation Bar Selector</h2>
+                  <p className={`text-xs font-medium ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                    {draftNavIds.length} of 8 selected · toggle visibility & drag to reorder
+                  </p>
                 </div>
+              </div>
+              <div className="flex items-center gap-3">
+                {navSaveToast && (
+                  <span className="text-[9px] font-black text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">✓ Saved!</span>
+                )}
+                <div className={`p-2.5 rounded-2xl transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-gray-300' : 'neu-pressed-light text-gray-500'}`}>
+                  {settingsOpenSections.mobileNav ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                </div>
+              </div>
+            </button>
 
-                <UiverseButton
-                  icon={<Save className={`w-4 h-4 ${settingsThemeMode === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />}
-                  onClick={() => saveBottomNavIds(draftNavIds)}
-                  fullWidth
-                  size="sm"
-                  themeMode={settingsThemeMode}
-                  variant={settingsThemeMode === 'dark' ? 'dark' : 'default'}
-                  isSuccess={navSavedState}
-                  successText="Saved!"
+            <AnimatePresence initial={false}>
+              {settingsOpenSections.mobileNav && (
+                <motion.div
+                  key="settings-nav-tabs-body"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.3, ease: 'easeInOut' }}
+                  className="overflow-hidden pt-4 border-t border-gray-500/10 space-y-4"
                 >
-                  Save Navigation Layout
-                </UiverseButton>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.div>
+                  <div className="grid grid-cols-1 gap-2.5">
+                    {ALL_MENUS.map(menu => {
+                      const isChecked = draftNavIds.includes(menu.id);
+                      const isDisabled = !isChecked && draftNavIds.length >= 8;
+                      return (
+                        <UiverseSwitch
+                          key={menu.id}
+                          id={`settings-nav-switch-${menu.id}`}
+                          label={menu.label}
+                          checked={isChecked}
+                          disabled={isDisabled}
+                          themeMode={settingsThemeMode}
+                          size="sm"
+                          onChange={(val) => {
+                            let newIds;
+                            if (!val) {
+                              newIds = draftNavIds.filter(id => id !== menu.id);
+                            } else {
+                              const order = ALL_MENUS.map(m => m.id);
+                              newIds = [...draftNavIds, menu.id].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+                            }
+                            setDraftNavIds(newIds);
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
+
+                  <div>
+                    <h4 className={`text-[10px] font-black uppercase tracking-wider mb-3 ${settingsThemeMode === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Drag to Reorder Active Items</h4>
+                    <DragDropContext onDragEnd={(result) => {
+                      if (!result.destination) return;
+                      const reordered = Array.from(draftNavIds);
+                      const [moved] = reordered.splice(result.source.index, 1);
+                      reordered.splice(result.destination.index, 0, moved);
+                      setDraftNavIds(reordered);
+                    }}>
+                      <Droppable droppableId="settings-nav-reorder" direction="vertical">
+                        {(provided) => (
+                          <div ref={provided.innerRef} {...provided.droppableProps} className="flex flex-col gap-2.5 w-full">
+                            {draftNavIds.map((id, index) => {
+                              const menu = ALL_MENUS.find(m => m.id === id);
+                              if (!menu) return null;
+                              return (
+                                <Draggable key={id} draggableId={`settings-nav-${id}`} index={index}>
+                                  {(prov, snapshot) => (
+                                    <div
+                                      ref={prov.innerRef}
+                                      {...prov.draggableProps}
+                                      {...prov.dragHandleProps}
+                                      className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl border text-xs md:text-sm font-bold transition select-none ${
+                                        snapshot.isDragging
+                                          ? 'border-blue-400 shadow-lg shadow-blue-500/20 scale-[1.01]'
+                                          : settingsThemeMode === 'dark'
+                                            ? 'neu-pressed-dark border-slate-700/80'
+                                            : 'neu-pressed-light border-slate-200'
+                                      }`}
+                                    >
+                                      <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
+                                        <span className="text-gray-400 font-black cursor-grab text-sm shrink-0">⠿</span>
+                                        <span className={`truncate ${settingsThemeMode === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>{menu.label}</span>
+                                      </div>
+                                      <span className="text-[10px] font-mono px-2.5 py-1 rounded-xl bg-blue-500/10 text-blue-500 font-bold border border-blue-500/20 shrink-0">
+                                        Slot #{index + 1}
+                                      </span>
+                                    </div>
+                                  )}
+                                </Draggable>
+                              );
+                            })}
+                            {provided.placeholder}
+                          </div>
+                        )}
+                      </Droppable>
+                    </DragDropContext>
+                  </div>
+
+                  <UiverseButton
+                    icon={<Save className={`w-4 h-4 ${settingsThemeMode === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />}
+                    onClick={() => saveBottomNavIds(draftNavIds)}
+                    fullWidth
+                    size="sm"
+                    themeMode={settingsThemeMode}
+                    variant={settingsThemeMode === 'dark' ? 'dark' : 'default'}
+                    isSuccess={navSavedState}
+                    successText="Saved!"
+                  >
+                    Save Navigation Layout
+                  </UiverseButton>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        )}
       </motion.div>
     );
   };
