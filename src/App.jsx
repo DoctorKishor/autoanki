@@ -16614,9 +16614,11 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     }
   }, [selectedPromptId, customPrompts]);
 
+  const isBuiltInPrompt = (id) => id === 'default' || id === 'pyt_generator' || id === 'qbank_engine' || id === 'text_default' || id === 'text_verbatim_json';
+
   // --- CUSTOM PROMPT FUNCTIONS ---
   const saveCustomPrompt = async (id, name, content) => {
-    if (id === 'default' || id === 'pyt_generator' || id === 'qbank_engine' || id === 'text_default' || id === 'text_verbatim_json') {
+    if (isBuiltInPrompt(id)) {
       alert("This built-in prompt is read-only. Please create a custom prompt to save modifications.");
       return;
     }
@@ -16655,7 +16657,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
   };
 
   const deleteCustomPrompt = async (id) => {
-    if (id === 'default' || id === 'pyt_generator' || id === 'qbank_engine' || id === 'text_default' || id === 'text_verbatim_json') return;
+    if (isBuiltInPrompt(id)) return;
     if (!confirm("Are you sure you want to delete this custom prompt?")) return;
 
     try {
@@ -25118,7 +25120,7 @@ Return your response strictly as a JSON object matching this schema:
                                     setEditingPromptContent(e.target.value);
                                   }
                                 }}
-                                readOnly={selectedPromptId === 'default' || selectedPromptId === 'pyt_generator' || selectedPromptId === 'qbank_engine'}
+                                readOnly={isBuiltInPrompt(selectedPromptId)}
                                 className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-slate-100 border-[#2b323e] focus:border-blue-500/50' : 'neu-pressed-light text-slate-800 border-white/60 focus:border-blue-500/50'} w-full p-3 rounded-xl outline-none text-xs font-mono leading-relaxed transition no-scrollbar`}
                                 placeholder="Enter prompt content here..."
                               />
@@ -32701,14 +32703,14 @@ Return your response strictly as a JSON object matching this schema:
                               <div>
                                 <label className={`block text-[10px] font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} mb-2`}>System Instructions</label>
                                 <textarea
-                                  rows={(selectedPromptId === 'default' || selectedPromptId === 'pyt_generator' || selectedPromptId === 'qbank_engine') ? 18 : 15}
+                                  rows={isBuiltInPrompt(selectedPromptId) ? 18 : 15}
                                   value={editingPromptContent}
                                   onChange={(e) => {
                                     if (selectedPromptId !== 'default' && selectedPromptId !== 'pyt_generator' && selectedPromptId !== 'qbank_engine') {
                                       setEditingPromptContent(e.target.value);
                                     }
                                   }}
-                                  readOnly={selectedPromptId === 'default' || selectedPromptId === 'pyt_generator' || selectedPromptId === 'qbank_engine'}
+                                  readOnly={isBuiltInPrompt(selectedPromptId)}
                                   className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-slate-100 border-[#2b323e] focus:border-blue-500/50' : 'neu-pressed-light text-slate-800 border-white/60 focus:border-blue-500/50'} w-full p-4 rounded-2xl outline-none text-xs font-mono leading-relaxed transition no-scrollbar`}
                                   placeholder="Enter prompt content here..."
                                 />
