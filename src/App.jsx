@@ -25046,8 +25046,149 @@ Return your response strictly as a JSON object matching this schema:
                   )}
 
                   {currentTab === 'settings' && (
-                    <div className="space-y-4 text-left pb-24 animate-in fade-in duration-200">
+                    <div className="space-y-4 text-left pb-32 animate-in fade-in duration-200">
                       {renderSettingsView()}
+
+                      {/* Bottom Navigation Configurator — Mobile */}
+                      <motion.div
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5, delay: 0.45 }}
+                        style={{
+                          borderRadius: '24px',
+                          boxShadow: settingsThemeMode === 'dark'
+                            ? '8px 8px 18px #171a20, -8px -8px 18px #2d3440, inset 0 0 0 1px rgba(255,255,255,0.05)'
+                            : '-8px -8px 15px rgba(255,255,255,0.85), 10px 10px 12px rgba(0,0,0,0.1)',
+                          background: settingsThemeMode === 'dark' ? '#222730' : '#e8eaf0',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setNavTabsOpen(o => !o)}
+                          className="w-full flex items-center justify-between px-5 py-4 transition-all duration-200 active:scale-[0.99] cursor-pointer select-none"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-xl ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'}`}>
+                              <Menu className="w-4 h-4" />
+                            </div>
+                            <div className="text-left">
+                              <h3 className={`text-sm font-black leading-tight ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>Bottom Navigation Tabs</h3>
+                              <p className={`text-[10px] font-medium ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                                {draftNavIds.length} of 8 selected &middot; toggle &amp; drag to reorder
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {navSaveToast && (
+                              <span className="text-[9px] font-black text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">&#10003; Saved!</span>
+                            )}
+                            <motion.div
+                              animate={{ rotate: navTabsOpen ? 180 : 0 }}
+                              transition={{ duration: 0.25 }}
+                              className={`w-6 h-6 rounded-full flex items-center justify-center ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-gray-300' : 'neu-pressed-light text-gray-500'}`}
+                            >
+                              <ChevronDown className="w-3.5 h-3.5" />
+                            </motion.div>
+                          </div>
+                        </button>
+
+                        <AnimatePresence initial={false}>
+                          {navTabsOpen && (
+                            <motion.div
+                              key="mobile-nav-tabs-body"
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              transition={{ duration: 0.3, ease: 'easeInOut' }}
+                              className="overflow-hidden"
+                            >
+                              <div
+                                className="px-4 pb-5 space-y-4"
+                                style={{ borderTop: settingsThemeMode === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.07)', paddingTop: '16px' }}
+                              >
+                                <div className="grid grid-cols-2 gap-2.5">
+                                  {ALL_MENUS.map(menu => {
+                                    const isChecked = draftNavIds.includes(menu.id);
+                                    const isDisabled = !isChecked && draftNavIds.length >= 8;
+                                    return (
+                                      <UiverseSwitch
+                                        key={menu.id}
+                                        id={`mobile-nav-switch-${menu.id}`}
+                                        label={menu.label}
+                                        checked={isChecked}
+                                        disabled={isDisabled}
+                                        themeMode={settingsThemeMode}
+                                        size="sm"
+                                        onChange={(val) => {
+                                          let newIds;
+                                          if (!val) {
+                                            newIds = draftNavIds.filter(id => id !== menu.id);
+                                          } else {
+                                            const order = ALL_MENUS.map(m => m.id);
+                                            newIds = [...draftNavIds, menu.id].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+                                          }
+                                          setDraftNavIds(newIds);
+                                        }}
+                                      />
+                                    );
+                                  })}
+                                </div>
+
+                                <div>
+                                  <h4 className={`text-[10px] font-black uppercase tracking-wider mb-2 ${settingsThemeMode === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Drag to Reorder Active Items</h4>
+                                  <DragDropContext onDragEnd={(result) => {
+                                    if (!result.destination) return;
+                                    const reordered = Array.from(draftNavIds);
+                                    const [moved] = reordered.splice(result.source.index, 1);
+                                    reordered.splice(result.destination.index, 0, moved);
+                                    setDraftNavIds(reordered);
+                                  }}>
+                                    <Droppable droppableId="mobile-nav-reorder" direction="horizontal">
+                                      {(provided) => (
+                                        <div ref={provided.innerRef} {...provided.droppableProps} className="flex flex-wrap gap-2">
+                                          {draftNavIds.map((id, index) => {
+                                            const menu = ALL_MENUS.find(m => m.id === id);
+                                            if (!menu) return null;
+                                            return (
+                                              <Draggable key={id} draggableId={`mobile-${id}`} index={index}>
+                                                {(prov, snapshot) => (
+                                                  <div
+                                                    ref={prov.innerRef}
+                                                    {...prov.draggableProps}
+                                                    {...prov.dragHandleProps}
+                                                    className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-bold transition select-none ${snapshot.isDragging ? 'border-blue-400 shadow-lg shadow-blue-500/20 scale-105' : settingsThemeMode === 'dark' ? 'neu-pressed-dark border-slate-700/80' : 'neu-pressed-light border-slate-200'}`}
+                                                  >
+                                                    <span className="text-gray-400">&#8943;</span>
+                                                    <span className={settingsThemeMode === 'dark' ? 'text-gray-200' : 'text-gray-700'}>{menu.label}</span>
+                                                  </div>
+                                                )}
+                                              </Draggable>
+                                            );
+                                          })}
+                                          {provided.placeholder}
+                                        </div>
+                                      )}
+                                    </Droppable>
+                                  </DragDropContext>
+                                </div>
+
+                                <UiverseButton
+                                  icon={<Save className={`w-4 h-4 ${settingsThemeMode === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />}
+                                  onClick={() => saveBottomNavIds(draftNavIds)}
+                                  fullWidth
+                                  size="sm"
+                                  themeMode={settingsThemeMode}
+                                  isSuccess={navSavedState}
+                                  successText="Saved!"
+                                >
+                                  Save Navigation Layout
+                                </UiverseButton>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </motion.div>
                     </div>
                   )}
                 </main>
@@ -31428,329 +31569,157 @@ Return your response strictly as a JSON object matching this schema:
                         initial={{ opacity: 0, y: 15 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -15 }}
-                        transition={{ duration: 2.0, ease: 'easeOut' }}
-                        className={`flex-grow w-full h-full overflow-y-auto smooth-settings-scroll transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-bg-dark' : 'neu-bg-light'
-                          }`}
+                        transition={{ duration: 0.4, ease: 'easeOut' }}
+                        className={`flex-grow w-full h-full overflow-y-auto smooth-settings-scroll transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-bg-dark' : 'neu-bg-light'}`}
                       >
-                        <motion.div
-                          initial="hidden"
-                          animate="show"
-                          variants={{
-                            hidden: { opacity: 0 },
-                            show: { opacity: 1, transition: { staggerChildren: 0.1 } }
-                          }}
-                          className="p-4 lg:p-6 flex flex-col gap-6 max-w-[800px] mx-auto w-full pb-24 lg:pb-6"
-                        >
-                          {/* NEUMORPHIC THEME SWITCHER CARD (Desktop) */}
+                        <div className="p-4 lg:p-6 max-w-[900px] mx-auto w-full pb-12 space-y-6">
+                          {renderSettingsView()}
+
+                          {/* Bottom Navigation Configurator — Desktop */}
                           <motion.div
-                            variants={{
-                              hidden: { opacity: 0, y: 20 },
-                              show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 25 } }
+                            initial={{ opacity: 0, y: 12 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.5, delay: 0.45 }}
+                            style={{
+                              borderRadius: '24px',
+                              boxShadow: settingsThemeMode === 'dark'
+                                ? '8px 8px 18px #171a20, -8px -8px 18px #2d3440, inset 0 0 0 1px rgba(255,255,255,0.05)'
+                                : '-8px -8px 15px rgba(255,255,255,0.85), 10px 10px 12px rgba(0,0,0,0.1)',
+                              background: settingsThemeMode === 'dark' ? '#222730' : '#e8eaf0',
+                              overflow: 'hidden',
                             }}
-                            whileHover={{ y: -2 }}
-                            className={settingsThemeMode === 'dark' ? 'neu-card-dark p-6 md:p-8 space-y-4' : 'neu-card-light p-6 md:p-8 space-y-4'}
                           >
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <button
+                              type="button"
+                              onClick={() => setNavTabsOpen(o => !o)}
+                              className="w-full flex items-center justify-between px-5 py-4 transition-all duration-200 active:scale-[0.99] cursor-pointer select-none"
+                            >
                               <div className="flex items-center gap-3">
-                                <div className={settingsThemeMode === 'dark' ? 'p-3 rounded-2xl neu-pressed-dark text-amber-400' : 'p-3 rounded-2xl neu-pressed-light text-amber-500'}>
-                                  <Sparkles className="w-5 h-5" />
+                                <div className={`p-2 rounded-xl ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'}`}>
+                                  <Menu className="w-4 h-4" />
                                 </div>
-                                <div>
-                                  <h2 className={`text-base font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>Neumorphic UI Theme Mode</h2>
-                                  <p className={`text-xs font-medium ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Select a tactile Soft UI theme for your configuration workspace.</p>
+                                <div className="text-left">
+                                  <h3 className={`text-sm font-black leading-tight ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>Bottom Navigation Tabs</h3>
+                                  <p className={`text-[10px] font-medium ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                                    {draftNavIds.length} of 8 selected · toggle visibility and drag to reorder
+                                  </p>
                                 </div>
                               </div>
-
-                              {/* Uiverse Pill Toggle (Desktop) */}
-                              <div className="uiverse-wrapper shrink-0 p-0">
-                                <label className="pill-toggle cursor-pointer" title="Toggle Neumorphic Theme">
-                                  <input
-                                    type="checkbox"
-                                    checked={settingsThemeMode === 'dark'}
-                                    onChange={(e) => saveSettingsThemeMode(e.target.checked ? 'dark' : 'light')}
-                                  />
-                                  <div className="track flex items-center justify-between px-3.5">
-                                    <Sun className="w-4 h-4 text-amber-500 z-0" />
-                                    <Moon className="w-4 h-4 text-blue-400 z-0" />
-                                    <div className="pill">
-                                      <div className="pill-surface flex items-center justify-center">
-                                        {settingsThemeMode === 'dark' ? (
-                                          <Moon className="w-4 h-4 text-blue-500 stroke-[2.5]" />
-                                        ) : (
-                                          <Sun className="w-4 h-4 text-amber-500 stroke-[2.5]" />
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </label>
+                              <div className="flex items-center gap-2">
+                                {navSaveToast && (
+                                  <span className="text-[9px] font-black text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">✓ Saved!</span>
+                                )}
+                                <motion.div
+                                  animate={{ rotate: navTabsOpen ? 180 : 0 }}
+                                  transition={{ duration: 0.25 }}
+                                  className={`w-6 h-6 rounded-full flex items-center justify-center ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-gray-300' : 'neu-pressed-light text-gray-500'}`}
+                                >
+                                  <ChevronDown className="w-3.5 h-3.5" />
+                                </motion.div>
                               </div>
-                            </div>
-                          </motion.div>
+                            </button>
 
-                          {/* API & INTEGRATION CREDENTIALS CARD */}
-                          <motion.div
-                            variants={{
-                              hidden: { opacity: 0, y: 20 },
-                              show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 25 } }
-                            }}
-                            whileHover={{ y: -2 }}
-                            className={settingsThemeMode === 'dark' ? 'neu-card-dark p-6 md:p-8 space-y-6' : 'neu-card-light p-6 md:p-8 space-y-6'}
-                          >
-                            <h2 className={`text-lg font-black tracking-tight ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>API & Integration Credentials</h2>
-
-                            <div className="space-y-8">
-                              <div className="space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                  <div>
-                                    <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">Gemini API Key</label>
-                                    <div className="relative">
-                                      <input
-                                        type={isApiKeyVisible ? "text" : "password"}
-                                        value={geminiApiKey}
-                                        onChange={(e) => setGeminiApiKey(e.target.value)}
-                                        className={`w-full p-3.5 outline-none text-sm font-mono pr-12 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-gray-800'
-                                          }`}
-                                        placeholder="Paste Gemini API key..."
-                                      />
-                                      <button
-                                        type="button"
-                                        onClick={() => setIsApiKeyVisible(!isApiKeyVisible)}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-500 transition"
-                                      >
-                                        {isApiKeyVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                      </button>
+                            <AnimatePresence initial={false}>
+                              {navTabsOpen && (
+                                <motion.div
+                                  key="desktop-nav-tabs-body"
+                                  initial={{ opacity: 0, height: 0 }}
+                                  animate={{ opacity: 1, height: 'auto' }}
+                                  exit={{ opacity: 0, height: 0 }}
+                                  transition={{ duration: 0.3, ease: 'easeInOut' }}
+                                  className="overflow-hidden"
+                                >
+                                  <div
+                                    className="px-5 pb-5 space-y-4"
+                                    style={{ borderTop: settingsThemeMode === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.07)', paddingTop: '16px' }}
+                                  >
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
+                                      {ALL_MENUS.map(menu => {
+                                        const isChecked = draftNavIds.includes(menu.id);
+                                        const isDisabled = !isChecked && draftNavIds.length >= 8;
+                                        return (
+                                          <UiverseSwitch
+                                            key={menu.id}
+                                            id={`desktop-nav-switch-${menu.id}`}
+                                            label={menu.label}
+                                            checked={isChecked}
+                                            disabled={isDisabled}
+                                            themeMode={settingsThemeMode}
+                                            size="sm"
+                                            onChange={(val) => {
+                                              let newIds;
+                                              if (!val) {
+                                                newIds = draftNavIds.filter(id => id !== menu.id);
+                                              } else {
+                                                const order = ALL_MENUS.map(m => m.id);
+                                                newIds = [...draftNavIds, menu.id].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+                                              }
+                                              setDraftNavIds(newIds);
+                                            }}
+                                          />
+                                        );
+                                      })}
                                     </div>
-                                  </div>
 
-                                  <div>
-                                    <div className="flex justify-between items-center mb-2">
-                                      <label className="block text-xs font-black uppercase tracking-widest text-gray-400">ImgBB API Key</label>
-                                      <a href="https://api.imgbb.com/" target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-500 hover:underline font-bold">
-                                        Get ImgBB Key ↗
-                                      </a>
-                                    </div>
-                                    <div className="relative">
-                                      <input
-                                        type={isImgbbKeyVisible ? "text" : "password"}
-                                        value={imgbbApiKey}
-                                        onChange={(e) => setImgbbApiKey(e.target.value)}
-                                        className={`w-full p-3.5 outline-none text-sm font-mono pr-12 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-gray-800'
-                                          }`}
-                                        placeholder="Paste ImgBB key here..."
-                                      />
-                                      <button
-                                        type="button"
-                                        onClick={() => setIsImgbbKeyVisible(!isImgbbKeyVisible)}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-500 transition"
-                                      >
-                                        {isImgbbKeyVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                      </button>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                <div className="pt-6 border-t border-gray-500/10">
-                                  <div className="flex items-center justify-between mb-4">
-                                    <h3 className={`text-sm font-bold flex items-center gap-2 ${settingsThemeMode === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>
-                                      <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                                        <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
-                                      </svg>
-                                      GitHub PDF Sync Details
-                                    </h3>
-                                    <button
-                                      type="button"
-                                      onClick={() => setShowGithubHelpModal(true)}
-                                      className="text-gray-400 hover:text-blue-500 transition p-1"
-                                      title="How to setup GitHub sync?"
-                                    >
-                                      <HelpCircle className="w-4 h-4" />
-                                    </button>
-                                  </div>
-
-                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div>
-                                      <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">GitHub Username</label>
-                                      <input
-                                        type="text"
-                                        value={githubUsername}
-                                        onChange={(e) => setGithubUsername(e.target.value)}
-                                        placeholder="e.g. yourusername"
-                                        className={`w-full p-3.5 outline-none text-sm font-semibold ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-gray-800'
-                                          }`}
-                                      />
+                                      <h4 className={`text-[10px] font-black uppercase tracking-wider mb-2 ${settingsThemeMode === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Drag to Reorder Active Items</h4>
+                                      <DragDropContext onDragEnd={(result) => {
+                                        if (!result.destination) return;
+                                        const reordered = Array.from(draftNavIds);
+                                        const [moved] = reordered.splice(result.source.index, 1);
+                                        reordered.splice(result.destination.index, 0, moved);
+                                        setDraftNavIds(reordered);
+                                      }}>
+                                        <Droppable droppableId="desktop-nav-reorder" direction="horizontal">
+                                          {(provided) => (
+                                            <div ref={provided.innerRef} {...provided.droppableProps} className="flex flex-wrap gap-2">
+                                              {draftNavIds.map((id, index) => {
+                                                const menu = ALL_MENUS.find(m => m.id === id);
+                                                if (!menu) return null;
+                                                return (
+                                                  <Draggable key={id} draggableId={`desktop-${id}`} index={index}>
+                                                    {(prov, snapshot) => (
+                                                      <div
+                                                        ref={prov.innerRef}
+                                                        {...prov.draggableProps}
+                                                        {...prov.dragHandleProps}
+                                                        className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-bold transition select-none ${snapshot.isDragging ? 'border-blue-400 shadow-lg shadow-blue-500/20 scale-105' : settingsThemeMode === 'dark' ? 'neu-pressed-dark border-slate-700/80' : 'neu-pressed-light border-slate-200'}`}
+                                                      >
+                                                        <span className="text-gray-400">⠿</span>
+                                                        <span className={settingsThemeMode === 'dark' ? 'text-gray-200' : 'text-gray-700'}>{menu.label}</span>
+                                                      </div>
+                                                    )}
+                                                  </Draggable>
+                                                );
+                                              })}
+                                              {provided.placeholder}
+                                            </div>
+                                          )}
+                                        </Droppable>
+                                      </DragDropContext>
                                     </div>
-                                    <div>
-                                      <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">Repository Name</label>
-                                      <input
-                                        type="text"
-                                        value={githubRepo}
-                                        onChange={(e) => setGithubRepo(e.target.value)}
-                                        placeholder="e.g. my-textbooks"
-                                        className={`w-full p-3.5 outline-none text-sm font-semibold ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-gray-800'
-                                          }`}
-                                      />
-                                    </div>
-                                    <div>
-                                      <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">Personal Access Token (PAT)</label>
-                                      <div className="relative">
-                                        <input
-                                          type={isGithubPatVisible ? "text" : "password"}
-                                          value={githubPatToken}
-                                          onChange={(e) => setGithubPatToken(e.target.value)}
-                                          placeholder="ghp_..."
-                                          className={`w-full p-3.5 outline-none text-sm font-mono pr-12 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-gray-800'
-                                            }`}
-                                        />
-                                        <button
-                                          type="button"
-                                          onClick={() => setIsGithubPatVisible(!isGithubPatVisible)}
-                                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-500 transition"
-                                        >
-                                          {isGithubPatVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                        </button>
-                                      </div>
-                                    </div>
-                                  </div>
 
-                                  <div className="pt-6 border-t border-gray-500/10 flex justify-between items-center">
-                                    <div className="text-[10px] text-gray-400 font-medium">Saved locally in IndexedDB & LocalStorage</div>
                                     <UiverseButton
-                                      icon={<Save className="w-4 h-4 text-blue-500" />}
-                                      onClick={saveAllCredentialsLocal}
-                                      size="md"
+                                      icon={<Save className={`w-4 h-4 ${settingsThemeMode === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />}
+                                      onClick={() => saveBottomNavIds(draftNavIds)}
+                                      fullWidth
+                                      size="sm"
                                       themeMode={settingsThemeMode}
-                                      isSuccess={credentialsSavedState}
+                                      variant={settingsThemeMode === 'dark' ? 'dark' : 'default'}
+                                      isSuccess={navSavedState}
                                       successText="Saved!"
                                     >
-                                      Save Credentials
+                                      Save Navigation Layout
                                     </UiverseButton>
                                   </div>
-                                </div>
-                              </div>
-                            </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
                           </motion.div>
-
-                          {/* LOCAL BACKUP & RESTORE CARD (Desktop) */}
-                          <motion.div
-                            variants={{
-                              hidden: { opacity: 0, y: 20 },
-                              show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 25 } }
-                            }}
-                            whileHover={{ y: -2 }}
-                            className={settingsThemeMode === 'dark' ? 'neu-card-dark p-6 md:p-8' : 'neu-card-light p-6 md:p-8'}
-                          >
-                            <div className="flex items-center justify-between mb-6">
-                              <div className="flex items-center gap-3">
-                                <div className={settingsThemeMode === 'dark' ? 'p-3 rounded-2xl neu-pressed-dark text-blue-400' : 'p-3 rounded-2xl neu-pressed-light text-blue-600'}>
-                                  <Database className="w-5 h-5" />
-                                </div>
-                                <div>
-                                  <h2 className={`text-lg font-black tracking-tight ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>Local App Backup & Restore</h2>
-                                  <p className={`text-xs font-medium ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Export/Import your entire workspace or configure automatic background snapshots.</p>
-                                </div>
-                              </div>
-                              <span className="px-3 py-1 bg-green-50 text-green-700 border border-green-200 rounded-full text-[10px] font-black uppercase tracking-wider">
-                                100% Offline Vault
-                              </span>
-                            </div>
-
-                            <div className="space-y-6">
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <UiverseButton
-                                  icon={<Download className="w-4 h-4 text-blue-500" />}
-                                  onClick={handleExportBackup}
-                                  fullWidth
-                                  size="md"
-                                  themeMode={settingsThemeMode}
-                                  isSuccess={exportBackupState}
-                                  successText="Exported!"
-                                >
-                                  Export Backup (.json)
-                                </UiverseButton>
-
-                                <UiverseButton
-                                  icon={<Upload className="w-4 h-4 text-emerald-500" />}
-                                  onClick={handleImportBackup}
-                                  fullWidth
-                                  size="md"
-                                  themeMode={settingsThemeMode}
-                                  isSuccess={importBackupState}
-                                  successText="Imported!"
-                                >
-                                  Import Backup File
-                                </UiverseButton>
-                              </div>
-
-                              <div className="pt-6 border-t border-gray-500/10 space-y-5">
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <h3 className={`text-sm font-bold ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>Automatic Background Backups</h3>
-                                    <p className="text-[11px] text-gray-400 font-medium">Automatically save periodic local snapshots to browser IndexedDB vault.</p>
-                                  </div>
-
-                                  <label className="relative inline-flex items-center cursor-pointer">
-                                    <input
-                                      type="checkbox"
-                                      checked={autoBackupEnabled}
-                                      onChange={(e) => saveBackupConfigLocal(e.target.checked, autoBackupFrequency, autoBackupRetention)}
-                                      className="sr-only peer"
-                                    />
-                                    <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                                  </label>
-                                </div>
-
-                                <AnimatePresence>
-                                  {autoBackupEnabled && (
-                                    <motion.div
-                                      initial={{ opacity: 0, height: 0 }}
-                                      animate={{ opacity: 1, height: 'auto' }}
-                                      exit={{ opacity: 0, height: 0 }}
-                                      transition={{ duration: 0.3, ease: 'easeInOut' }}
-                                      className={`grid grid-cols-1 md:grid-cols-2 gap-6 p-5 rounded-2xl border text-left overflow-hidden ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-gray-200'
-                                        }`}
-                                    >
-                                      <div>
-                                        <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Backup Frequency</label>
-                                        <UiverseGlassRadio
-                                          name="desktopBackupFrequency"
-                                          options={BACKUP_FREQUENCY_OPTIONS}
-                                          value={autoBackupFrequency}
-                                          onChange={(newVal) => saveBackupConfigLocal(autoBackupEnabled, newVal, autoBackupRetention)}
-                                          themeMode={settingsThemeMode}
-                                          size="md"
-                                        />
-                                      </div>
-
-                                      <div>
-                                        <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Retention Policy</label>
-                                        <UiverseGlassRadio
-                                          name="desktopBackupRetention"
-                                          options={BACKUP_RETENTION_OPTIONS}
-                                          value={autoBackupRetention}
-                                          onChange={(newVal) => saveBackupConfigLocal(autoBackupEnabled, autoBackupFrequency, newVal)}
-                                          themeMode={settingsThemeMode}
-                                          size="md"
-                                        />
-                                      </div>
-
-                                      <div className="md:col-span-2 pt-2 border-t border-gray-500/10 flex items-center justify-between text-[11px] font-medium">
-                                        <span className="flex items-center gap-1.5 text-emerald-500">
-                                          <CheckCircle2 className="w-4 h-4" />
-                                          IndexedDB Storage Engine active
-                                        </span>
-                                        <span className="text-gray-400 font-normal">
-                                          {lastBackupTime ? `Last backup: ${lastBackupTime}` : 'Automated snapshots ready'}
-                                        </span>
-                                      </div>
-                                    </motion.div>
-                                  )}
-                                </AnimatePresence>
-                              </div>
-                            </div>
-                          </motion.div>
-                        </motion.div>
+                        </div>
                       </motion.div>
                     )}
+
 
                     {/* PYT MANAGER VIEW (Desktop View 2) */}
                     {currentTab === 'pytManager' && (
