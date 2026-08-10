@@ -3660,19 +3660,33 @@ export default function App() {
 
   const [activeSettingsFeatureKey, setActiveSettingsFeatureKey] = useState('cardGeneration');
   const [customModelInput, setCustomModelInput] = useState('');
-  const [settingsOpenSections, setSettingsOpenSections] = useState({
-    theme: false,
-    apiKeys: false,
-    storagePrefs: false,
-    aiModels: false,
-    backup: false,
-    mobileNav: false,
-    security: false,
-    reset: false
-  });
+  const [pinnedSettingsSection, setPinnedSettingsSection] = useState(null);
+  const [hoveredSettingsSection, setHoveredSettingsSection] = useState(null);
 
-  const toggleSettingsSection = (key) => {
-    setSettingsOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
+  const handleSettingsSectionClick = (key) => {
+    setPinnedSettingsSection(prev => prev === key ? null : key);
+  };
+
+  const handleSettingsSectionMouseEnter = (key) => {
+    if (!isMobileView) {
+      setHoveredSettingsSection(key);
+    }
+  };
+
+  const handleSettingsSectionMouseLeave = (key) => {
+    if (!isMobileView) {
+      setHoveredSettingsSection(null);
+    }
+  };
+
+  const isSettingsSectionOpen = (key) => {
+    if (pinnedSettingsSection) {
+      return pinnedSettingsSection === key;
+    }
+    if (!isMobileView) {
+      return hoveredSettingsSection === key;
+    }
+    return false;
   };
 
   const getFeatureModelChain = useCallback((featureKey) => {
@@ -3761,24 +3775,6 @@ export default function App() {
         transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
         className="space-y-6 text-left pb-28 max-w-5xl mx-auto w-full px-2 pt-2"
       >
-        {/* Header Banner */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.05 }}
-          className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'} p-6 rounded-3xl space-y-2`}
-        >
-          <div className="flex items-center gap-3">
-            <div className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'} p-3 rounded-2xl`}>
-              <Settings className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className={`text-lg font-black tracking-tight ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>System Settings & AI Model Configurator</h1>
-              <p className={`text-xs ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>Manage your API credentials, theme preferences, and feature-wise Gemini fallback chains</p>
-            </div>
-          </div>
-        </motion.div>
-
         {/* Section 1: Neumorphic UI Theme Mode */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -3827,13 +3823,13 @@ export default function App() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.15 }}
-          onMouseEnter={() => setSettingsOpenSections(prev => ({ ...prev, apiKeys: true }))}
-          onMouseLeave={() => setSettingsOpenSections(prev => ({ ...prev, apiKeys: false }))}
+          onMouseEnter={() => handleSettingsSectionMouseEnter('apiKeys')}
+          onMouseLeave={() => handleSettingsSectionMouseLeave('apiKeys')}
           className={settingsThemeMode === 'dark' ? 'neu-card-dark p-6 md:p-8 space-y-4 rounded-3xl overflow-hidden' : 'neu-card-light p-6 md:p-8 space-y-4 rounded-3xl overflow-hidden'}
         >
           <button
             type="button"
-            onClick={() => toggleSettingsSection('apiKeys')}
+            onClick={() => handleSettingsSectionClick('apiKeys')}
             className="w-full flex items-center justify-between text-left focus:outline-none select-none cursor-pointer"
           >
             <div className="flex items-center gap-3">
@@ -3846,12 +3842,12 @@ export default function App() {
               </div>
             </div>
             <div className={`p-2.5 rounded-2xl transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-gray-300' : 'neu-pressed-light text-gray-500'}`}>
-              {settingsOpenSections.apiKeys ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+              {isSettingsSectionOpen('apiKeys') ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
             </div>
           </button>
 
           <AnimatePresence initial={false}>
-            {settingsOpenSections.apiKeys && (
+            {isSettingsSectionOpen('apiKeys') && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
@@ -4020,13 +4016,13 @@ export default function App() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          onMouseEnter={() => setSettingsOpenSections(prev => ({ ...prev, storagePrefs: true }))}
-          onMouseLeave={() => setSettingsOpenSections(prev => ({ ...prev, storagePrefs: false }))}
+          onMouseEnter={() => handleSettingsSectionMouseEnter('storagePrefs')}
+          onMouseLeave={() => handleSettingsSectionMouseLeave('storagePrefs')}
           className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'} p-6 md:p-8 rounded-3xl space-y-4 overflow-hidden`}
         >
           <button
             type="button"
-            onClick={() => toggleSettingsSection('storagePrefs')}
+            onClick={() => handleSettingsSectionClick('storagePrefs')}
             className="w-full flex items-center justify-between text-left focus:outline-none select-none cursor-pointer"
           >
             <div className="flex items-center gap-3">
@@ -4039,12 +4035,12 @@ export default function App() {
               </div>
             </div>
             <div className={`p-2.5 rounded-2xl transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-gray-300' : 'neu-pressed-light text-gray-500'}`}>
-              {settingsOpenSections.storagePrefs ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+              {isSettingsSectionOpen('storagePrefs') ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
             </div>
           </button>
 
           <AnimatePresence initial={false}>
-            {settingsOpenSections.storagePrefs && (
+            {isSettingsSectionOpen('storagePrefs') && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
@@ -4102,13 +4098,13 @@ export default function App() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.25 }}
-          onMouseEnter={() => setSettingsOpenSections(prev => ({ ...prev, aiModels: true }))}
-          onMouseLeave={() => setSettingsOpenSections(prev => ({ ...prev, aiModels: false }))}
+          onMouseEnter={() => handleSettingsSectionMouseEnter('aiModels')}
+          onMouseLeave={() => handleSettingsSectionMouseLeave('aiModels')}
           className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'} p-6 md:p-8 rounded-3xl space-y-6 overflow-hidden`}
         >
           <button
             type="button"
-            onClick={() => toggleSettingsSection('aiModels')}
+            onClick={() => handleSettingsSectionClick('aiModels')}
             className="w-full flex items-center justify-between text-left focus:outline-none select-none cursor-pointer"
           >
             <div className="flex items-center gap-3">
@@ -4131,13 +4127,13 @@ export default function App() {
                 <ExternalLink className="w-3 h-3" /> Official Gemini Models
               </a>
               <div className={`p-2.5 rounded-2xl transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-gray-300' : 'neu-pressed-light text-gray-500'}`}>
-                {settingsOpenSections.aiModels ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                {isSettingsSectionOpen('aiModels') ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
               </div>
             </div>
           </button>
 
           <AnimatePresence initial={false}>
-            {settingsOpenSections.aiModels && (
+            {isSettingsSectionOpen('aiModels') && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
@@ -4342,13 +4338,13 @@ export default function App() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
-          onMouseEnter={() => setSettingsOpenSections(prev => ({ ...prev, backup: true }))}
-          onMouseLeave={() => setSettingsOpenSections(prev => ({ ...prev, backup: false }))}
+          onMouseEnter={() => handleSettingsSectionMouseEnter('backup')}
+          onMouseLeave={() => handleSettingsSectionMouseLeave('backup')}
           className={settingsThemeMode === 'dark' ? 'neu-card-dark p-6 md:p-8 space-y-4 overflow-hidden' : 'neu-card-light p-6 md:p-8 space-y-4 overflow-hidden'}
         >
           <button
             type="button"
-            onClick={() => toggleSettingsSection('backup')}
+            onClick={() => handleSettingsSectionClick('backup')}
             className="w-full flex items-center justify-between text-left focus:outline-none select-none cursor-pointer"
           >
             <div className="flex items-center gap-3">
@@ -4365,13 +4361,13 @@ export default function App() {
                 100% Offline Vault
               </span>
               <div className={`p-2.5 rounded-2xl transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-gray-300' : 'neu-pressed-light text-gray-500'}`}>
-                {settingsOpenSections.backup ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                {isSettingsSectionOpen('backup') ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
               </div>
             </div>
           </button>
 
           <AnimatePresence initial={false}>
-            {settingsOpenSections.backup && (
+            {isSettingsSectionOpen('backup') && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
@@ -4481,13 +4477,13 @@ export default function App() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.4 }}
-            onMouseEnter={() => setSettingsOpenSections(prev => ({ ...prev, mobileNav: true }))}
-            onMouseLeave={() => setSettingsOpenSections(prev => ({ ...prev, mobileNav: false }))}
+            onMouseEnter={() => handleSettingsSectionMouseEnter('mobileNav')}
+            onMouseLeave={() => handleSettingsSectionMouseLeave('mobileNav')}
             className={settingsThemeMode === 'dark' ? 'neu-card-dark rounded-3xl overflow-hidden p-6 md:p-8 space-y-4' : 'neu-card-light rounded-3xl overflow-hidden p-6 md:p-8 space-y-4'}
           >
             <button
               type="button"
-              onClick={() => toggleSettingsSection('mobileNav')}
+              onClick={() => handleSettingsSectionClick('mobileNav')}
               className="w-full flex items-center justify-between text-left focus:outline-none select-none cursor-pointer"
             >
               <div className="flex items-center gap-3">
@@ -4506,13 +4502,13 @@ export default function App() {
                   <span className="text-[9px] font-black text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">✓ Saved!</span>
                 )}
                 <div className={`p-2.5 rounded-2xl transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-gray-300' : 'neu-pressed-light text-gray-500'}`}>
-                  {settingsOpenSections.mobileNav ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                  {isSettingsSectionOpen('mobileNav') ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                 </div>
               </div>
             </button>
 
             <AnimatePresence initial={false}>
-              {settingsOpenSections.mobileNav && (
+              {isSettingsSectionOpen('mobileNav') && (
                 <motion.div
                   key="settings-nav-tabs-body"
                   initial={{ opacity: 0, height: 0 }}
