@@ -25097,7 +25097,7 @@ Return your response strictly as a JSON object matching this schema:
                           )}
 
                           <div className="space-y-3">
-                            {selectedPromptId !== 'default' && selectedPromptId !== 'pyt_generator' && selectedPromptId !== 'qbank_engine' && (
+                            {!isBuiltInPrompt(selectedPromptId) && (
                               <div>
                                 <label className={`block text-[9px] font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} mb-1`}>Prompt Name</label>
                                 <input
@@ -25116,7 +25116,7 @@ Return your response strictly as a JSON object matching this schema:
                                 rows={8}
                                 value={editingPromptContent}
                                 onChange={(e) => {
-                                  if (selectedPromptId !== 'default' && selectedPromptId !== 'pyt_generator' && selectedPromptId !== 'qbank_engine') {
+                                  if (!isBuiltInPrompt(selectedPromptId)) {
                                     setEditingPromptContent(e.target.value);
                                   }
                                 }}
@@ -25128,7 +25128,7 @@ Return your response strictly as a JSON object matching this schema:
 
                             <div className="flex justify-between items-center pt-1">
                               <div>
-                                {selectedPromptId !== 'default' && selectedPromptId !== 'pyt_generator' && selectedPromptId !== 'qbank_engine' && (
+                                {!isBuiltInPrompt(selectedPromptId) && (
                                   <button
                                     onClick={() => deleteCustomPrompt(selectedPromptId)}
                                     className={`${settingsThemeMode === 'dark' ? 'neu-btn-dark text-red-400 hover:text-red-300' : 'neu-btn-light text-red-600 hover:text-red-700'} px-3 py-1.5 rounded-xl text-[10px] font-bold transition active:scale-95`}
@@ -25154,7 +25154,7 @@ Return your response strictly as a JSON object matching this schema:
                                 >
                                   Duplicate
                                 </button>
-                                {selectedPromptId !== 'default' && selectedPromptId !== 'pyt_generator' && selectedPromptId !== 'qbank_engine' && (
+                                {!isBuiltInPrompt(selectedPromptId) && (
                                   <>
                                     <button
                                       onClick={() => {
@@ -32687,7 +32687,7 @@ Return your response strictly as a JSON object matching this schema:
                             )}
 
                             <div className="space-y-4">
-                              {selectedPromptId !== 'default' && selectedPromptId !== 'pyt_generator' && selectedPromptId !== 'qbank_engine' && (
+                              {!isBuiltInPrompt(selectedPromptId) && (
                                 <div>
                                   <label className={`block text-[10px] font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} mb-2`}>Prompt Name</label>
                                   <input
@@ -32706,7 +32706,7 @@ Return your response strictly as a JSON object matching this schema:
                                   rows={isBuiltInPrompt(selectedPromptId) ? 18 : 15}
                                   value={editingPromptContent}
                                   onChange={(e) => {
-                                    if (selectedPromptId !== 'default' && selectedPromptId !== 'pyt_generator' && selectedPromptId !== 'qbank_engine') {
+                                    if (!isBuiltInPrompt(selectedPromptId)) {
                                       setEditingPromptContent(e.target.value);
                                     }
                                   }}
@@ -32718,7 +32718,7 @@ Return your response strictly as a JSON object matching this schema:
 
                               <div className="flex justify-between items-center pt-2">
                                 <div>
-                                  {selectedPromptId !== 'default' && selectedPromptId !== 'pyt_generator' && selectedPromptId !== 'qbank_engine' && (
+                                  {!isBuiltInPrompt(selectedPromptId) && (
                                     <button
                                       onClick={() => deleteCustomPrompt(selectedPromptId)}
                                       className={`${settingsThemeMode === 'dark' ? 'neu-btn-dark text-red-400 hover:text-red-300' : 'neu-btn-light text-red-600 hover:text-red-700'} px-4 py-2 rounded-xl text-xs font-bold transition active:scale-95`}
@@ -32744,7 +32744,7 @@ Return your response strictly as a JSON object matching this schema:
                                   >
                                     Duplicate
                                   </button>
-                                  {selectedPromptId !== 'default' && selectedPromptId !== 'pyt_generator' && selectedPromptId !== 'qbank_engine' && (
+                                  {!isBuiltInPrompt(selectedPromptId) && (
                                     <>
                                       <button
                                         onClick={() => {
