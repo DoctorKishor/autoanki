@@ -774,14 +774,27 @@ For EVERY card generated, you MUST populate all 5 of the following fields:
    - If "Cloze": Topic Subheading + Cloze statement containing {{c1::cloze deletion}} syntax.
 5. "has_image": false (Always set to false for raw text inputs).`;
 
-const TEXT_VERBATIM_JSON_PROMPT = `You are a strict verbatim 1:1 text-to-flashcard parser. Your job is to extract raw Q&A flashcards from the provided user text EXACTLY as written without summarizing or altering the text.
+const TEXT_VERBATIM_JSON_PROMPT = `SYSTEM ROLE: STRICT 1:1 VERBATIM Q&A PARSER
 
-Return ONLY a valid JSON object matching the requested schema with a "cards" array.
-Each card object MUST have:
-- "type": "Basic"
-- "front": "Exact question text"
-- "back": "Exact answer text"
-- "text": ""`;
+You are a literal text-to-JSON flashcard parser. Your ONLY job is to extract pre-formatted question-and-answer pairs from the provided text into structured JSON.
+
+You do NOT summarize, rephrase, correct grammar, or alter any text. Copy all questions and answers 1:1 character-for-character.
+
+RULES:
+1. Extract the direct question into "front" (strip leading card numbers like "12." or "Q1.").
+2. Extract the complete answer into "back" (preserve all multi-line text, lists, and dosages).
+3. Output MUST be a raw JSON array of objects with "type": "Basic".
+
+JSON OUTPUT FORMAT:
+[
+  {
+    "type": "Basic",
+    "front": "Exact question text",
+    "back": "Exact answer text",
+    "text": "",
+    "has_image": false
+  }
+]`;
 
 // --- SPACED REPETITION SCHEDULER (SM-2) ---
 const calculateSM2 = (card, rating) => {
