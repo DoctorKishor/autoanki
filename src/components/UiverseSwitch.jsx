@@ -44,7 +44,7 @@ export function UiverseSwitch({
     >
       {/* Switch Label */}
       <span
-        className={`text-xs md:text-sm font-bold transition-colors duration-200 ${
+        className={`text-xs md:text-sm font-bold transition-colors duration-200 min-w-0 flex-1 truncate pr-2 ${
           checked
             ? isDark
               ? 'text-white'
@@ -58,7 +58,7 @@ export function UiverseSwitch({
       </span>
 
       {/* 3D Neumorphic Switch Track & Slider Knob */}
-      <div className="relative flex items-center flex-shrink-0 ml-3">
+      <div className="relative flex items-center shrink-0 ml-3">
         <input
           type="checkbox"
           id={id}

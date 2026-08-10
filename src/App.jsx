@@ -4391,7 +4391,7 @@ export default function App() {
                     className="px-6 pb-6 space-y-4"
                     style={{ borderTop: settingsThemeMode === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.07)', paddingTop: '16px' }}
                   >
-                    <div className="grid grid-cols-2 gap-2.5">
+                    <div className="grid grid-cols-1 gap-2.5">
                       {ALL_MENUS.map(menu => {
                         const isChecked = draftNavIds.includes(menu.id);
                         const isDisabled = !isChecked && draftNavIds.length >= 8;
