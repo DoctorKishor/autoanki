@@ -391,6 +391,70 @@ export default function ManualCardModal({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, initialCard]);
 
+  // Helpers for inline field images
+  const extractEmbeddedImages = (fieldHtml) => {
+    if (!fieldHtml || typeof fieldHtml !== 'string') return [];
+    const regex = /<img[^>]+src=["'](data:image\/[^"']+|blob:[^"']+)["'][^>]*>/gi;
+    const matches = [];
+    let m;
+    while ((m = regex.exec(fieldHtml)) !== null) {
+      const srcMatch = /src=["']([^"']+)["']/i.exec(m[0]);
+      if (srcMatch && srcMatch[1]) {
+        matches.push({ fullTag: m[0], src: srcMatch[1] });
+      }
+    }
+    return matches;
+  };
+
+  const removeEmbeddedImage = (fieldHtml, targetSrc, fieldName) => {
+    if (!fieldHtml || typeof fieldHtml !== 'string') return;
+    const updated = fieldHtml.replace(targetSrc, '');
+    setForm(prev => ({
+      ...prev,
+      [fieldName]: updated
+    }));
+  };
+
+  const handleImagePasteToField = (e, fieldName) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    let imageItem = null;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        imageItem = items[i];
+        break;
+      }
+    }
+
+    if (imageItem) {
+      e.preventDefault();
+      e.stopPropagation();
+      const file = imageItem.getAsFile();
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64Data = event.target.result;
+        const targetEl = e.target;
+        const start = targetEl.selectionStart !== undefined ? targetEl.selectionStart : (form[fieldName] || '').length;
+        const end = targetEl.selectionEnd !== undefined ? targetEl.selectionEnd : start;
+        const currentVal = form[fieldName] || '';
+
+        const imgTag = `\n<img src="${base64Data}" style="max-width:100%; border-radius:12px; margin:8px 0; display:block;" />\n`;
+        const newVal = currentVal.substring(0, start) + imgTag + currentVal.substring(end);
+
+        setForm(prev => ({
+          ...prev,
+          [fieldName]: newVal,
+          has_image: true
+        }));
+        setErrors(er => ({ ...er, [fieldName]: '' }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   // Set image state helper
   const applyImageState = (imageSrc) => {
     if (!imageSrc) return;
@@ -907,9 +971,28 @@ export default function ManualCardModal({
                     rows={5}
                     value={form.text}
                     onChange={e => { setForm(f => ({ ...f, text: e.target.value })); setErrors(er => ({ ...er, text: '' })); }}
-                    placeholder="Type content here, highlight a word/phrase and click Cloze button to insert deletion markers..."
+                    onPaste={e => handleImagePasteToField(e, 'text')}
+                    placeholder="Type content here, highlight a word/phrase and click Cloze button to insert deletion markers (Ctrl+V to paste image)..."
                     className={`${inp} leading-relaxed resize-y`}
                   />
+                  {extractEmbeddedImages(form.text).length > 0 && (
+                    <div className="mt-2 p-2.5 rounded-xl neu-pressed-dark flex flex-wrap gap-2 items-center">
+                      <span className="text-[10px] font-black uppercase text-gray-400 w-full mb-1">Attached Cloze Images:</span>
+                      {extractEmbeddedImages(form.text).map((img, idx) => (
+                        <div key={idx} className="relative group w-14 h-14 rounded-xl overflow-hidden border border-gray-700 shrink-0">
+                          <img src={img.src} alt="" className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => removeEmbeddedImage(form.text, img.src, 'text')}
+                            className="absolute inset-0 bg-black/70 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center transition"
+                            title="Remove Image"
+                          >
+                            <Trash2 className="w-4 h-4 text-red-400" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   {errors.text && <p className={errTxt}><AlertCircle className="w-3 h-3 inline mr-1" />{errors.text}</p>}
                   <p className={`text-[9px] mt-1.5 ${dark ? 'text-gray-500' : 'text-gray-400'}`}>
                     {'Tip: Highlight text then click Cloze to wrap as {{c1::...}}. Each click increments the ordinal (c1, c2, c3...).'}
@@ -923,9 +1006,28 @@ export default function ManualCardModal({
                       rows={3}
                       value={form.front}
                       onChange={e => { setForm(f => ({ ...f, front: e.target.value })); setErrors(er => ({ ...er, front: '' })); }}
-                      placeholder="What is the question?"
+                      onPaste={e => handleImagePasteToField(e, 'front')}
+                      placeholder="What is the question? (Ctrl+V to paste image)"
                       className={`${inp} font-bold resize-y`}
                     />
+                    {extractEmbeddedImages(form.front).length > 0 && (
+                      <div className="mt-2 p-2.5 rounded-xl neu-pressed-dark flex flex-wrap gap-2 items-center">
+                        <span className="text-[10px] font-black uppercase text-gray-400 w-full mb-1">Attached Front Images:</span>
+                        {extractEmbeddedImages(form.front).map((img, idx) => (
+                          <div key={idx} className="relative group w-14 h-14 rounded-xl overflow-hidden border border-gray-700 shrink-0">
+                            <img src={img.src} alt="" className="w-full h-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => removeEmbeddedImage(form.front, img.src, 'front')}
+                              className="absolute inset-0 bg-black/70 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center transition"
+                              title="Remove Image"
+                            >
+                              <Trash2 className="w-4 h-4 text-red-400" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     {errors.front && <p className={errTxt}><AlertCircle className="w-3 h-3 inline mr-1" />{errors.front}</p>}
                   </div>
                   <div>
@@ -934,9 +1036,28 @@ export default function ManualCardModal({
                       rows={3}
                       value={form.back}
                       onChange={e => { setForm(f => ({ ...f, back: e.target.value })); setErrors(er => ({ ...er, back: '' })); }}
-                      placeholder="The answer..."
+                      onPaste={e => handleImagePasteToField(e, 'back')}
+                      placeholder="The answer... (Ctrl+V to paste image)"
                       className={`${inp} resize-y`}
                     />
+                    {extractEmbeddedImages(form.back).length > 0 && (
+                      <div className="mt-2 p-2.5 rounded-xl neu-pressed-dark flex flex-wrap gap-2 items-center">
+                        <span className="text-[10px] font-black uppercase text-gray-400 w-full mb-1">Attached Back Images:</span>
+                        {extractEmbeddedImages(form.back).map((img, idx) => (
+                          <div key={idx} className="relative group w-14 h-14 rounded-xl overflow-hidden border border-gray-700 shrink-0">
+                            <img src={img.src} alt="" className="w-full h-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => removeEmbeddedImage(form.back, img.src, 'back')}
+                              className="absolute inset-0 bg-black/70 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center transition"
+                              title="Remove Image"
+                            >
+                              <Trash2 className="w-4 h-4 text-red-400" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     {errors.back && <p className={errTxt}><AlertCircle className="w-3 h-3 inline mr-1" />{errors.back}</p>}
                   </div>
                 </div>

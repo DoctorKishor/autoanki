@@ -16616,6 +16616,86 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
 
   const isBuiltInPrompt = (id) => id === 'default' || id === 'pyt_generator' || id === 'qbank_engine' || id === 'text_default' || id === 'text_verbatim_json';
 
+
+  // Helper to extract embedded base64/blob images from field text
+  const extractEmbeddedImages = (fieldHtml) => {
+    if (!fieldHtml || typeof fieldHtml !== 'string') return [];
+    const regex = /<img[^>]+src=["'](data:image\/[^"']+|blob:[^"']+)["'][^>]*>/gi;
+    const matches = [];
+    let m;
+    while ((m = regex.exec(fieldHtml)) !== null) {
+      const srcMatch = /src=["']([^"']+)["']/i.exec(m[0]);
+      if (srcMatch && srcMatch[1]) {
+        matches.push({ fullTag: m[0], src: srcMatch[1] });
+      }
+    }
+    return matches;
+  };
+
+  // Helper to remove an embedded image from field text
+  const removeEmbeddedImage = (fieldHtml, targetSrc, fieldName, cardObj, setCardObj) => {
+    if (!fieldHtml || typeof fieldHtml !== 'string') return;
+    const updated = fieldHtml.replace(targetSrc, '');
+    setCardObj(prev => ({
+      ...prev,
+      [fieldName]: updated
+    }));
+  };
+
+  // Helper to handle image paste directly into a focused text field
+  const handleImagePasteToField = (e, fieldName, cardObj, setCardObj) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    let imageItem = null;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        imageItem = items[i];
+        break;
+      }
+    }
+
+    if (imageItem) {
+      e.preventDefault();
+      e.stopPropagation();
+      const file = imageItem.getAsFile();
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64Data = event.target.result;
+        const targetEl = e.target;
+        const start = targetEl.selectionStart !== undefined ? targetEl.selectionStart : (cardObj[fieldName] || '').length;
+        const end = targetEl.selectionEnd !== undefined ? targetEl.selectionEnd : start;
+        const currentVal = cardObj[fieldName] || '';
+
+        const imgTag = `\n<img src="${base64Data}" style="max-width:100%; border-radius:12px; margin:8px 0; display:block;" />\n`;
+        const newVal = currentVal.substring(0, start) + imgTag + currentVal.substring(end);
+
+        setCardObj(prev => ({
+          ...prev,
+          [fieldName]: newVal,
+          has_image: true
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Helper to render card field text with inline HTML images/formatting
+  const renderFormattedCardContent = (val) => {
+    if (!val || typeof val !== 'string') return val || null;
+    if (val.includes('<img') || val.includes('<br>') || val.includes('\n')) {
+      return (
+        <div 
+          className="prose prose-sm dark:prose-invert max-w-full break-words leading-relaxed"
+          dangerouslySetInnerHTML={{ __html: val.replace(/\n/g, '<br>') }} 
+        />
+      );
+    }
+    return val;
+  };
+
   // --- CUSTOM PROMPT FUNCTIONS ---
   const saveCustomPrompt = async (id, name, content) => {
     if (isBuiltInPrompt(id)) {
@@ -34698,8 +34778,28 @@ Return your response strictly as a JSON object matching this schema:
                           <textarea
                             rows={6} value={editingCard.text || ''}
                             onChange={(e) => setEditingCard({ ...editingCard, text: e.target.value })}
+                            onPaste={(e) => handleImagePasteToField(e, 'text', editingCard, setEditingCard)}
+                            placeholder="Type or paste content/images here (Ctrl+V to paste image)..."
                             className={`w-full p-4 rounded-2xl outline-none text-sm leading-relaxed font-mono transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white border border-gray-800' : 'neu-pressed-light text-gray-800 border border-gray-200'}`}
                           />
+                          {extractEmbeddedImages(editingCard.text).length > 0 && (
+                            <div className="mt-2.5 p-3 rounded-2xl neu-pressed-dark flex flex-wrap gap-2 items-center">
+                              <span className="text-[10px] font-black uppercase text-gray-400 w-full mb-1">Attached Cloze Images:</span>
+                              {extractEmbeddedImages(editingCard.text).map((img, idx) => (
+                                <div key={idx} className="relative group w-16 h-16 rounded-xl overflow-hidden border border-gray-700 shrink-0">
+                                  <img src={img.src} alt="" className="w-full h-full object-cover" />
+                                  <button
+                                    type="button"
+                                    onClick={() => removeEmbeddedImage(editingCard.text, img.src, 'text', editingCard, setEditingCard)}
+                                    className="absolute inset-0 bg-black/70 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center transition"
+                                    title="Remove Image"
+                                  >
+                                    <Trash2 className="w-4 h-4 text-red-400" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <div className="space-y-6">
