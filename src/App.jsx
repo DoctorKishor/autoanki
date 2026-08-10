@@ -4375,8 +4375,8 @@ export default function App() {
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
                 className="overflow-hidden space-y-6 pt-4 border-t border-gray-500/10"
               >
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-xl mx-auto w-full">
-                  <div className="w-full sm:w-1/2 max-w-xs">
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 max-w-xl mx-auto w-full">
+                  <div className="w-[230px] max-w-full">
                     <UiverseButton
                       icon={<Download className="w-4 h-4 text-blue-500" />}
                       onClick={handleExportBackup}
@@ -4390,7 +4390,7 @@ export default function App() {
                     </UiverseButton>
                   </div>
 
-                  <div className="w-full sm:w-1/2 max-w-xs">
+                  <div className="w-[230px] max-w-full">
                     <UiverseButton
                       icon={<Upload className="w-4 h-4 text-emerald-500" />}
                       onClick={handleImportBackup}
