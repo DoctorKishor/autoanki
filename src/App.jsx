@@ -3773,7 +3773,7 @@ export default function App() {
         initial={{ opacity: 0, y: 16, scale: 0.99 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        className="space-y-6 text-left pb-28 max-w-5xl mx-auto w-full px-2 pt-2"
+        className="space-y-6 text-left pb-28 max-w-5xl mx-auto w-full px-4 sm:px-6 pt-4 p-3 sm:p-5"
       >
         {/* Section 1: Neumorphic UI Theme Mode */}
         <motion.div
@@ -3853,7 +3853,7 @@ export default function App() {
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
-                className="overflow-hidden pt-4 space-y-6 border-t border-gray-500/10"
+                className="overflow-hidden pt-4 pb-3 px-1.5 space-y-6 border-t border-gray-500/10"
               >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Gemini API Key */}
@@ -4046,7 +4046,7 @@ export default function App() {
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
-                className="overflow-hidden pt-4 border-t border-gray-500/10"
+                className="overflow-hidden pt-4 pb-3 px-1.5 border-t border-gray-500/10"
               >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   {/* Image Storage Mode */}
@@ -4139,10 +4139,10 @@ export default function App() {
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
-                className="overflow-hidden space-y-6 pt-4 border-t border-gray-500/10"
+                className="overflow-hidden space-y-6 pt-4 pb-3 px-1.5 border-t border-gray-500/10"
               >
                 {/* Feature Selector Nav Tabs */}
-                <div className="flex gap-2 overflow-x-auto custom-scrollbar pb-1">
+                <div className="flex gap-2.5 overflow-x-auto custom-scrollbar p-2 -mx-1">
                   {Object.keys(featureLabels).map(fKey => {
                     const fMeta = featureLabels[fKey];
                     const FIcon = fMeta.icon;
@@ -4373,9 +4373,9 @@ export default function App() {
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
-                className="overflow-hidden space-y-6 pt-4 border-t border-gray-500/10"
+                className="overflow-hidden space-y-6 pt-4 pb-3 px-1.5 border-t border-gray-500/10"
               >
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 max-w-xl mx-auto w-full">
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 max-w-xl mx-auto w-full p-2">
                   <div className="w-[230px] max-w-full">
                     <UiverseButton
                       icon={<Download className="w-4 h-4 text-blue-500" />}
@@ -4519,9 +4519,9 @@ export default function App() {
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
                   transition={{ duration: 0.3, ease: 'easeInOut' }}
-                  className="overflow-hidden pt-4 border-t border-gray-500/10 space-y-4"
+                  className="overflow-hidden pt-4 pb-3 px-1.5 border-t border-gray-500/10 space-y-4"
                 >
-                  <div className="grid grid-cols-1 gap-2.5">
+                  <div className="grid grid-cols-1 gap-2.5 p-1">
                     {ALL_MENUS.map(menu => {
                       const isChecked = draftNavIds.includes(menu.id);
                       const isDisabled = !isChecked && draftNavIds.length >= 8;
@@ -4560,7 +4560,7 @@ export default function App() {
                     }}>
                       <Droppable droppableId="settings-nav-reorder" direction="vertical">
                         {(provided) => (
-                          <div ref={provided.innerRef} {...provided.droppableProps} className="flex flex-col gap-2.5 w-full">
+                          <div ref={provided.innerRef} {...provided.droppableProps} className="flex flex-col gap-2.5 w-full p-1.5">
                             {draftNavIds.map((id, index) => {
                               const menu = ALL_MENUS.find(m => m.id === id);
                               if (!menu) return null;
