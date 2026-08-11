@@ -1,3 +1,4 @@
+import RichInputField from './RichInputField';
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -971,232 +972,62 @@ export default function ManualCardModal({
                       {'Cloze {c1::...}'}
                     </button>
                   </div>
-                  <textarea
-                    ref={clozeRef}
-                    rows={5}
+                  <RichInputField
+                    editorRef={clozeRef}
                     value={form.text}
-                    onChange={e => { setForm(f => ({ ...f, text: e.target.value })); setErrors(er => ({ ...er, text: '' })); }}
-                    onPaste={e => handleImagePasteToField(e, 'text')}
-                    placeholder="Type content here, highlight a word/phrase and click Cloze button to insert deletion markers (Ctrl+V to paste image)..."
-                    className={`${inp} leading-relaxed resize-y`}
+                    onChange={(val) => { setForm(f => ({ ...f, text: val })); setErrors(er => ({ ...er, text: '' })); }}
+                    themeMode={themeMode}
+                    minHeight="140px"
+                    placeholder="Type content here, highlight text and click Cloze, or paste images inline (Ctrl+V)..."
                   />
-                  {extractEmbeddedImages(form.text).length > 0 && (
-                    <div className="mt-2 p-2.5 rounded-xl neu-pressed-dark flex flex-wrap gap-2 items-center">
-                      <span className="text-[10px] font-black uppercase text-gray-400 w-full mb-1">Attached Cloze Images:</span>
-                      {extractEmbeddedImages(form.text).map((img, idx) => (
-                        <div key={idx} className="relative group w-14 h-14 rounded-xl overflow-hidden border border-gray-700 shrink-0">
-                          <img src={img.src} alt="" className="w-full h-full object-cover" />
-                          <button
-                            type="button"
-                            onClick={() => removeEmbeddedImage(form.text, img.src, 'text')}
-                            className="absolute inset-0 bg-black/70 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center transition"
-                            title="Remove Image"
-                          >
-                            <Trash2 className="w-4 h-4 text-red-400" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                   {errors.text && <p className={errTxt}><AlertCircle className="w-3 h-3 inline mr-1" />{errors.text}</p>}
                   <p className={`text-[9px] mt-1.5 ${dark ? 'text-gray-500' : 'text-gray-400'}`}>
-                    {'Tip: Highlight text then click Cloze to wrap as {{c1::...}}. Each click increments the ordinal (c1, c2, c3...).'}
+                    {'Tip: Highlight text then click Cloze to wrap as {{c1::...}}. Paste images inline directly anywhere in the text.'}
                   </p>
                 </div>
               ) : (
                 <div className="space-y-4">
                   <div>
                     <label className={lbl}>Front (Question)</label>
-                    <textarea
-                      rows={3}
+                    <RichInputField
                       value={form.front}
-                      onChange={e => { setForm(f => ({ ...f, front: e.target.value })); setErrors(er => ({ ...er, front: '' })); }}
-                      onPaste={e => handleImagePasteToField(e, 'front')}
-                      placeholder="What is the question? (Ctrl+V to paste image)"
-                      className={`${inp} font-bold resize-y`}
+                      onChange={(val) => { setForm(f => ({ ...f, front: val })); setErrors(er => ({ ...er, front: '' })); }}
+                      themeMode={themeMode}
+                      minHeight="90px"
+                      placeholder="What is the question? (Paste images inline directly)..."
                     />
-                    {extractEmbeddedImages(form.front).length > 0 && (
-                      <div className="mt-2 p-2.5 rounded-xl neu-pressed-dark flex flex-wrap gap-2 items-center">
-                        <span className="text-[10px] font-black uppercase text-gray-400 w-full mb-1">Attached Front Images:</span>
-                        {extractEmbeddedImages(form.front).map((img, idx) => (
-                          <div key={idx} className="relative group w-14 h-14 rounded-xl overflow-hidden border border-gray-700 shrink-0">
-                            <img src={img.src} alt="" className="w-full h-full object-cover" />
-                            <button
-                              type="button"
-                              onClick={() => removeEmbeddedImage(form.front, img.src, 'front')}
-                              className="absolute inset-0 bg-black/70 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center transition"
-                              title="Remove Image"
-                            >
-                              <Trash2 className="w-4 h-4 text-red-400" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
                     {errors.front && <p className={errTxt}><AlertCircle className="w-3 h-3 inline mr-1" />{errors.front}</p>}
                   </div>
                   <div>
                     <label className={lbl}>Back (Answer)</label>
-                    <textarea
-                      rows={3}
+                    <RichInputField
                       value={form.back}
-                      onChange={e => { setForm(f => ({ ...f, back: e.target.value })); setErrors(er => ({ ...er, back: '' })); }}
-                      onPaste={e => handleImagePasteToField(e, 'back')}
-                      placeholder="The answer... (Ctrl+V to paste image)"
-                      className={`${inp} resize-y`}
+                      onChange={(val) => { setForm(f => ({ ...f, back: val })); setErrors(er => ({ ...er, back: '' })); }}
+                      themeMode={themeMode}
+                      minHeight="90px"
+                      placeholder="The answer... (Paste images inline directly)..."
                     />
-                    {extractEmbeddedImages(form.back).length > 0 && (
-                      <div className="mt-2 p-2.5 rounded-xl neu-pressed-dark flex flex-wrap gap-2 items-center">
-                        <span className="text-[10px] font-black uppercase text-gray-400 w-full mb-1">Attached Back Images:</span>
-                        {extractEmbeddedImages(form.back).map((img, idx) => (
-                          <div key={idx} className="relative group w-14 h-14 rounded-xl overflow-hidden border border-gray-700 shrink-0">
-                            <img src={img.src} alt="" className="w-full h-full object-cover" />
-                            <button
-                              type="button"
-                              onClick={() => removeEmbeddedImage(form.back, img.src, 'back')}
-                              className="absolute inset-0 bg-black/70 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center transition"
-                              title="Remove Image"
-                            >
-                              <Trash2 className="w-4 h-4 text-red-400" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
                     {errors.back && <p className={errTxt}><AlertCircle className="w-3 h-3 inline mr-1" />{errors.back}</p>}
-                  </div>
-                </div>
               )}
 
-              {/* Link to Note Page & Image Setup */}
-              <div className={`rounded-2xl p-4 border space-y-3 ${dark ? 'border-gray-800 bg-white/3' : 'border-gray-200/60 bg-gray-50/60'}`}>
-                <div className="flex items-center justify-between">
-                  <label className={`${lbl} mb-0 flex items-center gap-1.5`}>
-                    <ImageIcon className="w-3 h-3 text-emerald-500" />
-                    Link or Upload Image
-                    <span className={`text-[8px] px-2 py-0.5 rounded-full font-bold ${dark ? 'bg-gray-800 text-gray-400' : 'bg-gray-200 text-gray-600'}`}>
-                      {folderPages.length} pages in folder
-                    </span>
-                  </label>
-                  {form.pageId && (
-                    <button
-                      type="button"
-                      onClick={() => setForm(f => ({ ...f, pageId: '', customImage: null, has_image: false, include_image: false }))}
-                      className={`text-[10px] font-bold flex items-center gap-1 ${dark ? 'text-red-400 hover:text-red-300' : 'text-red-500 hover:text-red-700'}`}
-                    >
-                      <X className="w-3 h-3" />Unlink Image
-                    </button>
-                  )}
-                </div>
-
-                {/* Neumorphic Page Select Dropdown */}
-                <NeumorphicSelect
-                  value={form.pageId}
-                  onChange={handlePageSelectChange}
-                  options={pageOptions}
-                  themeMode={themeMode}
-                  placeholder="Select page or upload/drag custom image..."
-                  icon={ImageIcon}
-                />
-
-                {/* Mobile Quick Upload/Pick Photo Button */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (fileInputRef.current) {
-                      fileInputRef.current.value = '';
-                      fileInputRef.current.click();
-                    }
-                  }}
-                  className={`w-full py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition ${
-                    dark
-                      ? 'neu-btn-dark text-blue-400 border-blue-500/30 hover:bg-blue-500/10'
-                      : 'neu-btn-light text-blue-600 border-blue-200 hover:bg-blue-50'
-                  }`}
-                >
-                  <Upload className="w-3.5 h-3.5" />
-                  <span>Choose Photo from Device / Camera</span>
-                </button>
-
-                {/* Image Side / Location Selector ONLY FOR BASIC CARDS */}
-                {form.pageId && linkedImageSrc && form.type === 'Basic' && (
-                  <div className="pt-2 animate-in fade-in duration-200">
-                    <label className={lbl}><Layout className="w-3 h-3 inline mr-1" />Image Location in Card</label>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setForm(f => ({ ...f, imageSide: 'front' }))}
-                        className={`flex-1 py-2 rounded-xl text-xs font-bold transition border flex items-center justify-center gap-1.5 ${
-                          form.imageSide === 'front'
-                            ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20'
-                            : dark ? 'neu-btn-dark text-gray-300' : 'neu-btn-light text-gray-700'
-                        }`}
-                      >
-                        Front (Question Side)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setForm(f => ({ ...f, imageSide: 'back' }))}
-                        className={`flex-1 py-2 rounded-xl text-xs font-bold transition border flex items-center justify-center gap-1.5 ${
-                          (form.imageSide || 'back') === 'back'
-                            ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20'
-                            : dark ? 'neu-btn-dark text-gray-300' : 'neu-btn-light text-gray-700'
-                        }`}
-                      >
-                        Back (Answer Side)
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Crop Tool Overlay */}
-                <AnimatePresence>
-                  {form.pageId && linkedImageSrc && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="overflow-hidden space-y-2 pt-2"
-                    >
-                      <div className="flex items-center justify-between">
-                        <p className={`text-[10px] font-black uppercase tracking-wider ${dark ? 'text-gray-400' : 'text-gray-500'}`}>
-                          Set Image Crop Region
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => setForm(f => ({ ...f, imgBox: { ymin: 100, xmin: 100, ymax: 700, xmax: 900 } }))}
-                          className={`flex items-center gap-1 text-[10px] font-bold ${dark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-500 hover:text-blue-700'}`}
-                        >
-                          <RefreshCw className="w-3 h-3" />Reset Box
-                        </button>
-                      </div>
-                      <CropOverlay
-                        imageSrc={linkedImageSrc}
-                        imgBox={form.imgBox}
-                        onChange={imgBox => setForm(f => ({ ...f, imgBox }))}
-                      />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              {/* Tags */}
+              {/* Card Tags */}
               <div>
                 <label className={lbl}>
-                  <Tag className="w-3 h-3 inline mr-1" />Tags
+                  <Tag className="w-3 h-3 inline mr-1" />Card Tags
                 </label>
                 <div className="flex flex-wrap gap-1.5 mb-2">
-                  {form.tags.map(tag => {
-                    const display = tag.startsWith('#') ? tag : `#${tag}`;
-                    return (
-                      <span key={tag} className={`flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-full font-bold ${dark ? 'neu-pressed-dark text-blue-400 border border-blue-500/30' : 'neu-pressed-light text-blue-600 border border-blue-100'}`}>
-                        {display}
-                        <button type="button" onClick={() => removeTag(tag)} className="hover:text-red-400 transition">
-                          <X className="w-2.5 h-2.5" />
-                        </button>
-                      </span>
-                    );
-                  })}
+                  {form.tags.map(tag => (
+                    <span key={tag} className={`flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-full font-bold ${dark ? 'neu-pressed-dark text-blue-400 border border-blue-500/30' : 'neu-pressed-light text-blue-600 border border-blue-100'}`}>
+                      <span>#{tag}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeTag(tag)}
+                        className={`rounded-full p-0.5 transition ${dark ? 'hover:bg-blue-500/20 text-blue-400' : 'hover:bg-blue-100 text-blue-600'}`}
+                      >
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    </span>
+                  ))}
                 </div>
                 <input
                   type="text"

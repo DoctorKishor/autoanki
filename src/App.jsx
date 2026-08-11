@@ -32,6 +32,7 @@ import { calculateEfficiencyScore, calculateWeightedConcentration } from './util
 import { ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import ExportImageVerificationModal from './components/ExportImageVerificationModal';
 import ManualCardModal from './components/ManualCardModal';
+import RichInputField from './components/RichInputField';
 import ConflictInspectorModal from './components/ConflictInspectorModal';
 import { cropAndMaskDiagram } from './utils/imageCropper';
 import { getLocalSetting, saveLocalSetting, getLocalCards, saveLocalCards, replaceAllLocalCards, saveLocalCard, deleteLocalCard, getLocalPages, saveLocalPages, replaceAllLocalPages, saveLocalPage, deleteLocalPage, getLocalKV, setLocalKV, getLocalPrompts, saveLocalPrompt, deleteLocalPrompt, getAllLocalPytTopics, saveLocalPytTopic, getAllLocalPytProgress, saveLocalPytProgressDoc, getLocalTextbooksMetadata, saveLocalTextbooksMetadata } from './services/localDb';
@@ -18899,6 +18900,37 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
           let escapedF1 = cleanField(f1);
           let escapedF2 = cleanField(f2);
 
+          // Process inline images embedded inside fields (e.g. pasted inline images)
+          const processInlineFieldImages = async (htmlContent) => {
+            if (!htmlContent || typeof htmlContent !== 'string') return htmlContent;
+            const imgRegex = /<img[^>]+src=["'](data:image\/[^"']+|blob:[^"']+)["'][^>]*>/gi;
+            let updatedHtml = htmlContent;
+            let match;
+            while ((match = imgRegex.exec(htmlContent)) !== null) {
+              const fullTag = match[0];
+              const srcMatch = /src=["']([^"']+)["']/i.exec(fullTag);
+              if (srcMatch && srcMatch[1]) {
+                const srcUrl = srcMatch[1];
+                try {
+                  const binaryData = await fetchImageAsBinary(srcUrl);
+                  if (binaryData && binaryData.byteLength > 0) {
+                    const inlineFilename = `inline_${mediaCounter}_${i}.png`;
+                    zip.file(String(mediaCounter), binaryData);
+                    mediaManifest[String(mediaCounter)] = inlineFilename;
+                    mediaCounter++;
+                    updatedHtml = updatedHtml.replace(srcUrl, inlineFilename);
+                  }
+                } catch (err) {
+                  console.warn('Failed to process inline image for Anki export:', err);
+                }
+              }
+            }
+            return updatedHtml;
+          };
+
+          escapedF1 = await processInlineFieldImages(escapedF1);
+          escapedF2 = await processInlineFieldImages(escapedF2);
+
           if (imgFilename) {
             const side = card.image_side || (type === 'Cloze' ? 'text' : 'back');
             const imgTag = `<br><br><div class="card-image-container"><img src="${imgFilename}" style="max-width:100%; border-radius:12px; margin-top:12px; box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div>`;
@@ -34855,85 +34887,35 @@ Return your response strictly as a JSON object matching this schema:
                       {editingCard.type === 'Cloze' ? (
                         <div>
                           <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Cloze Content</label>
-                          <textarea
-                            rows={6} value={editingCard.text || ''}
-                            onChange={(e) => setEditingCard({ ...editingCard, text: e.target.value })}
-                            onPaste={(e) => handleImagePasteToField(e, 'text', editingCard, setEditingCard)}
-                            placeholder="Type or paste content/images here (Ctrl+V to paste image)..."
-                            className={`w-full p-4 rounded-2xl outline-none text-sm leading-relaxed font-mono transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white border border-gray-800' : 'neu-pressed-light text-gray-800 border border-gray-200'}`}
+                          <RichInputField
+                            value={editingCard.text || ''}
+                            onChange={(val) => setEditingCard({ ...editingCard, text: val })}
+                            themeMode={settingsThemeMode}
+                            minHeight="140px"
+                            placeholder="Type or paste content & images inline (Ctrl+V to paste image)..."
                           />
                         </div>
                       ) : (
                         <div className="space-y-6">
                           <div>
                             <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Front (Question)</label>
-                            <textarea
-                              rows={3} value={editingCard.front || ''}
-                              onChange={(e) => setEditingCard({ ...editingCard, front: e.target.value })}
-                              onPaste={(e) => handleImagePasteToField(e, 'front', editingCard, setEditingCard)}
-                              placeholder="What is the question? (Ctrl+V to paste image)"
-                              className={`w-full p-4 rounded-2xl outline-none text-sm font-bold transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white border border-gray-800' : 'neu-pressed-light text-gray-800 border border-gray-200'}`}
+                            <RichInputField
+                              value={editingCard.front || ''}
+                              onChange={(val) => setEditingCard({ ...editingCard, front: val })}
+                              themeMode={settingsThemeMode}
+                              minHeight="90px"
+                              placeholder="What is the question? (Paste images inline directly)..."
                             />
                           </div>
                           <div>
                             <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Back (Answer)</label>
-                            <textarea
-                              rows={3} value={editingCard.back || ''}
-                              onChange={(e) => setEditingCard({ ...editingCard, back: e.target.value })}
-                              onPaste={(e) => handleImagePasteToField(e, 'back', editingCard, setEditingCard)}
-                              placeholder="The answer... (Ctrl+V to paste image)"
-                              className={`w-full p-4 rounded-2xl outline-none text-sm font-bold transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400 border border-gray-800' : 'neu-pressed-light text-blue-600 border border-gray-200'}`}
+                            <RichInputField
+                              value={editingCard.back || ''}
+                              onChange={(val) => setEditingCard({ ...editingCard, back: val })}
+                              themeMode={settingsThemeMode}
+                              minHeight="90px"
+                              placeholder="The answer... (Paste images inline directly)..."
                             />
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Attached Card Images Gallery */}
-                      {Boolean(editingCard.customImage || editingCard.imageUrl || editingCard.base64 || (editingCard.attachedImages && editingCard.attachedImages.length > 0)) && (
-                        <div className={`p-4 rounded-2xl border space-y-3 ${settingsThemeMode === 'dark' ? 'border-gray-800 bg-black/20' : 'border-gray-200/60 bg-gray-50/60'}`}>
-                          <div className="flex items-center justify-between">
-                            <label className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 ${settingsThemeMode === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                              <ImageIcon className="w-3.5 h-3.5 text-blue-500" />
-                              Attached Card Images
-                            </label>
-                            <button
-                              type="button"
-                              onClick={() => setEditingCard({ ...editingCard, customImage: null, imageUrl: null, base64: null, attachedImages: [], has_image: false, include_image: false })}
-                              className="text-[10px] font-bold text-red-500 hover:text-red-400 flex items-center gap-1 transition"
-                            >
-                              Remove All Images
-                            </button>
-                          </div>
-                          <div className="flex flex-wrap gap-3 items-center">
-                            {Array.from(new Set([
-                              ...(editingCard.attachedImages || []),
-                              ...(editingCard.customImage ? [editingCard.customImage] : []),
-                              ...(editingCard.imageUrl ? [editingCard.imageUrl] : []),
-                              ...(editingCard.base64 ? [editingCard.base64] : [])
-                            ])).filter(Boolean).map((imgSrc, idx) => (
-                              <div key={idx} className="relative group w-20 h-20 rounded-xl overflow-hidden border border-gray-700 shrink-0 shadow-md">
-                                <img src={imgSrc} alt="Attached" className="w-full h-full object-cover" />
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const newAttached = (editingCard.attachedImages || []).filter(s => s !== imgSrc);
-                                    const newCustom = editingCard.customImage === imgSrc ? (newAttached[0] || null) : editingCard.customImage;
-                                    setEditingCard({
-                                      ...editingCard,
-                                      attachedImages: newAttached,
-                                      customImage: newCustom,
-                                      imageUrl: newCustom,
-                                      base64: newCustom,
-                                      has_image: Boolean(newCustom || newAttached.length > 0)
-                                    });
-                                  }}
-                                  className="absolute inset-0 bg-black/75 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center transition"
-                                  title="Remove Image"
-                                >
-                                  <Trash2 className="w-5 h-5 text-red-400" />
-                                </button>
-                              </div>
-                            ))}
                           </div>
                         </div>
                       )}
