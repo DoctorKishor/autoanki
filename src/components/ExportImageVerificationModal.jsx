@@ -1,3 +1,4 @@
+import RichInputField from './RichInputField';
 import React, { useState, useEffect, useRef } from 'react';
 import {
   X, Check, AlertTriangle, Image as ImageIcon, Eye, EyeOff, Sparkles,
@@ -539,6 +540,14 @@ function FineTuneCropModal({
 }
 
 // Helper to detect [0, 0, 0, 0] or invalid zero bounding box
+
+const isManualOrInlineCard = (card) => {
+  if (!card) return false;
+  if (card.isManual || card.pageId === 'custom_upload') return true;
+  const textHasImg = (str) => typeof str === 'string' && /<img[^>]+src=/i.test(str);
+  return textHasImg(card.text) || textHasImg(card.front) || textHasImg(card.back);
+};
+
 const isZeroOrInvalidBox = (box) => {
   if (!box) return true;
   let ymin = 0, xmin = 0, ymax = 0, xmax = 0;
@@ -605,6 +614,7 @@ export default function ExportImageVerificationModal({
     setIsGenerating(true);
 
     const initialConfigs = {};
+    let hasManual = false;
     let hasUncertain = false;
     let hasConfirmed = false;
 
@@ -631,8 +641,13 @@ export default function ExportImageVerificationModal({
 
       const includeByDefault = hasImg && confidence >= 70;
 
-      if (hasImg && confidence < 70) hasUncertain = true;
-      if (hasImg && confidence >= 70) hasConfirmed = true;
+      const isManual = isManualOrInlineCard(card);
+      if (isManual) {
+        hasManual = true;
+      } else {
+        if (hasImg && confidence < 70) hasUncertain = true;
+        if (hasImg && confidence >= 70) hasConfirmed = true;
+      }
 
       initialConfigs[id] = {
         includeImage: includeByDefault,
@@ -648,7 +663,9 @@ export default function ExportImageVerificationModal({
     setCardConfigs(initialConfigs);
 
     // Set initial active tab dynamically
-    if (hasUncertain) {
+    if (hasManual) {
+      setActiveTab('manual');
+    } else if (hasUncertain) {
       setActiveTab('uncertain');
     } else if (hasConfirmed) {
       setActiveTab('confirmed');
@@ -737,10 +754,12 @@ export default function ExportImageVerificationModal({
     );
   }
 
-  const confirmedCards = cards.filter((c, idx) => { const id = c.id || `card_${idx}`; const cfg = cardConfigs[id]; return cfg && (c.has_image || cfg.imgBox) && cfg.confidence >= 70; });
-  const uncertainCards = cards.filter((c, idx) => { const id = c.id || `card_${idx}`; const cfg = cardConfigs[id]; return cfg && (c.has_image || cfg.imgBox) && cfg.confidence < 70; });
-  const textOnlyCards  = cards.filter((c, idx) => { const id = c.id || `card_${idx}`; const cfg = cardConfigs[id]; return cfg && !c.has_image && !cfg.imgBox; });
-  const displayedCards = activeTab === 'confirmed' ? confirmedCards : activeTab === 'uncertain' ? uncertainCards : textOnlyCards;
+  const manualCards    = cards.filter((c) => isManualOrInlineCard(c));
+  const confirmedCards = cards.filter((c, idx) => { const id = c.id || `card_${idx}`; const cfg = cardConfigs[id]; return !isManualOrInlineCard(c) && cfg && (c.has_image || cfg.imgBox) && cfg.confidence >= 70; });
+  const uncertainCards = cards.filter((c, idx) => { const id = c.id || `card_${idx}`; const cfg = cardConfigs[id]; return !isManualOrInlineCard(c) && cfg && (c.has_image || cfg.imgBox) && cfg.confidence < 70; });
+  const textOnlyCards  = cards.filter((c, idx) => { const id = c.id || `card_${idx}`; const cfg = cardConfigs[id]; return !isManualOrInlineCard(c) && cfg && !c.has_image && !cfg.imgBox; });
+  
+  const displayedCards = activeTab === 'manual' ? manualCards : activeTab === 'confirmed' ? confirmedCards : activeTab === 'uncertain' ? uncertainCards : textOnlyCards;
 
   const toggleIncludeImage = (id) => setCardConfigs(prev => ({ ...prev, [id]: { ...prev[id], includeImage: !prev[id]?.includeImage } }));
   const setSide = (id, side) => setCardConfigs(prev => ({ ...prev, [id]: { ...prev[id], imageSide: side } }));
@@ -999,23 +1018,36 @@ export default function ExportImageVerificationModal({
                           <div className="space-y-2 text-xs">
                             <div>
                               <label className="text-[10px] font-black text-blue-500 uppercase tracking-wider flex items-center gap-1 mb-1"><Edit3 className="w-3 h-3" /> Question (Front)</label>
-                              <textarea value={cfg.front !== undefined ? cfg.front : (card.front || '')} onChange={(e) => updateCardText(id, 'front', e.target.value)} rows={2} placeholder="Enter question..." className={`w-full text-xs font-bold rounded-xl p-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none transition resize-y ${isDark ? 'bg-slate-700 text-slate-100 border border-slate-600 focus:border-blue-500' : 'bg-white text-slate-800 border border-slate-200 focus:border-blue-500'}`} />
+                              <RichInputField
+                                value={cfg.front !== undefined ? cfg.front : (card.front || '')}
+                                onChange={(val) => updateCardText(id, 'front', val)}
+                                themeMode={themeMode}
+                                minHeight="80px"
+                                placeholder="Enter question (paste images inline directly)..."
+                              />
                             </div>
                             <div>
                               <label className="text-[10px] font-black text-emerald-500 uppercase tracking-wider flex items-center gap-1 mb-1"><Edit3 className="w-3 h-3" /> Answer (Back)</label>
-                              <textarea value={cfg.back !== undefined ? cfg.back : (card.back || '')} onChange={(e) => updateCardText(id, 'back', e.target.value)} rows={2} placeholder="Enter answer..." className={`w-full text-xs font-semibold rounded-xl p-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none transition resize-y ${isDark ? 'bg-slate-700 text-slate-200 border border-slate-600 focus:border-emerald-500' : 'bg-white text-slate-700 border border-slate-200 focus:border-emerald-500'}`} />
+                              <RichInputField
+                                value={cfg.back !== undefined ? cfg.back : (card.back || '')}
+                                onChange={(val) => updateCardText(id, 'back', val)}
+                                themeMode={themeMode}
+                                minHeight="80px"
+                                placeholder="Enter answer (paste images inline directly)..."
+                              />
                             </div>
                           </div>
                         ) : (
                           <div>
                             <label className="text-[10px] font-black text-purple-500 uppercase tracking-wider flex items-center gap-1 mb-1"><Edit3 className="w-3 h-3" /> Cloze Text</label>
-                            <textarea value={cfg.text !== undefined ? cfg.text : (card.text || '')} onChange={(e) => updateCardText(id, 'text', e.target.value)} rows={3} placeholder="Enter cloze text..." className={`w-full text-xs font-bold rounded-xl p-2.5 focus:ring-2 focus:ring-purple-500 focus:outline-none transition resize-y font-mono ${isDark ? 'bg-slate-700 text-slate-100 border border-slate-600 focus:border-purple-500' : 'bg-white text-slate-800 border border-slate-200 focus:border-purple-500'}`} />
+                            <RichInputField
+                              value={cfg.text !== undefined ? cfg.text : (card.text || '')}
+                              onChange={(val) => updateCardText(id, 'text', val)}
+                              themeMode={themeMode}
+                              minHeight="120px"
+                              placeholder="Enter cloze text (paste images inline directly)..."
+                            />
                           </div>
-                        )}
-                        {!cfg.imgBox && cardImgSrc && (
-                          <button onClick={() => handleOpenFineTune(card, id)} className={`mt-1 text-xs font-bold hover:underline flex items-center gap-1.5 ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
-                            <Crop className="w-3.5 h-3.5" /> Add Manual Image Crop Box
-                          </button>
                         )}
                       </div>
                     </div>
