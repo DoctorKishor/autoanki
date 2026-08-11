@@ -27563,7 +27563,7 @@ Return your response strictly as a JSON object matching this schema:
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -15, scale: 0.99 }}
                         transition={{ duration: 2.0, ease: [0.16, 1, 0.3, 1] }}
-                        className="h-full p-5 lg:p-8 flex flex-col lg:flex-row gap-6 max-w-[1600px] mx-auto w-full overflow-y-auto overflow-x-hidden custom-scrollbar"
+                        className="h-full p-4 lg:p-6 flex flex-col lg:flex-row gap-5 max-w-[1600px] mx-auto w-full overflow-hidden shrink-0"
                       >
                         {/* Left: Folders */}
                         <motion.div
@@ -27690,7 +27690,7 @@ Return your response strictly as a JSON object matching this schema:
                           initial={{ opacity: 0, x: 20 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ duration: 0.4, delay: 0.08 }}
-                          className="w-full lg:w-3/4 flex flex-col gap-6 p-1 overflow-visible"
+                          className="w-full lg:w-3/4 flex flex-col h-full overflow-hidden"
                         >
                           <div className={`flex-grow flex flex-col overflow-hidden p-6 rounded-3xl shadow-xl ${settingsThemeMode === 'dark' ? 'neu-card-dark border-gray-800/80 text-white' : 'neu-card-light border-white/80 text-gray-900'
                             }`}>
@@ -27825,9 +27825,9 @@ Return your response strictly as a JSON object matching this schema:
                                   )}
                                 </div>
                               ) : activeQueueId && (activeImageObj || pageCards.length > 0) ? (
-                                <div className="flex flex-col lg:flex-row gap-5 h-full min-h-[620px] lg:min-h-[720px] flex-grow overflow-hidden p-1">
+                                <div className="flex flex-col lg:flex-row gap-4 h-full flex-1 min-h-0 overflow-hidden">
                                   {/* Side-by-side view for saved page */}
-                                  <div className="lg:w-1/2 flex flex-col h-full bg-gray-950 rounded-3xl overflow-hidden relative border border-gray-800 shadow-2xl shrink-0">
+                                  <div className="lg:w-1/2 flex flex-col h-full min-h-0 bg-gray-950 rounded-3xl overflow-hidden relative border border-gray-800 shadow-2xl">
                                     <div className="absolute top-4 left-4 z-10">
                                       <motion.button
                                         whileHover={{ scale: 1.05 }}
@@ -27845,7 +27845,7 @@ Return your response strictly as a JSON object matching this schema:
                                         <p className="text-[10px] mt-2 max-w-[200px]">The source clinical image for these cards was deleted, but the cards have been preserved in your library.</p>
                                       </div>
                                     ) : (
-                                      <div ref={libraryPreviewRef} className={`w-full h-full flex justify-center p-4 lg:p-6 overflow-auto bg-gray-950 ${zoomLevel > 1 ? 'items-start' : 'items-center'}`}>
+                                      <div ref={libraryPreviewRef} className={`w-full h-full flex justify-center p-4 overflow-hidden bg-gray-950 ${zoomLevel > 1 ? 'items-start overflow-auto custom-scrollbar' : 'items-center'}`}>
                                         <>
                                           <div className="absolute top-4 right-4 z-[20] flex flex-col gap-2">
                                             <button onClick={() => setZoomLevel(prev => Math.min(prev + 0.2, 3))} className="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white p-2 rounded-xl transition border border-white/10 shadow-lg active:scale-90" title="Zoom In"><Plus className="w-4 h-4" /></button>
@@ -27862,7 +27862,7 @@ Return your response strictly as a JSON object matching this schema:
                                             <img
                                               src={activeImageObj.imageUrl || activeImageObj.base64}
                                               alt="Page Inspection"
-                                              className={`w-full h-auto rounded-2xl ${zoomLevel > 1 ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
+                                              className={`max-w-full max-h-full w-auto h-auto object-contain rounded-2xl ${zoomLevel > 1 ? 'cursor-grab active:cursor-grabbing max-h-none max-w-none w-full' : 'cursor-default'}`}
                                               onMouseMove={handleImageMouseMove}
                                               onMouseDown={handleImageMouseDown}
                                               onMouseUp={handleImageMouseUp}
@@ -27902,7 +27902,7 @@ Return your response strictly as a JSON object matching this schema:
                                       </div>
                                     )}
                                   </div>
-                                  <div className="lg:w-1/2 flex flex-col h-full gap-4 overflow-hidden p-1">
+                                  <div className="lg:w-1/2 flex flex-col h-full min-h-0 gap-3 overflow-hidden">
                                     <div className="flex justify-between items-center">
                                       <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">Cards from this page</h3>
                                       <div className="flex items-center gap-2 flex-wrap">
@@ -27980,7 +27980,7 @@ Return your response strictly as a JSON object matching this schema:
                                         </motion.button>
                                       </div>
                                     </div>
-                                    <div className="overflow-y-auto pr-2 space-y-3 custom-scrollbar">
+                                    <div className="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar min-h-0">
                                       {pageCards.length === 0 ? (
                                         <div className={`flex flex-col items-center justify-center p-8 py-16 text-center rounded-3xl border border-dashed ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-gray-200'
                                           }`}>
