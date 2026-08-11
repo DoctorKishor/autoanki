@@ -873,6 +873,7 @@ export default function ExportImageVerificationModal({
         >
           <div className="flex items-center gap-3 overflow-x-auto custom-scrollbar py-3 px-1.5">
             {[
+              { key: 'manual', label: `Manual / Inline (${manualCards.length})`, icon: <Edit3 className="w-3.5 h-3.5" />, active: 'bg-purple-600 text-white shadow-md shadow-purple-600/25' },
               { key: 'uncertain', label: `AI Suggested (${uncertainCards.length})`, icon: <AlertTriangle className="w-3.5 h-3.5" />, active: 'bg-amber-500 text-white shadow-md shadow-amber-500/30' },
               { key: 'confirmed', label: `Confirmed (${confirmedCards.length})`, icon: <CheckCircle2 className="w-3.5 h-3.5" />, active: 'bg-emerald-600 text-white shadow-md shadow-emerald-600/25' },
               { key: 'textonly', label: `Text Only (${textOnlyCards.length})`, icon: <FileText className="w-3.5 h-3.5" />, active: 'bg-blue-600 text-white shadow-md shadow-blue-600/25' },
