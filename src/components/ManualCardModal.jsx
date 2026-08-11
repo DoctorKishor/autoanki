@@ -1008,6 +1008,8 @@ export default function ManualCardModal({
                       placeholder="The answer... (Paste images inline directly)..."
                     />
                     {errors.back && <p className={errTxt}><AlertCircle className="w-3 h-3 inline mr-1" />{errors.back}</p>}
+                  </div>
+                </div>
               )}
 
               {/* Card Tags */}
