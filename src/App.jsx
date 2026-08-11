@@ -22982,11 +22982,11 @@ Return your response strictly as a JSON object matching this schema:
                                     </span>
                                   </div>
                                   {card.type === 'Cloze' ? (
-                                    <div className={`text-xs font-medium leading-snug line-clamp-2 ${settingsThemeMode === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{card.text}</div>
+                                    <div className={`text-xs font-medium leading-snug line-clamp-2 ${settingsThemeMode === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{renderFormattedCardContent(card.text)}</div>
                                   ) : (
                                     <div className="space-y-0.5">
-                                      <div className={`text-xs font-bold leading-snug line-clamp-1 ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>{card.front}</div>
-                                      <div className={`text-[10px] font-medium line-clamp-1 ${settingsThemeMode === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>{card.back}</div>
+                                      <div className={`text-xs font-bold leading-snug line-clamp-1 ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>{renderFormattedCardContent(card.front)}</div>
+                                      <div className={`text-[10px] font-medium line-clamp-1 ${settingsThemeMode === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>{renderFormattedCardContent(card.back)}</div>
                                     </div>
                                   )}
                                 </motion.div>
@@ -23269,7 +23269,7 @@ Return your response strictly as a JSON object matching this schema:
                                   <div className="text-sm leading-relaxed font-medium">{renderFormattedCardContent(card.text)}</div>
                                 ) : (
                                   <div className="space-y-1">
-                                    <div className="text-sm font-black leading-tight">{card.front}</div>
+                                    <div className="text-sm font-black leading-tight">{renderFormattedCardContent(card.front)}</div>
                                     <div className="text-xs text-blue-500 font-medium">{renderFormattedCardContent(card.back)}</div>
                                   </div>
                                 )}
@@ -27544,7 +27544,7 @@ Return your response strictly as a JSON object matching this schema:
                                         </button>
                                       </div>
                                     </div>
-                                    <div className="text-[10px] text-gray-800 line-clamp-2">{card.text || card.front}</div>
+                                    <div className="text-[10px] text-gray-800 line-clamp-2">{renderFormattedCardContent(card.text || card.front)}</div>
                                   </div>
                                 ))}
                               </div>
@@ -27809,11 +27809,11 @@ Return your response strictly as a JSON object matching this schema:
                                             </div>
                                           </div>
                                           {card.type === 'Cloze' ? (
-                                            <div className="text-sm leading-relaxed font-medium">{card.text}</div>
+                                            <div className="text-sm leading-relaxed font-medium">{renderFormattedCardContent(card.text)}</div>
                                           ) : (
                                             <div className="space-y-2">
                                               <div className="text-sm font-bold">{renderFormattedCardContent(card.front)}</div>
-                                              <div className="text-xs text-blue-500 font-medium">{card.back}</div>
+                                              <div className="text-xs text-blue-500 font-medium">{renderFormattedCardContent(card.back)}</div>
                                             </div>
                                           )}
                                           <div className="mt-4 pt-3 border-t border-gray-500/10 text-[10px] text-gray-400 font-mono truncate">
@@ -28034,13 +28034,13 @@ Return your response strictly as a JSON object matching this schema:
 
                                                   {card.type === 'Cloze' ? (
                                                     <div>
-                                                      <p className="tip">{card.text}</p>
+                                                      <div className="tip">{renderFormattedCardContent(card.text)}</div>
                                                       <p className="second-text">Cloze Deletion Flashcard</p>
                                                     </div>
                                                   ) : (
                                                     <div>
-                                                      <p className="tip">{card.front || card.question}</p>
-                                                      <p className="second-text">{card.back || card.answer}</p>
+                                                      <div className="tip">{renderFormattedCardContent(card.front || card.question)}</div>
+                                                      <div className="second-text">{renderFormattedCardContent(card.back || card.answer)}</div>
                                                     </div>
                                                   )}
                                                 </motion.div>
@@ -28509,7 +28509,7 @@ Return your response strictly as a JSON object matching this schema:
                                               </div>
 
                                               {card.type === 'Cloze' ? (
-                                                <div className={`text-sm font-medium leading-relaxed ${settingsThemeMode === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>{card.text}</div>
+                                                <div className={`text-sm font-medium leading-relaxed ${settingsThemeMode === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>{renderFormattedCardContent(card.text)}</div>
                                               ) : (
                                                 <div className="space-y-1">
                                                   <div className={`text-sm font-black leading-tight ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>{renderFormattedCardContent(card.front || card.question)}</div>
