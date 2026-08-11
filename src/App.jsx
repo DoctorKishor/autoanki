@@ -7208,6 +7208,23 @@ export default function App() {
 
   // MODALS
   const [editingCard, setEditingCard] = useState(null);
+
+  // Auto-sanitize editingCard whenever it opens to strip raw base64 <img ...> tags from text/front/back
+  useEffect(() => {
+    if (editingCard) {
+      const sanitized = sanitizeCardForEditing(editingCard);
+      if (
+        sanitized.text !== editingCard.text ||
+        sanitized.front !== editingCard.front ||
+        sanitized.back !== editingCard.back ||
+        sanitized.customImage !== editingCard.customImage ||
+        (sanitized.attachedImages || []).length !== (editingCard.attachedImages || []).length
+      ) {
+        setEditingCard(sanitized);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingCard?.id]);
   const [isManualCardModalOpen, setIsManualCardModalOpen] = useState(false);
   const [manualCardInitial, setManualCardInitial] = useState(null);
   const [newFolderDialog, setNewFolderDialog] = useState({ isOpen: false, basePath: '', input: '' });
@@ -16617,32 +16634,64 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
   const isBuiltInPrompt = (id) => id === 'default' || id === 'pyt_generator' || id === 'qbank_engine' || id === 'text_default' || id === 'text_verbatim_json';
 
 
-  // Helper to extract embedded base64/blob images from field text
-  const extractEmbeddedImages = (fieldHtml) => {
-    if (!fieldHtml || typeof fieldHtml !== 'string') return [];
-    const regex = /<img[^>]+src=["'](data:image\/[^"']+|blob:[^"']+)["'][^>]*>/gi;
-    const matches = [];
-    let m;
-    while ((m = regex.exec(fieldHtml)) !== null) {
-      const srcMatch = /src=["']([^"']+)["']/i.exec(m[0]);
-      if (srcMatch && srcMatch[1]) {
-        matches.push({ fullTag: m[0], src: srcMatch[1] });
+  // Helper to sanitize card object for editing: extracts raw <img src="..."> base64 tags into customImage/attachedImages
+  // and strips <img ...> tags from text, front, and back so textareas stay clean.
+  const sanitizeCardForEditing = (card) => {
+    if (!card) return null;
+
+    let text = card.text || '';
+    let front = card.front || '';
+    let back = card.back || '';
+    let customImg = card.customImage || card.imageUrl || card.base64 || null;
+    let attachedImages = card.attachedImages ? [...card.attachedImages] : [];
+
+    const extractFromStr = (str) => {
+      if (!str || typeof str !== 'string') return [];
+      const imgs = [];
+      const regex = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi;
+      let match;
+      while ((match = regex.exec(str)) !== null) {
+        if (match[1]) imgs.push(match[1]);
       }
-    }
-    return matches;
+      return imgs;
+    };
+
+    const embedded = [
+      ...extractFromStr(text),
+      ...extractFromStr(front),
+      ...extractFromStr(back)
+    ];
+
+    embedded.forEach(src => {
+      if (!attachedImages.includes(src)) {
+        attachedImages.push(src);
+      }
+      if (!customImg) {
+        customImg = src;
+      }
+    });
+
+    text = text.replace(/<img[^>]*>/gi, '').trim();
+    front = front.replace(/<img[^>]*>/gi, '').trim();
+    back = back.replace(/<img[^>]*>/gi, '').trim();
+
+    const hasImg = Boolean(customImg || attachedImages.length > 0 || card.has_image || card.pageId);
+
+    return {
+      ...card,
+      text,
+      front,
+      back,
+      customImage: customImg,
+      imageUrl: customImg || card.imageUrl,
+      base64: customImg || card.base64,
+      attachedImages,
+      has_image: hasImg,
+      include_image: hasImg,
+      pageId: card.pageId || (customImg ? 'custom_upload' : '')
+    };
   };
 
-  // Helper to remove an embedded image from field text
-  const removeEmbeddedImage = (fieldHtml, targetSrc, fieldName, cardObj, setCardObj) => {
-    if (!fieldHtml || typeof fieldHtml !== 'string') return;
-    const updated = fieldHtml.replace(targetSrc, '');
-    setCardObj(prev => ({
-      ...prev,
-      [fieldName]: updated
-    }));
-  };
-
-  // Helper to handle image paste directly into a focused text field
   const handleImagePasteToField = (e, fieldName, cardObj, setCardObj) => {
     const items = e.clipboardData?.items;
     if (!items) return;
@@ -16664,19 +16713,24 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       const reader = new FileReader();
       reader.onload = (event) => {
         const base64Data = event.target.result;
-        const targetEl = e.target;
-        const start = targetEl.selectionStart !== undefined ? targetEl.selectionStart : (cardObj[fieldName] || '').length;
-        const end = targetEl.selectionEnd !== undefined ? targetEl.selectionEnd : start;
-        const currentVal = cardObj[fieldName] || '';
+        setCardObj(prev => {
+          if (!prev) return prev;
+          const currentAttached = prev.attachedImages || (prev.customImage ? [prev.customImage] : []);
+          const updatedAttached = Array.from(new Set([...currentAttached, base64Data]));
+          const cleanVal = (prev[fieldName] || '').replace(/<img[^>]*>/gi, '').trim();
 
-        const imgTag = `\n<img src="${base64Data}" style="max-width:100%; border-radius:12px; margin:8px 0; display:block;" />\n`;
-        const newVal = currentVal.substring(0, start) + imgTag + currentVal.substring(end);
-
-        setCardObj(prev => ({
-          ...prev,
-          [fieldName]: newVal,
-          has_image: true
-        }));
+          return {
+            ...prev,
+            [fieldName]: cleanVal,
+            pageId: 'custom_upload',
+            customImage: base64Data,
+            imageUrl: base64Data,
+            base64: base64Data,
+            attachedImages: updatedAttached,
+            has_image: true,
+            include_image: true
+          };
+        });
       };
       reader.readAsDataURL(file);
     }
@@ -18349,7 +18403,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     if (!card) return null;
     const pageId = card.pageId || card.queueId;
     const pageObj = pageId ? (libraryPages.find(p => p.id === pageId) || queue.find(q => q.id === pageId)) : null;
-    return (pageObj ? (pageObj.imageUrl || pageObj.base64) : null) || card.imageUrl || card.base64 || card.sourceImageUrl || null;
+    return (pageObj ? (pageObj.imageUrl || pageObj.base64) : null) || card.customImage || card.imageUrl || card.base64 || (card.attachedImages && card.attachedImages[0]) || card.sourceImageUrl || null;
   };
 
   const cropImageSrc = (imageSrc, coords) => {

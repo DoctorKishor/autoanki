@@ -362,7 +362,7 @@ export default function ManualCardModal({
         const hasImg = Boolean(initialCard.pageId || initialCard.imageUrl || initialCard.base64 || initialCard.customImage || initialCard.has_image);
         setForm({
           ...EMPTY,
-          ...initialCard,
+          ...sanitizedInit,
           imageSide: initialCard.imageSide || initialCard.imageLocation || 'back',
           imgBox: initialCard.imgBox || {
             ymin: initialCard.ymin ?? 100,
@@ -436,19 +436,24 @@ export default function ManualCardModal({
       const reader = new FileReader();
       reader.onload = (event) => {
         const base64Data = event.target.result;
-        const targetEl = e.target;
-        const start = targetEl.selectionStart !== undefined ? targetEl.selectionStart : (form[fieldName] || '').length;
-        const end = targetEl.selectionEnd !== undefined ? targetEl.selectionEnd : start;
-        const currentVal = form[fieldName] || '';
+        setForm(prev => {
+          if (!prev) return prev;
+          const currentAttached = prev.attachedImages || (prev.customImage ? [prev.customImage] : []);
+          const updatedAttached = Array.from(new Set([...currentAttached, base64Data]));
+          const cleanVal = (prev[fieldName] || '').replace(/<img[^>]*>/gi, '').trim();
 
-        const imgTag = `\n<img src="${base64Data}" style="max-width:100%; border-radius:12px; margin:8px 0; display:block;" />\n`;
-        const newVal = currentVal.substring(0, start) + imgTag + currentVal.substring(end);
-
-        setForm(prev => ({
-          ...prev,
-          [fieldName]: newVal,
-          has_image: true
-        }));
+          return {
+            ...prev,
+            [fieldName]: cleanVal,
+            pageId: 'custom_upload',
+            customImage: base64Data,
+            imageUrl: base64Data,
+            base64: base64Data,
+            attachedImages: updatedAttached,
+            has_image: true,
+            include_image: true
+          };
+        });
         setErrors(er => ({ ...er, [fieldName]: '' }));
       };
       reader.readAsDataURL(file);
