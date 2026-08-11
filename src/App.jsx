@@ -22495,7 +22495,6 @@ Return your response strictly as a JSON object matching this schema:
                                 onMoveNode={handleMoveNode}
                                 isMobileMoveMode={!!movingNode}
                                 onToggleMove={(path) => setMovingNode(movingNode === path ? null : path)}
-                                themeMode={settingsThemeMode}
                               />
                             </div>
                           )}
