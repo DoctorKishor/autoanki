@@ -604,9 +604,7 @@ export default function ExportImageVerificationModal({
       return;
     }
 
-    // Prevent re-initializing configs when scrolling or parent component re-renders
-    if (prevIsOpenRef.current) return;
-    prevIsOpenRef.current = true;
+    // Re-initialize card configs whenever modal opens or cards list changes
 
     if (!cards || cards.length === 0) return;
 
