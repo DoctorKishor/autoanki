@@ -27825,9 +27825,9 @@ Return your response strictly as a JSON object matching this schema:
                                   )}
                                 </div>
                               ) : activeQueueId && (activeImageObj || pageCards.length > 0) ? (
-                                <div className="flex flex-col lg:flex-row gap-4 h-full overflow-hidden">
+                                <div className="flex flex-col lg:flex-row gap-5 h-full min-h-[620px] lg:min-h-[720px] flex-grow overflow-hidden p-1">
                                   {/* Side-by-side view for saved page */}
-                                  <div className="lg:w-1/2 bg-gray-950 rounded-3xl overflow-hidden relative border border-gray-800 shadow-2xl">
+                                  <div className="lg:w-1/2 flex flex-col h-full bg-gray-950 rounded-3xl overflow-hidden relative border border-gray-800 shadow-2xl shrink-0">
                                     <div className="absolute top-4 left-4 z-10">
                                       <motion.button
                                         whileHover={{ scale: 1.05 }}
@@ -27845,7 +27845,7 @@ Return your response strictly as a JSON object matching this schema:
                                         <p className="text-[10px] mt-2 max-w-[200px]">The source clinical image for these cards was deleted, but the cards have been preserved in your library.</p>
                                       </div>
                                     ) : (
-                                      <div ref={libraryPreviewRef} className={`w-full h-full flex justify-center p-8 overflow-auto bg-gray-950 ${zoomLevel > 1 ? 'items-start' : 'items-center'}`}>
+                                      <div ref={libraryPreviewRef} className={`w-full h-full flex justify-center p-4 lg:p-6 overflow-auto bg-gray-950 ${zoomLevel > 1 ? 'items-start' : 'items-center'}`}>
                                         <>
                                           <div className="absolute top-4 right-4 z-[20] flex flex-col gap-2">
                                             <button onClick={() => setZoomLevel(prev => Math.min(prev + 0.2, 3))} className="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white p-2 rounded-xl transition border border-white/10 shadow-lg active:scale-90" title="Zoom In"><Plus className="w-4 h-4" /></button>
@@ -27902,7 +27902,7 @@ Return your response strictly as a JSON object matching this schema:
                                       </div>
                                     )}
                                   </div>
-                                  <div className="lg:w-1/2 flex flex-col gap-4 overflow-hidden">
+                                  <div className="lg:w-1/2 flex flex-col h-full gap-4 overflow-hidden p-1">
                                     <div className="flex justify-between items-center">
                                       <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">Cards from this page</h3>
                                       <div className="flex items-center gap-2 flex-wrap">
