@@ -16634,6 +16634,33 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
   const isBuiltInPrompt = (id) => id === 'default' || id === 'pyt_generator' || id === 'qbank_engine' || id === 'text_default' || id === 'text_verbatim_json';
 
 
+  // Helper to extract embedded base64/blob images from field text
+  const extractEmbeddedImages = (fieldHtml) => {
+    if (!fieldHtml || typeof fieldHtml !== 'string') return [];
+    const regex = /<img[^>]+src=["'](data:image\/[^"']+|blob:[^"']+)["'][^>]*>/gi;
+    const matches = [];
+    let m;
+    while ((m = regex.exec(fieldHtml)) !== null) {
+      const srcMatch = /src=["']([^"']+)["']/i.exec(m[0]);
+      if (srcMatch && srcMatch[1]) {
+        matches.push({ fullTag: m[0], src: srcMatch[1] });
+      }
+    }
+    return matches;
+  };
+
+  // Helper to remove an embedded image from field text
+  const removeEmbeddedImage = (fieldHtml, targetSrc, fieldName, cardObj, setCardObj) => {
+    if (!fieldHtml || typeof fieldHtml !== 'string') return;
+    const updated = fieldHtml.replace(targetSrc, '');
+    if (setCardObj) {
+      setCardObj(prev => ({
+        ...prev,
+        [fieldName]: updated
+      }));
+    }
+  };
+
   // Helper to sanitize card object for editing: extracts raw <img src="..."> base64 tags into customImage/attachedImages
   // and strips <img ...> tags from text, front, and back so textareas stay clean.
   const sanitizeCardForEditing = (card) => {
@@ -34835,24 +34862,6 @@ Return your response strictly as a JSON object matching this schema:
                             placeholder="Type or paste content/images here (Ctrl+V to paste image)..."
                             className={`w-full p-4 rounded-2xl outline-none text-sm leading-relaxed font-mono transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white border border-gray-800' : 'neu-pressed-light text-gray-800 border border-gray-200'}`}
                           />
-                          {extractEmbeddedImages(editingCard.text).length > 0 && (
-                            <div className="mt-2.5 p-3 rounded-2xl neu-pressed-dark flex flex-wrap gap-2 items-center">
-                              <span className="text-[10px] font-black uppercase text-gray-400 w-full mb-1">Attached Cloze Images:</span>
-                              {extractEmbeddedImages(editingCard.text).map((img, idx) => (
-                                <div key={idx} className="relative group w-16 h-16 rounded-xl overflow-hidden border border-gray-700 shrink-0">
-                                  <img src={img.src} alt="" className="w-full h-full object-cover" />
-                                  <button
-                                    type="button"
-                                    onClick={() => removeEmbeddedImage(editingCard.text, img.src, 'text', editingCard, setEditingCard)}
-                                    className="absolute inset-0 bg-black/70 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center transition"
-                                    title="Remove Image"
-                                  >
-                                    <Trash2 className="w-4 h-4 text-red-400" />
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
                         </div>
                       ) : (
                         <div className="space-y-6">
@@ -34861,6 +34870,8 @@ Return your response strictly as a JSON object matching this schema:
                             <textarea
                               rows={3} value={editingCard.front || ''}
                               onChange={(e) => setEditingCard({ ...editingCard, front: e.target.value })}
+                              onPaste={(e) => handleImagePasteToField(e, 'front', editingCard, setEditingCard)}
+                              placeholder="What is the question? (Ctrl+V to paste image)"
                               className={`w-full p-4 rounded-2xl outline-none text-sm font-bold transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white border border-gray-800' : 'neu-pressed-light text-gray-800 border border-gray-200'}`}
                             />
                           </div>
@@ -34869,8 +34880,60 @@ Return your response strictly as a JSON object matching this schema:
                             <textarea
                               rows={3} value={editingCard.back || ''}
                               onChange={(e) => setEditingCard({ ...editingCard, back: e.target.value })}
+                              onPaste={(e) => handleImagePasteToField(e, 'back', editingCard, setEditingCard)}
+                              placeholder="The answer... (Ctrl+V to paste image)"
                               className={`w-full p-4 rounded-2xl outline-none text-sm font-bold transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400 border border-gray-800' : 'neu-pressed-light text-blue-600 border border-gray-200'}`}
                             />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Attached Card Images Gallery */}
+                      {Boolean(editingCard.customImage || editingCard.imageUrl || editingCard.base64 || (editingCard.attachedImages && editingCard.attachedImages.length > 0)) && (
+                        <div className={`p-4 rounded-2xl border space-y-3 ${settingsThemeMode === 'dark' ? 'border-gray-800 bg-black/20' : 'border-gray-200/60 bg-gray-50/60'}`}>
+                          <div className="flex items-center justify-between">
+                            <label className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 ${settingsThemeMode === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                              <ImageIcon className="w-3.5 h-3.5 text-blue-500" />
+                              Attached Card Images
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => setEditingCard({ ...editingCard, customImage: null, imageUrl: null, base64: null, attachedImages: [], has_image: false, include_image: false })}
+                              className="text-[10px] font-bold text-red-500 hover:text-red-400 flex items-center gap-1 transition"
+                            >
+                              Remove All Images
+                            </button>
+                          </div>
+                          <div className="flex flex-wrap gap-3 items-center">
+                            {Array.from(new Set([
+                              ...(editingCard.attachedImages || []),
+                              ...(editingCard.customImage ? [editingCard.customImage] : []),
+                              ...(editingCard.imageUrl ? [editingCard.imageUrl] : []),
+                              ...(editingCard.base64 ? [editingCard.base64] : [])
+                            ])).filter(Boolean).map((imgSrc, idx) => (
+                              <div key={idx} className="relative group w-20 h-20 rounded-xl overflow-hidden border border-gray-700 shrink-0 shadow-md">
+                                <img src={imgSrc} alt="Attached" className="w-full h-full object-cover" />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const newAttached = (editingCard.attachedImages || []).filter(s => s !== imgSrc);
+                                    const newCustom = editingCard.customImage === imgSrc ? (newAttached[0] || null) : editingCard.customImage;
+                                    setEditingCard({
+                                      ...editingCard,
+                                      attachedImages: newAttached,
+                                      customImage: newCustom,
+                                      imageUrl: newCustom,
+                                      base64: newCustom,
+                                      has_image: Boolean(newCustom || newAttached.length > 0)
+                                    });
+                                  }}
+                                  className="absolute inset-0 bg-black/75 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center transition"
+                                  title="Remove Image"
+                                >
+                                  <Trash2 className="w-5 h-5 text-red-400" />
+                                </button>
+                              </div>
+                            ))}
                           </div>
                         </div>
                       )}
