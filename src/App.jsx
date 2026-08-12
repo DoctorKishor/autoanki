@@ -969,7 +969,8 @@ const updateFolderTagsOnMove = (tags = [], oldDeck = '', newDeck = '') => {
   return nextTags;
 };
 
-const HierarchicalSunburst = ({ deckPaths, libraryPages, deckCardCounts = {}, onSelectDeck }) => {
+const HierarchicalSunburst = ({ deckPaths, libraryPages, deckCardCounts = {}, onSelectDeck, themeMode = 'light' }) => {
+  const isDark = themeMode === 'dark';
   const [hoveredNode, setHoveredNode] = useState(null);
   const [zoomNodePath, setZoomNodePath] = useState('Root');
   const [selectedSunburstNode, setSelectedSunburstNode] = useState(null);
@@ -1000,53 +1001,41 @@ const HierarchicalSunburst = ({ deckPaths, libraryPages, deckCardCounts = {}, on
     if (!path || path === 'Root') return 'Root';
     const parts = path.split('::');
     parts.pop();
-    return parts.length > 0 ? parts.join('::') : 'Root';
+    return parts.length === 0 ? 'Root' : parts.join('::');
   };
 
   const flatSlices = useMemo(() => {
     const visibleNodesMap = new Map();
 
-    const topLevelNodes = Object.values(activeSubtreeRoot.children).filter(c => c.tCCount > 0);
-    const totalTopCards = topLevelNodes.reduce((sum, c) => sum + c.tCCount, 0);
+    const layoutNode = (node, startA, endA, depth) => {
+      const sweep = endA - startA;
+      visibleNodesMap.set(node.path, {
+        name: node.name,
+        path: node.path,
+        tCCount: node.tCCount,
+        cCount: node.cCount,
+        startAngle: startA,
+        endAngle: endA,
+        depth: depth,
+        visible: true
+      });
 
-    const assignAnglesRecursive = (node, startAngle = -Math.PI / 2, endAngle = 1.5 * Math.PI, depth = 0) => {
-      if (node.path) {
-        visibleNodesMap.set(node.path, {
-          name: node.name,
-          path: node.path,
-          tCCount: node.tCCount,
-          cCount: node.cCount,
-          startAngle,
-          endAngle,
-          depth,
-          visible: true
-        });
-      }
+      const children = Object.values(node.children);
+      if (children.length > 0) {
+        const totalChildCards = children.reduce((sum, c) => sum + (c.tCCount || 1), 0);
+        let currentAngle = startA;
 
-      const activeChildren = Object.values(node.children).filter(c => c.tCCount > 0);
-      if (activeChildren.length > 0) {
-        const parentSpan = endAngle - startAngle;
-        const totalChildrenCards = activeChildren.reduce((sum, c) => sum + c.tCCount, 0);
-
-        let currentStart = startAngle;
-        activeChildren.forEach(child => {
-          const childSpan = parentSpan * (child.tCCount / totalChildrenCards);
-          assignAnglesRecursive(child, currentStart, currentStart + childSpan, depth + 1);
-          currentStart += childSpan;
+        children.forEach(child => {
+          const childRatio = (child.tCCount || 1) / totalChildCards;
+          const childSweep = sweep * childRatio;
+          layoutNode(child, currentAngle, currentAngle + childSweep, depth + 1);
+          currentAngle += childSweep;
         });
       }
     };
 
-    if (topLevelNodes.length > 0) {
-      let currentStart = -Math.PI / 2;
-      topLevelNodes.forEach(node => {
-        const nodeSpan = (2 * Math.PI) * (node.tCCount / totalTopCards);
-        assignAnglesRecursive(node, currentStart, currentStart + nodeSpan, 1);
-        currentStart += nodeSpan;
-      });
-    }
+    layoutNode(activeSubtreeRoot, -Math.PI / 2, (3 * Math.PI) / 2, 1);
 
-    // Collect all decks in tree recursively to ensure stable DOM node rendering for fluid transition choreography
     const collectAllPaths = (node) => {
       let list = [];
       if (node.path) {
@@ -1064,7 +1053,6 @@ const HierarchicalSunburst = ({ deckPaths, libraryPages, deckCardCounts = {}, on
       if (visibleNodesMap.has(node.path)) {
         return visibleNodesMap.get(node.path);
       } else {
-        // Collapse unassociated folders towards the core so they shrink and fade out simultaneously
         return {
           name: node.name,
           path: node.path,
@@ -1080,16 +1068,13 @@ const HierarchicalSunburst = ({ deckPaths, libraryPages, deckCardCounts = {}, on
   }, [activeSubtreeRoot, treeRoot]);
 
   const getSliceColor = (path, depth) => {
-    // Generate unique vibrant spectrum colors based on the full deck path to be highly multicolourful
     let hash = 0;
     for (let i = 0; i < path.length; i++) {
       hash = path.charCodeAt(i) + ((hash << 5) - hash);
     }
     const hue = Math.abs(hash) % 360;
-
-    // High saturation and lightness for vivid contrast
     const saturation = 85 - (depth * 4);
-    const lightness = 52 + (depth * 3);
+    const lightness = isDark ? (42 + depth * 4) : (52 + depth * 3);
     return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
   };
 
@@ -1097,77 +1082,69 @@ const HierarchicalSunburst = ({ deckPaths, libraryPages, deckCardCounts = {}, on
   const cy = 200;
   const centerRadius = 50;
 
-  // Helper to find the maximum descendant depth of activeSubtreeRoot
-  const activeMaxDepth = useMemo(() => {
-    let max = 0;
-    const traverse = (node, currentDepth) => {
-      const activeChildren = Object.values(node.children).filter(c => c.tCCount > 0);
-      if (activeChildren.length > 0) {
-        max = Math.max(max, currentDepth + 1);
-        activeChildren.forEach(child => traverse(child, currentDepth + 1));
-      }
-    };
-    traverse(activeSubtreeRoot, 0);
-    return max || 1;
+  const getMaxDescendantDepth = (node) => {
+    const children = Object.values(node.children);
+    if (children.length === 0) return 1;
+    return 1 + Math.max(...children.map(getMaxDescendantDepth));
+  };
+
+  const maxSubtreeDepth = useMemo(() => {
+    return getMaxDescendantDepth(activeSubtreeRoot);
   }, [activeSubtreeRoot]);
 
-  // Compute dynamic layer width so the outer concentric boundary remains exactly 176px (never shrinks!)
-  const layerWidth = useMemo(() => {
-    return (176 - centerRadius) / activeMaxDepth;
-  }, [activeMaxDepth, centerRadius]);
+  const layerWidth = Math.min(32, Math.max(16, Math.floor(130 / maxSubtreeDepth)));
 
-  const displayNode = hoveredNode || selectedSunburstNode || {
-    name: activeSubtreeRoot.isRoot ? 'All Decks' : activeSubtreeRoot.name,
-    path: activeSubtreeRoot.path || 'Root',
-    tCCount: activeSubtreeRoot.tCCount || 0,
+  const displayNode = selectedSunburstNode || hoveredNode || {
+    name: activeSubtreeRoot.name,
+    path: zoomNodePath,
+    tCCount: activeSubtreeRoot.tCCount,
     depth: zoomNodePath === 'Root' ? 0 : zoomNodePath.split('::').length
   };
 
-  const percent = treeRoot.tCCount > 0
-    ? ((displayNode.tCCount / treeRoot.tCCount) * 100).toFixed(1)
-    : '0.0';
+  const totalRootCards = treeRoot.tCCount || 1;
+  const percent = ((displayNode.tCCount / totalRootCards) * 100).toFixed(1);
 
   return (
-    <div className="flex flex-col md:flex-row items-center gap-8 w-full bg-white p-6 rounded-3xl border border-gray-200/80 shadow-sm transition hover:shadow-md">
+    <div className={`flex flex-col md:flex-row items-center gap-8 w-full p-6 rounded-3xl transition ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'}`}>
       <div className="flex-grow md:w-1/2 flex flex-col gap-4 text-left">
         <div>
-          <span className="text-[10px] font-black uppercase text-blue-600 tracking-wider">Hierarchy Sunburst</span>
-          <h3 className="text-xl font-black text-gray-900 mt-1 tracking-tight flex items-center gap-2">
+          <span className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>Hierarchy Sunburst</span>
+          <h3 className={`text-xl font-black mt-1 tracking-tight flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
             Deck & Cards Explorer
           </h3>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className={`text-xs mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
             Click data slices to transition and zoom into details. Sibling hierarchies will scale and fade out smoothly. Revert zoom with the top-right quadrant arrow button.
           </p>
         </div>
 
-        <div className="bg-gray-50 border border-gray-200/60 rounded-2xl p-5 flex flex-col gap-3 relative overflow-hidden transition-all duration-300">
+        <div className={`rounded-2xl p-5 flex flex-col gap-3 relative overflow-hidden transition-all duration-300 ${isDark ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-white/80'}`}>
           <div className="flex justify-between items-start">
             <div className="max-w-[70%]">
-              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest block">Active Deck Focus</span>
-              <span className="text-xs font-black text-gray-800 break-all leading-tight mt-1 block">
+              <span className={`text-[9px] font-bold uppercase tracking-widest block ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Active Deck Focus</span>
+              <span className={`text-xs font-black break-all leading-tight mt-1 block ${isDark ? 'text-white' : 'text-gray-800'}`}>
                 {displayNode.path === 'Root' ? 'All active decks' : displayNode.path.replace(/::/g, ' ➔ ')}
               </span>
             </div>
-            <div className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider shrink-0 select-none">
+            <div className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider shrink-0 select-none ${isDark ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-700'}`}>
               Level {displayNode.depth}
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4 mt-1">
             <div>
-              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest block">Cards Volume</span>
-              <span className="text-xl font-black text-gray-900 mt-0.5 block">{displayNode.tCCount} <span className="text-[9px] text-gray-400 font-bold uppercase">cards</span></span>
+              <span className={`text-[9px] font-bold uppercase tracking-widest block ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Cards Volume</span>
+              <span className={`text-xl font-black mt-0.5 block ${isDark ? 'text-white' : 'text-gray-900'}`}>{displayNode.tCCount} <span className={`text-[9px] font-bold uppercase ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>cards</span></span>
             </div>
             <div>
-              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest block">Database Share</span>
-              <span className="text-xl font-black text-blue-600 mt-0.5 block">{percent}%</span>
+              <span className={`text-[9px] font-bold uppercase tracking-widest block ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Database Share</span>
+              <span className={`text-xl font-black mt-0.5 block ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{percent}%</span>
             </div>
           </div>
 
           {displayNode.path !== 'Root' && (
             <button
               onClick={() => onSelectDeck(displayNode.path)}
-              className="mt-1.5 w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-black text-[10px] uppercase tracking-widest py-2 px-4 rounded-xl shadow-md shadow-blue-600/10 transition-all duration-200 active:scale-95 shrink-0"
+              className={`mt-1.5 w-full flex items-center justify-center gap-2 font-black text-[10px] uppercase tracking-widest py-2 px-4 rounded-xl shadow-md transition-all duration-200 active:scale-95 shrink-0 ${isDark ? 'neu-btn-accent-dark text-white' : 'neu-btn-accent-light text-white'}`}
             >
               <Folder className="w-3.5 h-3.5" /> Target this Folder for Export
             </button>
@@ -1175,48 +1152,45 @@ const HierarchicalSunburst = ({ deckPaths, libraryPages, deckCardCounts = {}, on
         </div>
       </div>
 
-      <div className="relative shrink-0 w-[300px] h-[300px] md:w-[350px] md:h-[350px] flex items-center justify-center bg-gray-50/50 rounded-3xl p-4 border border-gray-100">
+      <div className={`relative shrink-0 w-[300px] h-[300px] md:w-[350px] md:h-[350px] flex items-center justify-center rounded-3xl p-4 ${isDark ? 'neu-pressed-dark border border-gray-800' : 'bg-gray-50/50 border border-gray-100'}`}>
         <svg className="w-full h-full select-none" viewBox="0 0 400 400">
           <g>
             <circle
               cx={cx}
               cy={cy}
-              r={centerRadius - 3}
-              className="fill-gray-900 stroke-gray-800 stroke-1 cursor-pointer transition hover:fill-gray-800"
-              onMouseEnter={() => setHoveredNode(null)}
-              onClick={() => setZoomNodePath(getParentPath(zoomNodePath))}
+              r={centerRadius}
+              fill={isDark ? '#222730' : '#ffffff'}
+              className="cursor-pointer transition duration-300"
+              onClick={() => setZoomNodePath('Root')}
             />
-            <g className="pointer-events-none text-center select-none" transform={`translate(${cx}, ${cy})`}>
-              <text y={zoomNodePath === 'Root' ? "-4" : "0"} textAnchor="middle" className="fill-blue-400 text-[8px] font-black uppercase tracking-widest leading-none">
-                {displayNode.name.length > 10 ? displayNode.name.slice(0, 8) + '..' : displayNode.name}
-              </text>
-              <text y={zoomNodePath === 'Root' ? "12" : "15"} textAnchor="middle" className="fill-white text-base font-black tracking-tight leading-none">
-                {displayNode.tCCount}
-              </text>
-              {zoomNodePath === 'Root' && (
-                <text y="23" textAnchor="middle" className="fill-gray-400 text-[7px] font-bold uppercase tracking-wide leading-none">
-                  Cards
-                </text>
-              )}
-            </g>
+
+            <text
+              x={cx}
+              y={cy - 6}
+              textAnchor="middle"
+              className={`text-[11px] font-black uppercase tracking-tight pointer-events-none fill-current ${isDark ? 'text-white' : 'text-gray-800'}`}
+            >
+              {zoomNodePath === 'Root' ? 'Root' : activeSubtreeRoot.name}
+            </text>
+            <text
+              x={cx}
+              y={cy + 8}
+              textAnchor="middle"
+              className={`text-[8px] font-bold uppercase tracking-wider pointer-events-none fill-current ${isDark ? 'text-blue-400' : 'text-blue-600'}`}
+            >
+              {activeSubtreeRoot.tCCount} cards
+            </text>
 
             {zoomNodePath !== 'Root' && (
               <g
-                onClick={(e) => { e.stopPropagation(); setZoomNodePath(getParentPath(zoomNodePath)); }}
-                className="cursor-pointer group/up-quadrant"
-                transform="translate(340, 60)"
+                className="cursor-pointer transition duration-200 hover:scale-110"
+                style={{ transformOrigin: '320px 80px' }}
+                onClick={() => setZoomNodePath(getParentPath(zoomNodePath))}
               >
-                {/* floating circular glassmorphic button with pulsing drop shadow */}
-                <circle
-                  cx="0"
-                  cy="0"
-                  r="18"
-                  className="fill-white stroke-blue-500 stroke-2 filter drop-shadow-[0_4px_12px_rgba(59,130,246,0.35)] group-hover/up-quadrant:scale-110 group-hover/up-quadrant:stroke-blue-600 transition-all duration-300"
-                />
-                {/* Bold Up Arrow (▲) */}
+                <circle cx="320" cy="80" r="16" fill={isDark ? '#3b82f6' : '#2563eb'} className="shadow-md" />
                 <path
-                  d="M -5 2 L 0 -4 L 5 2 M 0 -4 L 0 5"
-                  className="stroke-blue-600 group-hover/up-quadrant:stroke-blue-700 transition duration-300"
+                  d="M 324 76 L 316 80 L 324 84"
+                  stroke="#ffffff"
                   strokeWidth="2.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -1235,10 +1209,10 @@ const HierarchicalSunburst = ({ deckPaths, libraryPages, deckCardCounts = {}, on
 
               return (
                 <path
-                  key={slice.path} // Unique path key keeps DOM node stable across transition updates
+                  key={slice.path}
                   d={pathData}
                   fill={color}
-                  className="cursor-pointer stroke-white hover:stroke-gray-900 hover:brightness-110 active:brightness-95"
+                  className={`cursor-pointer hover:brightness-110 active:brightness-95 ${isDark ? 'stroke-[#222730] hover:stroke-white' : 'stroke-white hover:stroke-gray-900'}`}
                   strokeWidth={isHovered ? 2.5 : 1}
                   onMouseEnter={() => {
                     setHoveredNode(slice);
@@ -29989,757 +29963,868 @@ Return your response strictly as a JSON object matching this schema:
                     )}
 
                     {/* ANALYTICS VIEW */}
-                    {currentTab === 'analytics' && (
-                      <div className="flex-grow p-4 lg:p-6 flex flex-col gap-6 max-w-[1200px] mx-auto w-full overflow-y-auto pb-24 lg:pb-6">
+                    {currentTab === 'analytics' && (() => {
+                      const isDark = settingsThemeMode === 'dark';
+                      return (
+                        <div className="flex-grow p-4 lg:p-6 flex flex-col gap-6 max-w-[1200px] mx-auto w-full overflow-y-auto pb-24 lg:pb-6 custom-scrollbar">
 
-                        {/* Header section with high-contrast glassmorphic detailing */}
-                        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-white/40 backdrop-blur-md p-6 rounded-3xl border border-white/20 shadow-sm text-left">
-                          <div className="flex items-center gap-3.5">
-                            <div className="bg-blue-500 text-white p-3 rounded-2xl shadow-lg shadow-blue-600/20">
-                              <BarChart2 className="w-6 h-6 animate-pulse" />
-                            </div>
-                            <div>
-                              <h2 className="text-xl font-black text-gray-900 tracking-tight leading-none">Performance Analytics</h2>
-                              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1.5">
-                                Explore AI card generation metrics and comprehensive study room stats
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Modern Pill Switcher */}
-                          <div className="flex items-center bg-gray-100 p-1 rounded-2xl border border-gray-200 shadow-inner w-full xl:w-auto overflow-x-auto custom-scrollbar self-start xl:self-auto shrink-0">
-                            <button
-                              onClick={() => setAnalyticsSubTab('generation')}
-                              className={`px-5 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 whitespace-nowrap flex items-center justify-center gap-1.5 ${analyticsSubTab === 'generation' ? 'bg-blue-600 text-white shadow-md font-extrabold' : 'text-gray-500 hover:text-gray-700'}`}
-                            >
-                              <Sparkles className="w-3.5 h-3.5" />
-                              Card Generation
-                            </button>
-                            <button
-                              onClick={() => setAnalyticsSubTab('study')}
-                              className={`px-5 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 whitespace-nowrap flex items-center justify-center gap-1.5 ${analyticsSubTab === 'study' ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md font-extrabold' : 'text-gray-500 hover:text-gray-700'}`}
-                            >
-                              <GraduationCap className="w-3.5 h-3.5" />
-                              Study Room
-                            </button>
-                            <button
-                              onClick={() => setAnalyticsSubTab('counselling')}
-                              className={`px-5 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 whitespace-nowrap flex items-center justify-center gap-1.5 ${analyticsSubTab === 'counselling' ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-md font-extrabold' : 'text-gray-500 hover:text-gray-700'}`}
-                            >
-                              <Trophy className="w-3.5 h-3.5" />
-                              Counselling & GTs
-                            </button>
-                            <button
-                              onClick={() => setAnalyticsSubTab('pytCoverage')}
-                              className={`px-5 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 whitespace-nowrap flex items-center justify-center gap-1.5 ${analyticsSubTab === 'pytCoverage' ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md font-extrabold' : 'text-gray-500 hover:text-gray-700'}`}
-                            >
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              PYT Coverage
-                            </button>
-                            <button
-                              onClick={() => setAnalyticsSubTab('subjectCoverage')}
-                              className={`px-5 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 whitespace-nowrap flex items-center justify-center gap-1.5 ${analyticsSubTab === 'subjectCoverage' ? 'bg-gradient-to-r from-teal-500 to-emerald-500 text-white shadow-md font-extrabold' : 'text-gray-500 hover:text-gray-700'}`}
-                            >
-                              <Layers className="w-3.5 h-3.5" />
-                              Subject Coverage
-                            </button>
-                            <button
-                              onClick={() => setAnalyticsSubTab('adherence')}
-                              className={`px-5 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 whitespace-nowrap flex items-center justify-center gap-1.5 ${analyticsSubTab === 'adherence' ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-md font-extrabold' : 'text-gray-500 hover:text-gray-700'}`}
-                            >
-                              <Calendar className="w-3.5 h-3.5" />
-                              Adherence
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Sub-tab 1: Card Generation Analysis */}
-                        {analyticsSubTab === 'generation' && (
-                          <div className="flex flex-col gap-6 w-full text-left">
-
-                            {/* KPI Grid */}
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-
-                              {/* Source Curation Gauge */}
-                              <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex items-center justify-between transition hover:shadow-md">
-                                <div>
-                                  <span className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Curation Rate</span>
-                                  <h3 className="text-2xl font-black text-gray-800 mt-1">{analyticsData.pageCompletionRate}%</h3>
-                                  <p className="text-[10px] text-blue-600 font-bold mt-1">
-                                    {analyticsData.approvedPagesCount} of {analyticsData.totalPagesCount} pages triaged
-                                  </p>
-                                </div>
-                                <div className="relative shrink-0 flex items-center justify-center">
-                                  <svg className="w-16 h-16 transform -rotate-90">
-                                    <circle cx="32" cy="32" r="26" stroke="#f3f4f6" strokeWidth="5" fill="transparent" />
-                                    <circle cx="32" cy="32" r="26" stroke="#3b82f6" strokeWidth="5" fill="transparent"
-                                      strokeDasharray={2 * Math.PI * 26}
-                                      strokeDashoffset={2 * Math.PI * 26 * (1 - analyticsData.pageCompletionRate / 100)}
-                                      strokeLinecap="round"
-                                      className="transition-all duration-1000"
-                                    />
-                                  </svg>
-                                  <span className="absolute text-[10px] font-black text-blue-600">{analyticsData.pageCompletionRate}%</span>
-                                </div>
+                          {/* Header section with Neumorphic dual theme */}
+                          <motion.div
+                            initial={{ opacity: 0, y: -12 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                            className={`flex flex-col xl:flex-row xl:items-center justify-between gap-4 p-6 rounded-3xl text-left ${
+                              isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3.5">
+                              <div className={`p-3 rounded-2xl ${isDark ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'}`}>
+                                <BarChart2 className="w-6 h-6 animate-pulse" />
                               </div>
-
-                              {/* Time Saved */}
-                              <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex flex-col justify-between transition hover:shadow-md">
-                                <div>
-                                  <span className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Time Saved</span>
-                                  <h3 className="text-2xl font-black text-gray-800 mt-1">{analyticsData.timeSavedHours} hrs</h3>
-                                </div>
-                                <p className="text-[10px] text-blue-500 font-bold mt-2">Saved via AI card builder</p>
+                              <div>
+                                <h2 className={`text-xl font-black tracking-tight leading-none ${isDark ? 'text-white' : 'text-slate-900'}`}>Performance Analytics</h2>
+                                <p className={`text-[10px] font-bold uppercase tracking-widest mt-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                  Explore AI card generation metrics and comprehensive study room stats
+                                </p>
                               </div>
-
-                              {/* Total Cards */}
-                              <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex flex-col justify-between transition hover:shadow-md">
-                                <div>
-                                  <span className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Total Cards</span>
-                                  <h3 className="text-2xl font-black text-gray-800 mt-1">{analyticsData.totalCardsCount}</h3>
-                                </div>
-                                <p className="text-[10px] text-gray-500 font-bold mt-2">Active library index</p>
-                              </div>
-
-                              {/* Unique Concept Tags */}
-                              <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex flex-col justify-between transition hover:shadow-md">
-                                <div>
-                                  <span className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Active Concepts</span>
-                                  <h3 className="text-2xl font-black text-gray-800 mt-1">{analyticsData.uniqueTagsCount}</h3>
-                                </div>
-                                <p className="text-[10px] text-indigo-600 font-bold mt-2">Categorized study domains</p>
-                              </div>
-
                             </div>
 
-                            {/* Hierarchical Sunburst Database Explorer */}
-                            <HierarchicalSunburst
-                              deckPaths={deckPaths}
-                              libraryPages={libraryPages}
-                              deckCardCounts={deckCardCounts}
-                              onSelectDeck={(deckPath) => {
-                                if (deckPath === 'Root') {
-                                  setSelectedDecksToExport(deckPaths);
-                                } else {
-                                  // Set both selected decks and direct hierarchy to make sure it highlights and centers
-                                  setSelectedDecksToExport([deckPath]);
-                                }
-                                setCurrentTab('export');
-                              }}
-                            />
+                            {/* Neumorphic Dual Theme Subtab Pill Switcher */}
+                            <div className={`flex items-center p-1.5 rounded-2xl w-full xl:w-auto overflow-x-auto custom-scrollbar self-start xl:self-auto shrink-0 gap-1.5 ${
+                              isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
+                            }`}>
+                              <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.97 }}
+                                onClick={() => setAnalyticsSubTab('generation')}
+                                className={`px-5 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 whitespace-nowrap flex items-center justify-center gap-1.5 cursor-pointer ${
+                                  analyticsSubTab === 'generation'
+                                    ? (isDark ? 'neu-btn-accent-dark text-white shadow-md font-extrabold' : 'neu-btn-accent-light text-white shadow-md font-extrabold')
+                                    : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                                }`}
+                              >
+                                <Sparkles className="w-3.5 h-3.5" />
+                                Card Generation
+                              </motion.button>
 
-                            {/* High-Performance Tag Concept Web */}
-                            <TagConceptWeb
-                              cards={cards}
-                              hierarchy={hierarchy}
-                              onSelectTags={(tags) => {
-                                setSelectedTags(tags);
-                                setCurrentTab('study');
-                              }}
-                            />
+                              <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.97 }}
+                                onClick={() => setAnalyticsSubTab('study')}
+                                className={`px-5 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 whitespace-nowrap flex items-center justify-center gap-1.5 cursor-pointer ${
+                                  analyticsSubTab === 'study'
+                                    ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md font-extrabold'
+                                    : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                                }`}
+                              >
+                                <GraduationCap className="w-3.5 h-3.5" />
+                                Study Room
+                              </motion.button>
 
-                            {/* Heatmap Section */}
-                            <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm transition hover:shadow-md">
-                              {(() => {
-                                const maxContribCount = Math.max(...Object.values(analyticsData.contributions), 1);
-                                return (
-                                  <>
-                                    <div className="flex justify-between items-center mb-6">
-                                      <h3 className="text-sm font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
-                                        <Calendar className="w-4 h-4 text-blue-600" /> Contribution Activity
-                                      </h3>
-                                      <div className="flex items-center gap-1 text-[9px] font-bold text-gray-400 select-none">
-                                        <span>Less</span>
-                                        <div className="w-2.5 h-2.5 bg-[#f3f4f6] rounded-sm border border-gray-200/40" title="0 cards" />
-                                        <div className="flex items-center gap-[1px]">
-                                          {Array.from({ length: 20 }).map((_, idx) => {
-                                            const ratio = (idx + 1) / 20;
-                                            // Scale lightness from 94% down to 25% based on actual dynamic ratio
-                                            const lightness = 94 - ratio * 69;
-                                            // Scale saturation from 35% up to 94%
-                                            const saturation = 35 + ratio * 59;
-                                            const col = `hsl(217, ${Math.round(saturation)}%, ${Math.round(lightness)}%)`;
-                                            return (
-                                              <div
-                                                key={idx}
-                                                className="w-2 h-2.5 rounded-[1px]"
-                                                style={{ backgroundColor: col }}
-                                                title={`Activity Ratio: ${Math.round(ratio * 100)}% (up to ${Math.round(ratio * maxContribCount)} cards)`}
-                                              />
-                                            );
-                                          })}
-                                        </div>
-                                        <span>More</span>
-                                      </div>
-                                    </div>
-                                    <div className="overflow-x-auto pb-2 scrollbar-thin">
-                                      <div className="min-w-[700px] select-none flex justify-center py-2">
-                                        <div className="grid grid-flow-col grid-rows-7 gap-1">
-                                          {Object.keys(analyticsData.contributions).sort().map(dateStr => {
-                                            const count = analyticsData.contributions[dateStr];
+                              <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.97 }}
+                                onClick={() => setAnalyticsSubTab('counselling')}
+                                className={`px-5 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 whitespace-nowrap flex items-center justify-center gap-1.5 cursor-pointer ${
+                                  analyticsSubTab === 'counselling'
+                                    ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-md font-extrabold'
+                                    : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                                }`}
+                              >
+                                <Trophy className="w-3.5 h-3.5" />
+                                Counselling & GTs
+                              </motion.button>
 
-                                            // Compute dynamic shades of Tailwind blue (#3b82f6) based strictly on available data range!
-                                            let color = '#f3f4f6';
-                                            if (count > 0) {
-                                              const ratio = count / maxContribCount;
-                                              const lightness = 94 - ratio * 69;
-                                              const saturation = 35 + ratio * 59;
-                                              color = `hsl(217, ${Math.round(saturation)}%, ${Math.round(lightness)}%)`;
-                                            }
+                              <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.97 }}
+                                onClick={() => setAnalyticsSubTab('pytCoverage')}
+                                className={`px-5 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 whitespace-nowrap flex items-center justify-center gap-1.5 cursor-pointer ${
+                                  analyticsSubTab === 'pytCoverage'
+                                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md font-extrabold'
+                                    : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                                }`}
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                PYT Coverage
+                              </motion.button>
 
-                                            return (
-                                              <div
-                                                key={dateStr}
-                                                className="w-2.5 h-2.5 rounded-sm transition duration-150 hover:scale-125 cursor-pointer relative group"
-                                                style={{ backgroundColor: color }}
-                                              >
-                                                {/* Rich Tooltip popup */}
-                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-gray-900 text-white text-[9px] font-bold px-2 py-1 rounded shadow-xl opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-10">
-                                                  {count === 0 ? 'No cards created' : `${count} card${count > 1 ? 's' : ''} created`} on {formatAppDate(dateStr)}
-                                                </div>
-                                              </div>
-                                            );
-                                          })}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </>
-                                );
-                              })()}
+                              <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.97 }}
+                                onClick={() => setAnalyticsSubTab('subjectCoverage')}
+                                className={`px-5 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 whitespace-nowrap flex items-center justify-center gap-1.5 cursor-pointer ${
+                                  analyticsSubTab === 'subjectCoverage'
+                                    ? 'bg-gradient-to-r from-teal-500 to-emerald-500 text-white shadow-md font-extrabold'
+                                    : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                                }`}
+                              >
+                                <Layers className="w-3.5 h-3.5" />
+                                Subject Coverage
+                              </motion.button>
+
+                              <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.97 }}
+                                onClick={() => setAnalyticsSubTab('adherence')}
+                                className={`px-5 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 whitespace-nowrap flex items-center justify-center gap-1.5 cursor-pointer ${
+                                  analyticsSubTab === 'adherence'
+                                    ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-md font-extrabold'
+                                    : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                                }`}
+                              >
+                                <Calendar className="w-3.5 h-3.5" />
+                                Adherence
+                              </motion.button>
                             </div>
+                          </motion.div>
 
-                            {/* Growth Curve Line Chart */}
-                            <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm transition hover:shadow-md">
-                              <h3 className="text-sm font-black text-gray-900 uppercase tracking-wider flex items-center gap-2 mb-6">
-                                <TrendingUp className="w-4 h-4 text-blue-600" /> Library Growth Curve
-                              </h3>
-
-                              {(() => {
-                                const maxCount = Math.max(...analyticsData.last30Days.map(d => d.count), 10);
-                                // Generate coordinates for SVG path
-                                const points = analyticsData.last30Days.map((d, i) => {
-                                  const xCoord = Math.round((i / 29) * 760 + 20);
-                                  const yCoord = Math.round(180 - (d.count / maxCount) * 140);
-                                  return { x: xCoord, y: yCoord, ...d };
-                                });
-
-                                const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
-                                const areaPath = points.length > 0
-                                  ? `${linePath} L ${points[points.length - 1].x} 180 L ${points[0].x} 180 Z`
-                                  : '';
-
-                                return (
-                                  <div className="w-full">
-                                    <div className="relative h-[220px]">
-                                      <svg className="w-full h-full" viewBox="0 0 800 200">
-                                        <defs>
-                                          <linearGradient id="growth-chart-gradient" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.25" />
-                                            <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.0" />
-                                          </linearGradient>
-                                        </defs>
-
-                                        {/* Horizontal Grid lines */}
-                                        <line x1="20" y1="40" x2="780" y2="40" stroke="#f3f4f6" strokeWidth="1" strokeDasharray="4 4" />
-                                        <line x1="20" y1="110" x2="780" y2="110" stroke="#f3f4f6" strokeWidth="1" strokeDasharray="4 4" />
-                                        <line x1="20" y1="180" x2="780" y2="180" stroke="#e5e7eb" strokeWidth="1" />
-
-                                        {/* Gradient Area under curve */}
-                                        {areaPath && (
-                                          <path d={areaPath} fill="url(#growth-chart-gradient)" />
-                                        )}
-
-                                        {/* Smooth Line */}
-                                        {linePath && (
-                                          <path
-                                            d={linePath}
-                                            fill="none"
-                                            stroke="#3b82f6"
-                                            strokeWidth="3.5"
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                          />
-                                        )}
-
-                                        {/* Small markers */}
-                                        {points.map((p, i) => (
-                                          <circle
-                                            key={i}
-                                            cx={p.x}
-                                            cy={p.y}
-                                            r="4"
-                                            className="fill-white stroke-blue-600 stroke-2 cursor-pointer transition hover:r-6"
-                                          >
-                                            <title>{p.count} cards on {p.dateLabel}</title>
-                                          </circle>
-                                        ))}
-                                      </svg>
-                                    </div>
-
-                                    {/* X Axis Labels */}
-                                    <div className="flex justify-between items-center px-4 mt-2 text-[9px] font-mono text-gray-400 select-none">
-                                      <span>{analyticsData.last30Days[0]?.dateLabel}</span>
-                                      <span>{analyticsData.last30Days[15]?.dateLabel}</span>
-                                      <span>{analyticsData.last30Days[29]?.dateLabel}</span>
-                                    </div>
-                                  </div>
-                                );
-                              })()}
-                            </div>
-
-                          </div>
-                        )}
-
-                        {/* Sub-tab 2: Study Room Analysis */}
-                        {analyticsSubTab === 'study' && (() => {
-                          let totalHours = 0;
-                          let totalQuestions = 0;
-                          let totalCards = 0;
-                          let totalGtsCount = 0;
-                          const activeDays = Object.keys(studyLogs).filter(d => {
-                            const log = studyLogs[d];
-                            return log.hours || log.questions || log.cards || (log.gts && log.gts.length > 0);
-                          });
-
-                          Object.keys(studyLogs).forEach(dateStr => {
-                            const log = studyLogs[dateStr];
-                            totalHours += Number(log.hours) || 0;
-                            totalQuestions += Number(log.questions) || 0;
-                            totalCards += Number(log.cards) || 0;
-                            totalGtsCount += (log.gts || []).length;
-                          });
-
-                          const daysWithHours = Object.keys(studyLogs).filter(d => (Number(studyLogs[d].hours) || 0) > 0);
-                          const averageHours = daysWithHours.length > 0 ? (totalHours / daysWithHours.length).toFixed(1) : '0';
-
-                          const allGts = [];
-                          Object.keys(studyLogs).sort().forEach(dateStr => {
-                            const log = studyLogs[dateStr];
-                            if (log.gts && Array.isArray(log.gts)) {
-                              log.gts.forEach((gt, idx) => {
-                                // Extract score and percentile safely
-                                let parsedScore = Number(gt.score);
-                                if (isNaN(parsedScore)) {
-                                  const parts = String(gt.score).split('/');
-                                  parsedScore = Number(parts[0]) || 0;
-                                }
-
-                                let parsedPercentile = gt.percentile;
-                                if (parsedPercentile === undefined || parsedPercentile === null) {
-                                  if (gt.percentage) {
-                                    const pct = parseFloat(gt.percentage);
-                                    parsedPercentile = isNaN(pct) ? null : pct;
-                                  } else if (gt.rank && (gt.rankTotal || gt.total)) {
-                                    const tot = Number(gt.rankTotal || gt.total) || 1;
-                                    parsedPercentile = Number((((tot - Number(gt.rank)) / tot) * 100).toFixed(2));
-                                  }
-                                }
-
-                                const inferredType = (() => {
-                                  if (gt.type) {
-                                    const t = String(gt.type).toUpperCase();
-                                    if (t.includes('NEET')) return 'NEETPG';
-                                    if (t.includes('INI')) return 'INICET';
-                                  }
-                                  if (gt.name) {
-                                    const n = String(gt.name).toUpperCase();
-                                    if (n.includes('NEET')) return 'NEETPG';
-                                    if (n.includes('INI')) return 'INICET';
-                                  }
-                                  if (gt.scoreStr) {
-                                    if (gt.scoreStr.includes('/800')) return 'NEETPG';
-                                    if (gt.scoreStr.includes('/200')) return 'INICET';
-                                  }
-                                  const maxM = Number(gt.maxMarks);
-                                  if (maxM === 800) return 'NEETPG';
-                                  if (maxM === 200) return 'INICET';
-                                  let scoreVal = Number(gt.score);
-                                  if (isNaN(scoreVal) && gt.score) {
-                                    const parts = String(gt.score).split('/');
-                                    scoreVal = Number(parts[0]) || 0;
-                                  }
-                                  if (scoreVal > 200) return 'NEETPG';
-                                  return 'NEETPG';
-                                })();
-
-                                const maxMarks = gt.maxMarks || (inferredType === 'NEETPG' ? 800 : 200);
-
-                                allGts.push({
-                                  id: `${dateStr}_${idx}`,
-                                  date: dateStr,
-                                  name: gt.name || `Mock Test ${idx + 1}`,
-                                  platform: gt.platform || '',
-                                  type: inferredType,
-                                  correct: gt.correct !== undefined ? Number(gt.correct) : parsedScore,
-                                  incorrect: gt.incorrect !== undefined ? Number(gt.incorrect) : 0,
-                                  attended: gt.attended !== undefined ? Number(gt.attended) : parsedScore,
-                                  unattempted: gt.unattempted !== undefined ? Number(gt.unattempted) : Math.max(0, 200 - (Number(gt.attended) || parsedScore)),
-                                  score: parsedScore,
-                                  maxMarks: maxMarks,
-                                  accuracy: gt.accuracy !== undefined ? Number(gt.accuracy) : 100,
-                                  percentile: parsedPercentile !== null ? Number(parsedPercentile) : null,
-                                  rank: gt.rank ? Number(gt.rank) : null,
-                                  rankTotal: gt.rankTotal || gt.total || null,
-                                  stateRank: gt.stateRank || null,
-                                  state: gt.state || '',
-                                  notes: gt.notes || '',
-                                  subjects: gt.subjects || {}
-                                });
-                              });
-                            }
-                          });
-
-                          const todayStr = (() => {
-                            const tzoffset = (new Date()).getTimezoneOffset() * 60000;
-                            return (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10);
-                          })();
-                          const todayLog = studyLogs[todayStr] || { questions: 0, cards: 0, hours: 0 };
-                          const archetypeGoals = {
-                            Rookie: { hours: 2, questions: 20, cards: 30 },
-                            Consistent: { hours: 4, questions: 50, cards: 80 },
-                            Topper: { hours: 6, questions: 100, cards: 150 },
-                            Legend: { hours: 8, questions: 150, cards: 250 }
-                          };
-                          const activeGoal = archetypeGoals[selectedStreakTag] || archetypeGoals.Topper;
-                          const hoursProgress = Math.min(1, (Number(todayLog.hours) || 0) / activeGoal.hours);
-                          const questionsProgress = Math.min(1, (Number(todayLog.questions) || 0) / activeGoal.questions);
-                          const cardsProgress = Math.min(1, (Number(todayLog.cards) || 0) / activeGoal.cards);
-                          const totalProgressPercent = Math.round(((hoursProgress + questionsProgress + cardsProgress) / 3) * 100);
-
-                          return (
+                          {/* Sub-tab 1: Card Generation Analysis */}
+                          {analyticsSubTab === 'generation' && (
                             <div className="flex flex-col gap-6 w-full text-left">
 
-                              {/* KPIs Grid */}
-                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+                              {/* KPI Grid */}
+                              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
 
-                                {/* Total Hours */}
-                                <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex items-center justify-between transition hover:shadow-md">
+                                {/* Source Curation Gauge */}
+                                <motion.div
+                                  initial={{ opacity: 0, y: 16, scale: 0.98 }}
+                                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                                  transition={{ duration: 0.4, delay: 0.05 }}
+                                  whileHover={{ scale: 1.01 }}
+                                  className={`p-6 rounded-3xl flex items-center justify-between transition-all ${
+                                    isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                  }`}
+                                >
                                   <div>
-                                    <span className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Hours Studied</span>
-                                    <h3 className="text-2xl font-black text-gray-800 mt-1">{formatHoursToHrsMinsShort(totalHours)}</h3>
-                                    <p className="text-[10px] text-orange-600 font-bold mt-1">Across {activeDays.length} active days</p>
+                                    <span className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Curation Rate</span>
+                                    <h3 className={`text-2xl font-black mt-1 ${isDark ? 'text-white' : 'text-gray-800'}`}>{analyticsData.pageCompletionRate}%</h3>
+                                    <p className={`text-[10px] font-bold mt-1 ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
+                                      {analyticsData.approvedPagesCount} of {analyticsData.totalPagesCount} pages triaged
+                                    </p>
                                   </div>
-                                  <div className="bg-orange-50 p-3 rounded-2xl text-orange-500">
-                                    <Clock className="w-6 h-6 animate-pulse" />
-                                  </div>
-                                </div>
-
-                                {/* Total Questions */}
-                                <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex items-center justify-between transition hover:shadow-md">
-                                  <div>
-                                    <span className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Qbank Solved</span>
-                                    <h3 className="text-2xl font-black text-gray-800 mt-1">{totalQuestions}</h3>
-                                    <p className="text-[10px] text-amber-600 font-bold mt-1">Target practice Qs</p>
-                                  </div>
-                                  <div className="bg-amber-50 p-3 rounded-2xl text-amber-500">
-                                    <BookOpen className="w-6 h-6" />
-                                  </div>
-                                </div>
-
-                                {/* Total Cards */}
-                                <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex items-center justify-between transition hover:shadow-md">
-                                  <div>
-                                    <span className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Anki Cards Reviewed</span>
-                                    <h3 className="text-2xl font-black text-gray-800 mt-1">{totalCards}</h3>
-                                    <p className="text-[10px] text-red-600 font-bold mt-1">Spaced recall checks</p>
-                                  </div>
-                                  <div className="bg-red-50 p-3 rounded-2xl text-red-500">
-                                    <Layers className="w-6 h-6" />
-                                  </div>
-                                </div>
-
-                                {/* GTs Logged */}
-                                <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex items-center justify-between transition hover:shadow-md">
-                                  <div>
-                                    <span className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Grand Tests</span>
-                                    <h3 className="text-2xl font-black text-gray-800 mt-1">{totalGtsCount}</h3>
-                                    <p className="text-[10px] text-blue-600 font-bold mt-1">Simulated mock reviews</p>
-                                  </div>
-                                  <div className="bg-blue-50 p-3 rounded-2xl text-blue-500">
-                                    <Trophy className="w-6 h-6 animate-bounce" />
-                                  </div>
-                                </div>
-
-                                {/* Avg Study */}
-                                <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex items-center justify-between transition hover:shadow-md">
-                                  <div>
-                                    <span className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Daily Pace</span>
-                                    <h3 className="text-2xl font-black text-gray-800 mt-1">{averageHours} hrs/day</h3>
-                                    <p className="text-[10px] text-green-600 font-bold mt-1">Consistent load balance</p>
-                                  </div>
-                                  <div className="bg-green-50 p-3 rounded-2xl text-green-500">
-                                    <Activity className="w-6 h-6" />
-                                  </div>
-                                </div>
-
-                              </div>
-
-                              {/* Secondary Metrics Row */}
-                              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-
-                                {/* Left: Study Intensity Heatmap */}
-                                <div className="lg:col-span-8 bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex flex-col transition hover:shadow-md">
-                                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                                    <div>
-                                      <h3 className="text-sm font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
-                                        <Calendar className="w-4 h-4 text-orange-500" /> Study Room Intensity Map
-                                      </h3>
-                                      <p className="text-[10px] text-gray-400 font-bold uppercase mt-1">Logged study activity over the last 9 weeks</p>
-                                    </div>
-
-                                    <div className="flex items-center gap-1.5 text-[9px] font-bold text-gray-400 select-none">
-                                      <span>Less</span>
-                                      <div className="w-2.5 h-2.5 bg-gray-50 rounded-sm border border-gray-200/50" />
-                                      <div className="w-2.5 h-2.5 bg-orange-100 rounded-sm border border-orange-200/50" />
-                                      <div className="w-2.5 h-2.5 bg-orange-300 rounded-sm" />
-                                      <div className="w-2.5 h-2.5 bg-orange-500 rounded-sm" />
-                                      <div className="w-2.5 h-2.5 bg-orange-700 rounded-sm" />
-                                      <span>More</span>
-                                    </div>
-                                  </div>
-
-                                  {/* Calendar Grid representation of past 63 days */}
-                                  <div className="overflow-x-auto pb-2 scrollbar-thin select-none flex justify-center py-4 bg-orange-50/20 rounded-2xl border border-orange-200/20">
-                                    <div className="grid grid-flow-col grid-rows-7 gap-1.5">
-                                      {(() => {
-                                        const list = [];
-                                        const now = new Date();
-                                        for (let d = 62; d >= 0; d--) {
-                                          const targetDate = new Date();
-                                          targetDate.setDate(now.getDate() - d);
-                                          const tzoffset = targetDate.getTimezoneOffset() * 60000;
-                                          const dateStr = (new Date(targetDate.getTime() - tzoffset)).toISOString().slice(0, 10);
-
-                                          const log = studyLogs[dateStr] || { hours: 0, questions: 0, cards: 0 };
-                                          const hours = Number(log.hours) || 0;
-                                          const qCount = Number(log.questions) || 0;
-                                          const cardCount = Number(log.cards) || 0;
-
-                                          let color = '#f9fafb';
-                                          let border = 'border-gray-200/40';
-                                          if (hours > 0 || qCount > 0) {
-                                            border = 'border-transparent';
-                                            const totalScore = hours * 2 + (qCount / 20) + (cardCount / 30);
-                                            if (totalScore <= 2) color = '#ffedd5';
-                                            else if (totalScore <= 5) color = '#fed7aa';
-                                            else if (totalScore <= 9) color = '#fdbb2d';
-                                            else if (totalScore <= 15) color = '#f97316';
-                                            else color = '#c2410c';
-                                          }
-
-                                          list.push(
-                                            <div
-                                              key={dateStr}
-                                              className={`w-3.5 h-3.5 rounded-md transition duration-150 hover:scale-125 cursor-pointer relative group border ${border}`}
-                                              style={{ backgroundColor: color }}
-                                              onMouseEnter={() => setHoveredStudyRoomIntensityDate(dateStr)}
-                                              onMouseLeave={() => setHoveredStudyRoomIntensityDate(null)}
-                                            >
-                                              {hoveredStudyRoomIntensityDate === dateStr && (
-                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-gray-900 text-white text-[9px] font-bold px-2 py-1.5 rounded-lg shadow-xl pointer-events-none whitespace-nowrap z-50 shadow-black/40 animate-in fade-in duration-100">
-                                                  <div className="font-extrabold text-[10px] text-orange-400 mb-0.5">
-                                                    {formatAppDate(targetDate)}
-                                                  </div>
-                                                  <div>⏱️ Hours: {formatHoursToHrsMinsShort(hours)}</div>
-                                                  <div>📝 Questions: {qCount}</div>
-                                                  <div>🎴 Cards: {cardCount}</div>
-                                                </div>
-                                              )}
-                                            </div>
-                                          );
-                                        }
-                                        return list;
-                                      })()}
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Right: Today's Goal Ring Gauge */}
-                                <div className="lg:col-span-4 bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex flex-col items-center text-center relative overflow-hidden transition hover:shadow-md w-full h-full justify-center">
-                                  <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-4">Today's Progress</span>
-
                                   <div className="relative shrink-0 flex items-center justify-center">
-                                    <svg className="w-28 h-28 transform -rotate-90">
-                                      <circle cx="56" cy="56" r="48" stroke="#f3f4f6" strokeWidth="8" fill="transparent" />
-                                      <circle cx="56" cy="56" r="48" stroke="url(#orange-gradient)" strokeWidth="8" fill="transparent"
-                                        strokeDasharray={2 * Math.PI * 48}
-                                        strokeDashoffset={2 * Math.PI * 48 * (1 - Math.min(100, totalProgressPercent) / 100)}
+                                    <svg className="w-16 h-16 transform -rotate-90">
+                                      <circle cx="32" cy="32" r="26" stroke={isDark ? '#2d3440' : '#f3f4f6'} strokeWidth="5" fill="transparent" />
+                                      <circle cx="32" cy="32" r="26" stroke={isDark ? '#60a5fa' : '#3b82f6'} strokeWidth="5" fill="transparent"
+                                        strokeDasharray={2 * Math.PI * 26}
+                                        strokeDashoffset={2 * Math.PI * 26 * (1 - analyticsData.pageCompletionRate / 100)}
                                         strokeLinecap="round"
                                         className="transition-all duration-1000"
                                       />
-                                      <defs>
-                                        <linearGradient id="orange-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                                          <stop offset="0%" stopColor="#f97316" />
-                                          <stop offset="100%" stopColor="#eab308" />
-                                        </linearGradient>
-                                      </defs>
                                     </svg>
-                                    <div className="absolute flex flex-col items-center">
-                                      <span className="text-xl font-black text-gray-800">{totalProgressPercent}%</span>
-                                      <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wide">Finished</span>
-                                    </div>
+                                    <span className={`absolute text-[10px] font-black ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{analyticsData.pageCompletionRate}%</span>
                                   </div>
+                                </motion.div>
 
-                                  <div className="mt-4">
-                                    <h4 className="text-xs font-black text-gray-700 uppercase tracking-wider flex items-center gap-1.5 justify-center">
-                                      <Flame className="w-4 h-4 text-orange-500 fill-orange-500" />
-                                      Archetype: {selectedStreakTag}
-                                    </h4>
-                                    <p className="text-[10px] text-gray-400 mt-1 font-semibold leading-relaxed">
-                                      Targeting {activeGoal.hours}h / {activeGoal.questions}q / {activeGoal.cards}c
-                                    </p>
+                                {/* Time Saved */}
+                                <motion.div
+                                  initial={{ opacity: 0, y: 16, scale: 0.98 }}
+                                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                                  transition={{ duration: 0.4, delay: 0.10 }}
+                                  whileHover={{ scale: 1.01 }}
+                                  className={`p-6 rounded-3xl flex flex-col justify-between transition-all ${
+                                    isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                  }`}
+                                >
+                                  <div>
+                                    <span className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Time Saved</span>
+                                    <h3 className={`text-2xl font-black mt-1 ${isDark ? 'text-white' : 'text-gray-800'}`}>{analyticsData.timeSavedHours} hrs</h3>
                                   </div>
-                                </div>
+                                  <p className={`text-[10px] font-bold mt-2 ${isDark ? 'text-blue-400' : 'text-blue-500'}`}>Saved via AI card builder</p>
+                                </motion.div>
+
+                                {/* Total Cards */}
+                                <motion.div
+                                  initial={{ opacity: 0, y: 16, scale: 0.98 }}
+                                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                                  transition={{ duration: 0.4, delay: 0.15 }}
+                                  whileHover={{ scale: 1.01 }}
+                                  className={`p-6 rounded-3xl flex flex-col justify-between transition-all ${
+                                    isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                  }`}
+                                >
+                                  <div>
+                                    <span className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Total Cards</span>
+                                    <h3 className={`text-2xl font-black mt-1 ${isDark ? 'text-white' : 'text-gray-800'}`}>{analyticsData.totalCardsCount}</h3>
+                                  </div>
+                                  <p className={`text-[10px] font-bold mt-2 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>Active library index</p>
+                                </motion.div>
+
+                                {/* Unique Concept Tags */}
+                                <motion.div
+                                  initial={{ opacity: 0, y: 16, scale: 0.98 }}
+                                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                                  transition={{ duration: 0.4, delay: 0.20 }}
+                                  whileHover={{ scale: 1.01 }}
+                                  className={`p-6 rounded-3xl flex flex-col justify-between transition-all ${
+                                    isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                  }`}
+                                >
+                                  <div>
+                                    <span className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Active Concepts</span>
+                                    <h3 className={`text-2xl font-black mt-1 ${isDark ? 'text-white' : 'text-gray-800'}`}>{analyticsData.uniqueTagsCount}</h3>
+                                  </div>
+                                  <p className={`text-[10px] font-bold mt-2 ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>Categorized study domains</p>
+                                </motion.div>
 
                               </div>
 
-                              {/* Performance Analytics Charts Row */}
-                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-                                {/* Daily Study Hours Curve Chart */}
-                                <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm transition hover:shadow-md">
-                                  <h3 className="text-sm font-black text-gray-900 uppercase tracking-wider flex items-center gap-2 mb-6">
-                                    <TrendingUp className="w-4 h-4 text-orange-500" /> Study Duration Analytics (Active Days)
-                                  </h3>
-
-                                  {(() => {
-                                    const chartDays = activeDays.slice(-15);
-                                    const maxVal = Math.max(...chartDays.map(d => Number(studyLogs[d].hours) || 0), 4);
-
-                                    if (chartDays.length === 0) {
-                                      return (
-                                        <div className="h-[180px] flex flex-col items-center justify-center text-center p-6 border border-dashed border-gray-200 rounded-2xl bg-gray-50/50">
-                                          <Clock className="w-8 h-8 text-gray-300 mb-2" />
-                                          <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">No hours logged yet</span>
-                                        </div>
-                                      );
+                              {/* Hierarchical Sunburst Database Explorer */}
+                              <motion.div
+                                initial={{ opacity: 0, y: 16, scale: 0.98 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                transition={{ duration: 0.4, delay: 0.25 }}
+                              >
+                                <HierarchicalSunburst
+                                  deckPaths={deckPaths}
+                                  libraryPages={libraryPages}
+                                  deckCardCounts={deckCardCounts}
+                                  themeMode={settingsThemeMode}
+                                  onSelectDeck={(deckPath) => {
+                                    if (deckPath === 'Root') {
+                                      setSelectedDecksToExport(deckPaths);
+                                    } else {
+                                      setSelectedDecksToExport([deckPath]);
                                     }
+                                    setCurrentTab('export');
+                                  }}
+                                />
+                              </motion.div>
 
-                                    const points = chartDays.map((d, i) => {
-                                      const x = Math.round((i / Math.max(1, chartDays.length - 1)) * 440 + 30);
-                                      const y = Math.round(150 - (studyLogs[d].hours / maxVal) * 110);
-                                      return { x, y, date: d, val: studyLogs[d].hours };
-                                    });
+                              {/* High-Performance Tag Concept Web */}
+                              <motion.div
+                                initial={{ opacity: 0, y: 16, scale: 0.98 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                transition={{ duration: 0.4, delay: 0.30 }}
+                              >
+                                <TagConceptWeb
+                                  cards={cards}
+                                  hierarchy={hierarchy}
+                                  onSelectTags={(tags) => {
+                                    setSelectedTags(tags);
+                                    setCurrentTab('study');
+                                  }}
+                                />
+                              </motion.div>
 
-                                    const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
-                                    const areaPath = points.length > 0
-                                      ? `${linePath} L ${points[points.length - 1].x} 150 L ${points[0].x} 150 Z`
-                                      : '';
-
-                                    return (
-                                      <div className="w-full">
-                                        <div className="relative h-[150px]">
-                                          <svg className="w-full h-full" viewBox="0 0 500 150">
-                                            <defs>
-                                              <linearGradient id="study-hours-gradient" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="0%" stopColor="#f97316" stopOpacity="0.25" />
-                                                <stop offset="100%" stopColor="#f97316" stopOpacity="0.0" />
-                                              </linearGradient>
-                                            </defs>
-
-                                            <line x1="30" y1="40" x2="470" y2="40" stroke="#f3f4f6" strokeWidth="1" strokeDasharray="4 4" />
-                                            <line x1="30" y1="95" x2="470" y2="95" stroke="#f3f4f6" strokeWidth="1" strokeDasharray="4 4" />
-                                            <line x1="30" y1="150" x2="470" y2="150" stroke="#e5e7eb" strokeWidth="1" />
-
-                                            {areaPath && <path d={areaPath} fill="url(#study-hours-gradient)" />}
-                                            {linePath && <path d={linePath} fill="none" stroke="#f97316" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />}
-
-                                            {points.map((p, i) => (
-                                              <circle
-                                                key={i}
-                                                cx={p.x}
-                                                cy={p.y}
-                                                r="4.5"
-                                                className="fill-white stroke-orange-500 stroke-2 cursor-pointer transition hover:scale-125"
-                                              >
-                                                <title>{p.val} hrs on {formatAppDate(p.date)}</title>
-                                              </circle>
-                                            ))}
-                                          </svg>
-                                        </div>
-                                        <div className="flex justify-between px-4 mt-2 text-[9px] font-mono text-gray-400 select-none">
-                                          <span>{formatAppDate(chartDays[0])}</span>
-                                          <span>{formatAppDate(chartDays[chartDays.length - 1])}</span>
+                              {/* Heatmap Section */}
+                              <motion.div
+                                initial={{ opacity: 0, y: 16, scale: 0.98 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                transition={{ duration: 0.4, delay: 0.35 }}
+                                whileHover={{ scale: 1.005 }}
+                                className={`p-6 rounded-3xl transition-all ${
+                                  isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                }`}
+                              >
+                                {(() => {
+                                  const maxContribCount = Math.max(...Object.values(analyticsData.contributions), 1);
+                                  return (
+                                    <>
+                                      <div className="flex justify-between items-center mb-6">
+                                        <h3 className={`text-sm font-black uppercase tracking-wider flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                          <Calendar className={`w-4 h-4 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} /> Contribution Activity
+                                        </h3>
+                                        <div className={`flex items-center gap-1 text-[9px] font-bold select-none ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
+                                          <span>Less</span>
+                                          <div className={`w-2.5 h-2.5 rounded-sm border ${isDark ? 'bg-[#2a303c] border-gray-700/40' : 'bg-[#f3f4f6] border-gray-200/40'}`} title="0 cards" />
+                                          <div className="flex items-center gap-[1px]">
+                                            {Array.from({ length: 20 }).map((_, idx) => {
+                                              const ratio = (idx + 1) / 20;
+                                              const lightness = isDark ? (25 + ratio * 45) : (94 - ratio * 69);
+                                              const saturation = 35 + ratio * 59;
+                                              const col = `hsl(217, ${Math.round(saturation)}%, ${Math.round(lightness)}%)`;
+                                              return (
+                                                <div
+                                                  key={idx}
+                                                  className="w-2 h-2.5 rounded-[1px]"
+                                                  style={{ backgroundColor: col }}
+                                                  title={`Activity Ratio: ${Math.round(ratio * 100)}% (up to ${Math.round(ratio * maxContribCount)} cards)`}
+                                                />
+                                              );
+                                            })}
+                                          </div>
+                                          <span>More</span>
                                         </div>
                                       </div>
-                                    );
-                                  })()}
-                                </div>
+                                      <div className="overflow-x-auto pb-2 scrollbar-thin">
+                                        <div className="min-w-[700px] select-none flex justify-center py-2">
+                                          <div className="grid grid-flow-col grid-rows-7 gap-1">
+                                            {Object.keys(analyticsData.contributions).sort().map(dateStr => {
+                                              const count = analyticsData.contributions[dateStr];
 
-                                {/* Questions vs Cards Completed Bar Chart */}
-                                <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm transition hover:shadow-md">
-                                  <h3 className="text-sm font-black text-gray-900 uppercase tracking-wider flex items-center gap-2 mb-6">
-                                    <Activity className="w-4 h-4 text-orange-500" /> Qbank vs. Anki Balance Index
-                                  </h3>
+                                              let color = isDark ? '#262c36' : '#f3f4f6';
+                                              if (count > 0) {
+                                                const ratio = count / maxContribCount;
+                                                const lightness = isDark ? (25 + ratio * 45) : (94 - ratio * 69);
+                                                const saturation = 35 + ratio * 59;
+                                                color = `hsl(217, ${Math.round(saturation)}%, ${Math.round(lightness)}%)`;
+                                              }
 
-                                  {(() => {
-                                    const chartDays = activeDays.slice(-10);
-                                    const maxVal = Math.max(...chartDays.map(d => {
-                                      const l = studyLogs[d];
-                                      return Math.max(Number(l.questions) || 0, Number(l.cards) || 0);
-                                    }), 30);
-
-                                    if (chartDays.length === 0) {
-                                      return (
-                                        <div className="h-[180px] flex flex-col items-center justify-center text-center p-6 border border-dashed border-gray-200 rounded-2xl bg-gray-50/50">
-                                          <Activity className="w-8 h-8 text-gray-300 mb-2" />
-                                          <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">No study data logged yet</span>
-                                        </div>
-                                      );
-                                    }
-
-                                    return (
-                                      <div className="w-full">
-                                        <div className="h-[140px] flex items-end justify-between gap-2 px-2 pt-4 bg-orange-50/5 rounded-2xl border border-orange-200/10">
-                                          {chartDays.map((d, i) => {
-                                            const l = studyLogs[d];
-                                            const qPercent = Math.min(100, ((Number(l.questions) || 0) / maxVal) * 100);
-                                            const cPercent = Math.min(100, ((Number(l.cards) || 0) / maxVal) * 100);
-
-                                            return (
-                                              <div key={d} className="flex-grow flex flex-col items-center group relative">
-                                                <div className="w-full flex items-end justify-center gap-1 h-[100px]">
-                                                  {/* Questions Column */}
-                                                  <div
-                                                    style={{ height: `${qPercent}%` }}
-                                                    className="w-2 sm:w-2.5 bg-blue-500 rounded-t-sm transition hover:bg-blue-600 cursor-pointer"
-                                                    title={`Qbank: ${l.questions}`}
-                                                  />
-                                                  {/* Cards Column */}
-                                                  <div
-                                                    style={{ height: `${cPercent}%` }}
-                                                    className="w-2 sm:w-2.5 bg-orange-500 rounded-t-sm transition hover:bg-orange-600 cursor-pointer"
-                                                    title={`Cards: ${l.cards}`}
-                                                  />
+                                              return (
+                                                <div
+                                                  key={dateStr}
+                                                  className="w-2.5 h-2.5 rounded-sm transition duration-150 hover:scale-125 cursor-pointer relative group"
+                                                  style={{ backgroundColor: color }}
+                                                >
+                                                  {/* Rich Tooltip popup */}
+                                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-gray-900 text-white text-[9px] font-bold px-2 py-1 rounded shadow-xl opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-10">
+                                                    {count === 0 ? 'No cards created' : `${count} card${count > 1 ? 's' : ''} created`} on {formatAppDate(dateStr)}
+                                                  </div>
                                                 </div>
-                                                <span className="text-[7px] font-mono text-gray-400 mt-1 scale-90">{d.slice(5)}</span>
-
-                                                {/* Combined Tooltip */}
-                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-gray-900 text-white text-[9px] font-bold px-2 py-1.5 rounded shadow-xl opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-50 shadow-black/40">
-                                                  <div className="text-[8px] text-gray-400">{d}</div>
-                                                  <div className="flex items-center gap-1.5 mt-0.5"><span className="w-1.5 h-1.5 bg-blue-500 rounded-full" /> Qs: {l.questions}</div>
-                                                  <div className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 bg-orange-500 rounded-full" /> Cards: {l.cards}</div>
-                                                </div>
-                                              </div>
-                                            );
-                                          })}
-                                        </div>
-                                        <div className="flex justify-between items-center px-4 mt-2">
-                                          <div className="flex items-center gap-4 text-[9px] text-gray-400 font-bold select-none">
-                                            <div className="flex items-center gap-1"><span className="w-2 h-2 bg-blue-500 rounded" /> Qs Solved</div>
-                                            <div className="flex items-center gap-1"><span className="w-2 h-2 bg-orange-500 rounded" /> Cards Done</div>
+                                              );
+                                            })}
                                           </div>
                                         </div>
                                       </div>
-                                    );
-                                  })()}
+                                    </>
+                                  );
+                                })()}
+                              </motion.div>
+
+                              {/* Growth Curve Line Chart */}
+                              <motion.div
+                                initial={{ opacity: 0, y: 16, scale: 0.98 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                transition={{ duration: 0.4, delay: 0.40 }}
+                                whileHover={{ scale: 1.005 }}
+                                className={`p-6 rounded-3xl transition-all ${
+                                  isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                }`}
+                              >
+                                <h3 className={`text-sm font-black uppercase tracking-wider flex items-center gap-2 mb-6 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                  <TrendingUp className={`w-4 h-4 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} /> Library Growth Curve
+                                </h3>
+
+                                {(() => {
+                                  const maxCount = Math.max(...analyticsData.last30Days.map(d => d.count), 10);
+                                  const points = analyticsData.last30Days.map((d, i) => {
+                                    const xCoord = Math.round((i / 29) * 760 + 20);
+                                    const yCoord = Math.round(180 - (d.count / maxCount) * 140);
+                                    return { x: xCoord, y: yCoord, ...d };
+                                  });
+
+                                  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+                                  const areaPath = points.length > 0
+                                    ? `${linePath} L ${points[points.length - 1].x} 180 L ${points[0].x} 180 Z`
+                                    : '';
+
+                                  return (
+                                    <div className="w-full">
+                                      <div className="relative h-[220px]">
+                                        <svg className="w-full h-full" viewBox="0 0 800 200">
+                                          <defs>
+                                            <linearGradient id="growth-chart-gradient" x1="0" y1="0" x2="0" y2="1">
+                                              <stop offset="0%" stopColor={isDark ? '#60a5fa' : '#3b82f6'} stopOpacity="0.3" />
+                                              <stop offset="100%" stopColor={isDark ? '#60a5fa' : '#3b82f6'} stopOpacity="0.0" />
+                                            </linearGradient>
+                                          </defs>
+
+                                          {/* Horizontal Grid lines */}
+                                          <line x1="20" y1="40" x2="780" y2="40" stroke={isDark ? '#2d3440' : '#f3f4f6'} strokeWidth="1" strokeDasharray="4 4" />
+                                          <line x1="20" y1="110" x2="780" y2="110" stroke={isDark ? '#2d3440' : '#f3f4f6'} strokeWidth="1" strokeDasharray="4 4" />
+                                          <line x1="20" y1="180" x2="780" y2="180" stroke={isDark ? '#374151' : '#e5e7eb'} strokeWidth="1" />
+
+                                          {/* Gradient Area under curve */}
+                                          {areaPath && (
+                                            <path d={areaPath} fill="url(#growth-chart-gradient)" />
+                                          )}
+
+                                          {/* Smooth Line */}
+                                          {linePath && (
+                                            <path
+                                              d={linePath}
+                                              fill="none"
+                                              stroke={isDark ? '#60a5fa' : '#3b82f6'}
+                                              strokeWidth="3.5"
+                                              strokeLinecap="round"
+                                              strokeLinejoin="round"
+                                            />
+                                          )}
+
+                                          {/* Small markers */}
+                                          {points.map((p, i) => (
+                                            <circle
+                                              key={i}
+                                              cx={p.x}
+                                              cy={p.y}
+                                              r="4"
+                                              className={`cursor-pointer transition hover:r-6 ${isDark ? 'fill-[#222730] stroke-blue-400 stroke-2' : 'fill-white stroke-blue-600 stroke-2'}`}
+                                            >
+                                              <title>{p.count} cards on {p.dateLabel}</title>
+                                            </circle>
+                                          ))}
+                                        </svg>
+                                      </div>
+
+                                      {/* X Axis Labels */}
+                                      <div className={`flex justify-between items-center px-4 mt-2 text-[9px] font-mono select-none ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
+                                        <span>{analyticsData.last30Days[0]?.dateLabel}</span>
+                                        <span>{analyticsData.last30Days[15]?.dateLabel}</span>
+                                        <span>{analyticsData.last30Days[29]?.dateLabel}</span>
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
+                              </motion.div>
+
+                            </div>
+                          )}
+
+                          {/* Sub-tab 2: Study Room Analysis */}
+                          {analyticsSubTab === 'study' && (() => {
+                            let totalHours = 0;
+                            let totalQuestions = 0;
+                            let totalCards = 0;
+                            let totalGtsCount = 0;
+                            const activeDays = Object.keys(studyLogs).filter(d => {
+                              const log = studyLogs[d];
+                              return log.hours || log.questions || log.cards || (log.gts && log.gts.length > 0);
+                            });
+
+                            Object.keys(studyLogs).forEach(dateStr => {
+                              const log = studyLogs[dateStr];
+                              totalHours += Number(log.hours) || 0;
+                              totalQuestions += Number(log.questions) || 0;
+                              totalCards += Number(log.cards) || 0;
+                              totalGtsCount += (log.gts || []).length;
+                            });
+
+                            const daysWithHours = Object.keys(studyLogs).filter(d => (Number(studyLogs[d].hours) || 0) > 0);
+                            const averageHours = daysWithHours.length > 0 ? (totalHours / daysWithHours.length).toFixed(1) : '0';
+
+                            const todayStr = (() => {
+                              const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+                              return (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10);
+                            })();
+                            const todayLog = studyLogs[todayStr] || { questions: 0, cards: 0, hours: 0 };
+                            const archetypeGoals = {
+                              Rookie: { hours: 2, questions: 20, cards: 30 },
+                              Consistent: { hours: 4, questions: 50, cards: 80 },
+                              Topper: { hours: 6, questions: 100, cards: 150 },
+                              Legend: { hours: 8, questions: 150, cards: 250 }
+                            };
+                            const activeGoal = archetypeGoals[selectedStreakTag] || archetypeGoals.Topper;
+                            const hoursProgress = Math.min(1, (Number(todayLog.hours) || 0) / activeGoal.hours);
+                            const questionsProgress = Math.min(1, (Number(todayLog.questions) || 0) / activeGoal.questions);
+                            const cardsProgress = Math.min(1, (Number(todayLog.cards) || 0) / activeGoal.cards);
+                            const totalProgressPercent = Math.round(((hoursProgress + questionsProgress + cardsProgress) / 3) * 100);
+
+                            return (
+                              <div className="flex flex-col gap-6 w-full text-left">
+
+                                {/* KPIs Grid */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+
+                                  {/* Total Hours */}
+                                  <motion.div
+                                    initial={{ opacity: 0, y: 16, scale: 0.98 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    transition={{ duration: 0.4, delay: 0.05 }}
+                                    whileHover={{ scale: 1.01 }}
+                                    className={`p-6 rounded-3xl flex items-center justify-between transition-all ${
+                                      isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                    }`}
+                                  >
+                                    <div>
+                                      <span className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Hours Studied</span>
+                                      <h3 className={`text-2xl font-black mt-1 ${isDark ? 'text-white' : 'text-gray-800'}`}>{formatHoursToHrsMinsShort(totalHours)}</h3>
+                                      <p className={`text-[10px] font-bold mt-1 ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>Across {activeDays.length} active days</p>
+                                    </div>
+                                    <div className={`p-3 rounded-2xl ${isDark ? 'neu-pressed-dark text-orange-400' : 'neu-pressed-light text-orange-500'}`}>
+                                      <Clock className="w-6 h-6 animate-pulse" />
+                                    </div>
+                                  </motion.div>
+
+                                  {/* Total Questions */}
+                                  <motion.div
+                                    initial={{ opacity: 0, y: 16, scale: 0.98 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    transition={{ duration: 0.4, delay: 0.10 }}
+                                    whileHover={{ scale: 1.01 }}
+                                    className={`p-6 rounded-3xl flex items-center justify-between transition-all ${
+                                      isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                    }`}
+                                  >
+                                    <div>
+                                      <span className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Qbank Solved</span>
+                                      <h3 className={`text-2xl font-black mt-1 ${isDark ? 'text-white' : 'text-gray-800'}`}>{totalQuestions}</h3>
+                                      <p className={`text-[10px] font-bold mt-1 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>Target practice Qs</p>
+                                    </div>
+                                    <div className={`p-3 rounded-2xl ${isDark ? 'neu-pressed-dark text-amber-400' : 'neu-pressed-light text-amber-500'}`}>
+                                      <BookOpen className="w-6 h-6" />
+                                    </div>
+                                  </motion.div>
+
+                                  {/* Total Cards */}
+                                  <motion.div
+                                    initial={{ opacity: 0, y: 16, scale: 0.98 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    transition={{ duration: 0.4, delay: 0.15 }}
+                                    whileHover={{ scale: 1.01 }}
+                                    className={`p-6 rounded-3xl flex items-center justify-between transition-all ${
+                                      isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                    }`}
+                                  >
+                                    <div>
+                                      <span className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Anki Cards Reviewed</span>
+                                      <h3 className={`text-2xl font-black mt-1 ${isDark ? 'text-white' : 'text-gray-800'}`}>{totalCards}</h3>
+                                      <p className={`text-[10px] font-bold mt-1 ${isDark ? 'text-red-400' : 'text-red-600'}`}>Spaced recall checks</p>
+                                    </div>
+                                    <div className={`p-3 rounded-2xl ${isDark ? 'neu-pressed-dark text-red-400' : 'neu-pressed-light text-red-500'}`}>
+                                      <Layers className="w-6 h-6" />
+                                    </div>
+                                  </motion.div>
+
+                                  {/* GTs Logged */}
+                                  <motion.div
+                                    initial={{ opacity: 0, y: 16, scale: 0.98 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    transition={{ duration: 0.4, delay: 0.20 }}
+                                    whileHover={{ scale: 1.01 }}
+                                    className={`p-6 rounded-3xl flex items-center justify-between transition-all ${
+                                      isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                    }`}
+                                  >
+                                    <div>
+                                      <span className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Grand Tests</span>
+                                      <h3 className={`text-2xl font-black mt-1 ${isDark ? 'text-white' : 'text-gray-800'}`}>{totalGtsCount}</h3>
+                                      <p className={`text-[10px] font-bold mt-1 ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>Simulated mock reviews</p>
+                                    </div>
+                                    <div className={`p-3 rounded-2xl ${isDark ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-500'}`}>
+                                      <Trophy className="w-6 h-6 animate-bounce" />
+                                    </div>
+                                  </motion.div>
+
+                                  {/* Avg Study */}
+                                  <motion.div
+                                    initial={{ opacity: 0, y: 16, scale: 0.98 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    transition={{ duration: 0.4, delay: 0.25 }}
+                                    whileHover={{ scale: 1.01 }}
+                                    className={`p-6 rounded-3xl flex items-center justify-between transition-all ${
+                                      isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                    }`}
+                                  >
+                                    <div>
+                                      <span className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Daily Pace</span>
+                                      <h3 className={`text-2xl font-black mt-1 ${isDark ? 'text-white' : 'text-gray-800'}`}>{averageHours} hrs/day</h3>
+                                      <p className={`text-[10px] font-bold mt-1 ${isDark ? 'text-emerald-400' : 'text-green-600'}`}>Consistent load balance</p>
+                                    </div>
+                                    <div className={`p-3 rounded-2xl ${isDark ? 'neu-pressed-dark text-emerald-400' : 'neu-pressed-light text-green-500'}`}>
+                                      <Activity className="w-6 h-6" />
+                                    </div>
+                                  </motion.div>
+
+                                </div>
+
+                                {/* Secondary Metrics Row */}
+                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+                                  {/* Left: Study Intensity Heatmap */}
+                                  <motion.div
+                                    initial={{ opacity: 0, y: 16, scale: 0.98 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    transition={{ duration: 0.4, delay: 0.30 }}
+                                    whileHover={{ scale: 1.005 }}
+                                    className={`lg:col-span-8 p-6 rounded-3xl flex flex-col transition-all ${
+                                      isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                    }`}
+                                  >
+                                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                                      <div>
+                                        <h3 className={`text-sm font-black uppercase tracking-wider flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                          <Calendar className={`w-4 h-4 ${isDark ? 'text-orange-400' : 'text-orange-500'}`} /> Study Room Intensity Map
+                                        </h3>
+                                        <p className={`text-[10px] font-bold uppercase mt-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Logged study activity over the last 9 weeks</p>
+                                      </div>
+
+                                      <div className={`flex items-center gap-1.5 text-[9px] font-bold select-none ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
+                                        <span>Less</span>
+                                        <div className={`w-2.5 h-2.5 rounded-sm border ${isDark ? 'bg-[#2a303c] border-gray-700/50' : 'bg-gray-50 border-gray-200/50'}`} />
+                                        <div className="w-2.5 h-2.5 bg-orange-100 rounded-sm border border-orange-200/50" />
+                                        <div className="w-2.5 h-2.5 bg-orange-300 rounded-sm" />
+                                        <div className="w-2.5 h-2.5 bg-orange-500 rounded-sm" />
+                                        <div className="w-2.5 h-2.5 bg-orange-700 rounded-sm" />
+                                        <span>More</span>
+                                      </div>
+                                    </div>
+
+                                    {/* Calendar Grid representation of past 63 days */}
+                                    <div className={`overflow-x-auto pb-2 scrollbar-thin select-none flex justify-center py-4 rounded-2xl border ${
+                                      isDark ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-white/80'
+                                    }`}>
+                                      <div className="grid grid-flow-col grid-rows-7 gap-1.5">
+                                        {(() => {
+                                          const list = [];
+                                          const now = new Date();
+                                          for (let d = 62; d >= 0; d--) {
+                                            const targetDate = new Date();
+                                            targetDate.setDate(now.getDate() - d);
+                                            const tzoffset = targetDate.getTimezoneOffset() * 60000;
+                                            const dateStr = (new Date(targetDate.getTime() - tzoffset)).toISOString().slice(0, 10);
+
+                                            const log = studyLogs[dateStr] || { hours: 0, questions: 0, cards: 0 };
+                                            const hours = Number(log.hours) || 0;
+                                            const qCount = Number(log.questions) || 0;
+                                            const cardCount = Number(log.cards) || 0;
+
+                                            let color = isDark ? '#262c36' : '#f9fafb';
+                                            let border = isDark ? 'border-gray-700/50' : 'border-gray-200/40';
+                                            if (hours > 0 || qCount > 0) {
+                                              border = 'border-transparent';
+                                              const totalScore = hours * 2 + (qCount / 20) + (cardCount / 30);
+                                              if (totalScore <= 2) color = '#ffedd5';
+                                              else if (totalScore <= 5) color = '#fed7aa';
+                                              else if (totalScore <= 9) color = '#fdbb2d';
+                                              else if (totalScore <= 15) color = '#f97316';
+                                              else color = '#c2410c';
+                                            }
+
+                                            list.push(
+                                              <div
+                                                key={dateStr}
+                                                className={`w-3.5 h-3.5 rounded-md transition duration-150 hover:scale-125 cursor-pointer relative group border ${border}`}
+                                                style={{ backgroundColor: color }}
+                                                onMouseEnter={() => setHoveredStudyRoomIntensityDate(dateStr)}
+                                                onMouseLeave={() => setHoveredStudyRoomIntensityDate(null)}
+                                              >
+                                                {hoveredStudyRoomIntensityDate === dateStr && (
+                                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-gray-900 text-white text-[9px] font-bold px-2 py-1.5 rounded-lg shadow-xl pointer-events-none whitespace-nowrap z-50 shadow-black/40 animate-in fade-in duration-100">
+                                                    <div className="font-extrabold text-[10px] text-orange-400 mb-0.5">
+                                                      {formatAppDate(targetDate)}
+                                                    </div>
+                                                    <div>⏱️ Hours: {formatHoursToHrsMinsShort(hours)}</div>
+                                                    <div>📝 Questions: {qCount}</div>
+                                                    <div>🎴 Cards: {cardCount}</div>
+                                                  </div>
+                                                )}
+                                              </div>
+                                            );
+                                          }
+                                          return list;
+                                        })()}
+                                      </div>
+                                    </div>
+                                  </motion.div>
+
+                                  {/* Right: Today's Goal Ring Gauge */}
+                                  <motion.div
+                                    initial={{ opacity: 0, y: 16, scale: 0.98 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    transition={{ duration: 0.4, delay: 0.35 }}
+                                    whileHover={{ scale: 1.005 }}
+                                    className={`lg:col-span-4 p-6 rounded-3xl flex flex-col items-center text-center relative overflow-hidden transition-all w-full h-full justify-center ${
+                                      isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                    }`}
+                                  >
+                                    <span className={`text-[10px] font-black uppercase tracking-widest mb-4 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Today's Progress</span>
+
+                                    <div className="relative shrink-0 flex items-center justify-center">
+                                      <svg className="w-28 h-28 transform -rotate-90">
+                                        <circle cx="56" cy="56" r="48" stroke={isDark ? '#2d3440' : '#f3f4f6'} strokeWidth="8" fill="transparent" />
+                                        <circle cx="56" cy="56" r="48" stroke="url(#orange-gradient)" strokeWidth="8" fill="transparent"
+                                          strokeDasharray={2 * Math.PI * 48}
+                                          strokeDashoffset={2 * Math.PI * 48 * (1 - Math.min(100, totalProgressPercent) / 100)}
+                                          strokeLinecap="round"
+                                          className="transition-all duration-1000"
+                                        />
+                                        <defs>
+                                          <linearGradient id="orange-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                            <stop offset="0%" stopColor="#f97316" />
+                                            <stop offset="100%" stopColor="#eab308" />
+                                          </linearGradient>
+                                        </defs>
+                                      </svg>
+                                      <div className="absolute flex flex-col items-center">
+                                        <span className={`text-xl font-black ${isDark ? 'text-white' : 'text-gray-800'}`}>{totalProgressPercent}%</span>
+                                        <span className={`text-[8px] font-bold uppercase tracking-wide ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Finished</span>
+                                      </div>
+                                    </div>
+
+                                    <div className="mt-4">
+                                      <h4 className={`text-xs font-black uppercase tracking-wider flex items-center gap-1.5 justify-center ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>
+                                        <Flame className="w-4 h-4 text-orange-500 fill-orange-500" />
+                                        Archetype: {selectedStreakTag}
+                                      </h4>
+                                      <p className={`text-[10px] mt-1 font-semibold leading-relaxed ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
+                                        Targeting {activeGoal.hours}h / {activeGoal.questions}q / {activeGoal.cards}c
+                                      </p>
+                                    </div>
+                                  </motion.div>
+
+                                </div>
+
+                                {/* Performance Analytics Charts Row */}
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                                  {/* Daily Study Hours Curve Chart */}
+                                  <motion.div
+                                    initial={{ opacity: 0, y: 16, scale: 0.98 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    transition={{ duration: 0.4, delay: 0.40 }}
+                                    whileHover={{ scale: 1.005 }}
+                                    className={`p-6 rounded-3xl transition-all ${
+                                      isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                    }`}
+                                  >
+                                    <h3 className={`text-sm font-black uppercase tracking-wider flex items-center gap-2 mb-6 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                      <TrendingUp className={`w-4 h-4 ${isDark ? 'text-orange-400' : 'text-orange-500'}`} /> Study Duration Analytics (Active Days)
+                                    </h3>
+
+                                    {(() => {
+                                      const chartDays = activeDays.slice(-15);
+                                      const maxVal = Math.max(...chartDays.map(d => Number(studyLogs[d].hours) || 0), 4);
+
+                                      if (chartDays.length === 0) {
+                                        return (
+                                          <div className={`h-[180px] flex flex-col items-center justify-center text-center p-6 rounded-2xl ${
+                                            isDark ? 'neu-pressed-dark border border-gray-800' : 'bg-gray-50/50 border border-dashed border-gray-200'
+                                          }`}>
+                                            <Clock className={`w-8 h-8 mb-2 ${isDark ? 'text-slate-600' : 'text-gray-300'}`} />
+                                            <span className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>No hours logged yet</span>
+                                          </div>
+                                        );
+                                      }
+
+                                      const points = chartDays.map((d, i) => {
+                                        const x = Math.round((i / Math.max(1, chartDays.length - 1)) * 440 + 30);
+                                        const y = Math.round(150 - (studyLogs[d].hours / maxVal) * 110);
+                                        return { x, y, date: d, val: studyLogs[d].hours };
+                                      });
+
+                                      const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+                                      const areaPath = points.length > 0
+                                        ? `${linePath} L ${points[points.length - 1].x} 150 L ${points[0].x} 150 Z`
+                                        : '';
+
+                                      return (
+                                        <div className="w-full">
+                                          <div className="relative h-[150px]">
+                                            <svg className="w-full h-full" viewBox="0 0 500 150">
+                                              <defs>
+                                                <linearGradient id="study-hours-gradient" x1="0" y1="0" x2="0" y2="1">
+                                                  <stop offset="0%" stopColor="#f97316" stopOpacity="0.25" />
+                                                  <stop offset="100%" stopColor="#f97316" stopOpacity="0.0" />
+                                                </linearGradient>
+                                              </defs>
+
+                                              <line x1="30" y1="40" x2="470" y2="40" stroke={isDark ? '#2d3440' : '#f3f4f6'} strokeWidth="1" strokeDasharray="4 4" />
+                                              <line x1="30" y1="95" x2="470" y2="95" stroke={isDark ? '#2d3440' : '#f3f4f6'} strokeWidth="1" strokeDasharray="4 4" />
+                                              <line x1="30" y1="150" x2="470" y2="150" stroke={isDark ? '#374151' : '#e5e7eb'} strokeWidth="1" />
+
+                                              {areaPath && <path d={areaPath} fill="url(#study-hours-gradient)" />}
+                                              {linePath && <path d={linePath} fill="none" stroke="#f97316" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />}
+
+                                              {points.map((p, i) => (
+                                                <circle
+                                                  key={i}
+                                                  cx={p.x}
+                                                  cy={p.y}
+                                                  r="4.5"
+                                                  className={`cursor-pointer transition hover:scale-125 ${isDark ? 'fill-[#222730] stroke-orange-400 stroke-2' : 'fill-white stroke-orange-500 stroke-2'}`}
+                                                >
+                                                  <title>{p.val} hrs on {formatAppDate(p.date)}</title>
+                                                </circle>
+                                              ))}
+                                            </svg>
+                                          </div>
+                                          <div className={`flex justify-between px-4 mt-2 text-[9px] font-mono select-none ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
+                                            <span>{formatAppDate(chartDays[0])}</span>
+                                            <span>{formatAppDate(chartDays[chartDays.length - 1])}</span>
+                                          </div>
+                                        </div>
+                                      );
+                                    })()}
+                                  </motion.div>
+
+                                  {/* Questions vs Cards Completed Bar Chart */}
+                                  <motion.div
+                                    initial={{ opacity: 0, y: 16, scale: 0.98 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    transition={{ duration: 0.4, delay: 0.45 }}
+                                    whileHover={{ scale: 1.005 }}
+                                    className={`p-6 rounded-3xl transition-all ${
+                                      isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                    }`}
+                                  >
+                                    <h3 className={`text-sm font-black uppercase tracking-wider flex items-center gap-2 mb-6 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                      <Activity className={`w-4 h-4 ${isDark ? 'text-orange-400' : 'text-orange-500'}`} /> Qbank vs. Anki Balance Index
+                                    </h3>
+
+                                    {(() => {
+                                      const chartDays = activeDays.slice(-10);
+                                      const maxVal = Math.max(...chartDays.map(d => {
+                                        const l = studyLogs[d];
+                                        return Math.max(Number(l.questions) || 0, Number(l.cards) || 0);
+                                      }), 30);
+
+                                      if (chartDays.length === 0) {
+                                        return (
+                                          <div className={`h-[180px] flex flex-col items-center justify-center text-center p-6 rounded-2xl ${
+                                            isDark ? 'neu-pressed-dark border border-gray-800' : 'bg-gray-50/50 border border-dashed border-gray-200'
+                                          }`}>
+                                            <Activity className={`w-8 h-8 mb-2 ${isDark ? 'text-slate-600' : 'text-gray-300'}`} />
+                                            <span className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>No study data logged yet</span>
+                                          </div>
+                                        );
+                                      }
+
+                                      return (
+                                        <div className="w-full">
+                                          <div className={`h-[140px] flex items-end justify-between gap-2 px-2 pt-4 rounded-2xl border ${
+                                            isDark ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-white/80'
+                                          }`}>
+                                            {chartDays.map((d, i) => {
+                                              const l = studyLogs[d];
+                                              const qPercent = Math.min(100, ((Number(l.questions) || 0) / maxVal) * 100);
+                                              const cPercent = Math.min(100, ((Number(l.cards) || 0) / maxVal) * 100);
+
+                                              return (
+                                                <div key={d} className="flex-grow flex flex-col items-center group relative">
+                                                  <div className="w-full flex items-end justify-center gap-1 h-[100px]">
+                                                    {/* Questions Column */}
+                                                    <div
+                                                      style={{ height: `${qPercent}%` }}
+                                                      className="w-2 sm:w-2.5 bg-blue-500 rounded-t-sm transition hover:bg-blue-600 cursor-pointer"
+                                                      title={`Qbank: ${l.questions}`}
+                                                    />
+                                                    {/* Cards Column */}
+                                                    <div
+                                                      style={{ height: `${cPercent}%` }}
+                                                      className="w-2 sm:w-2.5 bg-orange-500 rounded-t-sm transition hover:bg-orange-600 cursor-pointer"
+                                                      title={`Cards: ${l.cards}`}
+                                                    />
+                                                  </div>
+                                                  <span className={`text-[7px] font-mono mt-1 scale-90 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>{d.slice(5)}</span>
+
+                                                  {/* Combined Tooltip */}
+                                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-gray-900 text-white text-[9px] font-bold px-2 py-1.5 rounded shadow-xl opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-50 shadow-black/40">
+                                                    <div className="text-[8px] text-gray-400">{d}</div>
+                                                    <div className="flex items-center gap-1.5 mt-0.5"><span className="w-1.5 h-1.5 bg-blue-500 rounded-full" /> Qs: {l.questions}</div>
+                                                    <div className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 bg-orange-500 rounded-full" /> Cards: {l.cards}</div>
+                                                  </div>
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                          <div className="flex justify-between items-center px-4 mt-2">
+                                            <div className={`flex items-center gap-4 text-[9px] font-bold select-none ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
+                                              <div className="flex items-center gap-1"><span className="w-2 h-2 bg-blue-500 rounded" /> Qs Solved</div>
+                                              <div className="flex items-center gap-1"><span className="w-2 h-2 bg-orange-500 rounded" /> Cards Done</div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      );
+                                    })()}
+                                  </motion.div>
+
                                 </div>
 
                               </div>
-
-                            </div>
-                          );
-                        })()}
+                            );
+                          })()}
 
                         {/* Sub-tab 3: Counselling & GT Analysis */}
                         {analyticsSubTab === 'counselling' && (() => {
@@ -32351,7 +32436,8 @@ Return your response strictly as a JSON object matching this schema:
                         )}
 
                       </div>
-                    )}
+                    );
+                  })()}
 
                     {/* EXPORTER HUB VIEW - DESKTOP */}
                     {currentTab === 'export' && (
