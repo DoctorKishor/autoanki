@@ -8300,10 +8300,9 @@ export default function App() {
     }
   };
 
-  // --- OVERALL SUBJECT TRACKER HANDLERS ---
+  // --- OVERALL SUBJECT TRACKER HANDLERS (100% LOCALDB) ---
   const handleSavePrimarySource = async (subject, source) => {
-    const uid = targetUid || user?.uid;
-    if (!db || !uid) return;
+    if (!subject || !subject.trim()) return;
     const docId = subject.trim().toLowerCase();
 
     setSubjectTrackerData(prev => {
@@ -8316,38 +8315,38 @@ export default function App() {
     });
 
     try {
-      const docRef = doc(db, 'artifacts', appId, 'users', uid, 'subject_tracker', docId);
-      await setDoc(docRef, {
+      await saveLocalSubjectTrackerDoc(docId, {
         subject: subject.trim(),
         primarySource: source
-      }, { merge: true });
-      fbTracker.write(1);
+      });
     } catch (err) {
-      console.error("Error saving primary source:", err);
+      console.error("Error saving primary source locally:", err);
     }
   };
 
   const handleAddTrackerTopic = async (subject, topicName, pageNumber = "", endPage = "") => {
-    const uid = targetUid || user?.uid;
-    if (!db || !uid || !topicName.trim()) return;
+    if (!subject || !topicName || !topicName.trim()) return;
     const docId = subject.trim().toLowerCase();
     const cleanTopicName = topicName.trim();
     const cleanPage = String(pageNumber || "").trim();
     const cleanEndPage = String(endPage || "").trim();
 
+    const localData = await getLocalSubjectTrackerData();
+    const docExists = localData.find(p => p.id === docId);
+    const currentTopics = docExists ? docExists.topics || {} : {};
+    const updatedTopics = {
+      ...currentTopics,
+      [cleanTopicName]: {
+        name: cleanTopicName,
+        page: cleanPage,
+        endPage: cleanEndPage,
+        studyDates: []
+      }
+    };
+
     setSubjectTrackerData(prev => {
-      const docExists = prev.find(p => p.id === docId);
-      const currentTopics = docExists ? docExists.topics || {} : {};
-      const updatedTopics = {
-        ...currentTopics,
-        [cleanTopicName]: {
-          name: cleanTopicName,
-          page: cleanPage,
-          endPage: cleanEndPage,
-          studyDates: []
-        }
-      };
-      if (docExists) {
+      const exists = prev.find(p => p.id === docId);
+      if (exists) {
         return prev.map(p => p.id === docId ? { ...p, topics: updatedTopics } : p);
       } else {
         return [...prev, { id: docId, subject: subject.trim(), topics: updatedTopics }];
@@ -8355,26 +8354,12 @@ export default function App() {
     });
 
     try {
-      const docRef = doc(db, 'artifacts', appId, 'users', uid, 'subject_tracker', docId);
-      const docSnap = await getDoc(docRef);
-      const currentTopics = docSnap.exists() ? docSnap.data().topics || {} : {};
-      const updatedTopics = {
-        ...currentTopics,
-        [cleanTopicName]: {
-          name: cleanTopicName,
-          page: cleanPage,
-          endPage: cleanEndPage,
-          studyDates: []
-        }
-      };
-
-      await setDoc(docRef, {
+      await saveLocalSubjectTrackerDoc(docId, {
         subject: subject.trim(),
         topics: updatedTopics
-      }, { merge: true });
-      fbTracker.write(1);
+      });
     } catch (err) {
-      console.error("Error adding tracker topic:", err);
+      console.error("Error adding tracker topic locally:", err);
     }
   };
 
@@ -8867,120 +8852,93 @@ JSON Format:
   };
 
   const handleLogTrackerStudyDate = async (subject, topicName, dateStr) => {
-    const uid = targetUid || user?.uid;
-    if (!db || !uid || !dateStr) return;
+    if (!subject || !topicName || !dateStr) return;
     const docId = subject.trim().toLowerCase();
 
+    const localData = await getLocalSubjectTrackerData();
+    const docExists = localData.find(p => p.id === docId);
+    const currentTopics = docExists ? docExists.topics || {} : {};
+    const topicObj = currentTopics[topicName] || { name: topicName, studyDates: [] };
+    const currentDates = topicObj.studyDates || [];
+    const updatedDates = [...currentDates, dateStr].sort((a, b) => a.localeCompare(b));
+    const updatedTopics = {
+      ...currentTopics,
+      [topicName]: {
+        ...topicObj,
+        studyDates: updatedDates
+      }
+    };
+
     setSubjectTrackerData(prev => {
-      const docExists = prev.find(p => p.id === docId);
-      if (!docExists) return prev;
-      const currentTopics = docExists.topics || {};
-      const topicObj = currentTopics[topicName] || { name: topicName, studyDates: [] };
-      const currentDates = topicObj.studyDates || [];
-      const updatedDates = [...currentDates, dateStr].sort((a, b) => a.localeCompare(b));
-      const updatedTopics = {
-        ...currentTopics,
-        [topicName]: {
-          ...topicObj,
-          studyDates: updatedDates
-        }
-      };
+      const exists = prev.find(p => p.id === docId);
+      if (!exists) return prev;
       return prev.map(p => p.id === docId ? { ...p, topics: updatedTopics } : p);
     });
 
     try {
-      const docRef = doc(db, 'artifacts', appId, 'users', uid, 'subject_tracker', docId);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        const currentTopics = docSnap.data().topics || {};
-        const topicObj = currentTopics[topicName] || { name: topicName, studyDates: [] };
-        const currentDates = topicObj.studyDates || [];
-        const updatedDates = [...currentDates, dateStr].sort((a, b) => a.localeCompare(b));
-        const updatedTopics = {
-          ...currentTopics,
-          [topicName]: {
-            ...topicObj,
-            studyDates: updatedDates
-          }
-        };
-        await setDoc(docRef, { topics: updatedTopics }, { merge: true });
-        fbTracker.write(1);
-      }
+      await saveLocalSubjectTrackerDoc(docId, {
+        topics: updatedTopics
+      });
     } catch (err) {
-      console.error("Error logging study date:", err);
+      console.error("Error logging study date locally:", err);
     }
   };
 
   const handleDeleteTrackerStudyDate = async (subject, topicName, dateIndex) => {
-    const uid = targetUid || user?.uid;
-    if (!db || !uid) return;
+    if (!subject || !topicName) return;
     const docId = subject.trim().toLowerCase();
 
+    const localData = await getLocalSubjectTrackerData();
+    const docExists = localData.find(p => p.id === docId);
+    if (!docExists) return;
+
+    const currentTopics = docExists.topics || {};
+    const topicObj = currentTopics[topicName];
+    if (!topicObj) return;
+
+    const updatedDates = (topicObj.studyDates || []).filter((_, idx) => idx !== dateIndex);
+    const updatedTopics = {
+      ...currentTopics,
+      [topicName]: {
+        ...topicObj,
+        studyDates: updatedDates
+      }
+    };
+
     setSubjectTrackerData(prev => {
-      const docExists = prev.find(p => p.id === docId);
-      if (!docExists) return prev;
-      const currentTopics = docExists.topics || {};
-      const topicObj = currentTopics[topicName];
-      if (!topicObj) return prev;
-      const updatedDates = (topicObj.studyDates || []).filter((_, idx) => idx !== dateIndex);
-      const updatedTopics = {
-        ...currentTopics,
-        [topicName]: {
-          ...topicObj,
-          studyDates: updatedDates
-        }
-      };
       return prev.map(p => p.id === docId ? { ...p, topics: updatedTopics } : p);
     });
 
     try {
-      const docRef = doc(db, 'artifacts', appId, 'users', uid, 'subject_tracker', docId);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        const currentTopics = docSnap.data().topics || {};
-        const topicObj = currentTopics[topicName];
-        if (topicObj) {
-          const updatedDates = (topicObj.studyDates || []).filter((_, idx) => idx !== dateIndex);
-          const updatedTopics = {
-            ...currentTopics,
-            [topicName]: {
-              ...topicObj,
-              studyDates: updatedDates
-            }
-          };
-          await setDoc(docRef, { topics: updatedTopics }, { merge: true });
-          fbTracker.write(1);
-        }
-      }
+      await saveLocalSubjectTrackerDoc(docId, {
+        topics: updatedTopics
+      });
     } catch (err) {
-      console.error("Error deleting study date:", err);
+      console.error("Error deleting study date locally:", err);
     }
   };
 
   const handleDeleteTrackerTopic = async (subject, topicName) => {
-    const uid = targetUid || user?.uid;
-    if (!db || !uid) return;
+    if (!subject || !topicName) return;
     const docId = subject.trim().toLowerCase();
 
+    const localData = await getLocalSubjectTrackerData();
+    const docExists = localData.find(p => p.id === docId);
+    if (!docExists) return;
+
+    const currentTopics = { ...(docExists.topics || {}) };
+    delete currentTopics[topicName];
+
     setSubjectTrackerData(prev => {
-      const docExists = prev.find(p => p.id === docId);
-      if (!docExists) return prev;
-      const currentTopics = { ...docExists.topics };
-      delete currentTopics[topicName];
       return prev.map(p => p.id === docId ? { ...p, topics: currentTopics } : p);
     });
 
     try {
-      const docRef = doc(db, 'artifacts', appId, 'users', uid, 'subject_tracker', docId);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        const currentTopics = { ...docSnap.data().topics };
-        delete currentTopics[topicName];
-        await updateDoc(docRef, { topics: currentTopics });
-        fbTracker.write(1);
-      }
+      await saveLocalSubjectTrackerDoc(docId, {
+        topics: currentTopics
+      });
     } catch (err) {
-      console.error("Error deleting tracker topic:", err);
+      console.error("Error deleting tracker topic locally:", err);
     }
   };
 
@@ -12192,7 +12150,7 @@ JSON Format:
         reviewsBySubject[docId].push(r);
       });
 
-      // Construct update payload for each subject
+      // Construct update payload for each subject (100% LocalDB)
       for (const [docId, list] of Object.entries(reviewsBySubject)) {
         const existingDoc = subjectTrackerData.find(p => p.id === docId);
         const subjectName = list[0].subject;
@@ -12210,13 +12168,10 @@ JSON Format:
               name: cleanTopicName,
               page: "",
               studyDates: [],
-              // FSRS fields — undefined until first review is processed below
             };
           }
 
           // ── FSRS Calculation ─────────────────────────────────────────────────
-          // Pass the topic's current FSRS state (could be undefined on first review).
-          // The engine returns the full updated payload including nextReviewDue.
           const currentFsrsState = {
             difficulty: topics[cleanTopicName].difficulty,
             stability: topics[cleanTopicName].stability,
@@ -12224,11 +12179,9 @@ JSON Format:
             reviewCount: topics[cleanTopicName].reviewCount,
           };
 
-          // Pass existingData as null if this is truly the first FSRS review
           const fsrsInput = currentFsrsState.stability != null ? currentFsrsState : null;
           const fsrsResult = calculateNextFSRSReview(fsrsInput, review.rating, review.dateStr);
 
-          // ── Merge results back into the topic object ──────────────────────────
           topics[cleanTopicName].difficulty = fsrsResult.difficulty;
           topics[cleanTopicName].stability = fsrsResult.stability;
           topics[cleanTopicName].retrievability = fsrsResult.retrievability;
@@ -12237,31 +12190,23 @@ JSON Format:
           topics[cleanTopicName].lastReviewDate = fsrsResult.lastReviewDate;
           topics[cleanTopicName].reviewCount = fsrsResult.reviewCount;
 
-          // Keep the legacy studyDates log (used by Subject Tracker coverage stats)
           if (!topics[cleanTopicName].studyDates.includes(review.dateStr)) {
             topics[cleanTopicName].studyDates.push(review.dateStr);
             topics[cleanTopicName].studyDates.sort((a, b) => a.localeCompare(b));
           }
         });
 
-        const docRef = doc(db, 'artifacts', appId, 'users', uid, 'subject_tracker', docId);
-        batch.set(docRef, {
+        await saveLocalSubjectTrackerDoc(docId, {
           subject: subjectName.trim(),
           topics
-        }, { merge: true });
+        });
       }
 
-      await batch.commit();
-
-      // Update local quota tracking
-      fbTracker.write(Object.keys(reviewsBySubject).length);
-      setFbUsage(fbTracker.getUsage());
-
       setBatchedReviews([]);
-      alert(`Successfully synced ${batchedReviews.length} reviews to Cloud Firestore!`);
+      alert(`Successfully saved ${batchedReviews.length} reviews to Local Database!`);
     } catch (err) {
-      console.error("Failed syncing batched reviews:", err);
-      alert("Failed to sync batched reviews: " + err.message);
+      console.error("Failed saving batched reviews locally:", err);
+      alert("Failed to save batched reviews: " + err.message);
     } finally {
       setIsSaving(false);
     }
@@ -12312,43 +12257,44 @@ JSON Format:
   };
 
   const handleUpdateTrackerTopicPages = async (subject, topicName, startPage, endPage) => {
-    const uid = targetUid || user?.uid;
-    if (!db || !uid || !topicName) return;
+    if (!subject || !topicName) return;
     const docId = subject.trim().toLowerCase();
 
-    setSubjectTrackerData(prev => {
-      return prev.map(p => {
-        if (p.id === docId) {
-          const currentTopics = p.topics || {};
-          if (currentTopics[topicName]) {
-            const updated = {
-              ...currentTopics,
-              [topicName]: {
-                ...currentTopics[topicName],
-                page: String(startPage).trim(),
-                endPage: String(endPage).trim()
-              }
-            };
-            return { ...p, topics: updated };
-          }
-        }
-        return p;
-      });
-    });
+    const localData = await getLocalSubjectTrackerData();
+    const docExists = localData.find(p => p.id === docId);
 
-    try {
-      const docRef = doc(db, 'artifacts', appId, 'users', uid, 'subject_tracker', docId);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        const topics = docSnap.data().topics || {};
-        if (topics[topicName]) {
-          topics[topicName].page = String(startPage).trim();
-          topics[topicName].endPage = String(endPage).trim();
-          await updateDoc(docRef, { topics });
+    const updatedSubjectData = subjectTrackerData.map(p => {
+      if (p.id === docId) {
+        const currentTopics = p.topics || {};
+        if (currentTopics[topicName]) {
+          const updated = {
+            ...currentTopics,
+            [topicName]: {
+              ...currentTopics[topicName],
+              page: String(startPage).trim(),
+              endPage: String(endPage).trim()
+            }
+          };
+          return { ...p, topics: updated };
         }
       }
+      return p;
+    });
+
+    setSubjectTrackerData(updatedSubjectData);
+
+    try {
+      if (docExists && docExists.topics && docExists.topics[topicName]) {
+        const topics = { ...docExists.topics };
+        topics[topicName] = {
+          ...topics[topicName],
+          page: String(startPage).trim(),
+          endPage: String(endPage).trim()
+        };
+        await saveLocalSubjectTrackerDoc(docId, { topics });
+      }
     } catch (err) {
-      console.error("Error updating topic pages:", err);
+      console.error("Error updating topic pages locally:", err);
     }
   };
 
@@ -12428,33 +12374,20 @@ JSON Format:
     if (!reschedulePreview) return;
     setIsSaving(true);
     try {
-      const batch = writeBatch(db);
-      const uid = user?.uid;
-      if (!uid) throw new Error("No authenticated user.");
-
-      reschedulePreview.updatedTrackerData.forEach(subDoc => {
-        const docId = subDoc.id;
-        const docRef = doc(db, 'artifacts', appId, 'users', uid, 'subject_tracker', docId);
-        batch.set(docRef, {
+      for (const subDoc of reschedulePreview.updatedTrackerData) {
+        await saveLocalSubjectTrackerDoc(subDoc.id, {
           subject: subDoc.subject,
           topics: subDoc.topics
-        }, { merge: true });
-      });
-
-      await batch.commit();
-
-      if (typeof fbTracker !== 'undefined' && fbTracker.write) {
-        fbTracker.write(reschedulePreview.updatedTrackerData.length);
-        setFbUsage(fbTracker.getUsage());
+        });
       }
 
       setSubjectTrackerData(reschedulePreview.updatedTrackerData);
       setOriginalCap(maxDailyReviewCap);
-      await saveCapToCloud(maxDailyReviewCap, maxDailyReviewCap);
+      await saveLocalSetting('max_daily_review_cap', maxDailyReviewCap);
       setReschedulePreview(null);
-      alert(`Successfully rescheduled all ${reschedulePreview.totalTopics} topics across future slots!`);
+      alert(`Successfully rescheduled all ${reschedulePreview.totalTopics} topics locally!`);
     } catch (err) {
-      console.error("Failed to commit rescheduled topics:", err);
+      console.error("Failed to commit rescheduled topics locally:", err);
       alert("Failed to commit rescheduling: " + err.message);
     } finally {
       setIsSaving(false);
@@ -14985,21 +14918,22 @@ JSON Format:
     return () => { isMounted = false; };
   }, []);
 
-  // Establish listener on subject_tracker subcollection to sync manually tracked topics
+  // Load Subject Tracker data directly from Local IndexedDB (100% Offline-First)
   useEffect(() => {
-    if (!db || !targetUid) {
-      setSubjectTrackerData([]);
-      return;
-    }
-    const trackerColRef = collection(db, 'artifacts', appId, 'users', targetUid, 'subject_tracker');
-    const unsubscribe = onSnapshot(trackerColRef, (snapshot) => {
-      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setSubjectTrackerData(list);
-    }, (error) => {
-      console.error("Error listening to subject_tracker collection:", error);
-    });
-    return () => unsubscribe();
-  }, [db, targetUid]);
+    let isMounted = true;
+    const loadLocalTrackerData = async () => {
+      try {
+        const localData = await getLocalSubjectTrackerData();
+        if (isMounted) {
+          setSubjectTrackerData(localData);
+        }
+      } catch (err) {
+        console.error("Error loading local subject tracker data:", err);
+      }
+    };
+    loadLocalTrackerData();
+    return () => { isMounted = false; };
+  }, []);
 
   // Establish listener on study_schedule subcollection
   useEffect(() => {
