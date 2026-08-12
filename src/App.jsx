@@ -24803,11 +24803,13 @@ Return your response strictly as a JSON object matching this schema:
                                         </div>
 
                                         {/* Mobile Period Navigation */}
-                                        <div className="flex items-center gap-1">
+                                        <div className={`flex items-center gap-1 p-0.5 rounded-xl select-none ${
+                                          isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
+                                        }`}>
                                           <motion.button
                                             whileTap={{ scale: 0.9 }}
                                             onClick={() => setStudyIntensityOffset(prev => prev - 1)}
-                                            className={`p-1 rounded-lg ${isDark ? 'bg-slate-800 text-slate-300' : 'bg-gray-200 text-slate-700'}`}
+                                            className={`p-1 rounded-lg transition-all cursor-pointer ${isDark ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-gray-200 text-slate-700'}`}
                                           >
                                             <ChevronLeft className="w-3.5 h-3.5" />
                                           </motion.button>
@@ -30863,63 +30865,63 @@ Return your response strictly as a JSON object matching this schema:
 
                                   return (
                                     <>
-                                      <div className="grid grid-cols-1 lg:grid-cols-3 items-center gap-4 text-left">
-                                        {/* Left: Icon, Title & Prev/Next Period Controls */}
-                                        <div className="flex flex-wrap items-center gap-3">
-                                          <div className={`p-2.5 rounded-2xl ${isDark ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'}`}>
+                                      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 text-left mb-4">
+                                        {/* Left Zone: Icon, Title & Date Subtitle */}
+                                        <div className="flex items-center gap-3">
+                                          <div className={`p-2.5 rounded-2xl shrink-0 ${isDark ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'}`}>
                                             <Calendar className="w-4.5 h-4.5" />
                                           </div>
                                           <div>
-                                            <div className="flex items-center gap-2">
-                                              <h3 className={`text-sm font-black uppercase tracking-wider ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                                                Contribution Activity
-                                              </h3>
-
-                                              {/* Navigation Controls: Previous / Next */}
-                                              <div className="flex items-center gap-1 ml-2">
-                                                <motion.button
-                                                  whileHover={{ scale: 1.1 }}
-                                                  whileTap={{ scale: 0.9 }}
-                                                  onClick={() => setContributionOffset(prev => prev - 1)}
-                                                  className={`p-1 rounded-lg transition-all cursor-pointer ${
-                                                    isDark ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-gray-200 text-slate-700'
-                                                  }`}
-                                                  title={`Previous ${contributionTimeframe.charAt(0).toUpperCase() + contributionTimeframe.slice(1)}`}
-                                                >
-                                                  <ChevronLeft className="w-4 h-4" />
-                                                </motion.button>
-
-                                                <span className={`text-[10px] font-black uppercase tracking-wider font-mono px-2.5 py-0.5 rounded-md ${
-                                                  isDark ? 'bg-slate-800/80 text-blue-400 border border-slate-700/50' : 'bg-blue-50 text-blue-700 border border-blue-100'
-                                                }`}>
-                                                  {periodLabel}
-                                                </span>
-
-                                                <motion.button
-                                                  whileHover={{ scale: 1.1 }}
-                                                  whileTap={{ scale: 0.9 }}
-                                                  disabled={contributionOffset >= 0}
-                                                  onClick={() => setContributionOffset(prev => Math.min(0, prev + 1))}
-                                                  className={`p-1 rounded-lg transition-all ${
-                                                    contributionOffset >= 0
-                                                      ? 'opacity-30 cursor-not-allowed text-gray-400'
-                                                      : (isDark ? 'hover:bg-slate-800 text-slate-300 cursor-pointer' : 'hover:bg-gray-200 text-slate-700 cursor-pointer')
-                                                  }`}
-                                                  title={`Next ${contributionTimeframe.charAt(0).toUpperCase() + contributionTimeframe.slice(1)}`}
-                                                >
-                                                  <ChevronRight className="w-4 h-4" />
-                                                </motion.button>
-                                              </div>
-                                            </div>
-
-                                            <p className={`text-[10px] font-bold uppercase mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                            <h3 className={`text-sm font-black uppercase tracking-wider ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                              Contribution Activity
+                                            </h3>
+                                            <p className={`text-[10px] font-bold uppercase tracking-wide mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                               {periodDetailText}
                                             </p>
                                           </div>
                                         </div>
 
-                                        {/* Center: Fixed Position Subtabs with 0.6s cubic-bezier(0,0,0,1) Smooth Sliding Pill */}
-                                        <div className="flex justify-center">
+                                        {/* Center Zone: Prev/Next Date Navigation Pill + Timeframe Switcher */}
+                                        <div className="flex flex-wrap items-center justify-center gap-3">
+                                          {/* Navigation Controls: Previous / Next Date Navigator */}
+                                          <div className={`flex items-center gap-1.5 p-1 rounded-2xl select-none ${
+                                            isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
+                                          }`}>
+                                            <motion.button
+                                              whileHover={{ scale: 1.08 }}
+                                              whileTap={{ scale: 0.92 }}
+                                              onClick={() => setContributionOffset(prev => prev - 1)}
+                                              className={`p-1.5 rounded-xl transition-all cursor-pointer ${
+                                                isDark ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-gray-200 text-slate-700'
+                                              }`}
+                                              title={`Previous ${contributionTimeframe.charAt(0).toUpperCase() + contributionTimeframe.slice(1)}`}
+                                            >
+                                              <ChevronLeft className="w-4 h-4" />
+                                            </motion.button>
+
+                                            <span className={`text-[10px] font-black uppercase tracking-wider font-mono px-3 py-1 rounded-xl whitespace-nowrap shrink-0 ${
+                                              isDark ? 'bg-slate-800/90 text-blue-400 border border-slate-700/60 shadow-inner' : 'bg-blue-50/90 text-blue-700 border border-blue-200/80 shadow-inner'
+                                            }`}>
+                                              {periodLabel}
+                                            </span>
+
+                                            <motion.button
+                                              whileHover={contributionOffset < 0 ? { scale: 1.08 } : {}}
+                                              whileTap={contributionOffset < 0 ? { scale: 0.92 } : {}}
+                                              disabled={contributionOffset >= 0}
+                                              onClick={() => setContributionOffset(prev => Math.min(0, prev + 1))}
+                                              className={`p-1.5 rounded-xl transition-all ${
+                                                contributionOffset >= 0
+                                                  ? 'opacity-25 cursor-not-allowed text-gray-400'
+                                                  : (isDark ? 'hover:bg-slate-800 text-slate-300 cursor-pointer' : 'hover:bg-gray-200 text-slate-700 cursor-pointer')
+                                              }`}
+                                              title={`Next ${contributionTimeframe.charAt(0).toUpperCase() + contributionTimeframe.slice(1)}`}
+                                            >
+                                              <ChevronRight className="w-4 h-4" />
+                                            </motion.button>
+                                          </div>
+
+                                          {/* Fixed Position Subtabs with Smooth Sliding Pill Switcher */}
                                           {(() => {
                                             const subtabs = [
                                               { id: 'weekly', label: 'Weekly' },
@@ -31534,63 +31536,63 @@ Return your response strictly as a JSON object matching this schema:
 
                                       return (
                                         <>
-                                          <div className="grid grid-cols-1 xl:grid-cols-3 items-center gap-4 text-left mb-4">
-                                            {/* Left: Icon, Title & Navigation Controls */}
-                                            <div className="flex flex-wrap items-center gap-3">
-                                              <div className={`p-2.5 rounded-2xl ${isDark ? 'neu-pressed-dark text-orange-400' : 'neu-pressed-light text-orange-500'}`}>
+                                          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 text-left mb-4">
+                                            {/* Left Zone: Icon, Title & Date Subtitle */}
+                                            <div className="flex items-center gap-3">
+                                              <div className={`p-2.5 rounded-2xl shrink-0 ${isDark ? 'neu-pressed-dark text-orange-400' : 'neu-pressed-light text-orange-500'}`}>
                                                 <Calendar className="w-4.5 h-4.5" />
                                               </div>
                                               <div>
-                                                <div className="flex items-center gap-2">
-                                                  <h3 className={`text-sm font-black uppercase tracking-wider ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                                                    Study Room Intensity Map
-                                                  </h3>
-
-                                                  {/* Navigation Controls: Previous / Next */}
-                                                  <div className="flex items-center gap-1 ml-2">
-                                                    <motion.button
-                                                      whileHover={{ scale: 1.1 }}
-                                                      whileTap={{ scale: 0.9 }}
-                                                      onClick={() => setStudyIntensityOffset(prev => prev - 1)}
-                                                      className={`p-1 rounded-lg transition-all cursor-pointer ${
-                                                        isDark ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-gray-200 text-slate-700'
-                                                      }`}
-                                                      title={`Previous ${studyIntensityTimeframe.charAt(0).toUpperCase() + studyIntensityTimeframe.slice(1)}`}
-                                                    >
-                                                      <ChevronLeft className="w-4 h-4" />
-                                                    </motion.button>
-
-                                                    <span className={`text-[10px] font-black uppercase tracking-wider font-mono px-2.5 py-0.5 rounded-md ${
-                                                      isDark ? 'bg-slate-800/80 text-orange-400 border border-slate-700/50' : 'bg-orange-50 text-orange-700 border border-orange-100'
-                                                    }`}>
-                                                      {periodLabel}
-                                                    </span>
-
-                                                    <motion.button
-                                                      whileHover={{ scale: 1.1 }}
-                                                      whileTap={{ scale: 0.9 }}
-                                                      disabled={studyIntensityOffset >= 0}
-                                                      onClick={() => setStudyIntensityOffset(prev => Math.min(0, prev + 1))}
-                                                      className={`p-1 rounded-lg transition-all ${
-                                                        studyIntensityOffset >= 0
-                                                          ? 'opacity-30 cursor-not-allowed text-gray-400'
-                                                          : (isDark ? 'hover:bg-slate-800 text-slate-300 cursor-pointer' : 'hover:bg-gray-200 text-slate-700 cursor-pointer')
-                                                      }`}
-                                                      title={`Next ${studyIntensityTimeframe.charAt(0).toUpperCase() + studyIntensityTimeframe.slice(1)}`}
-                                                    >
-                                                      <ChevronRight className="w-4 h-4" />
-                                                    </motion.button>
-                                                  </div>
-                                                </div>
-
-                                                <p className={`text-[10px] font-bold uppercase mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                <h3 className={`text-sm font-black uppercase tracking-wider ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                                  Study Room Intensity Map
+                                                </h3>
+                                                <p className={`text-[10px] font-bold uppercase tracking-wide mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                                   {periodDetailText}
                                                 </p>
                                               </div>
                                             </div>
 
-                                            {/* Center: Fixed Position Subtabs with 0.6s cubic-bezier(0,0,0,1) Smooth Sliding Pill */}
-                                            <div className="flex justify-center">
+                                            {/* Center Zone: Prev/Next Date Navigation Pill + Timeframe Switcher */}
+                                            <div className="flex flex-wrap items-center justify-center gap-3">
+                                              {/* Navigation Controls: Previous / Next Date Navigator */}
+                                              <div className={`flex items-center gap-1.5 p-1 rounded-2xl select-none ${
+                                                isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
+                                              }`}>
+                                                <motion.button
+                                                  whileHover={{ scale: 1.08 }}
+                                                  whileTap={{ scale: 0.92 }}
+                                                  onClick={() => setStudyIntensityOffset(prev => prev - 1)}
+                                                  className={`p-1.5 rounded-xl transition-all cursor-pointer ${
+                                                    isDark ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-gray-200 text-slate-700'
+                                                  }`}
+                                                  title={`Previous ${studyIntensityTimeframe.charAt(0).toUpperCase() + studyIntensityTimeframe.slice(1)}`}
+                                                >
+                                                  <ChevronLeft className="w-4 h-4" />
+                                                </motion.button>
+
+                                                <span className={`text-[10px] font-black uppercase tracking-wider font-mono px-3 py-1 rounded-xl whitespace-nowrap shrink-0 ${
+                                                  isDark ? 'bg-slate-800/90 text-orange-400 border border-slate-700/60 shadow-inner' : 'bg-orange-50/90 text-orange-700 border border-orange-200/80 shadow-inner'
+                                                }`}>
+                                                  {periodLabel}
+                                                </span>
+
+                                                <motion.button
+                                                  whileHover={studyIntensityOffset < 0 ? { scale: 1.08 } : {}}
+                                                  whileTap={studyIntensityOffset < 0 ? { scale: 0.92 } : {}}
+                                                  disabled={studyIntensityOffset >= 0}
+                                                  onClick={() => setStudyIntensityOffset(prev => Math.min(0, prev + 1))}
+                                                  className={`p-1.5 rounded-xl transition-all ${
+                                                    studyIntensityOffset >= 0
+                                                      ? 'opacity-25 cursor-not-allowed text-gray-400'
+                                                      : (isDark ? 'hover:bg-slate-800 text-slate-300 cursor-pointer' : 'hover:bg-gray-200 text-slate-700 cursor-pointer')
+                                                  }`}
+                                                  title={`Next ${studyIntensityTimeframe.charAt(0).toUpperCase() + studyIntensityTimeframe.slice(1)}`}
+                                                >
+                                                  <ChevronRight className="w-4 h-4" />
+                                                </motion.button>
+                                              </div>
+
+                                              {/* Fixed Position Subtabs with Smooth Sliding Pill Switcher */}
                                               {(() => {
                                                 const subtabs = [
                                                   { id: 'weekly', label: 'Weekly' },
@@ -31638,7 +31640,7 @@ Return your response strictly as a JSON object matching this schema:
                                               })()}
                                             </div>
 
-                                            {/* Right: Orange Intensity Legend */}
+                                            {/* Right Zone: Orange Intensity Legend */}
                                             <div className={`flex items-center justify-start xl:justify-end gap-1.5 text-[9px] font-bold select-none shrink-0 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
                                               <span>Less</span>
                                               <div className={`w-2.5 h-2.5 rounded-sm border ${isDark ? 'bg-[#1e242d] border-gray-800/80' : 'bg-[#cbd5e1] border-gray-300/60'}`} title="0 study activity" />
