@@ -4731,6 +4731,7 @@ export default function App() {
   const [currentTab, setCurrentTab] = useState(getInitialTab);
   const [isWidgetCustomizerOpen, setIsWidgetCustomizerOpen] = useState(false);
   const [hoveredStudyRoomIntensityDate, setHoveredStudyRoomIntensityDate] = useState(null);
+  const [contributionTimeframe, setContributionTimeframe] = useState('yearly'); // 'weekly' | 'monthly' | 'yearly'
 
   const DEFAULT_DASHBOARD_WIDGETS = useMemo(() => [
     { id: 'campEfficiencyCard', label: 'CAMP Study Efficiency', size: 'medium', enabled: true },
@@ -30219,19 +30220,94 @@ Return your response strictly as a JSON object matching this schema:
                                 }`}
                               >
                                 {(() => {
-                                  const maxContribCount = Math.max(...Object.values(analyticsData.contributions), 1);
+                                  const allContribKeys = Object.keys(analyticsData.contributions).sort();
+
+                                  const filteredDateKeys = (() => {
+                                    if (contributionTimeframe === 'weekly') {
+                                      return allContribKeys.slice(-84); // 12 weeks
+                                    } else if (contributionTimeframe === 'monthly') {
+                                      return allContribKeys.slice(-180); // 6 months (~26 weeks)
+                                    } else {
+                                      return allContribKeys.slice(-365); // 1 year (52 weeks)
+                                    }
+                                  })();
+
+                                  const maxContribCount = Math.max(
+                                    ...filteredDateKeys.map(d => analyticsData.contributions[d] || 0),
+                                    1
+                                  );
+
                                   return (
                                     <>
-                                      <div className="flex justify-between items-center mb-6">
-                                        <h3 className={`text-sm font-black uppercase tracking-wider flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                                          <Calendar className={`w-4 h-4 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} /> Contribution Activity
-                                        </h3>
-                                        <div className={`flex items-center gap-1 text-[9px] font-bold select-none ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
+                                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                                        {/* Left: Title & Subtitle Badge */}
+                                        <div className="flex items-center gap-3">
+                                          <div className={`p-2.5 rounded-2xl ${isDark ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'}`}>
+                                            <Calendar className="w-4 h-4" />
+                                          </div>
+                                          <div>
+                                            <h3 className={`text-sm font-black uppercase tracking-wider ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                              Contribution Activity
+                                            </h3>
+                                            <p className={`text-[10px] font-bold uppercase mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                              {contributionTimeframe === 'weekly' && 'Last 12 Weeks (84 Days)'}
+                                              {contributionTimeframe === 'monthly' && 'Last 6 Months (180 Days)'}
+                                              {contributionTimeframe === 'yearly' && 'Full Year History (365 Days)'}
+                                            </p>
+                                          </div>
+                                        </div>
+
+                                        {/* Center: 3 Timeframe Subtabs (Weekly / Monthly / Yearly) */}
+                                        <div className={`flex items-center p-1 rounded-2xl gap-1 shrink-0 ${
+                                          isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
+                                        }`}>
+                                          <motion.button
+                                            whileHover={{ scale: 1.02 }}
+                                            whileTap={{ scale: 0.97 }}
+                                            onClick={() => setContributionTimeframe('weekly')}
+                                            className={`px-3.5 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
+                                              contributionTimeframe === 'weekly'
+                                                ? (isDark ? 'neu-btn-accent-dark text-white shadow-sm font-extrabold' : 'neu-btn-accent-light text-white shadow-sm font-extrabold')
+                                                : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                                            }`}
+                                          >
+                                            Weekly
+                                          </motion.button>
+
+                                          <motion.button
+                                            whileHover={{ scale: 1.02 }}
+                                            whileTap={{ scale: 0.97 }}
+                                            onClick={() => setContributionTimeframe('monthly')}
+                                            className={`px-3.5 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
+                                              contributionTimeframe === 'monthly'
+                                                ? (isDark ? 'neu-btn-accent-dark text-white shadow-sm font-extrabold' : 'neu-btn-accent-light text-white shadow-sm font-extrabold')
+                                                : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                                            }`}
+                                          >
+                                            Monthly
+                                          </motion.button>
+
+                                          <motion.button
+                                            whileHover={{ scale: 1.02 }}
+                                            whileTap={{ scale: 0.97 }}
+                                            onClick={() => setContributionTimeframe('yearly')}
+                                            className={`px-3.5 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
+                                              contributionTimeframe === 'yearly'
+                                                ? (isDark ? 'neu-btn-accent-dark text-white shadow-sm font-extrabold' : 'neu-btn-accent-light text-white shadow-sm font-extrabold')
+                                                : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                                            }`}
+                                          >
+                                            Yearly
+                                          </motion.button>
+                                        </div>
+
+                                        {/* Right: HSL Intensity Legend */}
+                                        <div className={`flex items-center gap-1.5 text-[9px] font-bold select-none shrink-0 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
                                           <span>Less</span>
                                           <div className={`w-2.5 h-2.5 rounded-sm border ${isDark ? 'bg-[#2a303c] border-gray-700/40' : 'bg-[#f3f4f6] border-gray-200/40'}`} title="0 cards" />
                                           <div className="flex items-center gap-[1px]">
-                                            {Array.from({ length: 20 }).map((_, idx) => {
-                                              const ratio = (idx + 1) / 20;
+                                            {Array.from({ length: 15 }).map((_, idx) => {
+                                              const ratio = (idx + 1) / 15;
                                               const lightness = isDark ? (25 + ratio * 45) : (94 - ratio * 69);
                                               const saturation = 35 + ratio * 59;
                                               const col = `hsl(217, ${Math.round(saturation)}%, ${Math.round(lightness)}%)`;
@@ -30248,11 +30324,13 @@ Return your response strictly as a JSON object matching this schema:
                                           <span>More</span>
                                         </div>
                                       </div>
-                                      <div className="overflow-x-auto pb-2 scrollbar-thin">
-                                        <div className="min-w-[700px] select-none flex justify-center py-2">
+
+                                      {/* Dynamic Calendar Grid */}
+                                      <div className="overflow-x-auto pb-2 scrollbar-thin custom-scrollbar">
+                                        <div className="min-w-[300px] select-none flex justify-center py-2">
                                           <div className="grid grid-flow-col grid-rows-7 gap-1">
-                                            {Object.keys(analyticsData.contributions).sort().map(dateStr => {
-                                              const count = analyticsData.contributions[dateStr];
+                                            {filteredDateKeys.map(dateStr => {
+                                              const count = analyticsData.contributions[dateStr] || 0;
 
                                               let color = isDark ? '#262c36' : '#f3f4f6';
                                               if (count > 0) {
