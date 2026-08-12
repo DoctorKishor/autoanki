@@ -26360,377 +26360,489 @@ Return your response strictly as a JSON object matching this schema:
                     </div>
                   )}
 
-                  {currentTab === 'subjectTracker' && (
-                    <div className="space-y-4 text-left pb-24 animate-in fade-in duration-200">
-                      {/* Mobile Header / Selector info */}
-                      <div className="bg-white/80 backdrop-blur-xl p-5 rounded-3xl shadow-xl border border-white/40 space-y-4">
-                        <div className="flex items-center gap-2 pb-3 border-b border-gray-100">
-                          <div className="bg-blue-100 p-2 rounded-xl text-blue-600">
-                            <ListChecks className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <h2 className="text-sm font-black text-gray-900 tracking-tight">Subject Tracker</h2>
-                            <p className="text-[10px] text-gray-500">Track study topics and logged revision sessions</p>
-                          </div>
-                        </div>
-
-                        {/* Switcher Pill */}
-                        <div className="flex items-center bg-gray-100 p-1 rounded-2xl border border-gray-205">
-                          <button
-                            onClick={() => setSubjectTrackerSubTab('manager')}
-                            className={`flex-grow py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all duration-150 flex items-center justify-center gap-1.5 ${subjectTrackerSubTab === 'manager' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                          >
-                            <ListChecks className="w-3.5 h-3.5" />
-                            Manager
-                          </button>
-                          <button
-                            onClick={() => setSubjectTrackerSubTab('coverage')}
-                            className={`flex-grow py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all duration-150 flex items-center justify-center gap-1.5 ${subjectTrackerSubTab === 'coverage' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                          >
-                            <Layers className="w-3.5 h-3.5" />
-                            Coverage
-                          </button>
-                        </div>
-
-                        <div className="space-y-3">
-                          <div>
-                            <label className="block text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">Select Subject</label>
-                            <NeumorphicSelect
-                              value={selectedTrackerSubject}
-                              onChange={(val) => setSelectedTrackerSubject(val)}
-                              options={["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"]}
-                              isDark={settingsThemeMode === 'dark'}
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      {subjectTrackerSubTab === 'manager' ? (
-                        <>
-                          {/* Primary Source configuration card */}
-                          <div className="bg-white p-5 rounded-3xl border border-gray-150 shadow-sm space-y-3">
-                            <label className="block text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">Primary Source Material</label>
-                            <div className="flex gap-2">
-                              <input
-                                type="text"
-                                placeholder="e.g. Marrow + First Aid"
-                                value={
-                                  trackerSourceInputs[selectedTrackerSubject] !== undefined
-                                    ? trackerSourceInputs[selectedTrackerSubject]
-                                    : (subjectTrackerData.find(p => p.id === selectedTrackerSubject.trim().toLowerCase())?.primarySource || "")
-                                }
-                                onChange={(e) => {
-                                  setTrackerSourceInputs(prev => ({
-                                    ...prev,
-                                    [selectedTrackerSubject]: e.target.value
-                                  }));
-                                }}
-                                onBlur={() => {
-                                  const sourceVal = trackerSourceInputs[selectedTrackerSubject] !== undefined
-                                    ? trackerSourceInputs[selectedTrackerSubject]
-                                    : (subjectTrackerData.find(p => p.id === selectedTrackerSubject.trim().toLowerCase())?.primarySource || "");
-                                  handleSavePrimarySource(selectedTrackerSubject, sourceVal);
-                                }}
-                                className="flex-grow p-2.5 border border-gray-200 rounded-xl text-xs font-bold bg-white text-gray-800 outline-none"
-                              />
-                              <button
-                                onClick={() => {
-                                  const sourceVal = trackerSourceInputs[selectedTrackerSubject] !== undefined
-                                    ? trackerSourceInputs[selectedTrackerSubject]
-                                    : (subjectTrackerData.find(p => p.id === selectedTrackerSubject.trim().toLowerCase())?.primarySource || "");
-                                  handleSavePrimarySource(selectedTrackerSubject, sourceVal);
-                                  alert("Primary source saved!");
-                                }}
-                                className="px-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider active:scale-95 transition"
-                              >
-                                Save
-                              </button>
+                  {currentTab === 'subjectTracker' && (() => {
+                    const isDark = settingsThemeMode === 'dark';
+                    return (
+                      <motion.div
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                        className="space-y-4 text-left pb-24"
+                      >
+                        {/* Mobile Header / Selector info */}
+                        <motion.div
+                          initial={{ opacity: 0, y: 12 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.4, delay: 0.05 }}
+                          className={`p-5 rounded-3xl transition-all space-y-4 ${
+                            isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                          }`}
+                        >
+                          <div className={`flex items-center gap-2 pb-3 border-b ${isDark ? 'border-slate-750' : 'border-slate-200/80'}`}>
+                            <div className={`p-2 rounded-xl ${isDark ? 'neu-pressed-dark text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
+                              <ListChecks className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <h2 className="text-sm font-black tracking-tight">Subject Tracker</h2>
+                              <p className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Track study topics and logged revision sessions</p>
                             </div>
                           </div>
 
-                          {/* AI Index Extractor Widget */}
-                          <div
-                            tabIndex={0}
-                            onDragOver={(e) => {
-                              e.preventDefault();
-                              setIsTrackerDragOver(true);
-                            }}
-                            onDragLeave={() => {
-                              setIsTrackerDragOver(false);
-                            }}
-                            onDrop={(e) => {
-                              e.preventDefault();
-                              setIsTrackerDragOver(false);
-                              if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                                processIndexFiles(e.dataTransfer.files, selectedTrackerSubject);
-                              }
-                            }}
-                            onPaste={(e) => {
-                              if (e.clipboardData.files && e.clipboardData.files.length > 0) {
-                                e.preventDefault();
-                                processIndexFiles(e.clipboardData.files, selectedTrackerSubject);
-                              }
-                            }}
-                            className={`flex flex-col gap-3 bg-gradient-to-r from-violet-50 to-indigo-50 border rounded-3xl p-5 outline-none transition-all duration-300 ${isTrackerDragOver ? 'border-violet-400 bg-violet-100/50 scale-[1.02] border-dashed shadow-lg shadow-indigo-200/50' : 'border-indigo-100 shadow-sm'
-                              }`}
-                          >
-                            <div className="text-left">
-                              <h4 className="text-xs font-black text-indigo-950 flex items-center gap-1.5">
-                                <Sparkles className="w-4 h-4 text-violet-600 animate-pulse" /> AI Book Index Extractor
-                              </h4>
-                              <p className="text-[10px] text-indigo-600/80 font-bold mt-1 leading-relaxed">
-                                Drag & drop multiple index pages, paste images, or click to upload.
-                              </p>
-                            </div>
-                            <label className={`w-full py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer shadow-md active:scale-95 transition-all flex items-center justify-center gap-1.5 ${isTrackerAiExtracting ? 'opacity-50 pointer-events-none' : ''}`}>
-                              {isTrackerAiExtracting ? (
-                                <>
-                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                  Extracting...
-                                </>
-                              ) : (
-                                <>
-                                  <Upload className="w-3.5 h-3.5" />
-                                  Upload Index
-                                </>
-                              )}
-                              <input
-                                type="file"
-                                accept="image/*"
-                                multiple={true}
-                                onChange={(e) => handleUploadIndexImage(e, selectedTrackerSubject)}
-                                className="hidden"
-                                disabled={isTrackerAiExtracting}
-                              />
-                            </label>
-                          </div>
-
-                          {/* Add Tracked Topic Card */}
-                          <div className="bg-white p-5 rounded-3xl border border-gray-150 shadow-sm space-y-3">
-                            <label className="block text-[9px] font-black uppercase tracking-widest text-gray-400">Add Topic to Track</label>
-                            <form
-                              onSubmit={(e) => {
-                                e.preventDefault();
-                                const name = trackerNewTopicInput.trim();
-                                if (!name) return;
-                                handleAddTrackerTopic(selectedTrackerSubject, name, trackerNewTopicPage.trim(), trackerNewTopicEndPage.trim());
-                                setTrackerNewTopicInput("");
-                                setTrackerNewTopicPage("");
-                                setTrackerNewTopicEndPage("");
+                          {/* Switcher Pill */}
+                          <div className={`relative flex items-center p-1 rounded-2xl ${isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'}`}>
+                            <div
+                              className="absolute top-1 bottom-1 rounded-xl bg-blue-600 shadow-md transition-all"
+                              style={{
+                                width: 'calc(50% - 4px)',
+                                left: subjectTrackerSubTab === 'manager' ? '4px' : 'calc(50%)',
+                                transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
                               }}
-                              className="flex gap-2"
+                            />
+                            <button
+                              onClick={() => setSubjectTrackerSubTab('manager')}
+                              className={`relative z-10 flex-grow py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center justify-center gap-1.5 ${
+                                subjectTrackerSubTab === 'manager' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
+                              }`}
                             >
-                              <input
-                                type="text"
-                                placeholder="Type a topic (e.g. Cranial Nerves)..."
-                                value={trackerNewTopicInput}
-                                onChange={(e) => setTrackerNewTopicInput(e.target.value)}
-                                className="flex-grow p-2.5 border border-gray-200 rounded-xl text-xs font-bold bg-white text-gray-800 outline-none"
-                              />
-                              <input
-                                type="number"
-                                placeholder="Start Page"
-                                value={trackerNewTopicPage}
-                                onChange={(e) => setTrackerNewTopicPage(e.target.value)}
-                                className="w-20 p-2.5 border border-gray-200 rounded-xl text-xs font-bold bg-white text-gray-800 outline-none"
-                              />
-                              <input
-                                type="number"
-                                placeholder="End Page"
-                                value={trackerNewTopicEndPage}
-                                onChange={(e) => setTrackerNewTopicEndPage(e.target.value)}
-                                className="w-20 p-2.5 border border-gray-200 rounded-xl text-xs font-bold bg-white text-gray-800 outline-none"
-                              />
-                              <button
-                                type="submit"
-                                className="px-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider active:scale-95 transition"
-                              >
-                                Add
-                              </button>
-                            </form>
+                              <ListChecks className="w-3.5 h-3.5" />
+                              Manager
+                            </button>
+                            <button
+                              onClick={() => setSubjectTrackerSubTab('coverage')}
+                              className={`relative z-10 flex-grow py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center justify-center gap-1.5 ${
+                                subjectTrackerSubTab === 'coverage' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
+                              }`}
+                            >
+                              <Layers className="w-3.5 h-3.5" />
+                              Coverage
+                            </button>
                           </div>
 
-                          {/* Tracked Topics Checklist Header */}
-                          <div className="flex justify-between items-center mt-6">
-                            <label className="text-[10px] font-black uppercase tracking-wider text-gray-400 font-mono">Tracked Topics</label>
-
-                            {/* Sort Toggle */}
-                            <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-xl border border-gray-250 shadow-inner text-[9px] font-black uppercase tracking-wider font-sans scale-90 origin-right">
-                              <button
-                                type="button"
-                                onClick={() => setTrackerSortBy('page')}
-                                className={`px-2 py-0.5 rounded-lg transition ${trackerSortBy === 'page' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}
-                              >
-                                Page
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setTrackerSortBy('uncompleted')}
-                                className={`px-2 py-0.5 rounded-lg transition ${trackerSortBy === 'uncompleted' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}
-                              >
-                                Uncompleted
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setTrackerSortBy('completed')}
-                                className={`px-2 py-0.5 rounded-lg transition ${trackerSortBy === 'completed' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}
-                              >
-                                Completed
-                              </button>
+                          <div className="space-y-3">
+                            <div>
+                              <label className={`block text-[9px] font-black uppercase tracking-widest mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Select Subject</label>
+                              <NeumorphicSelect
+                                value={selectedTrackerSubject}
+                                onChange={(val) => setSelectedTrackerSubject(val)}
+                                options={["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"]}
+                                isDark={isDark}
+                              />
                             </div>
                           </div>
+                        </motion.div>
 
-                          {/* Tracked Topics Checklist Grid */}
-                          <div className="space-y-3 mt-2">
-                            {(() => {
-                              const docId = selectedTrackerSubject.trim().toLowerCase();
-                              const trackerDoc = subjectTrackerData.find(p => p.id === docId);
-                              const topicsMap = trackerDoc?.topics || {};
-                              const topicsList = getSortedTopics(Object.values(topicsMap));
+                        {subjectTrackerSubTab === 'manager' ? (
+                          <>
+                            {/* Primary Source configuration card */}
+                            <motion.div
+                              initial={{ opacity: 0, y: 12 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.4, delay: 0.1 }}
+                              className={`p-5 rounded-3xl transition-all space-y-3 ${
+                                isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                              }`}
+                            >
+                              <label className={`block text-[9px] font-black uppercase tracking-widest mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Primary Source Material</label>
+                              <div className="flex gap-2">
+                                <input
+                                  type="text"
+                                  placeholder="e.g. Marrow + First Aid"
+                                  value={
+                                    trackerSourceInputs[selectedTrackerSubject] !== undefined
+                                      ? trackerSourceInputs[selectedTrackerSubject]
+                                      : (subjectTrackerData.find(p => p.id === selectedTrackerSubject.trim().toLowerCase())?.primarySource || "")
+                                  }
+                                  onChange={(e) => {
+                                    setTrackerSourceInputs(prev => ({
+                                      ...prev,
+                                      [selectedTrackerSubject]: e.target.value
+                                    }));
+                                  }}
+                                  onBlur={() => {
+                                    const sourceVal = trackerSourceInputs[selectedTrackerSubject] !== undefined
+                                      ? trackerSourceInputs[selectedTrackerSubject]
+                                      : (subjectTrackerData.find(p => p.id === selectedTrackerSubject.trim().toLowerCase())?.primarySource || "");
+                                    handleSavePrimarySource(selectedTrackerSubject, sourceVal);
+                                  }}
+                                  className={`flex-grow p-2.5 rounded-xl text-xs font-bold outline-none transition ${
+                                    isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'
+                                  }`}
+                                />
+                                <motion.button
+                                  whileHover={{ scale: 1.02 }}
+                                  whileTap={{ scale: 0.95 }}
+                                  onClick={() => {
+                                    const sourceVal = trackerSourceInputs[selectedTrackerSubject] !== undefined
+                                      ? trackerSourceInputs[selectedTrackerSubject]
+                                      : (subjectTrackerData.find(p => p.id === selectedTrackerSubject.trim().toLowerCase())?.primarySource || "");
+                                    handleSavePrimarySource(selectedTrackerSubject, sourceVal);
+                                    alert("Primary source saved!");
+                                  }}
+                                  className={`px-3.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition ${
+                                    isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300' : 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                                  }`}
+                                >
+                                  Save
+                                </motion.button>
+                              </div>
+                            </motion.div>
 
-                              if (topicsList.length === 0) {
+                            {/* AI Index Extractor Widget */}
+                            <motion.div
+                              initial={{ opacity: 0, y: 12 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.4, delay: 0.15 }}
+                              tabIndex={0}
+                              onDragOver={(e) => {
+                                e.preventDefault();
+                                setIsTrackerDragOver(true);
+                              }}
+                              onDragLeave={() => {
+                                setIsTrackerDragOver(false);
+                              }}
+                              onDrop={(e) => {
+                                e.preventDefault();
+                                setIsTrackerDragOver(false);
+                                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                                  processIndexFiles(e.dataTransfer.files, selectedTrackerSubject);
+                                }
+                              }}
+                              onPaste={(e) => {
+                                if (e.clipboardData.files && e.clipboardData.files.length > 0) {
+                                  e.preventDefault();
+                                  processIndexFiles(e.clipboardData.files, selectedTrackerSubject);
+                                }
+                              }}
+                              className={`flex flex-col gap-3 rounded-3xl p-5 outline-none transition-all duration-300 ${
+                                isDark
+                                  ? 'neu-card-dark bg-gradient-to-br from-slate-900 via-indigo-950/40 to-slate-900 border border-indigo-900/40 text-white'
+                                  : 'neu-card-light bg-gradient-to-br from-violet-50/70 via-white to-indigo-50/70 border border-indigo-100 text-slate-800'
+                              } ${isTrackerDragOver ? (isDark ? 'border-violet-500/80 bg-violet-950/40 scale-[1.02]' : 'border-violet-400 bg-violet-100/50 scale-[1.02]') : ''}`}
+                            >
+                              <div className="text-left">
+                                <h4 className={`text-xs font-black flex items-center gap-1.5 ${isDark ? 'text-indigo-300' : 'text-indigo-950'}`}>
+                                  <Sparkles className="w-4 h-4 text-violet-500 animate-pulse" /> AI Book Index Extractor
+                                </h4>
+                                <p className={`text-[10px] font-bold mt-1 leading-relaxed ${isDark ? 'text-indigo-300/80' : 'text-indigo-600/80'}`}>
+                                  Drag & drop multiple index pages, paste images, or click to upload.
+                                </p>
+                              </div>
+                              <label className={`w-full py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer shadow-md active:scale-95 transition-all flex items-center justify-center gap-1.5 ${isTrackerAiExtracting ? 'opacity-50 pointer-events-none' : ''}`}>
+                                {isTrackerAiExtracting ? (
+                                  <>
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    Extracting...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Upload className="w-3.5 h-3.5" />
+                                    Upload Index
+                                  </>
+                                )}
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  multiple={true}
+                                  onChange={(e) => handleUploadIndexImage(e, selectedTrackerSubject)}
+                                  className="hidden"
+                                  disabled={isTrackerAiExtracting}
+                                />
+                              </label>
+                            </motion.div>
+
+                            {/* Add Tracked Topic Card */}
+                            <motion.div
+                              initial={{ opacity: 0, y: 12 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.4, delay: 0.2 }}
+                              className={`p-5 rounded-3xl transition-all space-y-3 ${
+                                isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                              }`}
+                            >
+                              <label className={`block text-[9px] font-black uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Add Topic to Track</label>
+                              <form
+                                onSubmit={(e) => {
+                                  e.preventDefault();
+                                  const name = trackerNewTopicInput.trim();
+                                  if (!name) return;
+                                  handleAddTrackerTopic(selectedTrackerSubject, name, trackerNewTopicPage.trim(), trackerNewTopicEndPage.trim());
+                                  setTrackerNewTopicInput("");
+                                  setTrackerNewTopicPage("");
+                                  setTrackerNewTopicEndPage("");
+                                }}
+                                className="flex gap-2"
+                              >
+                                <input
+                                  type="text"
+                                  placeholder="Type a topic (e.g. Cranial Nerves)..."
+                                  value={trackerNewTopicInput}
+                                  onChange={(e) => setTrackerNewTopicInput(e.target.value)}
+                                  className={`flex-grow p-2.5 rounded-xl text-xs font-bold outline-none transition ${
+                                    isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'
+                                  }`}
+                                />
+                                <input
+                                  type="number"
+                                  placeholder="Start"
+                                  value={trackerNewTopicPage}
+                                  onChange={(e) => setTrackerNewTopicPage(e.target.value)}
+                                  className={`w-16 p-2.5 rounded-xl text-xs font-bold outline-none transition text-center ${
+                                    isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'
+                                  }`}
+                                />
+                                <input
+                                  type="number"
+                                  placeholder="End"
+                                  value={trackerNewTopicEndPage}
+                                  onChange={(e) => setTrackerNewTopicEndPage(e.target.value)}
+                                  className={`w-16 p-2.5 rounded-xl text-xs font-bold outline-none transition text-center ${
+                                    isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'
+                                  }`}
+                                />
+                                <motion.button
+                                  whileHover={{ scale: 1.02 }}
+                                  whileTap={{ scale: 0.95 }}
+                                  type="submit"
+                                  className={`px-3.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition ${
+                                    isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300' : 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                                  }`}
+                                >
+                                  Add
+                                </motion.button>
+                              </form>
+                            </motion.div>
+
+                            {/* Tracked Topics Checklist Header */}
+                            <motion.div
+                              initial={{ opacity: 0, y: 12 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.4, delay: 0.25 }}
+                              className="flex justify-between items-center mt-6"
+                            >
+                              <label className={`text-[10px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Tracked Topics</label>
+
+                              {/* Sort Toggle Pill */}
+                              <div className={`relative flex items-center p-1 rounded-xl text-[9px] font-black uppercase tracking-wider scale-90 origin-right ${
+                                isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'
+                              }`}>
+                                <div
+                                  className="absolute top-1 bottom-1 rounded-lg bg-blue-600 shadow-sm transition-all"
+                                  style={{
+                                    width: 'calc(33.33% - 2.6px)',
+                                    left: trackerSortBy === 'page' ? '4px' : trackerSortBy === 'uncompleted' ? 'calc(33.33% + 1.3px)' : 'calc(66.66% - 1.3px)',
+                                    transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setTrackerSortBy('page')}
+                                  className={`relative z-10 px-2.5 py-1 rounded-lg transition-colors duration-200 ${
+                                    trackerSortBy === 'page' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
+                                  }`}
+                                >
+                                  Page
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setTrackerSortBy('uncompleted')}
+                                  className={`relative z-10 px-2.5 py-1 rounded-lg transition-colors duration-200 ${
+                                    trackerSortBy === 'uncompleted' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
+                                  }`}
+                                >
+                                  Uncompleted
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setTrackerSortBy('completed')}
+                                  className={`relative z-10 px-2.5 py-1 rounded-lg transition-colors duration-200 ${
+                                    trackerSortBy === 'completed' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
+                                  }`}
+                                >
+                                  Completed
+                                </button>
+                              </div>
+                            </motion.div>
+
+                            {/* Tracked Topics Checklist Grid */}
+                            <div className="space-y-3 mt-2">
+                              {(() => {
+                                const docId = selectedTrackerSubject.trim().toLowerCase();
+                                const trackerDoc = subjectTrackerData.find(p => p.id === docId);
+                                const topicsMap = trackerDoc?.topics || {};
+                                const topicsList = getSortedTopics(Object.values(topicsMap));
+
+                                if (topicsList.length === 0) {
+                                  return (
+                                    <div className={`p-8 rounded-3xl text-center border transition-all ${
+                                      isDark ? 'neu-card-dark text-slate-400 border-slate-800' : 'neu-card-light text-slate-500 border-slate-200'
+                                    }`}>
+                                      <p className="text-xs font-bold">No tracked topics found for {selectedTrackerSubject}.</p>
+                                    </div>
+                                  );
+                                }
+
                                 return (
-                                  <div className="bg-white/80 p-8 rounded-3xl border border-gray-100 text-center">
-                                    <p className="text-xs font-bold text-gray-500">No tracked topics found for {selectedTrackerSubject}.</p>
-                                  </div>
-                                );
-                              }
+                                  <AnimatePresence mode="popLayout">
+                                    {topicsList.map((topicItem, tIdx) => {
+                                      const dates = topicItem.studyDates || [];
+                                      const selectedDate = trackerLogDateInputs[topicItem.name] || todayStr;
 
-                              return topicsList.map(topicItem => {
-                                const dates = topicItem.studyDates || [];
-                                const selectedDate = trackerLogDateInputs[topicItem.name] || todayStr;
-
-                                return (
-                                  <div
-                                    key={topicItem.name}
-                                    className="flex flex-col p-4 rounded-2xl border border-gray-150 bg-white shadow-sm gap-3 text-left"
-                                  >
-                                    <div className="flex justify-between items-start">
-                                      <div className="min-w-0 pr-2 flex-grow">
-                                        <div className="flex items-center gap-1.5 flex-wrap">
-                                          <h4 className="text-xs font-black text-gray-855 leading-snug">{topicItem.name}</h4>
-                                          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                                            <div className="flex items-center gap-1">
-                                              <span className="text-[9px] font-black text-gray-400 uppercase">Start:</span>
-                                              <input
-                                                type="number"
-                                                value={topicItem.page || ""}
-                                                onChange={(e) => handleUpdateTrackerTopicPages(selectedTrackerSubject, topicItem.name, e.target.value, topicItem.endPage || "")}
-                                                className="w-16 p-1 border border-gray-250 rounded-xl text-[10px] font-black text-center text-blue-600 bg-blue-50/50 outline-none focus:ring-2 focus:ring-blue-500/20"
-                                                placeholder="Start"
-                                              />
+                                      return (
+                                        <motion.div
+                                          key={topicItem.name}
+                                          initial={{ opacity: 0, y: 12, scale: 0.98 }}
+                                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                                          exit={{ opacity: 0, scale: 0.95 }}
+                                          transition={{ duration: 0.3, delay: Math.min(tIdx * 0.03, 0.25) }}
+                                          className={`flex flex-col p-4 rounded-2xl transition-all gap-3 text-left ${
+                                            isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                          }`}
+                                        >
+                                          <div className="flex justify-between items-start">
+                                            <div className="min-w-0 pr-2 flex-grow">
+                                              <div className="flex items-center gap-1.5 flex-wrap">
+                                                <h4 className="text-xs font-black leading-snug">{topicItem.name}</h4>
+                                                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                                  <div className="flex items-center gap-1">
+                                                    <span className={`text-[9px] font-black uppercase ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Start:</span>
+                                                    <input
+                                                      type="number"
+                                                      value={topicItem.page || ""}
+                                                      onChange={(e) => handleUpdateTrackerTopicPages(selectedTrackerSubject, topicItem.name, e.target.value, topicItem.endPage || "")}
+                                                      className={`w-16 p-1 rounded-xl text-[10px] font-black text-center outline-none focus:ring-2 focus:ring-blue-500/20 ${
+                                                        isDark ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'
+                                                      }`}
+                                                      placeholder="Start"
+                                                    />
+                                                  </div>
+                                                  <div className="flex items-center gap-1">
+                                                    <span className={`text-[9px] font-black uppercase ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>End:</span>
+                                                    <input
+                                                      type="number"
+                                                      value={topicItem.endPage || ""}
+                                                      onChange={(e) => handleUpdateTrackerTopicPages(selectedTrackerSubject, topicItem.name, topicItem.page || "", e.target.value)}
+                                                      className={`w-16 p-1 rounded-xl text-[10px] font-black text-center outline-none focus:ring-2 focus:ring-indigo-500/20 ${
+                                                        isDark ? 'neu-pressed-dark text-indigo-400' : 'neu-pressed-light text-indigo-600'
+                                                      }`}
+                                                      placeholder={getTopicEndPagePlaceholder(topicItem, topicsList)}
+                                                    />
+                                                  </div>
+                                                  <span className={`text-[9px] font-black px-2 py-0.5 rounded-xl border ${
+                                                    topicItem.endPage
+                                                      ? isDark ? 'text-emerald-400 bg-emerald-950/40 border-emerald-800/60' : 'text-emerald-700 bg-emerald-50 border-emerald-100'
+                                                      : isDark ? 'text-amber-400 bg-amber-950/40 border-amber-800/60' : 'text-amber-700 bg-amber-50 border-amber-100'
+                                                  }`}>
+                                                    {getTopicWeight(topicItem, topicsList)} pages {topicItem.endPage ? '(manual)' : '(auto)'}
+                                                  </span>
+                                                </div>
+                                              </div>
+                                              <span className={`text-[8px] font-black uppercase tracking-wider mt-2.5 block ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
+                                                {dates.length} revision sessions
+                                              </span>
                                             </div>
                                             <div className="flex items-center gap-1">
-                                              <span className="text-[9px] font-black text-gray-400 uppercase">End:</span>
-                                              <input
-                                                type="number"
-                                                value={topicItem.endPage || ""}
-                                                onChange={(e) => handleUpdateTrackerTopicPages(selectedTrackerSubject, topicItem.name, topicItem.page || "", e.target.value)}
-                                                className="w-16 p-1 border border-gray-250 rounded-xl text-[10px] font-black text-center text-indigo-600 bg-indigo-50/50 outline-none focus:ring-2 focus:ring-indigo-500/20"
-                                                placeholder={getTopicEndPagePlaceholder(topicItem, topicsList)}
-                                              />
+                                              {/* Schedule Review Button */}
+                                              <button
+                                                title="Schedule a review session"
+                                                onClick={() => {
+                                                  const topicLabel = `${selectedTrackerSubject}: ${topicItem.name}`;
+                                                  setSchedulerEditingTask({
+                                                    date: todayStr,
+                                                    id: null,
+                                                    topic: topicLabel,
+                                                    startTime: '09:00',
+                                                    endTime: '10:00',
+                                                    color: 'blue',
+                                                    completed: false,
+                                                    notes: ""
+                                                  });
+                                                  setCurrentTab('studyScheduler');
+                                                  setIsMobileDrawerOpen(false);
+                                                }}
+                                                className={`p-1 rounded-lg transition active:scale-90 ${isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-500 hover:text-blue-700'}`}
+                                              >
+                                                <Calendar className="w-3.5 h-3.5" />
+                                              </button>
+                                              <button
+                                                onClick={() => {
+                                                  if (window.confirm(`Delete topic "${topicItem.name}"?`)) {
+                                                    handleDeleteTrackerTopic(selectedTrackerSubject, topicItem.name);
+                                                  }
+                                                }}
+                                                className={`p-1 rounded-lg transition active:scale-90 ${isDark ? 'text-slate-400 hover:text-rose-400' : 'text-slate-400 hover:text-rose-600'}`}
+                                              >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                              </button>
                                             </div>
-                                            <span className={`text-[9px] font-black px-2 py-0.5 rounded-xl border ${topicItem.endPage ? 'text-emerald-700 bg-emerald-50 border-emerald-100' : 'text-amber-700 bg-amber-50 border-amber-100'}`}>
-                                              {getTopicWeight(topicItem, topicsList)} pages {topicItem.endPage ? '(manual)' : '(auto)'}
-                                            </span>
                                           </div>
-                                        </div>
-                                        <span className="text-[8px] font-black uppercase text-blue-600 tracking-wider mt-2.5 block">
-                                          {dates.length} revision sessions
-                                        </span>
-                                      </div>
-                                      <div className="flex items-center gap-1">
-                                        {/* Schedule Review Button */}
-                                        <button
-                                          title="Schedule a review session"
-                                          onClick={() => {
-                                            const topicLabel = `${selectedTrackerSubject}: ${topicItem.name}`;
-                                            setSchedulerEditingTask({
-                                              date: todayStr,
-                                              id: null,
-                                              topic: topicLabel,
-                                              startTime: '09:00',
-                                              endTime: '10:00',
-                                              color: 'blue',
-                                              completed: false,
-                                              notes: ""
-                                            });
-                                            setCurrentTab('studyScheduler');
-                                            setIsMobileDrawerOpen(false);
-                                          }}
-                                          className="text-blue-400 hover:text-blue-600 p-1 rounded-lg transition active:scale-90"
-                                        >
-                                          <Calendar className="w-3.5 h-3.5" />
-                                        </button>
-                                        <button
-                                          onClick={() => {
-                                            if (window.confirm(`Delete topic "${topicItem.name}"?`)) {
-                                              handleDeleteTrackerTopic(selectedTrackerSubject, topicItem.name);
-                                            }
-                                          }}
-                                          className="text-gray-400 hover:text-red-500 p-1 rounded-lg transition active:scale-90"
-                                        >
-                                          <Trash2 className="w-3.5 h-3.5" />
-                                        </button>
-                                      </div>
-                                    </div>
 
-                                    {/* Logged study dates tag list */}
-                                    {dates.length > 0 && (
-                                      <div className="flex flex-wrap gap-1.5 items-center">
-                                        {dates.map((dateVal, dIdx) => (
-                                          <span
-                                            key={dIdx}
-                                            className="bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-lg px-2 py-0.5 text-[9px] font-black flex items-center gap-1.5"
-                                          >
-                                            📅 {formatAppDate(dateVal)}
-                                            <button
-                                              onClick={() => handleDeleteTrackerStudyDate(selectedTrackerSubject, topicItem.name, dIdx)}
-                                              className="text-emerald-450 hover:text-red-550 transition font-bold"
-                                            >
-                                              ✖
-                                            </button>
-                                          </span>
-                                        ))}
-                                      </div>
-                                    )}
+                                          {/* Logged study dates tag list */}
+                                          {dates.length > 0 && (
+                                            <div className="flex flex-wrap gap-1.5 items-center">
+                                              {dates.map((dateVal, dIdx) => (
+                                                <span
+                                                  key={dIdx}
+                                                  className={`rounded-lg px-2 py-0.5 text-[9px] font-black flex items-center gap-1.5 border ${
+                                                    isDark ? 'bg-emerald-950/40 text-emerald-300 border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                                  }`}
+                                                >
+                                                  📅 {formatAppDate(dateVal)}
+                                                  <button
+                                                    onClick={() => handleDeleteTrackerStudyDate(selectedTrackerSubject, topicItem.name, dIdx)}
+                                                    className="hover:text-rose-500 transition font-bold"
+                                                  >
+                                                    ✖
+                                                  </button>
+                                                </span>
+                                              ))}
+                                            </div>
+                                          )}
 
-                                    {/* Date logger form field */}
-                                    <div className="flex flex-col gap-1.5 border-t border-gray-100 pt-2 mt-1">
-                                      <label className="text-[8px] font-black uppercase tracking-wider text-gray-400">Log Revision Session:</label>
-                                      <div className="flex gap-2">
-                                        <input
-                                          type="date"
-                                          value={selectedDate}
-                                          onChange={(e) => {
-                                            trackerLogDateInputs[topicItem.name] = e.target.value;
-                                            setTrackerLogDateInputs({ ...trackerLogDateInputs });
-                                          }}
-                                          className="p-1.5 border border-gray-200 rounded-lg text-[10px] font-bold outline-none bg-white text-gray-855 flex-grow"
-                                        />
-                                        <button
-                                          onClick={() => {
-                                            handleLogTrackerStudyDate(selectedTrackerSubject, topicItem.name, selectedDate);
-                                          }}
-                                          className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[9px] font-black uppercase tracking-wider transition active:scale-95 flex items-center gap-1 shrink-0"
-                                        >
-                                          <Plus className="w-3 h-3" /> Log
-                                        </button>
-                                      </div>
-                                    </div>
-                                  </div>
+                                          {/* Date logger form field */}
+                                          <div className={`flex flex-col gap-1.5 border-t pt-2 mt-1 ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
+                                            <label className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Log Revision Session:</label>
+                                            <div className="flex gap-2">
+                                              <input
+                                                type="date"
+                                                value={selectedDate}
+                                                onChange={(e) => {
+                                                  trackerLogDateInputs[topicItem.name] = e.target.value;
+                                                  setTrackerLogDateInputs({ ...trackerLogDateInputs });
+                                                }}
+                                                className={`p-1.5 rounded-lg text-[10px] font-bold outline-none flex-grow ${
+                                                  isDark ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-slate-800'
+                                                }`}
+                                              />
+                                              <motion.button
+                                                whileHover={{ scale: 1.02 }}
+                                                whileTap={{ scale: 0.95 }}
+                                                onClick={() => {
+                                                  handleLogTrackerStudyDate(selectedTrackerSubject, topicItem.name, selectedDate);
+                                                }}
+                                                className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition flex items-center gap-1 shrink-0 ${
+                                                  isDark ? 'neu-btn-dark text-emerald-400' : 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'
+                                                }`}
+                                              >
+                                                <Plus className="w-3 h-3" /> Log
+                                              </motion.button>
+                                            </div>
+                                          </div>
+                                        </motion.div>
+                                      );
+                                    })}
+                                  </AnimatePresence>
                                 );
-                              });
-                            })()}
+                              })()}
+                            </div>
+                          </>
+                        ) : (
+                          <div className="w-full">
+                            {renderSubjectCoverageDashboard(false)}
                           </div>
-                        </>
-                      ) : (
-                        <div className="w-full">
-                          {renderSubjectCoverageDashboard(false)}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                        )}
+                      </motion.div>
+                    );
+                  })()}
 
                   {currentTab === 'obsOverlay' && (
                     <div className="space-y-5 text-left pb-32 animate-in fade-in duration-200">
@@ -35085,400 +35197,520 @@ Return your response strictly as a JSON object matching this schema:
 
 
                     {/* SUBJECT TRACKER VIEW (Desktop) */}
-                    {currentTab === 'subjectTracker' && (
-                      <div className="flex-grow p-4 lg:p-6 flex gap-6 max-w-[1200px] mx-auto w-full h-full overflow-hidden text-left animate-in fade-in duration-200">
-                        {/* Left Column: Subjects Sidebar */}
-                        <div className="w-1/3 bg-white rounded-3xl border border-gray-250 shadow-sm p-6 flex flex-col h-full overflow-y-auto custom-scrollbar">
-                          <div className="mb-6 shrink-0">
-                            <h3 className="text-base font-black text-gray-900 tracking-tight flex items-center gap-2">
-                              <ListChecks className="w-5 h-5 text-blue-600" /> Subject Tracker
-                            </h3>
-                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">Select a medical subject to track</p>
-                          </div>
+                    {currentTab === 'subjectTracker' && (() => {
+                      const isDark = settingsThemeMode === 'dark';
+                      return (
+                        <motion.div
+                          initial={{ opacity: 0, y: 16 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                          className="flex-grow p-4 lg:p-6 flex gap-6 max-w-[1250px] mx-auto w-full h-full overflow-hidden text-left"
+                        >
+                          {/* Left Column: Subjects Sidebar */}
+                          <motion.div
+                            initial={{ opacity: 0, x: -12 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.4, delay: 0.05 }}
+                            className={`w-1/3 rounded-3xl p-6 flex flex-col h-full overflow-y-auto custom-scrollbar transition-all ${
+                              isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                            }`}
+                          >
+                            <div className="mb-6 shrink-0">
+                              <h3 className="text-base font-black tracking-tight flex items-center gap-2">
+                                <div className={`p-2 rounded-xl ${isDark ? 'neu-pressed-dark text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
+                                  <ListChecks className="w-5 h-5" />
+                                </div>
+                                Subject Tracker
+                              </h3>
+                              <p className={`text-[10px] font-bold uppercase tracking-wider mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Select a medical subject to track</p>
+                            </div>
 
-                          <div className="space-y-2 flex-grow">
-                            {["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"].map(sub => {
-                              const docId = sub.trim().toLowerCase();
-                              const trackerDoc = subjectTrackerData.find(p => p.id === docId);
-                              const primarySource = trackerDoc?.primarySource || "";
-                              const topicsCount = trackerDoc && trackerDoc.topics ? Object.keys(trackerDoc.topics).length : 0;
-                              const isSelected = selectedTrackerSubject === sub;
+                            <div className="space-y-2 flex-grow">
+                              {["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"].map(sub => {
+                                const docId = sub.trim().toLowerCase();
+                                const trackerDoc = subjectTrackerData.find(p => p.id === docId);
+                                const primarySource = trackerDoc?.primarySource || "";
+                                const topicsCount = trackerDoc && trackerDoc.topics ? Object.keys(trackerDoc.topics).length : 0;
+                                const isSelected = selectedTrackerSubject === sub;
 
-                              return (
-                                <button
-                                  key={sub}
-                                  onClick={() => setSelectedTrackerSubject(sub)}
-                                  className={`w-full text-left p-3.5 rounded-2xl border transition-all duration-150 flex flex-col gap-1 ${isSelected
-                                    ? 'bg-blue-600 border-blue-700 text-white shadow-lg shadow-blue-600/10'
-                                    : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-800'
+                                return (
+                                  <motion.button
+                                    key={sub}
+                                    whileHover={{ scale: 1.01 }}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={() => setSelectedTrackerSubject(sub)}
+                                    className={`w-full text-left p-3.5 rounded-2xl border transition-all duration-200 flex flex-col gap-1 ${
+                                      isSelected
+                                        ? isDark
+                                          ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white neu-pressed-dark border-blue-500/50 shadow-lg shadow-blue-950/60'
+                                          : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-600/20 border-blue-600'
+                                        : isDark
+                                          ? 'neu-card-dark text-slate-200 border-slate-800 hover:border-slate-700'
+                                          : 'neu-card-light text-slate-700 border-slate-200 hover:bg-slate-50'
                                     }`}
-                                >
-                                  <span className="text-xs font-black tracking-tight">{sub}</span>
-                                  <div className="flex justify-between items-center w-full mt-1">
-                                    <span className={`text-[9px] truncate max-w-[70%] font-medium ${isSelected ? 'text-blue-100' : 'text-gray-400'}`}>
-                                      {primarySource ? `📖 ${primarySource}` : "No source set"}
-                                    </span>
-                                    <span className={`text-[9px] font-black uppercase tracking-wider ${isSelected ? 'text-white bg-blue-700/50' : 'text-gray-655 bg-gray-100'} px-2 py-0.5 rounded-md`}>
-                                      {topicsCount} {topicsCount === 1 ? 'topic' : 'topics'}
-                                    </span>
-                                  </div>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-
-                        {/* Right Column: Tracker Workspace */}
-                        <div className="w-2/3 bg-white rounded-3xl border border-gray-250 shadow-sm p-6 flex flex-col h-full overflow-hidden relative">
-                          <div className="flex justify-between items-center border-b border-gray-155 pb-4 mb-6 shrink-0">
-                            <div>
-                              <span className="text-[9px] font-black uppercase text-blue-600 tracking-wider">Active Workspace</span>
-                              <h2 className="text-xl font-black text-gray-900 tracking-tight mt-0.5">
-                                {selectedTrackerSubject} Tracking
-                              </h2>
-                            </div>
-                            {/* Subtab Switcher */}
-                            <div className="flex items-center bg-gray-100 p-1 rounded-2xl border border-gray-200 shadow-inner shrink-0">
-                              <button
-                                onClick={() => setSubjectTrackerSubTab('manager')}
-                                className={`px-4 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition flex items-center gap-1.5 ${subjectTrackerSubTab === 'manager' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                              >
-                                <ListChecks className="w-3.5 h-3.5" />
-                                Manager
-                              </button>
-                              <button
-                                onClick={() => setSubjectTrackerSubTab('coverage')}
-                                className={`px-4 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition flex items-center gap-1.5 ${subjectTrackerSubTab === 'coverage' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                              >
-                                <Layers className="w-3.5 h-3.5" />
-                                Coverage
-                              </button>
-                            </div>
-                          </div>
-
-                          {subjectTrackerSubTab === 'manager' ? (
-                            <div className="flex-grow flex gap-6 overflow-hidden min-h-0">
-                              {/* Left Side: Topic Checklist & Actions */}
-                              <div className="w-7/12 flex flex-col h-full overflow-hidden min-h-0 border border-gray-150 rounded-2xl p-5 bg-white space-y-4">
-                                <div className="flex justify-between items-center shrink-0">
-                                  <label className="text-[10px] font-black uppercase tracking-wider text-gray-400 font-mono">Tracked Topics Checklist</label>
-                                  <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-xl border border-gray-200 shadow-inner text-[9px] font-black uppercase tracking-wider font-sans">
-                                    <button
-                                      type="button"
-                                      onClick={() => setTrackerSortBy('page')}
-                                      className={`px-2 py-0.5 rounded-lg transition ${trackerSortBy === 'page' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}
-                                    >
-                                      Page #
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => setTrackerSortBy('uncompleted')}
-                                      className={`px-2 py-0.5 rounded-lg transition ${trackerSortBy === 'uncompleted' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}
-                                    >
-                                      Uncompleted
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => setTrackerSortBy('completed')}
-                                      className={`px-2 py-0.5 rounded-lg transition ${trackerSortBy === 'completed' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-800 hover:text-gray-800'}`}
-                                    >
-                                      Completed
-                                    </button>
-                                  </div>
-                                </div>
-
-                                {/* Add Topic Form */}
-                                <form
-                                  onSubmit={(e) => {
-                                    e.preventDefault();
-                                    const name = trackerNewTopicInput.trim();
-                                    if (!name) return;
-                                    handleAddTrackerTopic(selectedTrackerSubject, name, trackerNewTopicPage.trim(), trackerNewTopicEndPage.trim());
-                                    setTrackerNewTopicInput("");
-                                    setTrackerNewTopicPage("");
-                                    setTrackerNewTopicEndPage("");
-                                  }}
-                                  className="flex gap-2 shrink-0"
-                                >
-                                  <input
-                                    type="text"
-                                    placeholder="Add topic (e.g. Cranial Nerves)..."
-                                    value={trackerNewTopicInput}
-                                    onChange={(e) => setTrackerNewTopicInput(e.target.value)}
-                                    className="flex-grow p-2.5 border border-gray-255 rounded-xl text-xs font-bold bg-white text-gray-800 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500"
-                                  />
-                                  <input
-                                    type="number"
-                                    placeholder="Start Page"
-                                    value={trackerNewTopicPage}
-                                    onChange={(e) => setTrackerNewTopicPage(e.target.value)}
-                                    className="w-16 p-2.5 border border-gray-255 rounded-xl text-xs font-bold bg-white text-gray-800 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500"
-                                  />
-                                  <input
-                                    type="number"
-                                    placeholder="End Page"
-                                    value={trackerNewTopicEndPage}
-                                    onChange={(e) => setTrackerNewTopicEndPage(e.target.value)}
-                                    className="w-16 p-2.5 border border-gray-255 rounded-xl text-xs font-bold bg-white text-gray-800 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500"
-                                  />
-                                  <button
-                                    type="submit"
-                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition active:scale-95 shrink-0 flex items-center gap-1"
                                   >
-                                    <Plus className="w-3.5 h-3.5" /> Add
-                                  </button>
-                                </form>
+                                    <span className="text-xs font-black tracking-tight">{sub}</span>
+                                    <div className="flex justify-between items-center w-full mt-1">
+                                      <span className={`text-[9px] truncate max-w-[70%] font-medium ${isSelected ? 'text-blue-100' : isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                        {primarySource ? `📖 ${primarySource}` : "No source set"}
+                                      </span>
+                                      <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${
+                                        isSelected
+                                          ? 'text-white bg-blue-700/50'
+                                          : isDark ? 'text-slate-300 bg-slate-800/80' : 'text-slate-600 bg-slate-100'
+                                      }`}>
+                                        {topicsCount} {topicsCount === 1 ? 'topic' : 'topics'}
+                                      </span>
+                                    </div>
+                                  </motion.button>
+                                );
+                              })}
+                            </div>
+                          </motion.div>
 
-                                {/* List Scroll Area */}
-                                <div className="flex-grow overflow-y-auto pr-1 custom-scrollbar space-y-3 min-h-0">
-                                  {(() => {
-                                    const docId = selectedTrackerSubject.trim().toLowerCase();
-                                    const trackerDoc = subjectTrackerData.find(p => p.id === docId);
-                                    const topicsMap = trackerDoc?.topics || {};
-                                    const topicsList = getSortedTopics(Object.values(topicsMap));
-
-                                    if (topicsList.length === 0) {
-                                      return (
-                                        <div className="flex flex-col items-center justify-center h-full text-center p-4">
-                                          <p className="text-xs font-bold text-gray-400">No tracked topics found for {selectedTrackerSubject}.</p>
-                                        </div>
-                                      );
-                                    }
-
-                                    return topicsList.map(topicItem => {
-                                      const dates = topicItem.studyDates || [];
-                                      const selectedDate = trackerLogDateInputs[topicItem.name] || todayStr;
-
-                                      return (
-                                        <div key={topicItem.name} className="flex flex-col p-4 rounded-2xl border border-gray-150 bg-white shadow-sm hover:bg-gray-50 transition gap-3 text-left">
-                                          <div className="flex justify-between items-start">
-                                            <div className="min-w-0 pr-2 flex-grow">
-                                              <div className="flex items-center gap-1.5 flex-wrap">
-                                                <h4 className="text-xs font-black text-gray-800 leading-snug">{topicItem.name}</h4>
-                                                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                                                  <div className="flex items-center gap-1">
-                                                    <span className="text-[9px] font-black text-gray-400 uppercase">Start:</span>
-                                                    <input
-                                                      type="number"
-                                                      value={topicItem.page || ""}
-                                                      onChange={(e) => handleUpdateTrackerTopicPages(selectedTrackerSubject, topicItem.name, e.target.value, topicItem.endPage || "")}
-                                                      className="w-16 p-1 border border-gray-250 rounded-xl text-[10px] font-black text-center text-blue-600 bg-blue-50/50 outline-none focus:ring-2 focus:ring-blue-500/20"
-                                                      placeholder="Start"
-                                                    />
-                                                  </div>
-                                                  <div className="flex items-center gap-1">
-                                                    <span className="text-[9px] font-black text-gray-400 uppercase">End:</span>
-                                                    <input
-                                                      type="number"
-                                                      value={topicItem.endPage || ""}
-                                                      onChange={(e) => handleUpdateTrackerTopicPages(selectedTrackerSubject, topicItem.name, topicItem.page || "", e.target.value)}
-                                                      className="w-16 p-1 border border-gray-250 rounded-xl text-[10px] font-black text-center text-indigo-600 bg-indigo-50/50 outline-none focus:ring-2 focus:ring-indigo-500/20"
-                                                      placeholder={getTopicEndPagePlaceholder(topicItem, topicsList)}
-                                                    />
-                                                  </div>
-                                                  <span className={`text-[9px] font-black px-2 py-0.5 rounded-xl border ${topicItem.endPage ? 'text-emerald-700 bg-emerald-50 border-emerald-100' : 'text-amber-700 bg-amber-50 border-amber-100'}`}>
-                                                    {getTopicWeight(topicItem, topicsList)} pages {topicItem.endPage ? '(manual)' : '(auto)'}
-                                                  </span>
-                                                </div>
-                                              </div>
-                                              <span className="text-[8px] font-black uppercase text-blue-600 tracking-wider mt-2.5 block">
-                                                {dates.length} revision sessions
-                                              </span>
-                                            </div>
-                                            <div className="flex items-center gap-1">
-                                              {/* Schedule Review Button */}
-                                              <button
-                                                title="Schedule a review session"
-                                                onClick={() => {
-                                                  const topicLabel = `${selectedTrackerSubject}: ${topicItem.name}`;
-                                                  setSchedulerEditingTask({
-                                                    date: schedulerSelectedDate || todayStr,
-                                                    id: null,
-                                                    topic: topicLabel,
-                                                    startTime: '09:00',
-                                                    endTime: '10:00',
-                                                    color: 'blue',
-                                                    completed: false,
-                                                    notes: ""
-                                                  });
-                                                  setCurrentTab('studyScheduler');
-                                                }}
-                                                className="text-blue-400 hover:text-blue-600 p-1 rounded-lg transition active:scale-90"
-                                              >
-                                                <Calendar className="w-3.5 h-3.5" />
-                                              </button>
-                                              <button
-                                                onClick={() => {
-                                                  if (window.confirm(`Delete topic "${topicItem.name}"?`)) {
-                                                    handleDeleteTrackerTopic(selectedTrackerSubject, topicItem.name);
-                                                  }
-                                                }}
-                                                className="text-gray-400 hover:text-red-500 p-1 rounded-lg transition active:scale-90"
-                                              >
-                                                <Trash2 className="w-3.5 h-3.5" />
-                                              </button>
-                                            </div>
-                                          </div>
-
-                                          {/* Logged study dates tag list */}
-                                          {dates.length > 0 && (
-                                            <div className="flex flex-wrap gap-1.5 items-center">
-                                              {dates.map((dateVal, dIdx) => (
-                                                <span
-                                                  key={dIdx}
-                                                  className="bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-lg px-2 py-0.5 text-[9px] font-black flex items-center gap-1.5"
-                                                >
-                                                  📅 {formatAppDate(dateVal)}
-                                                  <button
-                                                    onClick={() => handleDeleteTrackerStudyDate(selectedTrackerSubject, topicItem.name, dIdx)}
-                                                    className="text-emerald-450 hover:text-red-550 transition font-bold"
-                                                  >
-                                                    ✖
-                                                  </button>
-                                                </span>
-                                              ))}
-                                            </div>
-                                          )}
-
-                                          {/* Date logger form field */}
-                                          <div className="flex flex-col gap-1.5 border-t border-gray-100 pt-2 mt-1">
-                                            <label className="text-[8px] font-black uppercase tracking-wider text-gray-400">Log Revision Session:</label>
-                                            <div className="flex gap-2">
-                                              <input
-                                                type="date"
-                                                value={selectedDate}
-                                                onChange={(e) => {
-                                                  trackerLogDateInputs[topicItem.name] = e.target.value;
-                                                  setTrackerLogDateInputs({ ...trackerLogDateInputs });
-                                                }}
-                                                className="p-1.5 border border-gray-200 rounded-lg text-[10px] font-bold outline-none bg-white text-gray-800 flex-grow"
-                                              />
-                                              <button
-                                                onClick={() => {
-                                                  handleLogTrackerStudyDate(selectedTrackerSubject, topicItem.name, selectedDate);
-                                                }}
-                                                className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[9px] font-black uppercase tracking-wider transition active:scale-95 flex items-center gap-1 shrink-0"
-                                              >
-                                                <Plus className="w-3 h-3" /> Log
-                                              </button>
-                                            </div>
-                                          </div>
-                                        </div>
-                                      );
-                                    });
-                                  })()}
-                                </div>
+                          {/* Right Column: Tracker Workspace */}
+                          <motion.div
+                            initial={{ opacity: 0, x: 12 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.4, delay: 0.1 }}
+                            className={`w-2/3 rounded-3xl p-6 flex flex-col h-full overflow-hidden relative transition-all ${
+                              isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                            }`}
+                          >
+                            <div className={`flex justify-between items-center border-b pb-4 mb-6 shrink-0 ${isDark ? 'border-slate-750' : 'border-slate-200/80'}`}>
+                              <div>
+                                <span className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>Active Workspace</span>
+                                <h2 className="text-xl font-black tracking-tight mt-0.5">
+                                  {selectedTrackerSubject} Tracking
+                                </h2>
                               </div>
+                              {/* Subtab Switcher Pill */}
+                              <div className={`relative flex items-center p-1 rounded-2xl shrink-0 ${
+                                isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'
+                              }`}>
+                                <div
+                                  className="absolute top-1 bottom-1 rounded-xl bg-blue-600 shadow-md transition-all"
+                                  style={{
+                                    width: 'calc(50% - 4px)',
+                                    left: subjectTrackerSubTab === 'manager' ? '4px' : 'calc(50%)',
+                                    transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                                  }}
+                                />
+                                <button
+                                  onClick={() => setSubjectTrackerSubTab('manager')}
+                                  className={`relative z-10 px-4 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center gap-1.5 ${
+                                    subjectTrackerSubTab === 'manager' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
+                                  }`}
+                                >
+                                  <ListChecks className="w-3.5 h-3.5" />
+                                  Manager
+                                </button>
+                                <button
+                                  onClick={() => setSubjectTrackerSubTab('coverage')}
+                                  className={`relative z-10 px-4 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center gap-1.5 ${
+                                    subjectTrackerSubTab === 'coverage' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
+                                  }`}
+                                >
+                                  <Layers className="w-3.5 h-3.5" />
+                                  Coverage
+                                </button>
+                              </div>
+                            </div>
 
-                              {/* Right Side: Source material & Gemini extractor */}
-                              <div className="w-5/12 flex flex-col gap-5 overflow-y-auto pr-1 custom-scrollbar shrink-0">
-                                {/* Primary Source configuration card */}
-                                <div className="bg-gray-50 border border-gray-150 rounded-2xl p-5 space-y-3">
-                                  <label className="text-[10px] font-black uppercase tracking-wider text-gray-400 block font-mono">Primary Source Material / Textbooks</label>
-                                  <div className="flex gap-2">
+                            {subjectTrackerSubTab === 'manager' ? (
+                              <div className="flex-grow flex gap-6 overflow-hidden min-h-0">
+                                {/* Left Side: Topic Checklist & Actions */}
+                                <div className={`w-7/12 flex flex-col h-full overflow-hidden min-h-0 rounded-2xl p-5 space-y-4 ${
+                                  isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-800 border-slate-200'
+                                }`}>
+                                  <div className="flex justify-between items-center shrink-0">
+                                    <label className={`text-[10px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Tracked Topics Checklist</label>
+
+                                    {/* Sort Toggle Pill */}
+                                    <div className={`relative flex items-center p-1 rounded-xl text-[9px] font-black uppercase tracking-wider ${
+                                      isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'
+                                    }`}>
+                                      <div
+                                        className="absolute top-1 bottom-1 rounded-lg bg-blue-600 shadow-sm transition-all"
+                                        style={{
+                                          width: 'calc(33.33% - 2.6px)',
+                                          left: trackerSortBy === 'page' ? '4px' : trackerSortBy === 'uncompleted' ? 'calc(33.33% + 1.3px)' : 'calc(66.66% - 1.3px)',
+                                          transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                                        }}
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => setTrackerSortBy('page')}
+                                        className={`relative z-10 px-2.5 py-0.5 rounded-lg transition-colors duration-200 ${
+                                          trackerSortBy === 'page' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
+                                        }`}
+                                      >
+                                        Page #
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setTrackerSortBy('uncompleted')}
+                                        className={`relative z-10 px-2.5 py-0.5 rounded-lg transition-colors duration-200 ${
+                                          trackerSortBy === 'uncompleted' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
+                                        }`}
+                                      >
+                                        Uncompleted
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setTrackerSortBy('completed')}
+                                        className={`relative z-10 px-2.5 py-0.5 rounded-lg transition-colors duration-200 ${
+                                          trackerSortBy === 'completed' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
+                                        }`}
+                                      >
+                                        Completed
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  {/* Add Topic Form */}
+                                  <form
+                                    onSubmit={(e) => {
+                                      e.preventDefault();
+                                      const name = trackerNewTopicInput.trim();
+                                      if (!name) return;
+                                      handleAddTrackerTopic(selectedTrackerSubject, name, trackerNewTopicPage.trim(), trackerNewTopicEndPage.trim());
+                                      setTrackerNewTopicInput("");
+                                      setTrackerNewTopicPage("");
+                                      setTrackerNewTopicEndPage("");
+                                    }}
+                                    className="flex gap-2 shrink-0"
+                                  >
                                     <input
                                       type="text"
-                                      placeholder="e.g. Marrow Video Lectures + First Aid USMLE"
-                                      value={
-                                        trackerSourceInputs[selectedTrackerSubject] !== undefined
-                                          ? trackerSourceInputs[selectedTrackerSubject]
-                                          : (subjectTrackerData.find(p => p.id === selectedTrackerSubject.trim().toLowerCase())?.primarySource || "")
-                                      }
-                                      onChange={(e) => {
-                                        setTrackerSourceInputs(prev => ({
-                                          ...prev,
-                                          [selectedTrackerSubject]: e.target.value
-                                        }));
-                                      }}
-                                      onBlur={() => {
-                                        const sourceVal = trackerSourceInputs[selectedTrackerSubject] !== undefined
-                                          ? trackerSourceInputs[selectedTrackerSubject]
-                                          : (subjectTrackerData.find(p => p.id === selectedTrackerSubject.trim().toLowerCase())?.primarySource || "");
-                                        handleSavePrimarySource(selectedTrackerSubject, sourceVal);
-                                      }}
-                                      className="flex-grow p-3 border border-gray-200 rounded-xl text-xs font-bold bg-white text-gray-800 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500"
+                                      placeholder="Add topic (e.g. Cranial Nerves)..."
+                                      value={trackerNewTopicInput}
+                                      onChange={(e) => setTrackerNewTopicInput(e.target.value)}
+                                      className={`flex-grow p-2.5 rounded-xl text-xs font-bold outline-none transition ${
+                                        isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'
+                                      }`}
                                     />
-                                    <button
-                                      onClick={() => {
-                                        const sourceVal = trackerSourceInputs[selectedTrackerSubject] !== undefined
-                                          ? trackerSourceInputs[selectedTrackerSubject]
-                                          : (subjectTrackerData.find(p => p.id === selectedTrackerSubject.trim().toLowerCase())?.primarySource || "");
-                                        handleSavePrimarySource(selectedTrackerSubject, sourceVal);
-                                        alert("Primary source saved successfully!");
-                                      }}
-                                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition active:scale-95 shrink-0 flex items-center gap-1.5"
+                                    <input
+                                      type="number"
+                                      placeholder="Start"
+                                      value={trackerNewTopicPage}
+                                      onChange={(e) => setTrackerNewTopicPage(e.target.value)}
+                                      className={`w-16 p-2.5 rounded-xl text-xs font-bold outline-none transition text-center ${
+                                        isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'
+                                      }`}
+                                    />
+                                    <input
+                                      type="number"
+                                      placeholder="End"
+                                      value={trackerNewTopicEndPage}
+                                      onChange={(e) => setTrackerNewTopicEndPage(e.target.value)}
+                                      className={`w-16 p-2.5 rounded-xl text-xs font-bold outline-none transition text-center ${
+                                        isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'
+                                      }`}
+                                    />
+                                    <motion.button
+                                      whileHover={{ scale: 1.02 }}
+                                      whileTap={{ scale: 0.95 }}
+                                      type="submit"
+                                      className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition shrink-0 flex items-center gap-1 ${
+                                        isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300' : 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                                      }`}
                                     >
-                                      <Save className="w-3.5 h-3.5" /> Save
-                                    </button>
+                                      <Plus className="w-3.5 h-3.5" /> Add
+                                    </motion.button>
+                                  </form>
+
+                                  {/* List Scroll Area */}
+                                  <div className="flex-grow overflow-y-auto pr-1 custom-scrollbar space-y-3 min-h-0">
+                                    {(() => {
+                                      const docId = selectedTrackerSubject.trim().toLowerCase();
+                                      const trackerDoc = subjectTrackerData.find(p => p.id === docId);
+                                      const topicsMap = trackerDoc?.topics || {};
+                                      const topicsList = getSortedTopics(Object.values(topicsMap));
+
+                                      if (topicsList.length === 0) {
+                                        return (
+                                          <div className="flex flex-col items-center justify-center h-full text-center p-4">
+                                            <p className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>No tracked topics found for {selectedTrackerSubject}.</p>
+                                          </div>
+                                        );
+                                      }
+
+                                      return (
+                                        <AnimatePresence mode="popLayout">
+                                          {topicsList.map((topicItem, tIdx) => {
+                                            const dates = topicItem.studyDates || [];
+                                            const selectedDate = trackerLogDateInputs[topicItem.name] || todayStr;
+
+                                            return (
+                                              <motion.div
+                                                key={topicItem.name}
+                                                initial={{ opacity: 0, y: 12, scale: 0.98 }}
+                                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                exit={{ opacity: 0, scale: 0.95 }}
+                                                transition={{ duration: 0.3, delay: Math.min(tIdx * 0.03, 0.25) }}
+                                                className={`flex flex-col p-4 rounded-2xl transition-all gap-3 text-left ${
+                                                  isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                                }`}
+                                              >
+                                                <div className="flex justify-between items-start">
+                                                  <div className="min-w-0 pr-2 flex-grow">
+                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                      <h4 className="text-xs font-black leading-snug">{topicItem.name}</h4>
+                                                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                                        <div className="flex items-center gap-1">
+                                                          <span className={`text-[9px] font-black uppercase ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Start:</span>
+                                                          <input
+                                                            type="number"
+                                                            value={topicItem.page || ""}
+                                                            onChange={(e) => handleUpdateTrackerTopicPages(selectedTrackerSubject, topicItem.name, e.target.value, topicItem.endPage || "")}
+                                                            className={`w-16 p-1 rounded-xl text-[10px] font-black text-center outline-none focus:ring-2 focus:ring-blue-500/20 ${
+                                                              isDark ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'
+                                                            }`}
+                                                            placeholder="Start"
+                                                          />
+                                                        </div>
+                                                        <div className="flex items-center gap-1">
+                                                          <span className={`text-[9px] font-black uppercase ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>End:</span>
+                                                          <input
+                                                            type="number"
+                                                            value={topicItem.endPage || ""}
+                                                            onChange={(e) => handleUpdateTrackerTopicPages(selectedTrackerSubject, topicItem.name, topicItem.page || "", e.target.value)}
+                                                            className={`w-16 p-1 rounded-xl text-[10px] font-black text-center outline-none focus:ring-2 focus:ring-indigo-500/20 ${
+                                                              isDark ? 'neu-pressed-dark text-indigo-400' : 'neu-pressed-light text-indigo-600'
+                                                            }`}
+                                                            placeholder={getTopicEndPagePlaceholder(topicItem, topicsList)}
+                                                          />
+                                                        </div>
+                                                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-xl border ${
+                                                          topicItem.endPage
+                                                            ? isDark ? 'text-emerald-400 bg-emerald-950/40 border-emerald-800/60' : 'text-emerald-700 bg-emerald-50 border-emerald-100'
+                                                            : isDark ? 'text-amber-400 bg-amber-950/40 border-amber-800/60' : 'text-amber-700 bg-amber-50 border-amber-100'
+                                                        }`}>
+                                                          {getTopicWeight(topicItem, topicsList)} pages {topicItem.endPage ? '(manual)' : '(auto)'}
+                                                        </span>
+                                                      </div>
+                                                    </div>
+                                                    <span className={`text-[8px] font-black uppercase tracking-wider mt-2.5 block ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
+                                                      {dates.length} revision sessions
+                                                    </span>
+                                                  </div>
+                                                  <div className="flex items-center gap-1">
+                                                    {/* Schedule Review Button */}
+                                                    <button
+                                                      title="Schedule a review session"
+                                                      onClick={() => {
+                                                        const topicLabel = `${selectedTrackerSubject}: ${topicItem.name}`;
+                                                        setSchedulerEditingTask({
+                                                          date: schedulerSelectedDate || todayStr,
+                                                          id: null,
+                                                          topic: topicLabel,
+                                                          startTime: '09:00',
+                                                          endTime: '10:00',
+                                                          color: 'blue',
+                                                          completed: false,
+                                                          notes: ""
+                                                        });
+                                                        setCurrentTab('studyScheduler');
+                                                      }}
+                                                      className={`p-1 rounded-lg transition active:scale-90 ${isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-500 hover:text-blue-700'}`}
+                                                    >
+                                                      <Calendar className="w-3.5 h-3.5" />
+                                                    </button>
+                                                    <button
+                                                      onClick={() => {
+                                                        if (window.confirm(`Delete topic "${topicItem.name}"?`)) {
+                                                          handleDeleteTrackerTopic(selectedTrackerSubject, topicItem.name);
+                                                        }
+                                                      }}
+                                                      className={`p-1 rounded-lg transition active:scale-90 ${isDark ? 'text-slate-400 hover:text-rose-400' : 'text-slate-400 hover:text-rose-600'}`}
+                                                    >
+                                                      <Trash2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                  </div>
+                                                </div>
+
+                                                {/* Logged study dates tag list */}
+                                                {dates.length > 0 && (
+                                                  <div className="flex flex-wrap gap-1.5 items-center">
+                                                    {dates.map((dateVal, dIdx) => (
+                                                      <span
+                                                        key={dIdx}
+                                                        className={`rounded-lg px-2 py-0.5 text-[9px] font-black flex items-center gap-1.5 border ${
+                                                          isDark ? 'bg-emerald-950/40 text-emerald-300 border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                                        }`}
+                                                      >
+                                                        📅 {formatAppDate(dateVal)}
+                                                        <button
+                                                          onClick={() => handleDeleteTrackerStudyDate(selectedTrackerSubject, topicItem.name, dIdx)}
+                                                          className="hover:text-rose-500 transition font-bold"
+                                                        >
+                                                          ✖
+                                                        </button>
+                                                      </span>
+                                                    ))}
+                                                  </div>
+                                                )}
+
+                                                {/* Date logger form field */}
+                                                <div className={`flex flex-col gap-1.5 border-t pt-2 mt-1 ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
+                                                  <label className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Log Revision Session:</label>
+                                                  <div className="flex gap-2">
+                                                    <input
+                                                      type="date"
+                                                      value={selectedDate}
+                                                      onChange={(e) => {
+                                                        trackerLogDateInputs[topicItem.name] = e.target.value;
+                                                        setTrackerLogDateInputs({ ...trackerLogDateInputs });
+                                                      }}
+                                                      className={`p-1.5 rounded-lg text-[10px] font-bold outline-none flex-grow ${
+                                                        isDark ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-slate-800'
+                                                      }`}
+                                                    />
+                                                    <motion.button
+                                                      whileHover={{ scale: 1.02 }}
+                                                      whileTap={{ scale: 0.95 }}
+                                                      onClick={() => {
+                                                        handleLogTrackerStudyDate(selectedTrackerSubject, topicItem.name, selectedDate);
+                                                      }}
+                                                      className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition flex items-center gap-1 shrink-0 ${
+                                                        isDark ? 'neu-btn-dark text-emerald-400' : 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'
+                                                      }`}
+                                                    >
+                                                      <Plus className="w-3 h-3" /> Log
+                                                    </motion.button>
+                                                  </div>
+                                                </div>
+                                              </motion.div>
+                                            );
+                                          })}
+                                        </AnimatePresence>
+                                      );
+                                    })()}
                                   </div>
                                 </div>
 
-                                {/* AI Book Index Extractor Card */}
-                                <div
-                                  tabIndex={0}
-                                  onDragOver={(e) => {
-                                    e.preventDefault();
-                                    setIsTrackerDragOver(true);
-                                  }}
-                                  onDragLeave={() => {
-                                    setIsTrackerDragOver(false);
-                                  }}
-                                  onDrop={(e) => {
-                                    e.preventDefault();
-                                    setIsTrackerDragOver(false);
-                                    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                                      processIndexFiles(e.dataTransfer.files, selectedTrackerSubject);
-                                    }
-                                  }}
-                                  onPaste={(e) => {
-                                    if (e.clipboardData.files && e.clipboardData.files.length > 0) {
-                                      e.preventDefault();
-                                      processIndexFiles(e.clipboardData.files, selectedTrackerSubject);
-                                    }
-                                  }}
-                                  className={`flex flex-col gap-4 bg-gradient-to-r from-violet-50 to-indigo-50 border rounded-3xl p-5 outline-none transition-all duration-300 ${isTrackerDragOver ? 'border-violet-400 bg-violet-100/50 scale-[1.02] border-dashed shadow-lg shadow-indigo-200/50' : 'border-indigo-100 shadow-sm'
-                                    }`}
-                                >
-                                  <div className="text-left">
-                                    <h4 className="text-xs font-black text-indigo-950 flex items-center gap-1.5">
-                                      <Sparkles className="w-4 h-4 text-violet-600 animate-pulse" /> AI Book Index Extractor
-                                    </h4>
-                                    <p className="text-[10px] text-indigo-600/80 font-bold mt-1 leading-relaxed">
-                                      Drag & drop multiple index pages, paste images, or click to upload.
-                                    </p>
+                                {/* Right Side: Source material & Gemini extractor */}
+                                <div className="w-5/12 flex flex-col gap-5 overflow-y-auto pr-1 custom-scrollbar shrink-0">
+                                  {/* Primary Source configuration card */}
+                                  <div className={`p-5 rounded-2xl space-y-3 transition-all ${
+                                    isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-800 border-slate-200'
+                                  }`}>
+                                    <label className={`text-[10px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Primary Source Material / Textbooks</label>
+                                    <div className="flex gap-2">
+                                      <input
+                                        type="text"
+                                        placeholder="e.g. Marrow Video Lectures + First Aid USMLE"
+                                        value={
+                                          trackerSourceInputs[selectedTrackerSubject] !== undefined
+                                            ? trackerSourceInputs[selectedTrackerSubject]
+                                            : (subjectTrackerData.find(p => p.id === selectedTrackerSubject.trim().toLowerCase())?.primarySource || "")
+                                        }
+                                        onChange={(e) => {
+                                          setTrackerSourceInputs(prev => ({
+                                            ...prev,
+                                            [selectedTrackerSubject]: e.target.value
+                                          }));
+                                        }}
+                                        onBlur={() => {
+                                          const sourceVal = trackerSourceInputs[selectedTrackerSubject] !== undefined
+                                            ? trackerSourceInputs[selectedTrackerSubject]
+                                            : (subjectTrackerData.find(p => p.id === selectedTrackerSubject.trim().toLowerCase())?.primarySource || "");
+                                          handleSavePrimarySource(selectedTrackerSubject, sourceVal);
+                                        }}
+                                        className={`flex-grow p-3 rounded-xl text-xs font-bold outline-none transition ${
+                                          isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'
+                                        }`}
+                                      />
+                                      <motion.button
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={() => {
+                                          const sourceVal = trackerSourceInputs[selectedTrackerSubject] !== undefined
+                                            ? trackerSourceInputs[selectedTrackerSubject]
+                                            : (subjectTrackerData.find(p => p.id === selectedTrackerSubject.trim().toLowerCase())?.primarySource || "");
+                                          handleSavePrimarySource(selectedTrackerSubject, sourceVal);
+                                          alert("Primary source saved successfully!");
+                                        }}
+                                        className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition shrink-0 flex items-center gap-1.5 ${
+                                          isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300' : 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                                        }`}
+                                      >
+                                        <Save className="w-3.5 h-3.5" /> Save
+                                      </motion.button>
+                                    </div>
                                   </div>
-                                  <label className={`w-full py-3 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white text-xs font-black uppercase tracking-wider rounded-2xl cursor-pointer shadow-lg shadow-indigo-600/10 active:scale-95 transition-all flex items-center justify-center gap-2 ${isTrackerAiExtracting ? 'opacity-50 pointer-events-none' : ''}`}>
-                                    {isTrackerAiExtracting ? (
-                                      <>
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                        Extracting topics...
-                                      </>
-                                    ) : (
-                                      <>
-                                        <Upload className="w-4 h-4" />
-                                        Upload Index Page
-                                      </>
-                                    )}
-                                    <input
-                                      type="file"
-                                      accept="image/*"
-                                      multiple={true}
-                                      onChange={(e) => handleUploadIndexImage(e, selectedTrackerSubject)}
-                                      className="hidden"
-                                      disabled={isTrackerAiExtracting}
-                                    />
-                                  </label>
+
+                                  {/* AI Book Index Extractor Card */}
+                                  <div
+                                    tabIndex={0}
+                                    onDragOver={(e) => {
+                                      e.preventDefault();
+                                      setIsTrackerDragOver(true);
+                                    }}
+                                    onDragLeave={() => {
+                                      setIsTrackerDragOver(false);
+                                    }}
+                                    onDrop={(e) => {
+                                      e.preventDefault();
+                                      setIsTrackerDragOver(false);
+                                      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                                        processIndexFiles(e.dataTransfer.files, selectedTrackerSubject);
+                                      }
+                                    }}
+                                    onPaste={(e) => {
+                                      if (e.clipboardData.files && e.clipboardData.files.length > 0) {
+                                        e.preventDefault();
+                                        processIndexFiles(e.clipboardData.files, selectedTrackerSubject);
+                                      }
+                                    }}
+                                    className={`flex flex-col gap-4 rounded-3xl p-5 outline-none transition-all duration-300 ${
+                                      isDark
+                                        ? 'neu-card-dark bg-gradient-to-br from-slate-900 via-indigo-950/40 to-slate-900 border border-indigo-900/40 text-white'
+                                        : 'neu-card-light bg-gradient-to-br from-violet-50/70 via-white to-indigo-50/70 border border-indigo-100 text-slate-800'
+                                    } ${isTrackerDragOver ? (isDark ? 'border-violet-500/80 bg-violet-950/40 scale-[1.02]' : 'border-violet-400 bg-violet-100/50 scale-[1.02]') : ''}`}
+                                  >
+                                    <div className="text-left">
+                                      <h4 className={`text-xs font-black flex items-center gap-1.5 ${isDark ? 'text-indigo-300' : 'text-indigo-950'}`}>
+                                        <Sparkles className="w-4 h-4 text-violet-500 animate-pulse" /> AI Book Index Extractor
+                                      </h4>
+                                      <p className={`text-[10px] font-bold mt-1 leading-relaxed ${isDark ? 'text-indigo-300/80' : 'text-indigo-600/80'}`}>
+                                        Drag & drop multiple index pages, paste images, or click to upload.
+                                      </p>
+                                    </div>
+                                    <label className={`w-full py-3 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white text-xs font-black uppercase tracking-wider rounded-2xl cursor-pointer shadow-lg shadow-indigo-600/10 active:scale-95 transition-all flex items-center justify-center gap-2 ${isTrackerAiExtracting ? 'opacity-50 pointer-events-none' : ''}`}>
+                                      {isTrackerAiExtracting ? (
+                                        <>
+                                          <Loader2 className="w-4 h-4 animate-spin" />
+                                          Extracting topics...
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Upload className="w-4 h-4" />
+                                          Upload Index Page
+                                        </>
+                                      )}
+                                      <input
+                                        type="file"
+                                        accept="image/*"
+                                        multiple={true}
+                                        onChange={(e) => handleUploadIndexImage(e, selectedTrackerSubject)}
+                                        className="hidden"
+                                        disabled={isTrackerAiExtracting}
+                                      />
+                                    </label>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          ) : (
-                            <div className="flex-grow overflow-y-auto custom-scrollbar min-h-0 pr-1">
-                              {renderSubjectCoverageDashboard(true)}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
+                            ) : (
+                              <div className="flex-grow overflow-y-auto custom-scrollbar min-h-0 pr-1">
+                                {renderSubjectCoverageDashboard(true)}
+                              </div>
+                            )}
+                          </motion.div>
+                        </motion.div>
+                      );
+                    })()}
 
                     {/* SMART REVIEW VIEW (Desktop) */}
                     {currentTab === 'smartReview' && (
