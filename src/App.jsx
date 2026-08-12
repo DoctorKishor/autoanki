@@ -19,6 +19,7 @@ import { Html5QrcodeScanner } from 'html5-qrcode';
 import { initializeApp } from 'firebase/app';
 
 import CampDashboard from './components/CampTracker/CampDashboard';
+import DashboardGrid from './components/DashboardGrid';
 import AboutDashboard from './components/AboutDashboard';
 import {
   BG_CATEGORIES, STATIC_BG_GRADIENTS, SOUND_TRACKS, STUDY_QUOTES, OBS_CSS_TEMPLATE,
