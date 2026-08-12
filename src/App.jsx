@@ -4733,7 +4733,6 @@ export default function App() {
   const [hoveredStudyRoomIntensityDate, setHoveredStudyRoomIntensityDate] = useState(null);
   const [contributionTimeframe, setContributionTimeframe] = useState('yearly'); // 'weekly' | 'monthly' | 'yearly'
   const [contributionOffset, setContributionOffset] = useState(0); // 0 = current period, -1 = previous, etc.
-  const isDark = settingsThemeMode === 'dark';
 
   const DEFAULT_DASHBOARD_WIDGETS = useMemo(() => [
     { id: 'campEfficiencyCard', label: 'CAMP Study Efficiency', size: 'medium', enabled: true },
@@ -14692,6 +14691,7 @@ JSON Format:
   const [settingsThemeMode, setSettingsThemeMode] = useState(() => {
     return localStorage.getItem("pyt_settings_theme_mode") || "light";
   });
+  const isDark = settingsThemeMode === 'dark';
 
   const saveSettingsThemeMode = async (mode) => {
     setSettingsThemeMode(mode);
