@@ -18899,13 +18899,13 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
           const stripEditorArtifactsForAnki = (htmlStr) => {
             if (!htmlStr || typeof htmlStr !== 'string') return htmlStr || '';
             return htmlStr
-              .replace(/<button[^>]*>[sS]*?<\/button>/gi, '')
+              .replace(/<button[^>]*>[\s\S]*?<\/button>/gi, '')
               .replace(/contenteditable=["'](false|true)["']/gi, '')
               .replace(/class=["']([^"']*?)group-hover:[^"']*?["']/gi, '')
               .trim();
           };
 
-          const cleanField = (s) => stripEditorArtifactsForAnki(s || '').replace(/\n/g, '<br>').replace(/\r/g, '').replace(/\t/g, ' ');/\n/g, '<br>').replace(/\r/g, '').replace(/\t/g, ' ');
+          const cleanField = (s) => stripEditorArtifactsForAnki(s || '').replace(/\n/g, '<br>').replace(/\r/g, '').replace(/\t/g, ' ');
           let escapedF1 = cleanField(f1);
           let escapedF2 = cleanField(f2);
 
