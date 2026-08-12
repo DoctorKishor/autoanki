@@ -25175,19 +25175,26 @@ Return your response strictly as a JSON object matching this schema:
 
                       {/* PYT Coverage Sub-tab */}
                       {analyticsSubTab === 'pytCoverage' && (
-                        <div className="space-y-6">
+                        <motion.div
+                          initial={{ opacity: 0, y: 12 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                          className="space-y-6 text-left"
+                        >
                           {/* Subject Selector & Gauge */}
-                          <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm space-y-4">
-                            <h3 className="text-xs font-black text-gray-800 uppercase tracking-wider">PYT Coverage Analytics</h3>
+                          <div className={`p-6 rounded-3xl space-y-4 ${isDark ? 'neu-card-dark' : 'neu-card-light'}`}>
+                            <h3 className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>PYT Coverage Analytics</h3>
                             <div>
-                              <label className="block text-[8px] font-black text-gray-400 uppercase mb-1.5">Select Subject</label>
+                              <label className={`block text-[9px] font-black uppercase mb-1.5 tracking-wider ${isDark ? 'text-gray-400 font-mono' : 'text-gray-700 font-mono'}`}>Select Subject</label>
                               <select
                                 value={selectedAnalyticsPytSubject}
                                 onChange={(e) => setSelectedAnalyticsPytSubject(e.target.value)}
-                                className="w-full bg-gray-50 border border-gray-150 p-3 rounded-2xl text-xs font-bold outline-none"
+                                className={`w-full p-3.5 rounded-2xl text-xs font-bold outline-none transition cursor-pointer ${
+                                  isDark ? 'neu-pressed-dark text-gray-100 border border-gray-800' : 'neu-pressed-light text-gray-900 border border-white/80'
+                                }`}
                               >
                                 {["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"].map(sub => (
-                                  <option key={sub} value={sub}>{sub}</option>
+                                  <option key={sub} value={sub} className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>{sub}</option>
                                 ))}
                               </select>
                             </div>
@@ -25207,7 +25214,7 @@ Return your response strictly as a JSON object matching this schema:
                                         cx="72"
                                         cy="72"
                                         r={radius}
-                                        className="stroke-gray-100"
+                                        className={isDark ? 'stroke-gray-800' : 'stroke-gray-200'}
                                         strokeWidth="8"
                                         fill="transparent"
                                       />
@@ -25224,29 +25231,29 @@ Return your response strictly as a JSON object matching this schema:
                                       />
                                     </svg>
                                     <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                                      <span className="text-xl font-black text-gray-900 tracking-tight">{pct}%</span>
-                                      <span className="text-[8px] font-black uppercase tracking-wider text-gray-400">Coverage</span>
+                                      <span className={`text-xl font-black tracking-tight ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>{pct}%</span>
+                                      <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Coverage</span>
                                     </div>
                                   </div>
                                 );
                               })()}
                             </div>
                             <div className="text-center">
-                              <span className="text-[10px] font-bold text-gray-600">
+                              <span className={`text-[10px] font-bold ${isDark ? 'text-gray-400' : 'text-gray-700'}`}>
                                 {pytCoverageStats.activeStat.revisedAtLeastOnce} / {pytCoverageStats.activeStat.totalTopics} topics revised &ge; 1 time
                               </span>
                             </div>
                           </div>
 
                           {/* Revision Depth Distribution Chart */}
-                          <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm space-y-4">
-                            <h3 className="text-xs font-black text-gray-800 uppercase tracking-wider">Revision Depth</h3>
+                          <div className={`p-6 rounded-3xl space-y-4 ${isDark ? 'neu-card-dark' : 'neu-card-light'}`}>
+                            <h3 className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>Revision Depth</h3>
                             <div className="w-full h-[350px] min-h-[350px]">
                               {(() => {
                                 const activeStat = pytCoverageStats.activeStat;
                                 const total = activeStat.totalTopics || 1;
                                 const chartData = [
-                                  { name: '0 Rev', count: activeStat.count0, percentage: Math.round((activeStat.count0 / total) * 100), fill: '#94a3b8' },
+                                  { name: '0 Rev', count: activeStat.count0, percentage: Math.round((activeStat.count0 / total) * 100), fill: isDark ? '#64748b' : '#94a3b8' },
                                   { name: '1 Rev', count: activeStat.count1, percentage: Math.round((activeStat.count1 / total) * 100), fill: '#f59e0b' },
                                   { name: '2 Rev', count: activeStat.count2, percentage: Math.round((activeStat.count2 / total) * 100), fill: '#3b82f6' },
                                   { name: '3+ Rev', count: activeStat.count3Plus, percentage: Math.round((activeStat.count3Plus / total) * 100), fill: '#10b981' }
@@ -25254,17 +25261,19 @@ Return your response strictly as a JSON object matching this schema:
                                 return (
                                   <ResponsiveContainer width="100%" height={350} minWidth={0}>
                                     <BarChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                      <XAxis dataKey="name" stroke="#94a3b8" fontSize={9} tickLine={false} axisLine={false} />
-                                      <YAxis stroke="#94a3b8" fontSize={9} tickLine={false} axisLine={false} unit="%" />
+                                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#334155' : '#f1f5f9'} />
+                                      <XAxis dataKey="name" stroke={isDark ? '#94a3b8' : '#64748b'} fontSize={9} tickLine={false} axisLine={false} />
+                                      <YAxis stroke={isDark ? '#94a3b8' : '#64748b'} fontSize={9} tickLine={false} axisLine={false} unit="%" />
                                       <Tooltip
                                         content={({ active, payload }) => {
                                           if (active && payload && payload.length) {
                                             const data = payload[0].payload;
                                             return (
-                                              <div className="bg-white p-2 border border-gray-150 rounded-xl shadow-lg text-[9px] font-bold">
-                                                <p className="text-gray-900">{data.name}</p>
-                                                <p className="text-blue-600">{data.percentage}% ({data.count} topics)</p>
+                                              <div className={`p-3 rounded-2xl shadow-xl text-xs font-bold ${
+                                                isDark ? 'neu-card-dark border border-gray-800 text-gray-100' : 'bg-white border border-gray-200 text-gray-900 shadow-md'
+                                              }`}>
+                                                <p className={isDark ? 'text-gray-100 font-extrabold' : 'text-gray-900 font-extrabold'}>{data.name}</p>
+                                                <p className="text-blue-500 font-mono mt-0.5">{data.percentage}% ({data.count} topics)</p>
                                               </div>
                                             );
                                           }
@@ -25284,41 +25293,47 @@ Return your response strictly as a JSON object matching this schema:
                           </div>
 
                           {/* Subjects Grid */}
-                          <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm space-y-4">
+                          <div className={`p-6 rounded-3xl space-y-4 ${isDark ? 'neu-card-dark' : 'neu-card-light'}`}>
                             <div className="flex justify-between items-center">
-                              <h3 className="text-xs font-black text-gray-800 uppercase tracking-wider">All Subjects Overview</h3>
-                              <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                              <h3 className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>All Subjects Overview</h3>
+                              <span className={`text-[10px] font-black px-2.5 py-1 rounded-full border ${
+                                isDark ? 'neu-pressed-dark text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              }`}>
                                 Avg: {pytCoverageStats.overallAverageCoverage}%
                               </span>
                             </div>
-                            <div className="grid grid-cols-1 gap-2.5 max-h-96 overflow-y-auto pr-1">
+                            <div className="grid grid-cols-1 gap-3 max-h-96 overflow-y-auto pr-1">
                               {pytCoverageStats.allStats.map(stat => {
                                 const isSelected = stat.subject.toLowerCase() === selectedAnalyticsPytSubject.toLowerCase();
                                 return (
                                   <button
                                     key={stat.subject}
                                     onClick={() => setSelectedAnalyticsPytSubject(stat.subject)}
-                                    className={`w-full text-left p-3 rounded-2xl border transition-all ${isSelected ? 'border-blue-500 bg-blue-50/10 shadow-sm' : 'border-gray-100 bg-white hover:border-gray-200'}`}
+                                    className={`w-full text-left p-3.5 rounded-2xl transition-all ${
+                                      isSelected 
+                                        ? (isDark ? 'neu-pressed-dark border border-blue-500/40 shadow-sm' : 'neu-pressed-light border border-blue-400 shadow-sm') 
+                                        : (isDark ? 'neu-card-dark border border-gray-800/80 hover:border-gray-700' : 'neu-card-light hover:border-gray-300')
+                                    }`}
                                   >
-                                    <div className="flex justify-between items-center mb-1">
-                                      <span className="text-[11px] font-black text-gray-800 truncate max-w-[150px]">{stat.subject}</span>
-                                      <span className="text-[10px] font-bold text-gray-500">{stat.revisedAtLeastOnce}/{stat.totalTopics}</span>
+                                    <div className="flex justify-between items-center mb-1.5">
+                                      <span className={`text-[11px] font-black truncate max-w-[150px] ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>{stat.subject}</span>
+                                      <span className={`text-[10px] font-bold ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{stat.revisedAtLeastOnce}/{stat.totalTopics}</span>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                      <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                      <div className={`flex-1 h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-gray-800' : 'bg-gray-200'}`}>
                                         <div
                                           className="h-full bg-emerald-500 rounded-full transition-all duration-500"
                                           style={{ width: `${stat.coveragePercent}%` }}
                                         />
                                       </div>
-                                      <span className="text-[9px] font-black text-gray-700 min-w-[24px] text-right">{stat.coveragePercent}%</span>
+                                      <span className={`text-[9px] font-black min-w-[24px] text-right ${isDark ? 'text-gray-300' : 'text-gray-800'}`}>{stat.coveragePercent}%</span>
                                     </div>
                                   </button>
                                 );
                               })}
                             </div>
                           </div>
-                        </div>
+                        </motion.div>
                       )}
 
                       {/* Adherence Sub-tab (Mobile) */}
@@ -33437,22 +33452,29 @@ Return your response strictly as a JSON object matching this schema:
                         })()}
 
                         {analyticsSubTab === 'pytCoverage' && (
-                          <div className="flex flex-col gap-6 w-full text-left">
+                          <motion.div
+                            initial={{ opacity: 0, y: 12 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                            className="flex flex-col gap-6 w-full text-left"
+                          >
                             {/* Top row: Detail Analysis */}
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                               {/* Subject selector & Gauge */}
-                              <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex flex-col justify-between">
+                              <div className={`p-6 rounded-3xl space-y-4 flex flex-col justify-between ${isDark ? 'neu-card-dark' : 'neu-card-light'}`}>
                                 <div className="space-y-4">
-                                  <h3 className="text-sm font-black text-gray-800 uppercase tracking-wider">PYT Coverage Analytics</h3>
+                                  <h3 className={`text-sm font-black uppercase tracking-wider ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>PYT Coverage Analytics</h3>
                                   <div>
-                                    <label className="block text-xs font-black text-gray-400 uppercase mb-2">Select Subject</label>
+                                    <label className={`block text-xs font-black uppercase mb-2 ${isDark ? 'text-gray-400 font-mono' : 'text-gray-700 font-mono'}`}>Select Subject</label>
                                     <select
                                       value={selectedAnalyticsPytSubject}
                                       onChange={(e) => setSelectedAnalyticsPytSubject(e.target.value)}
-                                      className="w-full bg-gray-50 border border-gray-150 p-3 rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-blue-500/10"
+                                      className={`w-full p-3.5 rounded-2xl text-xs font-bold outline-none transition cursor-pointer ${
+                                        isDark ? 'neu-pressed-dark text-gray-100 border border-gray-800' : 'neu-pressed-light text-gray-900 border border-white/80'
+                                      }`}
                                     >
                                       {["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"].map(sub => (
-                                        <option key={sub} value={sub}>{sub}</option>
+                                        <option key={sub} value={sub} className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>{sub}</option>
                                       ))}
                                     </select>
                                   </div>
@@ -33473,7 +33495,7 @@ Return your response strictly as a JSON object matching this schema:
                                             cx="80"
                                             cy="80"
                                             r={radius}
-                                            className="stroke-gray-100"
+                                            className={isDark ? 'stroke-gray-800' : 'stroke-gray-200'}
                                             strokeWidth="10"
                                             fill="transparent"
                                           />
@@ -33490,33 +33512,33 @@ Return your response strictly as a JSON object matching this schema:
                                           />
                                         </svg>
                                         <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                                          <span className="text-3xl font-black text-gray-900 tracking-tight">{pct}%</span>
-                                          <span className="text-[9px] font-black uppercase tracking-wider text-gray-400">Coverage</span>
+                                          <span className={`text-3xl font-black tracking-tight ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>{pct}%</span>
+                                          <span className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Coverage</span>
                                         </div>
                                       </div>
                                     );
                                   })()}
                                 </div>
 
-                                <div className="text-center border-t border-gray-100 pt-3">
-                                  <span className="text-xs font-bold text-gray-600">
+                                <div className={`text-center border-t pt-3 ${isDark ? 'border-gray-800/80' : 'border-gray-200'}`}>
+                                  <span className={`text-xs font-bold ${isDark ? 'text-gray-400' : 'text-gray-700'}`}>
                                     {pytCoverageStats.activeStat.revisedAtLeastOnce} of {pytCoverageStats.activeStat.totalTopics} topics revised &ge; 1 time
                                   </span>
                                 </div>
                               </div>
 
                               {/* Depth Distribution Chart */}
-                              <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm lg:col-span-2 flex flex-col justify-between">
+                              <div className={`p-6 rounded-3xl lg:col-span-2 flex flex-col justify-between ${isDark ? 'neu-card-dark' : 'neu-card-light'}`}>
                                 <div className="mb-4">
-                                  <h3 className="text-sm font-black text-gray-800 uppercase tracking-wider">Revision Depth Distribution</h3>
-                                  <p className="text-xs text-gray-400">Percentage of topics revised by frequency</p>
+                                  <h3 className={`text-sm font-black uppercase tracking-wider ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>Revision Depth Distribution</h3>
+                                  <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Percentage of topics revised by frequency</p>
                                 </div>
                                 <div className="w-full h-[350px] min-h-[350px]">
                                   {(() => {
                                     const activeStat = pytCoverageStats.activeStat;
                                     const total = activeStat.totalTopics || 1;
                                     const chartData = [
-                                      { name: '0 Revisions', count: activeStat.count0, percentage: Math.round((activeStat.count0 / total) * 100), fill: '#94a3b8' },
+                                      { name: '0 Revisions', count: activeStat.count0, percentage: Math.round((activeStat.count0 / total) * 100), fill: isDark ? '#64748b' : '#94a3b8' },
                                       { name: '1 Revision', count: activeStat.count1, percentage: Math.round((activeStat.count1 / total) * 100), fill: '#f59e0b' },
                                       { name: '2 Revisions', count: activeStat.count2, percentage: Math.round((activeStat.count2 / total) * 100), fill: '#3b82f6' },
                                       { name: '3+ Revisions', count: activeStat.count3Plus, percentage: Math.round((activeStat.count3Plus / total) * 100), fill: '#10b981' }
@@ -33524,17 +33546,19 @@ Return your response strictly as a JSON object matching this schema:
                                     return (
                                       <ResponsiveContainer width="100%" height={350} minWidth={0}>
                                         <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
-                                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                          <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
-                                          <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} unit="%" />
+                                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#334155' : '#f1f5f9'} />
+                                          <XAxis dataKey="name" stroke={isDark ? '#94a3b8' : '#64748b'} fontSize={11} tickLine={false} axisLine={false} />
+                                          <YAxis stroke={isDark ? '#94a3b8' : '#64748b'} fontSize={11} tickLine={false} axisLine={false} unit="%" />
                                           <Tooltip
                                             content={({ active, payload }) => {
                                               if (active && payload && payload.length) {
                                                 const data = payload[0].payload;
                                                 return (
-                                                  <div className="bg-white p-3 border border-gray-150 rounded-2xl shadow-xl text-xs font-bold">
-                                                    <p className="text-gray-900 font-extrabold mb-1">{data.name}</p>
-                                                    <p className="text-blue-600">{data.percentage}% ({data.count} topics)</p>
+                                                  <div className={`p-3 rounded-2xl shadow-xl text-xs font-bold ${
+                                                    isDark ? 'neu-card-dark border border-gray-800 text-gray-100' : 'bg-white border border-gray-200 text-gray-900 shadow-md'
+                                                  }`}>
+                                                    <p className={isDark ? 'text-gray-100 font-extrabold mb-1' : 'text-gray-900 font-extrabold mb-1'}>{data.name}</p>
+                                                    <p className="text-blue-500 font-mono">{data.percentage}% ({data.count} topics)</p>
                                                   </div>
                                                 );
                                               }
@@ -33555,14 +33579,16 @@ Return your response strictly as a JSON object matching this schema:
                             </div>
 
                             {/* Subjects Grid (19 subjects) */}
-                            <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-4">
-                              <div className="flex justify-between items-center border-b border-gray-100 pb-3">
+                            <div className={`p-6 rounded-3xl space-y-4 ${isDark ? 'neu-card-dark' : 'neu-card-light'}`}>
+                              <div className={`flex justify-between items-center border-b pb-3 ${isDark ? 'border-gray-800/80' : 'border-gray-200'}`}>
                                 <div>
-                                  <h3 className="text-sm font-black text-gray-800 uppercase tracking-wider">All Subjects Overview</h3>
-                                  <p className="text-xs text-gray-400">Click a card to load detailed analytics</p>
+                                  <h3 className={`text-sm font-black uppercase tracking-wider ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>All Subjects Overview</h3>
+                                  <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Click a card to load detailed analytics</p>
                                 </div>
                                 <div className="text-right">
-                                  <span className="text-xs font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
+                                  <span className={`text-xs font-black px-3 py-1 rounded-full border ${
+                                    isDark ? 'neu-pressed-dark text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                  }`}>
                                     Overall Avg Coverage: {pytCoverageStats.overallAverageCoverage}%
                                   </span>
                                 </div>
@@ -33575,22 +33601,28 @@ Return your response strictly as a JSON object matching this schema:
                                     <button
                                       key={stat.subject}
                                       onClick={() => setSelectedAnalyticsPytSubject(stat.subject)}
-                                      className={`w-full text-left p-4 rounded-2xl border transition-all ${isSelected ? 'border-blue-500 bg-blue-50/10 shadow-md scale-[1.01]' : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'}`}
+                                      className={`w-full text-left p-4 rounded-2xl border transition-all ${
+                                        isSelected 
+                                          ? (isDark ? 'neu-pressed-dark border border-blue-500/40 scale-[1.01]' : 'neu-pressed-light border border-blue-400 scale-[1.01]') 
+                                          : (isDark ? 'neu-card-dark border border-gray-800/80 hover:border-gray-700' : 'neu-card-light hover:border-gray-300')
+                                      }`}
                                     >
                                       <div className="flex justify-between items-start mb-2">
-                                        <span className="text-xs font-black text-gray-800 truncate max-w-[140px]" title={stat.subject}>
+                                        <span className={`text-xs font-black truncate max-w-[140px] ${isDark ? 'text-gray-100' : 'text-gray-900'}`} title={stat.subject}>
                                           {stat.subject}
                                         </span>
-                                        <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                                          isDark ? 'neu-pressed-dark text-gray-300' : 'neu-pressed-light text-gray-700'
+                                        }`}>
                                           {stat.revisedAtLeastOnce}/{stat.totalTopics}
                                         </span>
                                       </div>
                                       <div className="space-y-1">
-                                        <div className="flex items-center justify-between text-[10px] font-black text-gray-600">
+                                        <div className={`flex items-center justify-between text-[10px] font-black ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                                           <span>Coverage</span>
                                           <span>{stat.coveragePercent}%</span>
                                         </div>
-                                        <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                                        <div className={`w-full h-2 rounded-full overflow-hidden ${isDark ? 'bg-gray-800' : 'bg-gray-200'}`}>
                                           <div
                                             className="h-full bg-emerald-500 rounded-full transition-all duration-500"
                                             style={{ width: `${stat.coveragePercent}%` }}
@@ -33602,7 +33634,7 @@ Return your response strictly as a JSON object matching this schema:
                                 })}
                               </div>
                             </div>
-                          </div>
+                          </motion.div>
                         )}
 
                         {analyticsSubTab === 'subjectCoverage' && (
