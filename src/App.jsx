@@ -18896,7 +18896,16 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
           let f1 = type === 'Cloze' ? (card.text || '') : (card.front || '');
           let f2 = type === 'Cloze' ? (card.extra || '') : (card.back || '');
 
-          const cleanField = (s) => (s || '').replace(/\n/g, '<br>').replace(/\r/g, '').replace(/\t/g, ' ');
+          const stripEditorArtifactsForAnki = (htmlStr) => {
+            if (!htmlStr || typeof htmlStr !== 'string') return htmlStr || '';
+            return htmlStr
+              .replace(/<button[^>]*>[sS]*?<\/button>/gi, '')
+              .replace(/contenteditable=["'](false|true)["']/gi, '')
+              .replace(/class=["']([^"']*?)group-hover:[^"']*?["']/gi, '')
+              .trim();
+          };
+
+          const cleanField = (s) => stripEditorArtifactsForAnki(s || '').replace(/\n/g, '<br>').replace(/\r/g, '').replace(/\t/g, ' ');/\n/g, '<br>').replace(/\r/g, '').replace(/\t/g, ' ');
           let escapedF1 = cleanField(f1);
           let escapedF2 = cleanField(f2);
 
@@ -19018,7 +19027,10 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     if (format === 'anki') {
       fileContent = "#separator:tab\n#html:true\n#notetype column:1\n#deck column:2\n";
       cardsToUse.forEach(card => {
-        const clean = (str) => (str || '').replace(/\n/g, '<br>').replace(/\t/g, ' ');
+        const clean = (str) => {
+          const stripped = (str || '').replace(/<button[^>]*>[sS]*?<\/button>/gi, '').replace(/contenteditable=["'](false|true)["']/gi, '');
+          return stripped.replace(/\n/g, '<br>').replace(/\t/g, ' ');
+        };/\n/g, '<br>').replace(/\t/g, ' ');
         const type = card.type || 'Basic';
         const cardDeck = card.deck || firstDeck || hierarchy || 'Default';
         const cleanDeck = clean(cardDeck);
