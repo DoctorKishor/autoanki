@@ -24113,55 +24113,48 @@ Return your response strictly as a JSON object matching this schema:
                   {currentTab === 'analytics' && (
                     <div className="space-y-6 text-left">
                       {/* Header */}
-                      <div className="flex items-center gap-3 bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
-                        <div className="bg-blue-500 text-white p-2.5 rounded-xl shadow-md shadow-blue-600/20">
+                      <div className={`flex items-center gap-3 p-5 rounded-3xl transition-all ${
+                        isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                      }`}>
+                        <div className={`p-2.5 rounded-2xl ${isDark ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'}`}>
                           <BarChart2 className="w-5 h-5 animate-pulse" />
                         </div>
                         <div>
-                          <h2 className="text-base font-black text-gray-900 tracking-tight leading-none">Performance Analytics</h2>
-                          <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest mt-1">
+                          <h2 className={`text-base font-black tracking-tight leading-none ${isDark ? 'text-white' : 'text-slate-900'}`}>Performance Analytics</h2>
+                          <p className={`text-[9px] font-bold uppercase tracking-widest mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                             AI generation and study room stats
                           </p>
                         </div>
                       </div>
 
-                      {/* Modern Pill Switcher */}
-                      <div className="flex items-center bg-gray-100 p-1 rounded-2xl border border-gray-200 shadow-inner w-full justify-between">
-                        <button
-                          onClick={() => setAnalyticsSubTab('generation')}
-                          className={`flex-1 py-2 text-[9px] font-black uppercase tracking-wider rounded-xl transition-all duration-200 whitespace-nowrap flex items-center justify-center gap-1 ${analyticsSubTab === 'generation' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500'}`}
-                        >
-                          <Sparkles className="w-3 h-3" />
-                          Cards
-                        </button>
-                        <button
-                          onClick={() => setAnalyticsSubTab('study')}
-                          className={`flex-1 py-2 text-[9px] font-black uppercase tracking-wider rounded-xl transition-all duration-200 whitespace-nowrap flex items-center justify-center gap-1 ${analyticsSubTab === 'study' ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-sm' : 'text-gray-500'}`}
-                        >
-                          <GraduationCap className="w-3 h-3" />
-                          Study
-                        </button>
-                        <button
-                          onClick={() => setAnalyticsSubTab('counselling')}
-                          className={`flex-1 py-2 text-[9px] font-black uppercase tracking-wider rounded-xl transition-all duration-200 whitespace-nowrap flex items-center justify-center gap-1 ${analyticsSubTab === 'counselling' ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-sm' : 'text-gray-500'}`}
-                        >
-                          <Trophy className="w-3 h-3" />
-                          Mentorship
-                        </button>
-                        <button
-                          onClick={() => setAnalyticsSubTab('pytCoverage')}
-                          className={`flex-1 py-2 text-[9px] font-black uppercase tracking-wider rounded-xl transition-all duration-200 whitespace-nowrap flex items-center justify-center gap-1 ${analyticsSubTab === 'pytCoverage' ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-sm' : 'text-gray-500'}`}
-                        >
-                          <CheckCircle2 className="w-3 h-3" />
-                          PYT
-                        </button>
-                        <button
-                          onClick={() => setAnalyticsSubTab('adherence')}
-                          className={`flex-1 py-2 text-[9px] font-black uppercase tracking-wider rounded-xl transition-all duration-200 whitespace-nowrap flex items-center justify-center gap-1 ${analyticsSubTab === 'adherence' ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-sm' : 'text-gray-500'}`}
-                        >
-                          <Calendar className="w-3 h-3" />
-                          Adherence
-                        </button>
+                      {/* Modern Pill Switcher (Mobile) */}
+                      <div className={`flex items-center p-1.5 rounded-2xl shrink-0 select-none overflow-x-auto custom-scrollbar gap-1 ${
+                        isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
+                      }`}>
+                        {[
+                          { id: 'generation', label: 'Cards', icon: Sparkles },
+                          { id: 'study', label: 'Study', icon: GraduationCap },
+                          { id: 'counselling', label: 'Mentorship', icon: Trophy },
+                          { id: 'pytCoverage', label: 'PYT', icon: CheckCircle2 },
+                          { id: 'adherence', label: 'Adherence', icon: Calendar }
+                        ].map(sub => {
+                          const IconComp = sub.icon;
+                          const isActive = analyticsSubTab === sub.id;
+                          return (
+                            <button
+                              key={sub.id}
+                              onClick={() => setAnalyticsSubTab(sub.id)}
+                              className={`flex-1 min-w-[70px] py-2 text-[9px] font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer whitespace-nowrap flex items-center justify-center gap-1 ${
+                                isActive
+                                  ? (isDark ? 'neu-btn-accent-dark text-white shadow-sm font-extrabold' : 'neu-btn-accent-light text-white shadow-sm font-extrabold')
+                                  : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                              }`}
+                            >
+                              <IconComp className="w-3 h-3" />
+                              {sub.label}
+                            </button>
+                          );
+                        })}
                       </div>
 
                       {/* Generation Sub-tab */}
@@ -24169,40 +24162,50 @@ Return your response strictly as a JSON object matching this schema:
                         <div className="space-y-6">
                           {/* KPI Grid */}
                           <div className="grid grid-cols-2 gap-3">
-                            <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+                            <div className={`p-4 rounded-2xl transition-all flex items-center justify-between ${
+                              isDark ? 'neu-item-dark text-white' : 'neu-item-light text-slate-800'
+                            }`}>
                               <div>
-                                <span className="text-[8px] font-black uppercase text-gray-400 tracking-wider">Curation Rate</span>
-                                <h3 className="text-lg font-black text-gray-800 mt-1">{analyticsData.pageCompletionRate}%</h3>
+                                <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Curation Rate</span>
+                                <h3 className={`text-lg font-black mt-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>{analyticsData.pageCompletionRate}%</h3>
                               </div>
                               <div className="relative shrink-0 flex items-center justify-center scale-75 -mx-2">
                                 <svg className="w-12 h-12 transform -rotate-90">
-                                  <circle cx="24" cy="24" r="20" stroke="#f3f4f6" strokeWidth="4" fill="transparent" />
+                                  <circle cx="24" cy="24" r="20" stroke={isDark ? '#2d3440' : '#e2e8f0'} strokeWidth="4" fill="transparent" />
                                   <circle cx="24" cy="24" r="20" stroke="#3b82f6" strokeWidth="4" fill="transparent"
                                     strokeDasharray={2 * Math.PI * 20}
                                     strokeDashoffset={2 * Math.PI * 20 * (1 - analyticsData.pageCompletionRate / 100)}
                                     strokeLinecap="round"
                                   />
                                 </svg>
-                                <span className="absolute text-[8px] font-black text-blue-600">{analyticsData.pageCompletionRate}%</span>
+                                <span className="absolute text-[8px] font-black text-blue-500">{analyticsData.pageCompletionRate}%</span>
                               </div>
                             </div>
-                            <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between">
-                              <span className="text-[8px] font-black uppercase text-gray-400 tracking-wider">Time Saved</span>
-                              <h3 className="text-lg font-black text-gray-800 mt-1">{analyticsData.timeSavedHours} hrs</h3>
+                            <div className={`p-4 rounded-2xl transition-all flex flex-col justify-between ${
+                              isDark ? 'neu-item-dark text-white' : 'neu-item-light text-slate-800'
+                            }`}>
+                              <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Time Saved</span>
+                              <h3 className={`text-lg font-black mt-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>{analyticsData.timeSavedHours} hrs</h3>
                             </div>
-                            <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between">
-                              <span className="text-[8px] font-black uppercase text-gray-400 tracking-wider">Total Cards</span>
-                              <h3 className="text-lg font-black text-gray-800 mt-1">{analyticsData.totalCardsCount}</h3>
+                            <div className={`p-4 rounded-2xl transition-all flex flex-col justify-between ${
+                              isDark ? 'neu-item-dark text-white' : 'neu-item-light text-slate-800'
+                            }`}>
+                              <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Total Cards</span>
+                              <h3 className={`text-lg font-black mt-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>{analyticsData.totalCardsCount}</h3>
                             </div>
-                            <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between">
-                              <span className="text-[8px] font-black uppercase text-gray-400 tracking-wider">Active Domains</span>
-                              <h3 className="text-lg font-black text-gray-800 mt-1">{analyticsData.uniqueTagsCount}</h3>
+                            <div className={`p-4 rounded-2xl transition-all flex flex-col justify-between ${
+                              isDark ? 'neu-item-dark text-white' : 'neu-item-light text-slate-800'
+                            }`}>
+                              <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Active Domains</span>
+                              <h3 className={`text-lg font-black mt-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>{analyticsData.uniqueTagsCount}</h3>
                             </div>
                           </div>
 
                           {/* Hierarchical Sunburst */}
-                          <div className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm">
-                            <h4 className="text-[10px] font-black uppercase tracking-wider text-gray-400 mb-3">Sunburst Deck Map</h4>
+                          <div className={`p-5 rounded-3xl transition-all ${
+                            isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                          }`}>
+                            <h4 className={`text-[10px] font-black uppercase tracking-wider mb-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Sunburst Deck Map</h4>
                             <div className="overflow-x-auto">
                               <HierarchicalSunburst
                                 deckPaths={deckPaths}
@@ -24221,8 +24224,10 @@ Return your response strictly as a JSON object matching this schema:
                           </div>
 
                           {/* Tag Concept Web */}
-                          <div className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm">
-                            <h4 className="text-[10px] font-black uppercase tracking-wider text-gray-400 mb-3">Concept Tag Web</h4>
+                          <div className={`p-5 rounded-3xl transition-all ${
+                            isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                          }`}>
+                            <h4 className={`text-[10px] font-black uppercase tracking-wider mb-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Concept Tag Web</h4>
                             <TagConceptWeb
                               cards={cards}
                               hierarchy={hierarchy}
@@ -24233,32 +24238,277 @@ Return your response strictly as a JSON object matching this schema:
                             />
                           </div>
 
-                          {/* Heatmap Section */}
-                          <div className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm">
+                          {/* Mobile Contribution Activity Heatmap */}
+                          <div className={`p-5 rounded-3xl transition-all h-[340px] flex flex-col justify-between ${
+                            isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                          }`}>
                             {(() => {
-                              const maxContribCount = Math.max(...Object.values(analyticsData.contributions), 1);
+                              const today = new Date();
+                              let dateKeys = [];
+                              let periodLabel = '';
+                              let periodDetailText = '';
+
+                              if (contributionTimeframe === 'weekly') {
+                                const refDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + (contributionOffset * 7));
+                                const dayOfWeek = refDate.getDay();
+                                const weekStart = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate() - dayOfWeek);
+
+                                for (let i = 0; i < 7; i++) {
+                                  const d = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + i);
+                                  const tzoffset = d.getTimezoneOffset() * 60000;
+                                  const dateStr = (new Date(d.getTime() - tzoffset)).toISOString().slice(0, 10);
+                                  dateKeys.push(dateStr);
+                                }
+
+                                const startDateObj = new Date(dateKeys[0] + 'T00:00:00');
+                                const endDateObj = new Date(dateKeys[6] + 'T00:00:00');
+                                const startLabel = startDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                                const endLabel = endDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                                periodLabel = `${startLabel} – ${endLabel}`;
+                                periodDetailText = `7 Days for ${periodLabel}`;
+
+                              } else if (contributionTimeframe === 'monthly') {
+                                const refDate = new Date(today.getFullYear(), today.getMonth() + contributionOffset, 1);
+                                const targetYear = refDate.getFullYear();
+                                const targetMonth = refDate.getMonth();
+                                const daysInMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+
+                                for (let i = 1; i <= daysInMonth; i++) {
+                                  const mmStr = String(targetMonth + 1).padStart(2, '0');
+                                  const ddStr = String(i).padStart(2, '0');
+                                  dateKeys.push(`${targetYear}-${mmStr}-${ddStr}`);
+                                }
+
+                                const monthName = refDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                                periodLabel = monthName;
+                                periodDetailText = `${daysInMonth} Days in ${monthName}`;
+
+                              } else {
+                                const targetYear = today.getFullYear() + contributionOffset;
+                                const isLeapYear = (targetYear % 4 === 0 && targetYear % 100 !== 0) || (targetYear % 400 === 0);
+                                const daysInYear = isLeapYear ? 366 : 365;
+
+                                for (let i = 0; i < daysInYear; i++) {
+                                  const d = new Date(targetYear, 0, 1 + i);
+                                  const mmStr = String(d.getMonth() + 1).padStart(2, '0');
+                                  const ddStr = String(d.getDate()).padStart(2, '0');
+                                  dateKeys.push(`${targetYear}-${mmStr}-${ddStr}`);
+                                }
+
+                                periodLabel = `Year ${targetYear}`;
+                                periodDetailText = `Full Year ${targetYear} (${daysInYear} Days)`;
+                              }
+
+                              const maxContribCount = Math.max(
+                                ...dateKeys.map(d => analyticsData.contributions[d] || 0),
+                                1
+                              );
+
                               return (
                                 <>
-                                  <div className="flex justify-between items-center mb-3">
-                                    <h3 className="text-[10px] font-black text-gray-900 uppercase tracking-wider flex items-center gap-1">
-                                      <Calendar className="w-3.5 h-3.5 text-blue-600" /> Contribution Activity
-                                    </h3>
+                                  <div className="flex flex-col gap-2 text-left">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-1.5">
+                                        <div className={`p-1.5 rounded-xl ${isDark ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'}`}>
+                                          <Calendar className="w-3.5 h-3.5" />
+                                        </div>
+                                        <h3 className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                          Contribution Activity
+                                        </h3>
+                                      </div>
+
+                                      {/* Mobile Period Navigation */}
+                                      <div className="flex items-center gap-1">
+                                        <motion.button
+                                          whileTap={{ scale: 0.9 }}
+                                          onClick={() => setContributionOffset(prev => prev - 1)}
+                                          className={`p-1 rounded-lg ${isDark ? 'bg-slate-800 text-slate-300' : 'bg-gray-200 text-slate-700'}`}
+                                        >
+                                          <ChevronLeft className="w-3.5 h-3.5" />
+                                        </motion.button>
+                                        <span className={`text-[9px] font-black uppercase font-mono px-2 py-0.5 rounded ${
+                                          isDark ? 'bg-slate-800 text-blue-400' : 'bg-blue-50 text-blue-700'
+                                        }`}>
+                                          {periodLabel}
+                                        </span>
+                                        <motion.button
+                                          whileTap={{ scale: 0.9 }}
+                                          disabled={contributionOffset >= 0}
+                                          onClick={() => setContributionOffset(prev => Math.min(0, prev + 1))}
+                                          className={`p-1 rounded-lg ${contributionOffset >= 0 ? 'opacity-30' : (isDark ? 'bg-slate-800 text-slate-300' : 'bg-gray-200 text-slate-700')}`}
+                                        >
+                                          <ChevronRight className="w-3.5 h-3.5" />
+                                        </motion.button>
+                                      </div>
+                                    </div>
+
+                                    {/* Mobile Subtab Toggle with 0.6s cubic-bezier sliding pill */}
+                                    <div className="flex justify-center mt-1">
+                                      {(() => {
+                                        const subtabs = [
+                                          { id: 'weekly', label: 'Weekly' },
+                                          { id: 'monthly', label: 'Monthly' },
+                                          { id: 'yearly', label: 'Yearly' }
+                                        ];
+                                        const activeIndex = Math.max(0, subtabs.findIndex(t => t.id === contributionTimeframe));
+
+                                        return (
+                                          <div className={`relative flex items-center p-1 rounded-xl gap-1 shrink-0 select-none ${
+                                            isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
+                                          }`}>
+                                            <div
+                                              className={`absolute top-1 bottom-1 w-20 rounded-lg shadow-md ${
+                                                isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+                                              }`}
+                                              style={{
+                                                left: `calc(0.25rem + ${activeIndex} * (5rem + 0.25rem))`,
+                                                transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                                              }}
+                                            />
+                                            {subtabs.map(item => (
+                                              <button
+                                                key={item.id}
+                                                onClick={() => {
+                                                  setContributionTimeframe(item.id);
+                                                  setContributionOffset(0);
+                                                }}
+                                                className={`relative w-20 py-1 text-[9px] font-black uppercase tracking-wider rounded-lg cursor-pointer select-none flex items-center justify-center z-10 ${
+                                                  contributionTimeframe === item.id ? 'text-white font-extrabold' : (isDark ? 'text-slate-400' : 'text-slate-600')
+                                                }`}
+                                              >
+                                                <span>{item.label}</span>
+                                              </button>
+                                            ))}
+                                          </div>
+                                        );
+                                      })()}
+                                    </div>
                                   </div>
-                                  <div className="flex flex-wrap gap-[2px] items-center justify-center p-2 bg-gray-50 rounded-xl border border-gray-100">
-                                    {Object.entries(analyticsData.contributions).slice(-60).map(([date, count]) => {
-                                      const ratio = count / maxContribCount;
-                                      const lightness = count === 0 ? 95 : 94 - ratio * 69;
-                                      const saturation = count === 0 ? 0 : 35 + ratio * 59;
-                                      const col = `hsl(217, ${Math.round(saturation)}%, ${Math.round(lightness)}%)`;
+
+                                  {/* View Renderers (Uniform Height 210px) */}
+                                  <div className="h-[210px] w-full flex items-center justify-center">
+                                    {contributionTimeframe === 'weekly' && (
+                                      <div className="grid grid-cols-7 gap-1.5 w-full">
+                                        {dateKeys.map(dateStr => {
+                                          const dayObj = new Date(dateStr + 'T00:00:00');
+                                          const dayName = dayObj.toLocaleDateString('en-US', { weekday: 'narrow' });
+                                          const dayNum = dayObj.getDate();
+                                          const count = analyticsData.contributions[dateStr] || 0;
+
+                                          let color = isDark ? '#262c36' : '#f3f4f6';
+                                          if (count > 0) {
+                                            const ratio = Math.min(1, count / maxContribCount);
+                                            const lightness = isDark ? (25 + ratio * 45) : (94 - ratio * 69);
+                                            const saturation = 35 + ratio * 59;
+                                            color = `hsl(217, ${Math.round(saturation)}%, ${Math.round(lightness)}%)`;
+                                          }
+
+                                          return (
+                                            <div
+                                              key={dateStr}
+                                              className={`relative group hover:z-50 flex flex-col items-center justify-between p-1.5 rounded-xl border ${
+                                                isDark ? 'bg-[#222730] border-gray-800' : 'bg-white border-gray-200'
+                                              }`}
+                                            >
+                                              <span className={`text-[9px] font-black uppercase ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{dayName}</span>
+                                              <div
+                                                className="w-7 h-7 rounded-lg flex items-center justify-center font-mono font-black text-[10px] my-1"
+                                                style={{ backgroundColor: color, color: count > 0 ? '#fff' : (isDark ? '#94a3b8' : '#64748b') }}
+                                              >
+                                                {dayNum}
+                                              </div>
+                                              <span className="text-[8px] font-bold truncate max-w-full">{count}</span>
+                                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-gray-900 text-white text-[8px] font-bold px-2 py-1 rounded shadow-xl opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-50">
+                                                {count} cards on {formatAppDate(dateStr)}
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
+
+                                    {contributionTimeframe === 'monthly' && (() => {
+                                      const firstDateObj = new Date(dateKeys[0] + 'T00:00:00');
+                                      const firstWeekday = firstDateObj.getDay();
+                                      const emptySlots = Array.from({ length: firstWeekday });
+
                                       return (
-                                        <div
-                                          key={date}
-                                          className="w-3.5 h-3.5 rounded-sm border border-gray-200/20"
-                                          style={{ backgroundColor: col }}
-                                          title={`${date}: ${count} cards`}
-                                        />
+                                        <div className="max-w-[320px] mx-auto w-full">
+                                          <div className="grid grid-cols-7 gap-1 mb-1 text-center">
+                                            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((w, idx) => (
+                                              <span key={idx} className={`text-[8px] font-black ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>{w}</span>
+                                            ))}
+                                          </div>
+                                          <div className="grid grid-cols-7 gap-1 text-center">
+                                            {emptySlots.map((_, idx) => (
+                                              <div key={`empty-${idx}`} className="w-6 h-6 mx-auto rounded opacity-0 pointer-events-none" />
+                                            ))}
+                                            {dateKeys.map(dateStr => {
+                                              const dayNum = Number(dateStr.split('-')[2]);
+                                              const count = analyticsData.contributions[dateStr] || 0;
+                                              let color = isDark ? '#262c36' : '#f3f4f6';
+                                              if (count > 0) {
+                                                const ratio = Math.min(1, count / maxContribCount);
+                                                const lightness = isDark ? (25 + ratio * 45) : (94 - ratio * 69);
+                                                const saturation = 35 + ratio * 59;
+                                                color = `hsl(217, ${Math.round(saturation)}%, ${Math.round(lightness)}%)`;
+                                              }
+                                              return (
+                                                <div
+                                                  key={dateStr}
+                                                  className="w-6 h-6 mx-auto rounded flex items-center justify-center relative group hover:z-50 cursor-pointer text-[9px] font-mono font-black"
+                                                  style={{ backgroundColor: color, color: count > 0 ? '#fff' : (isDark ? '#94a3b8' : '#64748b') }}
+                                                >
+                                                  {dayNum}
+                                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-gray-900 text-white text-[8px] font-bold px-2 py-1 rounded shadow-xl opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-50">
+                                                    {count} cards on {formatAppDate(dateStr)}
+                                                  </div>
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                        </div>
                                       );
-                                    })}
+                                    })()}
+
+                                    {contributionTimeframe === 'yearly' && (() => {
+                                      const jan1DateObj = new Date(dateKeys[0] + 'T00:00:00');
+                                      const jan1Weekday = jan1DateObj.getDay();
+                                      const leadingBlanks = Array.from({ length: jan1Weekday });
+
+                                      return (
+                                        <div className="overflow-x-auto w-full flex justify-center custom-scrollbar">
+                                          <div className="min-w-[650px] select-none flex justify-center py-2">
+                                            <div className="grid grid-flow-col grid-rows-7 gap-1">
+                                              {leadingBlanks.map((_, idx) => (
+                                                <div key={`blank-jan1-${idx}`} className="w-2.5 h-2.5 rounded-sm opacity-0 pointer-events-none" />
+                                              ))}
+                                              {dateKeys.map(dateStr => {
+                                                const count = analyticsData.contributions[dateStr] || 0;
+                                                let color = isDark ? '#262c36' : '#f3f4f6';
+                                                if (count > 0) {
+                                                  const ratio = Math.min(1, count / maxContribCount);
+                                                  const lightness = isDark ? (25 + ratio * 45) : (94 - ratio * 69);
+                                                  const saturation = 35 + ratio * 59;
+                                                  color = `hsl(217, ${Math.round(saturation)}%, ${Math.round(lightness)}%)`;
+                                                }
+                                                return (
+                                                  <div
+                                                    key={dateStr}
+                                                    className="w-2.5 h-2.5 rounded-sm relative group hover:z-50 cursor-pointer"
+                                                    style={{ backgroundColor: color }}
+                                                  >
+                                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-gray-900 text-white text-[8px] font-bold px-2 py-1 rounded shadow-xl opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-50">
+                                                      {count} cards on {formatAppDate(dateStr)}
+                                                    </div>
+                                                  </div>
+                                                );
+                                              })}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      );
+                                    })()}
                                   </div>
                                 </>
                               );
