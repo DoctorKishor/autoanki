@@ -4809,6 +4809,7 @@ export default function App() {
   const [isTrackerDragOver, setIsTrackerDragOver] = useState(false);
   const [trackerSortBy, setTrackerSortBy] = useState('page');
   const [trackerLogDateInputs, setTrackerLogDateInputs] = useState({});
+  const [expandedTrackerTopics, setExpandedTrackerTopics] = useState({});
   const [dreamCollege, setDreamCollege] = useState('Madras Medical College (MMC), Chennai (TN)');
   const [dreamBranch, setDreamBranch] = useState('MD General Medicine');
   const [dreamCollegeStateFilter, setDreamCollegeStateFilter] = useState('All');
@@ -26686,64 +26687,93 @@ Return your response strictly as a JSON object matching this schema:
                                     {topicsList.map((topicItem, tIdx) => {
                                       const dates = topicItem.studyDates || [];
                                       const selectedDate = trackerLogDateInputs[topicItem.name] || todayStr;
+                                      const isExpanded = !!expandedTrackerTopics[topicItem.name];
+                                      const hasRevisions = dates.length > 0;
 
                                       return (
                                         <motion.div
                                           key={topicItem.name}
-                                          initial={{ opacity: 0, y: 12, scale: 0.98 }}
+                                          initial={{ opacity: 0, y: 10, scale: 0.99 }}
                                           animate={{ opacity: 1, y: 0, scale: 1 }}
-                                          exit={{ opacity: 0, scale: 0.95 }}
-                                          transition={{ duration: 0.3, delay: Math.min(tIdx * 0.03, 0.25) }}
-                                          className={`flex flex-col p-4 rounded-2xl transition-all gap-3 text-left ${
-                                            isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                          exit={{ opacity: 0, scale: 0.96 }}
+                                          transition={{ duration: 0.25, delay: Math.min(tIdx * 0.02, 0.2) }}
+                                          className={`rounded-2xl transition-all border ${
+                                            isDark
+                                              ? 'neu-card-dark text-white border-slate-800/80 hover:border-slate-750'
+                                              : 'neu-card-light text-slate-800 border-slate-200/80 hover:border-slate-300'
                                           }`}
                                         >
-                                          <div className="flex justify-between items-start">
-                                            <div className="min-w-0 pr-2 flex-grow">
-                                              <div className="flex items-center gap-1.5 flex-wrap">
-                                                <h4 className="text-xs font-black leading-snug">{topicItem.name}</h4>
-                                                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                                                  <div className="flex items-center gap-1">
-                                                    <span className={`text-[9px] font-black uppercase ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Start:</span>
-                                                    <input
-                                                      type="number"
-                                                      value={topicItem.page || ""}
-                                                      onChange={(e) => handleUpdateTrackerTopicPages(selectedTrackerSubject, topicItem.name, e.target.value, topicItem.endPage || "")}
-                                                      className={`w-16 p-1 rounded-xl text-[10px] font-black text-center outline-none focus:ring-2 focus:ring-blue-500/20 ${
-                                                        isDark ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'
-                                                      }`}
-                                                      placeholder="Start"
-                                                    />
-                                                  </div>
-                                                  <div className="flex items-center gap-1">
-                                                    <span className={`text-[9px] font-black uppercase ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>End:</span>
-                                                    <input
-                                                      type="number"
-                                                      value={topicItem.endPage || ""}
-                                                      onChange={(e) => handleUpdateTrackerTopicPages(selectedTrackerSubject, topicItem.name, topicItem.page || "", e.target.value)}
-                                                      className={`w-16 p-1 rounded-xl text-[10px] font-black text-center outline-none focus:ring-2 focus:ring-indigo-500/20 ${
-                                                        isDark ? 'neu-pressed-dark text-indigo-400' : 'neu-pressed-light text-indigo-600'
-                                                      }`}
-                                                      placeholder={getTopicEndPagePlaceholder(topicItem, topicsList)}
-                                                    />
-                                                  </div>
-                                                  <span className={`text-[9px] font-black px-2 py-0.5 rounded-xl border ${
+                                          {/* Main Header Bar (Thin & Scan-friendly) */}
+                                          <div className="p-3 flex items-center justify-between gap-2.5 text-left">
+                                            {/* Left: Status icon & Title */}
+                                            <div className="flex items-center gap-2.5 min-w-0 flex-grow">
+                                              <button
+                                                onClick={() => {
+                                                  setExpandedTrackerTopics(prev => ({
+                                                    ...prev,
+                                                    [topicItem.name]: !prev[topicItem.name]
+                                                  }));
+                                                }}
+                                                className={`p-1.5 rounded-xl transition shrink-0 ${
+                                                  hasRevisions
+                                                    ? isDark ? 'neu-pressed-dark text-emerald-400' : 'bg-emerald-100 text-emerald-600'
+                                                    : isDark ? 'neu-pressed-dark text-slate-500 hover:text-slate-300' : 'bg-slate-100 text-slate-400 hover:text-slate-600'
+                                                }`}
+                                              >
+                                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                              </button>
+                                              <div className="min-w-0">
+                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                  <h4 className="text-xs font-black tracking-tight leading-snug truncate max-w-[200px]">
+                                                    {topicItem.name}
+                                                  </h4>
+                                                  <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-lg border ${
                                                     topicItem.endPage
                                                       ? isDark ? 'text-emerald-400 bg-emerald-950/40 border-emerald-800/60' : 'text-emerald-700 bg-emerald-50 border-emerald-100'
                                                       : isDark ? 'text-amber-400 bg-amber-950/40 border-amber-800/60' : 'text-amber-700 bg-amber-50 border-amber-100'
                                                   }`}>
-                                                    {getTopicWeight(topicItem, topicsList)} pages {topicItem.endPage ? '(manual)' : '(auto)'}
+                                                    {topicItem.page ? `p. ${topicItem.page}${topicItem.endPage ? `–${topicItem.endPage}` : ''}` : 'No pgs'} ({getTopicWeight(topicItem, topicsList)} pgs)
                                                   </span>
                                                 </div>
                                               </div>
-                                              <span className={`text-[8px] font-black uppercase tracking-wider mt-2.5 block ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
-                                                {dates.length} revision sessions
-                                              </span>
                                             </div>
-                                            <div className="flex items-center gap-1">
-                                              {/* Schedule Review Button */}
+
+                                            {/* Right: Revision count badge & Action Buttons */}
+                                            <div className="flex items-center gap-1 shrink-0">
+                                              {/* Revision Count Badge */}
                                               <button
-                                                title="Schedule a review session"
+                                                onClick={() => {
+                                                  setExpandedTrackerTopics(prev => ({
+                                                    ...prev,
+                                                    [topicItem.name]: !prev[topicItem.name]
+                                                  }));
+                                                }}
+                                                className={`px-2 py-1 rounded-xl text-[9px] font-black uppercase tracking-wider transition flex items-center gap-1 ${
+                                                  hasRevisions
+                                                    ? isDark ? 'neu-pressed-dark text-blue-400 border border-blue-900/50' : 'bg-blue-50 text-blue-600 border border-blue-100'
+                                                    : isDark ? 'neu-pressed-dark text-slate-400' : 'bg-slate-100 text-slate-500'
+                                                }`}
+                                              >
+                                                <Flame className={`w-3 h-3 ${hasRevisions ? 'text-amber-500' : ''}`} />
+                                                {dates.length}
+                                              </button>
+
+                                              {/* Quick One-Click Log Today Button */}
+                                              <motion.button
+                                                whileHover={{ scale: 1.05 }}
+                                                whileTap={{ scale: 0.92 }}
+                                                title="Log today's revision"
+                                                onClick={() => handleLogTrackerStudyDate(selectedTrackerSubject, topicItem.name, todayStr)}
+                                                className={`p-1.5 rounded-xl transition ${
+                                                  isDark ? 'neu-btn-dark text-emerald-400 hover:text-emerald-300' : 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'
+                                                }`}
+                                              >
+                                                <Plus className="w-3.5 h-3.5" />
+                                              </motion.button>
+
+                                              {/* Schedule Button */}
+                                              <button
+                                                title="Schedule review session"
                                                 onClick={() => {
                                                   const topicLabel = `${selectedTrackerSubject}: ${topicItem.name}`;
                                                   setSchedulerEditingTask({
@@ -26759,74 +26789,134 @@ Return your response strictly as a JSON object matching this schema:
                                                   setCurrentTab('studyScheduler');
                                                   setIsMobileDrawerOpen(false);
                                                 }}
-                                                className={`p-1 rounded-lg transition active:scale-90 ${isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-500 hover:text-blue-700'}`}
+                                                className={`p-1.5 rounded-xl transition ${isDark ? 'text-blue-400 hover:text-blue-300 hover:bg-slate-800' : 'text-blue-500 hover:text-blue-700 hover:bg-slate-100'}`}
                                               >
                                                 <Calendar className="w-3.5 h-3.5" />
                                               </button>
+
+                                              {/* Toggle Expand Details Button */}
                                               <button
+                                                onClick={() => {
+                                                  setExpandedTrackerTopics(prev => ({
+                                                    ...prev,
+                                                    [topicItem.name]: !prev[topicItem.name]
+                                                  }));
+                                                }}
+                                                className={`p-1.5 rounded-xl transition ${isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-400 hover:text-slate-800 hover:bg-slate-100'}`}
+                                              >
+                                                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${isExpanded ? 'rotate-180 text-blue-500' : ''}`} />
+                                              </button>
+
+                                              {/* Delete Topic Button */}
+                                              <button
+                                                title="Delete topic"
                                                 onClick={() => {
                                                   if (window.confirm(`Delete topic "${topicItem.name}"?`)) {
                                                     handleDeleteTrackerTopic(selectedTrackerSubject, topicItem.name);
                                                   }
                                                 }}
-                                                className={`p-1 rounded-lg transition active:scale-90 ${isDark ? 'text-slate-400 hover:text-rose-400' : 'text-slate-400 hover:text-rose-600'}`}
+                                                className={`p-1.5 rounded-xl transition ${isDark ? 'text-slate-500 hover:text-rose-400 hover:bg-slate-800' : 'text-slate-400 hover:text-rose-600 hover:bg-slate-100'}`}
                                               >
                                                 <Trash2 className="w-3.5 h-3.5" />
                                               </button>
                                             </div>
                                           </div>
 
-                                          {/* Logged study dates tag list */}
-                                          {dates.length > 0 && (
-                                            <div className="flex flex-wrap gap-1.5 items-center">
-                                              {dates.map((dateVal, dIdx) => (
-                                                <span
-                                                  key={dIdx}
-                                                  className={`rounded-lg px-2 py-0.5 text-[9px] font-black flex items-center gap-1.5 border ${
-                                                    isDark ? 'bg-emerald-950/40 text-emerald-300 border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                                                  }`}
-                                                >
-                                                  📅 {formatAppDate(dateVal)}
-                                                  <button
-                                                    onClick={() => handleDeleteTrackerStudyDate(selectedTrackerSubject, topicItem.name, dIdx)}
-                                                    className="hover:text-rose-500 transition font-bold"
-                                                  >
-                                                    ✖
-                                                  </button>
-                                                </span>
-                                              ))}
-                                            </div>
-                                          )}
-
-                                          {/* Date logger form field */}
-                                          <div className={`flex flex-col gap-1.5 border-t pt-2 mt-1 ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
-                                            <label className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Log Revision Session:</label>
-                                            <div className="flex gap-2">
-                                              <input
-                                                type="date"
-                                                value={selectedDate}
-                                                onChange={(e) => {
-                                                  trackerLogDateInputs[topicItem.name] = e.target.value;
-                                                  setTrackerLogDateInputs({ ...trackerLogDateInputs });
-                                                }}
-                                                className={`p-1.5 rounded-lg text-[10px] font-bold outline-none flex-grow ${
-                                                  isDark ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-slate-800'
-                                                }`}
-                                              />
-                                              <motion.button
-                                                whileHover={{ scale: 1.02 }}
-                                                whileTap={{ scale: 0.95 }}
-                                                onClick={() => {
-                                                  handleLogTrackerStudyDate(selectedTrackerSubject, topicItem.name, selectedDate);
-                                                }}
-                                                className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition flex items-center gap-1 shrink-0 ${
-                                                  isDark ? 'neu-btn-dark text-emerald-400' : 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'
+                                          {/* Expandable Drawer (Page Number Editing & Date Logger) */}
+                                          <AnimatePresence>
+                                            {isExpanded && (
+                                              <motion.div
+                                                initial={{ height: 0, opacity: 0 }}
+                                                animate={{ height: 'auto', opacity: 1 }}
+                                                exit={{ height: 0, opacity: 0 }}
+                                                transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                                                className={`overflow-hidden border-t px-3.5 py-3 space-y-3 ${
+                                                  isDark ? 'border-slate-800 bg-slate-900/60' : 'border-slate-100 bg-slate-50/70'
                                                 }`}
                                               >
-                                                <Plus className="w-3 h-3" /> Log
-                                              </motion.button>
-                                            </div>
-                                          </div>
+                                                {/* Page Range Settings */}
+                                                <div className="flex items-center gap-3 flex-wrap text-xs font-bold">
+                                                  <span className={`text-[9px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Pages Config:</span>
+                                                  <div className="flex items-center gap-1.5">
+                                                    <span className={`text-[9px] uppercase font-black ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Start:</span>
+                                                    <input
+                                                      type="number"
+                                                      value={topicItem.page || ""}
+                                                      onChange={(e) => handleUpdateTrackerTopicPages(selectedTrackerSubject, topicItem.name, e.target.value, topicItem.endPage || "")}
+                                                      className={`w-20 p-1.5 rounded-xl text-center text-xs font-bold outline-none ${
+                                                        isDark ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'
+                                                      }`}
+                                                      placeholder="Start"
+                                                    />
+                                                  </div>
+                                                  <div className="flex items-center gap-1.5">
+                                                    <span className={`text-[9px] uppercase font-black ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>End:</span>
+                                                    <input
+                                                      type="number"
+                                                      value={topicItem.endPage || ""}
+                                                      onChange={(e) => handleUpdateTrackerTopicPages(selectedTrackerSubject, topicItem.name, topicItem.page || "", e.target.value)}
+                                                      className={`w-20 p-1.5 rounded-xl text-center text-xs font-bold outline-none ${
+                                                        isDark ? 'neu-pressed-dark text-indigo-400' : 'neu-pressed-light text-indigo-600'
+                                                      }`}
+                                                      placeholder={getTopicEndPagePlaceholder(topicItem, topicsList)}
+                                                    />
+                                                  </div>
+                                                </div>
+
+                                                {/* Logged revision history dates tag list */}
+                                                {dates.length > 0 && (
+                                                  <div className="space-y-1.5">
+                                                    <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Logged Revision Dates ({dates.length}):</span>
+                                                    <div className="flex flex-wrap gap-1.5 items-center">
+                                                      {dates.map((dateVal, dIdx) => (
+                                                        <span
+                                                          key={dIdx}
+                                                          className={`rounded-lg px-2 py-0.5 text-[9px] font-black flex items-center gap-1.5 border ${
+                                                            isDark ? 'bg-emerald-950/40 text-emerald-300 border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                                          }`}
+                                                        >
+                                                          📅 {formatAppDate(dateVal)}
+                                                          <button
+                                                            onClick={() => handleDeleteTrackerStudyDate(selectedTrackerSubject, topicItem.name, dIdx)}
+                                                            className="hover:text-rose-500 transition font-bold"
+                                                          >
+                                                            ✖
+                                                          </button>
+                                                        </span>
+                                                      ))}
+                                                    </div>
+                                                  </div>
+                                                )}
+
+                                                {/* Date Logger Form */}
+                                                <div className="flex items-center gap-2 pt-1">
+                                                  <input
+                                                    type="date"
+                                                    value={selectedDate}
+                                                    onChange={(e) => {
+                                                      trackerLogDateInputs[topicItem.name] = e.target.value;
+                                                      setTrackerLogDateInputs({ ...trackerLogDateInputs });
+                                                    }}
+                                                    className={`p-1.5 rounded-xl text-[10px] font-bold outline-none flex-grow ${
+                                                      isDark ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-slate-800'
+                                                    }`}
+                                                  />
+                                                  <motion.button
+                                                    whileHover={{ scale: 1.02 }}
+                                                    whileTap={{ scale: 0.95 }}
+                                                    onClick={() => {
+                                                      handleLogTrackerStudyDate(selectedTrackerSubject, topicItem.name, selectedDate);
+                                                    }}
+                                                    className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition flex items-center gap-1 shrink-0 ${
+                                                      isDark ? 'neu-btn-dark text-emerald-400' : 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'
+                                                    }`}
+                                                  >
+                                                    <Plus className="w-3 h-3" /> Log Session
+                                                  </motion.button>
+                                                </div>
+                                              </motion.div>
+                                            )}
+                                          </AnimatePresence>
                                         </motion.div>
                                       );
                                     })}
@@ -35441,64 +35531,93 @@ Return your response strictly as a JSON object matching this schema:
                                           {topicsList.map((topicItem, tIdx) => {
                                             const dates = topicItem.studyDates || [];
                                             const selectedDate = trackerLogDateInputs[topicItem.name] || todayStr;
+                                            const isExpanded = !!expandedTrackerTopics[topicItem.name];
+                                            const hasRevisions = dates.length > 0;
 
                                             return (
                                               <motion.div
                                                 key={topicItem.name}
-                                                initial={{ opacity: 0, y: 12, scale: 0.98 }}
+                                                initial={{ opacity: 0, y: 10, scale: 0.99 }}
                                                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                                                exit={{ opacity: 0, scale: 0.95 }}
-                                                transition={{ duration: 0.3, delay: Math.min(tIdx * 0.03, 0.25) }}
-                                                className={`flex flex-col p-4 rounded-2xl transition-all gap-3 text-left ${
-                                                  isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                                exit={{ opacity: 0, scale: 0.96 }}
+                                                transition={{ duration: 0.25, delay: Math.min(tIdx * 0.02, 0.2) }}
+                                                className={`rounded-2xl transition-all border ${
+                                                  isDark
+                                                    ? 'neu-card-dark text-white border-slate-800/80 hover:border-slate-750'
+                                                    : 'neu-card-light text-slate-800 border-slate-200/80 hover:border-slate-300'
                                                 }`}
                                               >
-                                                <div className="flex justify-between items-start">
-                                                  <div className="min-w-0 pr-2 flex-grow">
-                                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                                      <h4 className="text-xs font-black leading-snug">{topicItem.name}</h4>
-                                                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                                                        <div className="flex items-center gap-1">
-                                                          <span className={`text-[9px] font-black uppercase ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Start:</span>
-                                                          <input
-                                                            type="number"
-                                                            value={topicItem.page || ""}
-                                                            onChange={(e) => handleUpdateTrackerTopicPages(selectedTrackerSubject, topicItem.name, e.target.value, topicItem.endPage || "")}
-                                                            className={`w-16 p-1 rounded-xl text-[10px] font-black text-center outline-none focus:ring-2 focus:ring-blue-500/20 ${
-                                                              isDark ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'
-                                                            }`}
-                                                            placeholder="Start"
-                                                          />
-                                                        </div>
-                                                        <div className="flex items-center gap-1">
-                                                          <span className={`text-[9px] font-black uppercase ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>End:</span>
-                                                          <input
-                                                            type="number"
-                                                            value={topicItem.endPage || ""}
-                                                            onChange={(e) => handleUpdateTrackerTopicPages(selectedTrackerSubject, topicItem.name, topicItem.page || "", e.target.value)}
-                                                            className={`w-16 p-1 rounded-xl text-[10px] font-black text-center outline-none focus:ring-2 focus:ring-indigo-500/20 ${
-                                                              isDark ? 'neu-pressed-dark text-indigo-400' : 'neu-pressed-light text-indigo-600'
-                                                            }`}
-                                                            placeholder={getTopicEndPagePlaceholder(topicItem, topicsList)}
-                                                          />
-                                                        </div>
-                                                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-xl border ${
+                                                {/* Main Header Bar (Thin & Scan-friendly) */}
+                                                <div className="p-3.5 flex items-center justify-between gap-3 text-left">
+                                                  {/* Left: Status icon & Title */}
+                                                  <div className="flex items-center gap-3 min-w-0 flex-grow">
+                                                    <button
+                                                      onClick={() => {
+                                                        setExpandedTrackerTopics(prev => ({
+                                                          ...prev,
+                                                          [topicItem.name]: !prev[topicItem.name]
+                                                        }));
+                                                      }}
+                                                      className={`p-1.5 rounded-xl transition shrink-0 ${
+                                                        hasRevisions
+                                                          ? isDark ? 'neu-pressed-dark text-emerald-400' : 'bg-emerald-100 text-emerald-600'
+                                                          : isDark ? 'neu-pressed-dark text-slate-500 hover:text-slate-300' : 'bg-slate-100 text-slate-400 hover:text-slate-600'
+                                                      }`}
+                                                    >
+                                                      <CheckCircle2 className="w-4 h-4" />
+                                                    </button>
+                                                    <div className="min-w-0">
+                                                      <div className="flex items-center gap-2 flex-wrap">
+                                                        <h4 className="text-xs font-black tracking-tight leading-snug truncate max-w-[280px]">
+                                                          {topicItem.name}
+                                                        </h4>
+                                                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg border ${
                                                           topicItem.endPage
                                                             ? isDark ? 'text-emerald-400 bg-emerald-950/40 border-emerald-800/60' : 'text-emerald-700 bg-emerald-50 border-emerald-100'
                                                             : isDark ? 'text-amber-400 bg-amber-950/40 border-amber-800/60' : 'text-amber-700 bg-amber-50 border-amber-100'
                                                         }`}>
-                                                          {getTopicWeight(topicItem, topicsList)} pages {topicItem.endPage ? '(manual)' : '(auto)'}
+                                                          {topicItem.page ? `p. ${topicItem.page}${topicItem.endPage ? `–${topicItem.endPage}` : ''}` : 'No pgs'} ({getTopicWeight(topicItem, topicsList)} pgs)
                                                         </span>
                                                       </div>
                                                     </div>
-                                                    <span className={`text-[8px] font-black uppercase tracking-wider mt-2.5 block ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
-                                                      {dates.length} revision sessions
-                                                    </span>
                                                   </div>
-                                                  <div className="flex items-center gap-1">
-                                                    {/* Schedule Review Button */}
+
+                                                  {/* Right: Revision count badge & Action Buttons */}
+                                                  <div className="flex items-center gap-1.5 shrink-0">
+                                                    {/* Revision Count Badge */}
                                                     <button
-                                                      title="Schedule a review session"
+                                                      onClick={() => {
+                                                        setExpandedTrackerTopics(prev => ({
+                                                          ...prev,
+                                                          [topicItem.name]: !prev[topicItem.name]
+                                                        }));
+                                                      }}
+                                                      className={`px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-wider transition flex items-center gap-1.5 ${
+                                                        hasRevisions
+                                                          ? isDark ? 'neu-pressed-dark text-blue-400 border border-blue-900/50' : 'bg-blue-50 text-blue-600 border border-blue-100'
+                                                          : isDark ? 'neu-pressed-dark text-slate-400' : 'bg-slate-100 text-slate-500'
+                                                      }`}
+                                                    >
+                                                      <Flame className={`w-3 h-3 ${hasRevisions ? 'text-amber-500' : ''}`} />
+                                                      {dates.length} {dates.length === 1 ? 'rev' : 'revs'}
+                                                    </button>
+
+                                                    {/* Quick One-Click Log Today Button */}
+                                                    <motion.button
+                                                      whileHover={{ scale: 1.05 }}
+                                                      whileTap={{ scale: 0.92 }}
+                                                      title="Log today's revision"
+                                                      onClick={() => handleLogTrackerStudyDate(selectedTrackerSubject, topicItem.name, todayStr)}
+                                                      className={`p-1.5 rounded-xl transition ${
+                                                        isDark ? 'neu-btn-dark text-emerald-400 hover:text-emerald-300' : 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'
+                                                      }`}
+                                                    >
+                                                      <Plus className="w-3.5 h-3.5" />
+                                                    </motion.button>
+
+                                                    {/* Schedule Button */}
+                                                    <button
+                                                      title="Schedule review session"
                                                       onClick={() => {
                                                         const topicLabel = `${selectedTrackerSubject}: ${topicItem.name}`;
                                                         setSchedulerEditingTask({
@@ -35513,74 +35632,134 @@ Return your response strictly as a JSON object matching this schema:
                                                         });
                                                         setCurrentTab('studyScheduler');
                                                       }}
-                                                      className={`p-1 rounded-lg transition active:scale-90 ${isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-500 hover:text-blue-700'}`}
+                                                      className={`p-1.5 rounded-xl transition ${isDark ? 'text-blue-400 hover:text-blue-300 hover:bg-slate-800' : 'text-blue-500 hover:text-blue-700 hover:bg-slate-100'}`}
                                                     >
                                                       <Calendar className="w-3.5 h-3.5" />
                                                     </button>
+
+                                                    {/* Toggle Expand Details Button */}
                                                     <button
+                                                      onClick={() => {
+                                                        setExpandedTrackerTopics(prev => ({
+                                                          ...prev,
+                                                          [topicItem.name]: !prev[topicItem.name]
+                                                        }));
+                                                      }}
+                                                      className={`p-1.5 rounded-xl transition ${isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-400 hover:text-slate-800 hover:bg-slate-100'}`}
+                                                    >
+                                                      <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${isExpanded ? 'rotate-180 text-blue-500' : ''}`} />
+                                                    </button>
+
+                                                    {/* Delete Topic Button */}
+                                                    <button
+                                                      title="Delete topic"
                                                       onClick={() => {
                                                         if (window.confirm(`Delete topic "${topicItem.name}"?`)) {
                                                           handleDeleteTrackerTopic(selectedTrackerSubject, topicItem.name);
                                                         }
                                                       }}
-                                                      className={`p-1 rounded-lg transition active:scale-90 ${isDark ? 'text-slate-400 hover:text-rose-400' : 'text-slate-400 hover:text-rose-600'}`}
+                                                      className={`p-1.5 rounded-xl transition ${isDark ? 'text-slate-500 hover:text-rose-400 hover:bg-slate-800' : 'text-slate-400 hover:text-rose-600 hover:bg-slate-100'}`}
                                                     >
                                                       <Trash2 className="w-3.5 h-3.5" />
                                                     </button>
                                                   </div>
                                                 </div>
 
-                                                {/* Logged study dates tag list */}
-                                                {dates.length > 0 && (
-                                                  <div className="flex flex-wrap gap-1.5 items-center">
-                                                    {dates.map((dateVal, dIdx) => (
-                                                      <span
-                                                        key={dIdx}
-                                                        className={`rounded-lg px-2 py-0.5 text-[9px] font-black flex items-center gap-1.5 border ${
-                                                          isDark ? 'bg-emerald-950/40 text-emerald-300 border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                                                        }`}
-                                                      >
-                                                        📅 {formatAppDate(dateVal)}
-                                                        <button
-                                                          onClick={() => handleDeleteTrackerStudyDate(selectedTrackerSubject, topicItem.name, dIdx)}
-                                                          className="hover:text-rose-500 transition font-bold"
-                                                        >
-                                                          ✖
-                                                        </button>
-                                                      </span>
-                                                    ))}
-                                                  </div>
-                                                )}
-
-                                                {/* Date logger form field */}
-                                                <div className={`flex flex-col gap-1.5 border-t pt-2 mt-1 ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
-                                                  <label className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Log Revision Session:</label>
-                                                  <div className="flex gap-2">
-                                                    <input
-                                                      type="date"
-                                                      value={selectedDate}
-                                                      onChange={(e) => {
-                                                        trackerLogDateInputs[topicItem.name] = e.target.value;
-                                                        setTrackerLogDateInputs({ ...trackerLogDateInputs });
-                                                      }}
-                                                      className={`p-1.5 rounded-lg text-[10px] font-bold outline-none flex-grow ${
-                                                        isDark ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-slate-800'
-                                                      }`}
-                                                    />
-                                                    <motion.button
-                                                      whileHover={{ scale: 1.02 }}
-                                                      whileTap={{ scale: 0.95 }}
-                                                      onClick={() => {
-                                                        handleLogTrackerStudyDate(selectedTrackerSubject, topicItem.name, selectedDate);
-                                                      }}
-                                                      className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition flex items-center gap-1 shrink-0 ${
-                                                        isDark ? 'neu-btn-dark text-emerald-400' : 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'
+                                                {/* Expandable Drawer (Page Number Editing & Date Logger) */}
+                                                <AnimatePresence>
+                                                  {isExpanded && (
+                                                    <motion.div
+                                                      initial={{ height: 0, opacity: 0 }}
+                                                      animate={{ height: 'auto', opacity: 1 }}
+                                                      exit={{ height: 0, opacity: 0 }}
+                                                      transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                                                      className={`overflow-hidden border-t px-4 py-3 space-y-3 ${
+                                                        isDark ? 'border-slate-800 bg-slate-900/60' : 'border-slate-100 bg-slate-50/70'
                                                       }`}
                                                     >
-                                                      <Plus className="w-3 h-3" /> Log
-                                                    </motion.button>
-                                                  </div>
-                                                </div>
+                                                      {/* Page Range Settings */}
+                                                      <div className="flex items-center gap-3 flex-wrap text-xs font-bold">
+                                                        <span className={`text-[9px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Pages Config:</span>
+                                                        <div className="flex items-center gap-1.5">
+                                                          <span className={`text-[9px] uppercase font-black ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Start:</span>
+                                                          <input
+                                                            type="number"
+                                                            value={topicItem.page || ""}
+                                                            onChange={(e) => handleUpdateTrackerTopicPages(selectedTrackerSubject, topicItem.name, e.target.value, topicItem.endPage || "")}
+                                                            className={`w-20 p-1.5 rounded-xl text-center text-xs font-bold outline-none ${
+                                                              isDark ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'
+                                                            }`}
+                                                            placeholder="Start"
+                                                          />
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5">
+                                                          <span className={`text-[9px] uppercase font-black ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>End:</span>
+                                                          <input
+                                                            type="number"
+                                                            value={topicItem.endPage || ""}
+                                                            onChange={(e) => handleUpdateTrackerTopicPages(selectedTrackerSubject, topicItem.name, topicItem.page || "", e.target.value)}
+                                                            className={`w-20 p-1.5 rounded-xl text-center text-xs font-bold outline-none ${
+                                                              isDark ? 'neu-pressed-dark text-indigo-400' : 'neu-pressed-light text-indigo-600'
+                                                            }`}
+                                                            placeholder={getTopicEndPagePlaceholder(topicItem, topicsList)}
+                                                          />
+                                                        </div>
+                                                      </div>
+
+                                                      {/* Logged revision history dates tag list */}
+                                                      {dates.length > 0 && (
+                                                        <div className="space-y-1.5">
+                                                          <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Logged Revision Dates ({dates.length}):</span>
+                                                          <div className="flex flex-wrap gap-1.5 items-center">
+                                                            {dates.map((dateVal, dIdx) => (
+                                                              <span
+                                                                key={dIdx}
+                                                                className={`rounded-lg px-2 py-0.5 text-[9px] font-black flex items-center gap-1.5 border ${
+                                                                  isDark ? 'bg-emerald-950/40 text-emerald-300 border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                                                }`}
+                                                              >
+                                                                📅 {formatAppDate(dateVal)}
+                                                                <button
+                                                                  onClick={() => handleDeleteTrackerStudyDate(selectedTrackerSubject, topicItem.name, dIdx)}
+                                                                  className="hover:text-rose-500 transition font-bold"
+                                                                >
+                                                                  ✖
+                                                                </button>
+                                                              </span>
+                                                            ))}
+                                                          </div>
+                                                        </div>
+                                                      )}
+
+                                                      {/* Date Logger Form */}
+                                                      <div className="flex items-center gap-2 pt-1">
+                                                        <input
+                                                          type="date"
+                                                          value={selectedDate}
+                                                          onChange={(e) => {
+                                                            trackerLogDateInputs[topicItem.name] = e.target.value;
+                                                            setTrackerLogDateInputs({ ...trackerLogDateInputs });
+                                                          }}
+                                                          className={`p-1.5 rounded-xl text-[10px] font-bold outline-none flex-grow ${
+                                                            isDark ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-slate-800'
+                                                          }`}
+                                                        />
+                                                        <motion.button
+                                                          whileHover={{ scale: 1.02 }}
+                                                          whileTap={{ scale: 0.95 }}
+                                                          onClick={() => {
+                                                            handleLogTrackerStudyDate(selectedTrackerSubject, topicItem.name, selectedDate);
+                                                          }}
+                                                          className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition flex items-center gap-1 shrink-0 ${
+                                                            isDark ? 'neu-btn-dark text-emerald-400' : 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'
+                                                          }`}
+                                                        >
+                                                          <Plus className="w-3 h-3" /> Log Session
+                                                        </motion.button>
+                                                      </div>
+                                                    </motion.div>
+                                                  )}
+                                                </AnimatePresence>
                                               </motion.div>
                                             );
                                           })}
