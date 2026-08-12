@@ -14360,88 +14360,6 @@ JSON Format:
             </div>
           )}
         </motion.div>
-
-        {/* Card 4: Scheduler Adherence Panel */}
-        {(() => {
-          const adherence = getSubjectAdherenceStats(activeStat.subject);
-          return (
-            <motion.div
-              initial={{ opacity: 0, y: 16, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ duration: 0.4, delay: 0.28 }}
-              className={`p-6 rounded-3xl space-y-4 transition-all ${
-                isDark ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'
-              }`}
-            >
-              <div className={`flex justify-between items-center border-b pb-3 ${
-                isDark ? 'border-slate-800/80' : 'border-slate-100'
-              }`}>
-                <div>
-                  <h3 className={`text-sm font-black uppercase tracking-wider flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-800'}`}>
-                    <Calendar className="w-4 h-4 text-blue-500" />
-                    Scheduler Adherence
-                  </h3>
-                  <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Planned vs completed scheduler tasks for {activeStat.subject}</p>
-                </div>
-                <button
-                  onClick={() => { setCurrentTab('studyScheduler'); }}
-                  className={`text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-xl border transition active:scale-95 ${
-                    isDark ? 'neu-btn-accent-dark text-white' : 'neu-btn-accent-light text-white'
-                  }`}
-                >
-                  Open Scheduler →
-                </button>
-              </div>
-
-              {adherence.planned === 0 ? (
-                <div className="py-6 text-center">
-                  <p className={`text-xs italic ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>No scheduler tasks found for {activeStat.subject}.</p>
-                  <p className={`text-[10px] mt-1 ${isDark ? 'text-slate-500' : 'text-gray-300'}`}>Schedule topics as <span className={`font-bold ${isDark ? 'text-slate-300' : 'text-gray-400'}`}>"{activeStat.subject}: Topic Name"</span> in the Study Scheduler to track adherence here.</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className={`rounded-2xl p-4 text-center border ${
-                      isDark ? 'neu-pressed-dark border-blue-900/30' : 'bg-blue-50 border-blue-100'
-                    }`}>
-                      <div className={`text-xl font-black ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>{adherence.planned}</div>
-                      <div className={`text-[9px] font-black uppercase tracking-wider mt-1 ${isDark ? 'text-blue-400/80' : 'text-blue-400'}`}>Planned</div>
-                    </div>
-                    <div className={`rounded-2xl p-4 text-center border ${
-                      isDark ? 'neu-pressed-dark border-emerald-900/30' : 'bg-emerald-50 border-emerald-100'
-                    }`}>
-                      <div className={`text-xl font-black ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>{adherence.completed}</div>
-                      <div className={`text-[9px] font-black uppercase tracking-wider mt-1 ${isDark ? 'text-emerald-400/80' : 'text-emerald-400'}`}>Completed</div>
-                    </div>
-                    <div className={`rounded-2xl p-4 text-center border ${
-                      isDark
-                        ? 'neu-pressed-dark'
-                        : (adherence.adherencePct >= 80 ? 'bg-emerald-50 border-emerald-100' : adherence.adherencePct >= 50 ? 'bg-amber-50 border-amber-100' : 'bg-rose-50 border-rose-100')
-                    }`}>
-                      <div className={`text-xl font-black ${adherence.adherencePct >= 80 ? (isDark ? 'text-emerald-400' : 'text-emerald-700') : adherence.adherencePct >= 50 ? (isDark ? 'text-amber-400' : 'text-amber-700') : (isDark ? 'text-rose-400' : 'text-rose-700')}`}>{adherence.adherencePct}%</div>
-                      <div className={`text-[9px] font-black uppercase tracking-wider mt-1 ${adherence.adherencePct >= 80 ? (isDark ? 'text-emerald-400/80' : 'text-emerald-400') : adherence.adherencePct >= 50 ? (isDark ? 'text-amber-400/80' : 'text-amber-400') : (isDark ? 'text-rose-400/80' : 'text-rose-400')}`}>Adherence</div>
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <div className={`flex justify-between text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
-                      <span>Completion Rate</span>
-                      <span>{adherence.completed} / {adherence.planned} tasks</span>
-                    </div>
-                    <div className={`w-full rounded-full h-3 overflow-hidden ${isDark ? 'neu-pressed-dark' : 'bg-gray-100'}`}>
-                      <div
-                        className={`h-3 rounded-full transition-all duration-700 ${adherence.adherencePct >= 80 ? 'bg-gradient-to-r from-emerald-400 to-emerald-600' : adherence.adherencePct >= 50 ? 'bg-gradient-to-r from-amber-400 to-amber-600' : 'bg-gradient-to-r from-rose-400 to-rose-500'}`}
-                        style={{ width: `${adherence.adherencePct}%` }}
-                      />
-                    </div>
-                    <p className={`text-[9px] italic ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
-                      {adherence.adherencePct >= 80 ? '🏆 Excellent adherence! Keep it up.' : adherence.adherencePct >= 50 ? '📈 Good progress. Aim for 80%+.' : '⚠️ Low adherence. Try scheduling more sessions.'}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </motion.div>
-          );
-        })()}
       </div>
     );
   };
@@ -24222,8 +24140,7 @@ Return your response strictly as a JSON object matching this schema:
                           { id: 'study', label: 'Study', icon: GraduationCap },
                           { id: 'counselling', label: 'Mentorship', icon: Trophy },
                           { id: 'pytCoverage', label: 'PYT', icon: CheckCircle2 },
-                          { id: 'subjectCoverage', label: 'Subjects', icon: Layers },
-                          { id: 'adherence', label: 'Adherence', icon: Calendar }
+                          { id: 'subjectCoverage', label: 'Subjects', icon: Layers }
                         ];
                         const activeIndex = Math.max(0, mobileSubtabs.findIndex(s => s.id === analyticsSubTab));
 
@@ -25440,117 +25357,6 @@ Return your response strictly as a JSON object matching this schema:
                         >
                           {renderSubjectCoverageDashboard(true)}
                         </motion.div>
-                      )}
-
-                      {/* Adherence Sub-tab (Mobile) */}
-                      {analyticsSubTab === 'adherence' && (
-                        <div className="space-y-6">
-                          {/* KPI Grid */}
-                          <div className="grid grid-cols-3 gap-2 text-left">
-                            <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between">
-                              <span className="text-[8px] font-black uppercase text-gray-400 tracking-wider">Scheduled</span>
-                              <h3 className="text-base font-black text-gray-800 mt-1">{adherenceStats.totalTasks}</h3>
-                              <span className="text-[7px] text-gray-400 font-bold block mt-1">Total planned</span>
-                            </div>
-                            <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between">
-                              <span className="text-[8px] font-black uppercase text-gray-400 tracking-wider">Completed</span>
-                              <h3 className="text-base font-black text-gray-800 mt-1">{adherenceStats.completedTasks}</h3>
-                              <span className="text-[7px] text-gray-400 font-bold block mt-1">Done revision</span>
-                            </div>
-                            <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between">
-                              <span className="text-[8px] font-black uppercase text-gray-400 tracking-wider">Adherence</span>
-                              <h3 className={`text-base font-black mt-1 ${adherenceStats.rate >= 80 ? 'text-emerald-600' : adherenceStats.rate >= 50 ? 'text-orange-600' : 'text-red-600'
-                                }`}>{adherenceStats.rate}%</h3>
-                              <span className="text-[7px] text-gray-400 font-bold block mt-1">Overall index</span>
-                            </div>
-                          </div>
-
-                          {/* 7-Day Adherence Chart */}
-                          <div className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm space-y-3">
-                            <div className="text-left">
-                              <h4 className="text-[10px] font-black uppercase tracking-wider text-gray-800">7-Day Adherence History</h4>
-                              <p className="text-[8px] text-gray-400 font-bold">Daily completion rate (%)</p>
-                            </div>
-                            <div className="w-full h-[350px] min-h-[350px]">
-                              <ResponsiveContainer width="100%" height={350} minWidth={0}>
-                                <BarChart data={adherenceStats.last7Days} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                  <XAxis dataKey="dateLabel" stroke="#94a3b8" fontSize={8} tickLine={false} axisLine={false} />
-                                  <YAxis stroke="#94a3b8" fontSize={8} tickLine={false} axisLine={false} unit="%" />
-                                  <Tooltip
-                                    content={({ active, payload }) => {
-                                      if (active && payload && payload.length) {
-                                        const data = payload[0].payload;
-                                        return (
-                                          <div className="bg-white p-2 border border-gray-150 rounded-xl shadow-lg text-[9px] font-bold">
-                                            <p className="text-gray-900">{data.dateLabel}</p>
-                                            <p className="text-blue-600">{data.rate}% ({data.completed}/{data.total} tasks)</p>
-                                          </div>
-                                        );
-                                      }
-                                      return null;
-                                    }}
-                                  />
-                                  <Bar dataKey="rate" radius={[5, 5, 0, 0]}>
-                                    {adherenceStats.last7Days.map((entry, index) => (
-                                      <Cell
-                                        key={`cell-${index}`}
-                                        fill={entry.rate >= 80 ? '#10b981' : entry.rate >= 50 ? '#f59e0b' : entry.total === 0 ? '#cbd5e1' : '#ef4444'}
-                                      />
-                                    ))}
-                                  </Bar>
-                                </BarChart>
-                              </ResponsiveContainer>
-                            </div>
-                          </div>
-
-                          {/* Breakdown Table/List */}
-                          <div className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm space-y-3">
-                            <h4 className="text-[10px] font-black uppercase tracking-wider text-gray-800 text-left">Detailed Schedule History</h4>
-                            <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-                              {adherenceStats.breakdownList.length === 0 ? (
-                                <p className="text-[10px] text-gray-400 font-bold text-center py-4">No schedules logged in history.</p>
-                              ) : (
-                                adherenceStats.breakdownList.map(item => (
-                                  <div key={item.dateStr} className="p-3 border border-gray-100 rounded-2xl bg-gray-50/50 flex flex-col gap-1 text-left">
-                                    <div className="flex justify-between items-center">
-                                      <span className="text-xs font-black text-gray-800 font-mono">{formatAppDate(item.dateStr)}</span>
-                                      <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${item.total === 0
-                                        ? 'bg-gray-100 text-gray-500'
-                                        : (item.completed / item.total) >= 0.8
-                                          ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                                          : (item.completed / item.total) >= 0.5
-                                            ? 'bg-orange-50 text-orange-600 border border-orange-100'
-                                            : 'bg-red-50 text-red-600 border border-red-100'
-                                        }`}>
-                                        {item.completed} / {item.total} Done
-                                      </span>
-                                    </div>
-                                    {item.notes.trim() && (
-                                      <p className="text-[9px] text-gray-500 italic mt-0.5">Note: {item.notes}</p>
-                                    )}
-                                    {item.tasks.length > 0 && (
-                                      <div className="mt-1.5 flex flex-wrap gap-1">
-                                        {item.tasks.map(t => (
-                                          <span
-                                            key={t.id}
-                                            className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${t.completed
-                                              ? 'bg-emerald-100/60 text-emerald-800'
-                                              : 'bg-gray-100 text-gray-600'
-                                              }`}
-                                          >
-                                            {t.topic}
-                                          </span>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                ))
-                              )}
-                            </div>
-                          </div>
-
-                        </div>
                       )}
                     </div>
                   )}
@@ -30751,8 +30557,7 @@ Return your response strictly as a JSON object matching this schema:
                                 { id: 'study', label: 'Study Room', icon: GraduationCap },
                                 { id: 'counselling', label: 'Counselling & GTs', icon: Trophy },
                                 { id: 'pytCoverage', label: 'PYT Coverage', icon: CheckCircle2 },
-                                { id: 'subjectCoverage', label: 'Subject Coverage', icon: Layers },
-                                { id: 'adherence', label: 'Adherence', icon: Calendar }
+                                { id: 'subjectCoverage', label: 'Subject Coverage', icon: Layers }
                               ];
                               const activeIndex = Math.max(0, desktopSubtabs.findIndex(s => s.id === analyticsSubTab));
 
@@ -30766,13 +30571,13 @@ Return your response strictly as a JSON object matching this schema:
                                       isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
                                     }`}
                                     style={{
-                                      width: `calc((100% - 0.75rem) / 6)`,
-                                      left: `calc(0.375rem + ${activeIndex} * ((100% - 0.75rem) / 6))`,
+                                      width: `calc((100% - 0.75rem) / 5)`,
+                                      left: `calc(0.375rem + ${activeIndex} * ((100% - 0.75rem) / 5))`,
                                       transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
                                     }}
                                   />
 
-                                  <div className="grid grid-cols-6 w-full relative z-10 gap-0">
+                                  <div className="grid grid-cols-5 w-full relative z-10 gap-0">
                                     {desktopSubtabs.map(item => {
                                       const IconComp = item.icon;
                                       const isActive = analyticsSubTab === item.id;
