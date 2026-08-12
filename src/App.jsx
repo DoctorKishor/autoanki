@@ -19028,9 +19028,9 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       fileContent = "#separator:tab\n#html:true\n#notetype column:1\n#deck column:2\n";
       cardsToUse.forEach(card => {
         const clean = (str) => {
-          const stripped = (str || '').replace(/<button[^>]*>[sS]*?<\/button>/gi, '').replace(/contenteditable=["'](false|true)["']/gi, '');
+          const stripped = (str || '').replace(/<button[^>]*>[\s\S]*?<\/button>/gi, '').replace(/contenteditable=["'](false|true)["']/gi, '');
           return stripped.replace(/\n/g, '<br>').replace(/\t/g, ' ');
-        };/\n/g, '<br>').replace(/\t/g, ' ');
+        };
         const type = card.type || 'Basic';
         const cardDeck = card.deck || firstDeck || hierarchy || 'Default';
         const cleanDeck = clean(cardDeck);
