@@ -12,7 +12,6 @@ export const STORES = {
   TOPICS: 'topics',
   SETTINGS: 'settings',
   CAMP_TRACKER: 'camp_tracker',
-  HEALTH_METRICS: 'health_metrics',
   PYT_DATA: 'pyt_data',
   KV_STORE: 'kv_store'
 };
@@ -55,12 +54,6 @@ export function initDB() {
       if (!db.objectStoreNames.contains(STORES.CAMP_TRACKER)) {
         const campStore = db.createObjectStore(STORES.CAMP_TRACKER, { keyPath: 'id' });
         campStore.createIndex('date', 'date', { unique: false });
-      }
-
-      // 4. Health Metrics store (keyPath: 'id')
-      if (!db.objectStoreNames.contains(STORES.HEALTH_METRICS)) {
-        const healthStore = db.createObjectStore(STORES.HEALTH_METRICS, { keyPath: 'id' });
-        healthStore.createIndex('date', 'date', { unique: false });
       }
 
       // 5. PYT Data store (keyPath: 'key')
@@ -234,18 +227,6 @@ export async function getAllLocalCampRecords() {
   return getAllLocalItems(STORES.CAMP_TRACKER);
 }
 
-// --- HEALTH METRICS ---
-export async function saveLocalHealthMetric(id, data) {
-  await putLocalItem(STORES.HEALTH_METRICS, { id, ...data, updatedAt: new Date().toISOString() });
-}
-
-export async function getLocalHealthMetric(id) {
-  return getLocalItem(STORES.HEALTH_METRICS, id);
-}
-
-export async function getAllLocalHealthMetrics() {
-  return getAllLocalItems(STORES.HEALTH_METRICS);
-}
 
 // --- GENERIC KEY-VALUE STORE ---
 export async function setLocalKV(key, value) {
@@ -520,9 +501,6 @@ export default {
   saveLocalCampRecord,
   getLocalCampRecord,
   getAllLocalCampRecords,
-  saveLocalHealthMetric,
-  getLocalHealthMetric,
-  getAllLocalHealthMetrics,
   setLocalKV,
   getLocalKV,
   getLocalCards,

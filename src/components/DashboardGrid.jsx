@@ -1588,12 +1588,6 @@ export default function DashboardGrid({
               <div className="text-2xl font-black text-gray-900">{grandTestsList.length} GTs</div>
               <div className="text-[10px] text-gray-400 font-extrabold uppercase mt-0.5">Grand Tests Done</div>
             </div>
-            <button
-              onClick={() => setCurrentTab('correlation')}
-              className="text-[9px] font-bold text-purple-600 hover:underline"
-            >
-              Analyze correlations &rarr;
-            </button>
           </div>
         );
 
@@ -1969,30 +1963,6 @@ export default function DashboardGrid({
           </div>
         );
 
-      case 'correlationDashboardWidget':
-        return (
-          <div className="flex flex-col h-full justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-500/25">
-                <Activity className="w-6 h-6" />
-              </div>
-              <div>
-                <h5 className="text-sm font-black text-gray-900">Sleep &amp; Performance</h5>
-                <p className="text-[10px] text-gray-450 mt-0.5">
-                  See how sleep duration correlates with daily review targets.
-                </p>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setCurrentTab('correlation')}
-              className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-black uppercase tracking-wider transition active:scale-95 border border-blue-200"
-            >
-              Analyze Sleep Correlations
-              <ExternalLink className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        );
 
       case 'pytLoggerWidget':
         return (

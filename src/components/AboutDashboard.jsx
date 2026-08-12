@@ -95,17 +95,6 @@ const MENU_DETAILS = {
     ],
     usage: 'Review the analysis graphs weekly to locate knowledge gaps and identify subjects requiring additional attention.'
   },
-  correlation: {
-    title: 'Health Tracker',
-    icon: Activity,
-    desc: 'Track sleep, study patterns, and daily energy levels to optimize your preparation and prevent burnout.',
-    subfeatures: [
-      { name: 'Correlation Scatter Plots', details: 'Maps study hours against sleep duration to identify your peak performance sweet-spot.' },
-      { name: 'Energy Level Logger', details: 'Log energy levels out of 5 and identify factors boosting or draining study productivity.' },
-      { name: 'Burnout Alerts', details: 'Warning flags triggered when consecutive long study days coincide with sleep deficits.' }
-    ],
-    usage: 'Input your sleep hours and energy score daily. Check the scatter plots to maintain a healthy study-life balance.'
-  },
   export: {
     title: 'Export',
     icon: Download,

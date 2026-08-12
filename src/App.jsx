@@ -16,9 +16,7 @@ import {
 import * as pdfjsLib from 'pdfjs-dist';
 import JSZip from 'jszip';
 import { Html5QrcodeScanner } from 'html5-qrcode';
-import { initializeApp } from 'firebase/app';
-import CorrelationDashboard from './components/CorrelationDashboard';
-import DashboardGrid from './components/DashboardGrid';
+
 import CampDashboard from './components/CampTracker/CampDashboard';
 import AboutDashboard from './components/AboutDashboard';
 import {
@@ -4740,7 +4738,7 @@ export default function App() {
     const hash = window.location.hash.replace(/^#\/?/, '');
     const VALID_TABS = [
       'dashboard', 'campTracker', 'cards', 'library', 'study', 'analytics',
-      'correlation', 'export', 'prompt', 'pytManager', 'pytLogger',
+      'export', 'prompt', 'pytManager', 'pytLogger',
       'subjectTracker', 'studyScheduler', 'obsOverlay', 'about', 'settings',
       'trash', 'home', 'studyRoom'
     ];
@@ -4787,7 +4785,6 @@ export default function App() {
     { id: 'adherence', label: 'Adherence Status', size: 'small', enabled: true },
     { id: 'detailedScheduleLog', label: 'Detailed Schedule Log', size: 'medium', enabled: true },
     { id: 'studyAdherenceHistory7Day', label: '7-Day Study Adherence History', size: 'medium', enabled: true },
-    { id: 'correlationDashboardWidget', label: 'Correlation Dashboard', size: 'full', enabled: true },
     { id: 'pytLoggerWidget', label: 'PYT Logger', size: 'medium', enabled: true },
     { id: 'subjectTrackerWidget', label: 'Subject Tracker', size: 'medium', enabled: true },
     { id: 'studySchedulerWidget', label: 'Study Scheduler', size: 'large', enabled: true },
@@ -5800,7 +5797,6 @@ export default function App() {
     { id: 'studyScheduler', label: 'Scheduler', icon: 'Calendar' },
     { id: 'obsOverlay', label: 'OBS Overlay', icon: 'Tv' },
     { id: 'analytics', label: 'Analysis', icon: 'BarChart2' },
-    { id: 'correlation', label: 'Health', icon: 'Activity' },
     { id: 'export', label: 'Export', icon: 'Download' },
     { id: 'prompt', label: 'Prompt', icon: 'MessageSquare' },
     { id: 'pytManager', label: 'PYT Manager', icon: 'BookOpen' },
@@ -7298,7 +7294,7 @@ export default function App() {
 
     const VALID_TABS = [
       'dashboard', 'campTracker', 'cards', 'library', 'study', 'analytics',
-      'correlation', 'export', 'prompt', 'pytManager', 'pytLogger',
+      'export', 'prompt', 'pytManager', 'pytLogger',
       'subjectTracker', 'studyScheduler', 'obsOverlay', 'about', 'settings',
       'trash', 'home', 'studyRoom'
     ];
@@ -7336,7 +7332,7 @@ export default function App() {
 
       const VALID_TABS = [
         'dashboard', 'campTracker', 'cards', 'library', 'study', 'analytics',
-        'correlation', 'export', 'prompt', 'pytManager', 'pytLogger',
+        'export', 'prompt', 'pytManager', 'pytLogger',
         'subjectTracker', 'studyScheduler', 'obsOverlay', 'about', 'settings',
         'trash', 'home', 'studyRoom'
       ];
@@ -21634,21 +21630,6 @@ Return your response strictly as a JSON object matching this schema:
             </div>
           );
 
-        case 'correlation':
-          return (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 border-b border-white/10 pb-2">
-                <Activity className="w-5 h-5 text-rose-455 animate-pulse" />
-                <span className="font-black uppercase tracking-wider" style={textShadowStyle}>Health Insights</span>
-              </div>
-              <div className="bg-black/20 p-3 rounded-xl border border-white/5 text-center space-y-2">
-                <span className="text-[9px] font-black text-gray-455 uppercase tracking-widest block" style={textShadowStyle}>Sleep vs Focus</span>
-                <p className="text-xs font-bold leading-normal text-white" style={textShadowStyle}>
-                  💡 Peak learning performance correlated with rest efficiency ≥ 85%.
-                </p>
-              </div>
-            </div>
-          );
 
         case 'campEfficiency': {
           const todayDate = new Date().toLocaleDateString('en-CA');
@@ -25374,18 +25355,6 @@ Return your response strictly as a JSON object matching this schema:
                     </div>
                   )}
 
-                  {/* CORRELATION VIEW */}
-                  {currentTab === 'correlation' && (
-                    <div className="text-left">
-                      <CorrelationDashboard
-                        user={user}
-                        db={db}
-                        studySessions={studyLogs}
-                        cards={cards}
-                        geminiApiKey={geminiApiKey}
-                      />
-                    </div>
-                  )}
 
                   {/* EXPORTER HUB VIEW - MOBILE */}
                   {currentTab === 'export' && (
@@ -26805,7 +26774,6 @@ Return your response strictly as a JSON object matching this schema:
                               <option value="cardGenerator">⚡ Card Generator Queue</option>
                               <option value="performanceFeed">📈 Revision Adherence Feed</option>
                               <option value="studyRoom">📖 Study Room Status</option>
-                              <option value="correlation">💡 Health Insights</option>
                               <option value="campEfficiency">🏆 CAMP Study Efficiency</option>
                             </select>
                           </div>
@@ -26999,7 +26967,6 @@ Return your response strictly as a JSON object matching this schema:
                       { id: 'library', label: 'Library', icon: Library, action: () => setCurrentTab('library') },
                       { id: 'study', label: 'Study Room', icon: GraduationCap, action: () => { setCurrentTab('study'); setCurrentStudyCardIndex(0); setIsAnswerRevealed(false); } },
                       { id: 'analytics', label: 'Analysis', icon: BarChart2, action: () => setCurrentTab('analytics') },
-                      { id: 'correlation', label: 'Health Insights', icon: Activity, action: () => setCurrentTab('correlation') },
                       { id: 'export', label: 'Exporter Hub', icon: Download, action: () => setCurrentTab('export') },
                       { id: 'prompt', label: 'AI Prompt', icon: MessageSquare, action: () => setCurrentTab('prompt') },
                       { id: 'pytManager', label: 'PYT Manager', icon: BookOpen, action: () => setCurrentTab('pytManager') },
@@ -27327,15 +27294,6 @@ Return your response strictly as a JSON object matching this schema:
                       />
                     )}
 
-                    {currentTab === 'correlation' && (
-                      <CorrelationDashboard
-                        user={user}
-                        db={db}
-                        studySessions={studyLogs}
-                        cards={cards}
-                        geminiApiKey={geminiApiKey}
-                      />
-                    )}
 
                     {currentTab === 'cards' && (
                       <motion.div
@@ -35558,7 +35516,6 @@ Return your response strictly as a JSON object matching this schema:
                                 <option value="cardGenerator">⚡ Card Generator Queue</option>
                                 <option value="performanceFeed">📈 Revision Adherence Feed</option>
                                 <option value="studyRoom">📖 Active Card Study Room Status</option>
-                                <option value="correlation">💡 Health correlation Insights</option>
                                 <option value="campEfficiency">🏆 CAMP Study Efficiency Tracker</option>
                               </select>
                             </div>
@@ -35830,7 +35787,6 @@ Return your response strictly as a JSON object matching this schema:
                                     cardGenerator: { w: 360, h: 420, label: 'Fits card creation queue entries' },
                                     performanceFeed: { w: 360, h: 460, label: 'Ideal for scrolling feed list items' },
                                     studyRoom: { w: 350, h: 240, label: 'Fits current card count and active status' },
-                                    correlation: { w: 360, h: 360, label: 'Optimized for insights blocks' },
                                     campEfficiency: { w: 360, h: 260, label: 'Fits the CAMP efficiency score overlay card' }
                                   };
                                   const r = recs[obsSelectedWidget] || { w: 380, h: 480, label: 'Standard layout' };
