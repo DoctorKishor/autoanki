@@ -440,6 +440,67 @@ export async function saveLocalTextbooksMetadata(metadataArray) {
   return metadataArray || [];
 }
 
+// --- STUDY LOGS HELPERS ---
+export async function getLocalStudyLogs() {
+  const data = await getLocalKV('study_logs');
+  return (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
+}
+
+export async function saveLocalStudyLog(dateStr, logData) {
+  if (!dateStr) return await getLocalStudyLogs();
+  const current = await getLocalStudyLogs();
+  const updated = { ...current, [dateStr]: { ...(current[dateStr] || {}), ...logData } };
+  await setLocalKV('study_logs', updated);
+  return updated;
+}
+
+export async function replaceAllLocalStudyLogs(logsObj) {
+  await setLocalKV('study_logs', logsObj || {});
+  return logsObj || {};
+}
+
+// --- SUBJECT TRACKER HELPERS ---
+export async function getLocalSubjectTrackerData() {
+  const data = await getLocalKV('subject_tracker_data');
+  return Array.isArray(data) ? data : [];
+}
+
+export async function saveLocalSubjectTrackerDoc(docId, docData) {
+  if (!docId) return await getLocalSubjectTrackerData();
+  const current = await getLocalSubjectTrackerData();
+  const idx = current.findIndex(d => d.id === docId);
+  const updated = idx >= 0
+    ? current.map(d => d.id === docId ? { ...d, ...docData, id: docId } : d)
+    : [...current, { id: docId, ...docData }];
+  await setLocalKV('subject_tracker_data', updated);
+  return updated;
+}
+
+export async function replaceAllLocalSubjectTrackerData(dataArray) {
+  const finalArray = Array.isArray(dataArray) ? dataArray : [];
+  await setLocalKV('subject_tracker_data', finalArray);
+  return finalArray;
+}
+
+// --- STUDY SCHEDULE HELPERS ---
+export async function getLocalStudySchedule() {
+  const data = await getLocalKV('study_schedule');
+  return (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
+}
+
+export async function saveLocalScheduleEntry(dateStr, entryData) {
+  if (!dateStr) return await getLocalStudySchedule();
+  const current = await getLocalStudySchedule();
+  const updated = { ...current, [dateStr]: { ...(current[dateStr] || {}), ...entryData } };
+  await setLocalKV('study_schedule', updated);
+  return updated;
+}
+
+export async function replaceAllLocalStudySchedule(scheduleObj) {
+  await setLocalKV('study_schedule', scheduleObj || {});
+  return scheduleObj || {};
+}
+
 export default {
   initDB,
   STORES,
@@ -486,5 +547,15 @@ export default {
   getAllLocalPytProgress,
   saveLocalPytProgressDoc,
   getLocalTextbooksMetadata,
-  saveLocalTextbooksMetadata
+  saveLocalTextbooksMetadata,
+  getLocalStudyLogs,
+  saveLocalStudyLog,
+  replaceAllLocalStudyLogs,
+  getLocalSubjectTrackerData,
+  saveLocalSubjectTrackerDoc,
+  replaceAllLocalSubjectTrackerData,
+  getLocalStudySchedule,
+  saveLocalScheduleEntry,
+  replaceAllLocalStudySchedule
 };
+

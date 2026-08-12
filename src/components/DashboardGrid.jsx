@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { doc, setDoc } from 'firebase/firestore';
+import { saveLocalStudyLog } from '../services/localDb';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import {
   GripVertical, Plus, Edit2, Trash2, Settings, Play, Pause, RotateCcw,
@@ -33,6 +34,7 @@ export default function DashboardGrid({
   setSelectedStreakTag,
   isStreakAlertEnabled = true,
   pytStatus = {},  // unused but kept as safe default
+  user,
   subjectTrackerData = [],
   subjects = [],
   pytTopicsList = [],
@@ -145,8 +147,7 @@ export default function DashboardGrid({
         pages: (todayLog.pages || 0) + Number(quickPages)
       };
 
-      const logRef = doc(db, 'artifacts', 'auto-anki-app', 'users', user.uid, 'studyLogs', todayStr);
-      await setDoc(logRef, newLog, { merge: true });
+      await saveLocalStudyLog(todayStr, newLog);
 
       if (setStudyLogs) {
         setStudyLogs(prev => ({

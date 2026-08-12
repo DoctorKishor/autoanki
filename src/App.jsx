@@ -35,7 +35,7 @@ import ManualCardModal from './components/ManualCardModal';
 import RichInputField from './components/RichInputField';
 import ConflictInspectorModal from './components/ConflictInspectorModal';
 import { cropAndMaskDiagram } from './utils/imageCropper';
-import { getLocalSetting, saveLocalSetting, getLocalCards, saveLocalCards, replaceAllLocalCards, saveLocalCard, deleteLocalCard, getLocalPages, saveLocalPages, replaceAllLocalPages, saveLocalPage, deleteLocalPage, getLocalKV, setLocalKV, getLocalPrompts, saveLocalPrompt, deleteLocalPrompt, getAllLocalPytTopics, saveLocalPytTopic, getAllLocalPytProgress, saveLocalPytProgressDoc, getLocalTextbooksMetadata, saveLocalTextbooksMetadata } from './services/localDb';
+import { getLocalSetting, saveLocalSetting, getLocalCards, saveLocalCards, replaceAllLocalCards, saveLocalCard, deleteLocalCard, getLocalPages, saveLocalPages, replaceAllLocalPages, saveLocalPage, deleteLocalPage, getLocalKV, setLocalKV, getLocalPrompts, saveLocalPrompt, deleteLocalPrompt, getAllLocalPytTopics, saveLocalPytTopic, getAllLocalPytProgress, saveLocalPytProgressDoc, getLocalTextbooksMetadata, saveLocalTextbooksMetadata, getLocalStudyLogs, saveLocalStudyLog, replaceAllLocalStudyLogs, getLocalSubjectTrackerData, saveLocalSubjectTrackerDoc, replaceAllLocalSubjectTrackerData, getLocalStudySchedule, saveLocalScheduleEntry, replaceAllLocalStudySchedule } from './services/localDb';
 import { motion, AnimatePresence } from 'framer-motion';
 import UiverseButton from './components/UiverseButton';
 import UiverseGlassRadio from './components/UiverseGlassRadio';
@@ -3383,19 +3383,16 @@ const QuickLogger = ({ todayLog, todayStr, db, user, appId, setStudyLogs }) => {
       }
     }));
 
-    if (user && db) {
-      try {
-        const logRef = doc(db, 'artifacts', appId, 'users', user.uid, 'studyLogs', todayStr);
-        await setDoc(logRef, {
-          hours: newHours,
-          questions: newQuestions,
-          cards: newCards,
-          pages: newPages,
-          sessions: updatedSessions
-        }, { merge: true });
-      } catch (err) {
-        console.error("Error saving manual session:", err);
-      }
+    try {
+      await saveLocalStudyLog(todayStr, {
+        hours: newHours,
+        questions: newQuestions,
+        cards: newCards,
+        pages: newPages,
+        sessions: updatedSessions
+      });
+    } catch (err) {
+      console.error("Error saving manual session locally:", err);
     }
 
     // Reset inputs after adding
@@ -8072,23 +8069,17 @@ export default function App() {
     }
   }, []);
 
-  // --- LAZY STUDY LOGS LOADER ---
+  // --- LAZY STUDY LOGS LOADER (IndexedDB Offline-First) ---
   const loadStudyLogs = useCallback(async (force = false) => {
-    if (!user || !db) return;
     if (studyLogsLoaded.current && !force) return;
     setIsStudyLogsLoading(true);
     try {
-      const logsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'studyLogs');
-      const snap = await getDocs(logsRef);
-      fbTracker.read(snap.size);
-      const logs = {};
-      snap.forEach(d => { logs[d.id] = d.data(); });
-      setStudyLogs(logs);
+      const logs = await getLocalStudyLogs();
+      setStudyLogs(logs || {});
       studyLogsLoaded.current = true;
-      setFbUsage(fbTracker.getUsage());
-    } catch (err) { console.error('Failed to load study logs:', err); }
+    } catch (err) { console.error('Failed to load study logs from IndexedDB:', err); }
     finally { setIsStudyLogsLoading(false); }
-  }, [user, db]);
+  }, []);
 
   // --- TAB CHANGE: TRIGGER APPROPRIATE LAZY LOADS ---
   useEffect(() => {
@@ -8098,10 +8089,10 @@ export default function App() {
     if (['dashboard', 'cards', 'library', 'studyRoom', 'analytics', 'export', 'prompt', 'obsOverlay'].includes(currentTab)) {
       loadAllCards();
     }
-    if (user && db && ['dashboard', 'studyRoom', 'analytics', 'correlation', 'obsOverlay'].includes(currentTab)) {
+    if (['dashboard', 'studyRoom', 'analytics', 'correlation', 'obsOverlay'].includes(currentTab)) {
       loadStudyLogs();
     }
-  }, [currentTab, user, db, loadAllCards, loadPages, loadStudyLogs]);
+  }, [currentTab, loadAllCards, loadPages, loadStudyLogs]);
 
   // --- FOLDER/HIERARCHY CHANGE: TRIGGER FOLDER CARD LOAD ---
   useEffect(() => {
@@ -9207,7 +9198,7 @@ JSON Format:
   };
 
   const saveStudyLog = async () => {
-    if (!user || !db || !loggerDate) return;
+    if (!loggerDate) return;
     try {
       setIsSaving(true);
       const logData = {
@@ -9217,12 +9208,9 @@ JSON Format:
         hours: Number((Number(loggerHoursPart) + (Number(loggerMinutesPart) || 0) / 60).toFixed(3)),
         gts: loggerGtsList || []
       };
-      const logRef = doc(db, 'artifacts', appId, 'users', user.uid, 'studyLogs', loggerDate);
-      await setDoc(logRef, logData, { merge: true });
+      await saveLocalStudyLog(loggerDate, logData);
       // Optimistic update: patch local studyLogs so charts/analytics update immediately
       setStudyLogs(prev => ({ ...prev, [loggerDate]: { ...(prev[loggerDate] || {}), ...logData } }));
-      fbTracker.write(1);
-      setFbUsage(fbTracker.getUsage());
       setIsStudyLoggerModalOpen(false);
       setIsSaving(false);
     } catch (err) {
@@ -9366,11 +9354,10 @@ JSON Format:
         isStopwatch: isStopwatch
       };
       const updatedSessions = [...(todayLog.sessions || []), newSessionItem];
-      const logRef = doc(db, 'artifacts', appId, 'users', user.uid, 'studyLogs', dateStr);
-      await setDoc(logRef, {
+      await saveLocalStudyLog(dateStr, {
         hours: newHours,
         sessions: updatedSessions
-      }, { merge: true });
+      });
 
       // Optimistic local state update
       setStudyLogs(prev => ({
@@ -9929,15 +9916,14 @@ JSON Format:
             };
             const updatedSessionsY = [...(yesterdayLog.sessions || []), newSessionItemY];
 
-            const logRefY = doc(db, 'artifacts', appId, 'users', user.uid, 'studyLogs', startedDateStr);
-            await setDoc(logRefY, {
+            await saveLocalStudyLog(startedDateStr, {
               hours: newHoursY,
               cards: newCardsY,
               questions: newQuestionsY,
               pages: newPagesY,
               gts: newGtsY,
               sessions: updatedSessionsY
-            }, { merge: true });
+            });
 
             // Optimistic local state update
             setStudyLogs(prev => ({
@@ -9989,15 +9975,14 @@ JSON Format:
             };
             const updatedSessionsT = [...(todayLog.sessions || []), newSessionItemT];
 
-            const logRefT = doc(db, 'artifacts', appId, 'users', user.uid, 'studyLogs', localToday);
-            await setDoc(logRefT, {
+            await saveLocalStudyLog(localToday, {
               hours: newHoursT,
               cards: newCardsT,
               questions: newQuestionsT,
               pages: newPagesT,
               gts: newGtsT,
               sessions: updatedSessionsT
-            }, { merge: true });
+            });
 
             // Optimistic local state update
             setStudyLogs(prev => ({
@@ -10062,15 +10047,14 @@ JSON Format:
           };
 
           const updatedSessions = [...(todayLog.sessions || []), newSessionItem];
-          const logRef = doc(db, 'artifacts', appId, 'users', user.uid, 'studyLogs', localToday);
-          await setDoc(logRef, {
+          await saveLocalStudyLog(localToday, {
             hours: newHours,
             cards: newCards,
             questions: newQuestions,
             pages: newPages,
             gts: newGts,
             sessions: updatedSessions
-          }, { merge: true });
+          });
 
           // Optimistic local state update
           setStudyLogs(prev => ({
@@ -10490,15 +10474,14 @@ JSON Format:
             };
             const updatedSessionsY = [...(yesterdayLog.sessions || []), newSessionItemY];
 
-            const logRefY = doc(db, 'artifacts', appId, 'users', user.uid, 'studyLogs', startedDateStr);
-            await setDoc(logRefY, {
+            await saveLocalStudyLog(startedDateStr, {
               hours: newHoursY,
               cards: newCardsY,
               questions: newQuestionsY,
               pages: newPagesY,
               gts: newGtsY,
               sessions: updatedSessionsY
-            }, { merge: true });
+            });
 
             // Optimistic local state update
             setStudyLogs(prev => ({
@@ -10549,15 +10532,14 @@ JSON Format:
             };
             const updatedSessionsT = [...(todayLog.sessions || []), newSessionItemT];
 
-            const logRefT = doc(db, 'artifacts', appId, 'users', user.uid, 'studyLogs', localToday);
-            await setDoc(logRefT, {
+            await saveLocalStudyLog(localToday, {
               hours: newHoursT,
               cards: newCardsT,
               questions: newQuestionsT,
               pages: newPagesT,
               gts: newGtsT,
               sessions: updatedSessionsT
-            }, { merge: true });
+            });
 
             // Optimistic local state update
             setStudyLogs(prev => ({
@@ -10621,15 +10603,14 @@ JSON Format:
           };
 
           const updatedSessions = [...(todayLog.sessions || []), newSessionItem];
-          const logRef = doc(db, 'artifacts', appId, 'users', user.uid, 'studyLogs', localToday);
-          await setDoc(logRef, {
+          await saveLocalStudyLog(localToday, {
             hours: newHours,
             cards: newCards,
             questions: newQuestions,
             pages: newPages,
             gts: newGts,
             sessions: updatedSessions
-          }, { merge: true });
+          });
 
           // Optimistic local state update
           setStudyLogs(prev => ({
@@ -11310,15 +11291,14 @@ JSON Format:
 
       const updatedSessions = [...(todayLog.sessions || []), newSessionItem];
 
-      const logRef = doc(db, 'artifacts', appId, 'users', user.uid, 'studyLogs', localToday);
-      await setDoc(logRef, {
+      await saveLocalStudyLog(localToday, {
         hours: newHours,
         questions: newQuestions,
         cards: newCards,
         pages: newPages,
         sessions: updatedSessions,
         gts: todayLog.gts || []
-      }, { merge: true });
+      });
 
       // Clear inputs
       setMobileSessionHours('');
@@ -11334,7 +11314,7 @@ JSON Format:
   };
 
   const handleDeleteMobileSession = async (sessionId, targetDate) => {
-    if (!user || !db || !targetDate) return;
+    if (!targetDate) return;
     if (!window.confirm("Are you sure you want to delete this study session?")) return;
 
     try {
@@ -11353,15 +11333,14 @@ JSON Format:
       const newPages = Math.max(0, (todayLog.pages || 0) - (sessionToDelete.pages || 0));
       const updatedSessions = sessions.filter(s => s.id !== sessionId);
 
-      const logRef = doc(db, 'artifacts', appId, 'users', user.uid, 'studyLogs', targetDate);
-      await setDoc(logRef, {
+      await saveLocalStudyLog(targetDate, {
         hours: newHours,
         questions: newQuestions,
         cards: newCards,
         pages: newPages,
         sessions: updatedSessions,
         gts: todayLog.gts || []
-      }, { merge: true });
+      });
 
       // Optimistic local state update
       setStudyLogs(prev => ({
@@ -11385,7 +11364,7 @@ JSON Format:
   };
 
   const handleUpdateMobileSession = async () => {
-    if (!user || !db || !editingSessionId || !editingSessionTargetDate) return;
+    if (!editingSessionId || !editingSessionTargetDate) return;
 
     try {
       setIsSaving(true);
@@ -11426,15 +11405,14 @@ JSON Format:
         return s;
       });
 
-      const logRef = doc(db, 'artifacts', appId, 'users', user.uid, 'studyLogs', editingSessionTargetDate);
-      await setDoc(logRef, {
+      await saveLocalStudyLog(editingSessionTargetDate, {
         hours: newHours,
         questions: newQuestions,
         cards: newCards,
         pages: newPages,
         sessions: updatedSessions,
         gts: todayLog.gts || []
-      }, { merge: true });
+      });
 
       // Optimistic local state update
       setStudyLogs(prev => ({
@@ -11559,10 +11537,9 @@ JSON Format:
 
       const updatedGts = [...(todayLog.gts || []), newGt];
 
-      const logRef = doc(db, 'artifacts', appId, 'users', user.uid, 'studyLogs', localToday);
-      await setDoc(logRef, {
+      await saveLocalStudyLog(localToday, {
         gts: updatedGts
-      }, { merge: true });
+      });
 
       // Reset GT form inputs
       setLoggerGtName('');
@@ -11682,8 +11659,7 @@ JSON Format:
       log.gts = gts;
       updatedLogs[editGtTargetDate] = log;
 
-      const logRef = doc(db, 'artifacts', appId, 'users', user.uid, 'studyLogs', editGtTargetDate);
-      await setDoc(logRef, { gts }, { merge: true });
+      await saveLocalStudyLog(editGtTargetDate, { gts });
 
       setStudyLogs(updatedLogs);
       setIsEditGtModalOpen(false);
@@ -19926,12 +19902,7 @@ Return your response strictly as a JSON object matching this schema:
           newVal = Math.max(0, newVal);
         }
         const logData = { [metric]: newVal };
-        if (user && user.uid && db) {
-          const logRef = doc(db, 'artifacts', appId, 'users', user.uid, 'studyLogs', todayStr);
-          await setDoc(logRef, logData, { merge: true });
-          fbTracker.write(1);
-          setFbUsage(fbTracker.getUsage());
-        }
+        await saveLocalStudyLog(todayStr, logData);
         setStudyLogs(prev => ({
           ...prev,
           [todayStr]: {
@@ -24259,7 +24230,7 @@ Return your response strictly as a JSON object matching this schema:
                             <div className="overflow-x-auto">
                               <HierarchicalSunburst
                                 deckPaths={deckPaths}
-                                cloudPages={libraryPages}
+                                libraryPages={libraryPages}
                                 deckCardCounts={deckCardCounts}
                                 onSelectDeck={(deckPath) => {
                                   if (deckPath === 'Root') {
@@ -30144,7 +30115,7 @@ Return your response strictly as a JSON object matching this schema:
                             {/* Hierarchical Sunburst Database Explorer */}
                             <HierarchicalSunburst
                               deckPaths={deckPaths}
-                              cloudPages={libraryPages}
+                              libraryPages={libraryPages}
                               deckCardCounts={deckCardCounts}
                               onSelectDeck={(deckPath) => {
                                 if (deckPath === 'Root') {
