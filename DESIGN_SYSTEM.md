@@ -101,6 +101,43 @@ When rendering action buttons inside card/column headers (e.g. *Current Page Car
     Save All
   </UiverseButton>
 </div>
+
+---
+
+## 5. Multi-Option Pill Switcher & Toggle Motion Standard
+
+All multi-option toggles, subtab switchers, and segment controls across the app **MUST** use the single sliding pill indicator design with exact `0.6s cubic-bezier(0, 0, 0, 1)` smooth deceleration motion transition (`transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'`):
+
+```jsx
+<div className={`relative flex items-center p-1.5 rounded-2xl gap-1 shrink-0 select-none ${
+  isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
+}`}>
+  {/* Single Sliding Pill Indicator */}
+  <div
+    className={`absolute top-1.5 bottom-1.5 w-24 rounded-xl shadow-md ${
+      isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+    }`}
+    style={{
+      left: `calc(0.375rem + ${activeIndex} * (6rem + 0.25rem))`,
+      transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+    }}
+  />
+
+  {options.map(item => (
+    <button
+      key={item.id}
+      onClick={() => setActiveOption(item.id)}
+      className={`relative w-24 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${
+        activeOption === item.id
+          ? 'text-white font-extrabold'
+          : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+      }`}
+    >
+      <span>{item.label}</span>
+    </button>
+  ))}
+</div>
+```
 ```
 
 ---
