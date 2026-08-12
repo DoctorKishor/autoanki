@@ -30289,7 +30289,7 @@ Return your response strictly as a JSON object matching this schema:
 
                                   return (
                                     <>
-                                      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-6 text-left">
+                                      <div className="grid grid-cols-1 lg:grid-cols-3 items-center gap-4 mb-6 text-left">
                                         {/* Left: Icon, Title & Prev/Next Period Controls */}
                                         <div className="flex flex-wrap items-center gap-3">
                                           <div className={`p-2.5 rounded-2xl ${isDark ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'}`}>
@@ -30344,46 +30344,53 @@ Return your response strictly as a JSON object matching this schema:
                                           </div>
                                         </div>
 
-                                        {/* Center: 3 Timeframe Subtabs with Framer Motion Sliding Pill */}
-                                        <div className={`relative flex items-center p-1 rounded-2xl gap-1 shrink-0 ${
-                                          isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
-                                        }`}>
-                                          {[
-                                            { id: 'weekly', label: 'Weekly' },
-                                            { id: 'monthly', label: 'Monthly' },
-                                            { id: 'yearly', label: 'Yearly' }
-                                          ].map(item => {
-                                            const isActive = contributionTimeframe === item.id;
-                                            return (
-                                              <button
-                                                key={item.id}
-                                                onClick={() => {
-                                                  setContributionTimeframe(item.id);
-                                                  setContributionOffset(0);
-                                                }}
-                                                className={`relative px-4 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-xl transition-colors cursor-pointer select-none ${
-                                                  isActive
-                                                    ? 'text-white font-extrabold'
-                                                    : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
-                                                }`}
-                                              >
-                                                {isActive && (
-                                                  <motion.div
-                                                    layoutId="contributionTimeframePill"
-                                                    className={`absolute inset-0 rounded-xl ${
-                                                      isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
-                                                    }`}
-                                                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                                                  />
-                                                )}
-                                                <span className="relative z-10">{item.label}</span>
-                                              </button>
-                                            );
-                                          })}
+                                        {/* Center: Fixed Position Subtabs with Slower Smooth Sliding Pill */}
+                                        <div className="flex justify-center">
+                                          <div className={`relative flex items-center p-1.5 rounded-2xl gap-1 shrink-0 select-none ${
+                                            isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
+                                          }`}>
+                                            {[
+                                              { id: 'weekly', label: 'Weekly' },
+                                              { id: 'monthly', label: 'Monthly' },
+                                              { id: 'yearly', label: 'Yearly' }
+                                            ].map(item => {
+                                              const isActive = contributionTimeframe === item.id;
+                                              return (
+                                                <button
+                                                  key={item.id}
+                                                  onClick={() => {
+                                                    setContributionTimeframe(item.id);
+                                                    setContributionOffset(0);
+                                                  }}
+                                                  className={`relative w-24 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition-colors cursor-pointer select-none flex items-center justify-center ${
+                                                    isActive
+                                                      ? 'text-white font-extrabold'
+                                                      : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                                                  }`}
+                                                >
+                                                  {isActive && (
+                                                    <motion.div
+                                                      layoutId="activeContributionTimeframePill"
+                                                      className={`absolute inset-0 rounded-xl ${
+                                                        isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+                                                      }`}
+                                                      transition={{
+                                                        type: "spring",
+                                                        stiffness: 220,
+                                                        damping: 26,
+                                                        mass: 0.8
+                                                      }}
+                                                    />
+                                                  )}
+                                                  <span className="relative z-10">{item.label}</span>
+                                                </button>
+                                              );
+                                            })}
+                                          </div>
                                         </div>
 
                                         {/* Right: HSL Intensity Legend */}
-                                        <div className={`flex items-center gap-1.5 text-[9px] font-bold select-none shrink-0 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
+                                        <div className={`flex items-center justify-start lg:justify-end gap-1.5 text-[9px] font-bold select-none shrink-0 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
                                           <span>Less</span>
                                           <div className={`w-2.5 h-2.5 rounded-sm border ${isDark ? 'bg-[#2a303c] border-gray-700/40' : 'bg-[#f3f4f6] border-gray-200/40'}`} title="0 cards" />
                                           <div className="flex items-center gap-[1px]">
