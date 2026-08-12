@@ -151,39 +151,39 @@ const fbTracker = (() => {
 // Implements a faithful approximation of the FSRS-4.5 algorithm.
 // Reference: https://github.com/open-spaced-repetition/fsrs4anki/wiki/The-Algorithm
 //
-// D = Difficulty   [1, 10]  ΓÇö higher means harder to recall
-// S = Stability    (days)   ΓÇö days until ~90% retention drops below threshold
-// R = Retrievability        ΓÇö probability of correct recall right now
+// D = Difficulty   [1, 10]  — higher means harder to recall
+// S = Stability    (days)   — days until ~90% retention drops below threshold
+// R = Retrievability        — probability of correct recall right now
 //
 // Rating codes (matching our 4-button UI):
 //   1 = Again   2 = Hard   3 = Good   4 = Easy
 // =============================================================================
 
 const FSRS_W = [
-  0.4072,  // w[0]  ΓÇö initial stability for Again
-  1.1829,  // w[1]  ΓÇö initial stability for Hard
-  3.1262,  // w[2]  ΓÇö initial stability for Good
-  15.4722, // w[3]  ΓÇö initial stability for Easy
-  7.2102,  // w[4]  ΓÇö initial difficulty base
-  0.5316,  // w[5]  ΓÇö initial difficulty sensitivity
-  1.0651,  // w[6]  ΓÇö difficulty update rate per rating delta
-  0.0589,  // w[7]  ΓÇö mean-reversion strength toward easy baseline
-  1.5330,  // w[8]  ΓÇö recall stability growth factor
-  0.1544,  // w[9]  ΓÇö recall stability decay with stability
-  1.0071,  // w[10] ΓÇö recall bonus from low retrievability
-  1.9395,  // w[11] ΓÇö forget-stability coefficient
-  0.1100,  // w[12] ΓÇö forget-stability difficulty decay
-  0.2900,  // w[13] ΓÇö forget-stability stability growth power
-  2.2700,  // w[14] ΓÇö forget-stability retrievability bonus
-  0.1500,  // w[15] ΓÇö Hard penalty multiplier applied to recall stability
-  2.9898,  // w[16] ΓÇö Easy bonus multiplier applied to recall stability
-  0.5100,  // w[17] ΓÇö reserved (short-term stability, future use)
-  0.3400,  // w[18] ΓÇö reserved (short-term stability, future use)
+  0.4072,  // w[0]  — initial stability for Again
+  1.1829,  // w[1]  — initial stability for Hard
+  3.1262,  // w[2]  — initial stability for Good
+  15.4722, // w[3]  — initial stability for Easy
+  7.2102,  // w[4]  — initial difficulty base
+  0.5316,  // w[5]  — initial difficulty sensitivity
+  1.0651,  // w[6]  — difficulty update rate per rating delta
+  0.0589,  // w[7]  — mean-reversion strength toward easy baseline
+  1.5330,  // w[8]  — recall stability growth factor
+  0.1544,  // w[9]  — recall stability decay with stability
+  1.0071,  // w[10] — recall bonus from low retrievability
+  1.9395,  // w[11] — forget-stability coefficient
+  0.1100,  // w[12] — forget-stability difficulty decay
+  0.2900,  // w[13] — forget-stability stability growth power
+  2.2700,  // w[14] — forget-stability retrievability bonus
+  0.1500,  // w[15] — Hard penalty multiplier applied to recall stability
+  2.9898,  // w[16] — Easy bonus multiplier applied to recall stability
+  0.5100,  // w[17] — reserved (short-term stability, future use)
+  0.3400,  // w[18] — reserved (short-term stability, future use)
 ];
 
-// Power-forgetting-curve constants ΓÇö fixed by FSRS math so R(S days, S) Γëê 0.9
+// Power-forgetting-curve constants — fixed by FSRS math so R(S days, S) ≈ 0.9
 const FSRS_DECAY = -0.5;
-const FSRS_FACTOR = 19 / 81; // Γëê 0.23457
+const FSRS_FACTOR = 19 / 81; // ≈ 0.23457
 
 const _fsrsClamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
 
@@ -194,7 +194,7 @@ const _fsrsR = (t, S) => Math.pow(1 + FSRS_FACTOR * (t / S), FSRS_DECAY);
 const _fsrsD0 = (r) =>
   _fsrsClamp(FSRS_W[4] - Math.exp(FSRS_W[5] * (r - 1)) + 1, 1, 10);
 
-/** Difficulty after a repeat review: delta then mean-revert to DΓéÇ(Easy). */
+/** Difficulty after a repeat review: delta then mean-revert to D₀(Easy). */
 const _fsrsUpdateD = (D, rating) => {
   const D0easy = _fsrsD0(4);
   const delta = D - FSRS_W[6] * (rating - 3);
@@ -211,7 +211,7 @@ const _fsrsRecallS = (D, S, R, rating) => {
   );
   if (rating === 2) return base * FSRS_W[15]; // Hard penalty
   if (rating === 4) return base * FSRS_W[16]; // Easy bonus
-  return base;                                 // Good ΓÇö no multiplier
+  return base;                                 // Good — no multiplier
 };
 
 /** New stability when the card is forgotten (rating = 1, Again). */
@@ -221,7 +221,7 @@ const _fsrsForgetS = (D, S, R) =>
   (Math.pow(S + 1, FSRS_W[13]) - 1) *
   Math.exp(FSRS_W[14] * (1 - R));
 
-/** Format a local Date to "YYYY-MM-DD" ΓÇö consistent with the app's date convention. */
+/** Format a local Date to "YYYY-MM-DD" — consistent with the app's date convention. */
 const _fsrsDateStr = (date) => {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -245,9 +245,9 @@ const _fsrsDateStr = (date) => {
  *   "YYYY-MM-DD" date of the review session. Defaults to today (local time).
  *
  * @returns {{
- *   difficulty:     number,  // Updated D Γêê [1,10], 4 decimal places
+ *   difficulty:     number,  // Updated D ∈ [1,10], 4 decimal places
  *   stability:      number,  // Updated S (days),   4 decimal places
- *   retrievability: number,  // R at review time Γêê [0,1]
+ *   retrievability: number,  // R at review time ∈ [0,1]
  *   interval:       number,  // Whole days until next review
  *   nextReviewDue:  string,  // "YYYY-MM-DD"
  *   lastReviewDate: string,  // "YYYY-MM-DD" (the review date)
@@ -267,14 +267,14 @@ const calculateNextFSRSReview = (existingData, rating, reviewDateStr) => {
   let D, S, R, newD, newS;
 
   if (isNew) {
-    // ΓöÇΓöÇ First review: bootstrap from rating directly ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // ── First review: bootstrap from rating directly ─────────────────────────
     D = _fsrsD0(rating);
     S = FSRS_W[rating - 1]; // w[0..3] map directly to Again/Hard/Good/Easy
     R = 1.0;                 // Assume full retention at card-creation moment
     newD = D;
     newS = S;
   } else {
-    // ΓöÇΓöÇ Subsequent review: evolve D and S from prior state ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // ── Subsequent review: evolve D and S from prior state ──────────────────
     D = existingData.difficulty;
     S = existingData.stability;
 
@@ -299,7 +299,7 @@ const calculateNextFSRSReview = (existingData, rating, reviewDateStr) => {
   // Stability guard: must be a positive finite number (or baseline minimum on forgot)
   newS = rating === 1 ? 0.1 : Math.max(0.1, isFinite(newS) ? newS : FSRS_W[2]);
 
-  // Interval = S rounded to the nearest day (RΓëê0.9 exactly when t=S).
+  // Interval = S rounded to the nearest day (R≈0.9 exactly when t=S).
   // Forces exactly 1 day interval on Forgot rating.
   const interval = rating === 1 ? 1 : Math.max(1, Math.round(newS));
 
@@ -1145,7 +1145,7 @@ const HierarchicalSunburst = ({ deckPaths, libraryPages, deckCardCounts = {}, on
             <div className="max-w-[70%]">
               <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest block">Active Deck Focus</span>
               <span className="text-xs font-black text-gray-800 break-all leading-tight mt-1 block">
-                {displayNode.path === 'Root' ? 'All active decks' : displayNode.path.replace(/::/g, ' Γ₧ö ')}
+                {displayNode.path === 'Root' ? 'All active decks' : displayNode.path.replace(/::/g, ' ➔ ')}
               </span>
             </div>
             <div className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider shrink-0 select-none">
@@ -1213,7 +1213,7 @@ const HierarchicalSunburst = ({ deckPaths, libraryPages, deckCardCounts = {}, on
                   r="18"
                   className="fill-white stroke-blue-500 stroke-2 filter drop-shadow-[0_4px_12px_rgba(59,130,246,0.35)] group-hover/up-quadrant:scale-110 group-hover/up-quadrant:stroke-blue-600 transition-all duration-300"
                 />
-                {/* Bold Up Arrow (≡ƒíæ) */}
+                {/* Bold Up Arrow (▲) */}
                 <path
                   d="M -5 2 L 0 -4 L 5 2 M 0 -4 L 0 5"
                   className="stroke-blue-600 group-hover/up-quadrant:stroke-blue-700 transition duration-300"
@@ -1903,7 +1903,7 @@ export const sanitizeCardForFirestore = (card) => {
   return sanitized;
 };
 
-// onProgress: optional callback (msg: string) => void ΓÇö called during rate-limit waits
+// onProgress: optional callback (msg: string) => void — called during rate-limit waits
 // so the progress modal can show a live countdown instead of a frozen UI.
 const callGeminiWithRetry = async (apiKey, prompt, base64Image, mimeType, retries = 5, onProgress = null, customModels = null) => {
   if (!apiKey) {
@@ -2003,13 +2003,13 @@ const callGeminiWithRetry = async (apiKey, prompt, base64Image, mimeType, retrie
       // Handle rate-limit (429): honour Retry-After header first, then scale exponentially
       if (response.status === 429) {
         const retryAfterHeader = parseInt(response.headers.get('Retry-After') || '0', 10);
-        // Exponential back-off: 8s ΓåÆ 16s ΓåÆ 32s (capped at 60s). Free tier = 15 RPM.
+        // Exponential back-off: 8s → 16s → 32s (capped at 60s). Free tier = 15 RPM.
         const backoffScale = [8000, 16000, 32000, 60000];
         const waitMs = retryAfterHeader > 0 ? retryAfterHeader * 1000 : (backoffScale[i] ?? 60000);
         const waitSec = Math.round(waitMs / 1000);
         const rateLimitErr = `HTTP 429 Rate Limit [${model}]: Rate limit exceeded.`;
         console.warn(`[Gemini] ${rateLimitErr} Waiting ${waitSec}s before retry ${i + 1}/${retries}...`);
-        if (onProgress) onProgress(`ΓÅ│ Rate limit hit ΓÇö waiting ${waitSec}s before retrying (attempt ${i + 1}/${retries})...`, `${rateLimitErr} Retrying in ${waitSec}s.`);
+        if (onProgress) onProgress(`⏳ Rate limit hit — waiting ${waitSec}s before retrying (attempt ${i + 1}/${retries})...`, `${rateLimitErr} Retrying in ${waitSec}s.`);
         await new Promise(res => setTimeout(res, waitMs));
         totalPausedMs += waitMs;
         lastError = new Error(rateLimitErr);
@@ -2029,7 +2029,7 @@ const callGeminiWithRetry = async (apiKey, prompt, base64Image, mimeType, retrie
       return parsedData;
     } catch (error) {
       clearTimeout(timeoutId);
-      // AbortError means our 45s timeout fired ΓÇö treat as a retryable network error
+      // AbortError means our 45s timeout fired — treat as a retryable network error
       const isTimeout = error.name === 'AbortError';
       const exactErrMsg = isTimeout ? `Request timed out (45s) on model ${model}` : (error.message || String(error));
       lastError = isTimeout ? new Error(exactErrMsg) : error;
@@ -2038,7 +2038,7 @@ const callGeminiWithRetry = async (apiKey, prompt, base64Image, mimeType, retrie
       // Exponential backoff on general errors: 4s, 8s, 16s, 30s
       const backoffMs = [4000, 8000, 16000, 30000][i] ?? 30000;
       const waitSec = Math.round(backoffMs / 1000);
-      if (onProgress) onProgress(`ΓÜá∩╕Å Request failed ΓÇö retrying in ${waitSec}s (attempt ${i + 2}/${retries})...`, `[${model}] ${exactErrMsg}`);
+      if (onProgress) onProgress(`⚠️ Request failed — retrying in ${waitSec}s (attempt ${i + 2}/${retries})...`, `[${model}] ${exactErrMsg}`);
       await new Promise(res => setTimeout(res, backoffMs));
       totalPausedMs += backoffMs;
     }
@@ -2320,7 +2320,7 @@ const PdfPagePreview = ({ pdf, pageNum, rotation = 0, onRotate, themeMode = 'lig
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) setIsVisible(true);
-        // Don't hide on scroll-out ΓÇö once rendered keep the bitmap
+        // Don't hide on scroll-out — once rendered keep the bitmap
       },
       { rootMargin: '100px' }
     );
@@ -2342,7 +2342,7 @@ const PdfPagePreview = ({ pdf, pageNum, rotation = 0, onRotate, themeMode = 'lig
         const page = await pdf.getPage(pageNum);
         if (cancelled) { if (typeof page.cleanup === 'function') page.cleanup(); _pdfPreviewRelease(); return; }
 
-        // Scale to a fixed 180px wide thumbnail ΓÇö enough to see content, minimal RGBA memory
+        // Scale to a fixed 180px wide thumbnail — enough to see content, minimal RGBA memory
         const unscaled = page.getViewport({ scale: 1.0, rotation });
         const thumbScale = 180 / unscaled.width;
         const viewport = page.getViewport({ scale: thumbScale, rotation });
@@ -3409,7 +3409,7 @@ const QuickLogger = ({ todayLog, todayStr, db, user, appId, setStudyLogs }) => {
   return (
     <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex flex-col hover:shadow-md transition w-full">
       <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-4 flex items-center gap-1.5">
-        ≡ƒô¥ Quick Session Logger (Today)
+        📝 Quick Session Logger (Today)
       </span>
 
       <div className="grid grid-cols-2 gap-4 mb-4">
@@ -3488,7 +3488,7 @@ const QuickLogger = ({ todayLog, todayStr, db, user, appId, setStudyLogs }) => {
       </button>
 
       <p className="text-[9px] text-gray-400 font-bold leading-normal mt-3">
-        ≡ƒÆí Enter stats for your current study session, then click "Add Session" to add them to today's cumulative totals.
+        💡 Enter stats for your current study session, then click "Add Session" to add them to today's cumulative totals.
       </p>
     </div>
   );
@@ -5871,9 +5871,9 @@ export default function App() {
 
   const getAutoDetectedPeriod = () => {
     const hour = new Date().getHours();
-    if (hour < 13) return 'preLunch';      // midnight to 1pm ΓåÆ Pre Lunch
-    if (hour < 19) return 'midDay';        // 1pm to 7pm ΓåÆ Midday
-    return 'postDinner';                    // 7pm to midnight ΓåÆ Post Dinner
+    if (hour < 13) return 'preLunch';      // midnight to 1pm → Pre Lunch
+    if (hour < 19) return 'midDay';        // 1pm to 7pm → Midday
+    return 'postDinner';                    // 7pm to midnight → Post Dinner
   };
   const [isMobileAddingGt, setIsMobileAddingGt] = useState(false);
 
@@ -8700,7 +8700,7 @@ JSON Format:
               // First try exact case-insensitive match
               let matchedTopic = rawTopics.find(t => t.toLowerCase() === match.topicName.toLowerCase());
 
-              // Fallback: fuzzy match ΓÇö check if AI name includes our topic or vice versa
+              // Fallback: fuzzy match — check if AI name includes our topic or vice versa
               if (!matchedTopic) {
                 const aiName = match.topicName.toLowerCase();
                 matchedTopic = rawTopics.find(t =>
@@ -9547,12 +9547,12 @@ JSON Format:
                   ? `Time for a well-deserved ${longBreakMinsText}-minute Long Break!`
                   : `Time for a ${shortBreakMinsText}-minute Short Break!`;
                 if (state.pomodoroMode === 'study') {
-                  alert(`≡ƒÄë Focus Session Completed! ${breakMsg}`);
+                  alert(`🎉 Focus Session Completed! ${breakMsg}`);
                   const mins = Math.round(state.pomodoroDuration / 60);
                   const hrs = Number((mins / 60).toFixed(1));
                   handleLogPomodoroBlock(hrs);
                 } else {
-                  alert(`≡ƒÆ¬ Break Completed! Ready to focus for another ${Math.round(state.pomodoroDuration / 60)} minutes?`);
+                  alert(`💪 Break Completed! Ready to focus for another ${Math.round(state.pomodoroDuration / 60)} minutes?`);
                 }
               }
             }).catch(err => console.error("Error completing Pomodoro block:", err));
@@ -9627,7 +9627,7 @@ JSON Format:
             }, { merge: true }).then(() => {
               playAlarmSound();
               if (!isObsOverlay) {
-                alert(`ΓÅ░ Custom Countdown Timer has completed successfully!`);
+                alert(`⏰ Custom Countdown Timer has completed successfully!`);
               }
               handleAddTimerTimeToSession(state.timerDuration, state.timerStartedAt);
             }).catch(err => console.error("Error completing countdown session:", err));
@@ -10790,7 +10790,7 @@ JSON Format:
         <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-5">
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-1.5">
-              ΓÅ▒∩╕Å Focus Timer Hub
+              ⏱️ Focus Timer Hub
             </span>
             <button
               onClick={() => setIsTimerFullscreen(true)}
@@ -10872,7 +10872,7 @@ JSON Format:
                 </svg>
                 <div className="text-center z-10 flex flex-col">
                   <span className="text-[9px] font-black uppercase tracking-widest text-orange-500 mb-0.5">
-                    {timerState.mode === 'study' ? '≡ƒôÜ Focus' : 'Γÿò Break'}
+                    {timerState.mode === 'study' ? '📚 Focus' : '☕ Break'}
                   </span>
                   <span className="text-3xl font-black font-mono text-gray-800 leading-none">
                     {formatTime(localTimerTimeLeft)}
@@ -11002,7 +11002,7 @@ JSON Format:
                 </svg>
                 <div className="text-center z-10 flex flex-col">
                   <span className="text-[9px] font-black uppercase tracking-widest text-indigo-500 mb-0.5">
-                    ΓÅ░ Countdown
+                    ⏰ Countdown
                   </span>
                   <span className="text-3xl font-black font-mono text-gray-800 leading-none">
                     {formatTime(localCustomTimerTimeLeft)}
@@ -11089,7 +11089,7 @@ JSON Format:
               {/* Centered Stopwatch Display */}
               <div className="w-full text-center py-4 flex flex-col items-center">
                 <span className="text-[9px] font-black uppercase tracking-widest text-emerald-500 mb-1">
-                  ΓÅ▒∩╕Å Stopwatch Time
+                  ⏱️ Stopwatch Time
                 </span>
                 <span className="text-4xl font-black font-mono text-gray-800 leading-tight tracking-tight">
                   {formatStopwatch(localStopwatchTime)}
@@ -11145,7 +11145,7 @@ JSON Format:
                   : 'bg-orange-500 hover:bg-orange-600 text-white shadow-orange-500/10'
                 }`}
             >
-              Γ₧ò Add {formatElapsedText(getElapsedSeconds())} to Today's Session?
+              ➕ Add {formatElapsedText(getElapsedSeconds())} to Today's Session?
             </button>
           )}
 
@@ -11265,7 +11265,7 @@ JSON Format:
       setScanPreviewBase64(base64);
       setOperationProgress(prev => ({ ...prev, current: 1, message: 'Scan uploaded successfully!' }));
       await new Promise(res => setTimeout(res, 500));
-      alert("≡ƒô╕ Scanned document successfully sent to your Desktop Library Inbox!");
+      alert("📸 Scanned document successfully sent to your Desktop Library Inbox!");
     } catch (err) {
       console.error("Error uploading companion scan:", err);
       alert("Failed to upload companion scan: " + err.message);
@@ -11959,7 +11959,7 @@ JSON Format:
         if (
           topicLower.startsWith(subjectLower + ':') ||
           topicLower.startsWith(subjectLower + ' -') ||
-          topicLower.startsWith(subjectLower + ' ΓÇô')
+          topicLower.startsWith(subjectLower + ' –')
         ) {
           planned++;
           if (task.completed) completed++;
@@ -12235,11 +12235,11 @@ JSON Format:
               name: cleanTopicName,
               page: "",
               studyDates: [],
-              // FSRS fields ΓÇö undefined until first review is processed below
+              // FSRS fields — undefined until first review is processed below
             };
           }
 
-          // ΓöÇΓöÇ FSRS Calculation ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+          // ── FSRS Calculation ─────────────────────────────────────────────────
           // Pass the topic's current FSRS state (could be undefined on first review).
           // The engine returns the full updated payload including nextReviewDue.
           const currentFsrsState = {
@@ -12253,7 +12253,7 @@ JSON Format:
           const fsrsInput = currentFsrsState.stability != null ? currentFsrsState : null;
           const fsrsResult = calculateNextFSRSReview(fsrsInput, review.rating, review.dateStr);
 
-          // ΓöÇΓöÇ Merge results back into the topic object ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+          // ── Merge results back into the topic object ──────────────────────────
           topics[cleanTopicName].difficulty = fsrsResult.difficulty;
           topics[cleanTopicName].stability = fsrsResult.stability;
           topics[cleanTopicName].retrievability = fsrsResult.retrievability;
@@ -12552,7 +12552,7 @@ JSON Format:
       setExamProfiles(prev => prev.map(exam => exam.id === id ? { ...exam, isTentative: !exam.isTentative } : exam));
     };
 
-    // ΓöÇΓöÇ Dynamic Topic Extraction for Offline Review Batcher ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // ── Dynamic Topic Extraction for Offline Review Batcher ───────────────
     const mockTopicsList = (() => {
       const matchDoc = subjectTrackerData.find(d => d.subject === mockReviewSubject) ||
         subjectTrackerData.find(d => d.subject?.toLowerCase() === mockReviewSubject.toLowerCase());
@@ -13159,7 +13159,7 @@ JSON Format:
                 <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1 custom-scrollbar">
                   {prioritizedDueQueue.length === 0 ? (
                     <div className="py-8 text-center bg-emerald-50/20 border border-emerald-100 border-dashed rounded-2xl">
-                      <span className="text-lg">≡ƒÄë</span>
+                      <span className="text-lg">🎉</span>
                       <p className="text-xs font-black text-emerald-700 mt-1">All caught up!</p>
                       <p className="text-[10px] text-emerald-600 mt-0.5">No reviews scheduled for today.</p>
                     </div>
@@ -13401,7 +13401,7 @@ JSON Format:
                             <div className="text-left min-w-0 pr-2">
                               <span className="text-[9px] font-black text-indigo-655 uppercase tracking-wider bg-indigo-50 px-1.5 py-0.5 rounded">{review.subject}</span>
                               <span className="text-xs font-bold text-gray-800 ml-2 truncate inline-block align-middle max-w-[150px]">{review.topicName}</span>
-                              <span className="text-[9px] font-mono text-gray-400 block mt-1">≡ƒôà {review.dateStr}</span>
+                              <span className="text-[9px] font-mono text-gray-400 block mt-1">📅 {review.dateStr}</span>
                             </div>
                             <div className="flex items-center gap-2">
                               <span className={`text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded ${ratingColor}`}>
@@ -13505,7 +13505,7 @@ JSON Format:
                               <span className="bg-blue-50 text-blue-600 border border-blue-100 px-1 py-0.2 rounded text-[7px] font-black uppercase tracking-wide">Confirmed</span>
                             )}
                           </div>
-                          <span className="text-[9px] font-mono font-bold text-gray-400 block mt-0.5">≡ƒôà {exam.date}</span>
+                          <span className="text-[9px] font-mono font-bold text-gray-400 block mt-0.5">📅 {exam.date}</span>
                         </div>
                         <div className="flex items-center gap-3 shrink-0">
                           <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-lg ${isPast ? 'bg-gray-100 text-gray-400' : isToday ? 'bg-red-50 text-red-500 animate-pulse' : 'bg-emerald-50 text-emerald-600'}`}>
@@ -13699,12 +13699,12 @@ JSON Format:
               </div>
             </div>
           );
-        })()}      {/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+        })()}      {/* ═══════════════════════════════════════════════════════════
            STAGE 3: FSRS ANALYTICS DASHBOARD
            Subject Switcher ┬╖ Mastery Score Circle ┬╖ Topic Timeline
-          ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */}
+          ═══════════════════════════════════════════════════════════ */}
         {smartReviewSubTab === 'visualizer' && (() => {
-          // ΓöÇΓöÇ Subject dropdown options derived dynamically from Firestore ΓöÇΓöÇΓöÇΓöÇ
+          // ── Subject dropdown options derived dynamically from Firestore ────
           const dynamicSubjects = (() => {
             if (!subjectTrackerData || subjectTrackerData.length === 0) return [];
             const list = subjectTrackerData
@@ -13718,14 +13718,14 @@ JSON Format:
             ? fsrsAnalyticsSubject
             : (dynamicSubjects[0] || '');
 
-          // ΓöÇΓöÇ Pull FSRS-enriched topics for selected subject ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+          // ── Pull FSRS-enriched topics for selected subject ─────────────────
           const analyticsDoc = subjectTrackerData.find(d => d.subject === activeSubject) ||
             subjectTrackerData.find(d => d.subject?.toLowerCase() === activeSubject.toLowerCase());
           const allTopicObjects = analyticsDoc && analyticsDoc.topics
             ? Object.values(analyticsDoc.topics)
             : [];
 
-          // ΓöÇΓöÇ Workload Aggregation (All subjects) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+          // ── Workload Aggregation (All subjects) ─────────────────────────────
           const workloadMap = {};
           if (subjectTrackerData) {
             subjectTrackerData.forEach(subDoc => {
@@ -13750,7 +13750,7 @@ JSON Format:
             });
           }
 
-          // ΓöÇΓöÇ Calendar Calculations ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+          // ── Calendar Calculations ───────────────────────────────────────────
           const daysInMonth = new Date(currentCalendarYear, currentCalendarMonth + 1, 0).getDate();
           const firstDayIndex = new Date(currentCalendarYear, currentCalendarMonth, 1).getDay(); // 0 = Sun, 6 = Sat
 
@@ -14084,7 +14084,7 @@ JSON Format:
                             {isUnstarted && (
                               <div className="flex items-center shrink-0">
                                 <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 bg-gray-100 border border-gray-200 px-3 py-1 rounded-full shadow-sm">
-                                  ΓÜ¬ Unstarted
+                                  ⚪ Unstarted
                                 </span>
                               </div>
                             )}
@@ -14092,16 +14092,16 @@ JSON Format:
                             {isNaive && (
                               <div className="flex items-center shrink-0">
                                 <span className="text-[10px] font-black uppercase tracking-wider text-blue-500 bg-blue-50 border border-blue-100 px-3 py-1 rounded-full shadow-sm">
-                                  ≡ƒö╡ Naive (No FSRS)
+                                  🔵 Naive (No FSRS)
                                 </span>
                               </div>
                             )}
 
                             {pastDates.map((date, pIdx) => (
                               <div key={pIdx} className="flex items-center shrink-0">
-                                {pIdx > 0 && <span className="text-gray-300 mx-1 font-black text-xs">ΓåÆ</span>}
+                                {pIdx > 0 && <span className="text-gray-300 mx-1 font-black text-xs">→</span>}
                                 <div className="flex items-center gap-1 text-[9px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200/60 px-2.5 py-1 rounded-xl shadow-xs">
-                                  <span>Γ£ô</span>
+                                  <span>✓</span>
                                   <span>{date}</span>
                                 </div>
                               </div>
@@ -14109,12 +14109,12 @@ JSON Format:
 
                             {hasFuture && (
                               <>
-                                <span className="text-gray-300 mx-1 font-black text-xs shrink-0">ΓåÆ</span>
+                                <span className="text-gray-300 mx-1 font-black text-xs shrink-0">→</span>
                                 <div className={`flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-xl border shrink-0 shadow-sm ${futureStatus === 'overdue'
                                   ? 'bg-rose-50 text-rose-700 border-rose-200 animate-pulse'
                                   : 'bg-indigo-50 text-indigo-700 border-indigo-200'
                                   }`}>
-                                  <span>≡ƒôà</span>
+                                  <span>📅</span>
                                   <span>
                                     {topic.nextReviewDue} {futureStatus === 'overdue' ? '(Overdue)' : ''}
                                   </span>
@@ -14343,7 +14343,7 @@ JSON Format:
                   onClick={() => { setCurrentTab('studyScheduler'); }}
                   className="text-[10px] font-black uppercase tracking-wider text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded-lg border border-blue-100 transition active:scale-95"
                 >
-                  Open Scheduler ΓåÆ
+                  Open Scheduler →
                 </button>
               </div>
 
@@ -14380,7 +14380,7 @@ JSON Format:
                       />
                     </div>
                     <p className="text-[9px] text-gray-400 italic">
-                      {adherence.adherencePct >= 80 ? '≡ƒÅå Excellent adherence! Keep it up.' : adherence.adherencePct >= 50 ? '≡ƒôê Good progress. Aim for 80%+.' : 'ΓÜá∩╕Å Low adherence. Try scheduling more sessions.'}
+                      {adherence.adherencePct >= 80 ? '🏆 Excellent adherence! Keep it up.' : adherence.adherencePct >= 50 ? '📈 Good progress. Aim for 80%+.' : '⚠️ Low adherence. Try scheduling more sessions.'}
                     </p>
                   </div>
                 </div>
@@ -15182,7 +15182,7 @@ JSON Format:
   // OBS Overlay: Data is received via BroadcastChannel from the main app tab.
   // See BroadcastChannel receiver at line ~11076 (OBS_FULL_SYNC / OBS_STATE_UPDATE).
   // The 3 collection listeners (flashcards, studyLogs, pages) have been removed because:
-  //   1. They are redundant ΓÇö BroadcastChannel already delivers the same data.
+  //   1. They are redundant — BroadcastChannel already delivers the same data.
   //   2. With 10 OBS widgets running simultaneously, each collection listener
   //      multiplied read costs by 10x, causing 400k+ reads/day.
   // The timerState single-doc listener (line ~7112) is kept as a lightweight fallback.
@@ -15407,7 +15407,7 @@ JSON Format:
       }
     }, err => console.error("Error syncing timer history:", err));
 
-    // 4. Sync daily logs ΓÇö today's document only (not full collection)
+    // 4. Sync daily logs — today's document only (not full collection)
     const todayDateStr = new Date().toLocaleDateString('en-CA');
     const todayLogRef = doc(db, 'artifacts', appId, 'users', targetUid, 'camp_daily_logs', todayDateStr);
     const unsubDailyLogs = onSnapshot(todayLogRef, (docSnap) => {
@@ -15466,7 +15466,7 @@ JSON Format:
             if (Notification.permission === 'granted') {
               try {
                 const timeRangeStr = task.endTime ? ` (${formatTime12(task.startTime)} - ${formatTime12(task.endTime)})` : ` starting at ${formatTime12(task.startTime)}`;
-                new Notification("AutoAnki: Study Shift! ΓÅ▒∩╕Å", {
+                new Notification("AutoAnki: Study Shift! ⏱️", {
                   body: `Time to start revision for: "${task.topic}"${timeRangeStr}.`,
                   tag: task.id,
                   requireInteraction: true
@@ -15539,7 +15539,7 @@ JSON Format:
             if (triggerTime > now.getTime() && triggerTime - now.getTime() < 7 * 24 * 60 * 60 * 1000) {
               const timeRangeStr = task.endTime ? ` (${formatTime12(task.startTime)} - ${formatTime12(task.endTime)})` : ` starting at ${formatTime12(task.startTime)}`;
 
-              registration.showNotification("AutoAnki: Study Shift! ΓÅ▒∩╕Å", {
+              registration.showNotification("AutoAnki: Study Shift! ⏱️", {
                 body: `Time to start revision for: "${task.topic}"${timeRangeStr}.`,
                 tag: `study-alert-${task.id}`,
                 requireInteraction: true,
@@ -17311,7 +17311,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       setPdfDialog({
         isOpen: true,
         file: file,
-        blobUrl: blobUrl,   // stored for extraction ΓÇö no re-reads of the file needed
+        blobUrl: blobUrl,   // stored for extraction — no re-reads of the file needed
         numPages: pdf.numPages,
         mappings: [{ id: generateId(), range: `1-${pdf.numPages}`, deck: hierarchy || (deckPaths[0] || 'General') }],
         rotations: {},
@@ -17358,11 +17358,11 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
 
     // Renders this many pages per PDF.js document instance before destroying it.
     // After BATCH_SIZE pages, the old doc is destroyed and a new one opened from the
-    // blob URL ΓÇö this is the only reliable way to flush the PDF.js worker decoded-bitmap cache.
+    // blob URL — this is the only reliable way to flush the PDF.js worker decoded-bitmap cache.
     const BATCH_SIZE = 5;
 
     const sourceFile = pdfDialog.file;
-    const blobUrl = pdfDialog.blobUrl;  // already created in handlePdfFile ΓÇö zero re-read cost
+    const blobUrl = pdfDialog.blobUrl;  // already created in handlePdfFile — zero re-read cost
     const numPages = loadedPdfDoc.numPages;
     const rotations = pdfDialog.rotations || {};
     const totalPagesToExtract = pdfDialog.mappings.reduce(
@@ -17381,7 +17381,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       total: totalPagesToExtract
     });
 
-    // Single reusable off-screen canvas ΓÇö allocated once, reused for every page
+    // Single reusable off-screen canvas — allocated once, reused for every page
     const reusableCanvas = document.createElement('canvas');
     const reusableContext = reusableCanvas.getContext('2d', { alpha: false });
 
@@ -17398,7 +17398,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
         for (let batchStart = 0; batchStart < pageNumbers.length; batchStart += BATCH_SIZE) {
           const batch = pageNumbers.slice(batchStart, batchStart + BATCH_SIZE);
 
-          // Open fresh doc from the blob URL ΓÇö PDF.js streams from OS file cache,
+          // Open fresh doc from the blob URL — PDF.js streams from OS file cache,
           // so the full file is NEVER copied into JavaScript heap memory.
           const loadingTask = pdfjsLib.getDocument({ url: blobUrl });
           const batchPdf = await loadingTask.promise;
@@ -17416,7 +17416,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
               const page = await batchPdf.getPage(pageNum);
               const pageRotation = rotations[pageNum] || 0;
 
-              // Native PDF resolution ΓÇö no artificial downscaling cap
+              // Native PDF resolution — no artificial downscaling cap
               const scale = 2.0; // 300 DPI high resolution
               const viewport = page.getViewport({ scale, rotation: pageRotation });
 
@@ -17428,7 +17428,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
 
               await page.render({ canvasContext: reusableContext, viewport }).promise;
 
-              // High-fidelity export ΓÇö zero visual loss
+              // High-fidelity export — zero visual loss
               const base64 = reusableCanvas.toDataURL('image/jpeg', 0.95);
 
               // Immediately release PDF.js worker memory & reset canvas dimensions to 0 to free GPU/RAM
@@ -17440,7 +17440,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
               const itemId = generateId();
               if (firstItemId === null) firstItemId = itemId;
 
-              // Push straight into queue state one item at a time ΓÇö no local array accumulation
+              // Push straight into queue state one item at a time — no local array accumulation
               setQueue(prev => [...prev, {
                 id: itemId,
                 fileName: `${sourceFile.name} (Page ${pageNum})`,
@@ -17516,7 +17516,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     // Track how long the last Gemini call spent paused on rate-limit back-off so we
     // can subtract that time from the inter-item gap and avoid double-waiting.
     let lastPausedMs = 0;
-    // Free tier = 15 RPM ΓåÆ safe floor is 4 seconds between requests.
+    // Free tier = 15 RPM → safe floor is 4 seconds between requests.
     const BASE_INTER_ITEM_DELAY_MS = 4000;
 
     // onProgress callback passed into callGeminiWithRetry so rate-limit waits
@@ -17540,7 +17540,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
         if (remainingDelay > 0) {
           setOperationProgress(prev => ({
             ...prev,
-            message: `Next page in ${Math.round(remainingDelay / 1000)}s ΓÇö respecting free-tier rate limit...`
+            message: `Next page in ${Math.round(remainingDelay / 1000)}s — respecting free-tier rate limit...`
           }));
           await new Promise(res => setTimeout(res, remainingDelay));
         }
@@ -17562,7 +17562,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
 
         const result = await callGeminiWithRetry(
           geminiApiKey, prompt, item.base64, item.mimeType,
-          5,               // retries ΓÇö 5 attempts across the fallback model chain
+          5,               // retries — 5 attempts across the fallback model chain
           onGeminiProgress // surfaces rate-limit waits in the progress modal
         );
 
@@ -17614,14 +17614,14 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
           try {
             await saveQueueItemToCloud(item.id, true, updatedItem);
           } catch (saveErr) {
-            // Autosave failure is non-fatal ΓÇö card stays in queue for manual save
+            // Autosave failure is non-fatal — card stays in queue for manual save
             console.warn(`[Autosave] Failed for ${item.fileName}:`, saveErr.message);
           }
         }
       } catch (error) {
         errorCount++;
         console.error(`[processQueue] Failed item ${itemIdx + 1}/${pendingItems.length} (${item.fileName}):`, error);
-        // Mark as error in UI ΓÇö do NOT block with alert() in a batch loop
+        // Mark as error in UI — do NOT block with alert() in a batch loop
         setQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: 'error', errorMessage: error.message } : q));
       }
       processed++;
@@ -17638,10 +17638,10 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     const successCount = processed - errorCount;
     if (pendingItems.length > 1) {
       if (errorCount > 0) {
-        alert(`Processed ${successCount} of ${pendingItems.length} pages successfully.\n${errorCount} page(s) failed ΓÇö see the ΓÜá error badge on failed items. You can retry them individually.`);
+        alert(`Processed ${successCount} of ${pendingItems.length} pages successfully.\n${errorCount} page(s) failed — see the ⚠️ error badge on failed items. You can retry them individually.`);
       }
     } else if (errorCount > 0) {
-      // Single item error ΓÇö still show alert so user knows
+      // Single item error — still show alert so user knows
       const failedItem = pendingItems[0];
       const errMsg = queue.find(q => q.id === failedItem?.id)?.errorMessage || 'Unknown error';
       alert(`Failed to process ${failedItem?.fileName || 'page'}: ${errMsg}`);
@@ -20027,7 +20027,7 @@ Return your response strictly as a JSON object matching this schema:
               </div>
             </div>
             <div className={`p-2 rounded-xl text-[10px] font-bold ${isStreakSafe ? 'bg-emerald-900/50 text-emerald-300' : 'bg-red-900/50 text-red-300'}`}>
-              {isStreakSafe ? 'Γ£ô Streak secured today!' : 'ΓÜá Log study to save your streak'}
+              {isStreakSafe ? '✓ Streak secured today!' : '⚠️ Log study to save your streak'}
             </div>
           </div>
         );
@@ -20346,7 +20346,7 @@ Return your response strictly as a JSON object matching this schema:
           return (
             <div className="w-full h-full flex flex-col p-3.5 text-left select-none overflow-hidden text-white">
               <div className="flex justify-between items-center mb-1.5 shrink-0">
-                <span className="text-[9px] font-black uppercase text-blue-400 tracking-wider">≡ƒÄ» Subject Tracker</span>
+                <span className="text-[9px] font-black uppercase text-blue-400 tracking-wider">🎯 Subject Tracker</span>
               </div>
 
               <select
@@ -20545,7 +20545,7 @@ Return your response strictly as a JSON object matching this schema:
           return (
             <div className="w-full h-full flex flex-col p-3.5 text-left select-none overflow-hidden text-white">
               <div className="flex justify-between items-center mb-1.5 shrink-0">
-                <span className="text-[9px] font-black uppercase text-amber-400 tracking-wider">ΓÜí PYT Tracker</span>
+                <span className="text-[9px] font-black uppercase text-amber-400 tracking-wider">⚡ PYT Tracker</span>
               </div>
 
               <select
@@ -21430,7 +21430,7 @@ Return your response strictly as a JSON object matching this schema:
                 </span>
               </div>
               <div className="text-[10px] font-black uppercase opacity-65 tracking-widest" style={textShadowStyle}>
-                {isRunning ? 'ΓÅ▒∩╕Å Active Focus' : isPaused ? 'ΓÅ╕∩╕Å Paused' : 'Ready'}
+                {isRunning ? '⏱️ Active Focus' : isPaused ? '⏸️ Paused' : 'Ready'}
               </div>
               {activeType === 'stopwatch' && (
                 <div className="text-[10px] font-black uppercase text-blue-300 mt-2.5 pt-2 border-t border-white/10 w-full animate-pulse" style={textShadowStyle}>
@@ -21489,7 +21489,7 @@ Return your response strictly as a JSON object matching this schema:
                 </span>
               </div>
               <div className="text-[10px] font-black uppercase opacity-65 tracking-widest animate-pulse" style={textShadowStyle}>
-                ≡ƒöÑ Daily Quota Progress
+                🔥 Daily Quota Progress
               </div>
             </div>
           );
@@ -21529,11 +21529,11 @@ Return your response strictly as a JSON object matching this schema:
               <div className="flex items-center justify-around bg-black/20 p-4 rounded-2xl border border-white/5">
                 <div className="text-center">
                   <span className="text-[8px] opacity-65 font-black uppercase tracking-widest block" style={textShadowStyle}>Current Streak</span>
-                  <span className="text-2xl font-black text-amber-400" style={textShadowStyle}>≡ƒöÑ {streakStats.currentStreak} {streakStats.currentStreak === 1 ? 'Day' : 'Days'}</span>
+                  <span className="text-2xl font-black text-amber-400" style={textShadowStyle}>🔥 {streakStats.currentStreak} {streakStats.currentStreak === 1 ? 'Day' : 'Days'}</span>
                 </div>
                 <div className="text-center">
                   <span className="text-[8px] opacity-65 font-black uppercase tracking-widest block" style={textShadowStyle}>Longest Streak</span>
-                  <span className="text-xl font-black text-white" style={textShadowStyle}>≡ƒÅå {streakStats.longestStreak}</span>
+                  <span className="text-xl font-black text-white" style={textShadowStyle}>🏆 {streakStats.longestStreak}</span>
                 </div>
               </div>
             </div>
@@ -21582,7 +21582,7 @@ Return your response strictly as a JSON object matching this schema:
                 <div className="flex items-center justify-between text-xs font-bold">
                   <span style={textShadowStyle}>Generator status</span>
                   <span className={isProcessing ? 'text-blue-400 font-black animate-pulse' : 'text-emerald-400'} style={textShadowStyle}>
-                    {isProcessing ? 'ΓÜí Generating...' : '≡ƒƒó Ready'}
+                    {isProcessing ? '⚡ Generating...' : '🟢 Ready'}
                   </span>
                 </div>
                 {isProcessing && operationProgress.show && (
@@ -21676,7 +21676,7 @@ Return your response strictly as a JSON object matching this schema:
               <div className="bg-black/20 p-3 rounded-xl border border-white/5 text-center space-y-2">
                 <span className="text-[9px] font-black text-gray-455 uppercase tracking-widest block" style={textShadowStyle}>Sleep vs Focus</span>
                 <p className="text-xs font-bold leading-normal text-white" style={textShadowStyle}>
-                  ≡ƒÆí Peak learning performance correlated with rest efficiency ΓëÑ 85%.
+                  💡 Peak learning performance correlated with rest efficiency ≥ 85%.
                 </p>
               </div>
             </div>
@@ -21744,7 +21744,7 @@ Return your response strictly as a JSON object matching this schema:
 
                     {showChange && changeVal !== 0 && (
                       <span className={`text-[10px] font-extrabold flex items-center gap-1 ${changeVal > 0 ? 'text-emerald-400' : 'text-rose-400'}`} style={textShadowStyle}>
-                        {changeVal > 0 ? 'Γû▓' : 'Γû╝'} {Math.abs(changeVal).toFixed(1)}%
+                        {changeVal > 0 ? '▲' : '▼'} {Math.abs(changeVal).toFixed(1)}%
                       </span>
                     )}
                   </div>
@@ -21980,7 +21980,7 @@ Return your response strictly as a JSON object matching this schema:
                         {loginViewMode === 'login' ? (
                           <>
                             <div className="text-[10px] font-black uppercase text-blue-300/50 tracking-widest text-center mb-2">
-                              ΓÇö Or Sign In with Email ΓÇö
+                              — Or Sign In with Email —
                             </div>
                             <form onSubmit={handleEmailSignIn} className="space-y-4">
                               <div>
@@ -22021,7 +22021,7 @@ Return your response strictly as a JSON object matching this schema:
                                     setLoginPassword(e.target.value);
                                     if (emailSignInError) setEmailSignInError(null);
                                   }}
-                                  placeholder="ΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇó"
+                                  placeholder="••••••••"
                                   className="w-full bg-[#0d1e36]/60 border border-white/10 focus:border-blue-400 focus:bg-[#0d1e36]/90 rounded-2xl px-4 py-3.5 text-xs text-white placeholder-white/25 outline-none transition-all duration-200 focus:ring-4 focus:ring-blue-500/10 font-medium"
                                 />
                               </div>
@@ -22052,7 +22052,7 @@ Return your response strictly as a JSON object matching this schema:
                         ) : (
                           <>
                             <div className="text-[10px] font-black uppercase text-blue-300/50 tracking-widest text-center mb-2">
-                              ΓÇö Reset Password ΓÇö
+                              — Reset Password —
                             </div>
                             <form onSubmit={handleSendPasswordReset} className="space-y-4">
                               <p className="text-xs text-blue-200/70 leading-relaxed pl-1">
@@ -22484,7 +22484,7 @@ Return your response strictly as a JSON object matching this schema:
                             <div className="flex flex-col text-left">
                               <span className={`text-[11px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>Image Storage Mode</span>
                               <span className={`text-[9px] font-bold ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                                {imageStorageMode === 'local' ? '≡ƒôü Local DB (Offline)' : 'Γÿü∩╕Å ImgBB Cloud'}
+                                {imageStorageMode === 'local' ? '📁 Local DB (Offline)' : '☁️ ImgBB Cloud'}
                               </span>
                             </div>
                             <div className="neu-radio-group">
@@ -22503,7 +22503,7 @@ Return your response strictly as a JSON object matching this schema:
                                 />
                                 <span className={settingsThemeMode === 'dark' ? 'neu-radio-span-dark' : 'neu-radio-span-light'}>
                                   <span className="neu-radio-led"></span>
-                                  ≡ƒôü Local
+                                  📁 Local
                                 </span>
                               </label>
                               <label className="neu-radio-btn">
@@ -22521,7 +22521,7 @@ Return your response strictly as a JSON object matching this schema:
                                 />
                                 <span className={settingsThemeMode === 'dark' ? 'neu-radio-span-dark' : 'neu-radio-span-light'}>
                                   <span className="neu-radio-led"></span>
-                                  Γÿü∩╕Å Cloud
+                                  ☁️ Cloud
                                 </span>
                               </label>
                             </div>
@@ -22947,14 +22947,14 @@ Return your response strictly as a JSON object matching this schema:
                           transition={{ duration: 0.3 }}
                           className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-white border-gray-800/80' : 'neu-card-light text-gray-900 border-white/80'} rounded-3xl p-5 shadow-xl min-h-[300px] space-y-4`}
                         >
-                          {/* Search bar ΓÇö same searchQuery/searchResults as desktop */}
+                          {/* Search bar — same searchQuery/searchResults as desktop */}
                           <div className={`relative flex items-center rounded-2xl ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
                             <Search className="w-4 h-4 absolute left-3.5 text-gray-400" />
                             <input
                               type="text"
                               value={searchQuery}
                               onChange={e => setSearchQuery(e.target.value)}
-                              placeholder="Search cards across libraryΓÇª"
+                              placeholder="Search cards across library…"
                               className={`w-full pl-10 pr-9 py-3 bg-transparent border-none text-sm outline-none font-medium ${settingsThemeMode === 'dark' ? 'text-white placeholder-gray-500' : 'text-gray-800 placeholder-gray-400'}`}
                             />
                             {searchQuery && (
@@ -23077,7 +23077,7 @@ Return your response strictly as a JSON object matching this schema:
                             transition={{ duration: 0.3 }}
                             className="flex flex-col gap-3 pb-28"
                           >
-                            {/* ΓöÇΓöÇ Header ΓöÇΓöÇ */}
+                            {/* ── Header ── */}
                             {mobileSelectionMode ? (
                               /* Selection mode header */
                               <div className={`flex items-center justify-between px-1 py-2 rounded-2xl ${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'}`}>
@@ -23117,14 +23117,14 @@ Return your response strictly as a JSON object matching this schema:
                               </div>
                             )}
 
-                            {/* ΓöÇΓöÇ Long-press hint (first time) ΓöÇΓöÇ */}
+                            {/* ── Long-press hint (first time) ── */}
                             {!mobileSelectionMode && folderPages.length > 0 && (
                               <p className={`text-[9px] font-bold text-center uppercase tracking-widest opacity-40 -mt-1 ${settingsThemeMode === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
                                 Long press a page to select
                               </p>
                             )}
 
-                            {/* ΓöÇΓöÇ Pages Grid ΓöÇΓöÇ */}
+                            {/* ── Pages Grid ── */}
                             <div className="grid grid-cols-2 gap-3">
                               <AnimatePresence>
                                 {folderPages.map(page => {
@@ -23199,7 +23199,7 @@ Return your response strictly as a JSON object matching this schema:
                               </div>
                             )}
 
-                            {/* ΓöÇΓöÇ Fixed Bottom Action Bar (appears when items selected) ΓöÇΓöÇ */}
+                            {/* ── Fixed Bottom Action Bar (appears when items selected) ── */}
                             <AnimatePresence>
                               {mobileSelectionMode && mobileSelectedCount > 0 && (
                                 <motion.div
@@ -24447,9 +24447,9 @@ Return your response strictly as a JSON object matching this schema:
                                 <h4 className="text-xs font-black text-gray-800">Today's Target Progress</h4>
                                 <p className="text-[9px] text-gray-400 mt-1 leading-relaxed">
                                   Goal set for <span className="text-amber-600 font-extrabold">{selectedStreakTag}</span> archetype:
-                                  <br />ΓÇó {activeGoal.hours} hrs Study ({Math.round(hoursProgress * 100)}%)
-                                  <br />ΓÇó {activeGoal.questions} Qbank Qs ({Math.round(questionsProgress * 100)}%)
-                                  <br />ΓÇó {activeGoal.cards} Anki Cards ({Math.round(cardsProgress * 100)}%)
+                                  <br />• {activeGoal.hours} hrs Study ({Math.round(hoursProgress * 100)}%)
+                                  <br />• {activeGoal.questions} Qbank Qs ({Math.round(questionsProgress * 100)}%)
+                                  <br />• {activeGoal.cards} Anki Cards ({Math.round(cardsProgress * 100)}%)
                                 </p>
                               </div>
                             </div>
@@ -24981,7 +24981,7 @@ Return your response strictly as a JSON object matching this schema:
                           <div className={`p-3.5 rounded-2xl flex items-center gap-3 ${settingsThemeMode === 'dark' ? 'bg-emerald-900/20 border border-emerald-700/40' : 'bg-green-50 border border-green-200/60'}`}>
                             <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
                             <div>
-                              <span className={`text-[10px] font-black block ${settingsThemeMode === 'dark' ? 'text-emerald-300' : 'text-green-900'}`}>Γ£ô Bundle Clean</span>
+                              <span className={`text-[10px] font-black block ${settingsThemeMode === 'dark' ? 'text-emerald-300' : 'text-green-900'}`}>✓ Bundle Clean</span>
                               <span className={`text-[8px] font-bold block mt-0.5 ${settingsThemeMode === 'dark' ? 'text-emerald-400' : 'text-green-600'}`}>No duplicate card concepts detected!</span>
                             </div>
                           </div>
@@ -25498,7 +25498,7 @@ Return your response strictly as a JSON object matching this schema:
                           <div className="flex flex-col gap-2 pt-1">
                             {syncedTextbooks.length > 0 && (
                               <div className="space-y-1.5">
-                                <span className={`text-[9px] font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>≡ƒôÜ Linked Textbooks</span>
+                                <span className={`text-[9px] font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>📚 Linked Textbooks</span>
                                 {syncedTextbooks.map((book, idx) => (
                                   <div key={idx} className={`flex items-center gap-1.5 px-2.5 py-2 rounded-xl border ${settingsThemeMode === 'dark' ? 'neu-item-dark text-slate-100' : 'neu-item-light text-slate-800'}`}>
                                     <div className="flex-1 flex items-center gap-1.5 min-w-0">
@@ -25802,7 +25802,7 @@ Return your response strictly as a JSON object matching this schema:
                                     </label>
                                     {task.startTime && (
                                       <span className="text-[10px] text-gray-500 font-bold ml-7.5 flex items-center gap-1 mt-0.5 font-mono">
-                                        ΓÅ▒∩╕Å {formatTime12(task.startTime)} {task.endTime ? ` - ${formatTime12(task.endTime)}` : ''}
+                                        ⏱️ {formatTime12(task.startTime)} {task.endTime ? ` - ${formatTime12(task.endTime)}` : ''}
                                       </span>
                                     )}
                                   </div>
@@ -26180,12 +26180,12 @@ Return your response strictly as a JSON object matching this schema:
                                             key={dIdx}
                                             className="bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-lg px-2 py-0.5 text-[9px] font-black flex items-center gap-1.5"
                                           >
-                                            ≡ƒôà {formatAppDate(dateVal)}
+                                            📅 {formatAppDate(dateVal)}
                                             <button
                                               onClick={() => handleDeleteTrackerStudyDate(selectedTrackerSubject, topicItem.name, dIdx)}
                                               className="text-emerald-450 hover:text-red-550 transition font-bold"
                                             >
-                                              Γ£ò
+                                              ✖
                                             </button>
                                           </span>
                                         ))}
@@ -27138,7 +27138,7 @@ Return your response strictly as a JSON object matching this schema:
                                     <div className="flex flex-col text-left">
                                       <span className={`text-[10px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>Image Storage Mode</span>
                                       <span className={`text-[9px] font-bold ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                                        {imageStorageMode === 'local' ? '≡ƒôü Local DB (Offline & Instant)' : 'Γÿü∩╕Å ImgBB Cloud Upload'}
+                                        {imageStorageMode === 'local' ? '📁 Local DB (Offline & Instant)' : '☁️ ImgBB Cloud Upload'}
                                       </span>
                                     </div>
                                     <div className="neu-radio-group">
@@ -27156,7 +27156,7 @@ Return your response strictly as a JSON object matching this schema:
                                         />
                                         <span className={settingsThemeMode === 'dark' ? 'neu-radio-span-dark' : 'neu-radio-span-light'}>
                                           <span className="neu-radio-led"></span>
-                                          ≡ƒôü Local
+                                          📁 Local
                                         </span>
                                       </label>
                                       <label className="neu-radio-btn">
@@ -27173,7 +27173,7 @@ Return your response strictly as a JSON object matching this schema:
                                         />
                                         <span className={settingsThemeMode === 'dark' ? 'neu-radio-span-dark' : 'neu-radio-span-light'}>
                                           <span className="neu-radio-led"></span>
-                                          Γÿü∩╕Å Cloud
+                                          ☁️ Cloud
                                         </span>
                                       </label>
                                     </div>
@@ -28132,7 +28132,7 @@ Return your response strictly as a JSON object matching this schema:
                                                   }}
                                                   className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black uppercase text-[10px] tracking-wider rounded-xl shadow-lg shadow-blue-500/20 flex items-center gap-1.5 transition"
                                                 >
-                                                  <Sparkles className="w-3.5 h-3.5" /> Process Selected ({selectedInboxPageIds.length}) ≡ƒºá
+                                                  <Sparkles className="w-3.5 h-3.5" /> Process Selected ({selectedInboxPageIds.length}) 🧠
                                                 </motion.button>
 
                                                 <motion.button
@@ -28236,9 +28236,9 @@ Return your response strictly as a JSON object matching this schema:
                                                           className={`w-full p-2.5 rounded-xl outline-none text-xs font-bold cursor-pointer ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-gray-700'
                                                             }`}
                                                         >
-                                                          <option value="Mobile Scans Inbox">≡ƒôÑ Scanner Inbox (Keep in Inbox)</option>
+                                                          <option value="Mobile Scans Inbox">📥 Scanner Inbox (Keep in Inbox)</option>
                                                           {effectiveDeckPaths.map(path => (
-                                                            <option key={path} value={path}>{path.replace(/::/g, ' Γ₧ö ')}</option>
+                                                            <option key={path} value={path}>{path.replace(/::/g, ' ➔ ')}</option>
                                                           ))}
                                                         </select>
                                                       </div>
@@ -28288,7 +28288,7 @@ Return your response strictly as a JSON object matching this schema:
                                                         }}
                                                         className="flex-grow py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black uppercase text-[9px] tracking-wider rounded-xl shadow-lg shadow-blue-500/20 flex items-center justify-center gap-1.5 transition active:scale-95"
                                                       >
-                                                        <Sparkles className="w-3.5 h-3.5" /> Process with Gemini AI ≡ƒºá
+                                                        <Sparkles className="w-3.5 h-3.5" /> Process with Gemini AI 🧠
                                                       </button>
                                                     </div>
                                                   </div>
@@ -28874,7 +28874,7 @@ Return your response strictly as a JSON object matching this schema:
                                         </div>
 
                                         <p className="text-[10px] text-gray-400 font-bold mt-4">
-                                          {totalProgressPercent >= 100 ? "≡ƒÄë Congratulations! Daily quota unlocked." : "Study, solve, and log daily stats to fill the gauge!"}
+                                          {totalProgressPercent >= 100 ? "🎉 Congratulations! Daily quota unlocked." : "Study, solve, and log daily stats to fill the gauge!"}
                                         </p>
                                       </>
                                     );
@@ -29492,7 +29492,7 @@ Return your response strictly as a JSON object matching this schema:
                                             onClick={() => setLoggerGtShowSubjects(!loggerGtShowSubjects)}
                                             className="w-full py-2.5 px-4 bg-orange-50/80 hover:bg-orange-100 text-orange-600 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-between transition"
                                           >
-                                            <span>{loggerGtShowSubjects ? "Γû▓ Hide" : "Γû╝ Enter"} Subject-wise Breakdown (19 Subjects)</span>
+                                            <span>{loggerGtShowSubjects ? "▲ Hide" : "▼ Enter"} Subject-wise Breakdown (19 Subjects)</span>
                                             <span className="text-[8px] bg-orange-500 text-white px-2 py-0.5 rounded-full font-extrabold uppercase">Optional</span>
                                           </button>
                                         </div>
@@ -29878,7 +29878,7 @@ Return your response strictly as a JSON object matching this schema:
                                       if (!isPristine && (correctSum > 0 || incorrectSum > 0 || totalSum > 0)) {
                                         return (
                                           <div className="p-3 bg-rose-50 border border-rose-100 rounded-2xl text-[10px] text-rose-700 space-y-1 text-left leading-normal animate-pulse">
-                                            <span className="font-black uppercase tracking-wider block">ΓÜá∩╕Å Math Consistency Warning</span>
+                                            <span className="font-black uppercase tracking-wider block">⚠️ Math Consistency Warning</span>
                                             <div className="grid grid-cols-3 gap-2 text-[9px] font-bold font-mono">
                                               <span className={isCorrectMatch ? 'text-emerald-600' : 'text-rose-600'}>
                                                 Correct: {correctSum} vs {targetCorrect}
@@ -29898,7 +29898,7 @@ Return your response strictly as a JSON object matching this schema:
                                       } else if (isPristine && correctSum > 0) {
                                         return (
                                           <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-2xl text-[9px] text-emerald-700 font-bold flex items-center gap-1">
-                                            <span>Γ£à Subject counts sum up to exactly 200 questions with perfect scoring alignment!</span>
+                                            <span>✅ Subject counts sum up to exactly 200 questions with perfect scoring alignment!</span>
                                           </div>
                                         );
                                       }
@@ -30569,9 +30569,9 @@ Return your response strictly as a JSON object matching this schema:
                                                   <div className="font-extrabold text-[10px] text-orange-400 mb-0.5">
                                                     {formatAppDate(targetDate)}
                                                   </div>
-                                                  <div>ΓÅ▒∩╕Å Hours: {formatHoursToHrsMinsShort(hours)}</div>
-                                                  <div>≡ƒô¥ Questions: {qCount}</div>
-                                                  <div>≡ƒôç Cards: {cardCount}</div>
+                                                  <div>⏱️ Hours: {formatHoursToHrsMinsShort(hours)}</div>
+                                                  <div>📝 Questions: {qCount}</div>
+                                                  <div>🎴 Cards: {cardCount}</div>
                                                 </div>
                                               )}
                                             </div>
@@ -31557,7 +31557,7 @@ Return your response strictly as a JSON object matching this schema:
                                     Attempt {chartPoints[0]?.name} ({formatChartDate(chartPoints[0]?.date)})
                                   </span>
                                   <span className="text-orange-500 font-extrabold text-center px-2 shrink-0">
-                                    ΓùÅ Tap nodes to inspect active test dashboard below
+                                    ● Tap nodes to inspect active test dashboard below
                                   </span>
                                   <span className="truncate max-w-[40%] text-right">
                                     Attempt {chartPoints[chartPoints.length - 1]?.name} ({formatChartDate(chartPoints[chartPoints.length - 1]?.date)})
@@ -31769,7 +31769,7 @@ Return your response strictly as a JSON object matching this schema:
                               <div className="bg-gray-50/50 border border-gray-150 rounded-2xl p-5 text-left space-y-4 shadow-inner">
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-200 pb-3">
                                   <div className="flex items-center gap-2">
-                                    <span className="text-[14px]">≡ƒ⌐║</span>
+                                    <span className="text-[14px]">🩺</span>
                                     <h4 className="text-xs font-black text-gray-800 uppercase tracking-wider font-mono">Realist All India Counselling Diagnostics</h4>
                                   </div>
                                   <div className={`px-3 py-1 rounded-full border text-[9px] font-black uppercase tracking-wider ${tierClass}`}>
@@ -31830,7 +31830,7 @@ Return your response strictly as a JSON object matching this schema:
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                   <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-3">
                                     <h5 className="text-[10px] font-black uppercase text-emerald-600 tracking-wider flex items-center gap-1 font-mono">
-                                      <span>≡ƒÅ½</span> Cutoff-based Match (Last Counseling)
+                                      <span>🏥</span> Cutoff-based Match (Last Counseling)
                                     </h5>
                                     <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1 scrollbar-thin">
                                       {matchedColleges.map((col, idx) => (
@@ -31844,7 +31844,7 @@ Return your response strictly as a JSON object matching this schema:
 
                                   <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-2 text-left">
                                     <h5 className="text-[10px] font-black uppercase text-blue-600 tracking-wider flex items-center gap-1 font-mono">
-                                      <span>≡ƒôê</span> Counseling Trends & Predictions
+                                      <span>📈</span> Counseling Trends & Predictions
                                     </h5>
                                     <p className="text-[10.5px] text-gray-600 font-semibold leading-relaxed text-left">
                                       {trendPredictionText}
@@ -31860,7 +31860,7 @@ Return your response strictly as a JSON object matching this schema:
 
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-indigo-100 pb-3">
                                   <div className="flex items-center gap-2">
-                                    <span className="text-[14px]">Γ£¿</span>
+                                    <span className="text-[14px]">✨</span>
                                     <h4 className="text-xs font-black text-indigo-950 uppercase tracking-wider font-mono">Personal AI Counselling Mentor</h4>
                                   </div>
                                   <div className={`px-3 py-1 rounded-full border text-[9px] font-black uppercase tracking-wider ${rankDeficit > 0 ? 'text-amber-600 bg-amber-50 border-amber-200' : 'text-emerald-600 bg-emerald-50 border-emerald-200'}`}>
@@ -31872,7 +31872,7 @@ Return your response strictly as a JSON object matching this schema:
                                 <div className="bg-indigo-50/40 border border-indigo-100/50 rounded-xl p-3 space-y-3">
                                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                                     <div className="flex items-center gap-2">
-                                      <span className="text-xs">≡ƒÅ½</span>
+                                      <span className="text-xs">🏥</span>
                                       <span className="text-[10px] font-black text-indigo-950 uppercase tracking-wider font-mono">Database Filters</span>
                                     </div>
                                     <label className="inline-flex items-center gap-2 cursor-pointer group">
@@ -32007,7 +32007,7 @@ Return your response strictly as a JSON object matching this schema:
                                   {/* Weakest subjects action list */}
                                   <div className="bg-white/80 p-4 rounded-xl border border-indigo-100 shadow-sm space-y-3.5 text-left">
                                     <h5 className="text-[9px] font-black uppercase text-indigo-700 tracking-wider font-mono flex items-center gap-1">
-                                      <span>≡ƒ⌐╣</span> weak subject diagnostic review
+                                      <span>🩺</span> weak subject diagnostic review
                                     </h5>
                                     <div className="space-y-3.5">
                                       {topThreeWeak.map((sub, idx) => (
@@ -32027,7 +32027,7 @@ Return your response strictly as a JSON object matching this schema:
                                   {/* Custom checkboxes action plan */}
                                   <div className="bg-white/80 p-4 rounded-xl border border-indigo-100 shadow-sm space-y-3 text-left">
                                     <h5 className="text-[9px] font-black uppercase text-indigo-700 tracking-wider font-mono flex items-center gap-1">
-                                      <span>≡ƒÄ»</span> Recommended Prep Checklist
+                                      <span>🎯</span> Recommended Prep Checklist
                                     </h5>
                                     <div className="space-y-3">
                                       {aiMentorChecklist.map((task, idx) => {
@@ -32365,7 +32365,7 @@ Return your response strictly as a JSON object matching this schema:
                                                   : 'bg-white border border-gray-200 text-gray-600'
                                                   }`}
                                               >
-                                                {t.completed ? 'Γ£ô ' : 'ΓÇó '}{t.topic}
+                                                {t.completed ? '✓ ' : '• '}{t.topic}
                                               </span>
                                             ))}
                                           </div>
@@ -32430,7 +32430,7 @@ Return your response strictly as a JSON object matching this schema:
                                 <span className="text-3xl font-black text-blue-500">{exportedInExport}</span>
                                 <span className="text-xs font-bold text-blue-400">completed</span>
                               </div>
-                              <p className="text-[10px] text-emerald-500 font-bold mt-2">≡ƒôè {totalInExport > 0 ? Math.round((exportedInExport / totalInExport) * 100) : 0}% Sync completeness</p>
+                              <p className="text-[10px] text-emerald-500 font-bold mt-2">📊 {totalInExport > 0 ? Math.round((exportedInExport / totalInExport) * 100) : 0}% Sync completeness</p>
                             </div>
 
                             <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-6 rounded-3xl flex flex-col justify-between`}>
@@ -32542,7 +32542,7 @@ Return your response strictly as a JSON object matching this schema:
                                   <div className={`p-4 rounded-2xl flex items-center gap-3 ${settingsThemeMode === 'dark' ? 'bg-emerald-900/20 border border-emerald-700/40' : 'bg-green-50 border border-green-200/60'}`}>
                                     <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
                                     <div>
-                                      <span className={`text-xs font-black block ${settingsThemeMode === 'dark' ? 'text-emerald-300' : 'text-green-900'}`}>Γ£ô Bundle Clean</span>
+                                      <span className={`text-xs font-black block ${settingsThemeMode === 'dark' ? 'text-emerald-300' : 'text-green-900'}`}>✓ Bundle Clean</span>
                                       <span className={`text-[9px] font-bold block mt-0.5 ${settingsThemeMode === 'dark' ? 'text-emerald-400' : 'text-green-600'}`}>No duplicate card concepts detected in queue!</span>
                                     </div>
                                   </div>
@@ -33092,7 +33092,7 @@ Return your response strictly as a JSON object matching this schema:
                             <div className="flex flex-wrap items-center gap-3">
                               {syncedTextbooks.length > 0 && (
                                 <div className="flex flex-col gap-1.5 w-full">
-                                  <span className={`text-[9px] font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>≡ƒôÜ Linked Textbooks</span>
+                                  <span className={`text-[9px] font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>📚 Linked Textbooks</span>
                                   {syncedTextbooks.map((book, idx) => (
                                     <div key={idx} className={`flex items-center gap-2 px-3 py-2 rounded-xl border ${settingsThemeMode === 'dark' ? 'neu-item-dark text-slate-100' : 'neu-item-light text-slate-800'}`}>
                                       <div className="flex-1 flex items-center gap-2 min-w-0">
@@ -33557,12 +33557,12 @@ Return your response strictly as a JSON object matching this schema:
                                                     </span>
                                                     {task.notes && duration >= 60 && (
                                                       <span className="text-[9px] opacity-75 truncate block mt-0.5 leading-snug">
-                                                        ≡ƒô¥ {task.notes}
+                                                        📝 {task.notes}
                                                       </span>
                                                     )}
                                                   </div>
                                                   <span className="text-[8px] font-bold opacity-80 mt-0.5 font-mono select-none">
-                                                    ΓÅ▒∩╕Å {formatTime12(task.startTime)} - {formatTime12(task.endTime || formatMinutesToTime(startMin + 60))}
+                                                    ⏱️ {formatTime12(task.startTime)} - {formatTime12(task.endTime || formatMinutesToTime(startMin + 60))}
                                                   </span>
                                                 </div>
                                               </div>
@@ -33642,12 +33642,12 @@ Return your response strictly as a JSON object matching this schema:
                                             </label>
                                             {task.startTime && (
                                               <span className="text-[10px] text-gray-500 font-bold ml-8 flex items-center gap-1 mt-0.5 font-mono">
-                                                ΓÅ▒∩╕Å {formatTime12(task.startTime)} {task.endTime ? ` - ${formatTime12(task.endTime)}` : ''}
+                                                ⏱️ {formatTime12(task.startTime)} {task.endTime ? ` - ${formatTime12(task.endTime)}` : ''}
                                               </span>
                                             )}
                                             {task.notes && (
                                               <p className="text-[10px] text-gray-400 font-medium ml-8 mt-1 line-clamp-2 max-w-lg leading-relaxed whitespace-pre-wrap">
-                                                ≡ƒô¥ {task.notes}
+                                                📝 {task.notes}
                                               </p>
                                             )}
                                           </div>
@@ -34042,12 +34042,12 @@ Return your response strictly as a JSON object matching this schema:
                                                   key={dIdx}
                                                   className="bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-lg px-2 py-0.5 text-[9px] font-black flex items-center gap-1.5"
                                                 >
-                                                  ≡ƒôà {formatAppDate(dateVal)}
+                                                  📅 {formatAppDate(dateVal)}
                                                   <button
                                                     onClick={() => handleDeleteTrackerStudyDate(selectedTrackerSubject, topicItem.name, dIdx)}
                                                     className="text-emerald-450 hover:text-red-550 transition font-bold"
                                                   >
-                                                    Γ£ò
+                                                    ✖
                                                   </button>
                                                 </span>
                                               ))}
@@ -34245,10 +34245,10 @@ Return your response strictly as a JSON object matching this schema:
                                 onChange={(e) => setObsTheme(e.target.value)}
                                 className="w-full p-3 border border-gray-200 rounded-2xl text-xs font-bold bg-white text-gray-800 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 cursor-pointer"
                               >
-                                <option value="transparent">≡ƒæ╗ Transparent (Glass Panel - Recommended for streams)</option>
-                                <option value="dark">≡ƒîæ Sleek Dark Card</option>
-                                <option value="light">ΓÿÇ∩╕Å Clean Light Card</option>
-                                <option value="custom">≡ƒÄ¿ Fully Custom styling</option>
+                                <option value="transparent">👻 Transparent (Glass Panel - Recommended for streams)</option>
+                                <option value="dark">🌘 Sleek Dark Card</option>
+                                <option value="light">☀️ Clean Light Card</option>
+                                <option value="custom">🎨 Fully Custom styling</option>
                               </select>
                             </div>
 
@@ -34404,15 +34404,15 @@ Return your response strictly as a JSON object matching this schema:
                                         onChange={(e) => setObsTimerBackground(e.target.value)}
                                         className="w-full p-2 border border-gray-200 rounded-xl text-xs font-bold bg-white outline-none"
                                       >
-                                        <option value="sunset">≡ƒîà Sunset Glow</option>
-                                        <option value="cyberpunk">≡ƒîâ Cyberpunk</option>
-                                        <option value="aurora">≡ƒîî Teal Aurora</option>
-                                        <option value="midnight">≡ƒîî Midnight Blue</option>
-                                        <option value="shiftingCosmic">Γ£¿ cosmic Shimmer</option>
-                                        <option value="solarFlare">≡ƒöÑ Solar Flare</option>
-                                        <option value="glacierMint">Γ¥ä∩╕Å Glacier Mint</option>
-                                        <option value="cyberLime">≡ƒƒó Cyber Lime</option>
-                                        <option value="royalAmethyst">≡ƒÆÄ Royal Amethyst</option>
+                                        <option value="sunset">🌅 Sunset Glow</option>
+                                        <option value="cyberpunk">🌃 Cyberpunk</option>
+                                        <option value="aurora">🌌 Teal Aurora</option>
+                                        <option value="midnight">🌌 Midnight Blue</option>
+                                        <option value="shiftingCosmic">✨ cosmic Shimmer</option>
+                                        <option value="solarFlare">🔥 Solar Flare</option>
+                                        <option value="glacierMint">❄️ Glacier Mint</option>
+                                        <option value="cyberLime">🟢 Cyber Lime</option>
+                                        <option value="royalAmethyst">💎 Royal Amethyst</option>
                                       </select>
                                     </div>
                                   )}
@@ -34456,7 +34456,7 @@ Return your response strictly as a JSON object matching this schema:
                                     disabled={obsTokenLoading}
                                     className="text-[10px] text-red-600 hover:text-red-700 font-black uppercase tracking-wider hover:underline transition disabled:opacity-50 flex items-center gap-1"
                                   >
-                                    {obsTokenLoading ? 'Regenerating...' : '≡ƒöä Reset Stream Key'}
+                                    {obsTokenLoading ? 'Regenerating...' : '🔄 Reset Stream Key'}
                                   </button>
                                 </div>
                               )}
@@ -35272,7 +35272,7 @@ Return your response strictly as a JSON object matching this schema:
                     console.warn("[LocalDB] Failed to save verified cards to IndexedDB:", err);
                   }
 
-                  // 4. Trigger deck export with fully updated cards ΓÇö awaited so the modal
+                  // 4. Trigger deck export with fully updated cards — awaited so the modal
                   // stays open until the .apkg file download completes.
                   await exportDeck(exportFormat, verifiedCards);
                 }}
@@ -35624,7 +35624,7 @@ Return your response strictly as a JSON object matching this schema:
                     </span>
                     {operationProgress.lastError ? (
                       <span className="text-[9px] font-bold text-amber-400 bg-amber-500/20 border border-amber-500/30 px-2 py-0.5 rounded-full block truncate max-w-[140px] mt-0.5" title={operationProgress.lastError}>
-                        ΓÜá {operationProgress.lastError}
+                        ⚠️ {operationProgress.lastError}
                       </span>
                     ) : (
                       <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full inline-block mt-0.5 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400 border border-blue-500/30' : 'neu-pressed-light text-blue-700 border border-blue-200'}`}>
@@ -35889,7 +35889,7 @@ Return your response strictly as a JSON object matching this schema:
                             className={`text-[9px] font-bold px-2.5 py-1 rounded-xl flex items-center gap-1 transition cursor-pointer active:scale-95 ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-gray-200 hover:text-blue-400' : 'neu-btn-light text-gray-700 hover:text-blue-600'}`}
                           >
                             <RotateCcw className="w-3 h-3" />
-                            90┬░ Γå║
+                            90° ↷
                           </button>
                           <button
                             type="button"
@@ -35898,7 +35898,7 @@ Return your response strictly as a JSON object matching this schema:
                             className={`text-[9px] font-bold px-2.5 py-1 rounded-xl flex items-center gap-1 transition cursor-pointer active:scale-95 ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-gray-200 hover:text-blue-400' : 'neu-btn-light text-gray-700 hover:text-blue-600'}`}
                           >
                             <RotateCw className="w-3 h-3" />
-                            90┬░ Γå╗
+                            90° ↶
                           </button>
                           <span className={`text-[9px] font-bold px-2.5 py-1 rounded-xl ml-1 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400 border border-blue-500/30' : 'neu-pressed-light text-blue-700 border border-blue-200/60'}`}>
                             {(() => {
@@ -36753,7 +36753,7 @@ Return your response strictly as a JSON object matching this schema:
                             <div className="space-y-4">
                               <div className="flex justify-between items-center bg-blue-50/50 border border-blue-100 p-4 rounded-2xl">
                                 <div className="text-[10px] text-blue-800 font-bold">
-                                  Γ£¿ AI extracted {schedulerAiEditableEntries.length} schedule dates. Review and edit before injecting.
+                                  ✨ AI extracted {schedulerAiEditableEntries.length} schedule dates. Review and edit before injecting.
                                 </div>
                                 <button
                                   onClick={() => {
@@ -36963,9 +36963,9 @@ Return your response strictly as a JSON object matching this schema:
                         </label>
                         <div className="grid grid-cols-3 gap-2">
                           {[
-                            { id: 'preLunch', label: '≡ƒîà Pre Lunch' },
-                            { id: 'midDay', label: 'ΓÿÇ∩╕Å Midday' },
-                            { id: 'postDinner', label: '≡ƒîÖ Post Dinner' }
+                            { id: 'preLunch', label: '🌅 Pre Lunch' },
+                            { id: 'midDay', label: '☀️ Midday' },
+                            { id: 'postDinner', label: '🌙 Post Dinner' }
                           ].map(period => (
                             <button
                               key={period.id}
@@ -37009,10 +37009,10 @@ Return your response strictly as a JSON object matching this schema:
                           onChange={(e) => setCampLoggedType(e.target.value)}
                           className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-sky-500 cursor-pointer text-slate-700"
                         >
-                          <option value="notes">≡ƒôÜ Revision/Study from notes</option>
-                          <option value="qbank">Γ¥ô Qbank Practice</option>
-                          <option value="flashcards">≡ƒÄ┤ Flashcards Review</option>
-                          <option value="gt">≡ƒÅå Grand Test (GT)</option>
+                          <option value="notes">📚 Revision/Study from notes</option>
+                          <option value="qbank">✔ Qbank Practice</option>
+                          <option value="flashcards">🎴 Flashcards Review</option>
+                          <option value="gt">🏆 Grand Test (GT)</option>
                         </select>
                       </div>
 
@@ -37257,7 +37257,7 @@ Return your response strictly as a JSON object matching this schema:
 
                     <div className="p-6 overflow-y-auto max-h-[70vh] space-y-4 text-xs text-slate-600 leading-relaxed font-semibold">
                       <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl text-blue-900 font-bold mb-2">
-                        ≡ƒÆí Setting up a GitHub repository allows you to upload and sync your textbook PDFs so that they can be viewed from any device you log into!
+                        💡 Setting up a GitHub repository allows you to upload and sync your textbook PDFs so that they can be viewed from any device you log into!
                       </div>
 
                       <h4 className="font-bold text-slate-850 uppercase tracking-wider text-[10px] mt-2">Step 1: Create a GitHub Account</h4>
@@ -37313,7 +37313,7 @@ Return your response strictly as a JSON object matching this schema:
 
                     <div className="p-6 overflow-y-auto max-h-[70vh] space-y-4 text-xs text-slate-600 leading-relaxed font-semibold text-left">
                       <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl text-blue-900 font-bold mb-2">
-                        ≡ƒÄ« Connecting Auto-Anki to Discord allows you to showcase your active study subject, running timers, and daily streaks on your Discord profile in real time!
+                        🎮 Connecting Auto-Anki to Discord allows you to showcase your active study subject, running timers, and daily streaks on your Discord profile in real time!
                       </div>
 
                       <h4 className="font-bold text-slate-855 uppercase tracking-wider text-[10px] mt-2">Step 1: Install PreMiD Desktop Client</h4>
@@ -37340,7 +37340,7 @@ Return your response strictly as a JSON object matching this schema:
                       </p>
                       <ol className="list-decimal pl-5 space-y-1">
                         <li>Click the <b>PreMiD Extension icon</b> in your browser's extension toolbar.</li>
-                        <li>Click the <b>Settings (gear icon ΓÜÖ∩╕Å)</b> at the top right of the extension menu.</li>
+                        <li>Click the <b>Settings (gear icon ⚙️)</b> at the top right of the extension menu.</li>
                         <li>Scroll down and toggle the switch for <b>Activity Developer Mode</b> to ON.</li>
                       </ol>
 
@@ -37499,7 +37499,7 @@ Return your response strictly as a JSON object matching this schema:
                               </div>
                               {isLarge && (
                                 <div className="bg-amber-50 border border-amber-200/50 text-[10px] text-amber-800 rounded-lg p-2.5 font-medium leading-relaxed">
-                                  ΓÜá∩╕Å <b>Large range selected ({pagesToScan} pages)</b>. Because the AI processes pages in batches to respect rate limits, this will take about <b>{minutesStr}</b> to complete. Consider scanning only the relevant chapters/pages to save time and API quota.
+                                  ⚠️ <b>Large range selected ({pagesToScan} pages)</b>. Because the AI processes pages in batches to respect rate limits, this will take about <b>{minutesStr}</b> to complete. Consider scanning only the relevant chapters/pages to save time and API quota.
                                 </div>
                               )}
                             </div>
@@ -37539,7 +37539,7 @@ Return your response strictly as a JSON object matching this schema:
                               <span className="text-[9px] text-slate-400 font-black uppercase tracking-wider block mb-1">Live Mapping Preview</span>
                               <div className="flex items-center gap-2">
                                 <span className="bg-white border border-slate-200 px-2 py-0.5 rounded text-slate-650 font-mono">PDF Page {samplePdfPage}</span>
-                                <span>Γ₧ö</span>
+                                <span>➔</span>
                                 <span className="bg-blue-600 text-white px-2 py-0.5 rounded font-black font-mono">Book Page {mappedPage}</span>
                               </div>
                               <span className="text-[9px] text-slate-400 font-bold block mt-1.5">
@@ -37658,7 +37658,7 @@ Return your response strictly as a JSON object matching this schema:
                 <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
                   <div className="bg-white rounded-3xl border border-gray-150 shadow-2xl p-6 max-w-sm w-full text-center space-y-4 animate-in fade-in zoom-in-95 duration-200">
                     <div className="w-12 h-12 bg-amber-100 rounded-2xl flex items-center justify-center text-amber-600 mx-auto text-xl animate-bounce">
-                      ΓÜá∩╕Å
+                      ⚠️
                     </div>
                     <div className="space-y-1.5 text-left">
                       <h3 className="text-sm font-black text-gray-800 uppercase tracking-wider text-center">Unsaved CAMP Progress!</h3>
@@ -38146,7 +38146,7 @@ export function TagConceptWeb({ cards, hierarchy, onSelectTags }) {
                 : 'bg-[#0e1f38] border-blue-900/50 text-blue-300 hover:bg-[#122748] hover:text-white'
                 }`}
             >
-              {showAllTags ? '≡ƒÄ» Active Folder Only' : '≡ƒîÉ Show All Tags'}
+              {showAllTags ? '🎯 Active Folder Only' : '🌐 Show All Tags'}
             </button>
           )}
           <div className="flex items-center gap-1.5 bg-[#0e1f38] border border-blue-900/50 rounded-full px-3 py-1 text-[9px] font-black text-blue-300">
