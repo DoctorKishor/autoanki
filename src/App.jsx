@@ -24477,26 +24477,49 @@ Return your response strictly as a JSON object matching this schema:
                                       const jan1Weekday = jan1DateObj.getDay();
                                       const leadingBlanks = Array.from({ length: jan1Weekday });
 
+                                      // Calculate month header positions across 53 columns
+                                      const monthLabels = Array(53).fill(null);
+                                      dateKeys.forEach((dateStr, idx) => {
+                                        const d = new Date(dateStr + 'T00:00:00');
+                                        if (d.getDate() === 1) {
+                                          const colIndex = Math.floor((jan1Weekday + idx) / 7);
+                                          if (colIndex < 53 && !monthLabels[colIndex]) {
+                                            monthLabels[colIndex] = d.toLocaleDateString('en-US', { month: 'short' });
+                                          }
+                                        }
+                                      });
+
                                       return (
-                                        <div className="overflow-x-auto w-full custom-scrollbar px-3 py-1">
-                                          <div className="min-w-[720px] select-none py-1">
+                                        <div className="overflow-x-auto w-full custom-scrollbar py-2 px-4 flex justify-start items-center">
+                                          <div className="w-max select-none py-1">
+                                            {/* Month Header Row */}
+                                            <div className="flex gap-1 mb-1.5 h-3 text-[8.5px] font-black uppercase text-slate-400">
+                                              {monthLabels.map((lbl, cIdx) => (
+                                                <div key={`m-col-${cIdx}`} className="w-2.5 text-left overflow-visible whitespace-nowrap">
+                                                  {lbl || ''}
+                                                </div>
+                                              ))}
+                                            </div>
+                                            {/* 7-Row Grid (Exactly 365/366 boxes across 53 columns) */}
                                             <div className="grid grid-flow-col grid-rows-7 gap-1">
                                               {leadingBlanks.map((_, idx) => (
                                                 <div key={`blank-jan1-${idx}`} className="w-2.5 h-2.5 rounded-sm opacity-0 pointer-events-none" />
                                               ))}
                                               {dateKeys.map(dateStr => {
                                                 const count = analyticsData.contributions[dateStr] || 0;
-                                                let color = isDark ? '#262c36' : '#f3f4f6';
+                                                let color = isDark ? '#1e242d' : '#cbd5e1';
                                                 if (count > 0) {
                                                   const ratio = Math.min(1, count / maxContribCount);
-                                                  const lightness = isDark ? (25 + ratio * 45) : (94 - ratio * 69);
+                                                  const lightness = isDark ? (25 + ratio * 45) : (90 - ratio * 65);
                                                   const saturation = 35 + ratio * 59;
                                                   color = `hsl(217, ${Math.round(saturation)}%, ${Math.round(lightness)}%)`;
                                                 }
                                                 return (
                                                   <div
                                                     key={dateStr}
-                                                    className="w-2.5 h-2.5 rounded-sm relative group hover:z-50 cursor-pointer"
+                                                    className={`w-2.5 h-2.5 rounded-sm relative group hover:z-50 cursor-pointer border ${
+                                                      count > 0 ? 'border-transparent' : (isDark ? 'border-gray-800/80' : 'border-gray-300/60')
+                                                    }`}
                                                     style={{ backgroundColor: color }}
                                                   >
                                                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-gray-900 text-white text-[8px] font-bold px-2 py-1 rounded shadow-xl opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-50">
@@ -30817,22 +30840,43 @@ Return your response strictly as a JSON object matching this schema:
                                           const jan1Weekday = jan1DateObj.getDay();
                                           const leadingBlanks = Array.from({ length: jan1Weekday });
 
+                                          // Calculate month header positions across 53 columns
+                                          const monthLabels = Array(53).fill(null);
+                                          dateKeys.forEach((dateStr, idx) => {
+                                            const d = new Date(dateStr + 'T00:00:00');
+                                            if (d.getDate() === 1) {
+                                              const colIndex = Math.floor((jan1Weekday + idx) / 7);
+                                              if (colIndex < 53 && !monthLabels[colIndex]) {
+                                                monthLabels[colIndex] = d.toLocaleDateString('en-US', { month: 'short' });
+                                              }
+                                            }
+                                          });
+
                                           return (
-                                            <div className="overflow-x-auto w-full flex justify-center custom-scrollbar">
-                                              <div className="min-w-[720px] select-none flex justify-center py-2">
+                                            <div className="overflow-x-auto w-full flex justify-center custom-scrollbar py-2 px-4">
+                                              <div className="w-max select-none py-1 flex flex-col items-start">
+                                                {/* Month Header Row */}
+                                                <div className="flex gap-1 mb-1.5 h-3 text-[9px] font-black uppercase text-slate-400">
+                                                  {monthLabels.map((lbl, cIdx) => (
+                                                    <div key={`m-col-dt-${cIdx}`} className="w-2.5 sm:w-3 text-left overflow-visible whitespace-nowrap">
+                                                      {lbl || ''}
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                                {/* 7-Row Matrix */}
                                                 <div className="grid grid-flow-col grid-rows-7 gap-1">
                                                   {/* Leading blank slots for Jan 1 starting weekday */}
                                                   {leadingBlanks.map((_, idx) => (
-                                                    <div key={`blank-jan1-${idx}`} className="w-2.5 h-2.5 rounded-sm opacity-0 pointer-events-none" />
+                                                    <div key={`blank-jan1-${idx}`} className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm opacity-0 pointer-events-none" />
                                                   ))}
 
                                                   {dateKeys.map(dateStr => {
                                                     const count = analyticsData.contributions[dateStr] || 0;
 
-                                                    let color = isDark ? '#262c36' : '#f3f4f6';
+                                                    let color = isDark ? '#1e242d' : '#cbd5e1';
                                                     if (count > 0) {
                                                       const ratio = Math.min(1, count / maxContribCount);
-                                                      const lightness = isDark ? (25 + ratio * 45) : (94 - ratio * 69);
+                                                      const lightness = isDark ? (25 + ratio * 45) : (90 - ratio * 65);
                                                       const saturation = 35 + ratio * 59;
                                                       color = `hsl(217, ${Math.round(saturation)}%, ${Math.round(lightness)}%)`;
                                                     }
@@ -30840,7 +30884,9 @@ Return your response strictly as a JSON object matching this schema:
                                                     return (
                                                       <div
                                                         key={dateStr}
-                                                        className="w-2.5 h-2.5 rounded-sm transition duration-150 hover:scale-125 cursor-pointer relative group hover:z-50"
+                                                        className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm transition duration-150 hover:scale-125 cursor-pointer relative group hover:z-50 border ${
+                                                          count > 0 ? 'border-transparent' : (isDark ? 'border-gray-800/80' : 'border-gray-300/60')
+                                                        }`}
                                                         style={{ backgroundColor: color }}
                                                       >
                                                         {/* Rich Tooltip popup */}
