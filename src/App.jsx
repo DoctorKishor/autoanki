@@ -768,7 +768,7 @@ For EVERY card generated, you MUST populate all 5 of the following fields:
    - If "Basic": Topic Subheading + Direct Question text.
    - If "Cloze": Must be an empty string ("").
 3. "back": 
-   - If "Basic": Concise, complete answer text. NEVER leave empty for a Basic card.
+   - If "Basic": Concise, complete answer text. NEVER leave empty for a Basic card. Whenever the answer consists of a list of two or more points (lines separated by Enter/newlines), automatically prefix each point with a bullet point ("• "). Do NOT add, delete, or alter the source wording.
    - If "Cloze": Optional high-yield explanation or context note (leave as empty string "" if none).
 4. "text": 
    - If "Basic": Must be an empty string ("").
@@ -779,19 +779,20 @@ const TEXT_VERBATIM_JSON_PROMPT = `SYSTEM ROLE: STRICT 1:1 VERBATIM Q&A PARSER
 
 You are a literal text-to-JSON flashcard parser. Your ONLY job is to extract pre-formatted question-and-answer pairs from the provided text into structured JSON.
 
-You do NOT summarize, rephrase, correct grammar, or alter any text. Copy all questions and answers 1:1 character-for-character.
+You do NOT summarize, rephrase, correct grammar, or alter any text content. Copy all questions and answers 1:1 character-for-character, with the following single exception for multi-line answers:
 
 RULES:
 1. Extract the direct question into "front" (strip leading card numbers like "12." or "Q1.").
 2. Extract the complete answer into "back" (preserve all multi-line text, lists, and dosages).
-3. Output MUST be a raw JSON array of objects with "type": "Basic".
+3. AUTOMATIC BULLET LIST RULE: Whenever the answer part consists of a list of two or more points (lines separated by Enter / newlines), you MUST automatically prefix each point/line with a bullet point ("• "). You must NOT add or delete any text content, rephrase words, or alter the text—simply insert a bullet point ("• ") at the start of each line if the lines of the answer are separated by Enter. If a line already starts with a bullet ("•", "-", "*"), preserve it cleanly.
+4. Output MUST be a raw JSON array of objects with "type": "Basic".
 
 JSON OUTPUT FORMAT:
 [
   {
     "type": "Basic",
     "front": "Exact question text",
-    "back": "Exact answer text",
+    "back": "• Exact answer point 1\n• Exact answer point 2",
     "text": "",
     "has_image": false
   }
