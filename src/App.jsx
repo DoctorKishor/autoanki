@@ -30344,57 +30344,42 @@ Return your response strictly as a JSON object matching this schema:
                                           </div>
                                         </div>
 
-                                        {/* Center: 3 Timeframe Subtabs (Weekly / Monthly / Yearly) */}
-                                        <div className={`flex items-center p-1 rounded-2xl gap-1 shrink-0 ${
+                                        {/* Center: 3 Timeframe Subtabs with Framer Motion Sliding Pill */}
+                                        <div className={`relative flex items-center p-1 rounded-2xl gap-1 shrink-0 ${
                                           isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
                                         }`}>
-                                          <motion.button
-                                            whileHover={{ scale: 1.02 }}
-                                            whileTap={{ scale: 0.97 }}
-                                            onClick={() => {
-                                              setContributionTimeframe('weekly');
-                                              setContributionOffset(0);
-                                            }}
-                                            className={`px-3.5 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
-                                              contributionTimeframe === 'weekly'
-                                                ? (isDark ? 'neu-btn-accent-dark text-white shadow-sm font-extrabold' : 'neu-btn-accent-light text-white shadow-sm font-extrabold')
-                                                : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
-                                            }`}
-                                          >
-                                            Weekly
-                                          </motion.button>
-
-                                          <motion.button
-                                            whileHover={{ scale: 1.02 }}
-                                            whileTap={{ scale: 0.97 }}
-                                            onClick={() => {
-                                              setContributionTimeframe('monthly');
-                                              setContributionOffset(0);
-                                            }}
-                                            className={`px-3.5 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
-                                              contributionTimeframe === 'monthly'
-                                                ? (isDark ? 'neu-btn-accent-dark text-white shadow-sm font-extrabold' : 'neu-btn-accent-light text-white shadow-sm font-extrabold')
-                                                : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
-                                            }`}
-                                          >
-                                            Monthly
-                                          </motion.button>
-
-                                          <motion.button
-                                            whileHover={{ scale: 1.02 }}
-                                            whileTap={{ scale: 0.97 }}
-                                            onClick={() => {
-                                              setContributionTimeframe('yearly');
-                                              setContributionOffset(0);
-                                            }}
-                                            className={`px-3.5 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
-                                              contributionTimeframe === 'yearly'
-                                                ? (isDark ? 'neu-btn-accent-dark text-white shadow-sm font-extrabold' : 'neu-btn-accent-light text-white shadow-sm font-extrabold')
-                                                : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
-                                            }`}
-                                          >
-                                            Yearly
-                                          </motion.button>
+                                          {[
+                                            { id: 'weekly', label: 'Weekly' },
+                                            { id: 'monthly', label: 'Monthly' },
+                                            { id: 'yearly', label: 'Yearly' }
+                                          ].map(item => {
+                                            const isActive = contributionTimeframe === item.id;
+                                            return (
+                                              <button
+                                                key={item.id}
+                                                onClick={() => {
+                                                  setContributionTimeframe(item.id);
+                                                  setContributionOffset(0);
+                                                }}
+                                                className={`relative px-4 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-xl transition-colors cursor-pointer select-none ${
+                                                  isActive
+                                                    ? 'text-white font-extrabold'
+                                                    : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                                                }`}
+                                              >
+                                                {isActive && (
+                                                  <motion.div
+                                                    layoutId="contributionTimeframePill"
+                                                    className={`absolute inset-0 rounded-xl ${
+                                                      isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+                                                    }`}
+                                                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                                                  />
+                                                )}
+                                                <span className="relative z-10">{item.label}</span>
+                                              </button>
+                                            );
+                                          })}
                                         </div>
 
                                         {/* Right: HSL Intensity Legend */}
@@ -30425,7 +30410,7 @@ Return your response strictly as a JSON object matching this schema:
 
                                       {/* 1. WEEKLY VIEW (Exactly 7 Boxes) */}
                                       {contributionTimeframe === 'weekly' && (
-                                        <div className="grid grid-cols-7 gap-2 lg:gap-4 py-4 max-w-[800px] mx-auto w-full">
+                                        <div className="grid grid-cols-7 gap-2 lg:gap-4 pt-4 pb-2 max-w-[800px] mx-auto w-full">
                                           {dateKeys.map(dateStr => {
                                             const dayObj = new Date(dateStr + 'T00:00:00');
                                             const dayName = dayObj.toLocaleDateString('en-US', { weekday: 'short' });
@@ -30444,7 +30429,7 @@ Return your response strictly as a JSON object matching this schema:
                                               <motion.div
                                                 key={dateStr}
                                                 whileHover={{ scale: 1.05, y: -2 }}
-                                                className={`flex flex-col items-center justify-between p-3 rounded-2xl border transition-all ${
+                                                className={`relative group hover:z-50 flex flex-col items-center justify-between p-3 rounded-2xl border transition-all ${
                                                   isDark ? 'bg-[#222730] border-gray-800 shadow-md' : 'bg-white border-gray-200 shadow-sm'
                                                 }`}
                                               >
@@ -30466,6 +30451,11 @@ Return your response strictly as a JSON object matching this schema:
                                                 <span className={`text-[9.5px] font-bold ${count > 0 ? (isDark ? 'text-blue-400 font-black' : 'text-blue-600 font-black') : (isDark ? 'text-slate-500' : 'text-gray-400')}`}>
                                                   {count === 1 ? '1 card' : `${count} cards`}
                                                 </span>
+
+                                                {/* Rich Tooltip popup */}
+                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-gray-900 text-white text-[9px] font-bold px-2.5 py-1.5 rounded-lg shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                                                  {count === 0 ? 'No cards created' : `${count} card${count > 1 ? 's' : ''} created`} on {formatAppDate(dateStr)}
+                                                </div>
                                               </motion.div>
                                             );
                                           })}
@@ -30479,7 +30469,7 @@ Return your response strictly as a JSON object matching this schema:
                                         const emptySlots = Array.from({ length: firstWeekday });
 
                                         return (
-                                          <div className="max-w-[700px] mx-auto w-full py-2">
+                                          <div className="max-w-[700px] mx-auto w-full pt-6 pb-2">
                                             {/* Weekday headers */}
                                             <div className="grid grid-cols-7 gap-2 mb-2 text-center">
                                               {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map(w => (
@@ -30510,7 +30500,7 @@ Return your response strictly as a JSON object matching this schema:
                                                 return (
                                                   <div
                                                     key={dateStr}
-                                                    className={`aspect-square w-full rounded-xl flex flex-col items-center justify-center relative group cursor-pointer transition duration-150 hover:scale-110 border ${
+                                                    className={`aspect-square w-full rounded-xl flex flex-col items-center justify-center relative group hover:z-50 cursor-pointer transition duration-150 hover:scale-110 border ${
                                                       isDark ? 'border-gray-800/60' : 'border-gray-200/60'
                                                     }`}
                                                     style={{ backgroundColor: color }}
@@ -30522,7 +30512,7 @@ Return your response strictly as a JSON object matching this schema:
                                                     </span>
 
                                                     {/* Rich Tooltip popup */}
-                                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-gray-900 text-white text-[9px] font-bold px-2 py-1 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-20">
+                                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-gray-900 text-white text-[9px] font-bold px-2.5 py-1.5 rounded-lg shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
                                                       {count === 0 ? 'No cards created' : `${count} card${count > 1 ? 's' : ''} created`} on {formatAppDate(dateStr)}
                                                     </div>
                                                   </div>
@@ -30540,7 +30530,7 @@ Return your response strictly as a JSON object matching this schema:
                                         const leadingBlanks = Array.from({ length: jan1Weekday });
 
                                         return (
-                                          <div className="overflow-x-auto pb-2 custom-scrollbar">
+                                          <div className="overflow-x-auto pt-7 pb-2 custom-scrollbar">
                                             <div className="min-w-[750px] select-none flex justify-center py-2">
                                               <div className="grid grid-flow-col grid-rows-7 gap-1">
                                                 {/* Leading blank slots for Jan 1 starting weekday */}
@@ -30562,11 +30552,11 @@ Return your response strictly as a JSON object matching this schema:
                                                   return (
                                                     <div
                                                       key={dateStr}
-                                                      className="w-2.5 h-2.5 rounded-sm transition duration-150 hover:scale-125 cursor-pointer relative group"
+                                                      className="w-2.5 h-2.5 rounded-sm transition duration-150 hover:scale-125 cursor-pointer relative group hover:z-50"
                                                       style={{ backgroundColor: color }}
                                                     >
                                                       {/* Rich Tooltip popup */}
-                                                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-gray-900 text-white text-[9px] font-bold px-2 py-1 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-20">
+                                                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-gray-900 text-white text-[9px] font-bold px-2 py-1 rounded-lg shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
                                                         {count === 0 ? 'No cards created' : `${count} card${count > 1 ? 's' : ''} created`} on {formatAppDate(dateStr)}
                                                       </div>
                                                     </div>
