@@ -24955,7 +24955,15 @@ Return your response strictly as a JSON object matching this schema:
                                       {studyIntensityTimeframe === 'yearly' && (() => {
                                         const jan1DateObj = new Date(dateKeys[0] + 'T00:00:00');
                                         const jan1Weekday = jan1DateObj.getDay();
-                                        const leadingBlanks = Array.from({ length: jan1Weekday });
+
+                                        const weeks = Array.from({ length: 53 }, () => Array(7).fill(null));
+                                        dateKeys.forEach((dateStr, idx) => {
+                                          const colIndex = Math.floor((jan1Weekday + idx) / 7);
+                                          const rowIndex = (jan1Weekday + idx) % 7;
+                                          if (colIndex < 53) {
+                                            weeks[colIndex][rowIndex] = dateStr;
+                                          }
+                                        });
 
                                         const monthLabels = Array(53).fill(null);
                                         dateKeys.forEach((dateStr, idx) => {
@@ -24969,33 +24977,43 @@ Return your response strictly as a JSON object matching this schema:
                                         });
 
                                         return (
-                                          <div className="overflow-x-auto w-full custom-scrollbar py-2">
-                                            <div className="w-max select-none py-1">
-                                              <div className="flex gap-[2px] mb-1 h-3 text-[7.5px] font-black uppercase text-slate-400">
+                                          <div className="w-full flex flex-col justify-center py-1 overflow-visible">
+                                            <div className="w-full select-none flex flex-col items-stretch max-w-full">
+                                              <div className="grid grid-cols-[repeat(53,minmax(0,1fr))] gap-[1.5px] w-full mb-1">
                                                 {monthLabels.map((lbl, cIdx) => (
-                                                  <div key={`m-col-st-${cIdx}`} className="w-[7px] text-left overflow-visible whitespace-nowrap">
+                                                  <div key={`m-col-st-mob-${cIdx}`} className="text-[6.5px] font-black uppercase text-slate-400 text-left overflow-visible whitespace-nowrap">
                                                     {lbl || ''}
                                                   </div>
                                                 ))}
                                               </div>
-                                              <div className="grid grid-flow-col grid-rows-7 gap-[2px]">
-                                                {leadingBlanks.map((_, idx) => (
-                                                  <div key={`blank-jan1-st-${idx}`} className="w-[7px] h-[7px] rounded-[1px] opacity-0 pointer-events-none" />
+                                              <div className="grid grid-cols-[repeat(53,minmax(0,1fr))] gap-[1.5px] w-full">
+                                                {weeks.map((week, weekIdx) => (
+                                                  <div key={`week-st-mob-${weekIdx}`} className="flex flex-col gap-[1.5px] w-full">
+                                                    {week.map((dateStr, dayIdx) => {
+                                                      if (!dateStr) {
+                                                        return (
+                                                          <div key={`blank-st-mob-${weekIdx}-${dayIdx}`} className="w-full aspect-square rounded-[1px] opacity-0 pointer-events-none" />
+                                                        );
+                                                      }
+
+                                                      const { color, border, hours, qCount, cardCount } = getIntensityStyle(dateStr);
+                                                      const tooltipPosClass = dayIdx < 3 ? 'top-full mt-1.5' : 'bottom-full mb-1.5';
+                                                      const tooltipAlignClass = weekIdx < 6 ? 'left-0' : (weekIdx > 46 ? 'right-0' : 'left-1/2 -translate-x-1/2');
+
+                                                      return (
+                                                        <div
+                                                          key={dateStr}
+                                                          className={`w-full aspect-square rounded-[1px] relative group hover:z-[200] cursor-pointer border ${border}`}
+                                                          style={{ backgroundColor: color }}
+                                                        >
+                                                          <div className={`absolute ${tooltipPosClass} ${tooltipAlignClass} bg-gray-900 text-white text-[8px] font-bold px-2 py-1 rounded shadow-xl opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-[250]`}>
+                                                            {hours}h / {qCount}q / {cardCount}c on {formatAppDate(dateStr)}
+                                                          </div>
+                                                        </div>
+                                                      );
+                                                    })}
+                                                  </div>
                                                 ))}
-                                                {dateKeys.map(dateStr => {
-                                                  const { color, border, hours, qCount, cardCount } = getIntensityStyle(dateStr);
-                                                  return (
-                                                    <div
-                                                      key={dateStr}
-                                                      className={`w-[7px] h-[7px] rounded-[1px] relative group hover:z-[100] cursor-pointer border ${border}`}
-                                                      style={{ backgroundColor: color }}
-                                                    >
-                                                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-gray-900 text-white text-[8px] font-bold px-2 py-1 rounded shadow-xl opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-[110]">
-                                                        {hours}h / {qCount}q / {cardCount}c on {formatAppDate(dateStr)}
-                                                      </div>
-                                                    </div>
-                                                  );
-                                                })}
                                               </div>
                                             </div>
                                           </div>
@@ -31091,13 +31109,22 @@ Return your response strictly as a JSON object matching this schema:
                                           );
                                         })()}
 
-                                        {/* 3. YEARLY VIEW (Scaled to fit entire 365/366 days cleanly inside single frame without overflow) */}
+                                        {/* 3. YEARLY VIEW (100% Responsive Grid fixed to container frame width with smart directional tooltips) */}
                                         {contributionTimeframe === 'yearly' && (() => {
                                           const jan1DateObj = new Date(dateKeys[0] + 'T00:00:00');
                                           const jan1Weekday = jan1DateObj.getDay();
-                                          const leadingBlanks = Array.from({ length: jan1Weekday });
 
-                                          // Calculate month header positions across 53 columns
+                                          // Group dates into 53 week columns (0..52), each with 7 day slots
+                                          const weeks = Array.from({ length: 53 }, () => Array(7).fill(null));
+                                          dateKeys.forEach((dateStr, idx) => {
+                                            const colIndex = Math.floor((jan1Weekday + idx) / 7);
+                                            const rowIndex = (jan1Weekday + idx) % 7;
+                                            if (colIndex < 53) {
+                                              weeks[colIndex][rowIndex] = dateStr;
+                                            }
+                                          });
+
+                                          // Calculate month header labels
                                           const monthLabels = Array(53).fill(null);
                                           dateKeys.forEach((dateStr, idx) => {
                                             const d = new Date(dateStr + 'T00:00:00');
@@ -31110,49 +31137,58 @@ Return your response strictly as a JSON object matching this schema:
                                           });
 
                                           return (
-                                            <div className="w-full flex flex-col items-center justify-center py-1 overflow-hidden">
-                                              <div className="select-none flex flex-col items-start max-w-full">
-                                                {/* Month Header Row */}
-                                                <div className="flex gap-[2px] sm:gap-[2.5px] mb-1 h-3 text-[7.5px] sm:text-[8px] font-black uppercase text-slate-400">
+                                            <div className="w-full flex flex-col justify-center py-1 overflow-visible">
+                                              <div className="w-full select-none flex flex-col items-stretch max-w-full">
+                                                {/* Month Header Row (53 Equal Columns spanning 100% width) */}
+                                                <div className="grid grid-cols-[repeat(53,minmax(0,1fr))] gap-[2px] sm:gap-[3px] w-full mb-1">
                                                   {monthLabels.map((lbl, cIdx) => (
-                                                    <div key={`m-col-dt-${cIdx}`} className="w-[6.5px] sm:w-[7.5px] text-left overflow-visible whitespace-nowrap">
+                                                    <div key={`m-col-dt-${cIdx}`} className="text-[7px] sm:text-[8px] font-black uppercase text-slate-400 text-left overflow-visible whitespace-nowrap">
                                                       {lbl || ''}
                                                     </div>
                                                   ))}
                                                 </div>
-                                                {/* 7-Row Matrix */}
-                                                <div className="grid grid-flow-col grid-rows-7 gap-[2px] sm:gap-[2.5px]">
-                                                  {/* Leading blank slots for Jan 1 starting weekday */}
-                                                  {leadingBlanks.map((_, idx) => (
-                                                    <div key={`blank-jan1-${idx}`} className="w-[6.5px] h-[6.5px] sm:w-[7.5px] sm:h-[7.5px] rounded-[1.5px] opacity-0 pointer-events-none" />
+
+                                                {/* 53 Columns Matrix spanning 100% width */}
+                                                <div className="grid grid-cols-[repeat(53,minmax(0,1fr))] gap-[2px] sm:gap-[3px] w-full">
+                                                  {weeks.map((week, weekIdx) => (
+                                                    <div key={`week-dt-${weekIdx}`} className="flex flex-col gap-[2px] sm:gap-[3px] w-full">
+                                                      {week.map((dateStr, dayIdx) => {
+                                                        if (!dateStr) {
+                                                          return (
+                                                            <div key={`blank-dt-${weekIdx}-${dayIdx}`} className="w-full aspect-square rounded-[1.5px] opacity-0 pointer-events-none" />
+                                                          );
+                                                        }
+
+                                                        const count = analyticsData.contributions[dateStr] || 0;
+                                                        let color = isDark ? '#1e242d' : '#cbd5e1';
+                                                        if (count > 0) {
+                                                          const ratio = Math.min(1, count / maxContribCount);
+                                                          const lightness = isDark ? (25 + ratio * 45) : (90 - ratio * 65);
+                                                          const saturation = 35 + ratio * 59;
+                                                          color = `hsl(217, ${Math.round(saturation)}%, ${Math.round(lightness)}%)`;
+                                                        }
+
+                                                        // Smart Tooltip Direction Logic: top 3 rows pop DOWN, bottom 4 rows pop UP
+                                                        const tooltipPosClass = dayIdx < 3 ? 'top-full mt-2' : 'bottom-full mb-2';
+                                                        const tooltipAlignClass = weekIdx < 6 ? 'left-0' : (weekIdx > 46 ? 'right-0' : 'left-1/2 -translate-x-1/2');
+
+                                                        return (
+                                                          <div
+                                                            key={dateStr}
+                                                            className={`w-full aspect-square rounded-[1.5px] transition duration-150 hover:scale-125 cursor-pointer relative group hover:z-[200] border ${
+                                                              count > 0 ? 'border-transparent' : (isDark ? 'border-gray-800/80' : 'border-gray-300/60')
+                                                            }`}
+                                                            style={{ backgroundColor: color }}
+                                                          >
+                                                            {/* Tooltip popup */}
+                                                            <div className={`absolute ${tooltipPosClass} ${tooltipAlignClass} bg-gray-900 text-white text-[9px] font-bold px-2 py-1 rounded-lg shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-[250]`}>
+                                                              {count === 0 ? 'No cards created' : `${count} card${count > 1 ? 's' : ''} created`} on {formatAppDate(dateStr)}
+                                                            </div>
+                                                          </div>
+                                                        );
+                                                      })}
+                                                    </div>
                                                   ))}
-
-                                                  {dateKeys.map(dateStr => {
-                                                    const count = analyticsData.contributions[dateStr] || 0;
-
-                                                    let color = isDark ? '#1e242d' : '#cbd5e1';
-                                                    if (count > 0) {
-                                                      const ratio = Math.min(1, count / maxContribCount);
-                                                      const lightness = isDark ? (25 + ratio * 45) : (90 - ratio * 65);
-                                                      const saturation = 35 + ratio * 59;
-                                                      color = `hsl(217, ${Math.round(saturation)}%, ${Math.round(lightness)}%)`;
-                                                    }
-
-                                                    return (
-                                                      <div
-                                                        key={dateStr}
-                                                        className={`w-[6.5px] h-[6.5px] sm:w-[7.5px] sm:h-[7.5px] rounded-[1.5px] transition duration-150 hover:scale-125 cursor-pointer relative group hover:z-50 border ${
-                                                          count > 0 ? 'border-transparent' : (isDark ? 'border-gray-800/80' : 'border-gray-300/60')
-                                                        }`}
-                                                        style={{ backgroundColor: color }}
-                                                      >
-                                                        {/* Rich Tooltip popup */}
-                                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-gray-900 text-white text-[9px] font-bold px-2 py-1 rounded-lg shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
-                                                          {count === 0 ? 'No cards created' : `${count} card${count > 1 ? 's' : ''} created`} on {formatAppDate(dateStr)}
-                                                        </div>
-                                                      </div>
-                                                    );
-                                                  })}
                                                 </div>
                                               </div>
                                             </div>
@@ -31740,13 +31776,22 @@ Return your response strictly as a JSON object matching this schema:
                                                 );
                                               })()}
 
-                                              {/* 3. YEARLY VIEW (Scaled to fit entire 365/366 days cleanly inside single frame without overflow) */}
+                                              {/* 3. YEARLY VIEW (100% Responsive Grid fixed to container frame width with smart directional tooltips) */}
                                               {studyIntensityTimeframe === 'yearly' && (() => {
                                                 const jan1DateObj = new Date(dateKeys[0] + 'T00:00:00');
                                                 const jan1Weekday = jan1DateObj.getDay();
-                                                const leadingBlanks = Array.from({ length: jan1Weekday });
 
-                                                // Calculate month header positions across 53 columns
+                                                // Group dates into 53 week columns (0..52), each with 7 day slots
+                                                const weeks = Array.from({ length: 53 }, () => Array(7).fill(null));
+                                                dateKeys.forEach((dateStr, idx) => {
+                                                  const colIndex = Math.floor((jan1Weekday + idx) / 7);
+                                                  const rowIndex = (jan1Weekday + idx) % 7;
+                                                  if (colIndex < 53) {
+                                                    weeks[colIndex][rowIndex] = dateStr;
+                                                  }
+                                                });
+
+                                                // Calculate month header labels
                                                 const monthLabels = Array(53).fill(null);
                                                 dateKeys.forEach((dateStr, idx) => {
                                                   const d = new Date(dateStr + 'T00:00:00');
@@ -31759,52 +31804,63 @@ Return your response strictly as a JSON object matching this schema:
                                                 });
 
                                                 return (
-                                                  <div className="w-full flex flex-col items-center justify-center py-1 overflow-hidden">
-                                                    <div className="select-none flex flex-col items-start max-w-full">
-                                                      {/* Month Header Row */}
-                                                      <div className="flex gap-[2px] sm:gap-[2.5px] mb-1 h-3 text-[7.5px] sm:text-[8px] font-black uppercase text-slate-400">
+                                                  <div className="w-full flex flex-col justify-center py-1 overflow-visible">
+                                                    <div className="w-full select-none flex flex-col items-stretch max-w-full">
+                                                      {/* Month Header Row (53 Equal Columns spanning 100% width) */}
+                                                      <div className="grid grid-cols-[repeat(53,minmax(0,1fr))] gap-[2px] sm:gap-[3px] w-full mb-1">
                                                         {monthLabels.map((lbl, cIdx) => (
-                                                          <div key={`m-col-st-${cIdx}`} className="w-[6.5px] sm:w-[7.5px] text-left overflow-visible whitespace-nowrap">
+                                                          <div key={`m-col-st-${cIdx}`} className="text-[7px] sm:text-[8px] font-black uppercase text-slate-400 text-left overflow-visible whitespace-nowrap">
                                                             {lbl || ''}
                                                           </div>
                                                         ))}
                                                       </div>
-                                                      {/* 7-Row Matrix */}
-                                                      <div className="grid grid-flow-col grid-rows-7 gap-[2px] sm:gap-[2.5px]">
-                                                        {leadingBlanks.map((_, idx) => (
-                                                          <div key={`blank-jan1-st-${idx}`} className="w-[6.5px] h-[6.5px] sm:w-[7.5px] sm:h-[7.5px] rounded-[1.5px] opacity-0 pointer-events-none" />
+
+                                                      {/* 53 Columns Matrix spanning 100% width */}
+                                                      <div className="grid grid-cols-[repeat(53,minmax(0,1fr))] gap-[2px] sm:gap-[3px] w-full">
+                                                        {weeks.map((week, weekIdx) => (
+                                                          <div key={`week-st-${weekIdx}`} className="flex flex-col gap-[2px] sm:gap-[3px] w-full">
+                                                            {week.map((dateStr, dayIdx) => {
+                                                              if (!dateStr) {
+                                                                return (
+                                                                  <div key={`blank-st-${weekIdx}-${dayIdx}`} className="w-full aspect-square rounded-[1.5px] opacity-0 pointer-events-none" />
+                                                                );
+                                                              }
+
+                                                              const { color, border, hours, qCount, cardCount } = getIntensityStyle(dateStr);
+
+                                                              // Smart Tooltip Direction Logic: top 3 rows pop DOWN, bottom 4 rows pop UP
+                                                              const tooltipPosClass = dayIdx < 3 ? 'top-full mt-2' : 'bottom-full mb-2';
+                                                              const tooltipAlignClass = weekIdx < 6 ? 'left-0' : (weekIdx > 46 ? 'right-0' : 'left-1/2 -translate-x-1/2');
+
+                                                              return (
+                                                                <div
+                                                                  key={dateStr}
+                                                                  className={`w-full aspect-square rounded-[1.5px] transition duration-150 hover:scale-150 cursor-pointer relative group hover:z-[200] border ${border}`}
+                                                                  style={{ backgroundColor: color }}
+                                                                >
+                                                                  {/* Rich Tooltip popup */}
+                                                                  <div className={`absolute ${tooltipPosClass} ${tooltipAlignClass} bg-gray-900 text-white text-[9.5px] font-bold p-2.5 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-[250] border border-orange-500/40 shadow-black/60 min-w-[130px] text-left`}>
+                                                                    <div className="font-extrabold text-[10.5px] text-orange-400 mb-1 border-b border-gray-700/60 pb-1">
+                                                                      📅 {formatAppDate(dateStr)}
+                                                                    </div>
+                                                                    <div className="flex items-center justify-between gap-3 text-slate-200 mt-0.5">
+                                                                      <span>⏱️ Hours:</span>
+                                                                      <span className="font-mono text-orange-300 font-extrabold">{formatHoursToHrsMinsShort(hours)}</span>
+                                                                    </div>
+                                                                    <div className="flex items-center justify-between gap-3 text-slate-200 mt-0.5">
+                                                                      <span>📝 Questions:</span>
+                                                                      <span className="font-mono text-amber-300 font-extrabold">{qCount}</span>
+                                                                    </div>
+                                                                    <div className="flex items-center justify-between gap-3 text-slate-200 mt-0.5">
+                                                                      <span>🎴 Cards:</span>
+                                                                      <span className="font-mono text-yellow-300 font-extrabold">{cardCount}</span>
+                                                                    </div>
+                                                                  </div>
+                                                                </div>
+                                                              );
+                                                            })}
+                                                          </div>
                                                         ))}
-
-                                                        {dateKeys.map(dateStr => {
-                                                          const { color, border, hours, qCount, cardCount } = getIntensityStyle(dateStr);
-
-                                                          return (
-                                                            <div
-                                                              key={dateStr}
-                                                              className={`w-[6.5px] h-[6.5px] sm:w-[7.5px] sm:h-[7.5px] rounded-[1.5px] transition duration-150 hover:scale-150 cursor-pointer relative group hover:z-[100] border ${border}`}
-                                                              style={{ backgroundColor: color }}
-                                                            >
-                                                              {/* Rich Tooltip popup */}
-                                                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-gray-900 text-white text-[9.5px] font-bold p-2.5 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-[110] border border-orange-500/40 shadow-black/60 min-w-[130px] text-left">
-                                                                <div className="font-extrabold text-[10.5px] text-orange-400 mb-1 border-b border-gray-700/60 pb-1">
-                                                                  📅 {formatAppDate(dateStr)}
-                                                                </div>
-                                                                <div className="flex items-center justify-between gap-3 text-slate-200 mt-0.5">
-                                                                  <span>⏱️ Hours:</span>
-                                                                  <span className="font-mono text-orange-300 font-extrabold">{formatHoursToHrsMinsShort(hours)}</span>
-                                                                </div>
-                                                                <div className="flex items-center justify-between gap-3 text-slate-200 mt-0.5">
-                                                                  <span>📝 Questions:</span>
-                                                                  <span className="font-mono text-amber-300 font-extrabold">{qCount}</span>
-                                                                </div>
-                                                                <div className="flex items-center justify-between gap-3 text-slate-200 mt-0.5">
-                                                                  <span>🎴 Cards:</span>
-                                                                  <span className="font-mono text-yellow-300 font-extrabold">{cardCount}</span>
-                                                                </div>
-                                                              </div>
-                                                            </div>
-                                                          );
-                                                        })}
                                                       </div>
                                                     </div>
                                                   </div>
