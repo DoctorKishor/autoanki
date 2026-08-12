@@ -24234,6 +24234,7 @@ Return your response strictly as a JSON object matching this schema:
                             <h4 className={`text-[10px] font-black uppercase tracking-wider mb-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Sunburst Deck Map</h4>
                             <div className="overflow-x-auto">
                               <HierarchicalSunburst
+                                themeMode={settingsThemeMode}
                                 deckPaths={deckPaths}
                                 libraryPages={libraryPages}
                                 deckCardCounts={deckCardCounts}
@@ -24635,71 +24636,83 @@ Return your response strictly as a JSON object matching this schema:
                             {/* KPI Grid */}
                             <div className="grid grid-cols-2 gap-3">
                               {/* Total Hours */}
-                              <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
-                                <div className="min-w-0">
-                                  <span className="text-[8px] font-black uppercase text-gray-400 tracking-wider">Hours Studied</span>
-                                  <h3 className="text-base font-black text-gray-800 mt-1 truncate">{formatHoursToHrsMinsShort(totalHours)}</h3>
-                                  <span className="text-[8px] text-orange-600 font-bold block mt-0.5">{activeDays.length} active days</span>
+                              <div className={`p-4 rounded-2xl flex items-center justify-between transition-all ${
+                                isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                              }`}>
+                                <div className="min-w-0 text-left">
+                                  <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Hours Studied</span>
+                                  <h3 className={`text-base font-black mt-1 truncate ${isDark ? 'text-white' : 'text-gray-800'}`}>{formatHoursToHrsMinsShort(totalHours)}</h3>
+                                  <span className={`text-[8px] font-bold block mt-0.5 ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>{activeDays.length} active days</span>
                                 </div>
-                                <div className="bg-orange-50 p-2 rounded-xl text-orange-500 shrink-0 ml-1">
+                                <div className={`p-2.5 rounded-xl shrink-0 ml-1 ${isDark ? 'neu-pressed-dark text-orange-400' : 'bg-orange-50 text-orange-500'}`}>
                                   <Clock className="w-5 h-5" />
                                 </div>
                               </div>
 
                               {/* Qbank Solved */}
-                              <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
-                                <div className="min-w-0">
-                                  <span className="text-[8px] font-black uppercase text-gray-400 tracking-wider">Qbank Solved</span>
-                                  <h3 className="text-base font-black text-gray-800 mt-1 truncate">{totalQuestions}</h3>
-                                  <span className="text-[8px] text-amber-600 font-bold block mt-0.5">Target practice</span>
+                              <div className={`p-4 rounded-2xl flex items-center justify-between transition-all ${
+                                isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                              }`}>
+                                <div className="min-w-0 text-left">
+                                  <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Qbank Solved</span>
+                                  <h3 className={`text-base font-black mt-1 truncate ${isDark ? 'text-white' : 'text-gray-800'}`}>{totalQuestions}</h3>
+                                  <span className={`text-[8px] font-bold block mt-0.5 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>Target practice</span>
                                 </div>
-                                <div className="bg-amber-50 p-2 rounded-xl text-amber-500 shrink-0 ml-1">
+                                <div className={`p-2.5 rounded-xl shrink-0 ml-1 ${isDark ? 'neu-pressed-dark text-amber-400' : 'bg-amber-50 text-amber-500'}`}>
                                   <BookOpen className="w-5 h-5" />
                                 </div>
                               </div>
 
                               {/* Anki Review */}
-                              <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
-                                <div className="min-w-0">
-                                  <span className="text-[8px] font-black uppercase text-gray-400 tracking-wider">Cards Reviewed</span>
-                                  <h3 className="text-base font-black text-gray-800 mt-1 truncate">{totalCards}</h3>
-                                  <span className="text-[8px] text-red-600 font-bold block mt-0.5">Spaced recall</span>
+                              <div className={`p-4 rounded-2xl flex items-center justify-between transition-all ${
+                                isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                              }`}>
+                                <div className="min-w-0 text-left">
+                                  <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Cards Reviewed</span>
+                                  <h3 className={`text-base font-black mt-1 truncate ${isDark ? 'text-white' : 'text-gray-800'}`}>{totalCards}</h3>
+                                  <span className={`text-[8px] font-bold block mt-0.5 ${isDark ? 'text-red-400' : 'text-red-600'}`}>Spaced recall</span>
                                 </div>
-                                <div className="bg-red-50 p-2 rounded-xl text-red-500 shrink-0 ml-1">
+                                <div className={`p-2.5 rounded-xl shrink-0 ml-1 ${isDark ? 'neu-pressed-dark text-red-400' : 'bg-red-50 text-red-500'}`}>
                                   <Layers className="w-5 h-5" />
                                 </div>
                               </div>
 
                               {/* Grand Tests */}
-                              <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
-                                <div className="min-w-0">
-                                  <span className="text-[8px] font-black uppercase text-gray-400 tracking-wider">Grand Tests</span>
-                                  <h3 className="text-base font-black text-gray-800 mt-1 truncate">{totalGtsCount}</h3>
-                                  <span className="text-[8px] text-blue-600 font-bold block mt-0.5">Mock attempts</span>
+                              <div className={`p-4 rounded-2xl flex items-center justify-between transition-all ${
+                                isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                              }`}>
+                                <div className="min-w-0 text-left">
+                                  <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Grand Tests</span>
+                                  <h3 className={`text-base font-black mt-1 truncate ${isDark ? 'text-white' : 'text-gray-800'}`}>{totalGtsCount}</h3>
+                                  <span className={`text-[8px] font-bold block mt-0.5 ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>Mock attempts</span>
                                 </div>
-                                <div className="bg-blue-50 p-2 rounded-xl text-blue-500 shrink-0 ml-1">
+                                <div className={`p-2.5 rounded-xl shrink-0 ml-1 ${isDark ? 'neu-pressed-dark text-blue-400' : 'bg-blue-50 text-blue-500'}`}>
                                   <Trophy className="w-5 h-5" />
                                 </div>
                               </div>
 
                               {/* Daily Pace */}
-                              <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm col-span-2 flex items-center justify-between">
-                                <div className="min-w-0">
-                                  <span className="text-[8px] font-black uppercase text-gray-400 tracking-wider">Daily Pace</span>
-                                  <h3 className="text-base font-black text-gray-800 mt-1 truncate">{averageHours} hrs/day</h3>
-                                  <span className="text-[8px] text-green-600 font-bold block mt-0.5">Consistent load balance</span>
+                              <div className={`p-4 rounded-2xl col-span-2 flex items-center justify-between transition-all ${
+                                isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                              }`}>
+                                <div className="min-w-0 text-left">
+                                  <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Daily Pace</span>
+                                  <h3 className={`text-base font-black mt-1 truncate ${isDark ? 'text-white' : 'text-gray-800'}`}>{averageHours} hrs/day</h3>
+                                  <span className={`text-[8px] font-bold block mt-0.5 ${isDark ? 'text-emerald-400' : 'text-green-600'}`}>Consistent load balance</span>
                                 </div>
-                                <div className="bg-green-50 p-2 rounded-xl text-green-500 shrink-0 ml-1">
+                                <div className={`p-2.5 rounded-xl shrink-0 ml-1 ${isDark ? 'neu-pressed-dark text-emerald-400' : 'bg-green-50 text-green-500'}`}>
                                   <TrendingUp className="w-5 h-5" />
                                 </div>
                               </div>
                             </div>
 
                             {/* Today's Goal Progress Circle */}
-                            <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex items-center gap-5">
+                            <div className={`p-5 rounded-3xl flex items-center gap-5 transition-all ${
+                              isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                            }`}>
                               <div className="relative shrink-0 flex items-center justify-center">
                                 <svg className="w-20 h-20 transform -rotate-90">
-                                  <circle cx="40" cy="40" r="34" stroke="#f3f4f6" strokeWidth="6" fill="transparent" />
+                                  <circle cx="40" cy="40" r="34" stroke={isDark ? '#2d3440' : '#f3f4f6'} strokeWidth="6" fill="transparent" />
                                   <circle cx="40" cy="40" r="34" stroke="url(#studyGrad)" strokeWidth="6" fill="transparent"
                                     strokeDasharray={2 * Math.PI * 34}
                                     strokeDashoffset={2 * Math.PI * 34 * (1 - Math.min(totalProgressPercent, 100) / 100)}
@@ -24712,12 +24725,12 @@ Return your response strictly as a JSON object matching this schema:
                                     </linearGradient>
                                   </defs>
                                 </svg>
-                                <span className="absolute text-sm font-black text-amber-600">{totalProgressPercent}%</span>
+                                <span className="absolute text-sm font-black text-amber-500">{totalProgressPercent}%</span>
                               </div>
                               <div className="text-left">
-                                <h4 className="text-xs font-black text-gray-800">Today's Target Progress</h4>
-                                <p className="text-[9px] text-gray-400 mt-1 leading-relaxed">
-                                  Goal set for <span className="text-amber-600 font-extrabold">{selectedStreakTag}</span> archetype:
+                                <h4 className={`text-xs font-black ${isDark ? 'text-slate-100' : 'text-gray-800'}`}>Today's Target Progress</h4>
+                                <p className={`text-[9px] mt-1 leading-relaxed ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
+                                  Goal set for <span className="text-amber-500 font-extrabold">{selectedStreakTag}</span> archetype:
                                   <br />• {activeGoal.hours} hrs Study ({Math.round(hoursProgress * 100)}%)
                                   <br />• {activeGoal.questions} Qbank Qs ({Math.round(questionsProgress * 100)}%)
                                   <br />• {activeGoal.cards} Anki Cards ({Math.round(cardsProgress * 100)}%)
@@ -25313,7 +25326,7 @@ Return your response strictly as a JSON object matching this schema:
                                 Avg: {pytCoverageStats.overallAverageCoverage}%
                               </span>
                             </div>
-                            <div className="grid grid-cols-1 gap-3 max-h-96 overflow-y-auto pr-1">
+                            <div className="grid grid-cols-1 gap-3.5 max-h-[420px] overflow-y-auto p-2 pr-2.5 custom-scrollbar">
                               {pytCoverageStats.allStats.map(stat => {
                                 const isSelected = stat.subject.toLowerCase() === selectedAnalyticsPytSubject.toLowerCase();
                                 return (
