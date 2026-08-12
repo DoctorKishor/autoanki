@@ -25041,35 +25041,35 @@ Return your response strictly as a JSON object matching this schema:
                         >
                           {/* Category select and Dream targets */}
                           <div className={`p-6 rounded-3xl space-y-4 ${isDark ? 'neu-card-dark' : 'neu-card-light'}`}>
-                            <h3 className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>Dream College Target</h3>
+                            <h3 className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>Dream College Target</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div>
-                                <label className={`block text-[9px] font-black uppercase mb-1.5 tracking-wider ${isDark ? 'text-gray-400 font-mono' : 'text-gray-500 font-mono'}`}>Category</label>
+                                <label className={`block text-[9px] font-black uppercase mb-1.5 tracking-wider ${isDark ? 'text-gray-400 font-mono' : 'text-gray-700 font-mono'}`}>Category</label>
                                 <select
                                   value={selectedCategory}
                                   onChange={(e) => setSelectedCategory(e.target.value)}
                                   className={`w-full p-3.5 rounded-2xl text-xs font-bold outline-none transition cursor-pointer ${
-                                    isDark ? 'neu-pressed-dark text-gray-100 border border-gray-800' : 'neu-pressed-light text-gray-800 border border-white/80'
+                                    isDark ? 'neu-pressed-dark text-gray-100 border border-gray-800' : 'neu-pressed-light text-gray-900 border border-white/80'
                                   }`}
                                 >
                                   {['General', 'OBC', 'SC', 'ST', 'EWS'].map(cat => (
-                                    <option key={cat} value={cat} className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-800'}>
+                                    <option key={cat} value={cat} className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>
                                       {cat === 'General' ? 'General / UR' : cat === 'OBC' ? 'OBC-NCL' : cat}
                                     </option>
                                   ))}
                                 </select>
                               </div>
                               <div>
-                                <label className={`block text-[9px] font-black uppercase mb-1.5 tracking-wider ${isDark ? 'text-gray-400 font-mono' : 'text-gray-500 font-mono'}`}>Dream College & Course</label>
+                                <label className={`block text-[9px] font-black uppercase mb-1.5 tracking-wider ${isDark ? 'text-gray-400 font-mono' : 'text-gray-700 font-mono'}`}>Dream College & Course</label>
                                 <select
                                   value={dreamCollege}
                                   onChange={(e) => setDreamCollege(e.target.value)}
                                   className={`w-full p-3.5 rounded-2xl text-xs font-bold outline-none transition cursor-pointer ${
-                                    isDark ? 'neu-pressed-dark text-gray-100 border border-gray-800' : 'neu-pressed-light text-gray-800 border border-white/80'
+                                    isDark ? 'neu-pressed-dark text-gray-100 border border-gray-800' : 'neu-pressed-light text-gray-900 border border-white/80'
                                   }`}
                                 >
                                   {['AIIMS, New Delhi', 'JIPMER, Puducherry', 'PGIMER, Chandigarh', 'Madras Medical College (MMC), Chennai (TN)', 'Seth GS Medical College, Mumbai (MH)', 'MAMC, New Delhi', 'AIIMS, Jodhpur', 'AIIMS, Bhopal', 'AIIMS, Bhubaneswar', 'CMC Vellore', 'NIMHANS, Bengaluru'].map(inst => (
-                                    <option key={inst} value={inst} className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-800'}>{inst}</option>
+                                    <option key={inst} value={inst} className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>{inst}</option>
                                   ))}
                                 </select>
                               </div>
@@ -25091,30 +25091,26 @@ Return your response strictly as a JSON object matching this schema:
                             const defaultTargetRank = mobileGetTargetRank(dreamCollege, dreamBranch);
                             const estimatedScore = Math.round(defaultTargetRank / 200 * 20 + 400);
                             return (
-                              <div className={`p-6 rounded-3xl space-y-4 transition-all duration-300 ${
+                              <div className={`p-6 rounded-3xl space-y-4 shadow-xl transition-all duration-300 ${
                                 isDark 
-                                  ? 'neu-card-dark border border-indigo-500/20 bg-gradient-to-br from-indigo-950/60 via-[#222730] to-purple-950/60 text-gray-100' 
-                                  : 'neu-card-light border border-indigo-200/50 bg-gradient-to-br from-indigo-900 via-indigo-950 to-purple-950 text-white'
+                                  ? 'neu-card-dark border border-indigo-500/20 bg-gradient-to-br from-indigo-950/90 via-[#222730] to-purple-950/90 text-white' 
+                                  : 'bg-gradient-to-br from-indigo-900 via-indigo-950 to-purple-950 text-white shadow-purple-950/20'
                               }`}>
                                 <div className="flex items-center gap-3">
                                   <Trophy className="w-6 h-6 text-amber-400 animate-pulse" />
                                   <div>
                                     <span className="text-[9px] font-black uppercase text-purple-300 tracking-wider font-mono">Cutoff Goal Target</span>
-                                    <h4 className="text-sm font-black truncate max-w-[280px]">{dreamCollege.split(',')[0]}</h4>
+                                    <h4 className="text-sm font-black text-white truncate max-w-[280px]">{dreamCollege.split(',')[0]}</h4>
                                   </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4 pt-2">
-                                  <div className={`p-4 rounded-2xl border transition ${
-                                    isDark ? 'neu-pressed-dark border-indigo-500/20' : 'bg-white/10 backdrop-blur-md border-white/20'
-                                  }`}>
+                                  <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/20">
                                     <span className="text-[9px] text-purple-200 block uppercase font-mono tracking-wider">Target Rank</span>
-                                    <span className="text-lg font-black mt-1 block font-mono"># {defaultTargetRank.toLocaleString()}</span>
+                                    <span className="text-lg font-black text-white mt-1 block font-mono"># {defaultTargetRank.toLocaleString()}</span>
                                   </div>
-                                  <div className={`p-4 rounded-2xl border transition ${
-                                    isDark ? 'neu-pressed-dark border-indigo-500/20' : 'bg-white/10 backdrop-blur-md border-white/20'
-                                  }`}>
+                                  <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/20">
                                     <span className="text-[9px] text-purple-200 block uppercase font-mono tracking-wider">Estimated Score</span>
-                                    <span className="text-lg font-black mt-1 block font-mono">{estimatedScore} / 800</span>
+                                    <span className="text-lg font-black text-white mt-1 block font-mono">{estimatedScore} / 800</span>
                                   </div>
                                 </div>
                               </div>
@@ -25123,7 +25119,7 @@ Return your response strictly as a JSON object matching this schema:
 
                           {/* Mentor Goal Checklists */}
                           <div className={`p-6 rounded-3xl space-y-4 ${isDark ? 'neu-card-dark' : 'neu-card-light'}`}>
-                            <h3 className={`text-xs font-black uppercase tracking-wider flex items-center gap-2 ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>
+                            <h3 className={`text-xs font-black uppercase tracking-wider flex items-center gap-2 ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
                               <TrendingUp className="w-4 h-4 text-indigo-500" /> Mentor Action Plan
                             </h3>
                             <div className="space-y-2.5">
@@ -25148,7 +25144,7 @@ Return your response strictly as a JSON object matching this schema:
                                       className={`flex items-start gap-3 p-3.5 rounded-2xl transition-all duration-200 cursor-pointer ${
                                         isChecked 
                                           ? (isDark ? 'neu-pressed-dark border border-gray-800/80 opacity-60' : 'neu-pressed-light border border-white/80 opacity-60')
-                                          : (isDark ? 'neu-card-dark hover:border-indigo-500/30' : 'neu-card-light hover:border-indigo-200')
+                                          : (isDark ? 'neu-card-dark hover:border-indigo-500/30' : 'neu-card-light hover:border-indigo-300')
                                       }`}
                                     >
                                       <input
@@ -25164,7 +25160,7 @@ Return your response strictly as a JSON object matching this schema:
                                       <span className={`text-xs leading-relaxed ${
                                         isChecked 
                                           ? (isDark ? 'text-gray-500 line-through font-semibold' : 'text-gray-400 line-through font-semibold') 
-                                          : (isDark ? 'text-gray-200 font-bold' : 'text-gray-700 font-bold')
+                                          : (isDark ? 'text-gray-200 font-bold' : 'text-gray-800 font-bold')
                                       }`}>
                                         {task}
                                       </span>
@@ -33148,35 +33144,35 @@ Return your response strictly as a JSON object matching this schema:
                                 {/* diagnostics metrics */}
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                   <div className={`p-4 rounded-2xl flex flex-col justify-between ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
-                                    <span className={`text-[9px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>National Aspirant Pool</span>
-                                    <span className={`text-lg font-black mt-1 font-mono ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{totalCandidates.toLocaleString()} Performed</span>
-                                    <span className={`text-[8px] font-bold mt-1 ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>Aspirants nationwide for {poolLabel}</span>
+                                    <span className={`text-[9px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-gray-400' : 'text-gray-700'}`}>National Aspirant Pool</span>
+                                    <span className={`text-lg font-black mt-1 font-mono ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>{totalCandidates.toLocaleString()} Performed</span>
+                                    <span className={`text-[8px] font-bold mt-1 ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>Aspirants nationwide for {poolLabel}</span>
                                   </div>
 
                                   <div className={`p-4 rounded-2xl flex flex-col justify-between ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
-                                    <span className={`text-[9px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Standing ({selectedCategory} Category)</span>
-                                    <span className={`text-lg font-black mt-1 font-mono ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>AIR ~{projectedAir.toLocaleString()}</span>
-                                    <span className={`text-[8px] font-bold mt-1 font-mono ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>Effective Category Rank: ~{effectiveCategoryRank.toLocaleString()}</span>
+                                    <span className={`text-[9px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-gray-400' : 'text-gray-700'}`}>Standing ({selectedCategory} Category)</span>
+                                    <span className={`text-lg font-black mt-1 font-mono ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>AIR ~{projectedAir.toLocaleString()}</span>
+                                    <span className={`text-[8px] font-bold mt-1 font-mono ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>Effective Category Rank: ~{effectiveCategoryRank.toLocaleString()}</span>
                                   </div>
 
                                   <div className={`p-4 rounded-2xl flex flex-col justify-between ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
-                                    <span className={`text-[9px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Clinical Seat Probability</span>
+                                    <span className={`text-[9px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-gray-400' : 'text-gray-700'}`}>Clinical Seat Probability</span>
                                     <div className="flex items-center gap-2 mt-1">
-                                      <div className={`flex-grow rounded-full h-2 overflow-hidden ${isDark ? 'bg-gray-800' : 'bg-gray-100'}`}>
+                                      <div className={`flex-grow rounded-full h-2 overflow-hidden ${isDark ? 'bg-gray-800' : 'bg-gray-200'}`}>
                                         <div
                                           style={{ width: `${matchProbability}%` }}
                                           className={`h-full rounded-full ${matchProbability >= 80 ? 'bg-emerald-500' : matchProbability >= 50 ? 'bg-blue-500' : matchProbability >= 20 ? 'bg-amber-500' : 'bg-red-500'}`}
                                         />
                                       </div>
-                                      <span className={`text-xs font-black font-mono shrink-0 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>{matchProbability}%</span>
+                                      <span className={`text-xs font-black font-mono shrink-0 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>{matchProbability}%</span>
                                     </div>
-                                    <span className={`text-[8px] font-bold mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>AI counselling match threshold</span>
+                                    <span className={`text-[8px] font-bold mt-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>AI counselling match threshold</span>
                                   </div>
                                 </div>
 
                                 {/* Match explanation text */}
                                 <div className={`p-4 rounded-2xl text-xs leading-relaxed font-semibold relative overflow-hidden ${
-                                  isDark ? 'neu-pressed-dark text-gray-200 border border-gray-800/80' : 'neu-pressed-light text-gray-700 border border-white/80'
+                                  isDark ? 'neu-pressed-dark text-gray-200 border border-gray-800/80' : 'neu-pressed-light text-gray-900 border border-white/80'
                                 }`}>
                                   <div className={`absolute top-0 left-0 bottom-0 w-1 ${isDark ? 'bg-orange-400' : 'bg-orange-500'}`} />
                                   <p>{diagnosticOverview}</p>
@@ -33184,24 +33180,24 @@ Return your response strictly as a JSON object matching this schema:
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                   <div className={`p-4 rounded-2xl space-y-3 ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
-                                    <h5 className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 font-mono ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                                    <h5 className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 font-mono ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
                                       <span>🏥</span> Cutoff-based Match (Last Counseling)
                                     </h5>
                                     <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1 scrollbar-thin">
                                       {matchedColleges.map((col, idx) => (
-                                        <div key={idx} className={`border-b pb-2 last:border-b-0 last:pb-0 text-left ${isDark ? 'border-gray-800/60' : 'border-gray-100'}`}>
-                                          <p className={`text-[10.5px] font-extrabold leading-tight ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{col.college}</p>
-                                          <p className={`text-[9px] font-bold mt-0.5 uppercase font-mono ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{col.course}</p>
+                                        <div key={idx} className={`border-b pb-2 last:border-b-0 last:pb-0 text-left ${isDark ? 'border-gray-800/60' : 'border-gray-200'}`}>
+                                          <p className={`text-[10.5px] font-extrabold leading-tight ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>{col.college}</p>
+                                          <p className={`text-[9px] font-bold mt-0.5 uppercase font-mono ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{col.course}</p>
                                         </div>
                                       ))}
                                     </div>
                                   </div>
 
                                   <div className={`p-4 rounded-2xl space-y-2 text-left ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
-                                    <h5 className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 font-mono ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
+                                    <h5 className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 font-mono ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
                                       <span>📈</span> Counseling Trends & Predictions
                                     </h5>
-                                    <p className={`text-[10.5px] font-semibold leading-relaxed text-left ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                                    <p className={`text-[10.5px] font-semibold leading-relaxed text-left ${isDark ? 'text-gray-300' : 'text-gray-800'}`}>
                                       {trendPredictionText}
                                     </p>
                                   </div>
@@ -33240,7 +33236,7 @@ Return your response strictly as a JSON object matching this schema:
                                         onChange={e => setOnlyCentralUniversities(e.target.checked)}
                                         className="rounded text-indigo-600 focus:ring-indigo-500 border-gray-300 w-3.5 h-3.5 cursor-pointer disabled:opacity-50"
                                       />
-                                      <span className={`text-[10px] font-bold transition ${isDark ? 'text-gray-300 group-hover:text-indigo-300' : 'text-gray-600 group-hover:text-indigo-950'}`}>
+                                      <span className={`text-[10px] font-bold transition ${isDark ? 'text-gray-300 group-hover:text-indigo-300' : 'text-gray-700 group-hover:text-indigo-950'}`}>
                                         {isNeetPg ? 'Only Central Universities' : 'Only Central (Locked for INI CET)'}
                                       </span>
                                     </label>
@@ -33248,30 +33244,30 @@ Return your response strictly as a JSON object matching this schema:
 
                                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div className="flex flex-col gap-1">
-                                      <label className={`text-[8px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Filter by State</label>
+                                      <label className={`text-[8px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-gray-400' : 'text-gray-700'}`}>Filter by State</label>
                                       <select
                                         value={isNeetPg ? dreamCollegeStateFilter : 'Central'}
                                         disabled={!isNeetPg || onlyCentralUniversities}
                                         onChange={e => setDreamCollegeStateFilter(e.target.value)}
                                         className={`w-full text-xs font-bold px-3 py-2 rounded-xl focus:outline-none transition cursor-pointer disabled:opacity-50 ${
-                                          isDark ? 'neu-pressed-dark text-gray-100 border border-indigo-500/30' : 'neu-pressed-light text-gray-800 border border-white/80'
+                                          isDark ? 'neu-pressed-dark text-gray-100 border border-indigo-500/30' : 'neu-pressed-light text-gray-900 border border-white/80'
                                         }`}
                                       >
                                         {!isNeetPg || onlyCentralUniversities ? (
-                                          <option value="Central" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-800'}>Central Universities / AIIMS Mode</option>
+                                          <option value="Central" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>Central Universities / AIIMS Mode</option>
                                         ) : (
                                           <>
-                                            <option value="All" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-800'}>All States / Regions</option>
-                                            <option value="Tamil Nadu" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-800'}>Tamil Nadu</option>
-                                            <option value="Karnataka" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-800'}>Karnataka</option>
-                                            <option value="Kerala" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-800'}>Kerala</option>
-                                            <option value="Andhra Pradesh" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-800'}>Andhra Pradesh</option>
-                                            <option value="Telangana" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-800'}>Telangana</option>
-                                            <option value="Delhi" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-800'}>Delhi</option>
-                                            <option value="Maharashtra" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-800'}>Maharashtra</option>
-                                            <option value="Uttar Pradesh" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-800'}>Uttar Pradesh</option>
-                                            <option value="West Bengal" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-800'}>West Bengal</option>
-                                            <option value="Rajasthan" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-800'}>Rajasthan</option>
+                                            <option value="All" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>All States / Regions</option>
+                                            <option value="Tamil Nadu" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>Tamil Nadu</option>
+                                            <option value="Karnataka" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>Karnataka</option>
+                                            <option value="Kerala" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>Kerala</option>
+                                            <option value="Andhra Pradesh" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>Andhra Pradesh</option>
+                                            <option value="Telangana" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>Telangana</option>
+                                            <option value="Delhi" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>Delhi</option>
+                                            <option value="Maharashtra" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>Maharashtra</option>
+                                            <option value="Uttar Pradesh" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>Uttar Pradesh</option>
+                                            <option value="West Bengal" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>West Bengal</option>
+                                            <option value="Rajasthan" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>Rajasthan</option>
                                           </>
                                         )}
                                       </select>
@@ -33279,10 +33275,10 @@ Return your response strictly as a JSON object matching this schema:
 
                                     <div className="flex flex-col justify-end">
                                       <div className={`text-[9px] font-bold rounded-xl px-3 py-2 flex items-center justify-between ${
-                                        isDark ? 'neu-pressed-dark text-indigo-300 border border-indigo-500/20' : 'bg-indigo-50/80 text-indigo-700 border border-indigo-100'
+                                        isDark ? 'neu-pressed-dark text-indigo-300 border border-indigo-500/20' : 'bg-indigo-50/80 text-indigo-800 border border-indigo-100'
                                       }`}>
                                         <span>Active Pool:</span>
-                                        <span className={`font-black font-mono text-[10px] ${isDark ? 'text-indigo-200' : 'text-indigo-900'}`}>{activePool.length} Colleges available</span>
+                                        <span className={`font-black font-mono text-[10px] ${isDark ? 'text-indigo-200' : 'text-indigo-950'}`}>{activePool.length} Colleges available</span>
                                       </div>
                                     </div>
                                   </div>
@@ -33291,18 +33287,18 @@ Return your response strictly as a JSON object matching this schema:
                                 {/* Selectors */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                   <div className="flex flex-col gap-1.5">
-                                    <label className={`text-[9px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Select Dream College</label>
+                                    <label className={`text-[9px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-gray-400' : 'text-gray-700'}`}>Select Dream College</label>
                                     <select
                                       value={currentDreamCollege}
                                       onChange={e => setDreamCollege(e.target.value)}
                                       className={`w-full text-xs font-bold px-3 py-2 rounded-xl focus:outline-none transition cursor-pointer ${
-                                        isDark ? 'neu-pressed-dark text-gray-100 border border-indigo-500/30' : 'neu-pressed-light text-gray-800 border border-white/80'
+                                        isDark ? 'neu-pressed-dark text-gray-100 border border-indigo-500/30' : 'neu-pressed-light text-gray-900 border border-white/80'
                                       }`}
                                     >
                                       {Object.keys(optGroupMap).sort().map(grpState => (
-                                        <optgroup key={grpState} label={grpState} className={`text-[10px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-indigo-300 bg-[#1a1f26]' : 'text-indigo-900 bg-indigo-50'}`}>
+                                        <optgroup key={grpState} label={grpState} className={`text-[10px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-indigo-300 bg-[#1a1f26]' : 'text-indigo-950 bg-indigo-50'}`}>
                                           {optGroupMap[grpState].map(colName => (
-                                            <option key={colName} value={colName} className={`text-xs font-bold normal-case font-sans ${isDark ? 'text-gray-100 bg-[#222730]' : 'text-gray-700 bg-white'}`}>
+                                            <option key={colName} value={colName} className={`text-xs font-bold normal-case font-sans ${isDark ? 'text-gray-100 bg-[#222730]' : 'text-gray-900 bg-white'}`}>
                                               {colName}
                                             </option>
                                           ))}
@@ -33312,16 +33308,16 @@ Return your response strictly as a JSON object matching this schema:
                                   </div>
 
                                   <div className="flex flex-col gap-1.5">
-                                    <label className={`text-[9px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Select Dream Specialty</label>
+                                    <label className={`text-[9px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-gray-400' : 'text-gray-700'}`}>Select Dream Specialty</label>
                                     <select
                                       value={currentDreamBranch}
                                       onChange={e => setDreamBranch(e.target.value)}
                                       className={`w-full text-xs font-bold px-3 py-2 rounded-xl focus:outline-none transition cursor-pointer ${
-                                        isDark ? 'neu-pressed-dark text-gray-100 border border-indigo-500/30' : 'neu-pressed-light text-gray-800 border border-white/80'
+                                        isDark ? 'neu-pressed-dark text-gray-100 border border-indigo-500/30' : 'neu-pressed-light text-gray-900 border border-white/80'
                                       }`}
                                     >
                                       {specialtyList.map(spec => (
-                                        <option key={spec} value={spec} className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-800'}>{spec}</option>
+                                        <option key={spec} value={spec} className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>{spec}</option>
                                       ))}
                                     </select>
                                   </div>
@@ -33332,27 +33328,27 @@ Return your response strictly as a JSON object matching this schema:
                                   <div className={`p-4 rounded-2xl flex flex-col justify-between shadow-sm transition ${
                                     isDark ? 'neu-pressed-dark border border-indigo-500/20' : 'neu-pressed-light border border-indigo-100/60'
                                   }`}>
-                                    <span className={`text-[9px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-indigo-300/70' : 'text-indigo-900/60'}`}>Target AIR Cutoff</span>
+                                    <span className={`text-[9px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-indigo-300/70' : 'text-indigo-950 font-extrabold'}`}>Target AIR Cutoff</span>
                                     <span className={`text-lg font-black mt-1 font-mono ${isDark ? 'text-indigo-100' : 'text-indigo-950'}`}>AIR ~{targetCutoff.toLocaleString()}</span>
-                                    <span className={`text-[8px] font-bold mt-1 ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>PrepLadder calibrated historical threshold</span>
+                                    <span className={`text-[8px] font-bold mt-1 ${isDark ? 'text-indigo-400' : 'text-indigo-700'}`}>PrepLadder calibrated historical threshold</span>
                                   </div>
 
                                   <div className={`p-4 rounded-2xl flex flex-col justify-between shadow-sm transition ${
                                     isDark ? 'neu-pressed-dark border border-indigo-500/20' : 'neu-pressed-light border border-indigo-100/60'
                                   }`}>
-                                    <span className={`text-[9px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-indigo-300/70' : 'text-indigo-900/60'}`}>Current Standing</span>
+                                    <span className={`text-[9px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-indigo-300/70' : 'text-indigo-950 font-extrabold'}`}>Current Standing</span>
                                     <span className={`text-lg font-black mt-1 font-mono ${isDark ? 'text-indigo-100' : 'text-indigo-950'}`}>AIR ~{effectiveCategoryRank.toLocaleString()}</span>
-                                    <span className={`text-[8px] font-bold mt-1 ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>Based on active simulated score ({activeGt.score} Qs)</span>
+                                    <span className={`text-[8px] font-bold mt-1 ${isDark ? 'text-indigo-400' : 'text-indigo-700'}`}>Based on active simulated score ({activeGt.score} Qs)</span>
                                   </div>
 
                                   <div className={`p-4 rounded-2xl flex flex-col justify-between shadow-sm transition ${
                                     isDark ? 'neu-pressed-dark border border-indigo-500/20' : 'neu-pressed-light border border-indigo-100/60'
                                   }`}>
-                                    <span className={`text-[9px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-indigo-300/70' : 'text-indigo-900/60'}`}>Cushion / Deficit Buffer</span>
+                                    <span className={`text-[9px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-indigo-300/70' : 'text-indigo-950 font-extrabold'}`}>Cushion / Deficit Buffer</span>
                                     <span className={`text-lg font-black mt-1 font-mono ${rankDeficit > 0 ? 'text-amber-500' : 'text-emerald-500'}`}>
                                       {rankDeficit > 0 ? `-${rankDeficit.toLocaleString()} ranks` : `+${Math.abs(rankDeficit).toLocaleString()} cushion`}
                                     </span>
-                                    <span className={`text-[8px] font-bold mt-1 font-mono ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>
+                                    <span className={`text-[8px] font-bold mt-1 font-mono ${isDark ? 'text-indigo-400' : 'text-indigo-700'}`}>
                                       {rankDeficit > 0 ? `Needs +${scoreDeficitCorrects} correct answers` : 'Safely in target zone'}
                                     </span>
                                   </div>
@@ -33360,13 +33356,13 @@ Return your response strictly as a JSON object matching this schema:
 
                                 {/* Mentor AI output paragraph */}
                                 <div className={`p-4 rounded-2xl text-left relative overflow-hidden space-y-2 ${
-                                  isDark ? 'neu-pressed-dark text-gray-200 border border-indigo-500/20' : 'neu-pressed-light text-gray-700 border border-indigo-100/60'
+                                  isDark ? 'neu-pressed-dark text-gray-200 border border-indigo-500/20' : 'neu-pressed-light text-gray-900 border border-indigo-100/60'
                                 }`}>
                                   <div className={`absolute top-0 left-0 bottom-0 w-1 ${isDark ? 'bg-indigo-400' : 'bg-indigo-500'}`} />
-                                  <h5 className={`text-[9px] font-black uppercase tracking-wider font-mono flex items-center gap-1.5 ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>
+                                  <h5 className={`text-[9px] font-black uppercase tracking-wider font-mono flex items-center gap-1.5 ${isDark ? 'text-indigo-400' : 'text-indigo-700'}`}>
                                     <Sparkles className="w-3.5 h-3.5 animate-spin" /> AI Mentor Review & Strategic Advice
                                   </h5>
-                                  <p className={`text-[10.5px] leading-relaxed font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
+                                  <p className={`text-[10.5px] leading-relaxed font-semibold ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
                                     {rankDeficit > 0 ? (
                                       `To bridge your clinical deficit of ${rankDeficit.toLocaleString()} ranks for securing ${currentDreamBranch} at ${currentDreamCollege}, you must raise your score by approximately ${scoreDeficitCorrects} correct answers in future attempts. Focus intensely on target active reviews and key high-volume systems outlined below.`
                                     ) : (
@@ -33386,12 +33382,12 @@ Return your response strictly as a JSON object matching this schema:
                                     </h5>
                                     <div className="space-y-3.5">
                                       {topThreeWeak.map((sub, idx) => (
-                                        <div key={idx} className={`space-y-1 p-3 rounded-xl ${isDark ? 'neu-card-dark border border-gray-800' : 'neu-card-light border border-gray-150'}`}>
+                                        <div key={idx} className={`space-y-1 p-3 rounded-xl ${isDark ? 'neu-card-dark border border-gray-800' : 'neu-card-light border border-gray-200'}`}>
                                           <div className="flex items-center justify-between text-[10px] font-black">
-                                            <span className={`font-bold ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{sub.name}</span>
+                                            <span className={`font-bold ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>{sub.name}</span>
                                             <span className="text-red-500 font-mono">{sub.accuracy}% Accuracy</span>
                                           </div>
-                                          <p className={`text-[9.5px] leading-relaxed font-semibold ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                          <p className={`text-[9.5px] leading-relaxed font-semibold ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                                             {subjectMasteryAdvice[sub.name] || 'Drill high-yield questions and review standard mechanisms using active-recall cards.'}
                                           </p>
                                         </div>
@@ -33424,7 +33420,7 @@ Return your response strictly as a JSON object matching this schema:
                                             <span className={`text-[10px] leading-relaxed transition-all ${
                                               isChecked 
                                                 ? (isDark ? 'text-gray-500 line-through font-semibold' : 'text-gray-400 line-through font-semibold') 
-                                                : (isDark ? 'text-gray-200 group-hover:text-indigo-300 font-bold' : 'text-gray-600 group-hover:text-indigo-950 font-bold')
+                                                : (isDark ? 'text-gray-200 group-hover:text-indigo-300 font-bold' : 'text-gray-800 group-hover:text-indigo-950 font-extrabold')
                                             }`}>
                                               {task}
                                             </span>
