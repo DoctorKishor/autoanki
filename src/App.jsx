@@ -31091,7 +31091,7 @@ Return your response strictly as a JSON object matching this schema:
                                           );
                                         })()}
 
-                                        {/* 3. YEARLY VIEW (Exactly 365 or 366 Boxes starting on Jan 1) */}
+                                        {/* 3. YEARLY VIEW (Scaled to fit entire 365/366 days cleanly inside single frame without overflow) */}
                                         {contributionTimeframe === 'yearly' && (() => {
                                           const jan1DateObj = new Date(dateKeys[0] + 'T00:00:00');
                                           const jan1Weekday = jan1DateObj.getDay();
@@ -31110,21 +31110,21 @@ Return your response strictly as a JSON object matching this schema:
                                           });
 
                                           return (
-                                            <div className="overflow-x-auto w-full flex justify-center custom-scrollbar py-2 px-4">
-                                              <div className="w-max select-none py-1 flex flex-col items-start">
+                                            <div className="w-full flex flex-col items-center justify-center py-1 overflow-hidden">
+                                              <div className="select-none flex flex-col items-start max-w-full">
                                                 {/* Month Header Row */}
-                                                <div className="flex gap-1 mb-1.5 h-3 text-[9px] font-black uppercase text-slate-400">
+                                                <div className="flex gap-[2px] sm:gap-[2.5px] mb-1 h-3 text-[7.5px] sm:text-[8px] font-black uppercase text-slate-400">
                                                   {monthLabels.map((lbl, cIdx) => (
-                                                    <div key={`m-col-dt-${cIdx}`} className="w-2.5 sm:w-3 text-left overflow-visible whitespace-nowrap">
+                                                    <div key={`m-col-dt-${cIdx}`} className="w-[6.5px] sm:w-[7.5px] text-left overflow-visible whitespace-nowrap">
                                                       {lbl || ''}
                                                     </div>
                                                   ))}
                                                 </div>
                                                 {/* 7-Row Matrix */}
-                                                <div className="grid grid-flow-col grid-rows-7 gap-1">
+                                                <div className="grid grid-flow-col grid-rows-7 gap-[2px] sm:gap-[2.5px]">
                                                   {/* Leading blank slots for Jan 1 starting weekday */}
                                                   {leadingBlanks.map((_, idx) => (
-                                                    <div key={`blank-jan1-${idx}`} className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm opacity-0 pointer-events-none" />
+                                                    <div key={`blank-jan1-${idx}`} className="w-[6.5px] h-[6.5px] sm:w-[7.5px] sm:h-[7.5px] rounded-[1.5px] opacity-0 pointer-events-none" />
                                                   ))}
 
                                                   {dateKeys.map(dateStr => {
@@ -31141,7 +31141,7 @@ Return your response strictly as a JSON object matching this schema:
                                                     return (
                                                       <div
                                                         key={dateStr}
-                                                        className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm transition duration-150 hover:scale-125 cursor-pointer relative group hover:z-50 border ${
+                                                        className={`w-[6.5px] h-[6.5px] sm:w-[7.5px] sm:h-[7.5px] rounded-[1.5px] transition duration-150 hover:scale-125 cursor-pointer relative group hover:z-50 border ${
                                                           count > 0 ? 'border-transparent' : (isDark ? 'border-gray-800/80' : 'border-gray-300/60')
                                                         }`}
                                                         style={{ backgroundColor: color }}
@@ -31740,7 +31740,7 @@ Return your response strictly as a JSON object matching this schema:
                                                 );
                                               })()}
 
-                                              {/* 3. YEARLY VIEW (Scaled down to fit entire 365/366 days in single frame) */}
+                                              {/* 3. YEARLY VIEW (Scaled to fit entire 365/366 days cleanly inside single frame without overflow) */}
                                               {studyIntensityTimeframe === 'yearly' && (() => {
                                                 const jan1DateObj = new Date(dateKeys[0] + 'T00:00:00');
                                                 const jan1Weekday = jan1DateObj.getDay();
@@ -31759,20 +31759,20 @@ Return your response strictly as a JSON object matching this schema:
                                                 });
 
                                                 return (
-                                                  <div className="w-full flex flex-col items-center justify-center py-1">
+                                                  <div className="w-full flex flex-col items-center justify-center py-1 overflow-hidden">
                                                     <div className="select-none flex flex-col items-start max-w-full">
                                                       {/* Month Header Row */}
-                                                      <div className="flex gap-[3px] sm:gap-[4px] mb-1.5 h-3 text-[8.5px] font-black uppercase text-slate-400">
+                                                      <div className="flex gap-[2px] sm:gap-[2.5px] mb-1 h-3 text-[7.5px] sm:text-[8px] font-black uppercase text-slate-400">
                                                         {monthLabels.map((lbl, cIdx) => (
-                                                          <div key={`m-col-st-${cIdx}`} className="w-[8.5px] sm:w-[10px] text-left overflow-visible whitespace-nowrap">
+                                                          <div key={`m-col-st-${cIdx}`} className="w-[6.5px] sm:w-[7.5px] text-left overflow-visible whitespace-nowrap">
                                                             {lbl || ''}
                                                           </div>
                                                         ))}
                                                       </div>
                                                       {/* 7-Row Matrix */}
-                                                      <div className="grid grid-flow-col grid-rows-7 gap-[3px] sm:gap-[4px]">
+                                                      <div className="grid grid-flow-col grid-rows-7 gap-[2px] sm:gap-[2.5px]">
                                                         {leadingBlanks.map((_, idx) => (
-                                                          <div key={`blank-jan1-st-${idx}`} className="w-[8.5px] h-[8.5px] sm:w-[10px] sm:h-[10px] rounded-[2px] opacity-0 pointer-events-none" />
+                                                          <div key={`blank-jan1-st-${idx}`} className="w-[6.5px] h-[6.5px] sm:w-[7.5px] sm:h-[7.5px] rounded-[1.5px] opacity-0 pointer-events-none" />
                                                         ))}
 
                                                         {dateKeys.map(dateStr => {
@@ -31781,7 +31781,7 @@ Return your response strictly as a JSON object matching this schema:
                                                           return (
                                                             <div
                                                               key={dateStr}
-                                                              className={`w-[8.5px] h-[8.5px] sm:w-[10px] sm:h-[10px] rounded-[2px] transition duration-150 hover:scale-150 cursor-pointer relative group hover:z-[100] border ${border}`}
+                                                              className={`w-[6.5px] h-[6.5px] sm:w-[7.5px] sm:h-[7.5px] rounded-[1.5px] transition duration-150 hover:scale-150 cursor-pointer relative group hover:z-[100] border ${border}`}
                                                               style={{ backgroundColor: color }}
                                                             >
                                                               {/* Rich Tooltip popup */}
