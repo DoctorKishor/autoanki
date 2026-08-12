@@ -979,8 +979,8 @@ const HierarchicalSunburst = ({ deckPaths, libraryPages, deckCardCounts = {}, on
   }, [zoomNodePath]);
 
   const treeRoot = useMemo(() => {
-    return buildTree(effectiveDeckPaths, libraryPages, deckCardCounts);
-  }, [effectiveDeckPaths, libraryPages, deckCardCounts]);
+    return buildTree(deckPaths, libraryPages, deckCardCounts);
+  }, [deckPaths, libraryPages, deckCardCounts]);
 
   const activeSubtreeRoot = useMemo(() => {
     if (zoomNodePath === 'Root') return treeRoot;
