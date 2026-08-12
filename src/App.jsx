@@ -24240,7 +24240,7 @@ Return your response strictly as a JSON object matching this schema:
                           </div>
 
                           {/* Mobile Contribution Activity Heatmap */}
-                          <div className={`p-5 rounded-3xl transition-all h-[340px] flex flex-col justify-between ${
+                          <div className={`p-5 rounded-3xl transition-all h-[360px] flex flex-col justify-between ${
                             isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
                           }`}>
                             {(() => {
@@ -24307,7 +24307,7 @@ Return your response strictly as a JSON object matching this schema:
 
                               return (
                                 <>
-                                  <div className="flex flex-col gap-2 text-left">
+                                  <div className="flex flex-col gap-2 text-left p-1">
                                     <div className="flex items-center justify-between">
                                       <div className="flex items-center gap-1.5">
                                         <div className={`p-1.5 rounded-xl ${isDark ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'}`}>
@@ -24389,7 +24389,7 @@ Return your response strictly as a JSON object matching this schema:
                                   {/* View Renderers (Uniform Height 210px) */}
                                   <div className="h-[210px] w-full flex items-center justify-center">
                                     {contributionTimeframe === 'weekly' && (
-                                      <div className="grid grid-cols-7 gap-1.5 w-full">
+                                      <div className="grid grid-cols-7 gap-1.5 w-full px-2">
                                         {dateKeys.map(dateStr => {
                                           const dayObj = new Date(dateStr + 'T00:00:00');
                                           const dayName = dayObj.toLocaleDateString('en-US', { weekday: 'narrow' });
@@ -24434,7 +24434,7 @@ Return your response strictly as a JSON object matching this schema:
                                       const emptySlots = Array.from({ length: firstWeekday });
 
                                       return (
-                                        <div className="max-w-[320px] mx-auto w-full">
+                                        <div className="max-w-[320px] mx-auto w-full px-2">
                                           <div className="grid grid-cols-7 gap-1 mb-1 text-center">
                                             {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((w, idx) => (
                                               <span key={idx} className={`text-[8px] font-black ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>{w}</span>
@@ -24478,8 +24478,8 @@ Return your response strictly as a JSON object matching this schema:
                                       const leadingBlanks = Array.from({ length: jan1Weekday });
 
                                       return (
-                                        <div className="overflow-x-auto w-full flex justify-center custom-scrollbar">
-                                          <div className="min-w-[650px] select-none flex justify-center py-2">
+                                        <div className="overflow-x-auto w-full custom-scrollbar px-3 py-1">
+                                          <div className="min-w-[720px] select-none py-1">
                                             <div className="grid grid-flow-col grid-rows-7 gap-1">
                                               {leadingBlanks.map((_, idx) => (
                                                 <div key={`blank-jan1-${idx}`} className="w-2.5 h-2.5 rounded-sm opacity-0 pointer-events-none" />
@@ -24510,6 +24510,31 @@ Return your response strictly as a JSON object matching this schema:
                                         </div>
                                       );
                                     })()}
+                                  </div>
+
+                                  {/* Mobile Footer: HSL Activity Legend */}
+                                  <div className={`flex items-center justify-between text-[8px] font-bold px-2 pt-1 select-none border-t ${
+                                    isDark ? 'border-gray-800/60 text-slate-400' : 'border-gray-100 text-slate-500'
+                                  }`}>
+                                    <span className="font-mono">{periodDetailText}</span>
+                                    <div className="flex items-center gap-1">
+                                      <span>Less</span>
+                                      <div className={`w-2 h-2 rounded-sm border ${isDark ? 'bg-[#2a303c] border-gray-700/40' : 'bg-[#f3f4f6] border-gray-200/40'}`} title="0 cards" />
+                                      <div className="flex items-center gap-[1px]">
+                                        {[0.2, 0.4, 0.6, 0.8, 1.0].map((ratio, idx) => {
+                                          const lightness = isDark ? (25 + ratio * 45) : (94 - ratio * 69);
+                                          const saturation = 35 + ratio * 59;
+                                          return (
+                                            <div
+                                              key={idx}
+                                              className="w-1.5 h-2 rounded-[1px]"
+                                              style={{ backgroundColor: `hsl(217, ${Math.round(saturation)}%, ${Math.round(lightness)}%)` }}
+                                            />
+                                          );
+                                        })}
+                                      </div>
+                                      <span>More</span>
+                                    </div>
                                   </div>
                                 </>
                               );
