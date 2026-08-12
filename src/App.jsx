@@ -30344,49 +30344,53 @@ Return your response strictly as a JSON object matching this schema:
                                           </div>
                                         </div>
 
-                                        {/* Center: Fixed Position Subtabs with Slower Smooth Sliding Pill */}
+                                        {/* Center: Fixed Position Subtabs with 0.6s cubic-bezier(0,0,0,1) Smooth Sliding Pill */}
                                         <div className="flex justify-center">
-                                          <div className={`relative flex items-center p-1.5 rounded-2xl gap-1 shrink-0 select-none ${
-                                            isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
-                                          }`}>
-                                            {[
+                                          {(() => {
+                                            const subtabs = [
                                               { id: 'weekly', label: 'Weekly' },
                                               { id: 'monthly', label: 'Monthly' },
                                               { id: 'yearly', label: 'Yearly' }
-                                            ].map(item => {
-                                              const isActive = contributionTimeframe === item.id;
-                                              return (
-                                                <button
-                                                  key={item.id}
-                                                  onClick={() => {
-                                                    setContributionTimeframe(item.id);
-                                                    setContributionOffset(0);
-                                                  }}
-                                                  className={`relative w-24 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition-colors cursor-pointer select-none flex items-center justify-center ${
-                                                    isActive
-                                                      ? 'text-white font-extrabold'
-                                                      : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                                            ];
+                                            const activeIndex = Math.max(0, subtabs.findIndex(t => t.id === contributionTimeframe));
+
+                                            return (
+                                              <div className={`relative flex items-center p-1.5 rounded-2xl gap-1 shrink-0 select-none ${
+                                                isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
+                                              }`}>
+                                                {/* Single Sliding Pill Indicator with exact 0.6s cubic-bezier(0,0,0,1) transition */}
+                                                <div
+                                                  className={`absolute top-1.5 bottom-1.5 w-24 rounded-xl shadow-md ${
+                                                    isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
                                                   }`}
-                                                >
-                                                  {isActive && (
-                                                    <motion.div
-                                                      layoutId="activeContributionTimeframePill"
-                                                      className={`absolute inset-0 rounded-xl ${
-                                                        isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
-                                                      }`}
-                                                      transition={{
-                                                        type: "spring",
-                                                        stiffness: 220,
-                                                        damping: 26,
-                                                        mass: 0.8
+                                                  style={{
+                                                    left: `calc(0.375rem + ${activeIndex} * (6rem + 0.25rem))`,
+                                                    transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                                                  }}
+                                                />
+
+                                                {subtabs.map(item => {
+                                                  const isActive = contributionTimeframe === item.id;
+                                                  return (
+                                                    <button
+                                                      key={item.id}
+                                                      onClick={() => {
+                                                        setContributionTimeframe(item.id);
+                                                        setContributionOffset(0);
                                                       }}
-                                                    />
-                                                  )}
-                                                  <span className="relative z-10">{item.label}</span>
-                                                </button>
-                                              );
-                                            })}
-                                          </div>
+                                                      className={`relative w-24 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${
+                                                        isActive
+                                                          ? 'text-white font-extrabold'
+                                                          : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                                                      }`}
+                                                    >
+                                                      <span>{item.label}</span>
+                                                    </button>
+                                                  );
+                                                })}
+                                              </div>
+                                            );
+                                          })()}
                                         </div>
 
                                         {/* Right: HSL Intensity Legend */}
