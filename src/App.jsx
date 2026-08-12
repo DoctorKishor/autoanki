@@ -768,7 +768,7 @@ For EVERY card generated, you MUST populate all 5 of the following fields:
    - If "Basic": Topic Subheading + Direct Question text.
    - If "Cloze": Must be an empty string ("").
 3. "back": 
-   - If "Basic": Concise, complete answer text. NEVER leave empty for a Basic card. Whenever the answer consists of a list of two or more points (lines separated by Enter/newlines), automatically prefix each point with a bullet point ("• "). Do NOT add, delete, or alter the source wording.
+   - If "Basic": Concise, complete answer text. NEVER leave empty for a Basic card. Whenever the answer consists of a list of two or more points (lines separated by Enter/newlines), automatically prefix each point with a bullet point ("• "). If the answer is only a single point/line, do NOT add any bullet point. Do NOT add, delete, or alter the source wording.
    - If "Cloze": Optional high-yield explanation or context note (leave as empty string "" if none).
 4. "text": 
    - If "Basic": Must be an empty string ("").
@@ -784,7 +784,7 @@ You do NOT summarize, rephrase, correct grammar, or alter any text content. Copy
 RULES:
 1. Extract the direct question into "front" (strip leading card numbers like "12." or "Q1.").
 2. Extract the complete answer into "back" (preserve all multi-line text, lists, and dosages).
-3. AUTOMATIC BULLET LIST RULE: Whenever the answer part consists of a list of two or more points (lines separated by Enter / newlines), you MUST automatically prefix each point/line with a bullet point ("• "). You must NOT add or delete any text content, rephrase words, or alter the text—simply insert a bullet point ("• ") at the start of each line if the lines of the answer are separated by Enter. If a line already starts with a bullet ("•", "-", "*"), preserve it cleanly.
+3. AUTOMATIC BULLET LIST RULE: Whenever the answer part consists of a list of TWO OR MORE points (lines separated by Enter / newlines), you MUST automatically prefix each point/line with a bullet point ("• "). If the answer contains only ONE single point/line, do NOT add any bullet point. You must NOT add or delete any text content, rephrase words, or alter the text—simply insert a bullet point ("• ") at the start of each line if 2 or more lines of the answer are separated by Enter. If a line already starts with a bullet ("•", "-", "*"), preserve it cleanly.
 4. Output MUST be a raw JSON array of objects with "type": "Basic".
 
 JSON OUTPUT FORMAT:
