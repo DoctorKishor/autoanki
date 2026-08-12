@@ -4733,6 +4733,8 @@ export default function App() {
   const [hoveredStudyRoomIntensityDate, setHoveredStudyRoomIntensityDate] = useState(null);
   const [contributionTimeframe, setContributionTimeframe] = useState('yearly'); // 'weekly' | 'monthly' | 'yearly'
   const [contributionOffset, setContributionOffset] = useState(0); // 0 = current period, -1 = previous, etc.
+  const [studyIntensityTimeframe, setStudyIntensityTimeframe] = useState('yearly'); // 'weekly' | 'monthly' | 'yearly'
+  const [studyIntensityOffset, setStudyIntensityOffset] = useState(0); // 0 = current period, -1 = previous, etc.
 
   const DEFAULT_DASHBOARD_WIDGETS = useMemo(() => [
     { id: 'campEfficiencyCard', label: 'CAMP Study Efficiency', size: 'medium', enabled: true },
@@ -24705,6 +24707,286 @@ Return your response strictly as a JSON object matching this schema:
                                 </p>
                               </div>
                             </div>
+
+                            {/* Mobile Study Room Intensity Map */}
+                            <div className={`p-5 rounded-3xl transition-all flex flex-col justify-between ${
+                              isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                            }`}>
+                              {(() => {
+                                const today = new Date();
+                                let dateKeys = [];
+                                let periodLabel = '';
+                                let periodDetailText = '';
+
+                                if (studyIntensityTimeframe === 'weekly') {
+                                  const refDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + (studyIntensityOffset * 7));
+                                  const dayOfWeek = refDate.getDay();
+                                  const weekStart = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate() - dayOfWeek);
+
+                                  for (let i = 0; i < 7; i++) {
+                                    const d = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + i);
+                                    const tzoffset = d.getTimezoneOffset() * 60000;
+                                    const dateStr = (new Date(d.getTime() - tzoffset)).toISOString().slice(0, 10);
+                                    dateKeys.push(dateStr);
+                                  }
+
+                                  const startDateObj = new Date(dateKeys[0] + 'T00:00:00');
+                                  const endDateObj = new Date(dateKeys[6] + 'T00:00:00');
+                                  const startLabel = startDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                                  const endLabel = endDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                                  periodLabel = `${startLabel} – ${endLabel}`;
+                                  periodDetailText = `7 Days for ${periodLabel}`;
+
+                                } else if (studyIntensityTimeframe === 'monthly') {
+                                  const refDate = new Date(today.getFullYear(), today.getMonth() + studyIntensityOffset, 1);
+                                  const targetYear = refDate.getFullYear();
+                                  const targetMonth = refDate.getMonth();
+                                  const daysInMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+
+                                  for (let i = 1; i <= daysInMonth; i++) {
+                                    const mmStr = String(targetMonth + 1).padStart(2, '0');
+                                    const ddStr = String(i).padStart(2, '0');
+                                    dateKeys.push(`${targetYear}-${mmStr}-${ddStr}`);
+                                  }
+
+                                  const monthName = refDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                                  periodLabel = monthName;
+                                  periodDetailText = `${daysInMonth} Days in ${monthName}`;
+
+                                } else {
+                                  const targetYear = today.getFullYear() + studyIntensityOffset;
+                                  const isLeapYear = (targetYear % 4 === 0 && targetYear % 100 !== 0) || (targetYear % 400 === 0);
+                                  const daysInYear = isLeapYear ? 366 : 365;
+
+                                  for (let i = 0; i < daysInYear; i++) {
+                                    const d = new Date(targetYear, 0, 1 + i);
+                                    const mmStr = String(d.getMonth() + 1).padStart(2, '0');
+                                    const ddStr = String(d.getDate()).padStart(2, '0');
+                                    dateKeys.push(`${targetYear}-${mmStr}-${ddStr}`);
+                                  }
+
+                                  periodLabel = `Year ${targetYear}`;
+                                  periodDetailText = `Full Year ${targetYear} (${daysInYear} Days)`;
+                                }
+
+                                const getIntensityStyle = (dateStr) => {
+                                  const log = studyLogs[dateStr] || { hours: 0, questions: 0, cards: 0 };
+                                  const hours = Number(log.hours) || 0;
+                                  const qCount = Number(log.questions) || 0;
+                                  const cardCount = Number(log.cards) || 0;
+
+                                  let color = isDark ? '#1e242d' : '#cbd5e1';
+                                  let border = isDark ? 'border-gray-800/80' : 'border-gray-300/60';
+                                  if (hours > 0 || qCount > 0 || cardCount > 0) {
+                                    border = 'border-transparent';
+                                    const totalScore = hours * 2 + (qCount / 20) + (cardCount / 30);
+                                    if (totalScore <= 2) color = '#ffedd5';
+                                    else if (totalScore <= 5) color = '#fed7aa';
+                                    else if (totalScore <= 9) color = '#fdbb2d';
+                                    else if (totalScore <= 15) color = '#f97316';
+                                    else color = '#c2410c';
+                                  }
+                                  return { color, border, hours, qCount, cardCount };
+                                };
+
+                                return (
+                                  <>
+                                    <div className="flex flex-col gap-2 text-left p-1 mb-2">
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-1.5">
+                                          <div className={`p-1.5 rounded-xl ${isDark ? 'neu-pressed-dark text-orange-400' : 'neu-pressed-light text-orange-600'}`}>
+                                            <Calendar className="w-3.5 h-3.5" />
+                                          </div>
+                                          <h3 className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                            Study Room Intensity
+                                          </h3>
+                                        </div>
+
+                                        {/* Mobile Period Navigation */}
+                                        <div className="flex items-center gap-1">
+                                          <motion.button
+                                            whileTap={{ scale: 0.9 }}
+                                            onClick={() => setStudyIntensityOffset(prev => prev - 1)}
+                                            className={`p-1 rounded-lg ${isDark ? 'bg-slate-800 text-slate-300' : 'bg-gray-200 text-slate-700'}`}
+                                          >
+                                            <ChevronLeft className="w-3.5 h-3.5" />
+                                          </motion.button>
+                                          <span className={`text-[9px] font-black uppercase font-mono px-2 py-0.5 rounded ${
+                                            isDark ? 'bg-slate-800 text-orange-400' : 'bg-orange-50 text-orange-700'
+                                          }`}>
+                                            {periodLabel}
+                                          </span>
+                                          <motion.button
+                                            whileTap={{ scale: 0.9 }}
+                                            disabled={studyIntensityOffset >= 0}
+                                            onClick={() => setStudyIntensityOffset(prev => Math.min(0, prev + 1))}
+                                            className={`p-1 rounded-lg ${
+                                              studyIntensityOffset >= 0
+                                                ? 'opacity-30 cursor-not-allowed text-gray-400'
+                                                : (isDark ? 'bg-slate-800 text-slate-300' : 'bg-gray-200 text-slate-700')
+                                            }`}
+                                          >
+                                            <ChevronRight className="w-3.5 h-3.5" />
+                                          </motion.button>
+                                        </div>
+                                      </div>
+
+                                      {/* Mobile Subtabs Pill Switcher */}
+                                      <div className="flex justify-center mt-1">
+                                        {(() => {
+                                          const subtabs = [
+                                            { id: 'weekly', label: 'Weekly' },
+                                            { id: 'monthly', label: 'Monthly' },
+                                            { id: 'yearly', label: 'Yearly' }
+                                          ];
+                                          const activeIndex = Math.max(0, subtabs.findIndex(t => t.id === studyIntensityTimeframe));
+
+                                          return (
+                                            <div className={`relative flex items-center p-1 rounded-xl gap-1 shrink-0 select-none ${
+                                              isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
+                                            }`}>
+                                              <div
+                                                className={`absolute top-1 bottom-1 w-20 rounded-lg shadow-md ${
+                                                  isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+                                                }`}
+                                                style={{
+                                                  left: `calc(0.25rem + ${activeIndex} * (5rem + 0.25rem))`,
+                                                  transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                                                }}
+                                              />
+                                              {subtabs.map(item => (
+                                                <button
+                                                  key={item.id}
+                                                  onClick={() => {
+                                                    setStudyIntensityTimeframe(item.id);
+                                                    setStudyIntensityOffset(0);
+                                                  }}
+                                                  className={`relative w-20 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${
+                                                    studyIntensityTimeframe === item.id ? 'text-white font-extrabold' : (isDark ? 'text-slate-400' : 'text-slate-600')
+                                                  }`}
+                                                >
+                                                  <span>{item.label}</span>
+                                                </button>
+                                              ))}
+                                            </div>
+                                          );
+                                        })()}
+                                      </div>
+                                    </div>
+
+                                    {/* Mobile View Content (Weekly, Monthly, Yearly) */}
+                                    <div className="min-h-[160px] flex items-center justify-center">
+                                      {studyIntensityTimeframe === 'weekly' && (
+                                        <div className="grid grid-cols-7 gap-1.5 w-full">
+                                          {dateKeys.map(dateStr => {
+                                            const dayObj = new Date(dateStr + 'T00:00:00');
+                                            const dayName = dayObj.toLocaleDateString('en-US', { weekday: 'narrow' });
+                                            const dayNum = dayObj.getDate();
+                                            const { color, border, hours, qCount } = getIntensityStyle(dateStr);
+
+                                            return (
+                                              <div
+                                                key={dateStr}
+                                                className={`p-1.5 rounded-xl flex flex-col items-center justify-between text-center border relative group hover:z-[100] ${border}`}
+                                                style={{ backgroundColor: color }}
+                                              >
+                                                <span className="text-[8px] font-black uppercase text-gray-900">{dayName}</span>
+                                                <span className="text-xs font-black text-gray-900 my-0.5">{dayNum}</span>
+                                                <span className="text-[7.5px] font-extrabold bg-gray-900/80 text-orange-300 px-1 py-0.2 rounded">
+                                                  {hours > 0 ? `${formatHoursToHrsMinsShort(hours)}` : (qCount > 0 ? `${qCount}q` : '0h')}
+                                                </span>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+
+                                      {studyIntensityTimeframe === 'monthly' && (() => {
+                                        const firstDateObj = new Date(dateKeys[0] + 'T00:00:00');
+                                        const startWeekday = firstDateObj.getDay();
+                                        const leadingBlanks = Array.from({ length: startWeekday });
+
+                                        return (
+                                          <div className="overflow-x-auto w-full flex justify-center custom-scrollbar py-2">
+                                            <div className="w-max select-none">
+                                              <div className="grid grid-flow-col grid-rows-7 gap-1">
+                                                {leadingBlanks.map((_, idx) => (
+                                                  <div key={`blank-m-st-${idx}`} className="w-2.5 h-2.5 rounded-sm opacity-0 pointer-events-none" />
+                                                ))}
+                                                {dateKeys.map(dateStr => {
+                                                  const { color, border, hours, qCount, cardCount } = getIntensityStyle(dateStr);
+                                                  return (
+                                                    <div
+                                                      key={dateStr}
+                                                      className={`w-2.5 h-2.5 rounded-sm relative group hover:z-[100] cursor-pointer border ${border}`}
+                                                      style={{ backgroundColor: color }}
+                                                    >
+                                                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-gray-900 text-white text-[8px] font-bold px-2 py-1 rounded shadow-xl opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-[110]">
+                                                        {hours}h / {qCount}q / {cardCount}c on {formatAppDate(dateStr)}
+                                                      </div>
+                                                    </div>
+                                                  );
+                                                })}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        );
+                                      })()}
+
+                                      {studyIntensityTimeframe === 'yearly' && (() => {
+                                        const jan1DateObj = new Date(dateKeys[0] + 'T00:00:00');
+                                        const jan1Weekday = jan1DateObj.getDay();
+                                        const leadingBlanks = Array.from({ length: jan1Weekday });
+
+                                        const monthLabels = Array(53).fill(null);
+                                        dateKeys.forEach((dateStr, idx) => {
+                                          const d = new Date(dateStr + 'T00:00:00');
+                                          if (d.getDate() === 1) {
+                                            const colIndex = Math.floor((jan1Weekday + idx) / 7);
+                                            if (colIndex < 53 && !monthLabels[colIndex]) {
+                                              monthLabels[colIndex] = d.toLocaleDateString('en-US', { month: 'short' });
+                                            }
+                                          }
+                                        });
+
+                                        return (
+                                          <div className="overflow-x-auto w-full custom-scrollbar py-2">
+                                            <div className="w-max select-none py-1">
+                                              <div className="flex gap-1 mb-1.5 h-3 text-[8.5px] font-black uppercase text-slate-400">
+                                                {monthLabels.map((lbl, cIdx) => (
+                                                  <div key={`m-col-st-${cIdx}`} className="w-2.5 text-left overflow-visible whitespace-nowrap">
+                                                    {lbl || ''}
+                                                  </div>
+                                                ))}
+                                              </div>
+                                              <div className="grid grid-flow-col grid-rows-7 gap-1">
+                                                {leadingBlanks.map((_, idx) => (
+                                                  <div key={`blank-jan1-st-${idx}`} className="w-2.5 h-2.5 rounded-sm opacity-0 pointer-events-none" />
+                                                ))}
+                                                {dateKeys.map(dateStr => {
+                                                  const { color, border, hours, qCount, cardCount } = getIntensityStyle(dateStr);
+                                                  return (
+                                                    <div
+                                                      key={dateStr}
+                                                      className={`w-2.5 h-2.5 rounded-sm relative group hover:z-[100] cursor-pointer border ${border}`}
+                                                      style={{ backgroundColor: color }}
+                                                    >
+                                                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-gray-900 text-white text-[8px] font-bold px-2 py-1 rounded shadow-xl opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-[110]">
+                                                        {hours}h / {qCount}q / {cardCount}c on {formatAppDate(dateStr)}
+                                                      </div>
+                                                    </div>
+                                                  );
+                                                })}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        );
+                                      })()}
+                                    </div>
+                                  </>
+                                );
+                              })()}
+                            </div>
                           </div>
                         );
                       })()}
@@ -31108,85 +31390,397 @@ Return your response strictly as a JSON object matching this schema:
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                     transition={{ duration: 0.4, delay: 0.30 }}
                                     whileHover={{ scale: 1.005 }}
-                                    className={`lg:col-span-8 p-6 rounded-3xl flex flex-col transition-all ${
+                                    className={`lg:col-span-8 p-6 rounded-3xl flex flex-col justify-between transition-all ${
                                       isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
                                     }`}
                                   >
-                                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                                      <div>
-                                        <h3 className={`text-sm font-black uppercase tracking-wider flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                                          <Calendar className={`w-4 h-4 ${isDark ? 'text-orange-400' : 'text-orange-500'}`} /> Study Room Intensity Map
-                                        </h3>
-                                        <p className={`text-[10px] font-bold uppercase mt-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Logged study activity over the last 9 weeks</p>
-                                      </div>
+                                    {(() => {
+                                      const today = new Date();
+                                      let dateKeys = [];
+                                      let periodLabel = '';
+                                      let periodDetailText = '';
 
-                                      <div className={`flex items-center gap-1.5 text-[9px] font-bold select-none ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
-                                        <span>Less</span>
-                                        <div className={`w-2.5 h-2.5 rounded-sm border ${isDark ? 'bg-[#2a303c] border-gray-700/50' : 'bg-gray-50 border-gray-200/50'}`} />
-                                        <div className="w-2.5 h-2.5 bg-orange-100 rounded-sm border border-orange-200/50" />
-                                        <div className="w-2.5 h-2.5 bg-orange-300 rounded-sm" />
-                                        <div className="w-2.5 h-2.5 bg-orange-500 rounded-sm" />
-                                        <div className="w-2.5 h-2.5 bg-orange-700 rounded-sm" />
-                                        <span>More</span>
-                                      </div>
-                                    </div>
+                                      if (studyIntensityTimeframe === 'weekly') {
+                                        // Weekly View: Exactly 7 boxes (Sun–Sat)
+                                        const refDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + (studyIntensityOffset * 7));
+                                        const dayOfWeek = refDate.getDay();
+                                        const weekStart = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate() - dayOfWeek);
 
-                                    {/* Calendar Grid representation of past 63 days */}
-                                    <div className={`overflow-x-auto pb-2 scrollbar-thin select-none flex justify-center py-4 rounded-2xl border ${
-                                      isDark ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-white/80'
-                                    }`}>
-                                      <div className="grid grid-flow-col grid-rows-7 gap-1.5">
-                                        {(() => {
-                                          const list = [];
-                                          const now = new Date();
-                                          for (let d = 62; d >= 0; d--) {
-                                            const targetDate = new Date();
-                                            targetDate.setDate(now.getDate() - d);
-                                            const tzoffset = targetDate.getTimezoneOffset() * 60000;
-                                            const dateStr = (new Date(targetDate.getTime() - tzoffset)).toISOString().slice(0, 10);
+                                        for (let i = 0; i < 7; i++) {
+                                          const d = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + i);
+                                          const tzoffset = d.getTimezoneOffset() * 60000;
+                                          const dateStr = (new Date(d.getTime() - tzoffset)).toISOString().slice(0, 10);
+                                          dateKeys.push(dateStr);
+                                        }
 
-                                            const log = studyLogs[dateStr] || { hours: 0, questions: 0, cards: 0 };
-                                            const hours = Number(log.hours) || 0;
-                                            const qCount = Number(log.questions) || 0;
-                                            const cardCount = Number(log.cards) || 0;
+                                        const startDateObj = new Date(dateKeys[0] + 'T00:00:00');
+                                        const endDateObj = new Date(dateKeys[6] + 'T00:00:00');
 
-                                            let color = isDark ? '#262c36' : '#f9fafb';
-                                            let border = isDark ? 'border-gray-700/50' : 'border-gray-200/40';
-                                            if (hours > 0 || qCount > 0) {
-                                              border = 'border-transparent';
-                                              const totalScore = hours * 2 + (qCount / 20) + (cardCount / 30);
-                                              if (totalScore <= 2) color = '#ffedd5';
-                                              else if (totalScore <= 5) color = '#fed7aa';
-                                              else if (totalScore <= 9) color = '#fdbb2d';
-                                              else if (totalScore <= 15) color = '#f97316';
-                                              else color = '#c2410c';
-                                            }
+                                        const startLabel = startDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                                        const endLabel = endDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
-                                            list.push(
-                                              <div
-                                                key={dateStr}
-                                                className={`w-3.5 h-3.5 rounded-md transition duration-150 hover:scale-125 cursor-pointer relative group border ${border}`}
-                                                style={{ backgroundColor: color }}
-                                                onMouseEnter={() => setHoveredStudyRoomIntensityDate(dateStr)}
-                                                onMouseLeave={() => setHoveredStudyRoomIntensityDate(null)}
-                                              >
-                                                {hoveredStudyRoomIntensityDate === dateStr && (
-                                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-gray-900 text-white text-[9px] font-bold px-2 py-1.5 rounded-lg shadow-xl pointer-events-none whitespace-nowrap z-50 shadow-black/40 animate-in fade-in duration-100">
-                                                    <div className="font-extrabold text-[10px] text-orange-400 mb-0.5">
-                                                      {formatAppDate(targetDate)}
-                                                    </div>
-                                                    <div>⏱️ Hours: {formatHoursToHrsMinsShort(hours)}</div>
-                                                    <div>📝 Questions: {qCount}</div>
-                                                    <div>🎴 Cards: {cardCount}</div>
-                                                  </div>
-                                                )}
+                                        periodLabel = `${startLabel} – ${endLabel}`;
+                                        periodDetailText = `Showing 7 Days for ${periodLabel}`;
+
+                                      } else if (studyIntensityTimeframe === 'monthly') {
+                                        // Monthly View: Days in selected month
+                                        const refDate = new Date(today.getFullYear(), today.getMonth() + studyIntensityOffset, 1);
+                                        const targetYear = refDate.getFullYear();
+                                        const targetMonth = refDate.getMonth();
+                                        const daysInMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+
+                                        for (let i = 1; i <= daysInMonth; i++) {
+                                          const mmStr = String(targetMonth + 1).padStart(2, '0');
+                                          const ddStr = String(i).padStart(2, '0');
+                                          dateKeys.push(`${targetYear}-${mmStr}-${ddStr}`);
+                                        }
+
+                                        const monthName = refDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                                        periodLabel = monthName;
+                                        periodDetailText = `Showing ${daysInMonth} Days in ${monthName} (Day 1 to Day ${daysInMonth})`;
+
+                                      } else {
+                                        // Yearly View: 365 or 366 days starting Jan 1
+                                        const targetYear = today.getFullYear() + studyIntensityOffset;
+                                        const isLeapYear = (targetYear % 4 === 0 && targetYear % 100 !== 0) || (targetYear % 400 === 0);
+                                        const daysInYear = isLeapYear ? 366 : 365;
+
+                                        for (let i = 0; i < daysInYear; i++) {
+                                          const d = new Date(targetYear, 0, 1 + i);
+                                          const mmStr = String(d.getMonth() + 1).padStart(2, '0');
+                                          const ddStr = String(d.getDate()).padStart(2, '0');
+                                          dateKeys.push(`${targetYear}-${mmStr}-${ddStr}`);
+                                        }
+
+                                        periodLabel = `Year ${targetYear}`;
+                                        periodDetailText = `Showing Full Year ${targetYear} (${daysInYear} Days, Jan 1 – Dec 31)`;
+                                      }
+
+                                      // Helper function to derive intensity color & border
+                                      const getIntensityStyle = (dateStr) => {
+                                        const log = studyLogs[dateStr] || { hours: 0, questions: 0, cards: 0 };
+                                        const hours = Number(log.hours) || 0;
+                                        const qCount = Number(log.questions) || 0;
+                                        const cardCount = Number(log.cards) || 0;
+
+                                        let color = isDark ? '#1e242d' : '#cbd5e1';
+                                        let border = isDark ? 'border-gray-800/80' : 'border-gray-300/60';
+                                        if (hours > 0 || qCount > 0 || cardCount > 0) {
+                                          border = 'border-transparent';
+                                          const totalScore = hours * 2 + (qCount / 20) + (cardCount / 30);
+                                          if (totalScore <= 2) color = '#ffedd5';
+                                          else if (totalScore <= 5) color = '#fed7aa';
+                                          else if (totalScore <= 9) color = '#fdbb2d';
+                                          else if (totalScore <= 15) color = '#f97316';
+                                          else color = '#c2410c';
+                                        }
+                                        return { color, border, hours, qCount, cardCount };
+                                      };
+
+                                      return (
+                                        <>
+                                          <div className="grid grid-cols-1 xl:grid-cols-3 items-center gap-4 text-left mb-4">
+                                            {/* Left: Icon, Title & Navigation Controls */}
+                                            <div className="flex flex-wrap items-center gap-3">
+                                              <div className={`p-2.5 rounded-2xl ${isDark ? 'neu-pressed-dark text-orange-400' : 'neu-pressed-light text-orange-500'}`}>
+                                                <Calendar className="w-4.5 h-4.5" />
                                               </div>
-                                            );
-                                          }
-                                          return list;
-                                        })()}
-                                      </div>
-                                    </div>
+                                              <div>
+                                                <div className="flex items-center gap-2">
+                                                  <h3 className={`text-sm font-black uppercase tracking-wider ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                                    Study Room Intensity Map
+                                                  </h3>
+
+                                                  {/* Navigation Controls: Previous / Next */}
+                                                  <div className="flex items-center gap-1 ml-2">
+                                                    <motion.button
+                                                      whileHover={{ scale: 1.1 }}
+                                                      whileTap={{ scale: 0.9 }}
+                                                      onClick={() => setStudyIntensityOffset(prev => prev - 1)}
+                                                      className={`p-1 rounded-lg transition-all cursor-pointer ${
+                                                        isDark ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-gray-200 text-slate-700'
+                                                      }`}
+                                                      title={`Previous ${studyIntensityTimeframe.charAt(0).toUpperCase() + studyIntensityTimeframe.slice(1)}`}
+                                                    >
+                                                      <ChevronLeft className="w-4 h-4" />
+                                                    </motion.button>
+
+                                                    <span className={`text-[10px] font-black uppercase tracking-wider font-mono px-2.5 py-0.5 rounded-md ${
+                                                      isDark ? 'bg-slate-800/80 text-orange-400 border border-slate-700/50' : 'bg-orange-50 text-orange-700 border border-orange-100'
+                                                    }`}>
+                                                      {periodLabel}
+                                                    </span>
+
+                                                    <motion.button
+                                                      whileHover={{ scale: 1.1 }}
+                                                      whileTap={{ scale: 0.9 }}
+                                                      disabled={studyIntensityOffset >= 0}
+                                                      onClick={() => setStudyIntensityOffset(prev => Math.min(0, prev + 1))}
+                                                      className={`p-1 rounded-lg transition-all ${
+                                                        studyIntensityOffset >= 0
+                                                          ? 'opacity-30 cursor-not-allowed text-gray-400'
+                                                          : (isDark ? 'hover:bg-slate-800 text-slate-300 cursor-pointer' : 'hover:bg-gray-200 text-slate-700 cursor-pointer')
+                                                      }`}
+                                                      title={`Next ${studyIntensityTimeframe.charAt(0).toUpperCase() + studyIntensityTimeframe.slice(1)}`}
+                                                    >
+                                                      <ChevronRight className="w-4 h-4" />
+                                                    </motion.button>
+                                                  </div>
+                                                </div>
+
+                                                <p className={`text-[10px] font-bold uppercase mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                  {periodDetailText}
+                                                </p>
+                                              </div>
+                                            </div>
+
+                                            {/* Center: Fixed Position Subtabs with 0.6s cubic-bezier(0,0,0,1) Smooth Sliding Pill */}
+                                            <div className="flex justify-center">
+                                              {(() => {
+                                                const subtabs = [
+                                                  { id: 'weekly', label: 'Weekly' },
+                                                  { id: 'monthly', label: 'Monthly' },
+                                                  { id: 'yearly', label: 'Yearly' }
+                                                ];
+                                                const activeIndex = Math.max(0, subtabs.findIndex(t => t.id === studyIntensityTimeframe));
+
+                                                return (
+                                                  <div className={`relative flex items-center p-1.5 rounded-2xl gap-1 shrink-0 select-none ${
+                                                    isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
+                                                  }`}>
+                                                    {/* Single Sliding Pill Indicator */}
+                                                    <div
+                                                      className={`absolute top-1.5 bottom-1.5 w-24 rounded-xl shadow-md ${
+                                                        isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+                                                      }`}
+                                                      style={{
+                                                        left: `calc(0.375rem + ${activeIndex} * (6rem + 0.25rem))`,
+                                                        transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                                                      }}
+                                                    />
+
+                                                    {subtabs.map(item => {
+                                                      const isActive = studyIntensityTimeframe === item.id;
+                                                      return (
+                                                        <button
+                                                          key={item.id}
+                                                          onClick={() => {
+                                                            setStudyIntensityTimeframe(item.id);
+                                                            setStudyIntensityOffset(0);
+                                                          }}
+                                                          className={`relative w-24 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${
+                                                            isActive
+                                                              ? 'text-white font-extrabold'
+                                                              : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                                                          }`}
+                                                        >
+                                                          <span>{item.label}</span>
+                                                        </button>
+                                                      );
+                                                    })}
+                                                  </div>
+                                                );
+                                              })()}
+                                            </div>
+
+                                            {/* Right: Orange Intensity Legend */}
+                                            <div className={`flex items-center justify-start xl:justify-end gap-1.5 text-[9px] font-bold select-none shrink-0 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
+                                              <span>Less</span>
+                                              <div className={`w-2.5 h-2.5 rounded-sm border ${isDark ? 'bg-[#1e242d] border-gray-800/80' : 'bg-[#cbd5e1] border-gray-300/60'}`} title="0 study activity" />
+                                              <div className="w-2.5 h-2.5 bg-[#ffedd5] rounded-sm" title="Light activity" />
+                                              <div className="w-2.5 h-2.5 bg-[#fed7aa] rounded-sm" title="Moderate activity" />
+                                              <div className="w-2.5 h-2.5 bg-[#fdbb2d] rounded-sm" title="High activity" />
+                                              <div className="w-2.5 h-2.5 bg-[#f97316] rounded-sm" title="Very high activity" />
+                                              <div className="w-2.5 h-2.5 bg-[#c2410c] rounded-sm" title="Peak activity" />
+                                              <span>More</span>
+                                            </div>
+                                          </div>
+
+                                          {/* View Renderers Container (Uniform Height 210px) */}
+                                          <div className={`rounded-2xl border p-4 ${
+                                            isDark ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-white/80'
+                                          }`}>
+                                            <div className="h-[210px] w-full flex items-center justify-center">
+
+                                              {/* 1. WEEKLY VIEW (Exactly 7 Cards) */}
+                                              {studyIntensityTimeframe === 'weekly' && (
+                                                <div className="grid grid-cols-7 gap-2 lg:gap-4 max-w-[650px] mx-auto w-full">
+                                                  {dateKeys.map(dateStr => {
+                                                    const dayObj = new Date(dateStr + 'T00:00:00');
+                                                    const dayName = dayObj.toLocaleDateString('en-US', { weekday: 'short' });
+                                                    const dayNum = dayObj.getDate();
+                                                    const { color, border, hours, qCount, cardCount } = getIntensityStyle(dateStr);
+
+                                                    return (
+                                                      <div
+                                                        key={dateStr}
+                                                        className={`p-3 rounded-2xl flex flex-col items-center justify-between text-center border transition-all duration-200 hover:scale-105 relative group hover:z-[100] cursor-pointer shadow-sm ${border}`}
+                                                        style={{ backgroundColor: color }}
+                                                      >
+                                                        <span className={`text-[10px] font-black uppercase tracking-wider ${hours > 0 || qCount > 0 || cardCount > 0 ? 'text-gray-900 font-extrabold' : (isDark ? 'text-slate-400' : 'text-slate-600')}`}>
+                                                          {dayName}
+                                                        </span>
+                                                        <span className={`text-sm font-black my-1 ${hours > 0 || qCount > 0 || cardCount > 0 ? 'text-gray-900' : (isDark ? 'text-slate-300' : 'text-slate-700')}`}>
+                                                          {dayNum}
+                                                        </span>
+                                                        <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-md ${
+                                                          hours > 0 || qCount > 0 || cardCount > 0
+                                                            ? 'bg-gray-900/80 text-orange-300'
+                                                            : (isDark ? 'bg-slate-800/60 text-slate-500' : 'bg-gray-200/60 text-slate-500')
+                                                        }`}>
+                                                          {hours > 0 ? `${formatHoursToHrsMinsShort(hours)}` : (qCount > 0 ? `${qCount}q` : '0h')}
+                                                        </span>
+
+                                                        {/* Rich Tooltip popup with high z-index */}
+                                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-gray-900 text-white text-[9.5px] font-bold p-2.5 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-[110] border border-orange-500/40 shadow-black/60 min-w-[130px] text-left">
+                                                          <div className="font-extrabold text-[10.5px] text-orange-400 mb-1 border-b border-gray-700/60 pb-1">
+                                                            📅 {formatAppDate(dayObj)}
+                                                          </div>
+                                                          <div className="flex items-center justify-between gap-3 text-slate-200 mt-0.5">
+                                                            <span>⏱️ Hours:</span>
+                                                            <span className="font-mono text-orange-300 font-extrabold">{formatHoursToHrsMinsShort(hours)}</span>
+                                                          </div>
+                                                          <div className="flex items-center justify-between gap-3 text-slate-200 mt-0.5">
+                                                            <span>📝 Questions:</span>
+                                                            <span className="font-mono text-amber-300 font-extrabold">{qCount}</span>
+                                                          </div>
+                                                          <div className="flex items-center justify-between gap-3 text-slate-200 mt-0.5">
+                                                            <span>🎴 Cards:</span>
+                                                            <span className="font-mono text-yellow-300 font-extrabold">{cardCount}</span>
+                                                          </div>
+                                                        </div>
+                                                      </div>
+                                                    );
+                                                  })}
+                                                </div>
+                                              )}
+
+                                              {/* 2. MONTHLY VIEW (Days in selected Month starting at Month start weekday) */}
+                                              {studyIntensityTimeframe === 'monthly' && (() => {
+                                                const firstDateObj = new Date(dateKeys[0] + 'T00:00:00');
+                                                const startWeekday = firstDateObj.getDay();
+                                                const leadingBlanks = Array.from({ length: startWeekday });
+
+                                                return (
+                                                  <div className="overflow-x-auto w-full flex justify-center custom-scrollbar py-2">
+                                                    <div className="w-max select-none flex justify-center">
+                                                      <div className="grid grid-flow-col grid-rows-7 gap-1.5">
+                                                        {leadingBlanks.map((_, idx) => (
+                                                          <div key={`blank-st-${idx}`} className="w-4 h-4 rounded-md opacity-0 pointer-events-none" />
+                                                        ))}
+
+                                                        {dateKeys.map(dateStr => {
+                                                          const { color, border, hours, qCount, cardCount } = getIntensityStyle(dateStr);
+
+                                                          return (
+                                                            <div
+                                                              key={dateStr}
+                                                              className={`w-4 h-4 rounded-md transition duration-150 hover:scale-125 cursor-pointer relative group hover:z-[100] border ${border}`}
+                                                              style={{ backgroundColor: color }}
+                                                            >
+                                                              {/* Tooltip */}
+                                                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-gray-900 text-white text-[9.5px] font-bold p-2.5 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-[110] border border-orange-500/40 shadow-black/60 min-w-[130px] text-left">
+                                                                <div className="font-extrabold text-[10.5px] text-orange-400 mb-1 border-b border-gray-700/60 pb-1">
+                                                                  📅 {formatAppDate(dateStr)}
+                                                                </div>
+                                                                <div className="flex items-center justify-between gap-3 text-slate-200 mt-0.5">
+                                                                  <span>⏱️ Hours:</span>
+                                                                  <span className="font-mono text-orange-300 font-extrabold">{formatHoursToHrsMinsShort(hours)}</span>
+                                                                </div>
+                                                                <div className="flex items-center justify-between gap-3 text-slate-200 mt-0.5">
+                                                                  <span>📝 Questions:</span>
+                                                                  <span className="font-mono text-amber-300 font-extrabold">{qCount}</span>
+                                                                </div>
+                                                                <div className="flex items-center justify-between gap-3 text-slate-200 mt-0.5">
+                                                                  <span>🎴 Cards:</span>
+                                                                  <span className="font-mono text-yellow-300 font-extrabold">{cardCount}</span>
+                                                                </div>
+                                                              </div>
+                                                            </div>
+                                                          );
+                                                        })}
+                                                      </div>
+                                                    </div>
+                                                  </div>
+                                                );
+                                              })()}
+
+                                              {/* 3. YEARLY VIEW (Exactly 365 or 366 Boxes starting on Jan 1) */}
+                                              {studyIntensityTimeframe === 'yearly' && (() => {
+                                                const jan1DateObj = new Date(dateKeys[0] + 'T00:00:00');
+                                                const jan1Weekday = jan1DateObj.getDay();
+                                                const leadingBlanks = Array.from({ length: jan1Weekday });
+
+                                                // Calculate month header positions across 53 columns
+                                                const monthLabels = Array(53).fill(null);
+                                                dateKeys.forEach((dateStr, idx) => {
+                                                  const d = new Date(dateStr + 'T00:00:00');
+                                                  if (d.getDate() === 1) {
+                                                    const colIndex = Math.floor((jan1Weekday + idx) / 7);
+                                                    if (colIndex < 53 && !monthLabels[colIndex]) {
+                                                      monthLabels[colIndex] = d.toLocaleDateString('en-US', { month: 'short' });
+                                                    }
+                                                  }
+                                                });
+
+                                                return (
+                                                  <div className="overflow-x-auto w-full flex justify-center custom-scrollbar py-2 px-4">
+                                                    <div className="w-max select-none py-1 flex flex-col items-start">
+                                                      {/* Month Header Row */}
+                                                      <div className="flex gap-1 mb-1.5 h-3 text-[9px] font-black uppercase text-slate-400">
+                                                        {monthLabels.map((lbl, cIdx) => (
+                                                          <div key={`m-col-st-${cIdx}`} className="w-2.5 sm:w-3 text-left overflow-visible whitespace-nowrap">
+                                                            {lbl || ''}
+                                                          </div>
+                                                        ))}
+                                                      </div>
+                                                      {/* 7-Row Matrix */}
+                                                      <div className="grid grid-flow-col grid-rows-7 gap-1">
+                                                        {leadingBlanks.map((_, idx) => (
+                                                          <div key={`blank-jan1-st-${idx}`} className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm opacity-0 pointer-events-none" />
+                                                        ))}
+
+                                                        {dateKeys.map(dateStr => {
+                                                          const { color, border, hours, qCount, cardCount } = getIntensityStyle(dateStr);
+
+                                                          return (
+                                                            <div
+                                                              key={dateStr}
+                                                              className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm transition duration-150 hover:scale-125 cursor-pointer relative group hover:z-[100] border ${border}`}
+                                                              style={{ backgroundColor: color }}
+                                                            >
+                                                              {/* Rich Tooltip popup */}
+                                                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-gray-900 text-white text-[9.5px] font-bold p-2.5 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-[110] border border-orange-500/40 shadow-black/60 min-w-[130px] text-left">
+                                                                <div className="font-extrabold text-[10.5px] text-orange-400 mb-1 border-b border-gray-700/60 pb-1">
+                                                                  📅 {formatAppDate(dateStr)}
+                                                                </div>
+                                                                <div className="flex items-center justify-between gap-3 text-slate-200 mt-0.5">
+                                                                  <span>⏱️ Hours:</span>
+                                                                  <span className="font-mono text-orange-300 font-extrabold">{formatHoursToHrsMinsShort(hours)}</span>
+                                                                </div>
+                                                                <div className="flex items-center justify-between gap-3 text-slate-200 mt-0.5">
+                                                                  <span>📝 Questions:</span>
+                                                                  <span className="font-mono text-amber-300 font-extrabold">{qCount}</span>
+                                                                </div>
+                                                                <div className="flex items-center justify-between gap-3 text-slate-200 mt-0.5">
+                                                                  <span>🎴 Cards:</span>
+                                                                  <span className="font-mono text-yellow-300 font-extrabold">{cardCount}</span>
+                                                                </div>
+                                                              </div>
+                                                            </div>
+                                                          );
+                                                        })}
+                                                      </div>
+                                                    </div>
+                                                  </div>
+                                                );
+                                              })()}
+
+                                            </div>
+                                          </div>
+                                        </>
+                                      );
+                                    })()}
                                   </motion.div>
 
                                   {/* Right: Today's Goal Ring Gauge */}
