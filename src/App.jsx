@@ -25033,34 +25033,43 @@ Return your response strictly as a JSON object matching this schema:
 
                       {/* Counselling Sub-tab */}
                       {analyticsSubTab === 'counselling' && (
-                        <div className="space-y-6">
+                        <motion.div
+                          initial={{ opacity: 0, y: 12 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                          className="space-y-6"
+                        >
                           {/* Category select and Dream targets */}
-                          <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm space-y-4">
-                            <h3 className="text-xs font-black text-gray-800 uppercase tracking-wider">Dream College Target</h3>
-                            <div className="space-y-3">
+                          <div className={`p-6 rounded-3xl space-y-4 ${isDark ? 'neu-card-dark' : 'neu-card-light'}`}>
+                            <h3 className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>Dream College Target</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div>
-                                <label className="block text-[8px] font-black text-gray-400 uppercase mb-1.5">Category</label>
+                                <label className={`block text-[9px] font-black uppercase mb-1.5 tracking-wider ${isDark ? 'text-gray-400 font-mono' : 'text-gray-500 font-mono'}`}>Category</label>
                                 <select
                                   value={selectedCategory}
                                   onChange={(e) => setSelectedCategory(e.target.value)}
-                                  className="w-full bg-gray-50 border border-gray-150 p-3.5 rounded-2xl text-xs font-bold outline-none"
+                                  className={`w-full p-3.5 rounded-2xl text-xs font-bold outline-none transition cursor-pointer ${
+                                    isDark ? 'neu-pressed-dark text-gray-100 border border-gray-800' : 'neu-pressed-light text-gray-800 border border-white/80'
+                                  }`}
                                 >
-                                  <option value="General">General / UR</option>
-                                  <option value="OBC">OBC-NCL</option>
-                                  <option value="SC">SC</option>
-                                  <option value="ST">ST</option>
-                                  <option value="EWS">EWS</option>
+                                  {['General', 'OBC', 'SC', 'ST', 'EWS'].map(cat => (
+                                    <option key={cat} value={cat} className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-800'}>
+                                      {cat === 'General' ? 'General / UR' : cat === 'OBC' ? 'OBC-NCL' : cat}
+                                    </option>
+                                  ))}
                                 </select>
                               </div>
                               <div>
-                                <label className="block text-[8px] font-black text-gray-400 uppercase mb-1.5">Dream College & Course</label>
+                                <label className={`block text-[9px] font-black uppercase mb-1.5 tracking-wider ${isDark ? 'text-gray-400 font-mono' : 'text-gray-500 font-mono'}`}>Dream College & Course</label>
                                 <select
                                   value={dreamCollege}
                                   onChange={(e) => setDreamCollege(e.target.value)}
-                                  className="w-full bg-gray-50 border border-gray-150 p-3.5 rounded-2xl text-xs font-bold outline-none"
+                                  className={`w-full p-3.5 rounded-2xl text-xs font-bold outline-none transition cursor-pointer ${
+                                    isDark ? 'neu-pressed-dark text-gray-100 border border-gray-800' : 'neu-pressed-light text-gray-800 border border-white/80'
+                                  }`}
                                 >
                                   {['AIIMS, New Delhi', 'JIPMER, Puducherry', 'PGIMER, Chandigarh', 'Madras Medical College (MMC), Chennai (TN)', 'Seth GS Medical College, Mumbai (MH)', 'MAMC, New Delhi', 'AIIMS, Jodhpur', 'AIIMS, Bhopal', 'AIIMS, Bhubaneswar', 'CMC Vellore', 'NIMHANS, Bengaluru'].map(inst => (
-                                    <option key={inst} value={inst}>{inst}</option>
+                                    <option key={inst} value={inst} className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-800'}>{inst}</option>
                                   ))}
                                 </select>
                               </div>
@@ -25082,22 +25091,30 @@ Return your response strictly as a JSON object matching this schema:
                             const defaultTargetRank = mobileGetTargetRank(dreamCollege, dreamBranch);
                             const estimatedScore = Math.round(defaultTargetRank / 200 * 20 + 400);
                             return (
-                              <div className="bg-gradient-to-br from-indigo-900 to-purple-950 p-5 rounded-3xl text-white shadow-xl shadow-purple-950/20 space-y-4">
+                              <div className={`p-6 rounded-3xl space-y-4 transition-all duration-300 ${
+                                isDark 
+                                  ? 'neu-card-dark border border-indigo-500/20 bg-gradient-to-br from-indigo-950/60 via-[#222730] to-purple-950/60 text-gray-100' 
+                                  : 'neu-card-light border border-indigo-200/50 bg-gradient-to-br from-indigo-900 via-indigo-950 to-purple-950 text-white'
+                              }`}>
                                 <div className="flex items-center gap-3">
                                   <Trophy className="w-6 h-6 text-amber-400 animate-pulse" />
                                   <div>
-                                    <span className="text-[8px] font-black uppercase text-purple-300 tracking-wider">Cutoff Goal Target</span>
-                                    <h4 className="text-sm font-black truncate max-w-[200px]">{dreamCollege.split(',')[0]}</h4>
+                                    <span className="text-[9px] font-black uppercase text-purple-300 tracking-wider font-mono">Cutoff Goal Target</span>
+                                    <h4 className="text-sm font-black truncate max-w-[280px]">{dreamCollege.split(',')[0]}</h4>
                                   </div>
                                 </div>
-                                <div className="grid grid-cols-2 gap-3 pt-2">
-                                  <div className="bg-white/5 p-3 rounded-2xl border border-white/10">
-                                    <span className="text-[8px] text-purple-200 block uppercase">Target Rank</span>
-                                    <span className="text-base font-black mt-1 block"># {defaultTargetRank.toLocaleString()}</span>
+                                <div className="grid grid-cols-2 gap-4 pt-2">
+                                  <div className={`p-4 rounded-2xl border transition ${
+                                    isDark ? 'neu-pressed-dark border-indigo-500/20' : 'bg-white/10 backdrop-blur-md border-white/20'
+                                  }`}>
+                                    <span className="text-[9px] text-purple-200 block uppercase font-mono tracking-wider">Target Rank</span>
+                                    <span className="text-lg font-black mt-1 block font-mono"># {defaultTargetRank.toLocaleString()}</span>
                                   </div>
-                                  <div className="bg-white/5 p-3 rounded-2xl border border-white/10">
-                                    <span className="text-[8px] text-purple-200 block uppercase">Estimated Score</span>
-                                    <span className="text-base font-black mt-1 block">{estimatedScore} / 800</span>
+                                  <div className={`p-4 rounded-2xl border transition ${
+                                    isDark ? 'neu-pressed-dark border-indigo-500/20' : 'bg-white/10 backdrop-blur-md border-white/20'
+                                  }`}>
+                                    <span className="text-[9px] text-purple-200 block uppercase font-mono tracking-wider">Estimated Score</span>
+                                    <span className="text-lg font-black mt-1 block font-mono">{estimatedScore} / 800</span>
                                   </div>
                                 </div>
                               </div>
@@ -25105,11 +25122,11 @@ Return your response strictly as a JSON object matching this schema:
                           })()}
 
                           {/* Mentor Goal Checklists */}
-                          <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm space-y-4">
-                            <h3 className="text-xs font-black text-gray-800 uppercase tracking-wider flex items-center gap-1">
-                              <TrendingUp className="w-4 h-4 text-indigo-600" /> Mentor Action Plan
+                          <div className={`p-6 rounded-3xl space-y-4 ${isDark ? 'neu-card-dark' : 'neu-card-light'}`}>
+                            <h3 className={`text-xs font-black uppercase tracking-wider flex items-center gap-2 ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>
+                              <TrendingUp className="w-4 h-4 text-indigo-500" /> Mentor Action Plan
                             </h3>
-                            <div className="space-y-2">
+                            <div className="space-y-2.5">
                               {(() => {
                                 const mobileGetTargetRank = (collegeName, branchName) => {
                                   let cf = collegeName.includes('AIIMS, New Delhi') ? 0.02 :
@@ -25128,7 +25145,11 @@ Return your response strictly as a JSON object matching this schema:
                                   return (
                                     <label
                                       key={idx}
-                                      className={`flex items-start gap-3 p-3 rounded-2xl border transition-all duration-200 cursor-pointer ${isChecked ? 'bg-gray-50 border-gray-150' : 'bg-white border-gray-100 hover:border-indigo-200'}`}
+                                      className={`flex items-start gap-3 p-3.5 rounded-2xl transition-all duration-200 cursor-pointer ${
+                                        isChecked 
+                                          ? (isDark ? 'neu-pressed-dark border border-gray-800/80 opacity-60' : 'neu-pressed-light border border-white/80 opacity-60')
+                                          : (isDark ? 'neu-card-dark hover:border-indigo-500/30' : 'neu-card-light hover:border-indigo-200')
+                                      }`}
                                     >
                                       <input
                                         type="checkbox"
@@ -25138,9 +25159,13 @@ Return your response strictly as a JSON object matching this schema:
                                             isChecked ? prev.filter(t => t !== task) : [...prev, task]
                                           );
                                         }}
-                                        className="mt-0.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500/20"
+                                        className="mt-0.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500/20 cursor-pointer"
                                       />
-                                      <span className={`text-[10px] leading-relaxed ${isChecked ? 'text-gray-400 line-through' : 'text-gray-600 font-bold'}`}>
+                                      <span className={`text-xs leading-relaxed ${
+                                        isChecked 
+                                          ? (isDark ? 'text-gray-500 line-through font-semibold' : 'text-gray-400 line-through font-semibold') 
+                                          : (isDark ? 'text-gray-200 font-bold' : 'text-gray-700 font-bold')
+                                      }`}>
                                         {task}
                                       </span>
                                     </label>
@@ -25149,7 +25174,7 @@ Return your response strictly as a JSON object matching this schema:
                               })()}
                             </div>
                           </div>
-                        </div>
+                        </motion.div>
                       )}
 
                       {/* PYT Coverage Sub-tab */}
@@ -33090,26 +33115,30 @@ Return your response strictly as a JSON object matching this schema:
                               </div>
 
                               {/* Counselling diagnostics */}
-                              <div className="bg-gray-50/50 border border-gray-150 rounded-2xl p-5 text-left space-y-4 shadow-inner">
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-200 pb-3">
+                              <div className={`p-6 rounded-3xl text-left space-y-5 transition ${isDark ? 'neu-card-dark' : 'neu-card-light'}`}>
+                                <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3 ${isDark ? 'border-gray-800/80' : 'border-gray-200'}`}>
                                   <div className="flex items-center gap-2">
                                     <span className="text-[14px]">🩺</span>
-                                    <h4 className="text-xs font-black text-gray-800 uppercase tracking-wider font-mono">Realist All India Counselling Diagnostics</h4>
+                                    <h4 className={`text-xs font-black uppercase tracking-wider font-mono ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>Realist All India Counselling Diagnostics</h4>
                                   </div>
-                                  <div className={`px-3 py-1 rounded-full border text-[9px] font-black uppercase tracking-wider ${tierClass}`}>
+                                  <div className={`px-3 py-1 rounded-full border text-[9px] font-black uppercase tracking-wider ${isDark ? 'neu-pressed-dark border-opacity-40' : ''} ${tierClass}`}>
                                     {standingTierLabel}
                                   </div>
                                 </div>
 
                                 {/* Category selector */}
-                                <div className="flex flex-wrap items-center gap-2 bg-white/70 border border-gray-150 p-2.5 rounded-xl shadow-sm">
-                                  <span className="text-[9px] font-black uppercase text-gray-400 font-mono mr-1">Counselling Category:</span>
+                                <div className={`flex flex-wrap items-center gap-2 p-2.5 rounded-2xl ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
+                                  <span className={`text-[9px] font-black uppercase font-mono mr-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Counselling Category:</span>
                                   {['General', 'OBC', 'EWS', 'SC', 'ST'].map(cat => (
                                     <button
                                       key={cat}
                                       type="button"
                                       onClick={() => setSelectedCategory(cat)}
-                                      className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all duration-200 ${selectedCategory === cat ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20 scale-105 border-blue-600 font-mono' : 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900 border border-gray-200 font-mono'}`}
+                                      className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${
+                                        selectedCategory === cat 
+                                          ? (isDark ? 'neu-btn-accent-dark text-white font-mono scale-105 shadow-md' : 'neu-btn-accent-light text-white font-mono scale-105 shadow-md') 
+                                          : (isDark ? 'neu-btn-dark text-gray-300 hover:text-white font-mono' : 'neu-btn-light text-gray-600 hover:text-gray-900 font-mono')
+                                      }`}
                                     >
                                       {cat}
                                     </button>
@@ -33118,59 +33147,61 @@ Return your response strictly as a JSON object matching this schema:
 
                                 {/* diagnostics metrics */}
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                  <div className="bg-white p-3.5 rounded-xl border border-gray-100 shadow-sm flex flex-col justify-between">
-                                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-wider block font-mono">National Aspirant Pool</span>
-                                    <span className="text-lg font-black text-gray-800 mt-1 font-mono">{totalCandidates.toLocaleString()} Performed</span>
-                                    <span className="text-[8px] font-bold text-blue-600 mt-1">Aspirants nationwide for {poolLabel}</span>
+                                  <div className={`p-4 rounded-2xl flex flex-col justify-between ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
+                                    <span className={`text-[9px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>National Aspirant Pool</span>
+                                    <span className={`text-lg font-black mt-1 font-mono ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{totalCandidates.toLocaleString()} Performed</span>
+                                    <span className={`text-[8px] font-bold mt-1 ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>Aspirants nationwide for {poolLabel}</span>
                                   </div>
 
-                                  <div className="bg-white p-3.5 rounded-xl border border-gray-100 shadow-sm flex flex-col justify-between">
-                                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-wider block font-mono">Standing ({selectedCategory} Category)</span>
-                                    <span className="text-lg font-black text-gray-800 mt-1 font-mono">AIR ~{projectedAir.toLocaleString()}</span>
-                                    <span className="text-[8px] font-bold text-blue-600 mt-1 font-mono">Effective Category Rank: ~{effectiveCategoryRank.toLocaleString()}</span>
+                                  <div className={`p-4 rounded-2xl flex flex-col justify-between ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
+                                    <span className={`text-[9px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Standing ({selectedCategory} Category)</span>
+                                    <span className={`text-lg font-black mt-1 font-mono ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>AIR ~{projectedAir.toLocaleString()}</span>
+                                    <span className={`text-[8px] font-bold mt-1 font-mono ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>Effective Category Rank: ~{effectiveCategoryRank.toLocaleString()}</span>
                                   </div>
 
-                                  <div className="bg-white p-3.5 rounded-xl border border-gray-100 shadow-sm flex flex-col justify-between">
-                                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-wider block font-mono">Clinical Seat Probability</span>
+                                  <div className={`p-4 rounded-2xl flex flex-col justify-between ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
+                                    <span className={`text-[9px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Clinical Seat Probability</span>
                                     <div className="flex items-center gap-2 mt-1">
-                                      <div className="flex-grow bg-gray-100 rounded-full h-2 overflow-hidden">
+                                      <div className={`flex-grow rounded-full h-2 overflow-hidden ${isDark ? 'bg-gray-800' : 'bg-gray-100'}`}>
                                         <div
                                           style={{ width: `${matchProbability}%` }}
                                           className={`h-full rounded-full ${matchProbability >= 80 ? 'bg-emerald-500' : matchProbability >= 50 ? 'bg-blue-500' : matchProbability >= 20 ? 'bg-amber-500' : 'bg-red-500'}`}
                                         />
                                       </div>
-                                      <span className="text-xs font-black text-gray-700 font-mono shrink-0">{matchProbability}%</span>
+                                      <span className={`text-xs font-black font-mono shrink-0 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>{matchProbability}%</span>
                                     </div>
-                                    <span className="text-[8px] font-bold text-gray-400 mt-1">AI counselling match threshold</span>
+                                    <span className={`text-[8px] font-bold mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>AI counselling match threshold</span>
                                   </div>
                                 </div>
 
                                 {/* Match explanation text */}
-                                <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm text-xs leading-relaxed text-gray-700 font-semibold relative overflow-hidden">
-                                  <div className="absolute top-0 left-0 bottom-0 w-1 bg-orange-500" />
+                                <div className={`p-4 rounded-2xl text-xs leading-relaxed font-semibold relative overflow-hidden ${
+                                  isDark ? 'neu-pressed-dark text-gray-200 border border-gray-800/80' : 'neu-pressed-light text-gray-700 border border-white/80'
+                                }`}>
+                                  <div className={`absolute top-0 left-0 bottom-0 w-1 ${isDark ? 'bg-orange-400' : 'bg-orange-500'}`} />
                                   <p>{diagnosticOverview}</p>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                  <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-3">
-                                    <h5 className="text-[10px] font-black uppercase text-emerald-600 tracking-wider flex items-center gap-1 font-mono">
+                                  <div className={`p-4 rounded-2xl space-y-3 ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
+                                    <h5 className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 font-mono ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
                                       <span>🏥</span> Cutoff-based Match (Last Counseling)
                                     </h5>
                                     <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1 scrollbar-thin">
                                       {matchedColleges.map((col, idx) => (
-                                        <div key={idx} className="border-b border-gray-50 pb-2 last:border-b-0 last:pb-0 text-left">
-                                          <p className="text-[10.5px] font-extrabold text-gray-800 leading-tight">{col.college}</p>
-                                          <p className="text-[9px] font-bold text-gray-400 mt-0.5 uppercase font-mono">{col.course}</p>
+                                        <div key={idx} className={`border-b pb-2 last:border-b-0 last:pb-0 text-left ${isDark ? 'border-gray-800/60' : 'border-gray-100'}`}>
+                                          <p className={`text-[10.5px] font-extrabold leading-tight ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{col.college}</p>
+                                          <p className={`text-[9px] font-bold mt-0.5 uppercase font-mono ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{col.course}</p>
                                         </div>
                                       ))}
                                     </div>
                                   </div>
 
-                                  <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-2 text-left">
-                                    <h5 className="text-[10px] font-black uppercase text-blue-600 tracking-wider flex items-center gap-1 font-mono">
+                                  <div className={`p-4 rounded-2xl space-y-2 text-left ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
+                                    <h5 className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 font-mono ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
                                       <span>📈</span> Counseling Trends & Predictions
                                     </h5>
-                                    <p className="text-[10.5px] text-gray-600 font-semibold leading-relaxed text-left">
+                                    <p className={`text-[10.5px] font-semibold leading-relaxed text-left ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
                                       {trendPredictionText}
                                     </p>
                                   </div>
@@ -33178,14 +33209,16 @@ Return your response strictly as a JSON object matching this schema:
                               </div>
 
                               {/* AI mentor card */}
-                              <div className="bg-gradient-to-br from-indigo-50/70 via-blue-50/50 to-purple-50/30 border border-indigo-150 rounded-2xl p-5 text-left space-y-4 shadow-md relative overflow-hidden">
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl" />
-                                <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-blue-500/5 rounded-full blur-xl" />
+                              <div className={`p-6 rounded-3xl text-left space-y-5 relative overflow-hidden transition ${
+                                isDark ? 'neu-card-dark border border-indigo-500/20' : 'neu-card-light border border-indigo-200/60'
+                              }`}>
+                                <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-2xl ${isDark ? 'bg-indigo-500/10' : 'bg-indigo-500/5'}`} />
+                                <div className={`absolute -bottom-8 -left-8 w-24 h-24 rounded-full blur-xl ${isDark ? 'bg-blue-500/10' : 'bg-blue-500/5'}`} />
 
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-indigo-100 pb-3">
+                                <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3 ${isDark ? 'border-indigo-500/20' : 'border-indigo-100'}`}>
                                   <div className="flex items-center gap-2">
                                     <span className="text-[14px]">✨</span>
-                                    <h4 className="text-xs font-black text-indigo-950 uppercase tracking-wider font-mono">Personal AI Counselling Mentor</h4>
+                                    <h4 className={`text-xs font-black uppercase tracking-wider font-mono ${isDark ? 'text-indigo-300' : 'text-indigo-950'}`}>Personal AI Counselling Mentor</h4>
                                   </div>
                                   <div className={`px-3 py-1 rounded-full border text-[9px] font-black uppercase tracking-wider ${rankDeficit > 0 ? 'text-amber-600 bg-amber-50 border-amber-200' : 'text-emerald-600 bg-emerald-50 border-emerald-200'}`}>
                                     {rankDeficit > 0 ? 'Clinical Deficit' : 'Target Achieved'}
@@ -33193,11 +33226,11 @@ Return your response strictly as a JSON object matching this schema:
                                 </div>
 
                                 {/* Filters */}
-                                <div className="bg-indigo-50/40 border border-indigo-100/50 rounded-xl p-3 space-y-3">
+                                <div className={`p-4 rounded-2xl space-y-3 ${isDark ? 'neu-pressed-dark border border-indigo-500/20' : 'neu-pressed-light border border-indigo-100/60'}`}>
                                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                                     <div className="flex items-center gap-2">
                                       <span className="text-xs">🏥</span>
-                                      <span className="text-[10px] font-black text-indigo-950 uppercase tracking-wider font-mono">Database Filters</span>
+                                      <span className={`text-[10px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-indigo-300' : 'text-indigo-950'}`}>Database Filters</span>
                                     </div>
                                     <label className="inline-flex items-center gap-2 cursor-pointer group">
                                       <input
@@ -33207,7 +33240,7 @@ Return your response strictly as a JSON object matching this schema:
                                         onChange={e => setOnlyCentralUniversities(e.target.checked)}
                                         className="rounded text-indigo-600 focus:ring-indigo-500 border-gray-300 w-3.5 h-3.5 cursor-pointer disabled:opacity-50"
                                       />
-                                      <span className="text-[10px] font-bold text-gray-600 group-hover:text-indigo-950 transition">
+                                      <span className={`text-[10px] font-bold transition ${isDark ? 'text-gray-300 group-hover:text-indigo-300' : 'text-gray-600 group-hover:text-indigo-950'}`}>
                                         {isNeetPg ? 'Only Central Universities' : 'Only Central (Locked for INI CET)'}
                                       </span>
                                     </label>
@@ -33215,37 +33248,41 @@ Return your response strictly as a JSON object matching this schema:
 
                                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div className="flex flex-col gap-1">
-                                      <label className="text-[8px] font-black text-gray-400 uppercase tracking-wider font-mono">Filter by State</label>
+                                      <label className={`text-[8px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Filter by State</label>
                                       <select
                                         value={isNeetPg ? dreamCollegeStateFilter : 'Central'}
                                         disabled={!isNeetPg || onlyCentralUniversities}
                                         onChange={e => setDreamCollegeStateFilter(e.target.value)}
-                                        className="w-full bg-white border border-gray-200 text-xs font-bold text-gray-700 px-2.5 py-1.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition cursor-pointer shadow-sm disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
+                                        className={`w-full text-xs font-bold px-3 py-2 rounded-xl focus:outline-none transition cursor-pointer disabled:opacity-50 ${
+                                          isDark ? 'neu-pressed-dark text-gray-100 border border-indigo-500/30' : 'neu-pressed-light text-gray-800 border border-white/80'
+                                        }`}
                                       >
                                         {!isNeetPg || onlyCentralUniversities ? (
-                                          <option value="Central">Central Universities / AIIMS Mode</option>
+                                          <option value="Central" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-800'}>Central Universities / AIIMS Mode</option>
                                         ) : (
                                           <>
-                                            <option value="All">All States / Regions</option>
-                                            <option value="Tamil Nadu">Tamil Nadu</option>
-                                            <option value="Karnataka">Karnataka</option>
-                                            <option value="Kerala">Kerala</option>
-                                            <option value="Andhra Pradesh">Andhra Pradesh</option>
-                                            <option value="Telangana">Telangana</option>
-                                            <option value="Delhi">Delhi</option>
-                                            <option value="Maharashtra">Maharashtra</option>
-                                            <option value="Uttar Pradesh">Uttar Pradesh</option>
-                                            <option value="West Bengal">West Bengal</option>
-                                            <option value="Rajasthan">Rajasthan</option>
+                                            <option value="All" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-800'}>All States / Regions</option>
+                                            <option value="Tamil Nadu" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-800'}>Tamil Nadu</option>
+                                            <option value="Karnataka" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-800'}>Karnataka</option>
+                                            <option value="Kerala" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-800'}>Kerala</option>
+                                            <option value="Andhra Pradesh" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-800'}>Andhra Pradesh</option>
+                                            <option value="Telangana" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-800'}>Telangana</option>
+                                            <option value="Delhi" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-800'}>Delhi</option>
+                                            <option value="Maharashtra" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-800'}>Maharashtra</option>
+                                            <option value="Uttar Pradesh" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-800'}>Uttar Pradesh</option>
+                                            <option value="West Bengal" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-800'}>West Bengal</option>
+                                            <option value="Rajasthan" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-800'}>Rajasthan</option>
                                           </>
                                         )}
                                       </select>
                                     </div>
 
                                     <div className="flex flex-col justify-end">
-                                      <div className="text-[9px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-lg px-2.5 py-1.5 flex items-center justify-between">
+                                      <div className={`text-[9px] font-bold rounded-xl px-3 py-2 flex items-center justify-between ${
+                                        isDark ? 'neu-pressed-dark text-indigo-300 border border-indigo-500/20' : 'bg-indigo-50/80 text-indigo-700 border border-indigo-100'
+                                      }`}>
                                         <span>Active Pool:</span>
-                                        <span className="font-black font-mono text-[10px] text-indigo-900">{activePool.length} Colleges available</span>
+                                        <span className={`font-black font-mono text-[10px] ${isDark ? 'text-indigo-200' : 'text-indigo-900'}`}>{activePool.length} Colleges available</span>
                                       </div>
                                     </div>
                                   </div>
@@ -33254,16 +33291,18 @@ Return your response strictly as a JSON object matching this schema:
                                 {/* Selectors */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                   <div className="flex flex-col gap-1.5">
-                                    <label className="text-[9px] font-black text-gray-400 uppercase tracking-wider font-mono">Select Dream College</label>
+                                    <label className={`text-[9px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Select Dream College</label>
                                     <select
                                       value={currentDreamCollege}
                                       onChange={e => setDreamCollege(e.target.value)}
-                                      className="w-full bg-white border border-gray-200 text-xs font-bold text-gray-700 px-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition cursor-pointer shadow-sm"
+                                      className={`w-full text-xs font-bold px-3 py-2 rounded-xl focus:outline-none transition cursor-pointer ${
+                                        isDark ? 'neu-pressed-dark text-gray-100 border border-indigo-500/30' : 'neu-pressed-light text-gray-800 border border-white/80'
+                                      }`}
                                     >
                                       {Object.keys(optGroupMap).sort().map(grpState => (
-                                        <optgroup key={grpState} label={grpState} className="text-[10px] font-black text-indigo-900 bg-indigo-50 uppercase tracking-wider font-mono">
+                                        <optgroup key={grpState} label={grpState} className={`text-[10px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-indigo-300 bg-[#1a1f26]' : 'text-indigo-900 bg-indigo-50'}`}>
                                           {optGroupMap[grpState].map(colName => (
-                                            <option key={colName} value={colName} className="text-xs font-bold text-gray-700 bg-white normal-case font-sans">
+                                            <option key={colName} value={colName} className={`text-xs font-bold normal-case font-sans ${isDark ? 'text-gray-100 bg-[#222730]' : 'text-gray-700 bg-white'}`}>
                                               {colName}
                                             </option>
                                           ))}
@@ -33273,14 +33312,16 @@ Return your response strictly as a JSON object matching this schema:
                                   </div>
 
                                   <div className="flex flex-col gap-1.5">
-                                    <label className="text-[9px] font-black text-gray-400 uppercase tracking-wider font-mono">Select Dream Specialty</label>
+                                    <label className={`text-[9px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Select Dream Specialty</label>
                                     <select
                                       value={currentDreamBranch}
                                       onChange={e => setDreamBranch(e.target.value)}
-                                      className="w-full bg-white border border-gray-200 text-xs font-bold text-gray-700 px-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition cursor-pointer shadow-sm"
+                                      className={`w-full text-xs font-bold px-3 py-2 rounded-xl focus:outline-none transition cursor-pointer ${
+                                        isDark ? 'neu-pressed-dark text-gray-100 border border-indigo-500/30' : 'neu-pressed-light text-gray-800 border border-white/80'
+                                      }`}
                                     >
                                       {specialtyList.map(spec => (
-                                        <option key={spec} value={spec}>{spec}</option>
+                                        <option key={spec} value={spec} className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-800'}>{spec}</option>
                                       ))}
                                     </select>
                                   </div>
@@ -33288,36 +33329,44 @@ Return your response strictly as a JSON object matching this schema:
 
                                 {/* Dream College Rank metrics */}
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
-                                  <div className="bg-white/60 backdrop-blur-sm p-3.5 rounded-xl border border-indigo-100 flex flex-col justify-between shadow-sm">
-                                    <span className="text-[9px] font-black text-indigo-900/60 uppercase tracking-wider block font-mono">Target AIR Cutoff</span>
-                                    <span className="text-lg font-black text-indigo-950 mt-1 font-mono">AIR ~{targetCutoff.toLocaleString()}</span>
-                                    <span className="text-[8px] font-bold text-indigo-600 mt-1">PrepLadder calibrated historical threshold</span>
+                                  <div className={`p-4 rounded-2xl flex flex-col justify-between shadow-sm transition ${
+                                    isDark ? 'neu-pressed-dark border border-indigo-500/20' : 'neu-pressed-light border border-indigo-100/60'
+                                  }`}>
+                                    <span className={`text-[9px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-indigo-300/70' : 'text-indigo-900/60'}`}>Target AIR Cutoff</span>
+                                    <span className={`text-lg font-black mt-1 font-mono ${isDark ? 'text-indigo-100' : 'text-indigo-950'}`}>AIR ~{targetCutoff.toLocaleString()}</span>
+                                    <span className={`text-[8px] font-bold mt-1 ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>PrepLadder calibrated historical threshold</span>
                                   </div>
 
-                                  <div className="bg-white/60 backdrop-blur-sm p-3.5 rounded-xl border border-indigo-100 flex flex-col justify-between shadow-sm">
-                                    <span className="text-[9px] font-black text-indigo-900/60 uppercase tracking-wider block font-mono">Current Standing</span>
-                                    <span className="text-lg font-black text-indigo-950 mt-1 font-mono">AIR ~{effectiveCategoryRank.toLocaleString()}</span>
-                                    <span className="text-[8px] font-bold text-indigo-600 mt-1">Based on active simulated score ({activeGt.score} Qs)</span>
+                                  <div className={`p-4 rounded-2xl flex flex-col justify-between shadow-sm transition ${
+                                    isDark ? 'neu-pressed-dark border border-indigo-500/20' : 'neu-pressed-light border border-indigo-100/60'
+                                  }`}>
+                                    <span className={`text-[9px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-indigo-300/70' : 'text-indigo-900/60'}`}>Current Standing</span>
+                                    <span className={`text-lg font-black mt-1 font-mono ${isDark ? 'text-indigo-100' : 'text-indigo-950'}`}>AIR ~{effectiveCategoryRank.toLocaleString()}</span>
+                                    <span className={`text-[8px] font-bold mt-1 ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>Based on active simulated score ({activeGt.score} Qs)</span>
                                   </div>
 
-                                  <div className="bg-white/60 backdrop-blur-sm p-3.5 rounded-xl border border-indigo-100 flex flex-col justify-between shadow-sm">
-                                    <span className="text-[9px] font-black text-indigo-900/60 uppercase tracking-wider block font-mono">Cushion / Deficit Buffer</span>
-                                    <span className={`text-lg font-black mt-1 font-mono ${rankDeficit > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                                  <div className={`p-4 rounded-2xl flex flex-col justify-between shadow-sm transition ${
+                                    isDark ? 'neu-pressed-dark border border-indigo-500/20' : 'neu-pressed-light border border-indigo-100/60'
+                                  }`}>
+                                    <span className={`text-[9px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-indigo-300/70' : 'text-indigo-900/60'}`}>Cushion / Deficit Buffer</span>
+                                    <span className={`text-lg font-black mt-1 font-mono ${rankDeficit > 0 ? 'text-amber-500' : 'text-emerald-500'}`}>
                                       {rankDeficit > 0 ? `-${rankDeficit.toLocaleString()} ranks` : `+${Math.abs(rankDeficit).toLocaleString()} cushion`}
                                     </span>
-                                    <span className="text-[8px] font-bold text-indigo-600 mt-1 font-mono">
+                                    <span className={`text-[8px] font-bold mt-1 font-mono ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>
                                       {rankDeficit > 0 ? `Needs +${scoreDeficitCorrects} correct answers` : 'Safely in target zone'}
                                     </span>
                                   </div>
                                 </div>
 
                                 {/* Mentor AI output paragraph */}
-                                <div className="bg-white/90 backdrop-blur-sm p-4 rounded-xl border border-indigo-100 shadow-sm space-y-2 text-left relative overflow-hidden">
-                                  <div className="absolute top-0 left-0 bottom-0 w-1 bg-indigo-500" />
-                                  <h5 className="text-[9px] font-black uppercase text-indigo-600 tracking-wider font-mono flex items-center gap-1.5">
+                                <div className={`p-4 rounded-2xl text-left relative overflow-hidden space-y-2 ${
+                                  isDark ? 'neu-pressed-dark text-gray-200 border border-indigo-500/20' : 'neu-pressed-light text-gray-700 border border-indigo-100/60'
+                                }`}>
+                                  <div className={`absolute top-0 left-0 bottom-0 w-1 ${isDark ? 'bg-indigo-400' : 'bg-indigo-500'}`} />
+                                  <h5 className={`text-[9px] font-black uppercase tracking-wider font-mono flex items-center gap-1.5 ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>
                                     <Sparkles className="w-3.5 h-3.5 animate-spin" /> AI Mentor Review & Strategic Advice
                                   </h5>
-                                  <p className="text-[10.5px] text-gray-700 leading-relaxed font-semibold">
+                                  <p className={`text-[10.5px] leading-relaxed font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
                                     {rankDeficit > 0 ? (
                                       `To bridge your clinical deficit of ${rankDeficit.toLocaleString()} ranks for securing ${currentDreamBranch} at ${currentDreamCollege}, you must raise your score by approximately ${scoreDeficitCorrects} correct answers in future attempts. Focus intensely on target active reviews and key high-volume systems outlined below.`
                                     ) : (
@@ -33329,18 +33378,20 @@ Return your response strictly as a JSON object matching this schema:
                                 {/* Action Plan & Top 3 weakest subjects */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                   {/* Weakest subjects action list */}
-                                  <div className="bg-white/80 p-4 rounded-xl border border-indigo-100 shadow-sm space-y-3.5 text-left">
-                                    <h5 className="text-[9px] font-black uppercase text-indigo-700 tracking-wider font-mono flex items-center gap-1">
-                                      <span>🩺</span> weak subject diagnostic review
+                                  <div className={`p-4 rounded-2xl space-y-3.5 text-left ${
+                                    isDark ? 'neu-pressed-dark border border-indigo-500/20' : 'neu-pressed-light border border-indigo-100/60'
+                                  }`}>
+                                    <h5 className={`text-[9px] font-black uppercase tracking-wider font-mono flex items-center gap-1 ${isDark ? 'text-indigo-400' : 'text-indigo-700'}`}>
+                                      <span>🩺</span> Weak Subject Diagnostic Review
                                     </h5>
                                     <div className="space-y-3.5">
                                       {topThreeWeak.map((sub, idx) => (
-                                        <div key={idx} className="space-y-1 bg-gray-50/50 p-2.5 rounded-lg border border-gray-100">
+                                        <div key={idx} className={`space-y-1 p-3 rounded-xl ${isDark ? 'neu-card-dark border border-gray-800' : 'neu-card-light border border-gray-150'}`}>
                                           <div className="flex items-center justify-between text-[10px] font-black">
-                                            <span className="text-gray-800 font-bold">{sub.name}</span>
+                                            <span className={`font-bold ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{sub.name}</span>
                                             <span className="text-red-500 font-mono">{sub.accuracy}% Accuracy</span>
                                           </div>
-                                          <p className="text-[9.5px] text-gray-500 leading-relaxed font-semibold">
+                                          <p className={`text-[9.5px] leading-relaxed font-semibold ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                                             {subjectMasteryAdvice[sub.name] || 'Drill high-yield questions and review standard mechanisms using active-recall cards.'}
                                           </p>
                                         </div>
@@ -33349,8 +33400,10 @@ Return your response strictly as a JSON object matching this schema:
                                   </div>
 
                                   {/* Custom checkboxes action plan */}
-                                  <div className="bg-white/80 p-4 rounded-xl border border-indigo-100 shadow-sm space-y-3 text-left">
-                                    <h5 className="text-[9px] font-black uppercase text-indigo-700 tracking-wider font-mono flex items-center gap-1">
+                                  <div className={`p-4 rounded-2xl space-y-3 text-left ${
+                                    isDark ? 'neu-pressed-dark border border-indigo-500/20' : 'neu-pressed-light border border-indigo-100/60'
+                                  }`}>
+                                    <h5 className={`text-[9px] font-black uppercase tracking-wider font-mono flex items-center gap-1 ${isDark ? 'text-indigo-400' : 'text-indigo-700'}`}>
                                       <span>🎯</span> Recommended Prep Checklist
                                     </h5>
                                     <div className="space-y-3">
@@ -33368,7 +33421,11 @@ Return your response strictly as a JSON object matching this schema:
                                               }}
                                               className="rounded text-indigo-600 focus:ring-indigo-500 border-indigo-200 mt-0.5 cursor-pointer w-3.5 h-3.5 shrink-0"
                                             />
-                                            <span className={`text-[10px] leading-relaxed transition-all ${isChecked ? 'text-gray-400 line-through font-semibold' : 'text-gray-600 group-hover:text-indigo-950 font-bold'}`}>
+                                            <span className={`text-[10px] leading-relaxed transition-all ${
+                                              isChecked 
+                                                ? (isDark ? 'text-gray-500 line-through font-semibold' : 'text-gray-400 line-through font-semibold') 
+                                                : (isDark ? 'text-gray-200 group-hover:text-indigo-300 font-bold' : 'text-gray-600 group-hover:text-indigo-950 font-bold')
+                                            }`}>
                                               {task}
                                             </span>
                                           </label>
