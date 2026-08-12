@@ -24907,27 +24907,46 @@ Return your response strictly as a JSON object matching this schema:
                                         const leadingBlanks = Array.from({ length: startWeekday });
 
                                         return (
-                                          <div className="overflow-x-auto w-full flex justify-center custom-scrollbar py-2">
-                                            <div className="w-max select-none">
-                                              <div className="grid grid-flow-col grid-rows-7 gap-1">
-                                                {leadingBlanks.map((_, idx) => (
-                                                  <div key={`blank-m-st-${idx}`} className="w-2.5 h-2.5 rounded-sm opacity-0 pointer-events-none" />
-                                                ))}
-                                                {dateKeys.map(dateStr => {
-                                                  const { color, border, hours, qCount, cardCount } = getIntensityStyle(dateStr);
-                                                  return (
-                                                    <div
-                                                      key={dateStr}
-                                                      className={`w-2.5 h-2.5 rounded-sm relative group hover:z-[100] cursor-pointer border ${border}`}
-                                                      style={{ backgroundColor: color }}
-                                                    >
-                                                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-gray-900 text-white text-[8px] font-bold px-2 py-1 rounded shadow-xl opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-[110]">
-                                                        {hours}h / {qCount}q / {cardCount}c on {formatAppDate(dateStr)}
-                                                      </div>
+                                          <div className="w-full max-w-[280px] mx-auto py-1">
+                                            {/* Weekday headers */}
+                                            <div className="grid grid-cols-7 gap-1 mb-1 text-center">
+                                              {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((w, idx) => (
+                                                <span key={`w-mob-${idx}`} className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-orange-400/90' : 'text-orange-600/90'}`}>
+                                                  {w}
+                                                </span>
+                                              ))}
+                                            </div>
+
+                                            {/* Days grid */}
+                                            <div className="grid grid-cols-7 gap-1 text-center">
+                                              {leadingBlanks.map((_, idx) => (
+                                                <div key={`blank-m-st-${idx}`} className="w-5 h-5 mx-auto rounded opacity-0 pointer-events-none" />
+                                              ))}
+
+                                              {dateKeys.map(dateStr => {
+                                                const dayNum = Number(dateStr.split('-')[2]);
+                                                const { color, border, hours, qCount, cardCount } = getIntensityStyle(dateStr);
+                                                const hasActivity = hours > 0 || qCount > 0 || cardCount > 0;
+
+                                                return (
+                                                  <div
+                                                    key={dateStr}
+                                                    className={`w-5 h-5 mx-auto rounded transition duration-150 cursor-pointer relative group hover:z-[100] border flex items-center justify-center ${border}`}
+                                                    style={{ backgroundColor: color }}
+                                                  >
+                                                    <span className={`text-[8.5px] font-mono font-black ${
+                                                      hasActivity ? 'text-gray-900' : (isDark ? 'text-slate-400' : 'text-slate-600')
+                                                    }`}>
+                                                      {dayNum}
+                                                    </span>
+
+                                                    {/* Tooltip */}
+                                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-gray-900 text-white text-[8px] font-bold px-2 py-1 rounded shadow-xl opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-[110]">
+                                                      {hours}h / {qCount}q / {cardCount}c on {formatAppDate(dateStr)}
                                                     </div>
-                                                  );
-                                                })}
-                                              </div>
+                                                  </div>
+                                                );
+                                              })}
                                             </div>
                                           </div>
                                         );
@@ -24952,23 +24971,23 @@ Return your response strictly as a JSON object matching this schema:
                                         return (
                                           <div className="overflow-x-auto w-full custom-scrollbar py-2">
                                             <div className="w-max select-none py-1">
-                                              <div className="flex gap-1 mb-1.5 h-3 text-[8.5px] font-black uppercase text-slate-400">
+                                              <div className="flex gap-[2px] mb-1 h-3 text-[7.5px] font-black uppercase text-slate-400">
                                                 {monthLabels.map((lbl, cIdx) => (
-                                                  <div key={`m-col-st-${cIdx}`} className="w-2.5 text-left overflow-visible whitespace-nowrap">
+                                                  <div key={`m-col-st-${cIdx}`} className="w-[7px] text-left overflow-visible whitespace-nowrap">
                                                     {lbl || ''}
                                                   </div>
                                                 ))}
                                               </div>
-                                              <div className="grid grid-flow-col grid-rows-7 gap-1">
+                                              <div className="grid grid-flow-col grid-rows-7 gap-[2px]">
                                                 {leadingBlanks.map((_, idx) => (
-                                                  <div key={`blank-jan1-st-${idx}`} className="w-2.5 h-2.5 rounded-sm opacity-0 pointer-events-none" />
+                                                  <div key={`blank-jan1-st-${idx}`} className="w-[7px] h-[7px] rounded-[1px] opacity-0 pointer-events-none" />
                                                 ))}
                                                 {dateKeys.map(dateStr => {
                                                   const { color, border, hours, qCount, cardCount } = getIntensityStyle(dateStr);
                                                   return (
                                                     <div
                                                       key={dateStr}
-                                                      className={`w-2.5 h-2.5 rounded-sm relative group hover:z-[100] cursor-pointer border ${border}`}
+                                                      className={`w-[7px] h-[7px] rounded-[1px] relative group hover:z-[100] cursor-pointer border ${border}`}
                                                       style={{ backgroundColor: color }}
                                                     >
                                                       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-gray-900 text-white text-[8px] font-bold px-2 py-1 rounded shadow-xl opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-[110]">
@@ -31655,57 +31674,73 @@ Return your response strictly as a JSON object matching this schema:
                                                 </div>
                                               )}
 
-                                              {/* 2. MONTHLY VIEW (Days in selected Month starting at Month start weekday) */}
+                                              {/* 2. MONTHLY VIEW (Days in selected Month with SUN MON TUE WED THU FRI SAT header row) */}
                                               {studyIntensityTimeframe === 'monthly' && (() => {
                                                 const firstDateObj = new Date(dateKeys[0] + 'T00:00:00');
                                                 const startWeekday = firstDateObj.getDay();
                                                 const leadingBlanks = Array.from({ length: startWeekday });
 
                                                 return (
-                                                  <div className="overflow-x-auto w-full flex justify-center custom-scrollbar py-2">
-                                                    <div className="w-max select-none flex justify-center">
-                                                      <div className="grid grid-flow-col grid-rows-7 gap-1.5">
-                                                        {leadingBlanks.map((_, idx) => (
-                                                          <div key={`blank-st-${idx}`} className="w-4 h-4 rounded-md opacity-0 pointer-events-none" />
-                                                        ))}
+                                                  <div className="max-w-[380px] mx-auto w-full flex flex-col justify-center">
+                                                    {/* Weekday headers */}
+                                                    <div className="grid grid-cols-7 gap-1.5 mb-1.5 text-center">
+                                                      {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map(w => (
+                                                        <span key={w} className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-orange-400/90' : 'text-orange-600/90'}`}>
+                                                          {w}
+                                                        </span>
+                                                      ))}
+                                                    </div>
 
-                                                        {dateKeys.map(dateStr => {
-                                                          const { color, border, hours, qCount, cardCount } = getIntensityStyle(dateStr);
+                                                    {/* Days grid */}
+                                                    <div className="grid grid-cols-7 gap-1.5 text-center">
+                                                      {leadingBlanks.map((_, idx) => (
+                                                        <div key={`blank-st-${idx}`} className="w-7 h-7 mx-auto rounded-lg opacity-0 pointer-events-none" />
+                                                      ))}
 
-                                                          return (
-                                                            <div
-                                                              key={dateStr}
-                                                              className={`w-4 h-4 rounded-md transition duration-150 hover:scale-125 cursor-pointer relative group hover:z-[100] border ${border}`}
-                                                              style={{ backgroundColor: color }}
-                                                            >
-                                                              {/* Tooltip */}
-                                                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-gray-900 text-white text-[9.5px] font-bold p-2.5 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-[110] border border-orange-500/40 shadow-black/60 min-w-[130px] text-left">
-                                                                <div className="font-extrabold text-[10.5px] text-orange-400 mb-1 border-b border-gray-700/60 pb-1">
-                                                                  📅 {formatAppDate(dateStr)}
-                                                                </div>
-                                                                <div className="flex items-center justify-between gap-3 text-slate-200 mt-0.5">
-                                                                  <span>⏱️ Hours:</span>
-                                                                  <span className="font-mono text-orange-300 font-extrabold">{formatHoursToHrsMinsShort(hours)}</span>
-                                                                </div>
-                                                                <div className="flex items-center justify-between gap-3 text-slate-200 mt-0.5">
-                                                                  <span>📝 Questions:</span>
-                                                                  <span className="font-mono text-amber-300 font-extrabold">{qCount}</span>
-                                                                </div>
-                                                                <div className="flex items-center justify-between gap-3 text-slate-200 mt-0.5">
-                                                                  <span>🎴 Cards:</span>
-                                                                  <span className="font-mono text-yellow-300 font-extrabold">{cardCount}</span>
-                                                                </div>
+                                                      {dateKeys.map(dateStr => {
+                                                        const dayNum = Number(dateStr.split('-')[2]);
+                                                        const { color, border, hours, qCount, cardCount } = getIntensityStyle(dateStr);
+                                                        const hasActivity = hours > 0 || qCount > 0 || cardCount > 0;
+
+                                                        return (
+                                                          <div
+                                                            key={dateStr}
+                                                            className={`w-7 h-7 mx-auto rounded-lg transition duration-150 hover:scale-125 cursor-pointer relative group hover:z-[100] border flex items-center justify-center ${border}`}
+                                                            style={{ backgroundColor: color }}
+                                                          >
+                                                            <span className={`text-[10px] font-mono font-black ${
+                                                              hasActivity ? 'text-gray-900' : (isDark ? 'text-slate-400' : 'text-slate-600')
+                                                            }`}>
+                                                              {dayNum}
+                                                            </span>
+
+                                                            {/* Rich Tooltip popup */}
+                                                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-gray-900 text-white text-[9.5px] font-bold p-2.5 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-[110] border border-orange-500/40 shadow-black/60 min-w-[130px] text-left">
+                                                              <div className="font-extrabold text-[10.5px] text-orange-400 mb-1 border-b border-gray-700/60 pb-1">
+                                                                📅 {formatAppDate(dateStr)}
+                                                              </div>
+                                                              <div className="flex items-center justify-between gap-3 text-slate-200 mt-0.5">
+                                                                <span>⏱️ Hours:</span>
+                                                                <span className="font-mono text-orange-300 font-extrabold">{formatHoursToHrsMinsShort(hours)}</span>
+                                                              </div>
+                                                              <div className="flex items-center justify-between gap-3 text-slate-200 mt-0.5">
+                                                                <span>📝 Questions:</span>
+                                                                <span className="font-mono text-amber-300 font-extrabold">{qCount}</span>
+                                                              </div>
+                                                              <div className="flex items-center justify-between gap-3 text-slate-200 mt-0.5">
+                                                                <span>🎴 Cards:</span>
+                                                                <span className="font-mono text-yellow-300 font-extrabold">{cardCount}</span>
                                                               </div>
                                                             </div>
-                                                          );
-                                                        })}
-                                                      </div>
+                                                          </div>
+                                                        );
+                                                      })}
                                                     </div>
                                                   </div>
                                                 );
                                               })()}
 
-                                              {/* 3. YEARLY VIEW (Exactly 365 or 366 Boxes starting on Jan 1) */}
+                                              {/* 3. YEARLY VIEW (Scaled down to fit entire 365/366 days in single frame) */}
                                               {studyIntensityTimeframe === 'yearly' && (() => {
                                                 const jan1DateObj = new Date(dateKeys[0] + 'T00:00:00');
                                                 const jan1Weekday = jan1DateObj.getDay();
@@ -31724,20 +31759,20 @@ Return your response strictly as a JSON object matching this schema:
                                                 });
 
                                                 return (
-                                                  <div className="overflow-x-auto w-full flex justify-center custom-scrollbar py-2 px-4">
-                                                    <div className="w-max select-none py-1 flex flex-col items-start">
+                                                  <div className="w-full flex flex-col items-center justify-center py-1">
+                                                    <div className="select-none flex flex-col items-start max-w-full">
                                                       {/* Month Header Row */}
-                                                      <div className="flex gap-1 mb-1.5 h-3 text-[9px] font-black uppercase text-slate-400">
+                                                      <div className="flex gap-[3px] sm:gap-[4px] mb-1.5 h-3 text-[8.5px] font-black uppercase text-slate-400">
                                                         {monthLabels.map((lbl, cIdx) => (
-                                                          <div key={`m-col-st-${cIdx}`} className="w-2.5 sm:w-3 text-left overflow-visible whitespace-nowrap">
+                                                          <div key={`m-col-st-${cIdx}`} className="w-[8.5px] sm:w-[10px] text-left overflow-visible whitespace-nowrap">
                                                             {lbl || ''}
                                                           </div>
                                                         ))}
                                                       </div>
                                                       {/* 7-Row Matrix */}
-                                                      <div className="grid grid-flow-col grid-rows-7 gap-1">
+                                                      <div className="grid grid-flow-col grid-rows-7 gap-[3px] sm:gap-[4px]">
                                                         {leadingBlanks.map((_, idx) => (
-                                                          <div key={`blank-jan1-st-${idx}`} className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm opacity-0 pointer-events-none" />
+                                                          <div key={`blank-jan1-st-${idx}`} className="w-[8.5px] h-[8.5px] sm:w-[10px] sm:h-[10px] rounded-[2px] opacity-0 pointer-events-none" />
                                                         ))}
 
                                                         {dateKeys.map(dateStr => {
@@ -31746,7 +31781,7 @@ Return your response strictly as a JSON object matching this schema:
                                                           return (
                                                             <div
                                                               key={dateStr}
-                                                              className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm transition duration-150 hover:scale-125 cursor-pointer relative group hover:z-[100] border ${border}`}
+                                                              className={`w-[8.5px] h-[8.5px] sm:w-[10px] sm:h-[10px] rounded-[2px] transition duration-150 hover:scale-150 cursor-pointer relative group hover:z-[100] border ${border}`}
                                                               style={{ backgroundColor: color }}
                                                             >
                                                               {/* Rich Tooltip popup */}
