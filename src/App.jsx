@@ -26490,8 +26490,8 @@ Return your response strictly as a JSON object matching this schema:
                               initial={{ opacity: 0, y: 12 }}
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ duration: 0.4, delay: 0.2 }}
-                              className={`p-5 rounded-3xl transition-all space-y-3 ${
-                                isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                              className={`p-4 rounded-3xl transition-all space-y-2.5 border ${
+                                isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-800 border-slate-200'
                               }`}
                             >
                               <label className={`block text-[9px] font-black uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Add Topic to Track</label>
@@ -26505,45 +26505,50 @@ Return your response strictly as a JSON object matching this schema:
                                   setTrackerNewTopicPage("");
                                   setTrackerNewTopicEndPage("");
                                 }}
-                                className="flex gap-2"
+                                className="flex flex-col gap-2.5"
                               >
+                                {/* Row 1: Topic Title Input */}
                                 <input
                                   type="text"
-                                  placeholder="Type a topic (e.g. Cranial Nerves)..."
+                                  placeholder="Type topic name (e.g. Cranial Nerves)..."
                                   value={trackerNewTopicInput}
                                   onChange={(e) => setTrackerNewTopicInput(e.target.value)}
-                                  className={`flex-grow p-2.5 rounded-xl text-xs font-bold outline-none transition ${
+                                  className={`w-full p-2.5 rounded-xl text-xs font-bold outline-none transition ${
                                     isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'
                                   }`}
                                 />
-                                <input
-                                  type="number"
-                                  placeholder="Start"
-                                  value={trackerNewTopicPage}
-                                  onChange={(e) => setTrackerNewTopicPage(e.target.value)}
-                                  className={`w-16 p-2.5 rounded-xl text-xs font-bold outline-none transition text-center ${
-                                    isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'
-                                  }`}
-                                />
-                                <input
-                                  type="number"
-                                  placeholder="End"
-                                  value={trackerNewTopicEndPage}
-                                  onChange={(e) => setTrackerNewTopicEndPage(e.target.value)}
-                                  className={`w-16 p-2.5 rounded-xl text-xs font-bold outline-none transition text-center ${
-                                    isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'
-                                  }`}
-                                />
-                                <motion.button
-                                  whileHover={{ scale: 1.02 }}
-                                  whileTap={{ scale: 0.95 }}
-                                  type="submit"
-                                  className={`px-3.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition ${
-                                    isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300' : 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                                  }`}
-                                >
-                                  Add
-                                </motion.button>
+
+                                {/* Row 2: Start/End Page Inputs & Add Button */}
+                                <div className="flex gap-2 items-center">
+                                  <input
+                                    type="number"
+                                    placeholder="Start Pg"
+                                    value={trackerNewTopicPage}
+                                    onChange={(e) => setTrackerNewTopicPage(e.target.value)}
+                                    className={`w-20 p-2.5 rounded-xl text-xs font-bold outline-none transition text-center shrink-0 ${
+                                      isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'
+                                    }`}
+                                  />
+                                  <input
+                                    type="number"
+                                    placeholder="End Pg"
+                                    value={trackerNewTopicEndPage}
+                                    onChange={(e) => setTrackerNewTopicEndPage(e.target.value)}
+                                    className={`w-20 p-2.5 rounded-xl text-xs font-bold outline-none transition text-center shrink-0 ${
+                                      isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'
+                                    }`}
+                                  />
+                                  <motion.button
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.95 }}
+                                    type="submit"
+                                    className={`flex-grow h-[38px] rounded-xl text-[10px] font-black uppercase tracking-wider transition flex items-center justify-center gap-1.5 ${
+                                      isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300' : 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                                    }`}
+                                  >
+                                    <Plus className="w-3.5 h-3.5" /> Add Topic
+                                  </motion.button>
+                                </div>
                               </form>
                             </motion.div>
 
