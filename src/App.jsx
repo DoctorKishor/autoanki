@@ -30216,7 +30216,7 @@ Return your response strictly as a JSON object matching this schema:
                                 animate={{ opacity: 1, y: 0, scale: 1 }}
                                 transition={{ duration: 0.4, delay: 0.35 }}
                                 whileHover={{ scale: 1.005 }}
-                                className={`p-6 rounded-3xl transition-all ${
+                                className={`p-6 rounded-3xl transition-all h-[330px] flex flex-col justify-between ${
                                   isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
                                 }`}
                               >
@@ -30289,7 +30289,7 @@ Return your response strictly as a JSON object matching this schema:
 
                                   return (
                                     <>
-                                      <div className="grid grid-cols-1 lg:grid-cols-3 items-center gap-4 mb-6 text-left">
+                                      <div className="grid grid-cols-1 lg:grid-cols-3 items-center gap-4 text-left">
                                         {/* Left: Icon, Title & Prev/Next Period Controls */}
                                         <div className="flex flex-wrap items-center gap-3">
                                           <div className={`p-2.5 rounded-2xl ${isDark ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'}`}>
@@ -30413,139 +30413,88 @@ Return your response strictly as a JSON object matching this schema:
                                         </div>
                                       </div>
 
-                                      {/* View Renderers */}
+                                      {/* View Renderers Container (Uniform Height 210px) */}
+                                      <div className="h-[210px] w-full flex items-center justify-center">
 
-                                      {/* 1. WEEKLY VIEW (Exactly 7 Boxes) */}
-                                      {contributionTimeframe === 'weekly' && (
-                                        <div className="grid grid-cols-7 gap-2 lg:gap-4 pt-4 pb-2 max-w-[800px] mx-auto w-full">
-                                          {dateKeys.map(dateStr => {
-                                            const dayObj = new Date(dateStr + 'T00:00:00');
-                                            const dayName = dayObj.toLocaleDateString('en-US', { weekday: 'short' });
-                                            const dayNum = dayObj.getDate();
-                                            const count = analyticsData.contributions[dateStr] || 0;
+                                        {/* 1. WEEKLY VIEW (Exactly 7 Boxes) */}
+                                        {contributionTimeframe === 'weekly' && (
+                                          <div className="grid grid-cols-7 gap-2 lg:gap-4 max-w-[650px] mx-auto w-full">
+                                            {dateKeys.map(dateStr => {
+                                              const dayObj = new Date(dateStr + 'T00:00:00');
+                                              const dayName = dayObj.toLocaleDateString('en-US', { weekday: 'short' });
+                                              const dayNum = dayObj.getDate();
+                                              const count = analyticsData.contributions[dateStr] || 0;
 
-                                            let color = isDark ? '#262c36' : '#f3f4f6';
-                                            if (count > 0) {
-                                              const ratio = Math.min(1, count / maxContribCount);
-                                              const lightness = isDark ? (25 + ratio * 45) : (94 - ratio * 69);
-                                              const saturation = 35 + ratio * 59;
-                                              color = `hsl(217, ${Math.round(saturation)}%, ${Math.round(lightness)}%)`;
-                                            }
+                                              let color = isDark ? '#262c36' : '#f3f4f6';
+                                              if (count > 0) {
+                                                const ratio = Math.min(1, count / maxContribCount);
+                                                const lightness = isDark ? (25 + ratio * 45) : (94 - ratio * 69);
+                                                const saturation = 35 + ratio * 59;
+                                                color = `hsl(217, ${Math.round(saturation)}%, ${Math.round(lightness)}%)`;
+                                              }
 
-                                            return (
-                                              <motion.div
-                                                key={dateStr}
-                                                whileHover={{ scale: 1.05, y: -2 }}
-                                                className={`relative group hover:z-50 flex flex-col items-center justify-between p-3 rounded-2xl border transition-all ${
-                                                  isDark ? 'bg-[#222730] border-gray-800 shadow-md' : 'bg-white border-gray-200 shadow-sm'
-                                                }`}
-                                              >
-                                                <span className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                  {dayName}
-                                                </span>
-
-                                                <div
-                                                  className="w-10 h-10 rounded-xl flex items-center justify-center font-mono font-black text-sm my-2 transition-all"
-                                                  style={{
-                                                    backgroundColor: color,
-                                                    color: count > 0 ? '#ffffff' : (isDark ? '#94a3b8' : '#64748b'),
-                                                    boxShadow: count > 0 ? 'inset 0 1px 2px rgba(255,255,255,0.3)' : 'none'
-                                                  }}
+                                              return (
+                                                <motion.div
+                                                  key={dateStr}
+                                                  whileHover={{ scale: 1.05, y: -2 }}
+                                                  className={`relative group hover:z-50 flex flex-col items-center justify-between p-3 rounded-2xl border transition-all h-28 ${
+                                                    isDark ? 'bg-[#222730] border-gray-800 shadow-md' : 'bg-white border-gray-200 shadow-sm'
+                                                  }`}
                                                 >
-                                                  {dayNum}
-                                                </div>
+                                                  <span className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                    {dayName}
+                                                  </span>
 
-                                                <span className={`text-[9.5px] font-bold ${count > 0 ? (isDark ? 'text-blue-400 font-black' : 'text-blue-600 font-black') : (isDark ? 'text-slate-500' : 'text-gray-400')}`}>
-                                                  {count === 1 ? '1 card' : `${count} cards`}
-                                                </span>
-
-                                                {/* Rich Tooltip popup */}
-                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-gray-900 text-white text-[9px] font-bold px-2.5 py-1.5 rounded-lg shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
-                                                  {count === 0 ? 'No cards created' : `${count} card${count > 1 ? 's' : ''} created`} on {formatAppDate(dateStr)}
-                                                </div>
-                                              </motion.div>
-                                            );
-                                          })}
-                                        </div>
-                                      )}
-
-                                      {/* 2. MONTHLY VIEW (Exactly 28-31 Boxes starting on Day 1) */}
-                                      {contributionTimeframe === 'monthly' && (() => {
-                                        const firstDateObj = new Date(dateKeys[0] + 'T00:00:00');
-                                        const firstWeekday = firstDateObj.getDay();
-                                        const emptySlots = Array.from({ length: firstWeekday });
-
-                                        return (
-                                          <div className="max-w-[700px] mx-auto w-full pt-6 pb-2">
-                                            {/* Weekday headers */}
-                                            <div className="grid grid-cols-7 gap-2 mb-2 text-center">
-                                              {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map(w => (
-                                                <span key={w} className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
-                                                  {w}
-                                                </span>
-                                              ))}
-                                            </div>
-
-                                            {/* Days grid */}
-                                            <div className="grid grid-cols-7 gap-2 text-center">
-                                              {emptySlots.map((_, idx) => (
-                                                <div key={`empty-${idx}`} className="w-full aspect-square rounded-xl opacity-0 pointer-events-none" />
-                                              ))}
-
-                                              {dateKeys.map(dateStr => {
-                                                const dayNum = Number(dateStr.split('-')[2]);
-                                                const count = analyticsData.contributions[dateStr] || 0;
-
-                                                let color = isDark ? '#262c36' : '#f3f4f6';
-                                                if (count > 0) {
-                                                  const ratio = Math.min(1, count / maxContribCount);
-                                                  const lightness = isDark ? (25 + ratio * 45) : (94 - ratio * 69);
-                                                  const saturation = 35 + ratio * 59;
-                                                  color = `hsl(217, ${Math.round(saturation)}%, ${Math.round(lightness)}%)`;
-                                                }
-
-                                                return (
                                                   <div
-                                                    key={dateStr}
-                                                    className={`aspect-square w-full rounded-xl flex flex-col items-center justify-center relative group hover:z-50 cursor-pointer transition duration-150 hover:scale-110 border ${
-                                                      isDark ? 'border-gray-800/60' : 'border-gray-200/60'
-                                                    }`}
-                                                    style={{ backgroundColor: color }}
+                                                    className="w-9 h-9 rounded-xl flex items-center justify-center font-mono font-black text-xs transition-all"
+                                                    style={{
+                                                      backgroundColor: color,
+                                                      color: count > 0 ? '#ffffff' : (isDark ? '#94a3b8' : '#64748b'),
+                                                      boxShadow: count > 0 ? 'inset 0 1px 2px rgba(255,255,255,0.3)' : 'none'
+                                                    }}
                                                   >
-                                                    <span className={`text-[10px] font-mono font-black ${
-                                                      count > 0 ? 'text-white drop-shadow-sm' : (isDark ? 'text-slate-400' : 'text-gray-600')
-                                                    }`}>
-                                                      {dayNum}
-                                                    </span>
-
-                                                    {/* Rich Tooltip popup */}
-                                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-gray-900 text-white text-[9px] font-bold px-2.5 py-1.5 rounded-lg shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
-                                                      {count === 0 ? 'No cards created' : `${count} card${count > 1 ? 's' : ''} created`} on {formatAppDate(dateStr)}
-                                                    </div>
+                                                    {dayNum}
                                                   </div>
-                                                );
-                                              })}
-                                            </div>
+
+                                                  <span className={`text-[9px] font-bold ${count > 0 ? (isDark ? 'text-blue-400 font-black' : 'text-blue-600 font-black') : (isDark ? 'text-slate-500' : 'text-gray-400')}`}>
+                                                    {count === 1 ? '1 card' : `${count} cards`}
+                                                  </span>
+
+                                                  {/* Rich Tooltip popup */}
+                                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-gray-900 text-white text-[9px] font-bold px-2.5 py-1.5 rounded-lg shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                                                    {count === 0 ? 'No cards created' : `${count} card${count > 1 ? 's' : ''} created`} on {formatAppDate(dateStr)}
+                                                  </div>
+                                                </motion.div>
+                                              );
+                                            })}
                                           </div>
-                                        );
-                                      })()}
+                                        )}
 
-                                      {/* 3. YEARLY VIEW (Exactly 365 or 366 Boxes starting on Jan 1) */}
-                                      {contributionTimeframe === 'yearly' && (() => {
-                                        const jan1DateObj = new Date(dateKeys[0] + 'T00:00:00');
-                                        const jan1Weekday = jan1DateObj.getDay();
-                                        const leadingBlanks = Array.from({ length: jan1Weekday });
+                                        {/* 2. MONTHLY VIEW (Exactly 28-31 Boxes starting on Day 1) */}
+                                        {contributionTimeframe === 'monthly' && (() => {
+                                          const firstDateObj = new Date(dateKeys[0] + 'T00:00:00');
+                                          const firstWeekday = firstDateObj.getDay();
+                                          const emptySlots = Array.from({ length: firstWeekday });
 
-                                        return (
-                                          <div className="overflow-x-auto pt-7 pb-2 custom-scrollbar">
-                                            <div className="min-w-[750px] select-none flex justify-center py-2">
-                                              <div className="grid grid-flow-col grid-rows-7 gap-1">
-                                                {/* Leading blank slots for Jan 1 starting weekday */}
-                                                {leadingBlanks.map((_, idx) => (
-                                                  <div key={`blank-jan1-${idx}`} className="w-2.5 h-2.5 rounded-sm opacity-0 pointer-events-none" />
+                                          return (
+                                            <div className="max-w-[360px] mx-auto w-full">
+                                              {/* Weekday headers */}
+                                              <div className="grid grid-cols-7 gap-1 mb-1 text-center">
+                                                {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map(w => (
+                                                  <span key={w} className={`text-[8.5px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
+                                                    {w}
+                                                  </span>
+                                                ))}
+                                              </div>
+
+                                              {/* Days grid */}
+                                              <div className="grid grid-cols-7 gap-1 text-center">
+                                                {emptySlots.map((_, idx) => (
+                                                  <div key={`empty-${idx}`} className="w-7 h-7 mx-auto rounded-lg opacity-0 pointer-events-none" />
                                                 ))}
 
                                                 {dateKeys.map(dateStr => {
+                                                  const dayNum = Number(dateStr.split('-')[2]);
                                                   const count = analyticsData.contributions[dateStr] || 0;
 
                                                   let color = isDark ? '#262c36' : '#f3f4f6';
@@ -30559,11 +30508,19 @@ Return your response strictly as a JSON object matching this schema:
                                                   return (
                                                     <div
                                                       key={dateStr}
-                                                      className="w-2.5 h-2.5 rounded-sm transition duration-150 hover:scale-125 cursor-pointer relative group hover:z-50"
+                                                      className={`w-7 h-7 mx-auto rounded-lg flex items-center justify-center relative group hover:z-50 cursor-pointer transition duration-150 hover:scale-110 border ${
+                                                        isDark ? 'border-gray-800/60' : 'border-gray-200/60'
+                                                      }`}
                                                       style={{ backgroundColor: color }}
                                                     >
+                                                      <span className={`text-[9.5px] font-mono font-black ${
+                                                        count > 0 ? 'text-white drop-shadow-sm' : (isDark ? 'text-slate-400' : 'text-gray-600')
+                                                      }`}>
+                                                        {dayNum}
+                                                      </span>
+
                                                       {/* Rich Tooltip popup */}
-                                                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-gray-900 text-white text-[9px] font-bold px-2 py-1 rounded-lg shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                                                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-gray-900 text-white text-[9px] font-bold px-2.5 py-1.5 rounded-lg shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
                                                         {count === 0 ? 'No cards created' : `${count} card${count > 1 ? 's' : ''} created`} on {formatAppDate(dateStr)}
                                                       </div>
                                                     </div>
@@ -30571,9 +30528,54 @@ Return your response strictly as a JSON object matching this schema:
                                                 })}
                                               </div>
                                             </div>
-                                          </div>
-                                        );
-                                      })()}
+                                          );
+                                        })()}
+
+                                        {/* 3. YEARLY VIEW (Exactly 365 or 366 Boxes starting on Jan 1) */}
+                                        {contributionTimeframe === 'yearly' && (() => {
+                                          const jan1DateObj = new Date(dateKeys[0] + 'T00:00:00');
+                                          const jan1Weekday = jan1DateObj.getDay();
+                                          const leadingBlanks = Array.from({ length: jan1Weekday });
+
+                                          return (
+                                            <div className="overflow-x-auto w-full flex justify-center custom-scrollbar">
+                                              <div className="min-w-[720px] select-none flex justify-center py-2">
+                                                <div className="grid grid-flow-col grid-rows-7 gap-1">
+                                                  {/* Leading blank slots for Jan 1 starting weekday */}
+                                                  {leadingBlanks.map((_, idx) => (
+                                                    <div key={`blank-jan1-${idx}`} className="w-2.5 h-2.5 rounded-sm opacity-0 pointer-events-none" />
+                                                  ))}
+
+                                                  {dateKeys.map(dateStr => {
+                                                    const count = analyticsData.contributions[dateStr] || 0;
+
+                                                    let color = isDark ? '#262c36' : '#f3f4f6';
+                                                    if (count > 0) {
+                                                      const ratio = Math.min(1, count / maxContribCount);
+                                                      const lightness = isDark ? (25 + ratio * 45) : (94 - ratio * 69);
+                                                      const saturation = 35 + ratio * 59;
+                                                      color = `hsl(217, ${Math.round(saturation)}%, ${Math.round(lightness)}%)`;
+                                                    }
+
+                                                    return (
+                                                      <div
+                                                        key={dateStr}
+                                                        className="w-2.5 h-2.5 rounded-sm transition duration-150 hover:scale-125 cursor-pointer relative group hover:z-50"
+                                                        style={{ backgroundColor: color }}
+                                                      >
+                                                        {/* Rich Tooltip popup */}
+                                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-gray-900 text-white text-[9px] font-bold px-2 py-1 rounded-lg shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                                                          {count === 0 ? 'No cards created' : `${count} card${count > 1 ? 's' : ''} created`} on {formatAppDate(dateStr)}
+                                                        </div>
+                                                      </div>
+                                                    );
+                                                  })}
+                                                </div>
+                                              </div>
+                                            </div>
+                                          );
+                                        })()}
+                                      </div>
                                     </>
                                   );
                                 })()}
