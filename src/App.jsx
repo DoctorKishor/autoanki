@@ -4732,6 +4732,7 @@ export default function App() {
   const [isWidgetCustomizerOpen, setIsWidgetCustomizerOpen] = useState(false);
   const [hoveredStudyRoomIntensityDate, setHoveredStudyRoomIntensityDate] = useState(null);
   const [contributionTimeframe, setContributionTimeframe] = useState('yearly'); // 'weekly' | 'monthly' | 'yearly'
+  const [contributionOffset, setContributionOffset] = useState(0); // 0 = current period, -1 = previous, etc.
 
   const DEFAULT_DASHBOARD_WIDGETS = useMemo(() => [
     { id: 'campEfficiencyCard', label: 'CAMP Study Efficiency', size: 'medium', enabled: true },
@@ -30220,39 +30221,125 @@ Return your response strictly as a JSON object matching this schema:
                                 }`}
                               >
                                 {(() => {
-                                  const allContribKeys = Object.keys(analyticsData.contributions).sort();
+                                  const today = new Date();
+                                  let dateKeys = [];
+                                  let periodLabel = '';
+                                  let periodDetailText = '';
 
-                                  const filteredDateKeys = (() => {
-                                    if (contributionTimeframe === 'weekly') {
-                                      return allContribKeys.slice(-84); // 12 weeks
-                                    } else if (contributionTimeframe === 'monthly') {
-                                      return allContribKeys.slice(-180); // 6 months (~26 weeks)
-                                    } else {
-                                      return allContribKeys.slice(-365); // 1 year (52 weeks)
+                                  if (contributionTimeframe === 'weekly') {
+                                    // Weekly View: Exactly 7 boxes for the selected week (Sunday through Saturday)
+                                    const refDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + (contributionOffset * 7));
+                                    const dayOfWeek = refDate.getDay();
+                                    const weekStart = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate() - dayOfWeek);
+
+                                    for (let i = 0; i < 7; i++) {
+                                      const d = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + i);
+                                      const tzoffset = d.getTimezoneOffset() * 60000;
+                                      const dateStr = (new Date(d.getTime() - tzoffset)).toISOString().slice(0, 10);
+                                      dateKeys.push(dateStr);
                                     }
-                                  })();
+
+                                    const startDateObj = new Date(dateKeys[0] + 'T00:00:00');
+                                    const endDateObj = new Date(dateKeys[6] + 'T00:00:00');
+
+                                    const startLabel = startDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                                    const endLabel = endDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+                                    periodLabel = `${startLabel} – ${endLabel}`;
+                                    periodDetailText = `Showing 7 Days for ${periodLabel}`;
+
+                                  } else if (contributionTimeframe === 'monthly') {
+                                    // Monthly View: Exactly 28, 29, 30, or 31 boxes for the selected month starting on Day 1
+                                    const refDate = new Date(today.getFullYear(), today.getMonth() + contributionOffset, 1);
+                                    const targetYear = refDate.getFullYear();
+                                    const targetMonth = refDate.getMonth();
+                                    const daysInMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+
+                                    for (let i = 1; i <= daysInMonth; i++) {
+                                      const mmStr = String(targetMonth + 1).padStart(2, '0');
+                                      const ddStr = String(i).padStart(2, '0');
+                                      dateKeys.push(`${targetYear}-${mmStr}-${ddStr}`);
+                                    }
+
+                                    const monthName = refDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                                    periodLabel = monthName;
+                                    periodDetailText = `Showing ${daysInMonth} Days in ${monthName} (Day 1 to Day ${daysInMonth})`;
+
+                                  } else {
+                                    // Yearly View: Exactly 365 or 366 boxes for the selected year starting on Jan 1
+                                    const targetYear = today.getFullYear() + contributionOffset;
+                                    const isLeapYear = (targetYear % 4 === 0 && targetYear % 100 !== 0) || (targetYear % 400 === 0);
+                                    const daysInYear = isLeapYear ? 366 : 365;
+
+                                    for (let i = 0; i < daysInYear; i++) {
+                                      const d = new Date(targetYear, 0, 1 + i);
+                                      const mmStr = String(d.getMonth() + 1).padStart(2, '0');
+                                      const ddStr = String(d.getDate()).padStart(2, '0');
+                                      dateKeys.push(`${targetYear}-${mmStr}-${ddStr}`);
+                                    }
+
+                                    periodLabel = `Year ${targetYear}`;
+                                    periodDetailText = `Showing Full Year ${targetYear} (${daysInYear} Days, Jan 1 – Dec 31)`;
+                                  }
 
                                   const maxContribCount = Math.max(
-                                    ...filteredDateKeys.map(d => analyticsData.contributions[d] || 0),
+                                    ...dateKeys.map(d => analyticsData.contributions[d] || 0),
                                     1
                                   );
 
                                   return (
                                     <>
-                                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-                                        {/* Left: Title & Subtitle Badge */}
-                                        <div className="flex items-center gap-3">
+                                      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-6 text-left">
+                                        {/* Left: Icon, Title & Prev/Next Period Controls */}
+                                        <div className="flex flex-wrap items-center gap-3">
                                           <div className={`p-2.5 rounded-2xl ${isDark ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'}`}>
-                                            <Calendar className="w-4 h-4" />
+                                            <Calendar className="w-4.5 h-4.5" />
                                           </div>
                                           <div>
-                                            <h3 className={`text-sm font-black uppercase tracking-wider ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                                              Contribution Activity
-                                            </h3>
-                                            <p className={`text-[10px] font-bold uppercase mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                              {contributionTimeframe === 'weekly' && 'Last 12 Weeks (84 Days)'}
-                                              {contributionTimeframe === 'monthly' && 'Last 6 Months (180 Days)'}
-                                              {contributionTimeframe === 'yearly' && 'Full Year History (365 Days)'}
+                                            <div className="flex items-center gap-2">
+                                              <h3 className={`text-sm font-black uppercase tracking-wider ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                                Contribution Activity
+                                              </h3>
+
+                                              {/* Navigation Controls: Previous / Next */}
+                                              <div className="flex items-center gap-1 ml-2">
+                                                <motion.button
+                                                  whileHover={{ scale: 1.1 }}
+                                                  whileTap={{ scale: 0.9 }}
+                                                  onClick={() => setContributionOffset(prev => prev - 1)}
+                                                  className={`p-1 rounded-lg transition-all cursor-pointer ${
+                                                    isDark ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-gray-200 text-slate-700'
+                                                  }`}
+                                                  title={`Previous ${contributionTimeframe.charAt(0).toUpperCase() + contributionTimeframe.slice(1)}`}
+                                                >
+                                                  <ChevronLeft className="w-4 h-4" />
+                                                </motion.button>
+
+                                                <span className={`text-[10px] font-black uppercase tracking-wider font-mono px-2.5 py-0.5 rounded-md ${
+                                                  isDark ? 'bg-slate-800/80 text-blue-400 border border-slate-700/50' : 'bg-blue-50 text-blue-700 border border-blue-100'
+                                                }`}>
+                                                  {periodLabel}
+                                                </span>
+
+                                                <motion.button
+                                                  whileHover={{ scale: 1.1 }}
+                                                  whileTap={{ scale: 0.9 }}
+                                                  disabled={contributionOffset >= 0}
+                                                  onClick={() => setContributionOffset(prev => Math.min(0, prev + 1))}
+                                                  className={`p-1 rounded-lg transition-all ${
+                                                    contributionOffset >= 0
+                                                      ? 'opacity-30 cursor-not-allowed text-gray-400'
+                                                      : (isDark ? 'hover:bg-slate-800 text-slate-300 cursor-pointer' : 'hover:bg-gray-200 text-slate-700 cursor-pointer')
+                                                  }`}
+                                                  title={`Next ${contributionTimeframe.charAt(0).toUpperCase() + contributionTimeframe.slice(1)}`}
+                                                >
+                                                  <ChevronRight className="w-4 h-4" />
+                                                </motion.button>
+                                              </div>
+                                            </div>
+
+                                            <p className={`text-[10px] font-bold uppercase mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                              {periodDetailText}
                                             </p>
                                           </div>
                                         </div>
@@ -30264,7 +30351,10 @@ Return your response strictly as a JSON object matching this schema:
                                           <motion.button
                                             whileHover={{ scale: 1.02 }}
                                             whileTap={{ scale: 0.97 }}
-                                            onClick={() => setContributionTimeframe('weekly')}
+                                            onClick={() => {
+                                              setContributionTimeframe('weekly');
+                                              setContributionOffset(0);
+                                            }}
                                             className={`px-3.5 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
                                               contributionTimeframe === 'weekly'
                                                 ? (isDark ? 'neu-btn-accent-dark text-white shadow-sm font-extrabold' : 'neu-btn-accent-light text-white shadow-sm font-extrabold')
@@ -30277,7 +30367,10 @@ Return your response strictly as a JSON object matching this schema:
                                           <motion.button
                                             whileHover={{ scale: 1.02 }}
                                             whileTap={{ scale: 0.97 }}
-                                            onClick={() => setContributionTimeframe('monthly')}
+                                            onClick={() => {
+                                              setContributionTimeframe('monthly');
+                                              setContributionOffset(0);
+                                            }}
                                             className={`px-3.5 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
                                               contributionTimeframe === 'monthly'
                                                 ? (isDark ? 'neu-btn-accent-dark text-white shadow-sm font-extrabold' : 'neu-btn-accent-light text-white shadow-sm font-extrabold')
@@ -30290,7 +30383,10 @@ Return your response strictly as a JSON object matching this schema:
                                           <motion.button
                                             whileHover={{ scale: 1.02 }}
                                             whileTap={{ scale: 0.97 }}
-                                            onClick={() => setContributionTimeframe('yearly')}
+                                            onClick={() => {
+                                              setContributionTimeframe('yearly');
+                                              setContributionOffset(0);
+                                            }}
                                             className={`px-3.5 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
                                               contributionTimeframe === 'yearly'
                                                 ? (isDark ? 'neu-btn-accent-dark text-white shadow-sm font-extrabold' : 'neu-btn-accent-light text-white shadow-sm font-extrabold')
@@ -30325,37 +30421,162 @@ Return your response strictly as a JSON object matching this schema:
                                         </div>
                                       </div>
 
-                                      {/* Dynamic Calendar Grid */}
-                                      <div className="overflow-x-auto pb-2 scrollbar-thin custom-scrollbar">
-                                        <div className="min-w-[300px] select-none flex justify-center py-2">
-                                          <div className="grid grid-flow-col grid-rows-7 gap-1">
-                                            {filteredDateKeys.map(dateStr => {
-                                              const count = analyticsData.contributions[dateStr] || 0;
+                                      {/* View Renderers */}
 
-                                              let color = isDark ? '#262c36' : '#f3f4f6';
-                                              if (count > 0) {
-                                                const ratio = count / maxContribCount;
-                                                const lightness = isDark ? (25 + ratio * 45) : (94 - ratio * 69);
-                                                const saturation = 35 + ratio * 59;
-                                                color = `hsl(217, ${Math.round(saturation)}%, ${Math.round(lightness)}%)`;
-                                              }
+                                      {/* 1. WEEKLY VIEW (Exactly 7 Boxes) */}
+                                      {contributionTimeframe === 'weekly' && (
+                                        <div className="grid grid-cols-7 gap-2 lg:gap-4 py-4 max-w-[800px] mx-auto w-full">
+                                          {dateKeys.map(dateStr => {
+                                            const dayObj = new Date(dateStr + 'T00:00:00');
+                                            const dayName = dayObj.toLocaleDateString('en-US', { weekday: 'short' });
+                                            const dayNum = dayObj.getDate();
+                                            const count = analyticsData.contributions[dateStr] || 0;
 
-                                              return (
+                                            let color = isDark ? '#262c36' : '#f3f4f6';
+                                            if (count > 0) {
+                                              const ratio = Math.min(1, count / maxContribCount);
+                                              const lightness = isDark ? (25 + ratio * 45) : (94 - ratio * 69);
+                                              const saturation = 35 + ratio * 59;
+                                              color = `hsl(217, ${Math.round(saturation)}%, ${Math.round(lightness)}%)`;
+                                            }
+
+                                            return (
+                                              <motion.div
+                                                key={dateStr}
+                                                whileHover={{ scale: 1.05, y: -2 }}
+                                                className={`flex flex-col items-center justify-between p-3 rounded-2xl border transition-all ${
+                                                  isDark ? 'bg-[#222730] border-gray-800 shadow-md' : 'bg-white border-gray-200 shadow-sm'
+                                                }`}
+                                              >
+                                                <span className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                  {dayName}
+                                                </span>
+
                                                 <div
-                                                  key={dateStr}
-                                                  className="w-2.5 h-2.5 rounded-sm transition duration-150 hover:scale-125 cursor-pointer relative group"
-                                                  style={{ backgroundColor: color }}
+                                                  className="w-10 h-10 rounded-xl flex items-center justify-center font-mono font-black text-sm my-2 transition-all"
+                                                  style={{
+                                                    backgroundColor: color,
+                                                    color: count > 0 ? '#ffffff' : (isDark ? '#94a3b8' : '#64748b'),
+                                                    boxShadow: count > 0 ? 'inset 0 1px 2px rgba(255,255,255,0.3)' : 'none'
+                                                  }}
                                                 >
-                                                  {/* Rich Tooltip popup */}
-                                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-gray-900 text-white text-[9px] font-bold px-2 py-1 rounded shadow-xl opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-10">
-                                                    {count === 0 ? 'No cards created' : `${count} card${count > 1 ? 's' : ''} created`} on {formatAppDate(dateStr)}
-                                                  </div>
+                                                  {dayNum}
                                                 </div>
-                                              );
-                                            })}
-                                          </div>
+
+                                                <span className={`text-[9.5px] font-bold ${count > 0 ? (isDark ? 'text-blue-400 font-black' : 'text-blue-600 font-black') : (isDark ? 'text-slate-500' : 'text-gray-400')}`}>
+                                                  {count === 1 ? '1 card' : `${count} cards`}
+                                                </span>
+                                              </motion.div>
+                                            );
+                                          })}
                                         </div>
-                                      </div>
+                                      )}
+
+                                      {/* 2. MONTHLY VIEW (Exactly 28-31 Boxes starting on Day 1) */}
+                                      {contributionTimeframe === 'monthly' && (() => {
+                                        const firstDateObj = new Date(dateKeys[0] + 'T00:00:00');
+                                        const firstWeekday = firstDateObj.getDay();
+                                        const emptySlots = Array.from({ length: firstWeekday });
+
+                                        return (
+                                          <div className="max-w-[700px] mx-auto w-full py-2">
+                                            {/* Weekday headers */}
+                                            <div className="grid grid-cols-7 gap-2 mb-2 text-center">
+                                              {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map(w => (
+                                                <span key={w} className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
+                                                  {w}
+                                                </span>
+                                              ))}
+                                            </div>
+
+                                            {/* Days grid */}
+                                            <div className="grid grid-cols-7 gap-2 text-center">
+                                              {emptySlots.map((_, idx) => (
+                                                <div key={`empty-${idx}`} className="w-full aspect-square rounded-xl opacity-0 pointer-events-none" />
+                                              ))}
+
+                                              {dateKeys.map(dateStr => {
+                                                const dayNum = Number(dateStr.split('-')[2]);
+                                                const count = analyticsData.contributions[dateStr] || 0;
+
+                                                let color = isDark ? '#262c36' : '#f3f4f6';
+                                                if (count > 0) {
+                                                  const ratio = Math.min(1, count / maxContribCount);
+                                                  const lightness = isDark ? (25 + ratio * 45) : (94 - ratio * 69);
+                                                  const saturation = 35 + ratio * 59;
+                                                  color = `hsl(217, ${Math.round(saturation)}%, ${Math.round(lightness)}%)`;
+                                                }
+
+                                                return (
+                                                  <div
+                                                    key={dateStr}
+                                                    className={`aspect-square w-full rounded-xl flex flex-col items-center justify-center relative group cursor-pointer transition duration-150 hover:scale-110 border ${
+                                                      isDark ? 'border-gray-800/60' : 'border-gray-200/60'
+                                                    }`}
+                                                    style={{ backgroundColor: color }}
+                                                  >
+                                                    <span className={`text-[10px] font-mono font-black ${
+                                                      count > 0 ? 'text-white drop-shadow-sm' : (isDark ? 'text-slate-400' : 'text-gray-600')
+                                                    }`}>
+                                                      {dayNum}
+                                                    </span>
+
+                                                    {/* Rich Tooltip popup */}
+                                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-gray-900 text-white text-[9px] font-bold px-2 py-1 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-20">
+                                                      {count === 0 ? 'No cards created' : `${count} card${count > 1 ? 's' : ''} created`} on {formatAppDate(dateStr)}
+                                                    </div>
+                                                  </div>
+                                                );
+                                              })}
+                                            </div>
+                                          </div>
+                                        );
+                                      })()}
+
+                                      {/* 3. YEARLY VIEW (Exactly 365 or 366 Boxes starting on Jan 1) */}
+                                      {contributionTimeframe === 'yearly' && (() => {
+                                        const jan1DateObj = new Date(dateKeys[0] + 'T00:00:00');
+                                        const jan1Weekday = jan1DateObj.getDay();
+                                        const leadingBlanks = Array.from({ length: jan1Weekday });
+
+                                        return (
+                                          <div className="overflow-x-auto pb-2 custom-scrollbar">
+                                            <div className="min-w-[750px] select-none flex justify-center py-2">
+                                              <div className="grid grid-flow-col grid-rows-7 gap-1">
+                                                {/* Leading blank slots for Jan 1 starting weekday */}
+                                                {leadingBlanks.map((_, idx) => (
+                                                  <div key={`blank-jan1-${idx}`} className="w-2.5 h-2.5 rounded-sm opacity-0 pointer-events-none" />
+                                                ))}
+
+                                                {dateKeys.map(dateStr => {
+                                                  const count = analyticsData.contributions[dateStr] || 0;
+
+                                                  let color = isDark ? '#262c36' : '#f3f4f6';
+                                                  if (count > 0) {
+                                                    const ratio = Math.min(1, count / maxContribCount);
+                                                    const lightness = isDark ? (25 + ratio * 45) : (94 - ratio * 69);
+                                                    const saturation = 35 + ratio * 59;
+                                                    color = `hsl(217, ${Math.round(saturation)}%, ${Math.round(lightness)}%)`;
+                                                  }
+
+                                                  return (
+                                                    <div
+                                                      key={dateStr}
+                                                      className="w-2.5 h-2.5 rounded-sm transition duration-150 hover:scale-125 cursor-pointer relative group"
+                                                      style={{ backgroundColor: color }}
+                                                    >
+                                                      {/* Rich Tooltip popup */}
+                                                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-gray-900 text-white text-[9px] font-bold px-2 py-1 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-20">
+                                                        {count === 0 ? 'No cards created' : `${count} card${count > 1 ? 's' : ''} created`} on {formatAppDate(dateStr)}
+                                                      </div>
+                                                    </div>
+                                                  );
+                                                })}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        );
+                                      })()}
                                     </>
                                   );
                                 })()}
