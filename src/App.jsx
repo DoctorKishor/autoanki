@@ -14113,6 +14113,7 @@ JSON Format:
   };
 
   const renderSubjectCoverageDashboard = (isPerformanceView = false) => {
+    const isDark = settingsThemeMode === 'dark';
     const activeStat = subjectCoverageStats.allStats.find(s => s.subject.toLowerCase() === selectedSubjectTrackerSubject.toLowerCase()) || {
       subject: selectedSubjectTrackerSubject,
       totalTopics: 0,
@@ -14122,28 +14123,40 @@ JSON Format:
       topicsList: []
     };
 
+    const medicalSubjectsList = ["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"];
+
     return (
       <div className="flex flex-col gap-6 w-full text-left">
-        {/* Circular Progress & Info */}
+        {/* Circular Progress & Info Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex flex-col justify-between hover:shadow transition">
+          {/* Card 1: Subject Coverage Analytics Gauge */}
+          <motion.div
+            initial={{ opacity: 0, y: 16, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.4, delay: 0.05 }}
+            whileHover={{ scale: 1.005 }}
+            className={`p-6 rounded-3xl flex flex-col justify-between transition-all ${
+              isDark ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'
+            }`}
+          >
             <div className="space-y-4">
-              <h3 className="text-sm font-black text-gray-800 uppercase tracking-wider">Subject Coverage Analytics</h3>
+              <h3 className={`text-sm font-black uppercase tracking-wider ${isDark ? 'text-white' : 'text-gray-800'}`}>
+                Subject Coverage Analytics
+              </h3>
               <div>
-                <label className="block text-xs font-black text-gray-400 uppercase mb-2">Select Subject Details</label>
-                <select
+                <label className={`block text-xs font-black uppercase mb-2 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
+                  Select Subject Details
+                </label>
+                <NeumorphicSelect
                   value={selectedSubjectTrackerSubject}
-                  onChange={(e) => setSelectedSubjectTrackerSubject(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-155 p-3 rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-blue-500/10 bg-white"
-                >
-                  {["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"].map(sub => (
-                    <option key={sub} value={sub}>{sub}</option>
-                  ))}
-                </select>
+                  onChange={(val) => setSelectedSubjectTrackerSubject(val)}
+                  options={medicalSubjectsList}
+                  isDark={isDark}
+                />
               </div>
             </div>
 
-            <div className="py-4 flex flex-col items-center justify-center relative w-40 h-40 mx-auto">
+            <div className="py-4 flex flex-col items-center justify-center relative w-40 h-40 mx-auto my-2">
               {(() => {
                 const pct = activeStat.coveragePercent;
                 const radius = 55;
@@ -14156,7 +14169,7 @@ JSON Format:
                         cx="80"
                         cy="80"
                         r={radius}
-                        className="stroke-gray-100"
+                        stroke={isDark ? '#2d3440' : '#f3f4f6'}
                         strokeWidth="10"
                         fill="transparent"
                       />
@@ -14164,35 +14177,50 @@ JSON Format:
                         cx="80"
                         cy="80"
                         r={radius}
-                        className="stroke-emerald-500 transition-all duration-1000"
+                        stroke={isDark ? '#34d399' : '#10b981'}
                         strokeWidth="10"
                         fill="transparent"
                         strokeDasharray={circumference}
                         strokeDashoffset={strokeDashoffset}
                         strokeLinecap="round"
+                        className="transition-all duration-1000"
                       />
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-2xl font-black text-gray-800">{pct}%</span>
-                      <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest mt-0.5">Covered</span>
+                      <span className={`text-2xl font-black ${isDark ? 'text-white' : 'text-gray-800'}`}>{pct}%</span>
+                      <span className={`text-[8px] font-black uppercase tracking-widest mt-0.5 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Covered</span>
                     </div>
                   </>
                 );
               })()}
             </div>
 
-            <div className="flex justify-between text-[10px] font-black text-gray-500 border-t border-gray-100 pt-3">
+            <div className={`flex justify-between text-[10px] font-black border-t pt-3 ${
+              isDark ? 'border-slate-800/80 text-slate-400' : 'border-slate-200/80 text-slate-500'
+            }`}>
               <span>Total: {activeStat.totalTopics} topics</span>
-              <span className="text-emerald-600">Covered: {activeStat.coveredTopics}</span>
-              <span className="text-gray-400">Remaining: {activeStat.remainingTopics}</span>
+              <span className={isDark ? 'text-emerald-400' : 'text-emerald-600'}>Covered: {activeStat.coveredTopics}</span>
+              <span className={isDark ? 'text-slate-400' : 'text-gray-400'}>Remaining: {activeStat.remainingTopics}</span>
             </div>
-          </div>
+          </motion.div>
 
-          {/* BarChart of All Subjects Coverage */}
-          <div className="lg:col-span-2 bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex flex-col justify-between hover:shadow transition">
+          {/* Card 2: BarChart of All Subjects Coverage */}
+          <motion.div
+            initial={{ opacity: 0, y: 16, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.4, delay: 0.12 }}
+            whileHover={{ scale: 1.005 }}
+            className={`lg:col-span-2 p-6 rounded-3xl flex flex-col justify-between transition-all ${
+              isDark ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'
+            }`}
+          >
             <div className="mb-4">
-              <h3 className="text-sm font-black text-gray-800 uppercase tracking-wider">Subject Coverage Overview</h3>
-              <p className="text-xs text-gray-400">Comparing completion percentages across all medical subjects</p>
+              <h3 className={`text-sm font-black uppercase tracking-wider ${isDark ? 'text-white' : 'text-gray-800'}`}>
+                Subject Coverage Overview
+              </h3>
+              <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
+                Comparing completion percentages across all medical subjects
+              </p>
             </div>
             <div className="w-full h-[350px] min-h-[350px]">
               {(() => {
@@ -14200,18 +14228,20 @@ JSON Format:
                 return (
                   <ResponsiveContainer width="100%" height={350} minWidth={0}>
                     <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis dataKey="subject" stroke="#94a3b8" fontSize={9} tickLine={false} axisLine={false} tickFormatter={(v) => v.slice(0, 8) + '..'} />
-                      <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} unit="%" />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#2d3440' : '#f1f5f9'} />
+                      <XAxis dataKey="subject" stroke={isDark ? '#64748b' : '#94a3b8'} fontSize={9} tickLine={false} axisLine={false} tickFormatter={(v) => v.slice(0, 8) + '..'} />
+                      <YAxis stroke={isDark ? '#64748b' : '#94a3b8'} fontSize={10} tickLine={false} axisLine={false} unit="%" />
                       <Tooltip
                         content={({ active, payload }) => {
                           if (active && payload && payload.length) {
                             const data = payload[0].payload;
                             return (
-                              <div className="bg-white p-3 border border-gray-150 rounded-2xl shadow-xl text-xs font-bold">
-                                <p className="text-gray-900 font-extrabold mb-1">{data.subject}</p>
-                                <p className="text-emerald-600">Coverage: {data.coveragePercent}%</p>
-                                <p className="text-gray-500">{data.coveredTopics} of {data.totalTopics} topics covered</p>
+                              <div className={`p-3 rounded-2xl shadow-xl text-xs font-bold transition-all ${
+                                isDark ? 'neu-card-dark text-slate-100 border border-[#2b323e]' : 'neu-card-light text-slate-800 border border-white/60'
+                              }`}>
+                                <p className={`font-extrabold mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>{data.subject}</p>
+                                <p className={isDark ? 'text-emerald-400' : 'text-emerald-600'}>Coverage: {data.coveragePercent}%</p>
+                                <p className={isDark ? 'text-slate-400' : 'text-gray-500'}>{data.coveredTopics} of {data.totalTopics} topics covered</p>
                               </div>
                             );
                           }
@@ -14220,7 +14250,7 @@ JSON Format:
                       />
                       <Bar dataKey="coveragePercent" fill="#94a3b8" radius={[8, 8, 0, 0]} maxBarSize={40}>
                         {chartData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.coveragePercent >= 80 ? '#10b981' : entry.coveragePercent >= 40 ? '#3b82f6' : '#94a3b8'} />
+                          <Cell key={`cell-${index}`} fill={entry.coveragePercent >= 80 ? (isDark ? '#34d399' : '#10b981') : entry.coveragePercent >= 40 ? (isDark ? '#60a5fa' : '#3b82f6') : (isDark ? '#475569' : '#94a3b8')} />
                         ))}
                       </Bar>
                     </BarChart>
@@ -14228,96 +14258,136 @@ JSON Format:
                 );
               })()}
             </div>
-          </div>
+          </motion.div>
         </div>
 
-        {/* Detailed lists: Covered vs Remaining */}
-        <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-4">
-          <div className="flex justify-between items-center border-b border-gray-100 pb-3">
+        {/* Card 3: Detailed lists: Covered vs Remaining */}
+        <motion.div
+          initial={{ opacity: 0, y: 16, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.4, delay: 0.20 }}
+          className={`p-6 rounded-3xl space-y-4 transition-all ${
+            isDark ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'
+          }`}
+        >
+          <div className={`flex justify-between items-center border-b pb-3 ${
+            isDark ? 'border-slate-800/80' : 'border-slate-100'
+          }`}>
             <div>
-              <h3 className="text-sm font-black text-gray-800 uppercase tracking-wider">{activeStat.subject} Detailed Coverage</h3>
-              <p className="text-xs text-gray-400">Detailed list of topics completed versus remaining</p>
+              <h3 className={`text-sm font-black uppercase tracking-wider ${isDark ? 'text-white' : 'text-gray-800'}`}>
+                {activeStat.subject} Detailed Coverage
+              </h3>
+              <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
+                Detailed list of topics completed versus remaining
+              </p>
             </div>
             <div className="text-right">
-              <span className="text-xs font-black text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
+              <span className={`text-xs font-black px-3 py-1 rounded-full border ${
+                isDark ? 'neu-pressed-dark text-blue-400 border-blue-900/40' : 'bg-blue-50 text-blue-600 border-blue-100'
+              }`}>
                 {activeStat.coveredTopics} / {activeStat.totalTopics} Completed
               </span>
             </div>
           </div>
 
           {activeStat.totalTopics === 0 ? (
-            <p className="text-xs text-gray-400 italic py-8 text-center">No topics added for this subject. Add topics under the subject manager tab.</p>
+            <p className={`text-xs italic py-8 text-center ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>
+              No topics added for this subject. Add topics under the subject manager tab.
+            </p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Covered List */}
               <div className="space-y-3">
-                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-md">
+                <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md border ${
+                  isDark ? 'bg-emerald-950/70 text-emerald-300 border-emerald-800/50' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                }`}>
                   Covered ({activeStat.coveredTopics})
                 </span>
                 <div className="space-y-2 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
                   {activeStat.topicsList.filter(t => t.studyDates && t.studyDates.length > 0).map(topic => (
-                    <div key={topic.name} className="flex justify-between items-center p-3 rounded-xl border border-emerald-100 bg-emerald-50/10">
+                    <div key={topic.name} className={`flex justify-between items-center p-3 rounded-xl border ${
+                      isDark ? 'neu-item-dark border-emerald-900/40' : 'bg-emerald-50/10 border-emerald-100'
+                    }`}>
                       <div className="flex items-center gap-2 pr-2 min-w-0">
                         <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                        <span className="text-xs font-bold text-gray-800 truncate">{topic.name}</span>
+                        <span className={`text-xs font-bold truncate ${isDark ? 'text-slate-200' : 'text-gray-800'}`}>{topic.name}</span>
                       </div>
                       {topic.page && (
-                        <span className="text-[9px] font-mono font-black text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded shrink-0">
+                        <span className={`text-[9px] font-mono font-black px-1.5 py-0.5 rounded shrink-0 ${
+                          isDark ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/50' : 'bg-emerald-100 text-emerald-600'
+                        }`}>
                           p. {topic.page}
                         </span>
                       )}
                     </div>
                   ))}
                   {activeStat.coveredTopics === 0 && (
-                    <p className="text-[10px] text-gray-400 italic py-4">No topics studied yet.</p>
+                    <p className={`text-[10px] italic py-4 ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>No topics studied yet.</p>
                   )}
                 </div>
               </div>
 
               {/* Remaining List */}
               <div className="space-y-3">
-                <span className="text-[10px] font-black uppercase tracking-wider text-gray-500 bg-gray-50 px-2.5 py-1 rounded-md">
+                <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md border ${
+                  isDark ? 'bg-slate-800/80 text-slate-300 border-slate-700' : 'bg-gray-50 text-gray-500 border border-gray-200'
+                }`}>
                   Yet to Cover ({activeStat.remainingTopics})
                 </span>
                 <div className="space-y-2 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
                   {activeStat.topicsList.filter(t => !t.studyDates || t.studyDates.length === 0).map(topic => (
-                    <div key={topic.name} className="flex justify-between items-center p-3 rounded-xl border border-gray-200 bg-gray-50/20">
+                    <div key={topic.name} className={`flex justify-between items-center p-3 rounded-xl border ${
+                      isDark ? 'neu-item-dark border-slate-800' : 'bg-gray-50/20 border-gray-200'
+                    }`}>
                       <div className="flex items-center gap-2 pr-2 min-w-0">
-                        <div className="w-4 h-4 rounded-full border border-gray-300 shrink-0" />
-                        <span className="text-xs font-bold text-gray-600 truncate">{topic.name}</span>
+                        <div className={`w-4 h-4 rounded-full border shrink-0 ${isDark ? 'border-slate-600' : 'border-gray-300'}`} />
+                        <span className={`text-xs font-bold truncate ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>{topic.name}</span>
                       </div>
                       {topic.page && (
-                        <span className="text-[9px] font-mono font-bold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded shrink-0">
+                        <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                          isDark ? 'bg-slate-800 text-slate-400 border border-slate-700' : 'bg-gray-100 text-gray-400'
+                        }`}>
                           p. {topic.page}
                         </span>
                       )}
                     </div>
                   ))}
                   {activeStat.remainingTopics === 0 && (
-                    <p className="text-[10px] text-gray-400 italic py-4">All topics completed!</p>
+                    <p className={`text-[10px] italic py-4 ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>All topics completed!</p>
                   )}
                 </div>
               </div>
             </div>
           )}
-        </div>
+        </motion.div>
 
-        {/* Scheduler Adherence Panel */}
+        {/* Card 4: Scheduler Adherence Panel */}
         {(() => {
           const adherence = getSubjectAdherenceStats(activeStat.subject);
           return (
-            <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-4">
-              <div className="flex justify-between items-center border-b border-gray-100 pb-3">
+            <motion.div
+              initial={{ opacity: 0, y: 16, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.4, delay: 0.28 }}
+              className={`p-6 rounded-3xl space-y-4 transition-all ${
+                isDark ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'
+              }`}
+            >
+              <div className={`flex justify-between items-center border-b pb-3 ${
+                isDark ? 'border-slate-800/80' : 'border-slate-100'
+              }`}>
                 <div>
-                  <h3 className="text-sm font-black text-gray-800 uppercase tracking-wider flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-blue-600" />
+                  <h3 className={`text-sm font-black uppercase tracking-wider flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-800'}`}>
+                    <Calendar className="w-4 h-4 text-blue-500" />
                     Scheduler Adherence
                   </h3>
-                  <p className="text-xs text-gray-400 mt-0.5">Planned vs completed scheduler tasks for {activeStat.subject}</p>
+                  <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Planned vs completed scheduler tasks for {activeStat.subject}</p>
                 </div>
                 <button
                   onClick={() => { setCurrentTab('studyScheduler'); }}
-                  className="text-[10px] font-black uppercase tracking-wider text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded-lg border border-blue-100 transition active:scale-95"
+                  className={`text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-xl border transition active:scale-95 ${
+                    isDark ? 'neu-btn-accent-dark text-white' : 'neu-btn-accent-light text-white'
+                  }`}
                 >
                   Open Scheduler →
                 </button>
@@ -14325,43 +14395,51 @@ JSON Format:
 
               {adherence.planned === 0 ? (
                 <div className="py-6 text-center">
-                  <p className="text-xs text-gray-400 italic">No scheduler tasks found for {activeStat.subject}.</p>
-                  <p className="text-[10px] text-gray-300 mt-1">Schedule topics as <span className="font-bold text-gray-400">"{activeStat.subject}: Topic Name"</span> in the Study Scheduler to track adherence here.</p>
+                  <p className={`text-xs italic ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>No scheduler tasks found for {activeStat.subject}.</p>
+                  <p className={`text-[10px] mt-1 ${isDark ? 'text-slate-500' : 'text-gray-300'}`}>Schedule topics as <span className={`font-bold ${isDark ? 'text-slate-300' : 'text-gray-400'}`}>"{activeStat.subject}: Topic Name"</span> in the Study Scheduler to track adherence here.</p>
                 </div>
               ) : (
                 <div className="space-y-4">
                   <div className="grid grid-cols-3 gap-4">
-                    <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 text-center">
-                      <div className="text-xl font-black text-blue-700">{adherence.planned}</div>
-                      <div className="text-[9px] font-black uppercase tracking-wider text-blue-400 mt-1">Planned</div>
+                    <div className={`rounded-2xl p-4 text-center border ${
+                      isDark ? 'neu-pressed-dark border-blue-900/30' : 'bg-blue-50 border-blue-100'
+                    }`}>
+                      <div className={`text-xl font-black ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>{adherence.planned}</div>
+                      <div className={`text-[9px] font-black uppercase tracking-wider mt-1 ${isDark ? 'text-blue-400/80' : 'text-blue-400'}`}>Planned</div>
                     </div>
-                    <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 text-center">
-                      <div className="text-xl font-black text-emerald-700">{adherence.completed}</div>
-                      <div className="text-[9px] font-black uppercase tracking-wider text-emerald-400 mt-1">Completed</div>
+                    <div className={`rounded-2xl p-4 text-center border ${
+                      isDark ? 'neu-pressed-dark border-emerald-900/30' : 'bg-emerald-50 border-emerald-100'
+                    }`}>
+                      <div className={`text-xl font-black ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>{adherence.completed}</div>
+                      <div className={`text-[9px] font-black uppercase tracking-wider mt-1 ${isDark ? 'text-emerald-400/80' : 'text-emerald-400'}`}>Completed</div>
                     </div>
-                    <div className={`${adherence.adherencePct >= 80 ? 'bg-emerald-50 border-emerald-100' : adherence.adherencePct >= 50 ? 'bg-amber-50 border-amber-100' : 'bg-rose-50 border-rose-100'} border rounded-2xl p-4 text-center`}>
-                      <div className={`text-xl font-black ${adherence.adherencePct >= 80 ? 'text-emerald-700' : adherence.adherencePct >= 50 ? 'text-amber-700' : 'text-rose-700'}`}>{adherence.adherencePct}%</div>
-                      <div className={`text-[9px] font-black uppercase tracking-wider mt-1 ${adherence.adherencePct >= 80 ? 'text-emerald-400' : adherence.adherencePct >= 50 ? 'text-amber-400' : 'text-rose-400'}`}>Adherence</div>
+                    <div className={`rounded-2xl p-4 text-center border ${
+                      isDark
+                        ? 'neu-pressed-dark'
+                        : (adherence.adherencePct >= 80 ? 'bg-emerald-50 border-emerald-100' : adherence.adherencePct >= 50 ? 'bg-amber-50 border-amber-100' : 'bg-rose-50 border-rose-100')
+                    }`}>
+                      <div className={`text-xl font-black ${adherence.adherencePct >= 80 ? (isDark ? 'text-emerald-400' : 'text-emerald-700') : adherence.adherencePct >= 50 ? (isDark ? 'text-amber-400' : 'text-amber-700') : (isDark ? 'text-rose-400' : 'text-rose-700')}`}>{adherence.adherencePct}%</div>
+                      <div className={`text-[9px] font-black uppercase tracking-wider mt-1 ${adherence.adherencePct >= 80 ? (isDark ? 'text-emerald-400/80' : 'text-emerald-400') : adherence.adherencePct >= 50 ? (isDark ? 'text-amber-400/80' : 'text-amber-400') : (isDark ? 'text-rose-400/80' : 'text-rose-400')}`}>Adherence</div>
                     </div>
                   </div>
                   <div className="space-y-1.5">
-                    <div className="flex justify-between text-[9px] font-black uppercase tracking-wider text-gray-400">
+                    <div className={`flex justify-between text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
                       <span>Completion Rate</span>
                       <span>{adherence.completed} / {adherence.planned} tasks</span>
                     </div>
-                    <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+                    <div className={`w-full rounded-full h-3 overflow-hidden ${isDark ? 'neu-pressed-dark' : 'bg-gray-100'}`}>
                       <div
                         className={`h-3 rounded-full transition-all duration-700 ${adherence.adherencePct >= 80 ? 'bg-gradient-to-r from-emerald-400 to-emerald-600' : adherence.adherencePct >= 50 ? 'bg-gradient-to-r from-amber-400 to-amber-600' : 'bg-gradient-to-r from-rose-400 to-rose-500'}`}
                         style={{ width: `${adherence.adherencePct}%` }}
                       />
                     </div>
-                    <p className="text-[9px] text-gray-400 italic">
+                    <p className={`text-[9px] italic ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
                       {adherence.adherencePct >= 80 ? '🏆 Excellent adherence! Keep it up.' : adherence.adherencePct >= 50 ? '📈 Good progress. Aim for 80%+.' : '⚠️ Low adherence. Try scheduling more sessions.'}
                     </p>
                   </div>
                 </div>
               )}
-            </div>
+            </motion.div>
           );
         })()}
       </div>
@@ -26515,15 +26593,12 @@ Return your response strictly as a JSON object matching this schema:
                         <div className="space-y-3">
                           <div>
                             <label className="block text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">Select Subject</label>
-                            <select
+                            <NeumorphicSelect
                               value={selectedTrackerSubject}
-                              onChange={(e) => setSelectedTrackerSubject(e.target.value)}
-                              className="w-full p-2.5 border border-gray-200 rounded-xl outline-none text-xs font-bold bg-gray-50 text-gray-800 focus:ring-4 focus:ring-blue-500/10"
-                            >
-                              {["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"].map(sub => (
-                                <option key={sub} value={sub}>{sub}</option>
-                              ))}
-                            </select>
+                              onChange={(val) => setSelectedTrackerSubject(val)}
+                              options={["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"]}
+                              isDark={settingsThemeMode === 'dark'}
+                            />
                           </div>
                         </div>
                       </div>
