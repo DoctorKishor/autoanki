@@ -16,6 +16,7 @@ import {
 import * as pdfjsLib from 'pdfjs-dist';
 import JSZip from 'jszip';
 import { Html5QrcodeScanner } from 'html5-qrcode';
+import { initializeApp } from 'firebase/app';
 
 import CampDashboard from './components/CampTracker/CampDashboard';
 import AboutDashboard from './components/AboutDashboard';
