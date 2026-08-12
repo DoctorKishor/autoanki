@@ -1383,9 +1383,17 @@ const ExportTreeFolder = ({ node, level = 0, selectedDecks, onToggle, themeMode 
   );
 };
 
-const NeumorphicSelect = ({ value, onChange, options, themeMode = 'light', placeholder = 'Select...' }) => {
+const NeumorphicSelect = ({ value, onChange, options = [], isDark: isDarkProp, themeMode = 'light', placeholder = 'Select...', className = '' }) => {
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef(null);
+
+  const isDark = isDarkProp !== undefined ? isDarkProp : themeMode === 'dark';
+
+  const formattedOptions = (options || []).map(opt =>
+    typeof opt === 'object' && opt !== null
+      ? opt
+      : { label: String(opt), value: String(opt) }
+  );
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -1397,53 +1405,66 @@ const NeumorphicSelect = ({ value, onChange, options, themeMode = 'light', place
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const selectedOption = options.find(o => String(o.value) === String(value)) || options[0];
+  const selectedOption = formattedOptions.find(o => String(o.value) === String(value)) || formattedOptions[0];
 
   return (
-    <div ref={ref} className="relative w-full text-left">
+    <div ref={ref} className={`relative w-full text-left select-none ${className}`}>
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full p-2.5 rounded-xl flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${themeMode === 'dark'
-            ? 'neu-pressed-dark text-white border border-gray-800 hover:border-gray-700'
-            : 'neu-pressed-light text-gray-800 border border-gray-200/80 hover:border-gray-300'
-          }`}
+        className={`w-full p-3.5 rounded-2xl flex items-center justify-between text-xs font-black transition-all cursor-pointer ${
+          isDark
+            ? 'neu-pressed-dark text-gray-100 border border-gray-800 hover:border-gray-700'
+            : 'neu-pressed-light text-gray-900 border border-white/80 hover:border-gray-300'
+        }`}
       >
-        <span className="truncate pr-2">{selectedOption?.label || placeholder}</span>
-        <ChevronDown className={`w-4 h-4 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-blue-500' : (themeMode === 'dark' ? 'text-gray-400' : 'text-gray-500')}`} />
+        <span className="truncate pr-2 font-sans">{selectedOption ? selectedOption.label : placeholder}</span>
+        <ChevronDown className={`w-4 h-4 shrink-0 transition-transform duration-300 ${isOpen ? 'rotate-180 text-blue-500' : (isDark ? 'text-gray-400' : 'text-gray-600')}`} />
       </button>
 
-      {isOpen && (
-        <div
-          className={`absolute left-0 right-0 top-full mt-1.5 z-50 p-1.5 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 ${themeMode === 'dark'
-              ? 'neu-card-dark border border-gray-800 bg-slate-900/95 backdrop-blur-md'
-              : 'neu-card-light border border-gray-200 bg-white/95 backdrop-blur-md'
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -6, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.98 }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className={`absolute left-0 right-0 top-full mt-2 z-50 p-2 rounded-2xl shadow-2xl backdrop-blur-md transition-all ${
+              isDark
+                ? 'neu-card-dark border border-gray-800/90 text-gray-100 bg-[#222730]/95'
+                : 'neu-card-light border border-white/90 text-gray-900 bg-[#e6ecf5]/95'
             }`}
-        >
-          <div className="max-h-56 overflow-y-auto custom-scrollbar space-y-1">
-            {options.map((opt) => {
-              const isSelected = String(opt.value) === String(value);
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => {
-                    onChange(opt.value);
-                    setIsOpen(false);
-                  }}
-                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-between transition ${isSelected
-                      ? (themeMode === 'dark' ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600')
-                      : (themeMode === 'dark' ? 'hover:bg-gray-800/60 text-gray-300' : 'hover:bg-gray-100 text-gray-700')
+          >
+            <div className="max-h-64 overflow-y-auto space-y-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              {formattedOptions.map((opt) => {
+                const isSelected = String(opt.value) === String(value);
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => {
+                      onChange(opt.value);
+                      setIsOpen(false);
+                    }}
+                    className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold flex items-center justify-between transition-all cursor-pointer ${
+                      isSelected
+                        ? (isDark
+                            ? 'neu-pressed-dark text-blue-400 font-extrabold border border-blue-500/30'
+                            : 'neu-pressed-light text-blue-600 font-extrabold border border-blue-400/40')
+                        : (isDark
+                            ? 'text-gray-200 hover:bg-gray-800/60 hover:text-white'
+                            : 'text-gray-800 hover:bg-white/70 hover:text-gray-900')
                     }`}
-                >
-                  <span className="truncate">{opt.label}</span>
-                  {isSelected && <Check className="w-3.5 h-3.5 text-blue-500 shrink-0 ml-2" />}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
+                  >
+                    <span className="truncate pr-2">{opt.label}</span>
+                    {isSelected && <Check className="w-3.5 h-3.5 text-blue-500 shrink-0" />}
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -25186,17 +25207,12 @@ Return your response strictly as a JSON object matching this schema:
                             <h3 className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>PYT Coverage Analytics</h3>
                             <div>
                               <label className={`block text-[9px] font-black uppercase mb-1.5 tracking-wider ${isDark ? 'text-gray-400 font-mono' : 'text-gray-700 font-mono'}`}>Select Subject</label>
-                              <select
+                              <NeumorphicSelect
                                 value={selectedAnalyticsPytSubject}
-                                onChange={(e) => setSelectedAnalyticsPytSubject(e.target.value)}
-                                className={`w-full p-3.5 rounded-2xl text-xs font-bold outline-none transition cursor-pointer ${
-                                  isDark ? 'neu-pressed-dark text-gray-100 border border-gray-800' : 'neu-pressed-light text-gray-900 border border-white/80'
-                                }`}
-                              >
-                                {["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"].map(sub => (
-                                  <option key={sub} value={sub} className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>{sub}</option>
-                                ))}
-                              </select>
+                                onChange={(val) => setSelectedAnalyticsPytSubject(val)}
+                                isDark={isDark}
+                                options={["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"]}
+                              />
                             </div>
 
                             {/* Circular Gauge */}
@@ -33466,17 +33482,12 @@ Return your response strictly as a JSON object matching this schema:
                                   <h3 className={`text-sm font-black uppercase tracking-wider ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>PYT Coverage Analytics</h3>
                                   <div>
                                     <label className={`block text-xs font-black uppercase mb-2 ${isDark ? 'text-gray-400 font-mono' : 'text-gray-700 font-mono'}`}>Select Subject</label>
-                                    <select
+                                    <NeumorphicSelect
                                       value={selectedAnalyticsPytSubject}
-                                      onChange={(e) => setSelectedAnalyticsPytSubject(e.target.value)}
-                                      className={`w-full p-3.5 rounded-2xl text-xs font-bold outline-none transition cursor-pointer ${
-                                        isDark ? 'neu-pressed-dark text-gray-100 border border-gray-800' : 'neu-pressed-light text-gray-900 border border-white/80'
-                                      }`}
-                                    >
-                                      {["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"].map(sub => (
-                                        <option key={sub} value={sub} className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>{sub}</option>
-                                      ))}
-                                    </select>
+                                      onChange={(val) => setSelectedAnalyticsPytSubject(val)}
+                                      isDark={isDark}
+                                      options={["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"]}
+                                    />
                                   </div>
                                 </div>
 
