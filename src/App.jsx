@@ -24113,50 +24113,56 @@ Return your response strictly as a JSON object matching this schema:
                   {/* ANALYTICS VIEW */}
                   {currentTab === 'analytics' && (
                     <div className="space-y-6 text-left">
-                      {/* Header */}
-                      <div className={`flex items-center gap-3 p-5 rounded-3xl transition-all ${
-                        isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
-                      }`}>
-                        <div className={`p-2.5 rounded-2xl ${isDark ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'}`}>
-                          <BarChart2 className="w-5 h-5 animate-pulse" />
-                        </div>
-                        <div>
-                          <h2 className={`text-base font-black tracking-tight leading-none ${isDark ? 'text-white' : 'text-slate-900'}`}>Performance Analytics</h2>
-                          <p className={`text-[9px] font-bold uppercase tracking-widest mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                            AI generation and study room stats
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Modern Pill Switcher (Mobile) */}
-                      <div className={`flex items-center p-1.5 rounded-2xl shrink-0 select-none overflow-x-auto custom-scrollbar gap-1 ${
-                        isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
-                      }`}>
-                        {[
+                      {/* Modern Pill Switcher with Sliding Indicator (Mobile) */}
+                      {(() => {
+                        const mobileSubtabs = [
                           { id: 'generation', label: 'Cards', icon: Sparkles },
                           { id: 'study', label: 'Study', icon: GraduationCap },
                           { id: 'counselling', label: 'Mentorship', icon: Trophy },
                           { id: 'pytCoverage', label: 'PYT', icon: CheckCircle2 },
+                          { id: 'subjectCoverage', label: 'Subjects', icon: Layers },
                           { id: 'adherence', label: 'Adherence', icon: Calendar }
-                        ].map(sub => {
-                          const IconComp = sub.icon;
-                          const isActive = analyticsSubTab === sub.id;
-                          return (
-                            <button
-                              key={sub.id}
-                              onClick={() => setAnalyticsSubTab(sub.id)}
-                              className={`flex-1 min-w-[70px] py-2 text-[9px] font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer whitespace-nowrap flex items-center justify-center gap-1 ${
-                                isActive
-                                  ? (isDark ? 'neu-btn-accent-dark text-white shadow-sm font-extrabold' : 'neu-btn-accent-light text-white shadow-sm font-extrabold')
-                                  : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                        ];
+                        const activeIndex = Math.max(0, mobileSubtabs.findIndex(s => s.id === analyticsSubTab));
+
+                        return (
+                          <div className={`relative flex items-center p-1.5 rounded-2xl shrink-0 select-none overflow-x-auto custom-scrollbar ${
+                            isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
+                          }`}>
+                            {/* Sliding Active Pill */}
+                            <div
+                              className={`absolute top-1.5 bottom-1.5 w-24 rounded-xl shadow-md ${
+                                isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
                               }`}
-                            >
-                              <IconComp className="w-3 h-3" />
-                              {sub.label}
-                            </button>
-                          );
-                        })}
-                      </div>
+                              style={{
+                                left: `calc(0.375rem + ${activeIndex} * (6rem + 0.25rem))`,
+                                transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                              }}
+                            />
+
+                            <div className="flex items-center gap-1 relative z-10">
+                              {mobileSubtabs.map(sub => {
+                                const IconComp = sub.icon;
+                                const isActive = analyticsSubTab === sub.id;
+                                return (
+                                  <button
+                                    key={sub.id}
+                                    onClick={() => setAnalyticsSubTab(sub.id)}
+                                    className={`w-24 py-2 text-[9.5px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-1.5 transition-colors duration-300 shrink-0 ${
+                                      isActive
+                                        ? 'text-white font-extrabold'
+                                        : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                                    }`}
+                                  >
+                                    <IconComp className="w-3.5 h-3.5 shrink-0" />
+                                    <span className="truncate">{sub.label}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })()}
 
                       {/* Generation Sub-tab */}
                       {analyticsSubTab === 'generation' && (
@@ -30269,115 +30275,65 @@ Return your response strictly as a JSON object matching this schema:
                       return (
                         <div className="flex-grow p-4 lg:p-6 flex flex-col gap-6 max-w-[1200px] mx-auto w-full overflow-y-auto pb-24 lg:pb-6 custom-scrollbar">
 
-                          {/* Header section with Neumorphic dual theme */}
+                          {/* Neumorphic Dual Theme Subtab Pill Switcher */}
                           <motion.div
                             initial={{ opacity: 0, y: -12 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                            className={`flex flex-col xl:flex-row xl:items-center justify-between gap-4 p-6 rounded-3xl text-left ${
-                              isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                            className={`p-2 rounded-3xl text-left ${
+                              isDark ? 'neu-card-dark' : 'neu-card-light'
                             }`}
                           >
-                            <div className="flex items-center gap-3.5">
-                              <div className={`p-3 rounded-2xl ${isDark ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'}`}>
-                                <BarChart2 className="w-6 h-6 animate-pulse" />
-                              </div>
-                              <div>
-                                <h2 className={`text-xl font-black tracking-tight leading-none ${isDark ? 'text-white' : 'text-slate-900'}`}>Performance Analytics</h2>
-                                <p className={`text-[10px] font-bold uppercase tracking-widest mt-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                  Explore AI card generation metrics and comprehensive study room stats
-                                </p>
-                              </div>
-                            </div>
+                            {(() => {
+                              const desktopSubtabs = [
+                                { id: 'generation', label: 'Card Generation', icon: Sparkles },
+                                { id: 'study', label: 'Study Room', icon: GraduationCap },
+                                { id: 'counselling', label: 'Counselling & GTs', icon: Trophy },
+                                { id: 'pytCoverage', label: 'PYT Coverage', icon: CheckCircle2 },
+                                { id: 'subjectCoverage', label: 'Subject Coverage', icon: Layers },
+                                { id: 'adherence', label: 'Adherence', icon: Calendar }
+                              ];
+                              const activeIndex = Math.max(0, desktopSubtabs.findIndex(s => s.id === analyticsSubTab));
 
-                            {/* Neumorphic Dual Theme Subtab Pill Switcher */}
-                            <div className={`flex items-center p-1.5 rounded-2xl w-full xl:w-auto overflow-x-auto custom-scrollbar self-start xl:self-auto shrink-0 gap-1.5 ${
-                              isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
-                            }`}>
-                              <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.97 }}
-                                onClick={() => setAnalyticsSubTab('generation')}
-                                className={`px-5 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 whitespace-nowrap flex items-center justify-center gap-1.5 cursor-pointer ${
-                                  analyticsSubTab === 'generation'
-                                    ? (isDark ? 'neu-btn-accent-dark text-white shadow-md font-extrabold' : 'neu-btn-accent-light text-white shadow-md font-extrabold')
-                                    : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
-                                }`}
-                              >
-                                <Sparkles className="w-3.5 h-3.5" />
-                                Card Generation
-                              </motion.button>
+                              return (
+                                <div className={`relative flex items-center p-1.5 rounded-2xl w-full select-none ${
+                                  isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
+                                }`}>
+                                  {/* Single Sliding Pill Indicator with exact 0.6s cubic-bezier(0,0,0,1) transition */}
+                                  <div
+                                    className={`absolute top-1.5 bottom-1.5 rounded-xl shadow-md ${
+                                      isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+                                    }`}
+                                    style={{
+                                      width: `calc((100% - 0.75rem) / 6)`,
+                                      left: `calc(0.375rem + ${activeIndex} * ((100% - 0.75rem) / 6))`,
+                                      transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                                    }}
+                                  />
 
-                              <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.97 }}
-                                onClick={() => setAnalyticsSubTab('study')}
-                                className={`px-5 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 whitespace-nowrap flex items-center justify-center gap-1.5 cursor-pointer ${
-                                  analyticsSubTab === 'study'
-                                    ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md font-extrabold'
-                                    : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
-                                }`}
-                              >
-                                <GraduationCap className="w-3.5 h-3.5" />
-                                Study Room
-                              </motion.button>
-
-                              <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.97 }}
-                                onClick={() => setAnalyticsSubTab('counselling')}
-                                className={`px-5 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 whitespace-nowrap flex items-center justify-center gap-1.5 cursor-pointer ${
-                                  analyticsSubTab === 'counselling'
-                                    ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-md font-extrabold'
-                                    : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
-                                }`}
-                              >
-                                <Trophy className="w-3.5 h-3.5" />
-                                Counselling & GTs
-                              </motion.button>
-
-                              <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.97 }}
-                                onClick={() => setAnalyticsSubTab('pytCoverage')}
-                                className={`px-5 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 whitespace-nowrap flex items-center justify-center gap-1.5 cursor-pointer ${
-                                  analyticsSubTab === 'pytCoverage'
-                                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md font-extrabold'
-                                    : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
-                                }`}
-                              >
-                                <CheckCircle2 className="w-3.5 h-3.5" />
-                                PYT Coverage
-                              </motion.button>
-
-                              <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.97 }}
-                                onClick={() => setAnalyticsSubTab('subjectCoverage')}
-                                className={`px-5 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 whitespace-nowrap flex items-center justify-center gap-1.5 cursor-pointer ${
-                                  analyticsSubTab === 'subjectCoverage'
-                                    ? 'bg-gradient-to-r from-teal-500 to-emerald-500 text-white shadow-md font-extrabold'
-                                    : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
-                                }`}
-                              >
-                                <Layers className="w-3.5 h-3.5" />
-                                Subject Coverage
-                              </motion.button>
-
-                              <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.97 }}
-                                onClick={() => setAnalyticsSubTab('adherence')}
-                                className={`px-5 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 whitespace-nowrap flex items-center justify-center gap-1.5 cursor-pointer ${
-                                  analyticsSubTab === 'adherence'
-                                    ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-md font-extrabold'
-                                    : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
-                                }`}
-                              >
-                                <Calendar className="w-3.5 h-3.5" />
-                                Adherence
-                              </motion.button>
-                            </div>
+                                  <div className="grid grid-cols-6 w-full relative z-10 gap-0">
+                                    {desktopSubtabs.map(item => {
+                                      const IconComp = item.icon;
+                                      const isActive = analyticsSubTab === item.id;
+                                      return (
+                                        <button
+                                          key={item.id}
+                                          onClick={() => setAnalyticsSubTab(item.id)}
+                                          className={`py-3 text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-2 transition-colors duration-300 ${
+                                            isActive
+                                              ? 'text-white font-extrabold'
+                                              : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                                          }`}
+                                        >
+                                          <IconComp className="w-4 h-4 shrink-0" />
+                                          <span className="truncate">{item.label}</span>
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              );
+                            })()}
                           </motion.div>
 
                           {/* Sub-tab 1: Card Generation Analysis */}
