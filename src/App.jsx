@@ -10786,7 +10786,1734 @@ JSON Format:
     }
   };
 
-  const renderTimerHub = (isMobile = false) => {
+    const renderStudyRoomDashboard = () => (
+<motion.div
+                        key="study-unified-tab"
+                        initial={{ opacity: 0, y: 16, scale: 0.98 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -12, scale: 0.98 }}
+                        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                        className={`flex-grow p-4 lg:p-6 flex flex-col gap-6 max-w-[1200px] mx-auto w-full overflow-y-auto pb-24 lg:pb-6 transition-colors duration-300 ${
+                          isDark ? 'text-slate-100' : 'text-slate-800'
+                        }`}
+                      >
+
+                        {/* Header section with high-contrast glassmorphic detailing */}
+                        <div className={`flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-3xl backdrop-blur-md transition-colors duration-300 ${
+                          isDark ? 'neu-card-dark border border-white/5 bg-[#222730]/90' : 'neu-card-light border border-white/80 bg-white/70 shadow-md'
+                        }`}>
+                          <div className="flex items-center gap-3.5">
+                            <div className="bg-gradient-to-r from-orange-500 to-amber-500 text-white p-3 rounded-2xl shadow-lg shadow-orange-500/20 animate-pulse">
+                              <Flame className="w-6 h-6 fill-current" />
+                            </div>
+                            <div>
+                              <h2 className={`text-xl font-black tracking-tight leading-none ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>Study Room & Streak Tracker</h2>
+                              <p className={`text-[10px] font-bold uppercase tracking-widest mt-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                Log mock tests, hours, cards, and solve targets to maintain consecutive streaks
+                              </p>
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() => {
+                              const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+                              const localToday = (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10);
+                              const log = studyLogs[localToday] || { questions: '', cards: '', pages: '', hours: '', gts: [] };
+
+                              setLoggerDate(localToday);
+                              setLoggerQuestions(log.questions || '');
+                              setLoggerCards(log.cards || '');
+                              setLoggerPages(log.pages || '');
+                              setLoggerHours(log.hours || '');
+                              const hoursVal = Number(log.hours) || 0;
+                              const hPart = Math.floor(hoursVal);
+                              const mPart = Math.round((hoursVal - hPart) * 60);
+                              setLoggerHoursPart(hPart > 0 ? String(hPart) : '');
+                              setLoggerMinutesPart(mPart > 0 ? String(mPart) : '');
+                              setLoggerGtsList(log.gts || []);
+                              setIsAddingGt(false);
+                              setIsStudyLoggerModalOpen(true);
+                            }}
+                            className="w-full sm:w-auto px-5 sm:px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-xs font-black uppercase tracking-wider rounded-2xl shadow-xl shadow-orange-500/10 flex items-center justify-center gap-2 active:scale-95 transition-all duration-150 shrink-0"
+                          >
+                            <Plus className="w-4 h-4 stroke-[3]" />
+                            Log Daily Progress
+                          </button>
+                        </div>
+
+                        {/* Dual Tab Selector */}
+                        <div className={`relative flex items-center p-1 rounded-2xl max-w-full sm:max-w-[280px] w-full self-start select-none transition-colors duration-300 ${
+                          isDark ? 'neu-pressed-dark border border-white/5 bg-[#181c22]' : 'neu-pressed-light border border-white/70 bg-slate-200/60 shadow-inner'
+                        }`}>
+                          {/* Single Sliding Pill Indicator */}
+                          <div
+                            className="absolute top-1 bottom-1 w-[calc(50%-0.25rem)] rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 shadow-md shadow-orange-500/20"
+                            style={{
+                              left: studyActiveTab === 'record' ? '0.25rem' : 'calc(50% + 0.125rem)',
+                              transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                            }}
+                          />
+
+                          <button
+                            type="button"
+                            onClick={() => setStudyActiveTab('record')}
+                            className={`relative flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 z-10 transition-colors duration-300 ${
+                              studyActiveTab === 'record'
+                                ? 'text-white font-black'
+                                : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                            }`}
+                          >
+                            <Activity className="w-3.5 h-3.5" />
+                            Record
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setStudyActiveTab('manual')}
+                            className={`relative flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 z-10 transition-colors duration-300 ${
+                              studyActiveTab === 'manual'
+                                ? 'text-white font-black'
+                                : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                            }`}
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                            Manual Log
+                          </button>
+                        </div>
+
+                        {/* Main Responsive Grid Layout */}
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full items-start text-left">
+
+                          {/* Left Column */}
+                          <div className="lg:col-span-5 flex flex-col gap-6 w-full">
+                            {studyActiveTab === 'record' ? (
+                              <>
+                                {/* Streaks Counters summary cards */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                                  <div className={`p-5 rounded-3xl flex flex-col justify-between transition-colors duration-300 ${
+                                    isDark
+                                      ? 'neu-card-dark bg-gradient-to-br from-[#27201c] to-[#222730] border border-orange-500/20 shadow-xl'
+                                      : 'neu-card-light bg-gradient-to-br from-orange-50 to-amber-50/40 border border-orange-200/60 shadow-md'
+                                  }`}>
+                                    <div>
+                                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center mb-3 ${
+                                        isDark ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-orange-100 text-orange-600'
+                                      }`}>
+                                        <Flame className="w-4 h-4 fill-current" />
+                                      </div>
+                                      <span className="text-[9px] font-black text-orange-500 uppercase tracking-widest">Current Streak</span>
+                                      <h4 className={`text-xl font-black mt-1 leading-none ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+                                        {streakStats.currentStreak} {streakStats.currentStreak === 1 ? 'day' : 'days'}
+                                      </h4>
+                                    </div>
+                                    <p className={`text-[8px] font-bold mt-3 ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>Keep logging to stay hot!</p>
+                                  </div>
+
+                                  <div className={`p-5 rounded-3xl flex flex-col justify-between transition-colors duration-300 ${
+                                    isDark
+                                      ? 'neu-card-dark bg-gradient-to-br from-[#27241c] to-[#222730] border border-amber-500/20 shadow-xl'
+                                      : 'neu-card-light bg-gradient-to-br from-amber-50 to-yellow-50/40 border border-amber-200/60 shadow-md'
+                                  }`}>
+                                    <div>
+                                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center mb-3 ${
+                                        isDark ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-amber-100 text-amber-600'
+                                      }`}>
+                                        <Trophy className="w-4 h-4" />
+                                      </div>
+                                      <span className="text-[9px] font-black text-amber-500 uppercase tracking-widest">Longest Streak</span>
+                                      <h4 className={`text-xl font-black mt-1 leading-none ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+                                        {streakStats.longestStreak} {streakStats.longestStreak === 1 ? 'day' : 'days'}
+                                      </h4>
+                                    </div>
+                                    <p className={`text-[8px] font-bold mt-3 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>Your absolute personal best</p>
+                                  </div>
+                                </div>
+
+                                {/* Desk Timer & Focus Hub */}
+                                {renderTimerHub(false)}
+                              </>
+                            ) : (
+                              <>
+                                {/* Direct Manually Edit Quick Logs Panel (Desktop Specific UX) */}
+                                {(() => {
+                                  const todayStr = (() => {
+                                    const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+                                    return (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10);
+                                  })();
+                                  const todayLog = studyLogs[todayStr] || { questions: 0, cards: 0, hours: 0, pages: 0, gts: [] };
+
+                                  return (
+                                    <QuickLogger
+                                      todayLog={todayLog}
+                                      todayStr={todayStr}
+                                      setStudyLogs={setStudyLogs}
+                                      isDark={isDark}
+                                    />
+                                  );
+                                })()}
+
+                                {/* Grand Tests Timeline / Mock Results */}
+                                <div className={`p-6 rounded-3xl shadow-sm flex flex-col transition-colors duration-300 w-full ${
+                                  isDark ? 'neu-card-dark border border-white/5' : 'neu-card-light border border-white/70 shadow-md'
+                                }`}>
+                                  <div className={`flex items-center justify-between mb-4 pb-3 border-b ${isDark ? 'border-white/5' : 'border-slate-100'}`}>
+                                    <span className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                      <Award className="w-4 h-4 text-orange-500 animate-bounce" />
+                                      Grand Tests History
+                                    </span>
+                                    {(() => {
+                                      const gtsList = [];
+                                      Object.keys(studyLogs).forEach(d => {
+                                        const log = studyLogs[d];
+                                        if (log && Array.isArray(log.gts)) {
+                                          log.gts.forEach(gt => gtsList.push(gt));
+                                        }
+                                      });
+                                      return (
+                                        <span className="text-[9px] text-gray-400 font-black uppercase">
+                                          {gtsList.length} Attended
+                                        </span>
+                                      );
+                                    })()}
+                                  </div>
+
+                                  {(() => {
+                                    const list = [];
+                                    Object.keys(studyLogs).forEach(dateStr => {
+                                      const log = studyLogs[dateStr];
+                                      if (log && Array.isArray(log.gts)) {
+                                        log.gts.forEach((gt, idx) => {
+                                          list.push({
+                                            ...gt,
+                                            date: dateStr,
+                                            index: idx,
+                                            uniqueId: `${dateStr}_${idx}`
+                                          });
+                                        });
+                                      }
+                                    });
+                                    const sortedGts = list.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+                                    if (sortedGts.length === 0) {
+                                      return (
+                                        <div className="text-center py-6">
+                                          <Award className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                                          <span className="text-xs font-bold text-gray-400">No Grand Tests logged yet</span>
+                                          <p className="text-[9px] text-gray-400 max-w-[200px] mx-auto mt-1">
+                                            Log a daily report and add your mock test scores to track percentiles!
+                                          </p>
+                                        </div>
+                                      );
+                                    }
+
+                                    return (
+                                      <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
+                                        {sortedGts.map((gt) => {
+                                          const dateFmt = formatAppDate(gt.date);
+                                          return (
+                                            <div
+                                              key={gt.uniqueId}
+                                              onClick={() => {
+                                                setCurrentTab('analytics');
+                                                setAnalyticsSubTab('study');
+                                                if (gt.type === 'NEETPG') {
+                                                  setGtFilter('NEETPG');
+                                                } else if (gt.type === 'INICET') {
+                                                  setGtFilter('INICET');
+                                                } else {
+                                                  setGtFilter('All');
+                                                }
+                                                setSelectedGtForAnalysisId(gt.uniqueId);
+                                              }}
+                                              className={`p-3 rounded-2xl flex flex-col gap-1 cursor-pointer transition select-none group ${
+                                                isDark ? 'neu-pressed-dark border border-white/5 hover:border-orange-500/30 hover:bg-orange-500/5' : 'neu-pressed-light border border-white/70 hover:border-orange-300 hover:bg-orange-50/10'
+                                              }`}
+                                            >
+                                              <div className="flex items-start justify-between">
+                                                <div className="text-left">
+                                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                                    {gt.platform && (
+                                                      <span className={`text-[7.5px] font-black uppercase px-1 py-0.5 rounded font-mono tracking-wider shrink-0 ${
+                                                        isDark ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-orange-100 text-orange-600'
+                                                      }`}>
+                                                        {gt.platform}
+                                                      </span>
+                                                    )}
+                                                    <h5 className={`text-xs font-black leading-tight ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{gt.name}</h5>
+                                                  </div>
+                                                  <span className={`text-[8px] font-mono font-bold block mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{dateFmt}</span>
+                                                </div>
+                                                <div className="text-right flex items-center gap-2 shrink-0">
+                                                  <div>
+                                                    <span className="text-xs font-black text-orange-500">{gt.score || 'Logged'}</span>
+                                                    {gt.percentage && (
+                                                      <span className={`block text-[8px] font-bold font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>({gt.percentage})</span>
+                                                    )}
+                                                  </div>
+                                                  <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      handleOpenEditGtModal(gt.date, gt.index, gt);
+                                                    }}
+                                                    className={`p-1.5 rounded-xl transition duration-150 shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 ${
+                                                      isDark ? 'text-slate-400 hover:text-orange-400 hover:bg-orange-500/20' : 'text-slate-500 hover:text-orange-600 hover:bg-orange-50'
+                                                    }`}
+                                                    title="Edit Mock Test Score"
+                                                  >
+                                                    <Edit3 className="w-3.5 h-3.5" />
+                                                  </button>
+                                                </div>
+                                              </div>
+                                              {gt.notes && (
+                                                <p className={`text-[9px] p-1.5 rounded-lg border mt-1 italic leading-relaxed ${
+                                                  isDark ? 'bg-[#161a20] border-white/5 text-slate-300' : 'bg-white/60 border-slate-200/60 text-slate-600'
+                                                }`}>
+                                                  "{gt.notes}"
+                                                </p>
+                                              )}
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    );
+                                  })()}
+                                </div>
+                              </>
+                            )}
+                          </div>
+
+                          {/* Right Column */}
+                          <div className="lg:col-span-7 flex flex-col gap-6 w-full">
+                            {studyActiveTab === 'record' ? (
+                              <>
+                                {/* Today's Goal Ring Gauge */}
+                                <div className={`p-6 rounded-3xl flex flex-col items-center text-center relative overflow-hidden transition-colors duration-300 ${
+                                  isDark ? 'neu-card-dark border border-white/5 shadow-xl' : 'neu-card-light border border-white/70 shadow-md'
+                                }`}>
+                                  <span className={`text-[10px] font-black uppercase tracking-widest mb-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Today's Progress Gauge</span>
+
+                                  {/* Circle SVG progress indicator */}
+                                  {(() => {
+                                    const todayStr = (() => {
+                                      const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+                                      return (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10);
+                                    })();
+                                    const todayLog = studyLogs[todayStr] || { questions: 0, cards: 0, hours: 0, gts: [] };
+
+                                    const archetypeGoals = {
+                                      Rookie: { hours: 2, questions: 20, cards: 30 },
+                                      Consistent: { hours: 4, questions: 50, cards: 80 },
+                                      Topper: { hours: 6, questions: 100, cards: 150 },
+                                      Legend: { hours: 8, questions: 150, cards: 250 }
+                                    };
+                                    const activeGoal = archetypeGoals[selectedStreakTag] || archetypeGoals.Topper;
+
+                                    const hoursProgress = Math.min(1, (Number(todayLog.hours) || 0) / activeGoal.hours);
+                                    const questionsProgress = Math.min(1, (Number(todayLog.questions) || 0) / activeGoal.questions);
+                                    const cardsProgress = Math.min(1, (Number(todayLog.cards) || 0) / activeGoal.cards);
+                                    const totalProgressPercent = Math.round(((hoursProgress + questionsProgress + cardsProgress) / 3) * 100);
+
+                                    return (
+                                      <>
+                                        <div className="relative w-36 h-36 flex items-center justify-center">
+                                          <svg className="w-full h-full transform -rotate-90">
+                                            <circle cx="72" cy="72" r="58" stroke={isDark ? "#1a1f26" : "#f1f5f9"} strokeWidth="8" fill="transparent" />
+                                            <circle cx="72" cy="72" r="58" stroke="url(#orangeGradient)" strokeWidth="10" fill="transparent"
+                                              strokeDasharray={2 * Math.PI * 58}
+                                              strokeDashoffset={2 * Math.PI * 58 * (1 - Math.min(100, Math.max(0, totalProgressPercent)) / 100)}
+                                              strokeLinecap="round"
+                                              className="transition-all duration-1000"
+                                            />
+                                            <defs>
+                                              <linearGradient id="orangeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                <stop offset="0%" stopColor="#f97316" />
+                                                <stop offset="100%" stopColor="#f59e0b" />
+                                              </linearGradient>
+                                            </defs>
+                                          </svg>
+
+                                          {/* Inner glowing center representing milestone achievements */}
+                                          <div className={`absolute w-24 h-24 !rounded-full flex flex-col items-center justify-center transition-all duration-300 ${
+                                            totalProgressPercent >= 100
+                                              ? isDark ? 'bg-orange-500/20 text-orange-400 scale-105 shadow-inner border border-orange-500/30 !rounded-full' : 'bg-orange-50 text-orange-500 scale-105 shadow-inner !rounded-full'
+                                              : isDark ? 'neu-pressed-dark text-slate-300 !rounded-full' : 'neu-pressed-light text-slate-700 !rounded-full'
+                                          }`}>
+                                            <Flame className={`w-8 h-8 ${totalProgressPercent >= 100 ? 'animate-bounce fill-current' : ''}`} />
+                                            <span className={`text-xl font-black mt-1 ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{totalProgressPercent}%</span>
+                                          </div>
+                                        </div>
+
+                                        {/* Target Selector Dropdown */}
+                                        <div className={`mt-6 w-full p-4 rounded-2xl flex items-center justify-between transition ${
+                                          isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'
+                                        }`}>
+                                          <div className="text-left">
+                                            <span className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Target Level</span>
+                                            <div className="flex items-center gap-1.5 mt-0.5">
+                                              <span className={`text-xs font-black ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{selectedStreakTag}</span>
+                                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded animate-pulse ${
+                                                isDark ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-orange-50 text-orange-500'
+                                              }`}>Goal</span>
+                                            </div>
+                                          </div>
+
+                                          <select
+                                            value={selectedStreakTag}
+                                            onChange={(e) => setSelectedStreakTag(e.target.value)}
+                                            className={`text-xs font-bold px-3 py-1.5 rounded-xl outline-none cursor-pointer transition ${
+                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-800'
+                                            }`}
+                                          >
+                                            <option value="Rookie">Rookie (2h/20q/30c)</option>
+                                            <option value="Consistent">Consistent (4h/50q/80c)</option>
+                                            <option value="Topper">Topper (6h/100q/150c)</option>
+                                            <option value="Legend">Legend (8h/150q/250c)</option>
+                                          </select>
+                                        </div>
+
+                                        <p className={`text-[10px] font-bold mt-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                          {totalProgressPercent >= 100 ? "🎉 Congratulations! Daily quota unlocked." : "Study, solve, and log daily stats to fill the gauge!"}
+                                        </p>
+                                      </>
+                                    );
+                                  })()}
+                                </div>
+
+                                {/* Desktop Study Sprints Timeline Card */}
+                                {(() => {
+                                  const todayStr = (() => {
+                                    const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+                                    return (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10);
+                                  })();
+                                  const todayLog = studyLogs[todayStr] || { questions: 0, cards: 0, hours: 0, gts: [], sessions: [] };
+                                  const sessions = todayLog.sessions || [];
+
+                                  return (
+                                    <div className={`p-6 rounded-3xl shadow-sm flex flex-col transition-colors duration-300 w-full text-left ${
+                                      isDark ? 'neu-card-dark border border-white/5' : 'neu-card-light border border-white/70 shadow-md'
+                                    }`}>
+                                      <div className={`flex items-center justify-between pb-3 border-b mb-4 ${isDark ? 'border-white/5' : 'border-slate-100'}`}>
+                                        <span className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                          <Clock className="w-4 h-4 text-orange-500 animate-pulse" />
+                                          Study Sprints Timeline (Today)
+                                        </span>
+                                        <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase font-mono tracking-wider ${
+                                          isDark ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20' : 'bg-orange-50 text-orange-600 border border-orange-200'
+                                        }`}>
+                                          Real-time Timeline
+                                        </span>
+                                      </div>
+
+                                      {sessions.length === 0 ? (
+                                        <div className="py-8 text-center space-y-1">
+                                          <Clock className={`w-8 h-8 mx-auto mb-2 ${isDark ? 'text-slate-600' : 'text-slate-300'}`} />
+                                          <span className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>No active study sprints logged today</span>
+                                          <p className={`text-[9px] max-w-[220px] mx-auto mt-1 leading-relaxed ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                            Log study sprints on mobile or companion to track detailed focus blocks in real-time here!
+                                          </p>
+                                        </div>
+                                      ) : (
+                                        <div className="space-y-3.5 max-h-[260px] overflow-y-auto pr-1">
+                                          {sessions.map((sess, idx) => (
+                                            <div key={sess.id || idx} className={`p-4 rounded-2xl flex flex-col gap-2.5 group transition ${
+                                              isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'
+                                            }`}>
+                                              <div className="flex items-center justify-between text-xs">
+                                                <div className="flex items-center gap-2">
+                                                  <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
+                                                  <span className={`font-mono font-black text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{sess.timestamp}</span>
+                                                </div>
+                                                <div className="flex items-center gap-3.5 font-mono font-extrabold text-[10px]">
+                                                  {sess.hours > 0 && <span className="text-orange-500">+{sess.hours}h</span>}
+                                                  {sess.questions > 0 && <span className="text-emerald-500">+{sess.questions} Qs</span>}
+                                                  {sess.cards > 0 && <span className="text-blue-500">+{sess.cards} Cds</span>}
+                                                  {sess.pages > 0 && <span className="text-indigo-500">+{sess.pages} Pgs</span>}
+                                                </div>
+                                              </div>
+
+                                              {/* Inline Edit Form when editing this session on desktop */}
+                                              {editingSessionId === sess.id ? (
+                                                <div className={`p-3 rounded-xl border space-y-3 mt-1 text-left ${isDark ? 'neu-card-dark border-white/10' : 'bg-white border-slate-200'}`}>
+                                                  <div className="grid grid-cols-4 gap-2.5 text-[10px]">
+                                                    <div>
+                                                      <label className={`text-[8px] font-bold block mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Hours</label>
+                                                      <input
+                                                        type="number"
+                                                        step="0.1"
+                                                        value={editingSessionHours}
+                                                        onChange={(e) => setEditingSessionHours(e.target.value)}
+                                                        className={`w-full p-2 rounded-lg text-xs font-mono font-bold outline-none ${
+                                                          isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                                                        }`}
+                                                      />
+                                                    </div>
+                                                    <div>
+                                                      <label className={`text-[8px] font-bold block mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Questions</label>
+                                                      <input
+                                                        type="number"
+                                                        value={editingSessionQuestions}
+                                                        onChange={(e) => setEditingSessionQuestions(e.target.value)}
+                                                        className={`w-full p-2 rounded-lg text-xs font-mono font-bold outline-none ${
+                                                          isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                                                        }`}
+                                                      />
+                                                    </div>
+                                                    <div>
+                                                      <label className={`text-[8px] font-bold block mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Cards</label>
+                                                      <input
+                                                        type="number"
+                                                        value={editingSessionCards}
+                                                        onChange={(e) => setEditingSessionCards(e.target.value)}
+                                                        className={`w-full p-2 rounded-lg text-xs font-mono font-bold outline-none ${
+                                                          isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                                                        }`}
+                                                      />
+                                                    </div>
+                                                    <div>
+                                                      <label className={`text-[8px] font-bold block mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Pages</label>
+                                                      <input
+                                                        type="number"
+                                                        value={editingSessionPages}
+                                                        onChange={(e) => setEditingSessionPages(e.target.value)}
+                                                        className={`w-full p-2 rounded-lg text-xs font-mono font-bold outline-none ${
+                                                          isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                                                        }`}
+                                                      />
+                                                    </div>
+                                                  </div>
+                                                  <div className="flex justify-end gap-2 text-[9px] pt-1">
+                                                    <button
+                                                      onClick={() => setEditingSessionId(null)}
+                                                      className={`px-3 py-1.5 rounded-lg font-extrabold uppercase transition active:scale-95 ${
+                                                        isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
+                                                      }`}
+                                                    >
+                                                      Cancel
+                                                    </button>
+                                                    <button
+                                                      onClick={handleUpdateMobileSession}
+                                                      className="px-3 py-1.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-lg font-extrabold uppercase hover:shadow active:scale-95 transition"
+                                                    >
+                                                      Save
+                                                    </button>
+                                                  </div>
+                                                </div>
+                                              ) : (
+                                                <div className={`flex justify-end gap-3.5 pt-2 border-t opacity-0 group-hover:opacity-100 transition focus-within:opacity-100 ${
+                                                  isDark ? 'border-white/5' : 'border-slate-200/40'
+                                                }`}>
+                                                  <button
+                                                    onClick={() => {
+                                                      setEditingSessionId(sess.id);
+                                                      setEditingSessionTargetDate(todayStr);
+                                                      setEditingSessionHours(String(sess.hours || 0));
+                                                      setEditingSessionQuestions(String(sess.questions || 0));
+                                                      setEditingSessionCards(String(sess.cards || 0));
+                                                      setEditingSessionPages(String(sess.pages || 0));
+                                                    }}
+                                                    className="text-[9px] font-black uppercase text-blue-500 hover:text-blue-600 flex items-center gap-1 active:scale-95 transition"
+                                                  >
+                                                    <Edit3 className="w-3.5 h-3.5" /> Edit
+                                                  </button>
+                                                  <button
+                                                    onClick={() => handleDeleteMobileSession(sess.id, todayStr)}
+                                                    className="text-[9px] font-black uppercase text-red-500 hover:text-red-600 flex items-center gap-1 active:scale-95 transition"
+                                                  >
+                                                    <Trash2 className="w-3.5 h-3.5" /> Delete
+                                                  </button>
+                                                </div>
+                                              )}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
+                              </>
+                            ) : (
+                              <>
+                                {/* Streak Tracker Calendar Card */}
+                                <div className={`p-6 rounded-3xl shadow-sm flex flex-col transition-colors duration-300 w-full ${
+                                  isDark ? 'neu-card-dark border border-white/5' : 'neu-card-light border border-white/70 shadow-md'
+                                }`}>
+
+                                  {/* Calendar Month Selector Header */}
+                                  <div className="flex items-center justify-between mb-6">
+                                    <div className="text-left">
+                                      <span className="text-[9px] font-black uppercase text-orange-500 tracking-widest block">Your Streak Tracker</span>
+                                      <h3 className={`text-base font-black leading-none mt-1 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                                        {monthNames[calendarMonth]} {calendarYear}
+                                      </h3>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        onClick={() => {
+                                          if (calendarMonth === 0) {
+                                            setCalendarMonth(11);
+                                            setCalendarYear(prev => prev - 1);
+                                          } else {
+                                            setCalendarMonth(prev => prev - 1);
+                                          }
+                                        }}
+                                        className={`p-2 rounded-xl active:scale-95 transition ${
+                                          isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
+                                        }`}
+                                      >
+                                        <ChevronLeft className="w-4 h-4" />
+                                      </button>
+
+                                      <button
+                                        onClick={() => {
+                                          if (calendarMonth === 11) {
+                                            setCalendarMonth(0);
+                                            setCalendarYear(prev => prev + 1);
+                                          } else {
+                                            setCalendarMonth(prev => prev + 1);
+                                          }
+                                        }}
+                                        className={`p-2 rounded-xl active:scale-95 transition ${
+                                          isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
+                                        }`}
+                                      >
+                                        <ChevronRight className="w-4 h-4" />
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  {/* Calendar grid wrapper */}
+                                  <div className="w-full">
+                                    {/* Week headers */}
+                                    <div className="grid grid-cols-7 gap-2 mb-2 text-center">
+                                      {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, idx) => (
+                                        <span key={idx} className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                          {day}
+                                        </span>
+                                      ))}
+                                    </div>
+
+                                    {/* Days cells */}
+                                    <div className="grid grid-cols-7 gap-2 text-center">
+                                      {daysList.map((dayNum, idx) => {
+                                        if (dayNum === null) {
+                                          return <div key={`empty-${idx}`} />;
+                                        }
+
+                                        const mmStr = String(calendarMonth + 1).padStart(2, '0');
+                                        const ddStr = String(dayNum).padStart(2, '0');
+                                        const cellDateStr = `${calendarYear}-${mmStr}-${ddStr}`;
+                                        const isDayActive = streakStats.activeDates.includes(cellDateStr);
+
+                                        // Current date highlight
+                                        const isTodayCell = (() => {
+                                          const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+                                          return (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10) === cellDateStr;
+                                        })();
+
+                                        const cellLog = studyLogs[cellDateStr] || { questions: 0, cards: 0, pages: 0, hours: 0, gts: [] };
+
+                                        return (
+                                          <button
+                                            key={`day-${dayNum}`}
+                                            onClick={() => {
+                                              setLoggerDate(cellDateStr);
+                                              setLoggerQuestions(cellLog.questions || '');
+                                              setLoggerCards(cellLog.cards || '');
+                                              setLoggerPages(cellLog.pages || '');
+                                              setLoggerHours(cellLog.hours || '');
+                                              const hoursVal = Number(cellLog.hours) || 0;
+                                              const hPart = Math.floor(hoursVal);
+                                              const mPart = Math.round((hoursVal - hPart) * 60);
+                                              setLoggerHoursPart(hPart > 0 ? String(hPart) : '');
+                                              setLoggerMinutesPart(mPart > 0 ? String(mPart) : '');
+                                              setLoggerGtsList(cellLog.gts || []);
+                                              setIsAddingGt(false);
+                                              setIsStudyLoggerModalOpen(true);
+                                            }}
+                                            className={`
+                                    aspect-square w-full rounded-2xl flex flex-col items-center justify-center relative active:scale-90 transition duration-150 outline-none
+                                    ${isDayActive
+                                                ? 'border-2 border-emerald-500 text-emerald-500 bg-emerald-500/10 shadow-sm font-black'
+                                                : isDark ? 'neu-pressed-dark border border-white/5 text-slate-300 hover:bg-white/5' : 'neu-pressed-light border border-slate-200/80 text-slate-600 hover:bg-slate-50'
+                                              }
+                                    ${isTodayCell ? 'ring-2 ring-orange-500 ring-offset-2 ring-offset-transparent' : ''}
+                                  `}
+                                            title={cellDateStr}
+                                          >
+                                            <span className="text-xs font-bold leading-none">{dayNum}</span>
+                                            {isDayActive && (
+                                              <span className="absolute bottom-1.5 w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                                            )}
+
+                                            {/* Hover indicators of studied metrics */}
+                                            {(cellLog.hours > 0 || cellLog.questions > 0) && (
+                                              <div className="absolute top-1 right-1 flex gap-0.5">
+                                                {cellLog.hours > 0 && <span className="w-1 h-1 bg-amber-500 rounded-full" />}
+                                                {cellLog.questions > 0 && <span className="w-1 h-1 bg-blue-500 rounded-full" />}
+                                              </div>
+                                            )}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+
+                                  <div className={`flex flex-wrap gap-4 mt-6 justify-center text-[10px] font-bold border-t pt-4 ${isDark ? 'border-white/5 text-slate-400' : 'border-slate-100 text-slate-500'}`}>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="w-2.5 h-2.5 rounded-full border-2 border-emerald-500 bg-emerald-500/20" />
+                                      <span>Active Study Day</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="w-2.5 h-2.5 rounded-full ring-2 ring-orange-500" />
+                                      <span>Today</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="w-1 h-1 bg-amber-500 rounded-full" />
+                                      <span>Hours Logged</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="w-1 h-1 bg-blue-500 rounded-full" />
+                                      <span>Questions Logged</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </>
+                            )}
+                          </div>
+
+                        </div>
+
+                        {/* STUDY LOGGER DETAILED MODAL DIALOG (MANUAL METRIC ENTRY FOR DATES & GTS) */}
+                        {isStudyLoggerModalOpen && (
+                          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
+                            <div className={`rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col animate-in zoom-in duration-300 transition-colors ${
+                              isDark ? 'neu-card-dark border border-white/10 bg-[#222730] text-slate-100' : 'neu-card-light border border-white/80 bg-[#e6ecf5] text-slate-900 shadow-2xl'
+                            }`}>
+
+                              {/* Modal Header */}
+                              <div className={`p-6 border-b flex justify-between items-center ${isDark ? 'border-white/10 bg-[#1c2128]' : 'bg-[#e6ecf5] border-slate-300/60'}`}>
+                                <div className="text-left">
+                                  <h3 className={`font-black uppercase tracking-widest text-xs ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>Manual Study Report</h3>
+                                  <span className={`text-[9px] font-bold font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{formatAppDate(loggerDate)}</span>
+                                </div>
+
+                                <button
+                                  onClick={() => setIsStudyLoggerModalOpen(false)}
+                                  className={`p-1.5 rounded-xl transition ${isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-white/10' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
+                                >
+                                  <X className="w-5 h-5" />
+                                </button>
+                              </div>
+
+                              {/* Modal Body */}
+                              <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto text-left">
+
+                                {/* Date Select Input */}
+                                <div>
+                                  <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Report Date</label>
+                                  <input
+                                    type="date"
+                                    value={loggerDate}
+                                    onChange={(e) => {
+                                      setLoggerDate(e.target.value);
+                                      const log = studyLogs[e.target.value] || { questions: '', cards: '', pages: '', hours: '', gts: [] };
+                                      setLoggerQuestions(log.questions || '');
+                                      setLoggerCards(log.cards || '');
+                                      setLoggerPages(log.pages || '');
+                                      setLoggerHours(log.hours || '');
+                                      const hoursVal = Number(log.hours) || 0;
+                                      const hPart = Math.floor(hoursVal);
+                                      const mPart = Math.round((hoursVal - hPart) * 60);
+                                      setLoggerHoursPart(hPart > 0 ? String(hPart) : '');
+                                      setLoggerMinutesPart(mPart > 0 ? String(mPart) : '');
+                                      setLoggerGtsList(log.gts || []);
+                                      setIsAddingGt(false);
+                                    }}
+                                    className={`w-full p-3 rounded-xl outline-none text-xs font-semibold ${
+                                      isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                                    }`}
+                                  />
+                                </div>
+
+                                {/* Main Metric Inputs */}
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                  <div>
+                                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Questions Solved</label>
+                                    <input
+                                      type="number"
+                                      value={loggerQuestions}
+                                      onChange={(e) => setLoggerQuestions(e.target.value)}
+                                      placeholder="e.g. 50"
+                                      className={`w-full p-3 rounded-xl outline-none text-xs font-mono ${
+                                        isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-200 text-slate-900 placeholder-slate-400'
+                                      }`}
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Cards Studied</label>
+                                    <input
+                                      type="number"
+                                      value={loggerCards}
+                                      onChange={(e) => setLoggerCards(e.target.value)}
+                                      placeholder="e.g. 80"
+                                      className={`w-full p-3 rounded-xl outline-none text-xs font-mono ${
+                                        isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-200 text-slate-900 placeholder-slate-400'
+                                      }`}
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Pages Read</label>
+                                    <input
+                                      type="number"
+                                      value={loggerPages}
+                                      onChange={(e) => setLoggerPages(e.target.value)}
+                                      placeholder="e.g. 15"
+                                      className={`w-full p-3 rounded-xl outline-none text-xs font-mono ${
+                                        isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-200 text-slate-900 placeholder-slate-400'
+                                      }`}
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Focused Time</label>
+                                    <div className="flex items-center gap-2">
+                                      <div className={`flex-1 flex items-center rounded-xl px-3 py-2.5 ${
+                                        isDark ? 'neu-pressed-dark border border-white/10' : 'neu-pressed-light border border-slate-200'
+                                      }`}>
+                                        <input
+                                          type="number"
+                                          value={loggerHoursPart}
+                                          onChange={(e) => setLoggerHoursPart(e.target.value)}
+                                          placeholder="h"
+                                          className={`bg-transparent w-full focus:outline-none text-xs font-mono font-bold ${isDark ? 'text-slate-100' : 'text-gray-800'}`}
+                                          min="0"
+                                        />
+                                        <span className={`text-[10px] font-bold font-mono ml-1 shrink-0 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>hr</span>
+                                      </div>
+                                      <div className={`flex-1 flex items-center rounded-xl px-3 py-2.5 ${
+                                        isDark ? 'neu-pressed-dark border border-white/10' : 'neu-pressed-light border border-slate-200'
+                                      }`}>
+                                        <input
+                                          type="number"
+                                          value={loggerMinutesPart}
+                                          onChange={(e) => setLoggerMinutesPart(e.target.value)}
+                                          placeholder="m"
+                                          className={`bg-transparent w-full focus:outline-none text-xs font-mono font-bold ${isDark ? 'text-slate-100' : 'text-gray-800'}`}
+                                          min="0"
+                                          max="59"
+                                        />
+                                        <span className={`text-[10px] font-bold font-mono ml-1 shrink-0 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>min</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Grand Tests Section */}
+                                <div className={`pt-6 border-t ${isDark ? 'border-white/10' : 'border-gray-100'}`}>
+                                  <div className="flex items-center justify-between mb-4">
+                                    <label className={`block text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Grand Tests (GTs) Attended</label>
+                                    {!isAddingGt && (
+                                      <button
+                                        type="button"
+                                        onClick={() => setIsAddingGt(true)}
+                                        className={`text-[10px] font-black px-2.5 py-1 rounded-lg transition active:scale-95 ${
+                                          isDark ? 'neu-btn-dark text-orange-400 border border-orange-500/20 hover:bg-orange-500/20' : 'neu-btn-light text-orange-600 border border-orange-200 hover:bg-orange-100'
+                                        }`}
+                                      >
+                                        + Add Mock Test
+                                      </button>
+                                    )}
+                                  </div>
+                                  {/* List of GTs currently in log */}
+                                  <div className="space-y-3.5 mb-4">
+                                    {loggerGtsList.map((gt, idx) => (
+                                      <div key={idx} className={`p-4 rounded-2xl flex items-start justify-between ${
+                                        isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-slate-200/80'
+                                      }`}>
+                                        <div className="text-left space-y-1">
+                                          <div className="flex items-center gap-2 flex-wrap">
+                                            {gt.platform && (
+                                              <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded font-mono tracking-wider ${
+                                                isDark ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-orange-100 text-orange-600'
+                                              }`}>
+                                                {gt.platform}
+                                              </span>
+                                            )}
+                                            <h4 className={`text-xs font-black leading-tight ${isDark ? 'text-slate-100' : 'text-gray-800'}`}>{gt.name}</h4>
+                                            <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${
+                                              isDark ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600'
+                                            }`}>
+                                              {gt.type === 'NEETPG' ? 'NEET PG' : 'INI CET'}
+                                            </span>
+                                          </div>
+                                          <div className={`text-[10px] font-bold flex flex-wrap gap-x-3 gap-y-1 font-mono ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+                                            <span>Marks: <strong className="text-orange-500">{gt.score} / {gt.maxMarks}</strong></span>
+                                            <span>Correct: <strong className="text-emerald-500">{gt.correct}</strong></span>
+                                            <span>Incorrect: <strong className="text-red-500">{gt.incorrect}</strong></span>
+                                            {gt.percentile !== null && <span>%ile: <strong className="text-blue-500">{gt.percentile}%</strong></span>}
+                                            {gt.rank && <span>Rank: <strong className="text-indigo-400">#{gt.rank}</strong></span>}
+                                          </div>
+                                          {gt.notes && <p className={`text-[9px] italic leading-relaxed ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>"{gt.notes}"</p>}
+                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleDeleteGt(idx)}
+                                          className={`p-2 rounded-xl transition shrink-0 ${isDark ? 'text-red-400 hover:bg-red-500/20' : 'text-red-500 hover:bg-red-50'}`}
+                                          title="Delete Mock Test"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+
+                                  {/* Inline sub-form to add a new Grand Test */}
+                                  {isAddingGt && (
+                                    <div className={`p-5 rounded-3xl space-y-4 animate-in slide-in-from-top duration-200 ${
+                                      isDark ? 'neu-card-dark border border-orange-500/20 bg-orange-500/5' : 'bg-orange-50/40 border border-orange-100/70'
+                                    }`}>
+                                      <span className="text-[9px] font-black uppercase text-orange-500 tracking-wider">New Grand Test Details</span>
+
+                                      <div className="grid grid-cols-2 gap-3.5">
+                                        {/* GT Platform */}
+                                        <div className="col-span-2">
+                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Exam Platform</label>
+                                          <input
+                                            type="text"
+                                            value={loggerGtPlatform}
+                                            onChange={(e) => setLoggerGtPlatform(e.target.value)}
+                                            placeholder="e.g. Marrow, PrepLadder, Cerebellum, eGurukul"
+                                            className={`w-full p-2.5 rounded-xl text-xs font-semibold focus:outline-none ${
+                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-200 text-slate-900 placeholder-slate-400'
+                                            }`}
+                                          />
+                                        </div>
+
+                                        {/* GT Name */}
+                                        <div className="col-span-2">
+                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Test Name</label>
+                                          <input
+                                            type="text"
+                                            value={loggerGtName}
+                                            onChange={(e) => setLoggerGtName(e.target.value)}
+                                            placeholder="Test Name (e.g. Marrow Grand Test 14)"
+                                            className={`w-full p-2.5 rounded-xl text-xs font-semibold focus:outline-none ${
+                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-200 text-slate-900 placeholder-slate-400'
+                                            }`}
+                                          />
+                                        </div>
+
+                                        {/* GT Type Selector Pills */}
+                                        <div className="col-span-2 space-y-2">
+                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>GT Scoring Model</label>
+                                          <div className="flex gap-2">
+                                            <button
+                                              type="button"
+                                              onClick={() => setLoggerGtType('NEETPG')}
+                                              className={`flex-1 py-2 text-xs font-black rounded-xl border transition ${
+                                                loggerGtType === 'NEETPG'
+                                                  ? 'bg-orange-500 text-white border-transparent shadow-sm'
+                                                  : isDark ? 'neu-btn-dark text-slate-300 border-white/10' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                              }`}
+                                            >
+                                              NEET PG (+4, -1)
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => setLoggerGtType('INICET')}
+                                              className={`flex-1 py-2 text-xs font-black rounded-xl border transition ${
+                                                loggerGtType === 'INICET'
+                                                  ? 'bg-orange-500 text-white border-transparent shadow-sm'
+                                                  : isDark ? 'neu-btn-dark text-slate-300 border-white/10' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                              }`}
+                                            >
+                                              INI CET (+1, -1/3)
+                                            </button>
+                                          </div>
+
+                                          {loggerGtType === 'NEETPG' && (
+                                            <div className="flex gap-2 p-1 rounded-xl bg-orange-500/5 border border-orange-500/20">
+                                              <button
+                                                type="button"
+                                                onClick={() => setLoggerNeetPattern('200')}
+                                                className={`flex-1 py-1 text-[10px] font-extrabold rounded-lg transition ${
+                                                  loggerNeetPattern === '200'
+                                                    ? 'bg-orange-500 text-white shadow-sm'
+                                                    : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
+                                                }`}
+                                              >
+                                                200 Qs / 800 Marks (Old Pattern)
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={() => setLoggerNeetPattern('180')}
+                                                className={`flex-1 py-1 text-[10px] font-extrabold rounded-lg transition ${
+                                                  loggerNeetPattern === '180'
+                                                    ? 'bg-orange-500 text-white shadow-sm'
+                                                    : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
+                                                }`}
+                                              >
+                                                180 Qs / 720 Marks (New Pattern)
+                                              </button>
+                                            </div>
+                                          )}
+                                        </div>
+
+                                        {/* Questions Correct & Incorrect */}
+                                        <div>
+                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Correct Qs</label>
+                                          <input
+                                            type="number"
+                                            value={loggerGtCorrect}
+                                            onChange={(e) => setLoggerGtCorrect(e.target.value)}
+                                            placeholder="e.g. 130"
+                                            className={`w-full p-2.5 rounded-xl text-xs font-mono font-bold focus:outline-none ${
+                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                                            }`}
+                                          />
+                                        </div>
+                                        <div>
+                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Incorrect Qs</label>
+                                          <input
+                                            type="number"
+                                            value={loggerGtIncorrect}
+                                            onChange={(e) => setLoggerGtIncorrect(e.target.value)}
+                                            placeholder="e.g. 50"
+                                            className={`w-full p-2.5 rounded-xl text-xs font-mono font-bold focus:outline-none ${
+                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                                            }`}
+                                          />
+                                        </div>
+
+                                        {/* Live Preview metrics breakdown */}
+                                        <div className={`p-3 rounded-2xl border flex items-center justify-between text-[10px] col-span-2 ${
+                                          isDark ? 'bg-orange-500/10 border-orange-500/20 text-slate-300' : 'bg-orange-50/50 border-orange-100/50 text-gray-500'
+                                        }`}>
+                                           <span className="font-bold">Attended: <strong className="text-orange-500 font-black">{(Number(loggerGtCorrect) || 0) + (Number(loggerGtIncorrect) || 0)} / {loggerGtType === 'NEETPG' ? (loggerNeetPattern === '180' ? 180 : 200) : 200}</strong></span>
+                                           <span className="font-bold">Unattempted: <strong className={`font-black ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>{Math.max(0, (loggerGtType === 'NEETPG' ? (loggerNeetPattern === '180' ? 180 : 200) : 200) - ((Number(loggerGtCorrect) || 0) + (Number(loggerGtIncorrect) || 0)))}</strong></span>
+                                           <span className="font-bold">Score Preview: <strong className="text-orange-500 font-black">
+                                             {loggerGtType === 'NEETPG'
+                                               ? `${(Number(loggerGtCorrect) || 0) * 4 - (Number(loggerGtIncorrect) || 0) * 1} / ${loggerNeetPattern === '180' ? 720 : 800}`
+                                               : `${((Number(loggerGtCorrect) || 0) * 1 - (Number(loggerGtIncorrect) || 0) * (1 / 3)).toFixed(2)} / 200`
+                                             }
+                                           </strong></span>
+                                        </div>
+
+                                        {/* Percentile, Rank and Rank Total */}
+                                        <div>
+                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Percentile (%ile)</label>
+                                          <input
+                                            type="number"
+                                            step="0.01"
+                                            value={loggerGtPercentage}
+                                            onChange={(e) => setLoggerGtPercentage(e.target.value)}
+                                            placeholder="e.g. 98.7"
+                                            className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${
+                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                                            }`}
+                                          />
+                                        </div>
+
+                                        <div>
+                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>All India Rank (AIR)</label>
+                                          <input
+                                            type="number"
+                                            value={loggerGtRank}
+                                            onChange={(e) => setLoggerGtRank(e.target.value)}
+                                            placeholder="e.g. 1414"
+                                            className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${
+                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                                            }`}
+                                          />
+                                        </div>
+
+                                        <div>
+                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Total Participants</label>
+                                          <input
+                                            type="number"
+                                            value={loggerGtRankTotal}
+                                            onChange={(e) => setLoggerGtRankTotal(e.target.value)}
+                                            placeholder="e.g. 8757"
+                                            className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${
+                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                                            }`}
+                                          />
+                                        </div>
+
+                                        {/* State Rank and State Selector */}
+                                        <div>
+                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>State Rank</label>
+                                          <input
+                                            type="number"
+                                            value={loggerGtStateRank}
+                                            onChange={(e) => setLoggerGtStateRank(e.target.value)}
+                                            placeholder="e.g. 82"
+                                            className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${
+                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                                            }`}
+                                          />
+                                        </div>
+
+                                        <div className="col-span-2">
+                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Home State</label>
+                                          <select
+                                            value={loggerGtState}
+                                            onChange={(e) => setLoggerGtState(e.target.value)}
+                                            className={`w-full p-2.5 rounded-xl text-xs font-semibold focus:outline-none ${
+                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                                            }`}
+                                          >
+                                            <option value="">Select Home State...</option>
+                                            {INDIAN_STATES.map((st) => (
+                                              <option key={st} value={st}>{st}</option>
+                                            ))}
+                                          </select>
+                                        </div>
+
+                                        {/* Notes */}
+                                        <div className="col-span-2">
+                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Weaknesses / Strengths / Notes</label>
+                                          <textarea
+                                            rows={2}
+                                            value={loggerGtNotes}
+                                            onChange={(e) => setLoggerGtNotes(e.target.value)}
+                                            placeholder="Notes / Weak points to focus on..."
+                                            className={`w-full p-3 rounded-xl text-xs focus:outline-none ${
+                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-200 text-slate-900 placeholder-slate-400'
+                                            }`}
+                                          />
+                                        </div>
+
+                                        {/* Subject Breakdown Toggle */}
+                                        <div className="col-span-2 pt-2">
+                                          <button
+                                            type="button"
+                                            onClick={() => setLoggerGtShowSubjects(!loggerGtShowSubjects)}
+                                            className={`w-full py-2.5 px-4 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-between transition ${
+                                              isDark ? 'neu-btn-dark text-orange-400 border border-orange-500/20 hover:bg-orange-500/20' : 'bg-orange-50/80 hover:bg-orange-100 text-orange-600'
+                                            }`}
+                                          >
+                                            <span>{loggerGtShowSubjects ? "▲ Hide" : "▼ Enter"} Subject-wise Breakdown (19 Subjects)</span>
+                                            <span className="text-[8px] bg-orange-500 text-white px-2 py-0.5 rounded-full font-extrabold uppercase">Optional</span>
+                                          </button>
+                                        </div>
+
+                                        {/* Subject breakdown edit grid */}
+                                        {loggerGtShowSubjects && (
+                                          <div className={`col-span-2 border rounded-2xl p-4 space-y-3.5 max-h-[300px] overflow-y-auto scrollbar-thin ${
+                                            isDark ? 'neu-pressed-dark border-orange-500/20 bg-[#161a20]' : 'border-orange-100 bg-white/70 shadow-inner'
+                                          }`}>
+                                            <span className={`text-[9px] font-black uppercase tracking-wider block mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Enter correct / incorrect per subject</span>
+                                            <div className="space-y-3.5">
+                                              {SYSTEM_SUBJECTS.map((sub) => {
+                                                const subData = loggerGtSubjects[sub.name] || { correct: '', incorrect: '', total: sub.weight };
+                                                return (
+                                                  <div key={sub.name} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-2 text-xs ${isDark ? 'border-white/5' : 'border-gray-50'}`}>
+                                                    <span className={`font-extrabold min-w-[130px] ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{sub.name}</span>
+                                                    <div className="flex items-center gap-3">
+                                                      <div className="flex items-center gap-1.5">
+                                                        <span className="text-[9px] text-emerald-500 font-extrabold uppercase">Correct</span>
+                                                        <input
+                                                          type="number"
+                                                          value={subData.correct}
+                                                          onChange={(e) => {
+                                                            setLoggerGtSubjects(prev => ({
+                                                              ...prev,
+                                                              [sub.name]: {
+                                                                ...subData,
+                                                                correct: e.target.value,
+                                                                total: subData.total || sub.weight
+                                                              }
+                                                            }));
+                                                          }}
+                                                          placeholder="0"
+                                                          className={`w-11 p-1 rounded text-center text-xs font-mono font-bold outline-none ${
+                                                            isDark ? 'bg-[#1e232b] border border-white/10 text-slate-100' : 'bg-white border border-gray-200 text-slate-900'
+                                                          }`}
+                                                        />
+                                                      </div>
+                                                      <div className="flex items-center gap-1.5">
+                                                        <span className="text-[9px] text-red-500 font-extrabold uppercase">Incorrect</span>
+                                                        <input
+                                                          type="number"
+                                                          value={subData.incorrect}
+                                                          onChange={(e) => {
+                                                            setLoggerGtSubjects(prev => ({
+                                                              ...prev,
+                                                              [sub.name]: {
+                                                                ...subData,
+                                                                incorrect: e.target.value,
+                                                                total: subData.total || sub.weight
+                                                              }
+                                                            }));
+                                                          }}
+                                                          placeholder="0"
+                                                          className={`w-11 p-1 rounded text-center text-xs font-mono font-bold outline-none ${
+                                                            isDark ? 'bg-[#1e232b] border border-white/10 text-slate-100' : 'bg-white border border-gray-200 text-slate-900'
+                                                          }`}
+                                                        />
+                                                      </div>
+                                                      <div className="flex items-center gap-1.5">
+                                                        <span className={`text-[9px] font-extrabold uppercase ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Total</span>
+                                                        <input
+                                                          type="number"
+                                                          value={subData.total}
+                                                          onChange={(e) => {
+                                                            setLoggerGtSubjects(prev => ({
+                                                              ...prev,
+                                                              [sub.name]: {
+                                                                ...subData,
+                                                                total: e.target.value
+                                                              }
+                                                            }));
+                                                          }}
+                                                          placeholder={sub.weight}
+                                                          className={`w-11 p-1 rounded text-center text-xs font-mono outline-none ${
+                                                            isDark ? 'bg-[#1e232b] border border-white/10 text-slate-100' : 'bg-white border border-gray-200 text-slate-900'
+                                                          }`}
+                                                        />
+                                                      </div>
+                                                    </div>
+                                                  </div>
+                                                );
+                                              })}
+                                            </div>
+                                          </div>
+                                        )}
+
+                                      </div>
+
+                                      <div className="flex justify-end gap-2 pt-2">
+                                        <button
+                                          type="button"
+                                          onClick={() => setIsAddingGt(false)}
+                                          className={`px-4 py-2 text-[10px] font-bold rounded-xl transition ${
+                                            isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
+                                          }`}
+                                        >
+                                          Cancel
+                                        </button>
+
+                                        <button
+                                          type="button"
+                                          onClick={handleAddGt}
+                                          className="px-5 py-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-[10px] font-black uppercase rounded-xl hover:shadow active:scale-95 transition"
+                                        >
+                                          Add Mock
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+
+                              </div>
+
+                              {/* Modal Footer Controls */}
+                              <div className={`p-6 border-t flex justify-end gap-4 ${isDark ? 'border-white/10 bg-[#1c2128]' : 'bg-gray-50 border-slate-200'}`}>
+                                <button
+                                  onClick={() => setIsStudyLoggerModalOpen(false)}
+                                  className={`px-8 py-3 text-xs font-bold rounded-2xl transition ${
+                                    isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
+                                  }`}
+                                >
+                                  Cancel
+                                </button>
+
+                                <button
+                                  onClick={saveStudyLog}
+                                  disabled={isSaving}
+                                  className="px-10 py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-xs font-black rounded-2xl hover:shadow-lg shadow-orange-500/20 flex items-center gap-2 active:scale-95 transition-all disabled:opacity-50"
+                                >
+                                  {isSaving ? (
+                                    <>
+                                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                      Saving Report...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Save className="w-3.5 h-3.5" />
+                                      Save Report
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+
+                            </div>
+                          </div>
+                        )}
+
+                        {/* EDIT GRAND TEST MODAL DIALOG (TARGETED SCORE & SUBJECT-WISE BREAKDOWN ADJUSTER) */}
+                        {isEditGtModalOpen && (
+                          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
+                            <div className={`rounded-3xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col animate-in zoom-in duration-300 transition-colors ${
+                              isDark ? 'neu-card-dark border border-white/10 bg-[#222730] text-slate-100' : 'neu-card-light border border-white/80 bg-[#e6ecf5] text-slate-900 shadow-2xl'
+                            }`}>
+
+                              {/* Modal Header */}
+                              <div className={`p-6 border-b flex justify-between items-center ${isDark ? 'border-white/10 bg-[#1c2128]' : 'bg-[#e6ecf5] border-slate-300/60'}`}>
+                                <div className="text-left">
+                                  <h3 className={`font-black uppercase tracking-widest text-xs flex items-center gap-1.5 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                                    <Award className="w-4 h-4 text-orange-500 animate-pulse" />
+                                    Edit Grand Test Entry
+                                  </h3>
+                                  <span className={`text-[9px] font-bold font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                    Logged on {formatAppDate(editGtTargetDate)}
+                                  </span>
+                                </div>
+
+                                <button
+                                  onClick={() => setIsEditGtModalOpen(false)}
+                                  className={`p-1.5 rounded-xl transition ${isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-white/10' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/60'}`}
+                                >
+                                  <X className="w-5 h-5" />
+                                </button>
+                              </div>
+
+                              {/* Modal Body */}
+                              <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto text-left">
+                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+                                  {/* Left Column: Core Fields */}
+                                  <div className="lg:col-span-6 space-y-4">
+                                    <span className="text-[10px] font-black uppercase text-orange-500 tracking-wider block border-b pb-1.5">Core Test Details</span>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                      <div>
+                                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Test Name</label>
+                                        <input
+                                          type="text"
+                                          value={editGtName}
+                                          onChange={(e) => setEditGtName(e.target.value)}
+                                          placeholder="e.g. Grand Test 14"
+                                          className={`w-full p-2.5 rounded-xl text-xs font-semibold focus:outline-none ${
+                                            isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-300/80 text-slate-900 placeholder-slate-400'
+                                          }`}
+                                        />
+                                      </div>
+
+                                      <div>
+                                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Platform</label>
+                                        <input
+                                          type="text"
+                                          value={editGtPlatform}
+                                          onChange={(e) => setEditGtPlatform(e.target.value)}
+                                          placeholder="e.g. Marrow"
+                                          className={`w-full p-2.5 rounded-xl text-xs font-semibold focus:outline-none ${
+                                            isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-300/80 text-slate-900 placeholder-slate-400'
+                                          }`}
+                                        />
+                                      </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                      <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>GT Scoring Model</label>
+                                      <div className="flex gap-2">
+                                        <button
+                                          type="button"
+                                          onClick={() => setEditGtType('NEETPG')}
+                                          className={`flex-1 py-2 text-xs font-black rounded-xl border transition ${
+                                            editGtType === 'NEETPG'
+                                              ? 'bg-orange-500 text-white border-transparent shadow-sm'
+                                              : isDark ? 'neu-btn-dark text-slate-300 border-white/10' : 'neu-btn-light text-slate-700 border-white/70'
+                                          }`}
+                                        >
+                                          NEET PG (+4, -1)
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => setEditGtType('INICET')}
+                                          className={`flex-1 py-2 text-xs font-black rounded-xl border transition ${
+                                            editGtType === 'INICET'
+                                              ? 'bg-orange-500 text-white border-transparent shadow-sm'
+                                              : isDark ? 'neu-btn-dark text-slate-300 border-white/10' : 'neu-btn-light text-slate-700 border-white/70'
+                                          }`}
+                                        >
+                                          INI CET (+1, -1/3)
+                                        </button>
+                                      </div>
+
+                                      {editGtType === 'NEETPG' && (
+                                        <div className="flex gap-2 p-1 rounded-xl bg-orange-500/5 border border-orange-500/20">
+                                          <button
+                                            type="button"
+                                            onClick={() => setEditNeetPattern('200')}
+                                            className={`flex-1 py-1 text-[10px] font-extrabold rounded-lg transition ${
+                                              editNeetPattern === '200'
+                                                ? 'bg-orange-500 text-white shadow-sm'
+                                                : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
+                                            }`}
+                                          >
+                                            200 Qs / 800 Marks (Pre-2025)
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => setEditNeetPattern('180')}
+                                            className={`flex-1 py-1 text-[10px] font-extrabold rounded-lg transition ${
+                                              editNeetPattern === '180'
+                                                ? 'bg-orange-500 text-white shadow-sm'
+                                                : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
+                                            }`}
+                                          >
+                                            180 Qs / 720 Marks (2025+)
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                      <div>
+                                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Correct Qs</label>
+                                        <input
+                                          type="number"
+                                          value={editGtCorrect}
+                                          onChange={(e) => setEditGtCorrect(e.target.value)}
+                                          placeholder="e.g. 130"
+                                          className={`w-full p-2.5 rounded-xl text-xs font-mono font-bold focus:outline-none ${
+                                            isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
+                                          }`}
+                                        />
+                                      </div>
+
+                                      <div>
+                                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Incorrect Qs</label>
+                                        <input
+                                          type="number"
+                                          value={editGtIncorrect}
+                                          onChange={(e) => setEditGtIncorrect(e.target.value)}
+                                          placeholder="e.g. 50"
+                                          className={`w-full p-2.5 rounded-xl text-xs font-mono font-bold focus:outline-none ${
+                                            isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
+                                          }`}
+                                        />
+                                      </div>
+                                    </div>
+
+                                    {/* Live Score/Metrics Panel */}
+                                    {(() => {
+                                      const correct = Number(editGtCorrect) || 0;
+                                      const incorrect = Number(editGtIncorrect) || 0;
+                                      const attended = correct + incorrect;
+                                      const totalQs = editGtType === 'NEETPG' ? (editNeetPattern === '180' ? 180 : 200) : 200;
+                                      const maxMarks = editGtType === 'NEETPG' ? (editNeetPattern === '180' ? 720 : 800) : 200;
+                                      let score = 0;
+                                      if (editGtType === 'NEETPG') {
+                                        score = (correct * 4) - incorrect;
+                                      } else {
+                                        score = Number((correct - (incorrect * (1 / 3))).toFixed(8));
+                                      }
+                                      const accuracy = attended > 0 ? ((correct / attended) * 100).toFixed(1) : '100';
+
+                                      return (
+                                        <div className={`p-4 rounded-2xl border space-y-2 text-xs ${
+                                          isDark ? 'bg-orange-500/10 border-orange-500/20 text-slate-300' : 'bg-orange-50/60 border-orange-200/60 text-slate-700'
+                                        }`}>
+                                          <div className="flex items-center justify-between">
+                                            <span>Attended: <strong className="text-orange-500 font-mono">{attended} / {totalQs}</strong></span>
+                                            <span>Unattempted: <strong className={`font-mono ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{Math.max(0, totalQs - attended)}</strong></span>
+                                          </div>
+                                          <div className={`h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-white/10' : 'bg-slate-200'}`}>
+                                            <div className="h-full bg-orange-500 transition-all duration-300" style={{ width: `${Math.min(100, (attended / totalQs) * 100)}%` }} />
+                                          </div>
+                                          <div className="flex items-center justify-between pt-1 font-bold">
+                                            <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>Calculated Score:</span>
+                                            <span className="text-sm text-orange-500 font-black font-mono">
+                                              {editGtType === 'INICET' ? score.toFixed(4) : score} / {maxMarks}
+                                            </span>
+                                          </div>
+                                          <div className={`flex items-center justify-between text-[10px] italic ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                            <span>Accuracy Rate: <strong>{accuracy}%</strong></span>
+                                            <span>{editGtType === 'NEETPG' ? 'Score = Correct * 4 - Incorrect' : 'Score = Correct - Incorrect * (1/3)'}</span>
+                                          </div>
+                                        </div>
+                                      );
+                                    })()}
+
+                                    <div className="grid grid-cols-3 gap-3">
+                                      <div>
+                                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Percentile (%ile)</label>
+                                        <input
+                                          type="number"
+                                          step="0.01"
+                                          value={editGtPercentage}
+                                          onChange={(e) => setEditGtPercentage(e.target.value)}
+                                          placeholder="e.g. 98.7"
+                                          className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${
+                                            isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
+                                          }`}
+                                        />
+                                      </div>
+
+                                      <div>
+                                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>National AIR</label>
+                                        <input
+                                          type="number"
+                                          value={editGtRank}
+                                          onChange={(e) => setEditGtRank(e.target.value)}
+                                          placeholder="e.g. 1414"
+                                          className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${
+                                            isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
+                                          }`}
+                                        />
+                                      </div>
+
+                                      <div>
+                                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Contestants</label>
+                                        <input
+                                          type="number"
+                                          value={editGtRankTotal}
+                                          onChange={(e) => setEditGtRankTotal(e.target.value)}
+                                          placeholder="e.g. 8757"
+                                          className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${
+                                            isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
+                                          }`}
+                                        />
+                                      </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-3 gap-3">
+                                      <div>
+                                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>State Rank</label>
+                                        <input
+                                          type="number"
+                                          value={editGtStateRank}
+                                          onChange={(e) => setEditGtStateRank(e.target.value)}
+                                          placeholder="e.g. 82"
+                                          className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${
+                                            isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
+                                          }`}
+                                        />
+                                      </div>
+
+                                      <div className="col-span-2">
+                                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Home State</label>
+                                        <select
+                                          value={editGtState}
+                                          onChange={(e) => setEditGtState(e.target.value)}
+                                          className={`w-full p-2.5 rounded-xl text-xs font-semibold focus:outline-none ${
+                                            isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
+                                          }`}
+                                        >
+                                          <option value="">Select Home State...</option>
+                                          {INDIAN_STATES.map((st) => (
+                                            <option key={st} value={st}>{st}</option>
+                                          ))}
+                                        </select>
+                                      </div>
+                                    </div>
+
+                                    <div>
+                                      <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Weaknesses / Strengths / Strategy Notes</label>
+                                      <textarea
+                                        rows={3}
+                                        value={editGtNotes}
+                                        onChange={(e) => setEditGtNotes(e.target.value)}
+                                        placeholder="Notes / Weak points to focus on..."
+                                        className={`w-full p-3 rounded-xl text-xs focus:outline-none ${
+                                          isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-300/80 text-slate-900 placeholder-slate-400'
+                                        }`}
+                                      />
+                                    </div>
+                                  </div>
+
+                                  {/* Right Column: 19 Subjects Breakdown */}
+                                  <div className="lg:col-span-6 space-y-4">
+                                    <div className="flex items-center justify-between border-b pb-1.5">
+                                      <span className="text-[10px] font-black uppercase text-orange-500 tracking-wider block">Clinical 19 Subjects Breakdown</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => setEditGtShowSubjects(!editGtShowSubjects)}
+                                        className={`px-2 py-0.5 rounded text-[9px] font-black uppercase transition ${
+                                          isDark ? 'bg-orange-500/20 text-orange-400 hover:bg-orange-500/30' : 'bg-orange-100 text-orange-600 hover:bg-orange-200'
+                                        }`}
+                                      >
+                                        {editGtShowSubjects ? "Collapse View" : "Expand View"}
+                                      </button>
+                                    </div>
+
+                                    {/* Math Consistency Check Banner */}
+                                    {(() => {
+                                      let correctSum = 0;
+                                      let incorrectSum = 0;
+                                      let totalSum = 0;
+                                      Object.keys(editGtSubjects).forEach(subKey => {
+                                        const sub = editGtSubjects[subKey];
+                                        correctSum += Number(sub.correct) || 0;
+                                        incorrectSum += Number(sub.incorrect) || 0;
+                                        totalSum += Number(sub.total) || 0;
+                                      });
+
+                                      const targetCorrect = Number(editGtCorrect) || 0;
+                                      const targetIncorrect = Number(editGtIncorrect) || 0;
+                                      const isCorrectMatch = correctSum === targetCorrect;
+                                      const isIncorrectMatch = incorrectSum === targetIncorrect;
+                                      const isTotalMatch = totalSum === 200;
+
+                                      const isPristine = isCorrectMatch && isIncorrectMatch && isTotalMatch;
+
+                                      if (!isPristine && (correctSum > 0 || incorrectSum > 0 || totalSum > 0)) {
+                                        return (
+                                          <div className={`p-3 border rounded-2xl text-[10px] space-y-1 text-left leading-normal animate-pulse ${
+                                            isDark ? 'bg-rose-500/10 border-rose-500/20 text-rose-300' : 'bg-rose-50 border-rose-100 text-rose-700'
+                                          }`}>
+                                            <span className="font-black uppercase tracking-wider block">⚠️ Math Consistency Warning</span>
+                                            <div className="grid grid-cols-3 gap-2 text-[9px] font-bold font-mono">
+                                              <span className={isCorrectMatch ? 'text-emerald-500' : 'text-rose-500'}>
+                                                Correct: {correctSum} vs {targetCorrect}
+                                              </span>
+                                              <span className={isIncorrectMatch ? 'text-emerald-500' : 'text-rose-500'}>
+                                                Incorrect: {incorrectSum} vs {targetIncorrect}
+                                              </span>
+                                              <span className={isTotalMatch ? 'text-emerald-500' : 'text-rose-500'}>
+                                                Total Qs: {totalSum} / 200
+                                              </span>
+                                            </div>
+                                            <p className={`text-[8.5px] italic font-medium pt-1 ${isDark ? 'text-rose-400' : 'text-rose-500'}`}>
+                                              Adjust subject entries below to match overall stats for perfectly calibrated analytics.
+                                            </p>
+                                          </div>
+                                        );
+                                      } else if (isPristine && correctSum > 0) {
+                                        return (
+                                          <div className={`p-3 border rounded-2xl text-[9px] font-bold flex items-center gap-1 ${
+                                            isDark ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-emerald-50 border-emerald-100 text-emerald-700'
+                                          }`}>
+                                            <span>✅ Subject counts sum up to exactly 200 questions with perfect scoring alignment!</span>
+                                          </div>
+                                        );
+                                      }
+                                      return null;
+                                    })()}
+
+                                    <div className={`border rounded-2xl p-4 space-y-3.5 overflow-y-auto transition-all duration-300 ${
+                                      editGtShowSubjects ? 'max-h-[500px]' : 'max-h-[250px]'
+                                    } ${
+                                      isDark ? 'neu-pressed-dark border-white/5' : 'neu-pressed-light border-white/70'
+                                    }`}>
+                                      <div className="space-y-3">
+                                        {SYSTEM_SUBJECTS.map((sub) => {
+                                          const subData = editGtSubjects[sub.name] || { correct: '', incorrect: '', total: sub.weight };
+                                          return (
+                                            <div key={sub.name} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-2.5 text-xs ${
+                                              isDark ? 'border-white/5' : 'border-slate-200/60'
+                                            }`}>
+                                              <span className={`font-extrabold min-w-[130px] text-left ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{sub.name}</span>
+                                              <div className="flex items-center gap-3">
+                                                <div className="flex items-center gap-1">
+                                                  <span className="text-[9px] text-emerald-500 font-extrabold uppercase font-mono">C:</span>
+                                                  <input
+                                                    type="number"
+                                                    value={subData.correct}
+                                                    onChange={(e) => {
+                                                      setEditGtSubjects(prev => ({
+                                                        ...prev,
+                                                        [sub.name]: {
+                                                          ...subData,
+                                                          correct: e.target.value,
+                                                          total: subData.total || sub.weight
+                                                        }
+                                                      }));
+                                                    }}
+                                                    placeholder="0"
+                                                    className={`w-11 p-1 rounded text-center text-xs font-mono font-bold outline-none ${
+                                                      isDark ? 'bg-[#1e232b] border border-white/10 text-slate-100' : 'bg-white border border-slate-200 text-slate-900'
+                                                    }`}
+                                                  />
+                                                </div>
+
+                                                <div className="flex items-center gap-1">
+                                                  <span className="text-[9px] text-rose-500 font-extrabold uppercase font-mono">I:</span>
+                                                  <input
+                                                    type="number"
+                                                    value={subData.incorrect}
+                                                    onChange={(e) => {
+                                                      setEditGtSubjects(prev => ({
+                                                        ...prev,
+                                                        [sub.name]: {
+                                                          ...subData,
+                                                          incorrect: e.target.value,
+                                                          total: subData.total || sub.weight
+                                                        }
+                                                      }));
+                                                    }}
+                                                    placeholder="0"
+                                                    className={`w-11 p-1 rounded text-center text-xs font-mono font-bold outline-none ${
+                                                      isDark ? 'bg-[#1e232b] border border-white/10 text-slate-100' : 'bg-white border border-slate-200 text-slate-900'
+                                                    }`}
+                                                  />
+                                                </div>
+
+                                                <div className="flex items-center gap-1">
+                                                  <span className={`text-[9px] font-extrabold uppercase font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>T:</span>
+                                                  <input
+                                                    type="number"
+                                                    value={subData.total}
+                                                    onChange={(e) => {
+                                                      setEditGtSubjects(prev => ({
+                                                        ...prev,
+                                                        [sub.name]: {
+                                                          ...subData,
+                                                          total: e.target.value
+                                                        }
+                                                      }));
+                                                    }}
+                                                    placeholder={sub.weight}
+                                                    className={`w-11 p-1 rounded text-center text-xs font-mono outline-none ${
+                                                      isDark ? 'bg-[#1e232b] border border-white/10 text-slate-100' : 'bg-white border border-slate-200 text-slate-900'
+                                                    }`}
+                                                  />
+                                                </div>
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                </div>
+                              </div>
+
+                              {/* Modal Footer */}
+                              <div className={`p-6 border-t flex justify-end gap-4 ${isDark ? 'border-white/10 bg-[#1c2128]' : 'bg-[#e6ecf5] border-slate-300/60'}`}>
+                                <button
+                                  onClick={() => setIsEditGtModalOpen(false)}
+                                  className={`px-8 py-3 text-xs font-bold rounded-2xl transition ${
+                                    isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
+                                  }`}
+                                >
+                                  Cancel
+                                </button>
+
+                                <button
+                                  onClick={handleSaveEditedGt}
+                                  disabled={isSaving}
+                                  className="px-10 py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-xs font-black rounded-2xl hover:shadow-lg shadow-orange-500/20 flex items-center gap-2 active:scale-95 transition-all disabled:opacity-50"
+                                >
+                                  {isSaving ? (
+                                    <>
+                                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                      Updating Scorecard...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Save className="w-3.5 h-3.5" />
+                                      Save Scorecard Changes
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+
+                            </div>
+                          </div>
+                        )}
+
+                      </motion.div>
+  );
+
+const renderTimerHub = (isMobile = false) => {
     const activeType = timerState.timerType || 'pomodoro';
     const isRunning = timerState.status === 'running';
     const isPaused = timerState.status === 'paused';
@@ -22095,6 +23822,7 @@ Return your response strictly as a JSON object matching this schema:
 
 
 
+                  {currentTab === 'study' && renderStudyRoomDashboard()}
                   {currentTab === 'trash' && (
                     <div className="space-y-4 pb-32">
                       <div className="mb-6 text-center">
@@ -27279,1732 +29007,7 @@ Return your response strictly as a JSON object matching this schema:
 
                     {/* STUDY VIEW */}
                     {/* STUDY VIEW & LOGGER DASHBOARD */}
-                    {currentTab === 'study' && (
-                      <motion.div
-                        key="study-unified-tab"
-                        initial={{ opacity: 0, y: 16, scale: 0.98 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: -12, scale: 0.98 }}
-                        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                        className={`flex-grow p-4 lg:p-6 flex flex-col gap-6 max-w-[1200px] mx-auto w-full overflow-y-auto pb-24 lg:pb-6 transition-colors duration-300 ${
-                          isDark ? 'text-slate-100' : 'text-slate-800'
-                        }`}
-                      >
-
-                        {/* Header section with high-contrast glassmorphic detailing */}
-                        <div className={`flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-3xl backdrop-blur-md transition-colors duration-300 ${
-                          isDark ? 'neu-card-dark border border-white/5 bg-[#222730]/90' : 'neu-card-light border border-white/80 bg-white/70 shadow-md'
-                        }`}>
-                          <div className="flex items-center gap-3.5">
-                            <div className="bg-gradient-to-r from-orange-500 to-amber-500 text-white p-3 rounded-2xl shadow-lg shadow-orange-500/20 animate-pulse">
-                              <Flame className="w-6 h-6 fill-current" />
-                            </div>
-                            <div>
-                              <h2 className={`text-xl font-black tracking-tight leading-none ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>Study Room & Streak Tracker</h2>
-                              <p className={`text-[10px] font-bold uppercase tracking-widest mt-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                Log mock tests, hours, cards, and solve targets to maintain consecutive streaks
-                              </p>
-                            </div>
-                          </div>
-
-                          <button
-                            onClick={() => {
-                              const tzoffset = (new Date()).getTimezoneOffset() * 60000;
-                              const localToday = (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10);
-                              const log = studyLogs[localToday] || { questions: '', cards: '', pages: '', hours: '', gts: [] };
-
-                              setLoggerDate(localToday);
-                              setLoggerQuestions(log.questions || '');
-                              setLoggerCards(log.cards || '');
-                              setLoggerPages(log.pages || '');
-                              setLoggerHours(log.hours || '');
-                              const hoursVal = Number(log.hours) || 0;
-                              const hPart = Math.floor(hoursVal);
-                              const mPart = Math.round((hoursVal - hPart) * 60);
-                              setLoggerHoursPart(hPart > 0 ? String(hPart) : '');
-                              setLoggerMinutesPart(mPart > 0 ? String(mPart) : '');
-                              setLoggerGtsList(log.gts || []);
-                              setIsAddingGt(false);
-                              setIsStudyLoggerModalOpen(true);
-                            }}
-                            className="w-full sm:w-auto px-5 sm:px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-xs font-black uppercase tracking-wider rounded-2xl shadow-xl shadow-orange-500/10 flex items-center justify-center gap-2 active:scale-95 transition-all duration-150 shrink-0"
-                          >
-                            <Plus className="w-4 h-4 stroke-[3]" />
-                            Log Daily Progress
-                          </button>
-                        </div>
-
-                        {/* Dual Tab Selector */}
-                        <div className={`relative flex items-center p-1 rounded-2xl max-w-full sm:max-w-[280px] w-full self-start select-none transition-colors duration-300 ${
-                          isDark ? 'neu-pressed-dark border border-white/5 bg-[#181c22]' : 'neu-pressed-light border border-white/70 bg-slate-200/60 shadow-inner'
-                        }`}>
-                          {/* Single Sliding Pill Indicator */}
-                          <div
-                            className="absolute top-1 bottom-1 w-[calc(50%-0.25rem)] rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 shadow-md shadow-orange-500/20"
-                            style={{
-                              left: studyActiveTab === 'record' ? '0.25rem' : 'calc(50% + 0.125rem)',
-                              transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
-                            }}
-                          />
-
-                          <button
-                            type="button"
-                            onClick={() => setStudyActiveTab('record')}
-                            className={`relative flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 z-10 transition-colors duration-300 ${
-                              studyActiveTab === 'record'
-                                ? 'text-white font-black'
-                                : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
-                            }`}
-                          >
-                            <Activity className="w-3.5 h-3.5" />
-                            Record
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setStudyActiveTab('manual')}
-                            className={`relative flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 z-10 transition-colors duration-300 ${
-                              studyActiveTab === 'manual'
-                                ? 'text-white font-black'
-                                : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
-                            }`}
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                            Manual Log
-                          </button>
-                        </div>
-
-                        {/* Main Responsive Grid Layout */}
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full items-start text-left">
-
-                          {/* Left Column */}
-                          <div className="lg:col-span-5 flex flex-col gap-6 w-full">
-                            {studyActiveTab === 'record' ? (
-                              <>
-                                {/* Streaks Counters summary cards */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                                  <div className={`p-5 rounded-3xl flex flex-col justify-between transition-colors duration-300 ${
-                                    isDark
-                                      ? 'neu-card-dark bg-gradient-to-br from-[#27201c] to-[#222730] border border-orange-500/20 shadow-xl'
-                                      : 'neu-card-light bg-gradient-to-br from-orange-50 to-amber-50/40 border border-orange-200/60 shadow-md'
-                                  }`}>
-                                    <div>
-                                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center mb-3 ${
-                                        isDark ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-orange-100 text-orange-600'
-                                      }`}>
-                                        <Flame className="w-4 h-4 fill-current" />
-                                      </div>
-                                      <span className="text-[9px] font-black text-orange-500 uppercase tracking-widest">Current Streak</span>
-                                      <h4 className={`text-xl font-black mt-1 leading-none ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
-                                        {streakStats.currentStreak} {streakStats.currentStreak === 1 ? 'day' : 'days'}
-                                      </h4>
-                                    </div>
-                                    <p className={`text-[8px] font-bold mt-3 ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>Keep logging to stay hot!</p>
-                                  </div>
-
-                                  <div className={`p-5 rounded-3xl flex flex-col justify-between transition-colors duration-300 ${
-                                    isDark
-                                      ? 'neu-card-dark bg-gradient-to-br from-[#27241c] to-[#222730] border border-amber-500/20 shadow-xl'
-                                      : 'neu-card-light bg-gradient-to-br from-amber-50 to-yellow-50/40 border border-amber-200/60 shadow-md'
-                                  }`}>
-                                    <div>
-                                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center mb-3 ${
-                                        isDark ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-amber-100 text-amber-600'
-                                      }`}>
-                                        <Trophy className="w-4 h-4" />
-                                      </div>
-                                      <span className="text-[9px] font-black text-amber-500 uppercase tracking-widest">Longest Streak</span>
-                                      <h4 className={`text-xl font-black mt-1 leading-none ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
-                                        {streakStats.longestStreak} {streakStats.longestStreak === 1 ? 'day' : 'days'}
-                                      </h4>
-                                    </div>
-                                    <p className={`text-[8px] font-bold mt-3 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>Your absolute personal best</p>
-                                  </div>
-                                </div>
-
-                                {/* Desk Timer & Focus Hub */}
-                                {renderTimerHub(false)}
-                              </>
-                            ) : (
-                              <>
-                                {/* Direct Manually Edit Quick Logs Panel (Desktop Specific UX) */}
-                                {(() => {
-                                  const todayStr = (() => {
-                                    const tzoffset = (new Date()).getTimezoneOffset() * 60000;
-                                    return (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10);
-                                  })();
-                                  const todayLog = studyLogs[todayStr] || { questions: 0, cards: 0, hours: 0, pages: 0, gts: [] };
-
-                                  return (
-                                    <QuickLogger
-                                      todayLog={todayLog}
-                                      todayStr={todayStr}
-                                      setStudyLogs={setStudyLogs}
-                                      isDark={isDark}
-                                    />
-                                  );
-                                })()}
-
-                                {/* Grand Tests Timeline / Mock Results */}
-                                <div className={`p-6 rounded-3xl shadow-sm flex flex-col transition-colors duration-300 w-full ${
-                                  isDark ? 'neu-card-dark border border-white/5' : 'neu-card-light border border-white/70 shadow-md'
-                                }`}>
-                                  <div className={`flex items-center justify-between mb-4 pb-3 border-b ${isDark ? 'border-white/5' : 'border-slate-100'}`}>
-                                    <span className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                      <Award className="w-4 h-4 text-orange-500 animate-bounce" />
-                                      Grand Tests History
-                                    </span>
-                                    {(() => {
-                                      const gtsList = [];
-                                      Object.keys(studyLogs).forEach(d => {
-                                        const log = studyLogs[d];
-                                        if (log && Array.isArray(log.gts)) {
-                                          log.gts.forEach(gt => gtsList.push(gt));
-                                        }
-                                      });
-                                      return (
-                                        <span className="text-[9px] text-gray-400 font-black uppercase">
-                                          {gtsList.length} Attended
-                                        </span>
-                                      );
-                                    })()}
-                                  </div>
-
-                                  {(() => {
-                                    const list = [];
-                                    Object.keys(studyLogs).forEach(dateStr => {
-                                      const log = studyLogs[dateStr];
-                                      if (log && Array.isArray(log.gts)) {
-                                        log.gts.forEach((gt, idx) => {
-                                          list.push({
-                                            ...gt,
-                                            date: dateStr,
-                                            index: idx,
-                                            uniqueId: `${dateStr}_${idx}`
-                                          });
-                                        });
-                                      }
-                                    });
-                                    const sortedGts = list.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-                                    if (sortedGts.length === 0) {
-                                      return (
-                                        <div className="text-center py-6">
-                                          <Award className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-                                          <span className="text-xs font-bold text-gray-400">No Grand Tests logged yet</span>
-                                          <p className="text-[9px] text-gray-400 max-w-[200px] mx-auto mt-1">
-                                            Log a daily report and add your mock test scores to track percentiles!
-                                          </p>
-                                        </div>
-                                      );
-                                    }
-
-                                    return (
-                                      <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
-                                        {sortedGts.map((gt) => {
-                                          const dateFmt = formatAppDate(gt.date);
-                                          return (
-                                            <div
-                                              key={gt.uniqueId}
-                                              onClick={() => {
-                                                setCurrentTab('analytics');
-                                                setAnalyticsSubTab('study');
-                                                if (gt.type === 'NEETPG') {
-                                                  setGtFilter('NEETPG');
-                                                } else if (gt.type === 'INICET') {
-                                                  setGtFilter('INICET');
-                                                } else {
-                                                  setGtFilter('All');
-                                                }
-                                                setSelectedGtForAnalysisId(gt.uniqueId);
-                                              }}
-                                              className={`p-3 rounded-2xl flex flex-col gap-1 cursor-pointer transition select-none group ${
-                                                isDark ? 'neu-pressed-dark border border-white/5 hover:border-orange-500/30 hover:bg-orange-500/5' : 'neu-pressed-light border border-white/70 hover:border-orange-300 hover:bg-orange-50/10'
-                                              }`}
-                                            >
-                                              <div className="flex items-start justify-between">
-                                                <div className="text-left">
-                                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                                    {gt.platform && (
-                                                      <span className={`text-[7.5px] font-black uppercase px-1 py-0.5 rounded font-mono tracking-wider shrink-0 ${
-                                                        isDark ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-orange-100 text-orange-600'
-                                                      }`}>
-                                                        {gt.platform}
-                                                      </span>
-                                                    )}
-                                                    <h5 className={`text-xs font-black leading-tight ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{gt.name}</h5>
-                                                  </div>
-                                                  <span className={`text-[8px] font-mono font-bold block mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{dateFmt}</span>
-                                                </div>
-                                                <div className="text-right flex items-center gap-2 shrink-0">
-                                                  <div>
-                                                    <span className="text-xs font-black text-orange-500">{gt.score || 'Logged'}</span>
-                                                    {gt.percentage && (
-                                                      <span className={`block text-[8px] font-bold font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>({gt.percentage})</span>
-                                                    )}
-                                                  </div>
-                                                  <button
-                                                    type="button"
-                                                    onClick={(e) => {
-                                                      e.stopPropagation();
-                                                      handleOpenEditGtModal(gt.date, gt.index, gt);
-                                                    }}
-                                                    className={`p-1.5 rounded-xl transition duration-150 shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 ${
-                                                      isDark ? 'text-slate-400 hover:text-orange-400 hover:bg-orange-500/20' : 'text-slate-500 hover:text-orange-600 hover:bg-orange-50'
-                                                    }`}
-                                                    title="Edit Mock Test Score"
-                                                  >
-                                                    <Edit3 className="w-3.5 h-3.5" />
-                                                  </button>
-                                                </div>
-                                              </div>
-                                              {gt.notes && (
-                                                <p className={`text-[9px] p-1.5 rounded-lg border mt-1 italic leading-relaxed ${
-                                                  isDark ? 'bg-[#161a20] border-white/5 text-slate-300' : 'bg-white/60 border-slate-200/60 text-slate-600'
-                                                }`}>
-                                                  "{gt.notes}"
-                                                </p>
-                                              )}
-                                            </div>
-                                          );
-                                        })}
-                                      </div>
-                                    );
-                                  })()}
-                                </div>
-                              </>
-                            )}
-                          </div>
-
-                          {/* Right Column */}
-                          <div className="lg:col-span-7 flex flex-col gap-6 w-full">
-                            {studyActiveTab === 'record' ? (
-                              <>
-                                {/* Today's Goal Ring Gauge */}
-                                <div className={`p-6 rounded-3xl flex flex-col items-center text-center relative overflow-hidden transition-colors duration-300 ${
-                                  isDark ? 'neu-card-dark border border-white/5 shadow-xl' : 'neu-card-light border border-white/70 shadow-md'
-                                }`}>
-                                  <span className={`text-[10px] font-black uppercase tracking-widest mb-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Today's Progress Gauge</span>
-
-                                  {/* Circle SVG progress indicator */}
-                                  {(() => {
-                                    const todayStr = (() => {
-                                      const tzoffset = (new Date()).getTimezoneOffset() * 60000;
-                                      return (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10);
-                                    })();
-                                    const todayLog = studyLogs[todayStr] || { questions: 0, cards: 0, hours: 0, gts: [] };
-
-                                    const archetypeGoals = {
-                                      Rookie: { hours: 2, questions: 20, cards: 30 },
-                                      Consistent: { hours: 4, questions: 50, cards: 80 },
-                                      Topper: { hours: 6, questions: 100, cards: 150 },
-                                      Legend: { hours: 8, questions: 150, cards: 250 }
-                                    };
-                                    const activeGoal = archetypeGoals[selectedStreakTag] || archetypeGoals.Topper;
-
-                                    const hoursProgress = Math.min(1, (Number(todayLog.hours) || 0) / activeGoal.hours);
-                                    const questionsProgress = Math.min(1, (Number(todayLog.questions) || 0) / activeGoal.questions);
-                                    const cardsProgress = Math.min(1, (Number(todayLog.cards) || 0) / activeGoal.cards);
-                                    const totalProgressPercent = Math.round(((hoursProgress + questionsProgress + cardsProgress) / 3) * 100);
-
-                                    return (
-                                      <>
-                                        <div className="relative w-36 h-36 flex items-center justify-center">
-                                          <svg className="w-full h-full transform -rotate-90">
-                                            <circle cx="72" cy="72" r="58" stroke={isDark ? "#1a1f26" : "#f1f5f9"} strokeWidth="8" fill="transparent" />
-                                            <circle cx="72" cy="72" r="58" stroke="url(#orangeGradient)" strokeWidth="10" fill="transparent"
-                                              strokeDasharray={2 * Math.PI * 58}
-                                              strokeDashoffset={2 * Math.PI * 58 * (1 - Math.min(100, Math.max(0, totalProgressPercent)) / 100)}
-                                              strokeLinecap="round"
-                                              className="transition-all duration-1000"
-                                            />
-                                            <defs>
-                                              <linearGradient id="orangeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                                                <stop offset="0%" stopColor="#f97316" />
-                                                <stop offset="100%" stopColor="#f59e0b" />
-                                              </linearGradient>
-                                            </defs>
-                                          </svg>
-
-                                          {/* Inner glowing center representing milestone achievements */}
-                                          <div className={`absolute w-24 h-24 !rounded-full flex flex-col items-center justify-center transition-all duration-300 ${
-                                            totalProgressPercent >= 100
-                                              ? isDark ? 'bg-orange-500/20 text-orange-400 scale-105 shadow-inner border border-orange-500/30 !rounded-full' : 'bg-orange-50 text-orange-500 scale-105 shadow-inner !rounded-full'
-                                              : isDark ? 'neu-pressed-dark text-slate-300 !rounded-full' : 'neu-pressed-light text-slate-700 !rounded-full'
-                                          }`}>
-                                            <Flame className={`w-8 h-8 ${totalProgressPercent >= 100 ? 'animate-bounce fill-current' : ''}`} />
-                                            <span className={`text-xl font-black mt-1 ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{totalProgressPercent}%</span>
-                                          </div>
-                                        </div>
-
-                                        {/* Target Selector Dropdown */}
-                                        <div className={`mt-6 w-full p-4 rounded-2xl flex items-center justify-between transition ${
-                                          isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'
-                                        }`}>
-                                          <div className="text-left">
-                                            <span className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Target Level</span>
-                                            <div className="flex items-center gap-1.5 mt-0.5">
-                                              <span className={`text-xs font-black ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{selectedStreakTag}</span>
-                                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded animate-pulse ${
-                                                isDark ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-orange-50 text-orange-500'
-                                              }`}>Goal</span>
-                                            </div>
-                                          </div>
-
-                                          <select
-                                            value={selectedStreakTag}
-                                            onChange={(e) => setSelectedStreakTag(e.target.value)}
-                                            className={`text-xs font-bold px-3 py-1.5 rounded-xl outline-none cursor-pointer transition ${
-                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-800'
-                                            }`}
-                                          >
-                                            <option value="Rookie">Rookie (2h/20q/30c)</option>
-                                            <option value="Consistent">Consistent (4h/50q/80c)</option>
-                                            <option value="Topper">Topper (6h/100q/150c)</option>
-                                            <option value="Legend">Legend (8h/150q/250c)</option>
-                                          </select>
-                                        </div>
-
-                                        <p className={`text-[10px] font-bold mt-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                          {totalProgressPercent >= 100 ? "🎉 Congratulations! Daily quota unlocked." : "Study, solve, and log daily stats to fill the gauge!"}
-                                        </p>
-                                      </>
-                                    );
-                                  })()}
-                                </div>
-
-                                {/* Desktop Study Sprints Timeline Card */}
-                                {(() => {
-                                  const todayStr = (() => {
-                                    const tzoffset = (new Date()).getTimezoneOffset() * 60000;
-                                    return (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10);
-                                  })();
-                                  const todayLog = studyLogs[todayStr] || { questions: 0, cards: 0, hours: 0, gts: [], sessions: [] };
-                                  const sessions = todayLog.sessions || [];
-
-                                  return (
-                                    <div className={`p-6 rounded-3xl shadow-sm flex flex-col transition-colors duration-300 w-full text-left ${
-                                      isDark ? 'neu-card-dark border border-white/5' : 'neu-card-light border border-white/70 shadow-md'
-                                    }`}>
-                                      <div className={`flex items-center justify-between pb-3 border-b mb-4 ${isDark ? 'border-white/5' : 'border-slate-100'}`}>
-                                        <span className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                          <Clock className="w-4 h-4 text-orange-500 animate-pulse" />
-                                          Study Sprints Timeline (Today)
-                                        </span>
-                                        <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase font-mono tracking-wider ${
-                                          isDark ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20' : 'bg-orange-50 text-orange-600 border border-orange-200'
-                                        }`}>
-                                          Real-time Timeline
-                                        </span>
-                                      </div>
-
-                                      {sessions.length === 0 ? (
-                                        <div className="py-8 text-center space-y-1">
-                                          <Clock className={`w-8 h-8 mx-auto mb-2 ${isDark ? 'text-slate-600' : 'text-slate-300'}`} />
-                                          <span className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>No active study sprints logged today</span>
-                                          <p className={`text-[9px] max-w-[220px] mx-auto mt-1 leading-relaxed ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                                            Log study sprints on mobile or companion to track detailed focus blocks in real-time here!
-                                          </p>
-                                        </div>
-                                      ) : (
-                                        <div className="space-y-3.5 max-h-[260px] overflow-y-auto pr-1">
-                                          {sessions.map((sess, idx) => (
-                                            <div key={sess.id || idx} className={`p-4 rounded-2xl flex flex-col gap-2.5 group transition ${
-                                              isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'
-                                            }`}>
-                                              <div className="flex items-center justify-between text-xs">
-                                                <div className="flex items-center gap-2">
-                                                  <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
-                                                  <span className={`font-mono font-black text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{sess.timestamp}</span>
-                                                </div>
-                                                <div className="flex items-center gap-3.5 font-mono font-extrabold text-[10px]">
-                                                  {sess.hours > 0 && <span className="text-orange-500">+{sess.hours}h</span>}
-                                                  {sess.questions > 0 && <span className="text-emerald-500">+{sess.questions} Qs</span>}
-                                                  {sess.cards > 0 && <span className="text-blue-500">+{sess.cards} Cds</span>}
-                                                  {sess.pages > 0 && <span className="text-indigo-500">+{sess.pages} Pgs</span>}
-                                                </div>
-                                              </div>
-
-                                              {/* Inline Edit Form when editing this session on desktop */}
-                                              {editingSessionId === sess.id ? (
-                                                <div className={`p-3 rounded-xl border space-y-3 mt-1 text-left ${isDark ? 'neu-card-dark border-white/10' : 'bg-white border-slate-200'}`}>
-                                                  <div className="grid grid-cols-4 gap-2.5 text-[10px]">
-                                                    <div>
-                                                      <label className={`text-[8px] font-bold block mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Hours</label>
-                                                      <input
-                                                        type="number"
-                                                        step="0.1"
-                                                        value={editingSessionHours}
-                                                        onChange={(e) => setEditingSessionHours(e.target.value)}
-                                                        className={`w-full p-2 rounded-lg text-xs font-mono font-bold outline-none ${
-                                                          isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
-                                                        }`}
-                                                      />
-                                                    </div>
-                                                    <div>
-                                                      <label className={`text-[8px] font-bold block mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Questions</label>
-                                                      <input
-                                                        type="number"
-                                                        value={editingSessionQuestions}
-                                                        onChange={(e) => setEditingSessionQuestions(e.target.value)}
-                                                        className={`w-full p-2 rounded-lg text-xs font-mono font-bold outline-none ${
-                                                          isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
-                                                        }`}
-                                                      />
-                                                    </div>
-                                                    <div>
-                                                      <label className={`text-[8px] font-bold block mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Cards</label>
-                                                      <input
-                                                        type="number"
-                                                        value={editingSessionCards}
-                                                        onChange={(e) => setEditingSessionCards(e.target.value)}
-                                                        className={`w-full p-2 rounded-lg text-xs font-mono font-bold outline-none ${
-                                                          isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
-                                                        }`}
-                                                      />
-                                                    </div>
-                                                    <div>
-                                                      <label className={`text-[8px] font-bold block mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Pages</label>
-                                                      <input
-                                                        type="number"
-                                                        value={editingSessionPages}
-                                                        onChange={(e) => setEditingSessionPages(e.target.value)}
-                                                        className={`w-full p-2 rounded-lg text-xs font-mono font-bold outline-none ${
-                                                          isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
-                                                        }`}
-                                                      />
-                                                    </div>
-                                                  </div>
-                                                  <div className="flex justify-end gap-2 text-[9px] pt-1">
-                                                    <button
-                                                      onClick={() => setEditingSessionId(null)}
-                                                      className={`px-3 py-1.5 rounded-lg font-extrabold uppercase transition active:scale-95 ${
-                                                        isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
-                                                      }`}
-                                                    >
-                                                      Cancel
-                                                    </button>
-                                                    <button
-                                                      onClick={handleUpdateMobileSession}
-                                                      className="px-3 py-1.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-lg font-extrabold uppercase hover:shadow active:scale-95 transition"
-                                                    >
-                                                      Save
-                                                    </button>
-                                                  </div>
-                                                </div>
-                                              ) : (
-                                                <div className={`flex justify-end gap-3.5 pt-2 border-t opacity-0 group-hover:opacity-100 transition focus-within:opacity-100 ${
-                                                  isDark ? 'border-white/5' : 'border-slate-200/40'
-                                                }`}>
-                                                  <button
-                                                    onClick={() => {
-                                                      setEditingSessionId(sess.id);
-                                                      setEditingSessionTargetDate(todayStr);
-                                                      setEditingSessionHours(String(sess.hours || 0));
-                                                      setEditingSessionQuestions(String(sess.questions || 0));
-                                                      setEditingSessionCards(String(sess.cards || 0));
-                                                      setEditingSessionPages(String(sess.pages || 0));
-                                                    }}
-                                                    className="text-[9px] font-black uppercase text-blue-500 hover:text-blue-600 flex items-center gap-1 active:scale-95 transition"
-                                                  >
-                                                    <Edit3 className="w-3.5 h-3.5" /> Edit
-                                                  </button>
-                                                  <button
-                                                    onClick={() => handleDeleteMobileSession(sess.id, todayStr)}
-                                                    className="text-[9px] font-black uppercase text-red-500 hover:text-red-600 flex items-center gap-1 active:scale-95 transition"
-                                                  >
-                                                    <Trash2 className="w-3.5 h-3.5" /> Delete
-                                                  </button>
-                                                </div>
-                                              )}
-                                            </div>
-                                          ))}
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })()}
-                              </>
-                            ) : (
-                              <>
-                                {/* Streak Tracker Calendar Card */}
-                                <div className={`p-6 rounded-3xl shadow-sm flex flex-col transition-colors duration-300 w-full ${
-                                  isDark ? 'neu-card-dark border border-white/5' : 'neu-card-light border border-white/70 shadow-md'
-                                }`}>
-
-                                  {/* Calendar Month Selector Header */}
-                                  <div className="flex items-center justify-between mb-6">
-                                    <div className="text-left">
-                                      <span className="text-[9px] font-black uppercase text-orange-500 tracking-widest block">Your Streak Tracker</span>
-                                      <h3 className={`text-base font-black leading-none mt-1 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                                        {monthNames[calendarMonth]} {calendarYear}
-                                      </h3>
-                                    </div>
-
-                                    <div className="flex items-center gap-2">
-                                      <button
-                                        onClick={() => {
-                                          if (calendarMonth === 0) {
-                                            setCalendarMonth(11);
-                                            setCalendarYear(prev => prev - 1);
-                                          } else {
-                                            setCalendarMonth(prev => prev - 1);
-                                          }
-                                        }}
-                                        className={`p-2 rounded-xl active:scale-95 transition ${
-                                          isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
-                                        }`}
-                                      >
-                                        <ChevronLeft className="w-4 h-4" />
-                                      </button>
-
-                                      <button
-                                        onClick={() => {
-                                          if (calendarMonth === 11) {
-                                            setCalendarMonth(0);
-                                            setCalendarYear(prev => prev + 1);
-                                          } else {
-                                            setCalendarMonth(prev => prev + 1);
-                                          }
-                                        }}
-                                        className={`p-2 rounded-xl active:scale-95 transition ${
-                                          isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
-                                        }`}
-                                      >
-                                        <ChevronRight className="w-4 h-4" />
-                                      </button>
-                                    </div>
-                                  </div>
-
-                                  {/* Calendar grid wrapper */}
-                                  <div className="w-full">
-                                    {/* Week headers */}
-                                    <div className="grid grid-cols-7 gap-2 mb-2 text-center">
-                                      {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, idx) => (
-                                        <span key={idx} className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                          {day}
-                                        </span>
-                                      ))}
-                                    </div>
-
-                                    {/* Days cells */}
-                                    <div className="grid grid-cols-7 gap-2 text-center">
-                                      {daysList.map((dayNum, idx) => {
-                                        if (dayNum === null) {
-                                          return <div key={`empty-${idx}`} />;
-                                        }
-
-                                        const mmStr = String(calendarMonth + 1).padStart(2, '0');
-                                        const ddStr = String(dayNum).padStart(2, '0');
-                                        const cellDateStr = `${calendarYear}-${mmStr}-${ddStr}`;
-                                        const isDayActive = streakStats.activeDates.includes(cellDateStr);
-
-                                        // Current date highlight
-                                        const isTodayCell = (() => {
-                                          const tzoffset = (new Date()).getTimezoneOffset() * 60000;
-                                          return (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10) === cellDateStr;
-                                        })();
-
-                                        const cellLog = studyLogs[cellDateStr] || { questions: 0, cards: 0, pages: 0, hours: 0, gts: [] };
-
-                                        return (
-                                          <button
-                                            key={`day-${dayNum}`}
-                                            onClick={() => {
-                                              setLoggerDate(cellDateStr);
-                                              setLoggerQuestions(cellLog.questions || '');
-                                              setLoggerCards(cellLog.cards || '');
-                                              setLoggerPages(cellLog.pages || '');
-                                              setLoggerHours(cellLog.hours || '');
-                                              const hoursVal = Number(cellLog.hours) || 0;
-                                              const hPart = Math.floor(hoursVal);
-                                              const mPart = Math.round((hoursVal - hPart) * 60);
-                                              setLoggerHoursPart(hPart > 0 ? String(hPart) : '');
-                                              setLoggerMinutesPart(mPart > 0 ? String(mPart) : '');
-                                              setLoggerGtsList(cellLog.gts || []);
-                                              setIsAddingGt(false);
-                                              setIsStudyLoggerModalOpen(true);
-                                            }}
-                                            className={`
-                                    aspect-square w-full rounded-2xl flex flex-col items-center justify-center relative active:scale-90 transition duration-150 outline-none
-                                    ${isDayActive
-                                                ? 'border-2 border-emerald-500 text-emerald-500 bg-emerald-500/10 shadow-sm font-black'
-                                                : isDark ? 'neu-pressed-dark border border-white/5 text-slate-300 hover:bg-white/5' : 'neu-pressed-light border border-slate-200/80 text-slate-600 hover:bg-slate-50'
-                                              }
-                                    ${isTodayCell ? 'ring-2 ring-orange-500 ring-offset-2 ring-offset-transparent' : ''}
-                                  `}
-                                            title={cellDateStr}
-                                          >
-                                            <span className="text-xs font-bold leading-none">{dayNum}</span>
-                                            {isDayActive && (
-                                              <span className="absolute bottom-1.5 w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                                            )}
-
-                                            {/* Hover indicators of studied metrics */}
-                                            {(cellLog.hours > 0 || cellLog.questions > 0) && (
-                                              <div className="absolute top-1 right-1 flex gap-0.5">
-                                                {cellLog.hours > 0 && <span className="w-1 h-1 bg-amber-500 rounded-full" />}
-                                                {cellLog.questions > 0 && <span className="w-1 h-1 bg-blue-500 rounded-full" />}
-                                              </div>
-                                            )}
-                                          </button>
-                                        );
-                                      })}
-                                    </div>
-                                  </div>
-
-                                  <div className={`flex flex-wrap gap-4 mt-6 justify-center text-[10px] font-bold border-t pt-4 ${isDark ? 'border-white/5 text-slate-400' : 'border-slate-100 text-slate-500'}`}>
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="w-2.5 h-2.5 rounded-full border-2 border-emerald-500 bg-emerald-500/20" />
-                                      <span>Active Study Day</span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="w-2.5 h-2.5 rounded-full ring-2 ring-orange-500" />
-                                      <span>Today</span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="w-1 h-1 bg-amber-500 rounded-full" />
-                                      <span>Hours Logged</span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="w-1 h-1 bg-blue-500 rounded-full" />
-                                      <span>Questions Logged</span>
-                                    </div>
-                                  </div>
-                                </div>
-                              </>
-                            )}
-                          </div>
-
-                        </div>
-
-                        {/* STUDY LOGGER DETAILED MODAL DIALOG (MANUAL METRIC ENTRY FOR DATES & GTS) */}
-                        {isStudyLoggerModalOpen && (
-                          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
-                            <div className={`rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col animate-in zoom-in duration-300 transition-colors ${
-                              isDark ? 'neu-card-dark border border-white/10 bg-[#222730] text-slate-100' : 'neu-card-light border border-white/80 bg-[#e6ecf5] text-slate-900 shadow-2xl'
-                            }`}>
-
-                              {/* Modal Header */}
-                              <div className={`p-6 border-b flex justify-between items-center ${isDark ? 'border-white/10 bg-[#1c2128]' : 'bg-[#e6ecf5] border-slate-300/60'}`}>
-                                <div className="text-left">
-                                  <h3 className={`font-black uppercase tracking-widest text-xs ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>Manual Study Report</h3>
-                                  <span className={`text-[9px] font-bold font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{formatAppDate(loggerDate)}</span>
-                                </div>
-
-                                <button
-                                  onClick={() => setIsStudyLoggerModalOpen(false)}
-                                  className={`p-1.5 rounded-xl transition ${isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-white/10' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
-                                >
-                                  <X className="w-5 h-5" />
-                                </button>
-                              </div>
-
-                              {/* Modal Body */}
-                              <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto text-left">
-
-                                {/* Date Select Input */}
-                                <div>
-                                  <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Report Date</label>
-                                  <input
-                                    type="date"
-                                    value={loggerDate}
-                                    onChange={(e) => {
-                                      setLoggerDate(e.target.value);
-                                      const log = studyLogs[e.target.value] || { questions: '', cards: '', pages: '', hours: '', gts: [] };
-                                      setLoggerQuestions(log.questions || '');
-                                      setLoggerCards(log.cards || '');
-                                      setLoggerPages(log.pages || '');
-                                      setLoggerHours(log.hours || '');
-                                      const hoursVal = Number(log.hours) || 0;
-                                      const hPart = Math.floor(hoursVal);
-                                      const mPart = Math.round((hoursVal - hPart) * 60);
-                                      setLoggerHoursPart(hPart > 0 ? String(hPart) : '');
-                                      setLoggerMinutesPart(mPart > 0 ? String(mPart) : '');
-                                      setLoggerGtsList(log.gts || []);
-                                      setIsAddingGt(false);
-                                    }}
-                                    className={`w-full p-3 rounded-xl outline-none text-xs font-semibold ${
-                                      isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
-                                    }`}
-                                  />
-                                </div>
-
-                                {/* Main Metric Inputs */}
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                  <div>
-                                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Questions Solved</label>
-                                    <input
-                                      type="number"
-                                      value={loggerQuestions}
-                                      onChange={(e) => setLoggerQuestions(e.target.value)}
-                                      placeholder="e.g. 50"
-                                      className={`w-full p-3 rounded-xl outline-none text-xs font-mono ${
-                                        isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-200 text-slate-900 placeholder-slate-400'
-                                      }`}
-                                    />
-                                  </div>
-
-                                  <div>
-                                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Cards Studied</label>
-                                    <input
-                                      type="number"
-                                      value={loggerCards}
-                                      onChange={(e) => setLoggerCards(e.target.value)}
-                                      placeholder="e.g. 80"
-                                      className={`w-full p-3 rounded-xl outline-none text-xs font-mono ${
-                                        isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-200 text-slate-900 placeholder-slate-400'
-                                      }`}
-                                    />
-                                  </div>
-
-                                  <div>
-                                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Pages Read</label>
-                                    <input
-                                      type="number"
-                                      value={loggerPages}
-                                      onChange={(e) => setLoggerPages(e.target.value)}
-                                      placeholder="e.g. 15"
-                                      className={`w-full p-3 rounded-xl outline-none text-xs font-mono ${
-                                        isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-200 text-slate-900 placeholder-slate-400'
-                                      }`}
-                                    />
-                                  </div>
-
-                                  <div>
-                                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Focused Time</label>
-                                    <div className="flex items-center gap-2">
-                                      <div className={`flex-1 flex items-center rounded-xl px-3 py-2.5 ${
-                                        isDark ? 'neu-pressed-dark border border-white/10' : 'neu-pressed-light border border-slate-200'
-                                      }`}>
-                                        <input
-                                          type="number"
-                                          value={loggerHoursPart}
-                                          onChange={(e) => setLoggerHoursPart(e.target.value)}
-                                          placeholder="h"
-                                          className={`bg-transparent w-full focus:outline-none text-xs font-mono font-bold ${isDark ? 'text-slate-100' : 'text-gray-800'}`}
-                                          min="0"
-                                        />
-                                        <span className={`text-[10px] font-bold font-mono ml-1 shrink-0 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>hr</span>
-                                      </div>
-                                      <div className={`flex-1 flex items-center rounded-xl px-3 py-2.5 ${
-                                        isDark ? 'neu-pressed-dark border border-white/10' : 'neu-pressed-light border border-slate-200'
-                                      }`}>
-                                        <input
-                                          type="number"
-                                          value={loggerMinutesPart}
-                                          onChange={(e) => setLoggerMinutesPart(e.target.value)}
-                                          placeholder="m"
-                                          className={`bg-transparent w-full focus:outline-none text-xs font-mono font-bold ${isDark ? 'text-slate-100' : 'text-gray-800'}`}
-                                          min="0"
-                                          max="59"
-                                        />
-                                        <span className={`text-[10px] font-bold font-mono ml-1 shrink-0 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>min</span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Grand Tests Section */}
-                                <div className={`pt-6 border-t ${isDark ? 'border-white/10' : 'border-gray-100'}`}>
-                                  <div className="flex items-center justify-between mb-4">
-                                    <label className={`block text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Grand Tests (GTs) Attended</label>
-                                    {!isAddingGt && (
-                                      <button
-                                        type="button"
-                                        onClick={() => setIsAddingGt(true)}
-                                        className={`text-[10px] font-black px-2.5 py-1 rounded-lg transition active:scale-95 ${
-                                          isDark ? 'neu-btn-dark text-orange-400 border border-orange-500/20 hover:bg-orange-500/20' : 'neu-btn-light text-orange-600 border border-orange-200 hover:bg-orange-100'
-                                        }`}
-                                      >
-                                        + Add Mock Test
-                                      </button>
-                                    )}
-                                  </div>
-                                  {/* List of GTs currently in log */}
-                                  <div className="space-y-3.5 mb-4">
-                                    {loggerGtsList.map((gt, idx) => (
-                                      <div key={idx} className={`p-4 rounded-2xl flex items-start justify-between ${
-                                        isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-slate-200/80'
-                                      }`}>
-                                        <div className="text-left space-y-1">
-                                          <div className="flex items-center gap-2 flex-wrap">
-                                            {gt.platform && (
-                                              <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded font-mono tracking-wider ${
-                                                isDark ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-orange-100 text-orange-600'
-                                              }`}>
-                                                {gt.platform}
-                                              </span>
-                                            )}
-                                            <h4 className={`text-xs font-black leading-tight ${isDark ? 'text-slate-100' : 'text-gray-800'}`}>{gt.name}</h4>
-                                            <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${
-                                              isDark ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600'
-                                            }`}>
-                                              {gt.type === 'NEETPG' ? 'NEET PG' : 'INI CET'}
-                                            </span>
-                                          </div>
-                                          <div className={`text-[10px] font-bold flex flex-wrap gap-x-3 gap-y-1 font-mono ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
-                                            <span>Marks: <strong className="text-orange-500">{gt.score} / {gt.maxMarks}</strong></span>
-                                            <span>Correct: <strong className="text-emerald-500">{gt.correct}</strong></span>
-                                            <span>Incorrect: <strong className="text-red-500">{gt.incorrect}</strong></span>
-                                            {gt.percentile !== null && <span>%ile: <strong className="text-blue-500">{gt.percentile}%</strong></span>}
-                                            {gt.rank && <span>Rank: <strong className="text-indigo-400">#{gt.rank}</strong></span>}
-                                          </div>
-                                          {gt.notes && <p className={`text-[9px] italic leading-relaxed ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>"{gt.notes}"</p>}
-                                        </div>
-                                        <button
-                                          type="button"
-                                          onClick={() => handleDeleteGt(idx)}
-                                          className={`p-2 rounded-xl transition shrink-0 ${isDark ? 'text-red-400 hover:bg-red-500/20' : 'text-red-500 hover:bg-red-50'}`}
-                                          title="Delete Mock Test"
-                                        >
-                                          <Trash2 className="w-3.5 h-3.5" />
-                                        </button>
-                                      </div>
-                                    ))}
-                                  </div>
-
-                                  {/* Inline sub-form to add a new Grand Test */}
-                                  {isAddingGt && (
-                                    <div className={`p-5 rounded-3xl space-y-4 animate-in slide-in-from-top duration-200 ${
-                                      isDark ? 'neu-card-dark border border-orange-500/20 bg-orange-500/5' : 'bg-orange-50/40 border border-orange-100/70'
-                                    }`}>
-                                      <span className="text-[9px] font-black uppercase text-orange-500 tracking-wider">New Grand Test Details</span>
-
-                                      <div className="grid grid-cols-2 gap-3.5">
-                                        {/* GT Platform */}
-                                        <div className="col-span-2">
-                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Exam Platform</label>
-                                          <input
-                                            type="text"
-                                            value={loggerGtPlatform}
-                                            onChange={(e) => setLoggerGtPlatform(e.target.value)}
-                                            placeholder="e.g. Marrow, PrepLadder, Cerebellum, eGurukul"
-                                            className={`w-full p-2.5 rounded-xl text-xs font-semibold focus:outline-none ${
-                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-200 text-slate-900 placeholder-slate-400'
-                                            }`}
-                                          />
-                                        </div>
-
-                                        {/* GT Name */}
-                                        <div className="col-span-2">
-                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Test Name</label>
-                                          <input
-                                            type="text"
-                                            value={loggerGtName}
-                                            onChange={(e) => setLoggerGtName(e.target.value)}
-                                            placeholder="Test Name (e.g. Marrow Grand Test 14)"
-                                            className={`w-full p-2.5 rounded-xl text-xs font-semibold focus:outline-none ${
-                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-200 text-slate-900 placeholder-slate-400'
-                                            }`}
-                                          />
-                                        </div>
-
-                                        {/* GT Type Selector Pills */}
-                                        <div className="col-span-2 space-y-2">
-                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>GT Scoring Model</label>
-                                          <div className="flex gap-2">
-                                            <button
-                                              type="button"
-                                              onClick={() => setLoggerGtType('NEETPG')}
-                                              className={`flex-1 py-2 text-xs font-black rounded-xl border transition ${
-                                                loggerGtType === 'NEETPG'
-                                                  ? 'bg-orange-500 text-white border-transparent shadow-sm'
-                                                  : isDark ? 'neu-btn-dark text-slate-300 border-white/10' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-                                              }`}
-                                            >
-                                              NEET PG (+4, -1)
-                                            </button>
-                                            <button
-                                              type="button"
-                                              onClick={() => setLoggerGtType('INICET')}
-                                              className={`flex-1 py-2 text-xs font-black rounded-xl border transition ${
-                                                loggerGtType === 'INICET'
-                                                  ? 'bg-orange-500 text-white border-transparent shadow-sm'
-                                                  : isDark ? 'neu-btn-dark text-slate-300 border-white/10' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-                                              }`}
-                                            >
-                                              INI CET (+1, -1/3)
-                                            </button>
-                                          </div>
-
-                                          {loggerGtType === 'NEETPG' && (
-                                            <div className="flex gap-2 p-1 rounded-xl bg-orange-500/5 border border-orange-500/20">
-                                              <button
-                                                type="button"
-                                                onClick={() => setLoggerNeetPattern('200')}
-                                                className={`flex-1 py-1 text-[10px] font-extrabold rounded-lg transition ${
-                                                  loggerNeetPattern === '200'
-                                                    ? 'bg-orange-500 text-white shadow-sm'
-                                                    : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
-                                                }`}
-                                              >
-                                                200 Qs / 800 Marks (Old Pattern)
-                                              </button>
-                                              <button
-                                                type="button"
-                                                onClick={() => setLoggerNeetPattern('180')}
-                                                className={`flex-1 py-1 text-[10px] font-extrabold rounded-lg transition ${
-                                                  loggerNeetPattern === '180'
-                                                    ? 'bg-orange-500 text-white shadow-sm'
-                                                    : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
-                                                }`}
-                                              >
-                                                180 Qs / 720 Marks (New Pattern)
-                                              </button>
-                                            </div>
-                                          )}
-                                        </div>
-
-                                        {/* Questions Correct & Incorrect */}
-                                        <div>
-                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Correct Qs</label>
-                                          <input
-                                            type="number"
-                                            value={loggerGtCorrect}
-                                            onChange={(e) => setLoggerGtCorrect(e.target.value)}
-                                            placeholder="e.g. 130"
-                                            className={`w-full p-2.5 rounded-xl text-xs font-mono font-bold focus:outline-none ${
-                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
-                                            }`}
-                                          />
-                                        </div>
-                                        <div>
-                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Incorrect Qs</label>
-                                          <input
-                                            type="number"
-                                            value={loggerGtIncorrect}
-                                            onChange={(e) => setLoggerGtIncorrect(e.target.value)}
-                                            placeholder="e.g. 50"
-                                            className={`w-full p-2.5 rounded-xl text-xs font-mono font-bold focus:outline-none ${
-                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
-                                            }`}
-                                          />
-                                        </div>
-
-                                        {/* Live Preview metrics breakdown */}
-                                        <div className={`p-3 rounded-2xl border flex items-center justify-between text-[10px] col-span-2 ${
-                                          isDark ? 'bg-orange-500/10 border-orange-500/20 text-slate-300' : 'bg-orange-50/50 border-orange-100/50 text-gray-500'
-                                        }`}>
-                                           <span className="font-bold">Attended: <strong className="text-orange-500 font-black">{(Number(loggerGtCorrect) || 0) + (Number(loggerGtIncorrect) || 0)} / {loggerGtType === 'NEETPG' ? (loggerNeetPattern === '180' ? 180 : 200) : 200}</strong></span>
-                                           <span className="font-bold">Unattempted: <strong className={`font-black ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>{Math.max(0, (loggerGtType === 'NEETPG' ? (loggerNeetPattern === '180' ? 180 : 200) : 200) - ((Number(loggerGtCorrect) || 0) + (Number(loggerGtIncorrect) || 0)))}</strong></span>
-                                           <span className="font-bold">Score Preview: <strong className="text-orange-500 font-black">
-                                             {loggerGtType === 'NEETPG'
-                                               ? `${(Number(loggerGtCorrect) || 0) * 4 - (Number(loggerGtIncorrect) || 0) * 1} / ${loggerNeetPattern === '180' ? 720 : 800}`
-                                               : `${((Number(loggerGtCorrect) || 0) * 1 - (Number(loggerGtIncorrect) || 0) * (1 / 3)).toFixed(2)} / 200`
-                                             }
-                                           </strong></span>
-                                        </div>
-
-                                        {/* Percentile, Rank and Rank Total */}
-                                        <div>
-                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Percentile (%ile)</label>
-                                          <input
-                                            type="number"
-                                            step="0.01"
-                                            value={loggerGtPercentage}
-                                            onChange={(e) => setLoggerGtPercentage(e.target.value)}
-                                            placeholder="e.g. 98.7"
-                                            className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${
-                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
-                                            }`}
-                                          />
-                                        </div>
-
-                                        <div>
-                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>All India Rank (AIR)</label>
-                                          <input
-                                            type="number"
-                                            value={loggerGtRank}
-                                            onChange={(e) => setLoggerGtRank(e.target.value)}
-                                            placeholder="e.g. 1414"
-                                            className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${
-                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
-                                            }`}
-                                          />
-                                        </div>
-
-                                        <div>
-                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Total Participants</label>
-                                          <input
-                                            type="number"
-                                            value={loggerGtRankTotal}
-                                            onChange={(e) => setLoggerGtRankTotal(e.target.value)}
-                                            placeholder="e.g. 8757"
-                                            className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${
-                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
-                                            }`}
-                                          />
-                                        </div>
-
-                                        {/* State Rank and State Selector */}
-                                        <div>
-                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>State Rank</label>
-                                          <input
-                                            type="number"
-                                            value={loggerGtStateRank}
-                                            onChange={(e) => setLoggerGtStateRank(e.target.value)}
-                                            placeholder="e.g. 82"
-                                            className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${
-                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
-                                            }`}
-                                          />
-                                        </div>
-
-                                        <div className="col-span-2">
-                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Home State</label>
-                                          <select
-                                            value={loggerGtState}
-                                            onChange={(e) => setLoggerGtState(e.target.value)}
-                                            className={`w-full p-2.5 rounded-xl text-xs font-semibold focus:outline-none ${
-                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
-                                            }`}
-                                          >
-                                            <option value="">Select Home State...</option>
-                                            {INDIAN_STATES.map((st) => (
-                                              <option key={st} value={st}>{st}</option>
-                                            ))}
-                                          </select>
-                                        </div>
-
-                                        {/* Notes */}
-                                        <div className="col-span-2">
-                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Weaknesses / Strengths / Notes</label>
-                                          <textarea
-                                            rows={2}
-                                            value={loggerGtNotes}
-                                            onChange={(e) => setLoggerGtNotes(e.target.value)}
-                                            placeholder="Notes / Weak points to focus on..."
-                                            className={`w-full p-3 rounded-xl text-xs focus:outline-none ${
-                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-200 text-slate-900 placeholder-slate-400'
-                                            }`}
-                                          />
-                                        </div>
-
-                                        {/* Subject Breakdown Toggle */}
-                                        <div className="col-span-2 pt-2">
-                                          <button
-                                            type="button"
-                                            onClick={() => setLoggerGtShowSubjects(!loggerGtShowSubjects)}
-                                            className={`w-full py-2.5 px-4 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-between transition ${
-                                              isDark ? 'neu-btn-dark text-orange-400 border border-orange-500/20 hover:bg-orange-500/20' : 'bg-orange-50/80 hover:bg-orange-100 text-orange-600'
-                                            }`}
-                                          >
-                                            <span>{loggerGtShowSubjects ? "▲ Hide" : "▼ Enter"} Subject-wise Breakdown (19 Subjects)</span>
-                                            <span className="text-[8px] bg-orange-500 text-white px-2 py-0.5 rounded-full font-extrabold uppercase">Optional</span>
-                                          </button>
-                                        </div>
-
-                                        {/* Subject breakdown edit grid */}
-                                        {loggerGtShowSubjects && (
-                                          <div className={`col-span-2 border rounded-2xl p-4 space-y-3.5 max-h-[300px] overflow-y-auto scrollbar-thin ${
-                                            isDark ? 'neu-pressed-dark border-orange-500/20 bg-[#161a20]' : 'border-orange-100 bg-white/70 shadow-inner'
-                                          }`}>
-                                            <span className={`text-[9px] font-black uppercase tracking-wider block mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Enter correct / incorrect per subject</span>
-                                            <div className="space-y-3.5">
-                                              {SYSTEM_SUBJECTS.map((sub) => {
-                                                const subData = loggerGtSubjects[sub.name] || { correct: '', incorrect: '', total: sub.weight };
-                                                return (
-                                                  <div key={sub.name} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-2 text-xs ${isDark ? 'border-white/5' : 'border-gray-50'}`}>
-                                                    <span className={`font-extrabold min-w-[130px] ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{sub.name}</span>
-                                                    <div className="flex items-center gap-3">
-                                                      <div className="flex items-center gap-1.5">
-                                                        <span className="text-[9px] text-emerald-500 font-extrabold uppercase">Correct</span>
-                                                        <input
-                                                          type="number"
-                                                          value={subData.correct}
-                                                          onChange={(e) => {
-                                                            setLoggerGtSubjects(prev => ({
-                                                              ...prev,
-                                                              [sub.name]: {
-                                                                ...subData,
-                                                                correct: e.target.value,
-                                                                total: subData.total || sub.weight
-                                                              }
-                                                            }));
-                                                          }}
-                                                          placeholder="0"
-                                                          className={`w-11 p-1 rounded text-center text-xs font-mono font-bold outline-none ${
-                                                            isDark ? 'bg-[#1e232b] border border-white/10 text-slate-100' : 'bg-white border border-gray-200 text-slate-900'
-                                                          }`}
-                                                        />
-                                                      </div>
-                                                      <div className="flex items-center gap-1.5">
-                                                        <span className="text-[9px] text-red-500 font-extrabold uppercase">Incorrect</span>
-                                                        <input
-                                                          type="number"
-                                                          value={subData.incorrect}
-                                                          onChange={(e) => {
-                                                            setLoggerGtSubjects(prev => ({
-                                                              ...prev,
-                                                              [sub.name]: {
-                                                                ...subData,
-                                                                incorrect: e.target.value,
-                                                                total: subData.total || sub.weight
-                                                              }
-                                                            }));
-                                                          }}
-                                                          placeholder="0"
-                                                          className={`w-11 p-1 rounded text-center text-xs font-mono font-bold outline-none ${
-                                                            isDark ? 'bg-[#1e232b] border border-white/10 text-slate-100' : 'bg-white border border-gray-200 text-slate-900'
-                                                          }`}
-                                                        />
-                                                      </div>
-                                                      <div className="flex items-center gap-1.5">
-                                                        <span className={`text-[9px] font-extrabold uppercase ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Total</span>
-                                                        <input
-                                                          type="number"
-                                                          value={subData.total}
-                                                          onChange={(e) => {
-                                                            setLoggerGtSubjects(prev => ({
-                                                              ...prev,
-                                                              [sub.name]: {
-                                                                ...subData,
-                                                                total: e.target.value
-                                                              }
-                                                            }));
-                                                          }}
-                                                          placeholder={sub.weight}
-                                                          className={`w-11 p-1 rounded text-center text-xs font-mono outline-none ${
-                                                            isDark ? 'bg-[#1e232b] border border-white/10 text-slate-100' : 'bg-white border border-gray-200 text-slate-900'
-                                                          }`}
-                                                        />
-                                                      </div>
-                                                    </div>
-                                                  </div>
-                                                );
-                                              })}
-                                            </div>
-                                          </div>
-                                        )}
-
-                                      </div>
-
-                                      <div className="flex justify-end gap-2 pt-2">
-                                        <button
-                                          type="button"
-                                          onClick={() => setIsAddingGt(false)}
-                                          className={`px-4 py-2 text-[10px] font-bold rounded-xl transition ${
-                                            isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
-                                          }`}
-                                        >
-                                          Cancel
-                                        </button>
-
-                                        <button
-                                          type="button"
-                                          onClick={handleAddGt}
-                                          className="px-5 py-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-[10px] font-black uppercase rounded-xl hover:shadow active:scale-95 transition"
-                                        >
-                                          Add Mock
-                                        </button>
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-
-                              </div>
-
-                              {/* Modal Footer Controls */}
-                              <div className={`p-6 border-t flex justify-end gap-4 ${isDark ? 'border-white/10 bg-[#1c2128]' : 'bg-gray-50 border-slate-200'}`}>
-                                <button
-                                  onClick={() => setIsStudyLoggerModalOpen(false)}
-                                  className={`px-8 py-3 text-xs font-bold rounded-2xl transition ${
-                                    isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
-                                  }`}
-                                >
-                                  Cancel
-                                </button>
-
-                                <button
-                                  onClick={saveStudyLog}
-                                  disabled={isSaving}
-                                  className="px-10 py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-xs font-black rounded-2xl hover:shadow-lg shadow-orange-500/20 flex items-center gap-2 active:scale-95 transition-all disabled:opacity-50"
-                                >
-                                  {isSaving ? (
-                                    <>
-                                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                      Saving Report...
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Save className="w-3.5 h-3.5" />
-                                      Save Report
-                                    </>
-                                  )}
-                                </button>
-                              </div>
-
-                            </div>
-                          </div>
-                        )}
-
-                        {/* EDIT GRAND TEST MODAL DIALOG (TARGETED SCORE & SUBJECT-WISE BREAKDOWN ADJUSTER) */}
-                        {isEditGtModalOpen && (
-                          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
-                            <div className={`rounded-3xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col animate-in zoom-in duration-300 transition-colors ${
-                              isDark ? 'neu-card-dark border border-white/10 bg-[#222730] text-slate-100' : 'neu-card-light border border-white/80 bg-[#e6ecf5] text-slate-900 shadow-2xl'
-                            }`}>
-
-                              {/* Modal Header */}
-                              <div className={`p-6 border-b flex justify-between items-center ${isDark ? 'border-white/10 bg-[#1c2128]' : 'bg-[#e6ecf5] border-slate-300/60'}`}>
-                                <div className="text-left">
-                                  <h3 className={`font-black uppercase tracking-widest text-xs flex items-center gap-1.5 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                                    <Award className="w-4 h-4 text-orange-500 animate-pulse" />
-                                    Edit Grand Test Entry
-                                  </h3>
-                                  <span className={`text-[9px] font-bold font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                    Logged on {formatAppDate(editGtTargetDate)}
-                                  </span>
-                                </div>
-
-                                <button
-                                  onClick={() => setIsEditGtModalOpen(false)}
-                                  className={`p-1.5 rounded-xl transition ${isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-white/10' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/60'}`}
-                                >
-                                  <X className="w-5 h-5" />
-                                </button>
-                              </div>
-
-                              {/* Modal Body */}
-                              <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto text-left">
-                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-
-                                  {/* Left Column: Core Fields */}
-                                  <div className="lg:col-span-6 space-y-4">
-                                    <span className="text-[10px] font-black uppercase text-orange-500 tracking-wider block border-b pb-1.5">Core Test Details</span>
-
-                                    <div className="grid grid-cols-2 gap-4">
-                                      <div>
-                                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Test Name</label>
-                                        <input
-                                          type="text"
-                                          value={editGtName}
-                                          onChange={(e) => setEditGtName(e.target.value)}
-                                          placeholder="e.g. Grand Test 14"
-                                          className={`w-full p-2.5 rounded-xl text-xs font-semibold focus:outline-none ${
-                                            isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-300/80 text-slate-900 placeholder-slate-400'
-                                          }`}
-                                        />
-                                      </div>
-
-                                      <div>
-                                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Platform</label>
-                                        <input
-                                          type="text"
-                                          value={editGtPlatform}
-                                          onChange={(e) => setEditGtPlatform(e.target.value)}
-                                          placeholder="e.g. Marrow"
-                                          className={`w-full p-2.5 rounded-xl text-xs font-semibold focus:outline-none ${
-                                            isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-300/80 text-slate-900 placeholder-slate-400'
-                                          }`}
-                                        />
-                                      </div>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                      <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>GT Scoring Model</label>
-                                      <div className="flex gap-2">
-                                        <button
-                                          type="button"
-                                          onClick={() => setEditGtType('NEETPG')}
-                                          className={`flex-1 py-2 text-xs font-black rounded-xl border transition ${
-                                            editGtType === 'NEETPG'
-                                              ? 'bg-orange-500 text-white border-transparent shadow-sm'
-                                              : isDark ? 'neu-btn-dark text-slate-300 border-white/10' : 'neu-btn-light text-slate-700 border-white/70'
-                                          }`}
-                                        >
-                                          NEET PG (+4, -1)
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => setEditGtType('INICET')}
-                                          className={`flex-1 py-2 text-xs font-black rounded-xl border transition ${
-                                            editGtType === 'INICET'
-                                              ? 'bg-orange-500 text-white border-transparent shadow-sm'
-                                              : isDark ? 'neu-btn-dark text-slate-300 border-white/10' : 'neu-btn-light text-slate-700 border-white/70'
-                                          }`}
-                                        >
-                                          INI CET (+1, -1/3)
-                                        </button>
-                                      </div>
-
-                                      {editGtType === 'NEETPG' && (
-                                        <div className="flex gap-2 p-1 rounded-xl bg-orange-500/5 border border-orange-500/20">
-                                          <button
-                                            type="button"
-                                            onClick={() => setEditNeetPattern('200')}
-                                            className={`flex-1 py-1 text-[10px] font-extrabold rounded-lg transition ${
-                                              editNeetPattern === '200'
-                                                ? 'bg-orange-500 text-white shadow-sm'
-                                                : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
-                                            }`}
-                                          >
-                                            200 Qs / 800 Marks (Pre-2025)
-                                          </button>
-                                          <button
-                                            type="button"
-                                            onClick={() => setEditNeetPattern('180')}
-                                            className={`flex-1 py-1 text-[10px] font-extrabold rounded-lg transition ${
-                                              editNeetPattern === '180'
-                                                ? 'bg-orange-500 text-white shadow-sm'
-                                                : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
-                                            }`}
-                                          >
-                                            180 Qs / 720 Marks (2025+)
-                                          </button>
-                                        </div>
-                                      )}
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-4">
-                                      <div>
-                                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Correct Qs</label>
-                                        <input
-                                          type="number"
-                                          value={editGtCorrect}
-                                          onChange={(e) => setEditGtCorrect(e.target.value)}
-                                          placeholder="e.g. 130"
-                                          className={`w-full p-2.5 rounded-xl text-xs font-mono font-bold focus:outline-none ${
-                                            isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
-                                          }`}
-                                        />
-                                      </div>
-
-                                      <div>
-                                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Incorrect Qs</label>
-                                        <input
-                                          type="number"
-                                          value={editGtIncorrect}
-                                          onChange={(e) => setEditGtIncorrect(e.target.value)}
-                                          placeholder="e.g. 50"
-                                          className={`w-full p-2.5 rounded-xl text-xs font-mono font-bold focus:outline-none ${
-                                            isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
-                                          }`}
-                                        />
-                                      </div>
-                                    </div>
-
-                                    {/* Live Score/Metrics Panel */}
-                                    {(() => {
-                                      const correct = Number(editGtCorrect) || 0;
-                                      const incorrect = Number(editGtIncorrect) || 0;
-                                      const attended = correct + incorrect;
-                                      const totalQs = editGtType === 'NEETPG' ? (editNeetPattern === '180' ? 180 : 200) : 200;
-                                      const maxMarks = editGtType === 'NEETPG' ? (editNeetPattern === '180' ? 720 : 800) : 200;
-                                      let score = 0;
-                                      if (editGtType === 'NEETPG') {
-                                        score = (correct * 4) - incorrect;
-                                      } else {
-                                        score = Number((correct - (incorrect * (1 / 3))).toFixed(8));
-                                      }
-                                      const accuracy = attended > 0 ? ((correct / attended) * 100).toFixed(1) : '100';
-
-                                      return (
-                                        <div className={`p-4 rounded-2xl border space-y-2 text-xs ${
-                                          isDark ? 'bg-orange-500/10 border-orange-500/20 text-slate-300' : 'bg-orange-50/60 border-orange-200/60 text-slate-700'
-                                        }`}>
-                                          <div className="flex items-center justify-between">
-                                            <span>Attended: <strong className="text-orange-500 font-mono">{attended} / {totalQs}</strong></span>
-                                            <span>Unattempted: <strong className={`font-mono ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{Math.max(0, totalQs - attended)}</strong></span>
-                                          </div>
-                                          <div className={`h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-white/10' : 'bg-slate-200'}`}>
-                                            <div className="h-full bg-orange-500 transition-all duration-300" style={{ width: `${Math.min(100, (attended / totalQs) * 100)}%` }} />
-                                          </div>
-                                          <div className="flex items-center justify-between pt-1 font-bold">
-                                            <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>Calculated Score:</span>
-                                            <span className="text-sm text-orange-500 font-black font-mono">
-                                              {editGtType === 'INICET' ? score.toFixed(4) : score} / {maxMarks}
-                                            </span>
-                                          </div>
-                                          <div className={`flex items-center justify-between text-[10px] italic ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                            <span>Accuracy Rate: <strong>{accuracy}%</strong></span>
-                                            <span>{editGtType === 'NEETPG' ? 'Score = Correct * 4 - Incorrect' : 'Score = Correct - Incorrect * (1/3)'}</span>
-                                          </div>
-                                        </div>
-                                      );
-                                    })()}
-
-                                    <div className="grid grid-cols-3 gap-3">
-                                      <div>
-                                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Percentile (%ile)</label>
-                                        <input
-                                          type="number"
-                                          step="0.01"
-                                          value={editGtPercentage}
-                                          onChange={(e) => setEditGtPercentage(e.target.value)}
-                                          placeholder="e.g. 98.7"
-                                          className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${
-                                            isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
-                                          }`}
-                                        />
-                                      </div>
-
-                                      <div>
-                                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>National AIR</label>
-                                        <input
-                                          type="number"
-                                          value={editGtRank}
-                                          onChange={(e) => setEditGtRank(e.target.value)}
-                                          placeholder="e.g. 1414"
-                                          className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${
-                                            isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
-                                          }`}
-                                        />
-                                      </div>
-
-                                      <div>
-                                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Contestants</label>
-                                        <input
-                                          type="number"
-                                          value={editGtRankTotal}
-                                          onChange={(e) => setEditGtRankTotal(e.target.value)}
-                                          placeholder="e.g. 8757"
-                                          className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${
-                                            isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
-                                          }`}
-                                        />
-                                      </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-3 gap-3">
-                                      <div>
-                                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>State Rank</label>
-                                        <input
-                                          type="number"
-                                          value={editGtStateRank}
-                                          onChange={(e) => setEditGtStateRank(e.target.value)}
-                                          placeholder="e.g. 82"
-                                          className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${
-                                            isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
-                                          }`}
-                                        />
-                                      </div>
-
-                                      <div className="col-span-2">
-                                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Home State</label>
-                                        <select
-                                          value={editGtState}
-                                          onChange={(e) => setEditGtState(e.target.value)}
-                                          className={`w-full p-2.5 rounded-xl text-xs font-semibold focus:outline-none ${
-                                            isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
-                                          }`}
-                                        >
-                                          <option value="">Select Home State...</option>
-                                          {INDIAN_STATES.map((st) => (
-                                            <option key={st} value={st}>{st}</option>
-                                          ))}
-                                        </select>
-                                      </div>
-                                    </div>
-
-                                    <div>
-                                      <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Weaknesses / Strengths / Strategy Notes</label>
-                                      <textarea
-                                        rows={3}
-                                        value={editGtNotes}
-                                        onChange={(e) => setEditGtNotes(e.target.value)}
-                                        placeholder="Notes / Weak points to focus on..."
-                                        className={`w-full p-3 rounded-xl text-xs focus:outline-none ${
-                                          isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-300/80 text-slate-900 placeholder-slate-400'
-                                        }`}
-                                      />
-                                    </div>
-                                  </div>
-
-                                  {/* Right Column: 19 Subjects Breakdown */}
-                                  <div className="lg:col-span-6 space-y-4">
-                                    <div className="flex items-center justify-between border-b pb-1.5">
-                                      <span className="text-[10px] font-black uppercase text-orange-500 tracking-wider block">Clinical 19 Subjects Breakdown</span>
-                                      <button
-                                        type="button"
-                                        onClick={() => setEditGtShowSubjects(!editGtShowSubjects)}
-                                        className={`px-2 py-0.5 rounded text-[9px] font-black uppercase transition ${
-                                          isDark ? 'bg-orange-500/20 text-orange-400 hover:bg-orange-500/30' : 'bg-orange-100 text-orange-600 hover:bg-orange-200'
-                                        }`}
-                                      >
-                                        {editGtShowSubjects ? "Collapse View" : "Expand View"}
-                                      </button>
-                                    </div>
-
-                                    {/* Math Consistency Check Banner */}
-                                    {(() => {
-                                      let correctSum = 0;
-                                      let incorrectSum = 0;
-                                      let totalSum = 0;
-                                      Object.keys(editGtSubjects).forEach(subKey => {
-                                        const sub = editGtSubjects[subKey];
-                                        correctSum += Number(sub.correct) || 0;
-                                        incorrectSum += Number(sub.incorrect) || 0;
-                                        totalSum += Number(sub.total) || 0;
-                                      });
-
-                                      const targetCorrect = Number(editGtCorrect) || 0;
-                                      const targetIncorrect = Number(editGtIncorrect) || 0;
-                                      const isCorrectMatch = correctSum === targetCorrect;
-                                      const isIncorrectMatch = incorrectSum === targetIncorrect;
-                                      const isTotalMatch = totalSum === 200;
-
-                                      const isPristine = isCorrectMatch && isIncorrectMatch && isTotalMatch;
-
-                                      if (!isPristine && (correctSum > 0 || incorrectSum > 0 || totalSum > 0)) {
-                                        return (
-                                          <div className={`p-3 border rounded-2xl text-[10px] space-y-1 text-left leading-normal animate-pulse ${
-                                            isDark ? 'bg-rose-500/10 border-rose-500/20 text-rose-300' : 'bg-rose-50 border-rose-100 text-rose-700'
-                                          }`}>
-                                            <span className="font-black uppercase tracking-wider block">⚠️ Math Consistency Warning</span>
-                                            <div className="grid grid-cols-3 gap-2 text-[9px] font-bold font-mono">
-                                              <span className={isCorrectMatch ? 'text-emerald-500' : 'text-rose-500'}>
-                                                Correct: {correctSum} vs {targetCorrect}
-                                              </span>
-                                              <span className={isIncorrectMatch ? 'text-emerald-500' : 'text-rose-500'}>
-                                                Incorrect: {incorrectSum} vs {targetIncorrect}
-                                              </span>
-                                              <span className={isTotalMatch ? 'text-emerald-500' : 'text-rose-500'}>
-                                                Total Qs: {totalSum} / 200
-                                              </span>
-                                            </div>
-                                            <p className={`text-[8.5px] italic font-medium pt-1 ${isDark ? 'text-rose-400' : 'text-rose-500'}`}>
-                                              Adjust subject entries below to match overall stats for perfectly calibrated analytics.
-                                            </p>
-                                          </div>
-                                        );
-                                      } else if (isPristine && correctSum > 0) {
-                                        return (
-                                          <div className={`p-3 border rounded-2xl text-[9px] font-bold flex items-center gap-1 ${
-                                            isDark ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-emerald-50 border-emerald-100 text-emerald-700'
-                                          }`}>
-                                            <span>✅ Subject counts sum up to exactly 200 questions with perfect scoring alignment!</span>
-                                          </div>
-                                        );
-                                      }
-                                      return null;
-                                    })()}
-
-                                    <div className={`border rounded-2xl p-4 space-y-3.5 overflow-y-auto transition-all duration-300 ${
-                                      editGtShowSubjects ? 'max-h-[500px]' : 'max-h-[250px]'
-                                    } ${
-                                      isDark ? 'neu-pressed-dark border-white/5' : 'neu-pressed-light border-white/70'
-                                    }`}>
-                                      <div className="space-y-3">
-                                        {SYSTEM_SUBJECTS.map((sub) => {
-                                          const subData = editGtSubjects[sub.name] || { correct: '', incorrect: '', total: sub.weight };
-                                          return (
-                                            <div key={sub.name} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-2.5 text-xs ${
-                                              isDark ? 'border-white/5' : 'border-slate-200/60'
-                                            }`}>
-                                              <span className={`font-extrabold min-w-[130px] text-left ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{sub.name}</span>
-                                              <div className="flex items-center gap-3">
-                                                <div className="flex items-center gap-1">
-                                                  <span className="text-[9px] text-emerald-500 font-extrabold uppercase font-mono">C:</span>
-                                                  <input
-                                                    type="number"
-                                                    value={subData.correct}
-                                                    onChange={(e) => {
-                                                      setEditGtSubjects(prev => ({
-                                                        ...prev,
-                                                        [sub.name]: {
-                                                          ...subData,
-                                                          correct: e.target.value,
-                                                          total: subData.total || sub.weight
-                                                        }
-                                                      }));
-                                                    }}
-                                                    placeholder="0"
-                                                    className={`w-11 p-1 rounded text-center text-xs font-mono font-bold outline-none ${
-                                                      isDark ? 'bg-[#1e232b] border border-white/10 text-slate-100' : 'bg-white border border-slate-200 text-slate-900'
-                                                    }`}
-                                                  />
-                                                </div>
-
-                                                <div className="flex items-center gap-1">
-                                                  <span className="text-[9px] text-rose-500 font-extrabold uppercase font-mono">I:</span>
-                                                  <input
-                                                    type="number"
-                                                    value={subData.incorrect}
-                                                    onChange={(e) => {
-                                                      setEditGtSubjects(prev => ({
-                                                        ...prev,
-                                                        [sub.name]: {
-                                                          ...subData,
-                                                          incorrect: e.target.value,
-                                                          total: subData.total || sub.weight
-                                                        }
-                                                      }));
-                                                    }}
-                                                    placeholder="0"
-                                                    className={`w-11 p-1 rounded text-center text-xs font-mono font-bold outline-none ${
-                                                      isDark ? 'bg-[#1e232b] border border-white/10 text-slate-100' : 'bg-white border border-slate-200 text-slate-900'
-                                                    }`}
-                                                  />
-                                                </div>
-
-                                                <div className="flex items-center gap-1">
-                                                  <span className={`text-[9px] font-extrabold uppercase font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>T:</span>
-                                                  <input
-                                                    type="number"
-                                                    value={subData.total}
-                                                    onChange={(e) => {
-                                                      setEditGtSubjects(prev => ({
-                                                        ...prev,
-                                                        [sub.name]: {
-                                                          ...subData,
-                                                          total: e.target.value
-                                                        }
-                                                      }));
-                                                    }}
-                                                    placeholder={sub.weight}
-                                                    className={`w-11 p-1 rounded text-center text-xs font-mono outline-none ${
-                                                      isDark ? 'bg-[#1e232b] border border-white/10 text-slate-100' : 'bg-white border border-slate-200 text-slate-900'
-                                                    }`}
-                                                  />
-                                                </div>
-                                              </div>
-                                            </div>
-                                          );
-                                        })}
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                </div>
-                              </div>
-
-                              {/* Modal Footer */}
-                              <div className={`p-6 border-t flex justify-end gap-4 ${isDark ? 'border-white/10 bg-[#1c2128]' : 'bg-[#e6ecf5] border-slate-300/60'}`}>
-                                <button
-                                  onClick={() => setIsEditGtModalOpen(false)}
-                                  className={`px-8 py-3 text-xs font-bold rounded-2xl transition ${
-                                    isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
-                                  }`}
-                                >
-                                  Cancel
-                                </button>
-
-                                <button
-                                  onClick={handleSaveEditedGt}
-                                  disabled={isSaving}
-                                  className="px-10 py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-xs font-black rounded-2xl hover:shadow-lg shadow-orange-500/20 flex items-center gap-2 active:scale-95 transition-all disabled:opacity-50"
-                                >
-                                  {isSaving ? (
-                                    <>
-                                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                      Updating Scorecard...
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Save className="w-3.5 h-3.5" />
-                                      Save Scorecard Changes
-                                    </>
-                                  )}
-                                </button>
-                              </div>
-
-                            </div>
-                          </div>
-                        )}
-
-                      </motion.div>
-                    )}
+                    {currentTab === 'study' && renderStudyRoomDashboard()}
 
                     {/* ANALYTICS VIEW */}
                     {currentTab === 'analytics' && (() => {
