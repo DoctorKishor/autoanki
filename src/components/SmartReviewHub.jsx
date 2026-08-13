@@ -95,7 +95,15 @@ export default function SmartReviewHub({
             leeches.push(topicObj);
           }
 
-          if (!topic.lastReviewed && !topic.nextReviewDue) {
+          const hasBeenReviewed = !!(
+            topic.lastReviewed ||
+            topic.lastReviewDate ||
+            (topic.repetitionCount && topic.repetitionCount > 0) ||
+            (topic.reviewCount && topic.reviewCount > 0) ||
+            (topic.studyDates && topic.studyDates.length > 0)
+          );
+
+          if (!hasBeenReviewed && !topic.nextReviewDue) {
             newItems.push(topicObj);
             newPages += pageCount;
           } else if (topic.nextReviewDue) {
