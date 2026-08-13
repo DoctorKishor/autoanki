@@ -317,33 +317,38 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
               {/* ──────────────── CATEGORY 1: DAILY LIMITS ──────────────── */}
               {activeCategory === 'dailyLimits' && (
                 <div className="space-y-6">
-                  {/* Scope Selector Pills */}
-                  <div className={`relative flex p-1 rounded-2xl border w-fit ${
-                    isDark ? 'neu-pressed-dark border-slate-700/60' : 'neu-pressed-light border-slate-200/80'
+                  {/* Scope Selector Pills with Section 5 Sliding Indicator */}
+                  <div className={`relative flex items-center p-1.5 rounded-2xl gap-1 shrink-0 select-none w-fit ${
+                    isDark ? 'neu-pressed-dark border border-slate-700/60' : 'neu-pressed-light border border-slate-200/80'
                   }`}>
-                    {['preset', 'subject', 'today'].map(scope => {
-                      const isActive = activeScopeTab === scope;
-                      return (
-                        <button
-                          key={scope}
-                          onClick={() => setActiveScopeTab(scope)}
-                          className={`relative z-10 px-4 py-1.5 rounded-xl text-xs font-black capitalize transition-colors duration-300 ${
-                            isActive
-                              ? 'text-white'
-                              : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
-                          }`}
-                        >
-                          {scope === 'preset' ? 'Preset (Global)' : scope === 'subject' ? 'This Subject' : 'Today Only'}
-                          {isActive && (
-                            <motion.div
-                              layoutId="activeDailyLimitsScopePill"
-                              className={`absolute inset-0 rounded-xl ${isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'}`}
-                              transition={{ duration: 0.6, ease: [0, 0, 0, 1] }}
-                            />
-                          )}
-                        </button>
-                      );
-                    })}
+                    {/* Single Sliding Pill Indicator */}
+                    <div
+                      className={`absolute top-1.5 bottom-1.5 w-28 rounded-xl shadow-md ${
+                        isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+                      }`}
+                      style={{
+                        left: `calc(0.375rem + ${['preset', 'subject', 'today'].indexOf(activeScopeTab)} * (7rem + 0.25rem))`,
+                        transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                      }}
+                    />
+
+                    {[
+                      { id: 'preset', label: 'Preset (Global)' },
+                      { id: 'subject', label: 'This Subject' },
+                      { id: 'today', label: 'Today Only' }
+                    ].map(item => (
+                      <button
+                        key={item.id}
+                        onClick={() => setActiveScopeTab(item.id)}
+                        className={`relative w-28 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${
+                          activeScopeTab === item.id
+                            ? 'text-white font-extrabold'
+                            : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                        }`}
+                      >
+                        <span>{item.label}</span>
+                      </button>
+                    ))}
                   </div>
 
                   {/* SCOPE 1: GLOBAL PRESET */}
@@ -897,29 +902,36 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
                   }`}>
                     <div className="flex items-center justify-between">
                       <label className={`text-xs font-black ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Retention Mode</label>
-                      <div className={`flex p-1 rounded-xl border ${
-                        isDark ? 'neu-pressed-dark border-slate-700/60' : 'neu-pressed-light border-slate-200/80'
+                      <div className={`relative flex items-center p-1.5 rounded-2xl gap-1 shrink-0 select-none ${
+                        isDark ? 'neu-pressed-dark border border-slate-700/60' : 'neu-pressed-light border border-slate-200/80'
                       }`}>
-                        <button
-                          onClick={() => setTempConfig({ ...tempConfig, retentionMode: 'global' })}
-                          className={`px-3.5 py-1 rounded-lg text-xs font-black transition-all ${
-                            tempConfig.retentionMode !== 'perSubject'
-                              ? isDark ? 'neu-btn-accent-dark text-white' : 'neu-btn-accent-light text-white'
-                              : isDark ? 'text-slate-400' : 'text-slate-600'
+                        {/* Single Sliding Pill Indicator */}
+                        <div
+                          className={`absolute top-1.5 bottom-1.5 w-24 rounded-xl shadow-md ${
+                            isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
                           }`}
-                        >
-                          Global
-                        </button>
-                        <button
-                          onClick={() => setTempConfig({ ...tempConfig, retentionMode: 'perSubject' })}
-                          className={`px-3.5 py-1 rounded-lg text-xs font-black transition-all ${
-                            tempConfig.retentionMode === 'perSubject'
-                              ? isDark ? 'neu-btn-accent-dark text-white' : 'neu-btn-accent-light text-white'
-                              : isDark ? 'text-slate-400' : 'text-slate-600'
-                          }`}
-                        >
-                          Per-Subject
-                        </button>
+                          style={{
+                            left: `calc(0.375rem + ${(tempConfig.retentionMode === 'perSubject' ? 1 : 0)} * (6rem + 0.25rem))`,
+                            transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                          }}
+                        />
+
+                        {[
+                          { id: 'global', label: 'Global' },
+                          { id: 'perSubject', label: 'Per-Subject' }
+                        ].map(item => (
+                          <button
+                            key={item.id}
+                            onClick={() => setTempConfig({ ...tempConfig, retentionMode: item.id })}
+                            className={`relative w-24 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${
+                              (tempConfig.retentionMode || 'global') === item.id || (item.id === 'global' && tempConfig.retentionMode !== 'perSubject')
+                                ? 'text-white font-extrabold'
+                                : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                            }`}
+                          >
+                            <span>{item.label}</span>
+                          </button>
+                        ))}
                       </div>
                     </div>
 
