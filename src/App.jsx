@@ -35,7 +35,8 @@ import ManualCardModal from './components/ManualCardModal';
 import RichInputField from './components/RichInputField';
 import ConflictInspectorModal from './components/ConflictInspectorModal';
 import { cropAndMaskDiagram } from './utils/imageCropper';
-import { getLocalSetting, saveLocalSetting, getLocalCards, saveLocalCards, replaceAllLocalCards, saveLocalCard, deleteLocalCard, getLocalPages, saveLocalPages, replaceAllLocalPages, saveLocalPage, deleteLocalPage, getLocalKV, setLocalKV, getLocalPrompts, saveLocalPrompt, deleteLocalPrompt, getAllLocalPytTopics, saveLocalPytTopic, getAllLocalPytProgress, saveLocalPytProgressDoc, getLocalTextbooksMetadata, saveLocalTextbooksMetadata, getLocalStudyLogs, saveLocalStudyLog, replaceAllLocalStudyLogs, getLocalSubjectTrackerData, saveLocalSubjectTrackerDoc, replaceAllLocalSubjectTrackerData, getLocalStudySchedule, saveLocalScheduleEntry, replaceAllLocalStudySchedule } from './services/localDb';
+import { getLocalSetting, saveLocalSetting, getLocalCards, saveLocalCards, replaceAllLocalCards, saveLocalCard, deleteLocalCard, getLocalPages, saveLocalPages, replaceAllLocalPages, saveLocalPage, deleteLocalPage, getLocalKV, setLocalKV, getLocalPrompts, saveLocalPrompt, deleteLocalPrompt, getAllLocalPytTopics, saveLocalPytTopic, getAllLocalPytProgress, saveLocalPytProgressDoc, getLocalTextbooksMetadata, saveLocalTextbooksMetadata, getLocalStudyLogs, saveLocalStudyLog, replaceAllLocalStudyLogs, getLocalSubjectTrackerData, saveLocalSubjectTrackerDoc, replaceAllLocalSubjectTrackerData, getLocalStudySchedule, saveLocalScheduleEntry, replaceAllLocalStudySchedule, getFSRSConfig, saveFSRSConfig, DEFAULT_FSRS_CONFIG } from './services/localDb';
+import { calculateNextFSRSState, calculateInitialState, DEFAULT_FSRS6_WEIGHTS, getTopicPageLength } from './services/fsrsEngine';
 import { motion, AnimatePresence } from 'framer-motion';
 import UiverseButton from './components/UiverseButton';
 import UiverseGlassRadio from './components/UiverseGlassRadio';
@@ -7055,6 +7056,36 @@ export default function App() {
     });
   }, [examProfiles]);
 
+  const [fsrsConfig, setFsrsConfig] = useState(DEFAULT_FSRS_CONFIG);
+  const isFsrsConfigLoaded = useRef(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    getFSRSConfig().then(cfg => {
+      if (isMounted && cfg) {
+        setFsrsConfig(cfg);
+        if (cfg.dailyLimits?.maxReviewPagesPerDay) {
+          setMaxDailyReviewCap(cfg.dailyLimits.maxReviewPagesPerDay);
+        }
+      }
+      isFsrsConfigLoaded.current = true;
+    }).catch(err => console.warn('[LocalDB] Error reading fsrsConfig:', err));
+    return () => { isMounted = false; };
+  }, []);
+
+  const updateFsrsConfig = async (updates) => {
+    try {
+      const updated = await saveFSRSConfig(updates);
+      setFsrsConfig(updated);
+      if (updated.dailyLimits?.maxReviewPagesPerDay) {
+        setMaxDailyReviewCap(updated.dailyLimits.maxReviewPagesPerDay);
+      }
+      return updated;
+    } catch (err) {
+      console.error("Error saving FSRS config to LocalDB:", err);
+    }
+  };
+
   const [batchedReviews, setBatchedReviews] = useState([]);
 
   // smartReview Form States
@@ -12179,7 +12210,7 @@ JSON Format:
             };
           }
 
-          // ── FSRS Calculation ─────────────────────────────────────────────────
+          // ── FSRS-6 Engine Calculation ──────────────────────────────────────────
           const currentFsrsState = {
             difficulty: topics[cleanTopicName].difficulty,
             stability: topics[cleanTopicName].stability,
@@ -12187,8 +12218,23 @@ JSON Format:
             reviewCount: topics[cleanTopicName].reviewCount,
           };
 
+          const activeDR = fsrsConfig.retentionMode === 'perSubject'
+            ? (fsrsConfig.perSubjectRetention?.[subjectName] || fsrsConfig.globalDesiredRetention || 0.90)
+            : (fsrsConfig.globalDesiredRetention || 0.90);
+
           const fsrsInput = currentFsrsState.stability != null ? currentFsrsState : null;
-          const fsrsResult = calculateNextFSRSReview(fsrsInput, review.rating, review.dateStr);
+          const fsrsResult = calculateNextFSRSState(
+            fsrsInput,
+            review.rating,
+            review.dateStr,
+            fsrsConfig.weights || DEFAULT_FSRS6_WEIGHTS,
+            activeDR,
+            {
+              subjectTrackerData,
+              easyDays: fsrsConfig.easyDays || {},
+              enableLoadBalancing: true
+            }
+          );
 
           topics[cleanTopicName].difficulty = fsrsResult.difficulty;
           topics[cleanTopicName].stability = fsrsResult.stability;
