@@ -1063,7 +1063,7 @@ export default function DashboardGrid({
               </svg>
 
               {/* Inner glowing center representing milestone achievements */}
-              <div className={`absolute w-20 h-20 rounded-full flex flex-col items-center justify-center transition-all duration-300 ${totalProgressPercent >= 100 ? 'bg-orange-50 text-orange-500 scale-105 shadow-inner' : 'text-gray-400'}`}>
+              <div className={`absolute w-20 h-20 !rounded-full flex flex-col items-center justify-center transition-all duration-300 ${totalProgressPercent >= 100 ? 'bg-orange-50 text-orange-500 scale-105 shadow-inner !rounded-full' : 'text-gray-400 !rounded-full'}`}>
                 <Flame className={`w-6 h-6 ${totalProgressPercent >= 100 ? 'animate-bounce fill-current' : ''}`} />
                 <span className="text-lg font-black mt-0.5 text-gray-800">{totalProgressPercent}%</span>
               </div>

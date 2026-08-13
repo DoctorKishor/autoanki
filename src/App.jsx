@@ -28465,10 +28465,10 @@ Return your response strictly as a JSON object matching this schema:
                                           </svg>
 
                                           {/* Inner glowing center representing milestone achievements */}
-                                          <div className={`absolute w-24 h-24 rounded-full flex flex-col items-center justify-center transition-all duration-300 ${
+                                          <div className={`absolute w-24 h-24 !rounded-full flex flex-col items-center justify-center transition-all duration-300 ${
                                             totalProgressPercent >= 100
-                                              ? isDark ? 'bg-orange-500/20 text-orange-400 scale-105 shadow-inner border border-orange-500/30' : 'bg-orange-50 text-orange-500 scale-105 shadow-inner'
-                                              : isDark ? 'neu-pressed-dark text-slate-300' : 'bg-slate-100 text-slate-700'
+                                              ? isDark ? 'bg-orange-500/20 text-orange-400 scale-105 shadow-inner border border-orange-500/30 !rounded-full' : 'bg-orange-50 text-orange-500 scale-105 shadow-inner !rounded-full'
+                                              : isDark ? 'neu-pressed-dark text-slate-300 !rounded-full' : 'neu-pressed-light text-slate-700 !rounded-full'
                                           }`}>
                                             <Flame className={`w-8 h-8 ${totalProgressPercent >= 100 ? 'animate-bounce fill-current' : ''}`} />
                                             <span className={`text-xl font-black mt-1 ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{totalProgressPercent}%</span>
