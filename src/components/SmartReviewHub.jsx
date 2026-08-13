@@ -4,6 +4,7 @@ import { Brain, Calendar, AlertTriangle, CheckCircle, Clock, BookOpen, Layers, S
 import FsrsStatsTab from './FsrsStatsTab';
 import FsrsSettingsModal from './FsrsSettingsModal';
 import { saveLocalSubjectTrackerDoc } from '../services/localDb';
+import { parsePageNumbers, getTopicPageWeight } from '../utils/pageUtils';
 
 export function getLocalDateStr(d = new Date()) {
   const dateObj = typeof d === 'string' ? new Date(d) : d;
@@ -12,61 +13,7 @@ export function getLocalDateStr(d = new Date()) {
 }
 
 export function getTopicPageInfo(topic) {
-  if (!topic) return { startPage: null, endPage: null, pageCount: 1, pageLabel: 'No pgs' };
-
-  let startPg = null;
-  let endPg = null;
-
-  const rawPageVal = String(topic.page || topic.pages || '').trim();
-  if (rawPageVal && (rawPageVal.includes('-') || rawPageVal.includes('–'))) {
-    const parts = rawPageVal.split(/[-–]/).map(p => parseInt(p.trim(), 10));
-    if (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1]) && parts[1] >= parts[0]) {
-      startPg = parts[0];
-      endPg = parts[1];
-    }
-  }
-
-  if (startPg === null) {
-    startPg = (topic.page !== undefined && topic.page !== null && topic.page !== '')
-      ? parseInt(topic.page, 10)
-      : (topic.startPage !== undefined && topic.startPage !== null && topic.startPage !== '')
-        ? parseInt(topic.startPage, 10)
-        : (topic.pageStart !== undefined && topic.pageStart !== null && topic.pageStart !== '')
-          ? parseInt(topic.pageStart, 10)
-          : null;
-    if (isNaN(startPg)) startPg = null;
-  }
-
-  if (endPg === null) {
-    endPg = (topic.endPage !== undefined && topic.endPage !== null && topic.endPage !== '')
-      ? parseInt(topic.endPage, 10)
-      : (topic.pageEnd !== undefined && topic.pageEnd !== null && topic.pageEnd !== '')
-        ? parseInt(topic.pageEnd, 10)
-        : null;
-    if (isNaN(endPg)) endPg = null;
-  }
-
-  let pageCount = 1;
-  if (startPg !== null && endPg !== null && endPg >= startPg) {
-    pageCount = (endPg - startPg) + 1;
-  } else if (topic.pageCount !== undefined && topic.pageCount !== null && !isNaN(parseInt(topic.pageCount, 10))) {
-    pageCount = parseInt(topic.pageCount, 10);
-  } else if (topic.pages !== undefined && topic.pages !== null && !isNaN(parseInt(topic.pages, 10))) {
-    pageCount = parseInt(topic.pages, 10);
-  }
-
-  let pageLabel = 'No pgs';
-  if (startPg !== null && endPg !== null) {
-    pageLabel = `p. ${startPg}–${endPg}`;
-  } else if (startPg !== null) {
-    pageLabel = `p. ${startPg}`;
-  } else if (topic.pages) {
-    pageLabel = `p. ${topic.pages}`;
-  } else if (topic.pageLabel) {
-    pageLabel = topic.pageLabel;
-  }
-
-  return { startPage: startPg, endPage: endPg, pageCount, pageLabel };
+  return parsePageNumbers(topic);
 }
 
 export default function SmartReviewHub({
@@ -116,12 +63,14 @@ export default function SmartReviewHub({
     subjectTrackerData.forEach(subDoc => {
       const subName = subDoc.subject;
       if (subDoc.topics) {
-        Object.values(subDoc.topics).forEach(topic => {
+        const topicsList = Object.values(subDoc.topics);
+        topicsList.forEach(topic => {
           if (!topic || !topic.name || topic.name.trim().length === 0) return;
 
-          const { pageCount, pageLabel, startPage, endPage } = getTopicPageInfo(topic);
+          const { pageLabel, startPage, endPage } = parsePageNumbers(topic);
+          const topicWeight = getTopicPageWeight(topic, topicsList);
           const lapses = topic.lapses || topic.lapsesCount || 0;
-          const topicObj = { ...topic, subject: subName, pageCount, pageLabel, startPage, endPage };
+          const topicObj = { ...topic, subject: subName, pageCount: topicWeight, pageLabel, startPage, endPage };
 
           if (lapses >= (fsrsConfig.lapses?.leechThreshold ?? 8) || topic.isLeech) {
             leeches.push(topicObj);
@@ -137,14 +86,14 @@ export default function SmartReviewHub({
 
           if (!hasBeenReviewed && !topic.nextReviewDue) {
             newItems.push(topicObj);
-            newPages += pageCount;
+            newPages += topicWeight;
           } else if (topic.nextReviewDue) {
             if (topic.nextReviewDue < todayStr) {
               overdue.push(topicObj);
-              reviewPages += pageCount;
+              reviewPages += topicWeight;
             } else if (topic.nextReviewDue === todayStr) {
               dueToday.push(topicObj);
-              reviewPages += pageCount;
+              reviewPages += topicWeight;
             }
           }
         });
@@ -215,6 +164,11 @@ export default function SmartReviewHub({
       }
     }
   };
+
+  const isReviewUnlimited = (dailyLimits.maxReviewPagesPerDay || 30) >= 9999;
+  const isNewUnlimited = (dailyLimits.newPagesPerDay || 10) >= 9999;
+  const isReviewOverCap = !isReviewUnlimited && totalReviewPagesToday > (dailyLimits.maxReviewPagesPerDay || 30);
+  const isNewOverCap = !isNewUnlimited && totalNewPagesToday > (dailyLimits.newPagesPerDay || 10);
 
   return (
     <div className="w-full space-y-6 text-slate-200 relative">
@@ -388,12 +342,21 @@ export default function SmartReviewHub({
                 <span className="flex items-center gap-2">
                   <BookOpen className="w-4 h-4 text-indigo-400" /> Review Pages Load
                 </span>
-                <span className="text-indigo-400">{totalReviewPagesToday} / {dailyLimits.maxReviewPagesPerDay} pages</span>
+                <div className="flex items-center gap-2">
+                  {isReviewOverCap && (
+                    <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 text-[10px] font-black uppercase border border-amber-500/40 animate-pulse">
+                      ⚠️ Over Cap by {totalReviewPagesToday - dailyLimits.maxReviewPagesPerDay} pgs
+                    </span>
+                  )}
+                  <span className="text-indigo-400">
+                    {isReviewUnlimited ? `${totalReviewPagesToday} pages (Unlimited)` : `${totalReviewPagesToday} / ${dailyLimits.maxReviewPagesPerDay} pages`}
+                  </span>
+                </div>
               </div>
               <div className="w-full bg-slate-900 h-2.5 rounded-full overflow-hidden border border-slate-800">
                 <div
-                  className="bg-indigo-500 h-full rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(100, Math.round((totalReviewPagesToday / (dailyLimits.maxReviewPagesPerDay || 1)) * 100))}%` }}
+                  className={`h-full rounded-full transition-all duration-500 ${isReviewOverCap ? 'bg-amber-500' : 'bg-indigo-500'}`}
+                  style={{ width: `${isReviewUnlimited ? 100 : Math.min(100, Math.round((totalReviewPagesToday / (dailyLimits.maxReviewPagesPerDay || 1)) * 100))}%` }}
                 />
               </div>
             </motion.div>
@@ -409,12 +372,21 @@ export default function SmartReviewHub({
                 <span className="flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-emerald-400" /> New Topic Pages
                 </span>
-                <span className="text-emerald-400">{totalNewPagesToday} / {dailyLimits.newPagesPerDay} pages</span>
+                <div className="flex items-center gap-2">
+                  {isNewOverCap && (
+                    <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 text-[10px] font-black uppercase border border-amber-500/40 animate-pulse">
+                      ⚠️ Over Cap by {totalNewPagesToday - dailyLimits.newPagesPerDay} pgs
+                    </span>
+                  )}
+                  <span className="text-emerald-400">
+                    {isNewUnlimited ? `${totalNewPagesToday} pages (Unlimited)` : `${totalNewPagesToday} / ${dailyLimits.newPagesPerDay} pages`}
+                  </span>
+                </div>
               </div>
               <div className="w-full bg-slate-900 h-2.5 rounded-full overflow-hidden border border-slate-800">
                 <div
-                  className="bg-emerald-500 h-full rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(100, Math.round((totalNewPagesToday / (dailyLimits.newPagesPerDay || 1)) * 100))}%` }}
+                  className={`h-full rounded-full transition-all duration-500 ${isNewOverCap ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                  style={{ width: `${isNewUnlimited ? 100 : Math.min(100, Math.round((totalNewPagesToday / (dailyLimits.newPagesPerDay || 1)) * 100))}%` }}
                 />
               </div>
             </motion.div>

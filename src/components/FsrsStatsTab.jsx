@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, PieChart, Pie } from 'recharts';
+import { getTopicPageWeight } from '../utils/pageUtils';
 
 export default function FsrsStatsTab({ subjectTrackerData = [], studyLogs = [], fsrsConfig = {} }) {
   const [timeRange, setTimeRange] = useState('1M'); // '1M', '3M', '1Y', 'ALL'
@@ -107,10 +108,11 @@ export default function FsrsStatsTab({ subjectTrackerData = [], studyLogs = [], 
 
     subjectTrackerData.forEach(subDoc => {
       if (subDoc.topics) {
-        Object.values(subDoc.topics).forEach(topic => {
+        const topicsList = Object.values(subDoc.topics);
+        topicsList.forEach(topic => {
           if (topic.nextReviewDue && daysMap[topic.nextReviewDue]) {
             daysMap[topic.nextReviewDue].count += 1;
-            const pageLen = parseInt(topic.pageCount, 10) || 1;
+            const pageLen = getTopicPageWeight(topic, topicsList);
             daysMap[topic.nextReviewDue].pages += pageLen;
           }
         });

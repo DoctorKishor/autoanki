@@ -38,6 +38,7 @@ import FsrsSettingsModal from './components/FsrsSettingsModal';
 import FsrsStatsTab from './components/FsrsStatsTab';
 import SmartReviewHub from './components/SmartReviewHub';
 import { cropAndMaskDiagram } from './utils/imageCropper';
+import { getTopicPageWeight, parsePageNumbers } from './utils/pageUtils';
 import { getLocalSetting, saveLocalSetting, getLocalCards, saveLocalCards, replaceAllLocalCards, saveLocalCard, deleteLocalCard, getLocalPages, saveLocalPages, replaceAllLocalPages, saveLocalPage, deleteLocalPage, getLocalKV, setLocalKV, getLocalPrompts, saveLocalPrompt, deleteLocalPrompt, getAllLocalPytTopics, saveLocalPytTopic, getAllLocalPytProgress, saveLocalPytProgressDoc, getLocalTextbooksMetadata, saveLocalTextbooksMetadata, getLocalStudyLogs, saveLocalStudyLog, replaceAllLocalStudyLogs, getLocalSubjectTrackerData, saveLocalSubjectTrackerDoc, replaceAllLocalSubjectTrackerData, getLocalStudySchedule, saveLocalScheduleEntry, replaceAllLocalStudySchedule, getFSRSConfig, saveFSRSConfig, DEFAULT_FSRS_CONFIG } from './services/localDb';
 import { calculateNextFSRSState, calculateInitialState, DEFAULT_FSRS6_WEIGHTS, getTopicPageLength } from './services/fsrsEngine';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -12294,36 +12295,7 @@ JSON Format:
   };
 
   const getTopicWeight = (topic, topicsList) => {
-    const list = Array.isArray(topicsList) ? topicsList : Object.values(topicsList || {});
-    let start = parseInt(topic.page, 10) || 0;
-    let end = topic.endPage ? (parseInt(topic.endPage, 10) || 0) : 0;
-
-    const rawPageVal = String(topic.page || '').trim();
-    if (rawPageVal && (rawPageVal.includes('-') || rawPageVal.includes('–'))) {
-      const parts = rawPageVal.split(/[-–]/).map(p => parseInt(p.trim(), 10));
-      if (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1]) && parts[1] >= parts[0]) {
-        start = parts[0];
-        end = parts[1];
-      }
-    }
-
-    if (end >= start && end > 0) {
-      return end - start + 1;
-    }
-    // Dynamic calculation: find the next topic by start page
-    const sorted = [...list].sort((a, b) => {
-      const numA = parseInt(a.page, 10) || 0;
-      const numB = parseInt(b.page, 10) || 0;
-      return numA - numB;
-    });
-    const currentIndex = sorted.findIndex(t => t.name === topic.name);
-    if (currentIndex !== -1 && currentIndex < sorted.length - 1) {
-      const actualNextStart = parseInt(sorted[currentIndex + 1].page, 10) || 0;
-      if (actualNextStart > start) {
-        return actualNextStart - start;
-      }
-    }
-    return 1;
+    return getTopicPageWeight(topic, topicsList);
   };
 
   const getTopicEndPagePlaceholder = (topic, topicsList) => {

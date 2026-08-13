@@ -260,7 +260,7 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
                       <input
                         type="number"
                         min="1"
-                        max="100"
+                        max="9999"
                         value={tempConfig.dailyLimits?.newPagesPerDay ?? 15}
                         onChange={e => setTempConfig({
                           ...tempConfig,
@@ -269,6 +269,7 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
                         className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-sm font-semibold focus:outline-none focus:border-indigo-500"
                       />
                       <p className="text-[11px] text-slate-400">Max new chapter pages introduced daily.</p>
+                      <p className="text-[10px] text-indigo-300 font-semibold mt-1">💡 Set to 9999 to remove the cap (unlimited)</p>
                     </div>
 
                     <div className="p-4 rounded-xl bg-slate-900/40 border border-slate-700/40 space-y-2">
@@ -276,7 +277,7 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
                       <input
                         type="number"
                         min="1"
-                        max="500"
+                        max="9999"
                         value={tempConfig.dailyLimits?.maxReviewPagesPerDay ?? 30}
                         onChange={e => setTempConfig({
                           ...tempConfig,
@@ -285,6 +286,7 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
                         className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-sm font-semibold focus:outline-none focus:border-indigo-500"
                       />
                       <p className="text-[11px] text-slate-400">Max review page load cap daily.</p>
+                      <p className="text-[10px] text-indigo-300 font-semibold mt-1">💡 Set to 9999 to remove the cap (unlimited)</p>
                     </div>
                   </div>
 
