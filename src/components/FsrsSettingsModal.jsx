@@ -128,12 +128,21 @@ const MANUAL_CONTENTS = {
   }
 };
 
-export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveConfig, themeMode = 'dark' }) {
+export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveConfig, themeMode = 'dark', subjectTrackerData = [] }) {
   const isDark = themeMode === 'dark';
   const [activeCategory, setActiveCategory] = useState('dailyLimits');
   const [activeScopeTab, setActiveScopeTab] = useState('preset');
+  const [selectedSubject, setSelectedSubject] = useState('');
   const [activeManualSection, setActiveManualSection] = useState(null);
   const [tempConfig, setTempConfig] = useState(fsrsConfig || {});
+
+  const todayStr = React.useMemo(() => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }, []);
 
   // Update temp state when modal opens or fsrsConfig changes
   React.useEffect(() => {
@@ -141,6 +150,13 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
       setTempConfig(JSON.parse(JSON.stringify(fsrsConfig)));
     }
   }, [fsrsConfig, isOpen]);
+
+  // Set default selected subject when subjectTrackerData changes
+  React.useEffect(() => {
+    if (subjectTrackerData && subjectTrackerData.length > 0 && !selectedSubject) {
+      setSelectedSubject(subjectTrackerData[0]?.subject || '');
+    }
+  }, [subjectTrackerData, selectedSubject]);
 
   if (!isOpen) return null;
 
@@ -157,6 +173,22 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
   };
 
   const currentWorkload = getWorkloadLevel(tempConfig.globalDesiredRetention || 0.90);
+
+  // Daily Limits Helpers
+  const globalLimits = tempConfig.dailyLimits || {};
+  const subjectOverrides = tempConfig.dailyLimits?.subjectOverrides || {};
+  const currentSubjectConfig = (selectedSubject && subjectOverrides[selectedSubject]) || {
+    enabled: false,
+    newPagesPerDay: globalLimits.newPagesPerDay ?? 15,
+    maxReviewPagesPerDay: globalLimits.maxReviewPagesPerDay ?? 30
+  };
+
+  const todayOverride = tempConfig.dailyLimits?.todayOverride || {
+    enabled: false,
+    date: todayStr,
+    newPagesPerDay: globalLimits.newPagesPerDay ?? 15,
+    maxReviewPagesPerDay: globalLimits.maxReviewPagesPerDay ?? 30
+  };
 
   return (
     <AnimatePresence>
@@ -263,87 +295,353 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
                     ))}
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className={`p-4 rounded-2xl border space-y-2 ${
-                      isDark ? 'neu-card-dark border-slate-700/60' : 'neu-card-light border-slate-200/80'
-                    }`}>
-                      <label className={`text-xs font-black ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>New Topic Pages / Day</label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="9999"
-                        value={tempConfig.dailyLimits?.newPagesPerDay ?? 15}
-                        onChange={e => setTempConfig({
-                          ...tempConfig,
-                          dailyLimits: { ...tempConfig.dailyLimits, newPagesPerDay: parseInt(e.target.value, 10) || 1 }
-                        })}
-                        className={`w-full px-3 py-2 rounded-xl text-sm font-black focus:outline-none focus:border-indigo-500 border ${
-                          isDark ? 'neu-pressed-dark bg-[#222730] border-slate-700/60 text-white' : 'neu-pressed-light bg-[#e6ecf5] border-slate-300 text-slate-800'
-                        }`}
-                      />
-                      <p className={`text-[11px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Max new chapter pages introduced daily.</p>
-                      <p className={`text-[10px] font-black mt-1 ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>💡 Set to 9999 to remove the cap (unlimited)</p>
-                    </div>
-
-                    <div className={`p-4 rounded-2xl border space-y-2 ${
-                      isDark ? 'neu-card-dark border-slate-700/60' : 'neu-card-light border-slate-200/80'
-                    }`}>
-                      <label className={`text-xs font-black ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Maximum Review Pages / Day</label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="9999"
-                        value={tempConfig.dailyLimits?.maxReviewPagesPerDay ?? 30}
-                        onChange={e => setTempConfig({
-                          ...tempConfig,
-                          dailyLimits: { ...tempConfig.dailyLimits, maxReviewPagesPerDay: parseInt(e.target.value, 10) || 1 }
-                        })}
-                        className={`w-full px-3 py-2 rounded-xl text-sm font-black focus:outline-none focus:border-indigo-500 border ${
-                          isDark ? 'neu-pressed-dark bg-[#222730] border-slate-700/60 text-white' : 'neu-pressed-light bg-[#e6ecf5] border-slate-300 text-slate-800'
-                        }`}
-                      />
-                      <p className={`text-[11px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Max review page load cap daily.</p>
-                      <p className={`text-[10px] font-black mt-1 ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>💡 Set to 9999 to remove the cap (unlimited)</p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3 pt-2">
-                    <label className={`flex items-center justify-between p-3.5 rounded-2xl border cursor-pointer ${
-                      isDark ? 'neu-card-dark border-slate-700/60' : 'neu-card-light border-slate-200/80'
-                    }`}>
-                      <div>
-                        <div className={`text-xs font-black ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>New topics ignore review limit</div>
-                        <div className={`text-[11px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Show new topics even when daily review page limit is reached</div>
+                  {/* SCOPE 1: GLOBAL PRESET */}
+                  {activeScopeTab === 'preset' && (
+                    <div className="space-y-5">
+                      <div className={`p-3 rounded-xl border text-xs font-bold ${
+                        isDark ? 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20' : 'bg-indigo-50 text-indigo-800 border-indigo-200'
+                      }`}>
+                        🌐 <b>Global Preset:</b> Default page caps applied across all medical subjects unless overridden below.
                       </div>
-                      <input
-                        type="checkbox"
-                        checked={tempConfig.dailyLimits?.newIgnoreReviewLimit ?? false}
-                        onChange={e => setTempConfig({
-                          ...tempConfig,
-                          dailyLimits: { ...tempConfig.dailyLimits, newIgnoreReviewLimit: e.target.checked }
-                        })}
-                        className="w-4 h-4 rounded text-indigo-600 border-slate-400 focus:ring-indigo-500"
-                      />
-                    </label>
 
-                    <label className={`flex items-center justify-between p-3.5 rounded-2xl border cursor-pointer ${
-                      isDark ? 'neu-card-dark border-slate-700/60' : 'neu-card-light border-slate-200/80'
-                    }`}>
-                      <div>
-                        <div className={`text-xs font-black ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>Limits start from top</div>
-                        <div className={`text-[11px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Enforce top-level subject page caps when studying sub-topics</div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className={`p-4 rounded-2xl border space-y-2 ${
+                          isDark ? 'neu-card-dark border-slate-700/60' : 'neu-card-light border-slate-200/80'
+                        }`}>
+                          <label className={`text-xs font-black ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>New Topic Pages / Day</label>
+                          <input
+                            type="number"
+                            min="1"
+                            max="9999"
+                            value={tempConfig.dailyLimits?.newPagesPerDay ?? 15}
+                            onChange={e => setTempConfig({
+                              ...tempConfig,
+                              dailyLimits: { ...tempConfig.dailyLimits, newPagesPerDay: parseInt(e.target.value, 10) || 1 }
+                            })}
+                            className={`w-full px-3 py-2 rounded-xl text-sm font-black focus:outline-none focus:border-indigo-500 border ${
+                              isDark ? 'neu-pressed-dark bg-[#222730] border-slate-700/60 text-white' : 'neu-pressed-light bg-[#e6ecf5] border-slate-300 text-slate-800'
+                            }`}
+                          />
+                          <p className={`text-[11px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Max new chapter pages introduced daily.</p>
+                          <p className={`text-[10px] font-black mt-1 ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>💡 Set to 9999 to remove the cap (unlimited)</p>
+                        </div>
+
+                        <div className={`p-4 rounded-2xl border space-y-2 ${
+                          isDark ? 'neu-card-dark border-slate-700/60' : 'neu-card-light border-slate-200/80'
+                        }`}>
+                          <label className={`text-xs font-black ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Maximum Review Pages / Day</label>
+                          <input
+                            type="number"
+                            min="1"
+                            max="9999"
+                            value={tempConfig.dailyLimits?.maxReviewPagesPerDay ?? 30}
+                            onChange={e => setTempConfig({
+                              ...tempConfig,
+                              dailyLimits: { ...tempConfig.dailyLimits, maxReviewPagesPerDay: parseInt(e.target.value, 10) || 1 }
+                            })}
+                            className={`w-full px-3 py-2 rounded-xl text-sm font-black focus:outline-none focus:border-indigo-500 border ${
+                              isDark ? 'neu-pressed-dark bg-[#222730] border-slate-700/60 text-white' : 'neu-pressed-light bg-[#e6ecf5] border-slate-300 text-slate-800'
+                            }`}
+                          />
+                          <p className={`text-[11px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Max review page load cap daily.</p>
+                          <p className={`text-[10px] font-black mt-1 ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>💡 Set to 9999 to remove the cap (unlimited)</p>
+                        </div>
                       </div>
-                      <input
-                        type="checkbox"
-                        checked={tempConfig.dailyLimits?.limitsStartFromTop ?? false}
-                        onChange={e => setTempConfig({
-                          ...tempConfig,
-                          dailyLimits: { ...tempConfig.dailyLimits, limitsStartFromTop: e.target.checked }
-                        })}
-                        className="w-4 h-4 rounded text-indigo-600 border-slate-400 focus:ring-indigo-500"
-                      />
-                    </label>
-                  </div>
+
+                      <div className="space-y-3 pt-2">
+                        <label className={`flex items-center justify-between p-3.5 rounded-2xl border cursor-pointer ${
+                          isDark ? 'neu-card-dark border-slate-700/60' : 'neu-card-light border-slate-200/80'
+                        }`}>
+                          <div>
+                            <div className={`text-xs font-black ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>New topics ignore review limit</div>
+                            <div className={`text-[11px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Show new topics even when daily review page limit is reached</div>
+                          </div>
+                          <input
+                            type="checkbox"
+                            checked={tempConfig.dailyLimits?.newIgnoreReviewLimit ?? false}
+                            onChange={e => setTempConfig({
+                              ...tempConfig,
+                              dailyLimits: { ...tempConfig.dailyLimits, newIgnoreReviewLimit: e.target.checked }
+                            })}
+                            className="w-4 h-4 rounded text-indigo-600 border-slate-400 focus:ring-indigo-500"
+                          />
+                        </label>
+
+                        <label className={`flex items-center justify-between p-3.5 rounded-2xl border cursor-pointer ${
+                          isDark ? 'neu-card-dark border-slate-700/60' : 'neu-card-light border-slate-200/80'
+                        }`}>
+                          <div>
+                            <div className={`text-xs font-black ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>Limits start from top</div>
+                            <div className={`text-[11px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Enforce top-level subject page caps when studying sub-topics</div>
+                          </div>
+                          <input
+                            type="checkbox"
+                            checked={tempConfig.dailyLimits?.limitsStartFromTop ?? false}
+                            onChange={e => setTempConfig({
+                              ...tempConfig,
+                              dailyLimits: { ...tempConfig.dailyLimits, limitsStartFromTop: e.target.checked }
+                            })}
+                            className="w-4 h-4 rounded text-indigo-600 border-slate-400 focus:ring-indigo-500"
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* SCOPE 2: THIS SUBJECT */}
+                  {activeScopeTab === 'subject' && (
+                    <div className="space-y-5">
+                      <div className={`p-4 rounded-2xl border space-y-3 ${
+                        isDark ? 'neu-card-dark border-slate-700/60' : 'neu-card-light border-slate-200/80'
+                      }`}>
+                        <label className={`text-xs font-black ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Select Subject to Override</label>
+                        <select
+                          value={selectedSubject}
+                          onChange={e => setSelectedSubject(e.target.value)}
+                          className={`w-full px-3 py-2 rounded-xl text-sm font-black focus:outline-none focus:border-indigo-500 border ${
+                            isDark ? 'neu-pressed-dark bg-[#222730] border-slate-700/60 text-white' : 'neu-pressed-light bg-[#e6ecf5] border-slate-300 text-slate-800'
+                          }`}
+                        >
+                          {subjectTrackerData && subjectTrackerData.length > 0 ? (
+                            subjectTrackerData.map(subDoc => (
+                              <option key={subDoc.id || subDoc.subject} value={subDoc.subject}>
+                                📚 {subDoc.subject}
+                              </option>
+                            ))
+                          ) : (
+                            <option value="">No subjects found</option>
+                          )}
+                        </select>
+                      </div>
+
+                      {selectedSubject ? (
+                        <div className="space-y-4">
+                          <label className={`flex items-center justify-between p-3.5 rounded-2xl border cursor-pointer ${
+                            isDark ? 'neu-card-dark border-slate-700/60' : 'neu-card-light border-slate-200/80'
+                          }`}>
+                            <div>
+                              <div className={`text-xs font-black ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                                Enable Custom Limits for "{selectedSubject}"
+                              </div>
+                              <div className={`text-[11px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                Overrides the Global Preset specifically when studying {selectedSubject}
+                              </div>
+                            </div>
+                            <input
+                              type="checkbox"
+                              checked={currentSubjectConfig.enabled}
+                              onChange={e => {
+                                const isChecked = e.target.checked;
+                                setTempConfig({
+                                  ...tempConfig,
+                                  dailyLimits: {
+                                    ...globalLimits,
+                                    subjectOverrides: {
+                                      ...subjectOverrides,
+                                      [selectedSubject]: {
+                                        ...currentSubjectConfig,
+                                        enabled: isChecked
+                                      }
+                                    }
+                                  }
+                                });
+                              }}
+                              className="w-5 h-5 rounded text-indigo-600 border-slate-400 focus:ring-indigo-500"
+                            />
+                          </label>
+
+                          {currentSubjectConfig.enabled ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className={`p-4 rounded-2xl border space-y-2 ${
+                                isDark ? 'neu-card-dark border-slate-700/60' : 'neu-card-light border-slate-200/80'
+                              }`}>
+                                <label className={`text-xs font-black ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                                  {selectedSubject}: New Pages / Day
+                                </label>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max="9999"
+                                  value={currentSubjectConfig.newPagesPerDay}
+                                  onChange={e => {
+                                    const val = parseInt(e.target.value, 10) || 1;
+                                    setTempConfig({
+                                      ...tempConfig,
+                                      dailyLimits: {
+                                        ...globalLimits,
+                                        subjectOverrides: {
+                                          ...subjectOverrides,
+                                          [selectedSubject]: {
+                                            ...currentSubjectConfig,
+                                            newPagesPerDay: val
+                                          }
+                                        }
+                                      }
+                                    });
+                                  }}
+                                  className={`w-full px-3 py-2 rounded-xl text-sm font-black focus:outline-none focus:border-indigo-500 border ${
+                                    isDark ? 'neu-pressed-dark bg-[#222730] border-slate-700/60 text-white' : 'neu-pressed-light bg-[#e6ecf5] border-slate-300 text-slate-800'
+                                  }`}
+                                />
+                              </div>
+
+                              <div className={`p-4 rounded-2xl border space-y-2 ${
+                                isDark ? 'neu-card-dark border-slate-700/60' : 'neu-card-light border-slate-200/80'
+                              }`}>
+                                <label className={`text-xs font-black ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                                  {selectedSubject}: Max Review Pages / Day
+                                </label>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max="9999"
+                                  value={currentSubjectConfig.maxReviewPagesPerDay}
+                                  onChange={e => {
+                                    const val = parseInt(e.target.value, 10) || 1;
+                                    setTempConfig({
+                                      ...tempConfig,
+                                      dailyLimits: {
+                                        ...globalLimits,
+                                        subjectOverrides: {
+                                          ...subjectOverrides,
+                                          [selectedSubject]: {
+                                            ...currentSubjectConfig,
+                                            maxReviewPagesPerDay: val
+                                          }
+                                        }
+                                      }
+                                    });
+                                  }}
+                                  className={`w-full px-3 py-2 rounded-xl text-sm font-black focus:outline-none focus:border-indigo-500 border ${
+                                    isDark ? 'neu-pressed-dark bg-[#222730] border-slate-700/60 text-white' : 'neu-pressed-light bg-[#e6ecf5] border-slate-300 text-slate-800'
+                                  }`}
+                                />
+                              </div>
+                            </div>
+                          ) : (
+                            <div className={`p-4 rounded-2xl border text-xs font-bold text-center ${
+                              isDark ? 'bg-slate-900/40 border-slate-700/50 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-600'
+                            }`}>
+                              ℹ️ Custom override is disabled for <b>{selectedSubject}</b>. Currently using Global Preset limits ({globalLimits.newPagesPerDay ?? 15} New / {globalLimits.maxReviewPagesPerDay ?? 30} Review pgs).
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-xs text-slate-400 text-center py-4">No subject selected.</div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* SCOPE 3: TODAY ONLY */}
+                  {activeScopeTab === 'today' && (
+                    <div className="space-y-5">
+                      <div className={`p-3 rounded-xl border text-xs font-bold flex items-center justify-between ${
+                        isDark ? 'bg-amber-500/10 text-amber-300 border-amber-500/20' : 'bg-amber-50 text-amber-900 border-amber-200'
+                      }`}>
+                        <span>⚡ <b>Today Only Override:</b> Temporary cap for {todayStr}. Automatically reverts at midnight.</span>
+                      </div>
+
+                      <label className={`flex items-center justify-between p-3.5 rounded-2xl border cursor-pointer ${
+                        isDark ? 'neu-card-dark border-slate-700/60' : 'neu-card-light border-slate-200/80'
+                      }`}>
+                        <div>
+                          <div className={`text-xs font-black ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                            Enable Single-Day Override for Today ({todayStr})
+                          </div>
+                          <div className={`text-[11px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                            Temporarily changes your daily review or new topic caps for today only
+                          </div>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={todayOverride.enabled && todayOverride.date === todayStr}
+                          onChange={e => {
+                            const isChecked = e.target.checked;
+                            setTempConfig({
+                              ...tempConfig,
+                              dailyLimits: {
+                                ...globalLimits,
+                                todayOverride: {
+                                  ...todayOverride,
+                                  date: todayStr,
+                                  enabled: isChecked
+                                }
+                              }
+                            });
+                          }}
+                          className="w-5 h-5 rounded text-amber-600 border-slate-400 focus:ring-amber-500"
+                        />
+                      </label>
+
+                      {todayOverride.enabled && todayOverride.date === todayStr ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className={`p-4 rounded-2xl border space-y-2 ${
+                            isDark ? 'neu-card-dark border-slate-700/60' : 'neu-card-light border-slate-200/80'
+                          }`}>
+                            <label className={`text-xs font-black ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Today's New Topic Pages / Day</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="9999"
+                              value={todayOverride.newPagesPerDay}
+                              onChange={e => {
+                                const val = parseInt(e.target.value, 10) || 1;
+                                setTempConfig({
+                                  ...tempConfig,
+                                  dailyLimits: {
+                                    ...globalLimits,
+                                    todayOverride: {
+                                      ...todayOverride,
+                                      newPagesPerDay: val
+                                    }
+                                  }
+                                });
+                              }}
+                              className={`w-full px-3 py-2 rounded-xl text-sm font-black focus:outline-none focus:border-amber-500 border ${
+                                isDark ? 'neu-pressed-dark bg-[#222730] border-slate-700/60 text-white' : 'neu-pressed-light bg-[#e6ecf5] border-slate-300 text-slate-800'
+                              }`}
+                            />
+                            <p className={`text-[11px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Temporary new page limit for today.</p>
+                          </div>
+
+                          <div className={`p-4 rounded-2xl border space-y-2 ${
+                            isDark ? 'neu-card-dark border-slate-700/60' : 'neu-card-light border-slate-200/80'
+                          }`}>
+                            <label className={`text-xs font-black ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Today's Maximum Review Pages / Day</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="9999"
+                              value={todayOverride.maxReviewPagesPerDay}
+                              onChange={e => {
+                                const val = parseInt(e.target.value, 10) || 1;
+                                setTempConfig({
+                                  ...tempConfig,
+                                  dailyLimits: {
+                                    ...globalLimits,
+                                    todayOverride: {
+                                      ...todayOverride,
+                                      maxReviewPagesPerDay: val
+                                    }
+                                  }
+                                });
+                              }}
+                              className={`w-full px-3 py-2 rounded-xl text-sm font-black focus:outline-none focus:border-amber-500 border ${
+                                isDark ? 'neu-pressed-dark bg-[#222730] border-slate-700/60 text-white' : 'neu-pressed-light bg-[#e6ecf5] border-slate-300 text-slate-800'
+                              }`}
+                            />
+                            <p className={`text-[11px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Temporary review page limit for today.</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className={`p-4 rounded-2xl border text-xs font-bold text-center ${
+                          isDark ? 'bg-slate-900/40 border-slate-700/50 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-600'
+                        }`}>
+                          ℹ️ Today Only override is inactive. Currently operating under Global Preset limits.
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 

@@ -50,7 +50,27 @@ export default function SmartReviewHub({
   }, [lastRatedToast, onClearToast]);
 
   // 1. Calculate Daily Limits & Page Counts from subjectTrackerData
-  const dailyLimits = fsrsConfig.dailyLimits || { newPagesPerDay: 10, maxReviewPagesPerDay: 30 };
+  const todayStr = getLocalDateStr();
+  const rawLimits = fsrsConfig.dailyLimits || {};
+  const todayOverride = rawLimits.todayOverride;
+
+  const dailyLimits = useMemo(() => {
+    let newCap = rawLimits.newPagesPerDay ?? 10;
+    let reviewCap = rawLimits.maxReviewPagesPerDay ?? 30;
+
+    if (todayOverride && todayOverride.enabled && todayOverride.date === todayStr) {
+      newCap = todayOverride.newPagesPerDay ?? newCap;
+      reviewCap = todayOverride.maxReviewPagesPerDay ?? reviewCap;
+    }
+
+    return {
+      newPagesPerDay: newCap,
+      maxReviewPagesPerDay: reviewCap,
+      newIgnoreReviewLimit: rawLimits.newIgnoreReviewLimit ?? false,
+      limitsStartFromTop: rawLimits.limitsStartFromTop ?? false,
+      subjectOverrides: rawLimits.subjectOverrides || {}
+    };
+  }, [fsrsConfig, todayStr]);
 
   const { overdueTopics, dueTodayTopics, newTopics, totalReviewPagesToday, totalNewPagesToday, leechTopics } = useMemo(() => {
     const overdue = [];
@@ -211,6 +231,7 @@ export default function SmartReviewHub({
         fsrsConfig={fsrsConfig}
         onSaveConfig={onSaveConfig}
         themeMode={themeMode}
+        subjectTrackerData={subjectTrackerData}
       />
 
       {/* Header & Controls Bar */}
