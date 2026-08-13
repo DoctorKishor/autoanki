@@ -440,6 +440,19 @@ export async function replaceAllLocalStudyLogs(logsObj) {
   return logsObj || {};
 }
 
+// --- TIMER STATE HELPERS ---
+export async function getLocalTimerState() {
+  const data = await getLocalKV('timerState');
+  return (data && typeof data === 'object' && !Array.isArray(data)) ? data : null;
+}
+
+export async function saveLocalTimerState(updates) {
+  const current = (await getLocalTimerState()) || {};
+  const updated = { ...current, ...updates };
+  await setLocalKV('timerState', updated);
+  return updated;
+}
+
 // --- SUBJECT TRACKER HELPERS ---
 export async function getLocalSubjectTrackerData() {
   const data = await getLocalKV('subject_tracker_data');
@@ -670,6 +683,8 @@ export default {
   getAiTopicRecommendations,
   saveAiTopicRecommendations,
   getActiveNewTopicIds,
-  saveActiveNewTopicIds
+  saveActiveNewTopicIds,
+  getLocalTimerState,
+  saveLocalTimerState
 };
 

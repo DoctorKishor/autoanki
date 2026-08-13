@@ -135,7 +135,6 @@ export default function DashboardGrid({
 
   // Quick logging submission
   const handleQuickLogSubmit = async () => {
-    if (!user || !db) return;
     setIsLoggingQuick(true);
     try {
       const todayLog = studyLogs[todayStr] || { questions: 0, cards: 0, hours: 0, pages: 0, gts: [], sessions: [] };

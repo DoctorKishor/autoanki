@@ -40,7 +40,7 @@ import SmartReviewHub from './components/SmartReviewHub';
 import TopicNotesModal from './components/TopicNotesModal';
 import { cropAndMaskDiagram } from './utils/imageCropper';
 import { getTopicPageWeight, parsePageNumbers } from './utils/pageUtils';
-import { getLocalSetting, saveLocalSetting, getLocalCards, saveLocalCards, replaceAllLocalCards, saveLocalCard, deleteLocalCard, getLocalPages, saveLocalPages, replaceAllLocalPages, saveLocalPage, deleteLocalPage, getLocalKV, setLocalKV, getLocalPrompts, saveLocalPrompt, deleteLocalPrompt, getAllLocalPytTopics, saveLocalPytTopic, getAllLocalPytProgress, saveLocalPytProgressDoc, getLocalTextbooksMetadata, saveLocalTextbooksMetadata, getLocalStudyLogs, saveLocalStudyLog, replaceAllLocalStudyLogs, getLocalSubjectTrackerData, saveLocalSubjectTrackerDoc, replaceAllLocalSubjectTrackerData, getLocalStudySchedule, saveLocalScheduleEntry, replaceAllLocalStudySchedule, getFSRSConfig, saveFSRSConfig, DEFAULT_FSRS_CONFIG } from './services/localDb';
+import { getLocalSetting, saveLocalSetting, getLocalCards, saveLocalCards, replaceAllLocalCards, saveLocalCard, deleteLocalCard, getLocalPages, saveLocalPages, replaceAllLocalPages, saveLocalPage, deleteLocalPage, getLocalKV, setLocalKV, getLocalPrompts, saveLocalPrompt, deleteLocalPrompt, getAllLocalPytTopics, saveLocalPytTopic, getAllLocalPytProgress, saveLocalPytProgressDoc, getLocalTextbooksMetadata, saveLocalTextbooksMetadata, getLocalStudyLogs, saveLocalStudyLog, replaceAllLocalStudyLogs, getLocalSubjectTrackerData, saveLocalSubjectTrackerDoc, replaceAllLocalSubjectTrackerData, getLocalStudySchedule, saveLocalScheduleEntry, replaceAllLocalStudySchedule, getFSRSConfig, saveFSRSConfig, DEFAULT_FSRS_CONFIG, getLocalTimerState, saveLocalTimerState } from './services/localDb';
 import { calculateNextFSRSState, calculateInitialState, DEFAULT_FSRS6_WEIGHTS, getTopicPageLength, recalculateTopicFSRSFromLogs } from './services/fsrsEngine';
 import { motion, AnimatePresence } from 'framer-motion';
 import UiverseButton from './components/UiverseButton';
@@ -3324,7 +3324,7 @@ const ReactFlipDigit = ({ digit, theme }) => {
   );
 };
 
-const QuickLogger = ({ todayLog, todayStr, db, user, appId, setStudyLogs }) => {
+const QuickLogger = ({ todayLog, todayStr, setStudyLogs }) => {
   const [qsVal, setQsVal] = useState('');
   const [cardsVal, setCardsVal] = useState('');
   const [hoursVal, setHoursVal] = useState('');
@@ -9328,12 +9328,12 @@ JSON Format:
   };
 
   // --- REAL-TIME SYNCHRONIZED POMODORO, TIMER, & STOPWATCH LISTENER & CONTROLS ---
+  // --- OFFLINE LOCALDB POMODORO, TIMER, & STOPWATCH ENGINE & CONTROLS ---
   useEffect(() => {
-    if (!targetUid || !db) return;
-    const timerDocRef = doc(db, 'artifacts', appId, 'users', targetUid, 'settings', 'timerState');
-    const unsubscribe = onSnapshot(timerDocRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.data();
+    let isMounted = true;
+    getLocalTimerState().then(data => {
+      if (!isMounted) return;
+      if (data) {
         setTimerState(prev => ({ ...prev, ...data }));
 
         if (data.fullscreenTimerBg) {
@@ -9401,15 +9401,12 @@ JSON Format:
         setLocalTimerTimeLeft(1500);
         setLocalCustomTimerTimeLeft(600);
         setLocalStopwatchTime(0);
-        if (user) {
-          setDoc(timerDocRef, defaultState).catch(err => console.error("Error setting default timerState:", err));
-        }
+        saveLocalTimerState(defaultState).catch(err => console.error("Error setting default local timerState:", err));
       }
-    }, (error) => {
-      console.error("Error listening to timerState:", error);
-    });
-    return () => unsubscribe();
-  }, [targetUid]);
+    }).catch(err => console.error("Error loading local timerState:", err));
+
+    return () => { isMounted = false; };
+  }, []);
 
   // Modern double-beep chime alarm synthesized via native browser Web Audio API
   const playAlarmSound = () => {
@@ -9443,7 +9440,7 @@ JSON Format:
   };
 
   const autoLogTimeForDate = async (seconds, dateStr, isPomodoro, isStopwatch) => {
-    if (!user || !db || seconds <= 0) return;
+    if (seconds <= 0) return;
     const hrs = Number((seconds / 3600).toFixed(3));
     if (hrs <= 0.001) return;
 
@@ -9478,22 +9475,8 @@ JSON Format:
 
       // Log to CAMP Tracker
       await saveSessionToCamp(dateStr, 'preLunch', hrs, 7, { type: 'notes' });
-
-      // Persist CAMP to Firestore
-      const savedCampSessions = localStorage.getItem(`camp_sessions_${dateStr}`);
-      if (savedCampSessions) {
-        const campDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'camp_daily_logs', dateStr);
-        await setDoc(campDocRef, { sessions: JSON.parse(savedCampSessions) }, { merge: true });
-      }
-
-      const savedCampTimerHistory = localStorage.getItem('camp_timer_history');
-      if (savedCampTimerHistory) {
-        const campHistoryDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'camp_data', 'timer_history');
-        await setDoc(campHistoryDocRef, { data: JSON.parse(savedCampTimerHistory) }, { merge: true });
-      }
-
     } catch (err) {
-      console.error("Error auto-logging midnight split:", err);
+      console.error("Error auto-logging midnight split locally:", err);
     }
   };
 
@@ -9548,44 +9531,43 @@ JSON Format:
 
           setLocalTimerTimeLeft(secondsRemaining);
 
-          if (user && db) {
-            const timerDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'timerState');
-            if (secondsRemaining === 0) {
-              const nextRounds = state.pomodoroMode === 'study' ? (state.pomodoroRounds || 0) + 1 : (state.pomodoroRounds || 0);
-              let nextMode = 'study';
-              let nextDuration = state.pomodoroDuration || 1500;
-              const targetRounds = state.pomodoroTargetRounds || 4;
-              let isLongBreak = false;
+          setLocalTimerTimeLeft(secondsRemaining);
 
-              if (state.pomodoroMode === 'study') {
-                if (nextRounds >= targetRounds) {
-                  nextMode = 'break';
-                  nextDuration = state.pomodoroLongBreakDuration || 1200;
-                  isLongBreak = true;
-                } else {
-                  nextMode = 'break';
-                  nextDuration = state.pomodoroBreakDuration || 300;
-                }
+          if (secondsRemaining === 0) {
+            const nextRounds = state.pomodoroMode === 'study' ? (state.pomodoroRounds || 0) + 1 : (state.pomodoroRounds || 0);
+            let nextMode = 'study';
+            let nextDuration = state.pomodoroDuration || 1500;
+            const targetRounds = state.pomodoroTargetRounds || 4;
+            let isLongBreak = false;
+
+            if (state.pomodoroMode === 'study') {
+              if (nextRounds >= targetRounds) {
+                nextMode = 'break';
+                nextDuration = state.pomodoroLongBreakDuration || 1200;
+                isLongBreak = true;
               } else {
-                nextMode = 'study';
-                nextDuration = state.pomodoroDuration || 1500;
+                nextMode = 'break';
+                nextDuration = state.pomodoroBreakDuration || 300;
               }
-
-              setDoc(timerDocRef, {
-                pomodoroStatus: 'running',
-                pomodoroMode: nextMode,
-                pomodoroTimeLeft: nextDuration,
-                pomodoroTimeLeftAtStart: nextDuration,
-                pomodoroStartedAt: midnightTime,
-                pomodoroRounds: isLongBreak ? 0 : nextRounds
-              }, { merge: true }).catch(console.error);
             } else {
-              setDoc(timerDocRef, {
-                pomodoroTimeLeft: secondsRemaining,
-                pomodoroTimeLeftAtStart: secondsRemaining,
-                pomodoroStartedAt: midnightTime
-              }, { merge: true }).catch(console.error);
+              nextMode = 'study';
+              nextDuration = state.pomodoroDuration || 1500;
             }
+
+            saveLocalTimerState({
+              pomodoroStatus: 'running',
+              pomodoroMode: nextMode,
+              pomodoroTimeLeft: nextDuration,
+              pomodoroTimeLeftAtStart: nextDuration,
+              pomodoroStartedAt: midnightTime,
+              pomodoroRounds: isLongBreak ? 0 : nextRounds
+            }).catch(console.error);
+          } else {
+            saveLocalTimerState({
+              pomodoroTimeLeft: secondsRemaining,
+              pomodoroTimeLeftAtStart: secondsRemaining,
+              pomodoroStartedAt: midnightTime
+            }).catch(console.error);
           }
           return;
         }
@@ -9599,60 +9581,55 @@ JSON Format:
 
         if (currentLeft === 0) {
           clearInterval(tick);
-          if (user && db) {
-            const nextRounds = state.pomodoroMode === 'study' ? (state.pomodoroRounds || 0) + 1 : (state.pomodoroRounds || 0);
-            let nextMode = 'study';
-            let nextDuration = state.pomodoroDuration || 1500;
-            let isLongBreak = false;
-            const targetRounds = state.pomodoroTargetRounds || 4;
+          const nextRounds = state.pomodoroMode === 'study' ? (state.pomodoroRounds || 0) + 1 : (state.pomodoroRounds || 0);
+          let nextMode = 'study';
+          let nextDuration = state.pomodoroDuration || 1500;
+          let isLongBreak = false;
+          const targetRounds = state.pomodoroTargetRounds || 4;
 
-            if (state.pomodoroMode === 'study') {
-              if (nextRounds >= targetRounds) {
-                nextMode = 'break';
-                nextDuration = state.pomodoroLongBreakDuration || 1200; // default 20 mins
-                isLongBreak = true;
-              } else {
-                nextMode = 'break';
-                nextDuration = state.pomodoroBreakDuration || 300; // default 5 mins
-              }
+          if (state.pomodoroMode === 'study') {
+            if (nextRounds >= targetRounds) {
+              nextMode = 'break';
+              nextDuration = state.pomodoroLongBreakDuration || 1200; // default 20 mins
+              isLongBreak = true;
             } else {
-              nextMode = 'study';
-              nextDuration = state.pomodoroDuration || 1500;
+              nextMode = 'break';
+              nextDuration = state.pomodoroBreakDuration || 300; // default 5 mins
             }
-
-            const timerDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'timerState');
-            setDoc(timerDocRef, {
-              pomodoroStatus: 'running',
-              pomodoroMode: nextMode,
-              pomodoroDuration: state.pomodoroDuration || 1500,
-              pomodoroBreakDuration: state.pomodoroBreakDuration || 300,
-              pomodoroLongBreakDuration: state.pomodoroLongBreakDuration || 1200,
-              pomodoroTargetRounds: targetRounds,
-              pomodoroTimeLeft: nextDuration,
-              pomodoroTimeLeftAtStart: nextDuration,
-              pomodoroStartedAt: Date.now(),
-              pomodoroRounds: isLongBreak ? 0 : nextRounds
-            }, { merge: true }).then(() => {
-              playAlarmSound();
-              if (!isObsOverlay) {
-                const longBreakMinsText = Math.round((state.pomodoroLongBreakDuration || 1200) / 60);
-                const shortBreakMinsText = Math.round((state.pomodoroBreakDuration || 300) / 60);
-                const breakMsg = isLongBreak
-                  ? `Time for a well-deserved ${longBreakMinsText}-minute Long Break!`
-                  : `Time for a ${shortBreakMinsText}-minute Short Break!`;
-                if (state.pomodoroMode === 'study') {
-                  alert(`🎉 Focus Session Completed! ${breakMsg}`);
-                  const mins = Math.round(state.pomodoroDuration / 60);
-                  const hrs = Number((mins / 60).toFixed(1));
-                  handleLogPomodoroBlock(hrs);
-                } else {
-                  alert(`💪 Break Completed! Ready to focus for another ${Math.round(state.pomodoroDuration / 60)} minutes?`);
-                }
-              }
-            }).catch(err => console.error("Error completing Pomodoro block:", err));
           } else {
-            playAlarmSound();
+            nextMode = 'study';
+            nextDuration = state.pomodoroDuration || 1500;
           }
+
+          saveLocalTimerState({
+            pomodoroStatus: 'running',
+            pomodoroMode: nextMode,
+            pomodoroDuration: state.pomodoroDuration || 1500,
+            pomodoroBreakDuration: state.pomodoroBreakDuration || 300,
+            pomodoroLongBreakDuration: state.pomodoroLongBreakDuration || 1200,
+            pomodoroTargetRounds: targetRounds,
+            pomodoroTimeLeft: nextDuration,
+            pomodoroTimeLeftAtStart: nextDuration,
+            pomodoroStartedAt: Date.now(),
+            pomodoroRounds: isLongBreak ? 0 : nextRounds
+          }).then(() => {
+            playAlarmSound();
+            if (!isObsOverlay) {
+              const longBreakMinsText = Math.round((state.pomodoroLongBreakDuration || 1200) / 60);
+              const shortBreakMinsText = Math.round((state.pomodoroBreakDuration || 300) / 60);
+              const breakMsg = isLongBreak
+                ? `Time for a well-deserved ${longBreakMinsText}-minute Long Break!`
+                : `Time for a ${shortBreakMinsText}-minute Short Break!`;
+              if (state.pomodoroMode === 'study') {
+                alert(`🎉 Focus Session Completed! ${breakMsg}`);
+                const mins = Math.round(state.pomodoroDuration / 60);
+                const hrs = Number((mins / 60).toFixed(1));
+                handleLogPomodoroBlock(hrs);
+              } else {
+                alert(`💪 Break Completed! Ready to focus for another ${Math.round(state.pomodoroDuration / 60)} minutes?`);
+              }
+            }
+          }).catch(err => console.error("Error completing Pomodoro block:", err));
         }
       }
 
@@ -9685,22 +9662,19 @@ JSON Format:
 
           setLocalCustomTimerTimeLeft(secondsRemaining);
 
-          if (user && db) {
-            const timerDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'timerState');
-            if (secondsRemaining === 0) {
-              setDoc(timerDocRef, {
-                timerStatus: 'idle',
-                timerTimeLeft: state.timerDuration,
-                timerTimeLeftAtStart: state.timerDuration,
-                timerStartedAt: null
-              }, { merge: true }).catch(console.error);
-            } else {
-              setDoc(timerDocRef, {
-                timerTimeLeft: secondsRemaining,
-                timerTimeLeftAtStart: secondsRemaining,
-                timerStartedAt: midnightTime
-              }, { merge: true }).catch(console.error);
-            }
+          if (secondsRemaining === 0) {
+            saveLocalTimerState({
+              timerStatus: 'idle',
+              timerTimeLeft: state.timerDuration,
+              timerTimeLeftAtStart: state.timerDuration,
+              timerStartedAt: null
+            }).catch(console.error);
+          } else {
+            saveLocalTimerState({
+              timerTimeLeft: secondsRemaining,
+              timerTimeLeftAtStart: secondsRemaining,
+              timerStartedAt: midnightTime
+            }).catch(console.error);
           }
           return;
         }
@@ -9711,23 +9685,18 @@ JSON Format:
 
         if (currentLeft === 0) {
           clearInterval(tick);
-          if (user && db) {
-            const timerDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'timerState');
-            setDoc(timerDocRef, {
-              timerStatus: 'idle',
-              timerTimeLeft: state.timerDuration,
-              timerTimeLeftAtStart: state.timerDuration,
-              timerStartedAt: null
-            }, { merge: true }).then(() => {
-              playAlarmSound();
-              if (!isObsOverlay) {
-                alert(`⏰ Custom Countdown Timer has completed successfully!`);
-              }
-              handleAddTimerTimeToSession(state.timerDuration, state.timerStartedAt);
-            }).catch(err => console.error("Error completing countdown session:", err));
-          } else {
+          saveLocalTimerState({
+            timerStatus: 'idle',
+            timerTimeLeft: state.timerDuration,
+            timerTimeLeftAtStart: state.timerDuration,
+            timerStartedAt: null
+          }).then(() => {
             playAlarmSound();
-          }
+            if (!isObsOverlay) {
+              alert(`⏰ Custom Countdown Timer has completed successfully!`);
+            }
+            handleAddTimerTimeToSession(state.timerDuration, state.timerStartedAt);
+          }).catch(err => console.error("Error completing countdown session:", err));
         }
       }
 
@@ -9758,14 +9727,11 @@ JSON Format:
 
           setLocalStopwatchTime(nowTime - midnightTime);
 
-          if (user && db) {
-            const timerDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'timerState');
-            setDoc(timerDocRef, {
-              stopwatchStartedAt: midnightTime,
-              stopwatchElapsedBeforePause: 0,
-              stopwatchLaps: []
-            }, { merge: true }).catch(console.error);
-          }
+          saveLocalTimerState({
+            stopwatchStartedAt: midnightTime,
+            stopwatchElapsedBeforePause: 0,
+            stopwatchLaps: []
+          }).catch(console.error);
           return;
         }
 
@@ -10213,8 +10179,8 @@ JSON Format:
 
   // Resume or start generic active timer state
   // Resume or start generic active timer state
+  // Resume or start generic active timer state
   const handleResumeActiveTimer = async () => {
-    if (!user || !db) return;
     try {
       const updates = {};
 
@@ -10237,15 +10203,13 @@ JSON Format:
       }
 
       setTimerState(updates);
-      const timerDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'timerState');
-      await setDoc(timerDocRef, updates, { merge: true });
+      await saveLocalTimerState(updates);
     } catch (err) {
       console.error("Error resuming active timer:", err);
     }
   };
 
   const handlePauseActiveTimer = async () => {
-    if (!user || !db) return;
     try {
       const updates = {};
 
@@ -10269,17 +10233,14 @@ JSON Format:
       }
 
       setTimerState(updates);
-      const timerDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'timerState');
-      await setDoc(timerDocRef, updates, { merge: true });
+      await saveLocalTimerState(updates);
     } catch (err) {
       console.error("Error pausing active timer:", err);
     }
   };
 
   const handleResetActiveTimer = async () => {
-    if (!user || !db) return;
     try {
-      const timerDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'timerState');
       const updates = {};
 
       if (timerState.timerType === 'pomodoro') {
@@ -10306,7 +10267,8 @@ JSON Format:
         playStateChangeSound('reset');
       }
 
-      await setDoc(timerDocRef, updates, { merge: true });
+      setTimerState(updates);
+      await saveLocalTimerState(updates);
     } catch (err) {
       console.error("Error resetting active timer:", err);
     }
@@ -10314,40 +10276,32 @@ JSON Format:
 
   const handleSetFullscreenTimerBg = async (bgId) => {
     setFullscreenTimerBg(bgId);
-    if (user && db) {
-      try {
-        const timerDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'timerState');
-        await setDoc(timerDocRef, { fullscreenTimerBg: bgId }, { merge: true });
-      } catch (err) {
-        console.error("Error saving theme to cloud:", err);
-      }
+    try {
+      await saveLocalTimerState({ fullscreenTimerBg: bgId });
+    } catch (err) {
+      console.error("Error saving timer theme locally:", err);
     }
   };
 
   const handleSetFullscreenTimerStyle = async (styleId) => {
     setFullscreenTimerStyle(styleId);
-    if (user && db) {
-      try {
-        const timerDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'timerState');
-        await setDoc(timerDocRef, { fullscreenTimerStyle: styleId }, { merge: true });
-      } catch (err) {
-        console.error("Error saving style to cloud:", err);
-      }
+    try {
+      await saveLocalTimerState({ fullscreenTimerStyle: styleId });
+    } catch (err) {
+      console.error("Error saving timer style locally:", err);
     }
   };
 
   // 1. Customizable Pomodoro actions
   const handleStartPomodoro = async (focusMins = 25, breakMins = 5, longBreakMins = 20, targetRounds = 4, startNow = true) => {
-    if (!user || !db) return;
     try {
-      const timerDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'timerState');
       const focusSecs = focusMins * 60;
       const breakSecs = breakMins * 60;
       const longBreakSecs = longBreakMins * 60;
       const currentMode = timerState.pomodoroMode === 'break' ? 'break' : 'study';
       const duration = currentMode === 'study' ? focusSecs : breakSecs;
 
-      await setDoc(timerDocRef, {
+      const updates = {
         timerType: 'pomodoro',
         pomodoroStatus: startNow ? 'running' : 'idle',
         pomodoroDuration: focusSecs,
@@ -10359,7 +10313,10 @@ JSON Format:
         pomodoroStartedAt: startNow ? Date.now() : null,
         pomodoroMode: currentMode,
         pomodoroRounds: 0
-      }, { merge: true });
+      };
+
+      setTimerState(updates);
+      await saveLocalTimerState(updates);
 
       if (startNow) playStateChangeSound('start');
       else playStateChangeSound('reset');
@@ -10370,17 +10327,17 @@ JSON Format:
 
   // 2. Customizable Countdown Timer operations
   const handleStartCountdownTimer = async (secs) => {
-    if (!user || !db) return;
     try {
-      const timerDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'timerState');
-      await setDoc(timerDocRef, {
+      const updates = {
         timerType: 'timer',
         timerStatus: 'running',
         timerDuration: secs,
         timerTimeLeft: secs,
         timerTimeLeftAtStart: secs,
         timerStartedAt: Date.now()
-      }, { merge: true });
+      };
+      setTimerState(updates);
+      await saveLocalTimerState(updates);
       playStateChangeSound('start');
     } catch (err) {
       console.error("Error starting custom countdown timer:", err);
@@ -10389,14 +10346,14 @@ JSON Format:
 
   // 3. Stopwatch operations
   const handleStartStopwatchTimer = async () => {
-    if (!user || !db) return;
     try {
-      const timerDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'timerState');
-      await setDoc(timerDocRef, {
+      const updates = {
         timerType: 'stopwatch',
         stopwatchStatus: 'running',
         stopwatchStartedAt: Date.now()
-      }, { merge: true });
+      };
+      setTimerState(updates);
+      await saveLocalTimerState(updates);
       playStateChangeSound('start');
     } catch (err) {
       console.error("Error starting stopwatch:", err);
@@ -10404,9 +10361,7 @@ JSON Format:
   };
 
   const handleRecordStopwatchLap = async () => {
-    if (!user || !db) return;
     try {
-      const timerDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'timerState');
       const laps = [...(timerState.stopwatchLaps || [])];
       const newLapNum = laps.length + 1;
 
@@ -10420,9 +10375,9 @@ JSON Format:
         overallTime: currentElapsed
       });
 
-      await setDoc(timerDocRef, {
-        stopwatchLaps: laps
-      }, { merge: true });
+      const updates = { stopwatchLaps: laps };
+      setTimerState(updates);
+      await saveLocalTimerState(updates);
       playStateChangeSound('reset');
     } catch (err) {
       console.error("Error recording stopwatch lap:", err);
@@ -28076,9 +28031,6 @@ Return your response strictly as a JSON object matching this schema:
                                     <QuickLogger
                                       todayLog={todayLog}
                                       todayStr={todayStr}
-                                      db={db}
-                                      user={user}
-                                      appId={appId}
                                       setStudyLogs={setStudyLogs}
                                     />
                                   );
