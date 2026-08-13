@@ -801,6 +801,37 @@ function TopicCard({ topic, onRate, onRemove, onOpenNotes, isOverdue = false, is
         </div>
       </div>
 
+      {/* Rich Text Notes Box on TopicCard in Smart Review Hub */}
+      {topic.notes ? (
+        <div className="space-y-1 pt-2 border-t border-slate-700/40 dark:border-slate-800/60">
+          <div className="flex items-center justify-between">
+            <span className={`text-[9px] font-black uppercase tracking-wider flex items-center gap-1 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
+              <FileText className="w-3 h-3" /> High-Yield Notes
+            </span>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenNotes && onOpenNotes(topic);
+              }}
+              className={`text-[9px] font-bold underline transition ${isDark ? 'text-slate-400 hover:text-amber-300' : 'text-slate-500 hover:text-amber-700'}`}
+            >
+              Edit Notes
+            </button>
+          </div>
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenNotes && onOpenNotes(topic);
+            }}
+            className={`p-2.5 rounded-xl text-xs leading-relaxed max-h-32 overflow-y-auto cursor-pointer transition border ${
+              isDark ? 'neu-pressed-dark text-slate-200 border-slate-800 hover:border-amber-500/40' : 'neu-pressed-light text-slate-800 border-slate-200 hover:border-amber-400'
+            }`}
+            dangerouslySetInnerHTML={{ __html: topic.notes }}
+          />
+        </div>
+      ) : null}
+
       {/* 4 Rating Buttons */}
       <div className="grid grid-cols-4 gap-1.5 pt-1">
         <button

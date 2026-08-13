@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, Bold, Italic, Underline, Strikethrough, List, ListOrdered, 
@@ -17,27 +17,133 @@ export default function TopicNotesModal({
   const editorRef = useRef(null);
   const [notesHtml, setNotesHtml] = useState('');
   const [isSaved, setIsSaved] = useState(false);
+  const [activeStates, setActiveStates] = useState({});
+  const [isHighlighterActive, setIsHighlighterActive] = useState(false);
+
+  const highlightColor = isDark ? 'rgba(59, 130, 246, 0.35)' : 'rgba(254, 240, 138, 0.95)';
+
+  // Check active formatting states at cursor position
+  const checkActiveStates = useCallback(() => {
+    if (!editorRef.current) return;
+    try {
+      const isBold = document.queryCommandState('bold');
+      const isItalic = document.queryCommandState('italic');
+      const isUnderline = document.queryCommandState('underline');
+      const isStrike = document.queryCommandState('strikeThrough');
+      const isUnordered = document.queryCommandState('insertUnorderedList');
+      const isOrdered = document.queryCommandState('insertOrderedList');
+      const isAlignLeft = document.queryCommandState('justifyLeft');
+      const isAlignCenter = document.queryCommandState('justifyCenter');
+      const isAlignRight = document.queryCommandState('justifyRight');
+      const isAlignJustify = document.queryCommandState('justifyFull');
+
+      let isHighlight = false;
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        let node = sel.anchorNode;
+        if (node && node.nodeType === 3) node = node.parentNode;
+        while (node && node !== editorRef.current) {
+          const bg = window.getComputedStyle(node).backgroundColor;
+          if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent' && bg !== 'inherit') {
+            isHighlight = true;
+            break;
+          }
+          node = node.parentNode;
+        }
+      }
+
+      setActiveStates({
+        bold: isBold,
+        italic: isItalic,
+        underline: isUnderline,
+        strikeThrough: isStrike,
+        insertUnorderedList: isUnordered,
+        insertOrderedList: isOrdered,
+        justifyLeft: isAlignLeft,
+        justifyCenter: isAlignCenter,
+        justifyRight: isAlignRight,
+        justifyFull: isAlignJustify,
+        backColor: isHighlight || isHighlighterActive
+      });
+    } catch (e) {
+      // Ignore queryCommand errors if element not focused
+    }
+  }, [isHighlighterActive]);
 
   // Sync content when topic changes or modal opens
   useEffect(() => {
     if (isOpen && topic) {
       const initialNotes = topic.notes || '';
       setNotesHtml(initialNotes);
+      setIsHighlighterActive(false);
       if (editorRef.current) {
         editorRef.current.innerHTML = initialNotes;
       }
+      setTimeout(checkActiveStates, 50);
     }
-  }, [isOpen, topic]);
+  }, [isOpen, topic, checkActiveStates]);
+
+  // Listen to selection changes to update toggle states
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleSelectionChange = () => {
+      checkActiveStates();
+    };
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => {
+      document.removeEventListener('selectionchange', handleSelectionChange);
+    };
+  }, [isOpen, checkActiveStates]);
 
   if (!isOpen || !topic) return null;
 
   const handleExecuteCommand = (command, value = null) => {
     if (!editorRef.current) return;
     editorRef.current.focus();
-    document.execCommand(command, false, value);
+
+    if (command === 'backColor') {
+      const currentlyHighlighted = activeStates.backColor || isHighlighterActive;
+
+      if (currentlyHighlighted) {
+        // TURN OFF Highlighter
+        document.execCommand('hiliteColor', false, 'transparent');
+        document.execCommand('backColor', false, 'inherit');
+        
+        // Remove style attribute on active selection spans if any
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount > 0) {
+          let node = sel.anchorNode;
+          if (node && node.nodeType === 3) node = node.parentNode;
+          while (node && node !== editorRef.current) {
+            if (node.style) {
+              node.style.backgroundColor = '';
+            }
+            node = node.parentNode;
+          }
+        }
+        setIsHighlighterActive(false);
+      } else {
+        // TURN ON Highlighter
+        const applyVal = value || highlightColor;
+        if (!document.execCommand('hiliteColor', false, applyVal)) {
+          document.execCommand('backColor', false, applyVal);
+        }
+        setIsHighlighterActive(true);
+      }
+    } else if (command === 'removeFormat') {
+      document.execCommand('removeFormat', false, null);
+      document.execCommand('hiliteColor', false, 'transparent');
+      document.execCommand('backColor', false, 'inherit');
+      setIsHighlighterActive(false);
+    } else {
+      document.execCommand(command, false, value);
+    }
+
     if (editorRef.current) {
       setNotesHtml(editorRef.current.innerHTML);
+      setIsSaved(false);
     }
+    setTimeout(checkActiveStates, 50);
   };
 
   const handleInput = () => {
@@ -45,6 +151,43 @@ export default function TopicNotesModal({
       setNotesHtml(editorRef.current.innerHTML);
       setIsSaved(false);
     }
+    checkActiveStates();
+  };
+
+  const handleKeyDown = (e) => {
+    // Save shortcut (Ctrl+S / Cmd+S)
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+      e.preventDefault();
+      handleSave();
+      return;
+    }
+
+    // Esc to Close
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      handleClose();
+      return;
+    }
+
+    // Formatting Shortcuts
+    if (e.ctrlKey || e.metaKey) {
+      const key = e.key.toLowerCase();
+      if (key === 'b') {
+        e.preventDefault();
+        handleExecuteCommand('bold');
+      } else if (key === 'i') {
+        e.preventDefault();
+        handleExecuteCommand('italic');
+      } else if (key === 'u') {
+        e.preventDefault();
+        handleExecuteCommand('underline');
+      } else if (key === 'h') {
+        e.preventDefault();
+        handleExecuteCommand('backColor', highlightColor);
+      }
+    }
+
+    setTimeout(checkActiveStates, 50);
   };
 
   const handleSave = () => {
@@ -81,13 +224,16 @@ export default function TopicNotesModal({
     { label: 'Align Right', icon: AlignRight, cmd: 'justifyRight', title: 'Align Right' },
     { label: 'Align Justify', icon: AlignJustify, cmd: 'justifyFull', title: 'Align Justify' },
     { type: 'separator' },
-    { label: 'Highlight', icon: Highlighter, cmd: 'backColor', value: isDark ? '#3b82f640' : '#fef08a', title: 'High-Yield Highlight' },
+    { label: 'Highlight', icon: Highlighter, cmd: 'backColor', value: highlightColor, title: 'High-Yield Highlight (Ctrl+H)' },
     { label: 'Clear', icon: RemoveFormatting, cmd: 'removeFormat', title: 'Clear Formatting' }
   ];
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/70 backdrop-blur-sm">
+      <div 
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/70 backdrop-blur-sm"
+        onKeyDown={handleKeyDown}
+      >
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 16 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -132,7 +278,7 @@ export default function TopicNotesModal({
             </button>
           </div>
 
-          {/* Formatting Toolbar */}
+          {/* Formatting Toolbar with Inset Neumorphic Pressed Toggles */}
           <div className={`my-3 p-2 rounded-2xl border flex items-center gap-1 flex-wrap shrink-0 ${
             isDark ? 'neu-pressed-dark border-slate-800/80 bg-slate-900/60' : 'neu-pressed-light border-slate-200/80 bg-slate-100/70'
           }`}>
@@ -143,19 +289,25 @@ export default function TopicNotesModal({
                 );
               }
               const IconComp = btn.icon;
+              const isActive = !!activeStates[btn.cmd];
+
               return (
                 <button
                   key={idx}
                   type="button"
                   title={btn.title}
                   onClick={() => handleExecuteCommand(btn.cmd, btn.value)}
-                  className={`p-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center ${
-                    isDark
-                      ? 'hover:bg-slate-800 text-slate-300 hover:text-white active:scale-95'
-                      : 'hover:bg-slate-200 text-slate-700 hover:text-slate-900 active:scale-95'
+                  className={`p-2 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center border ${
+                    isActive
+                      ? isDark
+                        ? 'bg-[#181d24] text-blue-400 border-blue-500/60 neu-pressed-dark shadow-[inset_0_2px_4px_rgba(0,0,0,0.8),0_0_8px_rgba(59,130,246,0.3)]'
+                        : 'bg-[#ccd0d4] text-blue-700 border-blue-400 neu-pressed-light shadow-[inset_0_2px_5px_rgba(0,0,0,0.25),inset_0_-1px_2px_rgba(255,255,255,0.9)] font-extrabold'
+                      : isDark
+                        ? 'neu-btn-dark text-slate-300 hover:text-white border-transparent'
+                        : 'neu-btn-light text-slate-700 hover:text-slate-900 border-transparent'
                   }`}
                 >
-                  <IconComp className="w-4 h-4" />
+                  <IconComp className={`w-4 h-4 ${isActive ? 'scale-105' : ''}`} />
                 </button>
               );
             })}
@@ -167,6 +319,9 @@ export default function TopicNotesModal({
               ref={editorRef}
               contentEditable
               onInput={handleInput}
+              onKeyUp={checkActiveStates}
+              onMouseUp={checkActiveStates}
+              onKeyDown={handleKeyDown}
               style={{ minHeight: '220px' }}
               className={`w-full h-full p-4 rounded-2xl outline-none overflow-y-auto custom-scrollbar leading-relaxed font-sans transition text-sm ${
                 isDark
@@ -178,7 +333,7 @@ export default function TopicNotesModal({
               <div className={`absolute top-4 left-4 pointer-events-none text-xs font-medium select-none ${
                 isDark ? 'text-slate-500' : 'text-slate-400'
               }`}>
-                Type your high-yield clinical notes, mnemonics, or textbook summaries here... (Use Bold, Italics, Lists, or Highlighter)
+                Type your high-yield clinical notes, mnemonics, or textbook summaries here... (Ctrl+B Bold • Ctrl+I Italic • Ctrl+H Highlight)
               </div>
             )}
           </div>
@@ -186,7 +341,7 @@ export default function TopicNotesModal({
           {/* Footer Action Bar */}
           <div className="pt-4 border-t border-slate-700/40 flex items-center justify-between shrink-0 mt-2">
             <span className={`text-[11px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              💡 Press Enter for new line • Ctrl+B for bold • Ctrl+I for italic
+              💡 Press Enter for new line • Ctrl+B Bold • Ctrl+I Italic • Ctrl+H Highlight • Ctrl+S Save
             </span>
 
             <div className="flex items-center gap-3">
