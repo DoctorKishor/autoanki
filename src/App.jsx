@@ -28073,17 +28073,28 @@ Return your response strictly as a JSON object matching this schema:
                     {/* STUDY VIEW */}
                     {/* STUDY VIEW & LOGGER DASHBOARD */}
                     {currentTab === 'study' && (
-                      <div className="flex-grow p-4 lg:p-6 flex flex-col gap-6 max-w-[1200px] mx-auto w-full overflow-y-auto pb-24 lg:pb-6">
+                      <motion.div
+                        key="study-desktop-tab"
+                        initial={{ opacity: 0, y: 16, scale: 0.98 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -12, scale: 0.98 }}
+                        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                        className={`flex-grow p-4 lg:p-6 flex flex-col gap-6 max-w-[1200px] mx-auto w-full overflow-y-auto pb-24 lg:pb-6 transition-colors duration-300 ${
+                          isDark ? 'text-slate-100' : 'text-slate-800'
+                        }`}
+                      >
 
                         {/* Header section with high-contrast glassmorphic detailing */}
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/40 backdrop-blur-md p-6 rounded-3xl border border-white/20 shadow-sm">
+                        <div className={`flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-3xl backdrop-blur-md transition-colors duration-300 ${
+                          isDark ? 'neu-card-dark border border-white/5 bg-[#222730]/90' : 'neu-card-light border border-white/80 bg-white/70 shadow-md'
+                        }`}>
                           <div className="flex items-center gap-3.5">
-                            <div className="bg-orange-500 text-white p-3 rounded-2xl shadow-lg shadow-orange-500/20 animate-pulse">
+                            <div className="bg-gradient-to-r from-orange-500 to-amber-500 text-white p-3 rounded-2xl shadow-lg shadow-orange-500/20 animate-pulse">
                               <Flame className="w-6 h-6 fill-current" />
                             </div>
                             <div>
-                              <h2 className="text-xl font-black text-gray-900 tracking-tight leading-none">Study Room & Streak Tracker</h2>
-                              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1.5">
+                              <h2 className={`text-xl font-black tracking-tight leading-none ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>Study Room & Streak Tracker</h2>
+                              <p className={`text-[10px] font-bold uppercase tracking-widest mt-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                 Log mock tests, hours, cards, and solve targets to maintain consecutive streaks
                               </p>
                             </div>
@@ -28117,14 +28128,18 @@ Return your response strictly as a JSON object matching this schema:
                         </div>
 
                         {/* Dual Tab Selector */}
-                        <div className="bg-white/60 backdrop-blur-md p-1 rounded-2xl border border-gray-200/50 shadow-sm grid grid-cols-2 gap-1 max-w-[280px] w-full self-start">
+                        <div className={`p-1 rounded-2xl grid grid-cols-2 gap-1 max-w-[280px] w-full self-start transition-colors duration-300 ${
+                          isDark ? 'neu-pressed-dark border border-white/5 bg-[#181c22]' : 'neu-pressed-light border border-white/70 bg-slate-200/60 shadow-inner'
+                        }`}>
                           <button
                             type="button"
                             onClick={() => setStudyActiveTab('record')}
-                            className={`py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-1.5 active:scale-95 ${studyActiveTab === 'record'
-                              ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/10'
-                              : 'text-gray-500 hover:bg-gray-50'
-                              }`}
+                            style={{ transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)' }}
+                            className={`py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 active:scale-95 ${
+                              studyActiveTab === 'record'
+                                ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/10 font-black'
+                                : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
+                            }`}
                           >
                             <Activity className="w-3.5 h-3.5" />
                             Record
@@ -28132,10 +28147,12 @@ Return your response strictly as a JSON object matching this schema:
                           <button
                             type="button"
                             onClick={() => setStudyActiveTab('manual')}
-                            className={`py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-1.5 active:scale-95 ${studyActiveTab === 'manual'
-                              ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/10'
-                              : 'text-gray-500 hover:bg-gray-50'
-                              }`}
+                            style={{ transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)' }}
+                            className={`py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 active:scale-95 ${
+                              studyActiveTab === 'manual'
+                                ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/10 font-black'
+                                : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
+                            }`}
                           >
                             <Edit3 className="w-3.5 h-3.5" />
                             Manual Log
@@ -28151,30 +28168,42 @@ Return your response strictly as a JSON object matching this schema:
                               <>
                                 {/* Streaks Counters summary cards */}
                                 <div className="grid grid-cols-2 gap-4">
-                                  <div className="bg-gradient-to-br from-orange-50 to-amber-50/20 p-5 rounded-3xl border border-orange-100/50 shadow-sm flex flex-col justify-between hover:shadow-md transition">
+                                  <div className={`p-5 rounded-3xl flex flex-col justify-between transition-colors duration-300 ${
+                                    isDark
+                                      ? 'neu-card-dark bg-gradient-to-br from-[#27201c] to-[#222730] border border-orange-500/20 shadow-xl'
+                                      : 'neu-card-light bg-gradient-to-br from-orange-50 to-amber-50/40 border border-orange-200/60 shadow-md'
+                                  }`}>
                                     <div>
-                                      <div className="w-8 h-8 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center mb-3">
+                                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center mb-3 ${
+                                        isDark ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-orange-100 text-orange-600'
+                                      }`}>
                                         <Flame className="w-4 h-4 fill-current" />
                                       </div>
-                                      <span className="text-[9px] font-black text-orange-600 uppercase tracking-widest">Current Streak</span>
-                                      <h4 className="text-xl font-black text-gray-800 mt-1 leading-none">
+                                      <span className="text-[9px] font-black text-orange-500 uppercase tracking-widest">Current Streak</span>
+                                      <h4 className={`text-xl font-black mt-1 leading-none ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
                                         {streakStats.currentStreak} {streakStats.currentStreak === 1 ? 'day' : 'days'}
                                       </h4>
                                     </div>
-                                    <p className="text-[8px] text-orange-500 font-bold mt-3">Keep logging to stay hot!</p>
+                                    <p className={`text-[8px] font-bold mt-3 ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>Keep logging to stay hot!</p>
                                   </div>
 
-                                  <div className="bg-gradient-to-br from-amber-50 to-yellow-50/20 p-5 rounded-3xl border border-amber-100/50 shadow-sm flex flex-col justify-between hover:shadow-md transition">
+                                  <div className={`p-5 rounded-3xl flex flex-col justify-between transition-colors duration-300 ${
+                                    isDark
+                                      ? 'neu-card-dark bg-gradient-to-br from-[#27241c] to-[#222730] border border-amber-500/20 shadow-xl'
+                                      : 'neu-card-light bg-gradient-to-br from-amber-50 to-yellow-50/40 border border-amber-200/60 shadow-md'
+                                  }`}>
                                     <div>
-                                      <div className="w-8 h-8 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center mb-3">
+                                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center mb-3 ${
+                                        isDark ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-amber-100 text-amber-600'
+                                      }`}>
                                         <Trophy className="w-4 h-4" />
                                       </div>
-                                      <span className="text-[9px] font-black text-amber-600 uppercase tracking-widest">Longest Streak</span>
-                                      <h4 className="text-xl font-black text-gray-800 mt-1 leading-none">
+                                      <span className="text-[9px] font-black text-amber-500 uppercase tracking-widest">Longest Streak</span>
+                                      <h4 className={`text-xl font-black mt-1 leading-none ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
                                         {streakStats.longestStreak} {streakStats.longestStreak === 1 ? 'day' : 'days'}
                                       </h4>
                                     </div>
-                                    <p className="text-[8px] text-amber-500 font-bold mt-3">Your absolute personal best</p>
+                                    <p className={`text-[8px] font-bold mt-3 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>Your absolute personal best</p>
                                   </div>
                                 </div>
 
@@ -28201,9 +28230,11 @@ Return your response strictly as a JSON object matching this schema:
                                 })()}
 
                                 {/* Grand Tests Timeline / Mock Results */}
-                                <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex flex-col hover:shadow-md transition w-full">
-                                  <div className="flex items-center justify-between mb-4 border-b border-gray-100 pb-3">
-                                    <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-1.5">
+                                <div className={`p-6 rounded-3xl shadow-sm flex flex-col transition-colors duration-300 w-full ${
+                                  isDark ? 'neu-card-dark border border-white/5' : 'neu-card-light border border-white/70 shadow-md'
+                                }`}>
+                                  <div className={`flex items-center justify-between mb-4 pb-3 border-b ${isDark ? 'border-white/5' : 'border-slate-100'}`}>
+                                    <span className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                       <Award className="w-4 h-4 text-orange-500 animate-bounce" />
                                       Grand Tests History
                                     </span>
@@ -28271,25 +28302,29 @@ Return your response strictly as a JSON object matching this schema:
                                                 }
                                                 setSelectedGtForAnalysisId(gt.uniqueId);
                                               }}
-                                              className="p-3 bg-gray-50 border border-gray-100 rounded-2xl flex flex-col gap-1 hover:border-orange-300 hover:bg-orange-50/10 cursor-pointer transition select-none group"
+                                              className={`p-3 rounded-2xl flex flex-col gap-1 cursor-pointer transition select-none group ${
+                                                isDark ? 'neu-pressed-dark border border-white/5 hover:border-orange-500/30 hover:bg-orange-500/5' : 'neu-pressed-light border border-white/70 hover:border-orange-300 hover:bg-orange-50/10'
+                                              }`}
                                             >
                                               <div className="flex items-start justify-between">
                                                 <div className="text-left">
                                                   <div className="flex items-center gap-1.5 flex-wrap">
                                                     {gt.platform && (
-                                                      <span className="text-[7.5px] font-black uppercase px-1 py-0.5 rounded bg-orange-100 text-orange-600 font-mono tracking-wider shrink-0">
+                                                      <span className={`text-[7.5px] font-black uppercase px-1 py-0.5 rounded font-mono tracking-wider shrink-0 ${
+                                                        isDark ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-orange-100 text-orange-600'
+                                                      }`}>
                                                         {gt.platform}
                                                       </span>
                                                     )}
-                                                    <h5 className="text-xs font-black text-gray-800 leading-tight">{gt.name}</h5>
+                                                    <h5 className={`text-xs font-black leading-tight ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{gt.name}</h5>
                                                   </div>
-                                                  <span className="text-[8px] font-mono text-gray-400 font-bold block mt-0.5">{dateFmt}</span>
+                                                  <span className={`text-[8px] font-mono font-bold block mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{dateFmt}</span>
                                                 </div>
                                                 <div className="text-right flex items-center gap-2 shrink-0">
                                                   <div>
-                                                    <span className="text-xs font-black text-orange-600">{gt.score || 'Logged'}</span>
+                                                    <span className="text-xs font-black text-orange-500">{gt.score || 'Logged'}</span>
                                                     {gt.percentage && (
-                                                      <span className="block text-[8px] text-gray-500 font-bold font-mono">({gt.percentage})</span>
+                                                      <span className={`block text-[8px] font-bold font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>({gt.percentage})</span>
                                                     )}
                                                   </div>
                                                   <button
@@ -28298,7 +28333,9 @@ Return your response strictly as a JSON object matching this schema:
                                                       e.stopPropagation();
                                                       handleOpenEditGtModal(gt.date, gt.index, gt);
                                                     }}
-                                                    className="text-gray-400 hover:text-orange-500 hover:bg-orange-50 p-1.5 rounded-xl transition duration-150 shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100"
+                                                    className={`p-1.5 rounded-xl transition duration-150 shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 ${
+                                                      isDark ? 'text-slate-400 hover:text-orange-400 hover:bg-orange-500/20' : 'text-slate-500 hover:text-orange-600 hover:bg-orange-50'
+                                                    }`}
                                                     title="Edit Mock Test Score"
                                                   >
                                                     <Edit3 className="w-3.5 h-3.5" />
@@ -28306,7 +28343,9 @@ Return your response strictly as a JSON object matching this schema:
                                                 </div>
                                               </div>
                                               {gt.notes && (
-                                                <p className="text-[9px] text-gray-500 bg-white/60 p-1.5 rounded-lg border border-gray-100 mt-1 italic leading-relaxed">
+                                                <p className={`text-[9px] p-1.5 rounded-lg border mt-1 italic leading-relaxed ${
+                                                  isDark ? 'bg-[#161a20] border-white/5 text-slate-300' : 'bg-white/60 border-slate-200/60 text-slate-600'
+                                                }`}>
                                                   "{gt.notes}"
                                                 </p>
                                               )}
@@ -28326,8 +28365,10 @@ Return your response strictly as a JSON object matching this schema:
                             {studyActiveTab === 'record' ? (
                               <>
                                 {/* Today's Goal Ring Gauge */}
-                                <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex flex-col items-center text-center relative overflow-hidden transition hover:shadow-md">
-                                  <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-4">Today's Progress Gauge</span>
+                                <div className={`p-6 rounded-3xl flex flex-col items-center text-center relative overflow-hidden transition-colors duration-300 ${
+                                  isDark ? 'neu-card-dark border border-white/5 shadow-xl' : 'neu-card-light border border-white/70 shadow-md'
+                                }`}>
+                                  <span className={`text-[10px] font-black uppercase tracking-widest mb-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Today's Progress Gauge</span>
 
                                   {/* Circle SVG progress indicator */}
                                   {(() => {
@@ -28354,7 +28395,7 @@ Return your response strictly as a JSON object matching this schema:
                                       <>
                                         <div className="relative w-36 h-36 flex items-center justify-center">
                                           <svg className="w-full h-full transform -rotate-90">
-                                            <circle cx="72" cy="72" r="58" stroke="#f3f4f6" strokeWidth="8" fill="transparent" />
+                                            <circle cx="72" cy="72" r="58" stroke={isDark ? "#1a1f26" : "#f1f5f9"} strokeWidth="8" fill="transparent" />
                                             <circle cx="72" cy="72" r="58" stroke="url(#orangeGradient)" strokeWidth="10" fill="transparent"
                                               strokeDasharray={2 * Math.PI * 58}
                                               strokeDashoffset={2 * Math.PI * 58 * (1 - Math.min(100, Math.max(0, totalProgressPercent)) / 100)}
@@ -28370,26 +28411,36 @@ Return your response strictly as a JSON object matching this schema:
                                           </svg>
 
                                           {/* Inner glowing center representing milestone achievements */}
-                                          <div className={`absolute w-24 h-24 rounded-full flex flex-col items-center justify-center transition-all duration-300 ${totalProgressPercent >= 100 ? 'bg-orange-50 text-orange-500 scale-105 shadow-inner' : 'text-gray-400'}`}>
+                                          <div className={`absolute w-24 h-24 rounded-full flex flex-col items-center justify-center transition-all duration-300 ${
+                                            totalProgressPercent >= 100
+                                              ? isDark ? 'bg-orange-500/20 text-orange-400 scale-105 shadow-inner border border-orange-500/30' : 'bg-orange-50 text-orange-500 scale-105 shadow-inner'
+                                              : isDark ? 'neu-pressed-dark text-slate-300' : 'bg-slate-100 text-slate-700'
+                                          }`}>
                                             <Flame className={`w-8 h-8 ${totalProgressPercent >= 100 ? 'animate-bounce fill-current' : ''}`} />
-                                            <span className="text-xl font-black mt-1 text-gray-800">{totalProgressPercent}%</span>
+                                            <span className={`text-xl font-black mt-1 ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{totalProgressPercent}%</span>
                                           </div>
                                         </div>
 
                                         {/* Target Selector Dropdown */}
-                                        <div className="mt-6 w-full bg-gray-50 border border-gray-100 p-4 rounded-2xl flex items-center justify-between">
+                                        <div className={`mt-6 w-full p-4 rounded-2xl flex items-center justify-between transition ${
+                                          isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'
+                                        }`}>
                                           <div className="text-left">
-                                            <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider">Target Level</span>
+                                            <span className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Target Level</span>
                                             <div className="flex items-center gap-1.5 mt-0.5">
-                                              <span className="text-xs font-black text-gray-800">{selectedStreakTag}</span>
-                                              <span className="text-[9px] text-orange-500 font-bold bg-orange-50 px-1.5 py-0.5 rounded animate-pulse">Goal</span>
+                                              <span className={`text-xs font-black ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{selectedStreakTag}</span>
+                                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded animate-pulse ${
+                                                isDark ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-orange-50 text-orange-500'
+                                              }`}>Goal</span>
                                             </div>
                                           </div>
 
                                           <select
                                             value={selectedStreakTag}
                                             onChange={(e) => setSelectedStreakTag(e.target.value)}
-                                            className="bg-white border border-gray-200 text-xs font-bold text-gray-700 px-3 py-1.5 rounded-xl outline-none focus:ring-2 focus:ring-orange-500/20 cursor-pointer transition"
+                                            className={`text-xs font-bold px-3 py-1.5 rounded-xl outline-none cursor-pointer transition ${
+                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-800'
+                                            }`}
                                           >
                                             <option value="Rookie">Rookie (2h/20q/30c)</option>
                                             <option value="Consistent">Consistent (4h/50q/80c)</option>
@@ -28398,7 +28449,7 @@ Return your response strictly as a JSON object matching this schema:
                                           </select>
                                         </div>
 
-                                        <p className="text-[10px] text-gray-400 font-bold mt-4">
+                                        <p className={`text-[10px] font-bold mt-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                           {totalProgressPercent >= 100 ? "🎉 Congratulations! Daily quota unlocked." : "Study, solve, and log daily stats to fill the gauge!"}
                                         </p>
                                       </>
@@ -28416,101 +28467,119 @@ Return your response strictly as a JSON object matching this schema:
                                   const sessions = todayLog.sessions || [];
 
                                   return (
-                                    <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex flex-col hover:shadow-md transition w-full text-left">
-                                      <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
-                                        <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-1.5">
+                                    <div className={`p-6 rounded-3xl shadow-sm flex flex-col transition-colors duration-300 w-full text-left ${
+                                      isDark ? 'neu-card-dark border border-white/5' : 'neu-card-light border border-white/70 shadow-md'
+                                    }`}>
+                                      <div className={`flex items-center justify-between pb-3 border-b mb-4 ${isDark ? 'border-white/5' : 'border-slate-100'}`}>
+                                        <span className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                           <Clock className="w-4 h-4 text-orange-500 animate-pulse" />
                                           Study Sprints Timeline (Today)
                                         </span>
-                                        <span className="text-[8px] font-black px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 uppercase font-mono tracking-wider">
+                                        <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase font-mono tracking-wider ${
+                                          isDark ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20' : 'bg-orange-50 text-orange-600 border border-orange-200'
+                                        }`}>
                                           Real-time Timeline
                                         </span>
                                       </div>
 
                                       {sessions.length === 0 ? (
-                                        <div className="py-8 text-center text-gray-400 space-y-1">
-                                          <Clock className="w-8 h-8 text-gray-200 mx-auto mb-2" />
-                                          <span className="text-xs font-bold text-gray-400">No active study sprints logged today</span>
-                                          <p className="text-[9px] text-gray-400 max-w-[220px] mx-auto mt-1 leading-relaxed">
+                                        <div className="py-8 text-center space-y-1">
+                                          <Clock className={`w-8 h-8 mx-auto mb-2 ${isDark ? 'text-slate-600' : 'text-slate-300'}`} />
+                                          <span className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>No active study sprints logged today</span>
+                                          <p className={`text-[9px] max-w-[220px] mx-auto mt-1 leading-relaxed ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                                             Log study sprints on mobile or companion to track detailed focus blocks in real-time here!
                                           </p>
                                         </div>
                                       ) : (
                                         <div className="space-y-3.5 max-h-[260px] overflow-y-auto pr-1">
                                           {sessions.map((sess, idx) => (
-                                            <div key={sess.id || idx} className="p-4 bg-gray-50 border border-gray-100 rounded-2xl flex flex-col gap-2.5 group transition hover:border-gray-250">
+                                            <div key={sess.id || idx} className={`p-4 rounded-2xl flex flex-col gap-2.5 group transition ${
+                                              isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'
+                                            }`}>
                                               <div className="flex items-center justify-between text-xs">
                                                 <div className="flex items-center gap-2">
                                                   <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
-                                                  <span className="font-mono font-black text-gray-500 text-[10px]">{sess.timestamp}</span>
+                                                  <span className={`font-mono font-black text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{sess.timestamp}</span>
                                                 </div>
                                                 <div className="flex items-center gap-3.5 font-mono font-extrabold text-[10px]">
-                                                  {sess.hours > 0 && <span className="text-orange-600">+{sess.hours}h</span>}
-                                                  {sess.questions > 0 && <span className="text-emerald-600">+{sess.questions} Qs</span>}
-                                                  {sess.cards > 0 && <span className="text-blue-600">+{sess.cards} Cds</span>}
-                                                  {sess.pages > 0 && <span className="text-indigo-600">+{sess.pages} Pgs</span>}
+                                                  {sess.hours > 0 && <span className="text-orange-500">+{sess.hours}h</span>}
+                                                  {sess.questions > 0 && <span className="text-emerald-500">+{sess.questions} Qs</span>}
+                                                  {sess.cards > 0 && <span className="text-blue-500">+{sess.cards} Cds</span>}
+                                                  {sess.pages > 0 && <span className="text-indigo-500">+{sess.pages} Pgs</span>}
                                                 </div>
                                               </div>
 
                                               {/* Inline Edit Form when editing this session on desktop */}
                                               {editingSessionId === sess.id ? (
-                                                <div className="p-3 bg-white rounded-xl border border-gray-200 space-y-3 mt-1 text-left">
+                                                <div className={`p-3 rounded-xl border space-y-3 mt-1 text-left ${isDark ? 'neu-card-dark border-white/10' : 'bg-white border-slate-200'}`}>
                                                   <div className="grid grid-cols-4 gap-2.5 text-[10px]">
                                                     <div>
-                                                      <label className="text-[8px] text-gray-400 font-bold block mb-1">Hours</label>
+                                                      <label className={`text-[8px] font-bold block mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Hours</label>
                                                       <input
                                                         type="number"
                                                         step="0.1"
                                                         value={editingSessionHours}
                                                         onChange={(e) => setEditingSessionHours(e.target.value)}
-                                                        className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-mono font-bold focus:ring-2 focus:ring-orange-500/20 outline-none"
+                                                        className={`w-full p-2 rounded-lg text-xs font-mono font-bold outline-none ${
+                                                          isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                                                        }`}
                                                       />
                                                     </div>
                                                     <div>
-                                                      <label className="text-[8px] text-gray-400 font-bold block mb-1">Questions</label>
+                                                      <label className={`text-[8px] font-bold block mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Questions</label>
                                                       <input
                                                         type="number"
                                                         value={editingSessionQuestions}
                                                         onChange={(e) => setEditingSessionQuestions(e.target.value)}
-                                                        className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-mono font-bold focus:ring-2 focus:ring-orange-500/20 outline-none"
+                                                        className={`w-full p-2 rounded-lg text-xs font-mono font-bold outline-none ${
+                                                          isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                                                        }`}
                                                       />
                                                     </div>
                                                     <div>
-                                                      <label className="text-[8px] text-gray-400 font-bold block mb-1">Cards</label>
+                                                      <label className={`text-[8px] font-bold block mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Cards</label>
                                                       <input
                                                         type="number"
                                                         value={editingSessionCards}
                                                         onChange={(e) => setEditingSessionCards(e.target.value)}
-                                                        className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-mono font-bold focus:ring-2 focus:ring-orange-500/20 outline-none"
+                                                        className={`w-full p-2 rounded-lg text-xs font-mono font-bold outline-none ${
+                                                          isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                                                        }`}
                                                       />
                                                     </div>
                                                     <div>
-                                                      <label className="text-[8px] text-gray-400 font-bold block mb-1">Pages</label>
+                                                      <label className={`text-[8px] font-bold block mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Pages</label>
                                                       <input
                                                         type="number"
                                                         value={editingSessionPages}
                                                         onChange={(e) => setEditingSessionPages(e.target.value)}
-                                                        className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-mono font-bold focus:ring-2 focus:ring-orange-500/20 outline-none"
+                                                        className={`w-full p-2 rounded-lg text-xs font-mono font-bold outline-none ${
+                                                          isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                                                        }`}
                                                       />
                                                     </div>
                                                   </div>
                                                   <div className="flex justify-end gap-2 text-[9px] pt-1">
                                                     <button
                                                       onClick={() => setEditingSessionId(null)}
-                                                      className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-650 font-extrabold uppercase transition active:scale-95"
+                                                      className={`px-3 py-1.5 rounded-lg font-extrabold uppercase transition active:scale-95 ${
+                                                        isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
+                                                      }`}
                                                     >
                                                       Cancel
                                                     </button>
                                                     <button
                                                       onClick={handleUpdateMobileSession}
-                                                      className="px-3 py-1.5 bg-gradient-to-r from-orange-50 to-amber-500 text-white rounded-lg font-extrabold uppercase hover:shadow active:scale-95 transition"
+                                                      className="px-3 py-1.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-lg font-extrabold uppercase hover:shadow active:scale-95 transition"
                                                     >
                                                       Save
                                                     </button>
                                                   </div>
                                                 </div>
                                               ) : (
-                                                <div className="flex justify-end gap-3.5 pt-2 border-t border-gray-200/40 opacity-0 group-hover:opacity-100 transition focus-within:opacity-100">
+                                                <div className={`flex justify-end gap-3.5 pt-2 border-t opacity-0 group-hover:opacity-100 transition focus-within:opacity-100 ${
+                                                  isDark ? 'border-white/5' : 'border-slate-200/40'
+                                                }`}>
                                                   <button
                                                     onClick={() => {
                                                       setEditingSessionId(sess.id);
@@ -28543,13 +28612,15 @@ Return your response strictly as a JSON object matching this schema:
                             ) : (
                               <>
                                 {/* Streak Tracker Calendar Card */}
-                                <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex flex-col hover:shadow-md transition w-full">
+                                <div className={`p-6 rounded-3xl shadow-sm flex flex-col transition-colors duration-300 w-full ${
+                                  isDark ? 'neu-card-dark border border-white/5' : 'neu-card-light border border-white/70 shadow-md'
+                                }`}>
 
                                   {/* Calendar Month Selector Header */}
                                   <div className="flex items-center justify-between mb-6">
                                     <div className="text-left">
                                       <span className="text-[9px] font-black uppercase text-orange-500 tracking-widest block">Your Streak Tracker</span>
-                                      <h3 className="text-base font-black text-gray-900 leading-none mt-1">
+                                      <h3 className={`text-base font-black leading-none mt-1 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
                                         {monthNames[calendarMonth]} {calendarYear}
                                       </h3>
                                     </div>
@@ -28564,9 +28635,11 @@ Return your response strictly as a JSON object matching this schema:
                                             setCalendarMonth(prev => prev - 1);
                                           }
                                         }}
-                                        className="p-2 bg-gray-50 hover:bg-gray-100 rounded-xl border border-gray-100 active:scale-95 transition"
+                                        className={`p-2 rounded-xl active:scale-95 transition ${
+                                          isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
+                                        }`}
                                       >
-                                        <ChevronLeft className="w-4 h-4 text-gray-600" />
+                                        <ChevronLeft className="w-4 h-4" />
                                       </button>
 
                                       <button
@@ -28578,9 +28651,11 @@ Return your response strictly as a JSON object matching this schema:
                                             setCalendarMonth(prev => prev + 1);
                                           }
                                         }}
-                                        className="p-2 bg-gray-50 hover:bg-gray-100 rounded-xl border border-gray-100 active:scale-95 transition"
+                                        className={`p-2 rounded-xl active:scale-95 transition ${
+                                          isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
+                                        }`}
                                       >
-                                        <ChevronRight className="w-4 h-4 text-gray-600" />
+                                        <ChevronRight className="w-4 h-4" />
                                       </button>
                                     </div>
                                   </div>
@@ -28590,7 +28665,7 @@ Return your response strictly as a JSON object matching this schema:
                                     {/* Week headers */}
                                     <div className="grid grid-cols-7 gap-2 mb-2 text-center">
                                       {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, idx) => (
-                                        <span key={idx} className="text-[9px] font-black uppercase text-gray-400 tracking-wider">
+                                        <span key={idx} className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                           {day}
                                         </span>
                                       ))}
@@ -28637,10 +28712,10 @@ Return your response strictly as a JSON object matching this schema:
                                             className={`
                                     aspect-square w-full rounded-2xl flex flex-col items-center justify-center relative active:scale-90 transition duration-150 outline-none
                                     ${isDayActive
-                                                ? 'border-2 border-emerald-500 text-emerald-600 bg-emerald-50/50 shadow-sm font-black'
-                                                : 'border border-gray-100 text-gray-600 hover:bg-gray-50'
+                                                ? 'border-2 border-emerald-500 text-emerald-500 bg-emerald-500/10 shadow-sm font-black'
+                                                : isDark ? 'neu-pressed-dark border border-white/5 text-slate-300 hover:bg-white/5' : 'neu-pressed-light border border-slate-200/80 text-slate-600 hover:bg-slate-50'
                                               }
-                                    ${isTodayCell ? 'ring-2 ring-orange-500 ring-offset-2' : ''}
+                                    ${isTodayCell ? 'ring-2 ring-orange-500 ring-offset-2 ring-offset-transparent' : ''}
                                   `}
                                             title={cellDateStr}
                                           >
@@ -28662,9 +28737,9 @@ Return your response strictly as a JSON object matching this schema:
                                     </div>
                                   </div>
 
-                                  <div className="flex flex-wrap gap-4 mt-6 justify-center text-[10px] text-gray-400 font-bold border-t border-gray-50 pt-4">
+                                  <div className={`flex flex-wrap gap-4 mt-6 justify-center text-[10px] font-bold border-t pt-4 ${isDark ? 'border-white/5 text-slate-400' : 'border-slate-100 text-slate-500'}`}>
                                     <div className="flex items-center gap-1.5">
-                                      <span className="w-2.5 h-2.5 rounded-full border-2 border-emerald-500 bg-emerald-50/50" />
+                                      <span className="w-2.5 h-2.5 rounded-full border-2 border-emerald-500 bg-emerald-500/20" />
                                       <span>Active Study Day</span>
                                     </div>
                                     <div className="flex items-center gap-1.5">
@@ -28690,18 +28765,20 @@ Return your response strictly as a JSON object matching this schema:
                         {/* STUDY LOGGER DETAILED MODAL DIALOG (MANUAL METRIC ENTRY FOR DATES & GTS) */}
                         {isStudyLoggerModalOpen && (
                           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
-                            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col animate-in zoom-in duration-300">
+                            <div className={`rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col animate-in zoom-in duration-300 transition-colors ${
+                              isDark ? 'neu-card-dark border border-white/10 bg-[#222730] text-slate-100' : 'bg-white text-slate-900'
+                            }`}>
 
                               {/* Modal Header */}
-                              <div className="bg-gray-50 p-6 border-b flex justify-between items-center">
+                              <div className={`p-6 border-b flex justify-between items-center ${isDark ? 'border-white/10 bg-[#1c2128]' : 'bg-gray-50 border-slate-200'}`}>
                                 <div className="text-left">
-                                  <h3 className="font-black text-gray-900 uppercase tracking-widest text-xs">Manual Study Report</h3>
-                                  <span className="text-[9px] font-bold text-gray-400 font-mono">{formatAppDate(loggerDate)}</span>
+                                  <h3 className={`font-black uppercase tracking-widest text-xs ${isDark ? 'text-slate-200' : 'text-gray-900'}`}>Manual Study Report</h3>
+                                  <span className={`text-[9px] font-bold font-mono ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>{formatAppDate(loggerDate)}</span>
                                 </div>
 
                                 <button
                                   onClick={() => setIsStudyLoggerModalOpen(false)}
-                                  className="text-gray-400 hover:text-gray-600 p-1.5 hover:bg-gray-100 rounded-xl transition"
+                                  className={`p-1.5 rounded-xl transition ${isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-white/10' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
                                 >
                                   <X className="w-5 h-5" />
                                 </button>
@@ -28712,7 +28789,7 @@ Return your response strictly as a JSON object matching this schema:
 
                                 {/* Date Select Input */}
                                 <div>
-                                  <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Report Date</label>
+                                  <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Report Date</label>
                                   <input
                                     type="date"
                                     value={loggerDate}
@@ -28731,84 +28808,98 @@ Return your response strictly as a JSON object matching this schema:
                                       setLoggerGtsList(log.gts || []);
                                       setIsAddingGt(false);
                                     }}
-                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-orange-500/10 outline-none text-xs font-semibold"
+                                    className={`w-full p-3 rounded-xl outline-none text-xs font-semibold ${
+                                      isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                                    }`}
                                   />
                                 </div>
 
                                 {/* Main Metric Inputs */}
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                   <div>
-                                    <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Questions Solved</label>
+                                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Questions Solved</label>
                                     <input
                                       type="number"
                                       value={loggerQuestions}
                                       onChange={(e) => setLoggerQuestions(e.target.value)}
                                       placeholder="e.g. 50"
-                                      className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-orange-500/10 outline-none text-xs font-mono"
+                                      className={`w-full p-3 rounded-xl outline-none text-xs font-mono ${
+                                        isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-200 text-slate-900 placeholder-slate-400'
+                                      }`}
                                     />
                                   </div>
 
                                   <div>
-                                    <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Cards Studied</label>
+                                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Cards Studied</label>
                                     <input
                                       type="number"
                                       value={loggerCards}
                                       onChange={(e) => setLoggerCards(e.target.value)}
                                       placeholder="e.g. 80"
-                                      className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-orange-500/10 outline-none text-xs font-mono"
+                                      className={`w-full p-3 rounded-xl outline-none text-xs font-mono ${
+                                        isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-200 text-slate-900 placeholder-slate-400'
+                                      }`}
                                     />
                                   </div>
 
                                   <div>
-                                    <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Pages Read</label>
+                                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Pages Read</label>
                                     <input
                                       type="number"
                                       value={loggerPages}
                                       onChange={(e) => setLoggerPages(e.target.value)}
                                       placeholder="e.g. 15"
-                                      className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-orange-500/10 outline-none text-xs font-mono"
+                                      className={`w-full p-3 rounded-xl outline-none text-xs font-mono ${
+                                        isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-200 text-slate-900 placeholder-slate-400'
+                                      }`}
                                     />
                                   </div>
 
                                   <div>
-                                    <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Focused Time</label>
+                                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Focused Time</label>
                                     <div className="flex items-center gap-2">
-                                      <div className="flex-1 flex items-center bg-gray-50 border border-gray-200 rounded-xl focus-within:ring-4 focus-within:ring-orange-500/10 px-3 py-2.5">
+                                      <div className={`flex-1 flex items-center rounded-xl px-3 py-2.5 ${
+                                        isDark ? 'neu-pressed-dark border border-white/10' : 'neu-pressed-light border border-slate-200'
+                                      }`}>
                                         <input
                                           type="number"
                                           value={loggerHoursPart}
                                           onChange={(e) => setLoggerHoursPart(e.target.value)}
                                           placeholder="h"
-                                          className="bg-transparent w-full focus:outline-none text-xs font-mono font-bold text-gray-800"
+                                          className={`bg-transparent w-full focus:outline-none text-xs font-mono font-bold ${isDark ? 'text-slate-100' : 'text-gray-800'}`}
                                           min="0"
                                         />
-                                        <span className="text-gray-450 text-[10px] font-bold font-mono ml-1 shrink-0">hr</span>
+                                        <span className={`text-[10px] font-bold font-mono ml-1 shrink-0 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>hr</span>
                                       </div>
-                                      <div className="flex-1 flex items-center bg-gray-50 border border-gray-200 rounded-xl focus-within:ring-4 focus-within:ring-orange-500/10 px-3 py-2.5">
+                                      <div className={`flex-1 flex items-center rounded-xl px-3 py-2.5 ${
+                                        isDark ? 'neu-pressed-dark border border-white/10' : 'neu-pressed-light border border-slate-200'
+                                      }`}>
                                         <input
                                           type="number"
                                           value={loggerMinutesPart}
                                           onChange={(e) => setLoggerMinutesPart(e.target.value)}
                                           placeholder="m"
-                                          className="bg-transparent w-full focus:outline-none text-xs font-mono font-bold text-gray-800"
+                                          className={`bg-transparent w-full focus:outline-none text-xs font-mono font-bold ${isDark ? 'text-slate-100' : 'text-gray-800'}`}
                                           min="0"
                                           max="59"
                                         />
-                                        <span className="text-gray-450 text-[10px] font-bold font-mono ml-1 shrink-0">min</span>
+                                        <span className={`text-[10px] font-bold font-mono ml-1 shrink-0 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>min</span>
                                       </div>
                                     </div>
                                   </div>
                                 </div>
 
                                 {/* Grand Tests Section */}
-                                <div className="pt-6 border-t border-gray-100">
+                                <div className={`pt-6 border-t ${isDark ? 'border-white/10' : 'border-gray-100'}`}>
                                   <div className="flex items-center justify-between mb-4">
-                                    <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400">Grand Tests (GTs) Attended</label>
+                                    <label className={`block text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Grand Tests (GTs) Attended</label>
                                     {!isAddingGt && (
                                       <button
                                         type="button"
                                         onClick={() => setIsAddingGt(true)}
-                                        className="text-[10px] font-black text-orange-500 bg-orange-50 px-2.5 py-1 rounded-lg hover:bg-orange-100 active:scale-95 transition"
+                                        className={`text-[10px] font-black px-2.5 py-1 rounded-lg transition active:scale-95 ${
+                                          isDark ? 'neu-btn-dark text-orange-400 border border-orange-500/20 hover:bg-orange-500/20' : 'neu-btn-light text-orange-600 border border-orange-200 hover:bg-orange-100'
+                                        }`}
                                       >
                                         + Add Mock Test
                                       </button>
@@ -28817,32 +28908,38 @@ Return your response strictly as a JSON object matching this schema:
                                   {/* List of GTs currently in log */}
                                   <div className="space-y-3.5 mb-4">
                                     {loggerGtsList.map((gt, idx) => (
-                                      <div key={idx} className="p-4 bg-gray-50 border border-gray-100 rounded-2xl flex items-start justify-between">
+                                      <div key={idx} className={`p-4 rounded-2xl flex items-start justify-between ${
+                                        isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-slate-200/80'
+                                      }`}>
                                         <div className="text-left space-y-1">
                                           <div className="flex items-center gap-2 flex-wrap">
                                             {gt.platform && (
-                                              <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-orange-100 text-orange-600 font-mono tracking-wider">
+                                              <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded font-mono tracking-wider ${
+                                                isDark ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-orange-100 text-orange-600'
+                                              }`}>
                                                 {gt.platform}
                                               </span>
                                             )}
-                                            <h4 className="text-xs font-black text-gray-800 leading-tight">{gt.name}</h4>
-                                            <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-blue-50 text-blue-600">
+                                            <h4 className={`text-xs font-black leading-tight ${isDark ? 'text-slate-100' : 'text-gray-800'}`}>{gt.name}</h4>
+                                            <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${
+                                              isDark ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600'
+                                            }`}>
                                               {gt.type === 'NEETPG' ? 'NEET PG' : 'INI CET'}
                                             </span>
                                           </div>
-                                          <div className="text-[10px] text-gray-500 font-bold flex flex-wrap gap-x-3 gap-y-1 font-mono">
-                                            <span>Marks: <strong className="text-orange-600">{gt.score} / {gt.maxMarks}</strong></span>
-                                            <span>Correct: <strong className="text-emerald-600">{gt.correct}</strong></span>
+                                          <div className={`text-[10px] font-bold flex flex-wrap gap-x-3 gap-y-1 font-mono ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+                                            <span>Marks: <strong className="text-orange-500">{gt.score} / {gt.maxMarks}</strong></span>
+                                            <span>Correct: <strong className="text-emerald-500">{gt.correct}</strong></span>
                                             <span>Incorrect: <strong className="text-red-500">{gt.incorrect}</strong></span>
-                                            {gt.percentile !== null && <span>%ile: <strong className="text-blue-600">{gt.percentile}%</strong></span>}
-                                            {gt.rank && <span>Rank: <strong className="text-indigo-600">#{gt.rank}</strong></span>}
+                                            {gt.percentile !== null && <span>%ile: <strong className="text-blue-500">{gt.percentile}%</strong></span>}
+                                            {gt.rank && <span>Rank: <strong className="text-indigo-400">#{gt.rank}</strong></span>}
                                           </div>
-                                          {gt.notes && <p className="text-[9px] text-gray-500 italic leading-relaxed">"{gt.notes}"</p>}
+                                          {gt.notes && <p className={`text-[9px] italic leading-relaxed ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>"{gt.notes}"</p>}
                                         </div>
                                         <button
                                           type="button"
                                           onClick={() => handleDeleteGt(idx)}
-                                          className="text-red-500 hover:bg-red-55 p-2 rounded-xl transition shrink-0 hover:bg-red-50"
+                                          className={`p-2 rounded-xl transition shrink-0 ${isDark ? 'text-red-400 hover:bg-red-500/20' : 'text-red-500 hover:bg-red-50'}`}
                                           title="Delete Mock Test"
                                         >
                                           <Trash2 className="w-3.5 h-3.5" />
@@ -28853,49 +28950,63 @@ Return your response strictly as a JSON object matching this schema:
 
                                   {/* Inline sub-form to add a new Grand Test */}
                                   {isAddingGt && (
-                                    <div className="p-5 bg-orange-50/40 border border-orange-100/70 rounded-3xl space-y-4 animate-in slide-in-from-top duration-200">
+                                    <div className={`p-5 rounded-3xl space-y-4 animate-in slide-in-from-top duration-200 ${
+                                      isDark ? 'neu-card-dark border border-orange-500/20 bg-orange-500/5' : 'bg-orange-50/40 border border-orange-100/70'
+                                    }`}>
                                       <span className="text-[9px] font-black uppercase text-orange-500 tracking-wider">New Grand Test Details</span>
 
                                       <div className="grid grid-cols-2 gap-3.5">
                                         {/* GT Platform */}
                                         <div className="col-span-2">
-                                          <label className="block text-[9px] font-black uppercase tracking-wider text-gray-400 mb-1">Exam Platform</label>
+                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Exam Platform</label>
                                           <input
                                             type="text"
                                             value={loggerGtPlatform}
                                             onChange={(e) => setLoggerGtPlatform(e.target.value)}
                                             placeholder="e.g. Marrow, PrepLadder, Cerebellum, eGurukul"
-                                            className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                                            className={`w-full p-2.5 rounded-xl text-xs font-semibold focus:outline-none ${
+                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-200 text-slate-900 placeholder-slate-400'
+                                            }`}
                                           />
                                         </div>
 
                                         {/* GT Name */}
                                         <div className="col-span-2">
-                                          <label className="block text-[9px] font-black uppercase tracking-wider text-gray-400 mb-1">Test Name</label>
+                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Test Name</label>
                                           <input
                                             type="text"
                                             value={loggerGtName}
                                             onChange={(e) => setLoggerGtName(e.target.value)}
                                             placeholder="Test Name (e.g. Marrow Grand Test 14)"
-                                            className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                                            className={`w-full p-2.5 rounded-xl text-xs font-semibold focus:outline-none ${
+                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-200 text-slate-900 placeholder-slate-400'
+                                            }`}
                                           />
                                         </div>
 
                                         {/* GT Type Selector Pills */}
                                         <div className="col-span-2">
-                                          <label className="block text-[9px] font-black uppercase tracking-wider text-gray-400 mb-1">GT Scoring Model</label>
+                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>GT Scoring Model</label>
                                           <div className="flex gap-2">
                                             <button
                                               type="button"
                                               onClick={() => setLoggerGtType('NEETPG')}
-                                              className={`flex-1 py-2 text-xs font-black rounded-xl border transition ${loggerGtType === 'NEETPG' ? 'bg-orange-500 text-white border-transparent shadow-sm' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+                                              className={`flex-1 py-2 text-xs font-black rounded-xl border transition ${
+                                                loggerGtType === 'NEETPG'
+                                                  ? 'bg-orange-500 text-white border-transparent shadow-sm'
+                                                  : isDark ? 'neu-btn-dark text-slate-300 border-white/10' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                              }`}
                                             >
                                               NEET PG (+4, -1)
                                             </button>
                                             <button
                                               type="button"
                                               onClick={() => setLoggerGtType('INICET')}
-                                              className={`flex-1 py-2 text-xs font-black rounded-xl border transition ${loggerGtType === 'INICET' ? 'bg-orange-500 text-white border-transparent shadow-sm' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+                                              className={`flex-1 py-2 text-xs font-black rounded-xl border transition ${
+                                                loggerGtType === 'INICET'
+                                                  ? 'bg-orange-500 text-white border-transparent shadow-sm'
+                                                  : isDark ? 'neu-btn-dark text-slate-300 border-white/10' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                              }`}
                                             >
                                               INI CET (+1, -1/3)
                                             </button>
@@ -28904,32 +29015,38 @@ Return your response strictly as a JSON object matching this schema:
 
                                         {/* Questions Correct & Incorrect */}
                                         <div>
-                                          <label className="block text-[9px] font-black uppercase tracking-wider text-gray-400 mb-1">Correct Qs</label>
+                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Correct Qs</label>
                                           <input
                                             type="number"
                                             value={loggerGtCorrect}
                                             onChange={(e) => setLoggerGtCorrect(e.target.value)}
                                             placeholder="e.g. 130"
-                                            className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                                            className={`w-full p-2.5 rounded-xl text-xs font-mono font-bold focus:outline-none ${
+                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                                            }`}
                                           />
                                         </div>
 
                                         <div>
-                                          <label className="block text-[9px] font-black uppercase tracking-wider text-gray-400 mb-1">Incorrect Qs</label>
+                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Incorrect Qs</label>
                                           <input
                                             type="number"
                                             value={loggerGtIncorrect}
                                             onChange={(e) => setLoggerGtIncorrect(e.target.value)}
                                             placeholder="e.g. 50"
-                                            className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                                            className={`w-full p-2.5 rounded-xl text-xs font-mono font-bold focus:outline-none ${
+                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                                            }`}
                                           />
                                         </div>
 
                                         {/* Live Preview metrics breakdown */}
-                                        <div className="bg-orange-50/50 p-3 rounded-2xl border border-orange-100/50 flex items-center justify-between text-[10px] text-gray-500 col-span-2">
-                                          <span className="font-bold">Attended: <strong className="text-orange-600 font-black">{(Number(loggerGtCorrect) || 0) + (Number(loggerGtIncorrect) || 0)} / 200</strong></span>
-                                          <span className="font-bold">Unattempted: <strong className="text-gray-600 font-black">{Math.max(0, 200 - ((Number(loggerGtCorrect) || 0) + (Number(loggerGtIncorrect) || 0)))}</strong></span>
-                                          <span className="font-bold">Score Preview: <strong className="text-orange-600 font-black">
+                                        <div className={`p-3 rounded-2xl border flex items-center justify-between text-[10px] col-span-2 ${
+                                          isDark ? 'bg-orange-500/10 border-orange-500/20 text-slate-300' : 'bg-orange-50/50 border-orange-100/50 text-gray-500'
+                                        }`}>
+                                          <span className="font-bold">Attended: <strong className="text-orange-500 font-black">{(Number(loggerGtCorrect) || 0) + (Number(loggerGtIncorrect) || 0)} / 200</strong></span>
+                                          <span className="font-bold">Unattempted: <strong className={`font-black ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>{Math.max(0, 200 - ((Number(loggerGtCorrect) || 0) + (Number(loggerGtIncorrect) || 0)))}</strong></span>
+                                          <span className="font-bold">Score Preview: <strong className="text-orange-500 font-black">
                                             {loggerGtType === 'NEETPG'
                                               ? `${(Number(loggerGtCorrect) || 0) * 4 - (Number(loggerGtIncorrect) || 0) * 1} / 800`
                                               : `${((Number(loggerGtCorrect) || 0) * 1 - (Number(loggerGtIncorrect) || 0) * (1 / 3)).toFixed(2)} / 200`
@@ -28939,57 +29056,67 @@ Return your response strictly as a JSON object matching this schema:
 
                                         {/* Percentile, Rank and Rank Total */}
                                         <div>
-                                          <label className="block text-[9px] font-black uppercase tracking-wider text-gray-400 mb-1">Percentile (%ile)</label>
+                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Percentile (%ile)</label>
                                           <input
                                             type="number"
                                             step="0.01"
                                             value={loggerGtPercentage}
                                             onChange={(e) => setLoggerGtPercentage(e.target.value)}
                                             placeholder="e.g. 98.7"
-                                            className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                                            className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${
+                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                                            }`}
                                           />
                                         </div>
 
                                         <div>
-                                          <label className="block text-[9px] font-black uppercase tracking-wider text-gray-400 mb-1">All India Rank (AIR)</label>
+                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>All India Rank (AIR)</label>
                                           <input
                                             type="number"
                                             value={loggerGtRank}
                                             onChange={(e) => setLoggerGtRank(e.target.value)}
                                             placeholder="e.g. 1414"
-                                            className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                                            className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${
+                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                                            }`}
                                           />
                                         </div>
 
                                         <div>
-                                          <label className="block text-[9px] font-black uppercase tracking-wider text-gray-400 mb-1">Total Participants</label>
+                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Total Participants</label>
                                           <input
                                             type="number"
                                             value={loggerGtRankTotal}
                                             onChange={(e) => setLoggerGtRankTotal(e.target.value)}
                                             placeholder="e.g. 8757"
-                                            className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                                            className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${
+                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                                            }`}
                                           />
                                         </div>
 
                                         {/* State Rank and State Selector */}
                                         <div>
-                                          <label className="block text-[9px] font-black uppercase tracking-wider text-gray-400 mb-1">State Rank</label>
+                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>State Rank</label>
                                           <input
                                             type="number"
                                             value={loggerGtStateRank}
                                             onChange={(e) => setLoggerGtStateRank(e.target.value)}
                                             placeholder="e.g. 82"
-                                            className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                                            className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${
+                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                                            }`}
                                           />
                                         </div>
 
                                         <div className="col-span-2">
-                                          <label className="block text-[9px] font-black uppercase tracking-wider text-gray-400 mb-1">Home State</label>
+                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Home State</label>
                                           <select
                                             value={loggerGtState}
                                             onChange={(e) => setLoggerGtState(e.target.value)}
-                                            className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                                            className={`w-full p-2.5 rounded-xl text-xs font-semibold focus:outline-none ${
+                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                                            }`}
                                           >
                                             <option value="">Select Home State...</option>
                                             {INDIAN_STATES.map((st) => (
@@ -29000,13 +29127,15 @@ Return your response strictly as a JSON object matching this schema:
 
                                         {/* Notes */}
                                         <div className="col-span-2">
-                                          <label className="block text-[9px] font-black uppercase tracking-wider text-gray-400 mb-1">Weaknesses / Strengths / Notes</label>
+                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Weaknesses / Strengths / Notes</label>
                                           <textarea
                                             rows={2}
                                             value={loggerGtNotes}
                                             onChange={(e) => setLoggerGtNotes(e.target.value)}
                                             placeholder="Notes / Weak points to focus on..."
-                                            className="w-full p-3 bg-white border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                                            className={`w-full p-3 rounded-xl text-xs focus:outline-none ${
+                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-200 text-slate-900 placeholder-slate-400'
+                                            }`}
                                           />
                                         </div>
 
@@ -29015,7 +29144,9 @@ Return your response strictly as a JSON object matching this schema:
                                           <button
                                             type="button"
                                             onClick={() => setLoggerGtShowSubjects(!loggerGtShowSubjects)}
-                                            className="w-full py-2.5 px-4 bg-orange-50/80 hover:bg-orange-100 text-orange-600 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-between transition"
+                                            className={`w-full py-2.5 px-4 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-between transition ${
+                                              isDark ? 'neu-btn-dark text-orange-400 border border-orange-500/20 hover:bg-orange-500/20' : 'bg-orange-50/80 hover:bg-orange-100 text-orange-600'
+                                            }`}
                                           >
                                             <span>{loggerGtShowSubjects ? "▲ Hide" : "▼ Enter"} Subject-wise Breakdown (19 Subjects)</span>
                                             <span className="text-[8px] bg-orange-500 text-white px-2 py-0.5 rounded-full font-extrabold uppercase">Optional</span>
@@ -29024,17 +29155,19 @@ Return your response strictly as a JSON object matching this schema:
 
                                         {/* Subject breakdown edit grid */}
                                         {loggerGtShowSubjects && (
-                                          <div className="col-span-2 border border-orange-100 rounded-2xl p-4 bg-white/70 space-y-3.5 max-h-[300px] overflow-y-auto scrollbar-thin shadow-inner">
-                                            <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider block mb-1">Enter correct / incorrect per subject</span>
+                                          <div className={`col-span-2 border rounded-2xl p-4 space-y-3.5 max-h-[300px] overflow-y-auto scrollbar-thin ${
+                                            isDark ? 'neu-pressed-dark border-orange-500/20 bg-[#161a20]' : 'border-orange-100 bg-white/70 shadow-inner'
+                                          }`}>
+                                            <span className={`text-[9px] font-black uppercase tracking-wider block mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Enter correct / incorrect per subject</span>
                                             <div className="space-y-3.5">
                                               {SYSTEM_SUBJECTS.map((sub) => {
                                                 const subData = loggerGtSubjects[sub.name] || { correct: '', incorrect: '', total: sub.weight };
                                                 return (
-                                                  <div key={sub.name} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-50 pb-2 text-xs">
-                                                    <span className="font-extrabold text-gray-700 min-w-[130px]">{sub.name}</span>
+                                                  <div key={sub.name} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-2 text-xs ${isDark ? 'border-white/5' : 'border-gray-50'}`}>
+                                                    <span className={`font-extrabold min-w-[130px] ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{sub.name}</span>
                                                     <div className="flex items-center gap-3">
                                                       <div className="flex items-center gap-1.5">
-                                                        <span className="text-[9px] text-emerald-600 font-extrabold uppercase">Correct</span>
+                                                        <span className="text-[9px] text-emerald-500 font-extrabold uppercase">Correct</span>
                                                         <input
                                                           type="number"
                                                           value={subData.correct}
@@ -29049,7 +29182,9 @@ Return your response strictly as a JSON object matching this schema:
                                                             }));
                                                           }}
                                                           placeholder="0"
-                                                          className="w-11 p-1 bg-white border border-gray-200 rounded text-center text-xs font-mono font-bold"
+                                                          className={`w-11 p-1 rounded text-center text-xs font-mono font-bold outline-none ${
+                                                            isDark ? 'bg-[#1e232b] border border-white/10 text-slate-100' : 'bg-white border border-gray-200 text-slate-900'
+                                                          }`}
                                                         />
                                                       </div>
                                                       <div className="flex items-center gap-1.5">
@@ -29068,11 +29203,13 @@ Return your response strictly as a JSON object matching this schema:
                                                             }));
                                                           }}
                                                           placeholder="0"
-                                                          className="w-11 p-1 bg-white border border-gray-200 rounded text-center text-xs font-mono font-bold"
+                                                          className={`w-11 p-1 rounded text-center text-xs font-mono font-bold outline-none ${
+                                                            isDark ? 'bg-[#1e232b] border border-white/10 text-slate-100' : 'bg-white border border-gray-200 text-slate-900'
+                                                          }`}
                                                         />
                                                       </div>
                                                       <div className="flex items-center gap-1.5">
-                                                        <span className="text-[9px] text-gray-400 font-extrabold uppercase">Total</span>
+                                                        <span className={`text-[9px] font-extrabold uppercase ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Total</span>
                                                         <input
                                                           type="number"
                                                           value={subData.total}
@@ -29086,7 +29223,9 @@ Return your response strictly as a JSON object matching this schema:
                                                             }));
                                                           }}
                                                           placeholder={sub.weight}
-                                                          className="w-11 p-1 bg-white border border-gray-200 rounded text-center text-xs font-mono"
+                                                          className={`w-11 p-1 rounded text-center text-xs font-mono outline-none ${
+                                                            isDark ? 'bg-[#1e232b] border border-white/10 text-slate-100' : 'bg-white border border-gray-200 text-slate-900'
+                                                          }`}
                                                         />
                                                       </div>
                                                     </div>
@@ -29103,7 +29242,9 @@ Return your response strictly as a JSON object matching this schema:
                                         <button
                                           type="button"
                                           onClick={() => setIsAddingGt(false)}
-                                          className="px-4 py-2 text-[10px] font-bold text-gray-500 hover:bg-gray-200 rounded-xl transition"
+                                          className={`px-4 py-2 text-[10px] font-bold rounded-xl transition ${
+                                            isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
+                                          }`}
                                         >
                                           Cancel
                                         </button>
@@ -29111,7 +29252,7 @@ Return your response strictly as a JSON object matching this schema:
                                         <button
                                           type="button"
                                           onClick={handleAddGt}
-                                          className="px-5 py-2 bg-orange-500 text-white text-[10px] font-black uppercase rounded-xl hover:bg-orange-600 active:scale-95 transition"
+                                          className="px-5 py-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-[10px] font-black uppercase rounded-xl hover:shadow active:scale-95 transition"
                                         >
                                           Add Mock
                                         </button>
@@ -29123,10 +29264,12 @@ Return your response strictly as a JSON object matching this schema:
                               </div>
 
                               {/* Modal Footer Controls */}
-                              <div className="p-6 bg-gray-50 border-t flex justify-end gap-4">
+                              <div className={`p-6 border-t flex justify-end gap-4 ${isDark ? 'border-white/10 bg-[#1c2128]' : 'bg-gray-50 border-slate-200'}`}>
                                 <button
                                   onClick={() => setIsStudyLoggerModalOpen(false)}
-                                  className="px-8 py-3 text-xs font-bold text-gray-500 hover:bg-gray-200 rounded-2xl transition"
+                                  className={`px-8 py-3 text-xs font-bold rounded-2xl transition ${
+                                    isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
+                                  }`}
                                 >
                                   Cancel
                                 </button>
@@ -29134,7 +29277,7 @@ Return your response strictly as a JSON object matching this schema:
                                 <button
                                   onClick={saveStudyLog}
                                   disabled={isSaving}
-                                  className="px-10 py-3 bg-orange-500 text-white text-xs font-black rounded-2xl hover:bg-orange-600 shadow-xl shadow-orange-500/20 flex items-center gap-2 active:scale-95 transition-all disabled:opacity-50"
+                                  className="px-10 py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-xs font-black rounded-2xl hover:shadow-lg shadow-orange-500/20 flex items-center gap-2 active:scale-95 transition-all disabled:opacity-50"
                                 >
                                   {isSaving ? (
                                     <>
@@ -29539,7 +29682,7 @@ Return your response strictly as a JSON object matching this schema:
                           </div>
                         )}
 
-                      </div>
+                      </motion.div>
                     )}
 
                     {/* ANALYTICS VIEW */}
