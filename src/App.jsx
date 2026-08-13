@@ -10786,8 +10786,10 @@ JSON Format:
     }
   };
 
-    const renderStudyRoomDashboard = () => (
-<motion.div
+    const renderStudyRoomDashboard = () => {
+      const isDark = settingsThemeMode === 'dark';
+      return (
+        <motion.div
                         key="study-unified-tab"
                         initial={{ opacity: 0, y: 16, scale: 0.98 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -12511,7 +12513,8 @@ JSON Format:
                         )}
 
                       </motion.div>
-  );
+      );
+    };
 
 const renderTimerHub = (isMobile = false) => {
     const activeType = timerState.timerType || 'pomodoro';
