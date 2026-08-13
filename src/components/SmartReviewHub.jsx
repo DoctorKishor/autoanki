@@ -365,7 +365,7 @@ export default function SmartReviewHub({
             </motion.div>
           )}
 
-          {/* Topic Queue Lists */}
+            {/* Topic Queue Lists */}
           <div className="space-y-6">
             {/* Overdue Queue */}
             {overdueTopics.length > 0 && (
@@ -375,7 +375,7 @@ export default function SmartReviewHub({
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {overdueTopics.map((topic, idx) => (
-                    <TopicCard key={idx} topic={topic} onRate={onRateTopic} isOverdue />
+                    <TopicCard key={idx} topic={topic} onRate={onRateTopic} isOverdue index={idx} />
                   ))}
                 </div>
               </div>
@@ -389,7 +389,7 @@ export default function SmartReviewHub({
               {dueTodayTopics.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {dueTodayTopics.map((topic, idx) => (
-                    <TopicCard key={idx} topic={topic} onRate={onRateTopic} />
+                    <TopicCard key={idx} topic={topic} onRate={onRateTopic} index={idx} />
                   ))}
                 </div>
               ) : (
@@ -407,7 +407,7 @@ export default function SmartReviewHub({
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {newTopics.slice(0, 6).map((topic, idx) => (
-                    <TopicCard key={idx} topic={topic} onRate={onRateTopic} isNew />
+                    <TopicCard key={idx} topic={topic} onRate={onRateTopic} isNew index={idx} />
                   ))}
                 </div>
               </div>
@@ -445,7 +445,13 @@ export default function SmartReviewHub({
           {leechTopics.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {leechTopics.map((item, idx) => (
-                <div key={idx} className="p-5 rounded-2xl bg-[#222730] border border-amber-500/40 shadow-md neu-card-dark space-y-3">
+                <motion.div
+                  key={idx}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.25, delay: idx * 0.04 }}
+                  className="p-5 rounded-2xl bg-[#222730] border border-amber-500/40 shadow-md neu-card-dark space-y-3"
+                >
                   <div className="flex justify-between items-start">
                     <div>
                       <div className="text-sm font-black text-amber-300">{item.name}</div>
@@ -464,10 +470,10 @@ export default function SmartReviewHub({
                       onChange={(e) => handleMnemonicChange(item, e.target.value)}
                       onBlur={(e) => handleMnemonicChange(item, e.target.value)}
                       placeholder="Write a mnemonic or key memory clue..."
-                      className="w-full p-2.5 rounded-xl bg-slate-900/80 border border-slate-700 text-xs text-slate-200 focus:outline-none focus:border-amber-500/60 resize-none h-16"
+                      className="w-full p-2.5 rounded-xl bg-slate-900/80 border border-slate-700 text-xs text-slate-200 focus:outline-none focus:border-amber-500/60 resize-none h-16 no-scrollbar"
                     />
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
           ) : (
@@ -484,11 +490,14 @@ export default function SmartReviewHub({
 }
 
 // Sub-component: Individual Topic Queue Card
-function TopicCard({ topic, onRate, isOverdue = false, isNew = false }) {
+function TopicCard({ topic, onRate, isOverdue = false, isNew = false, index = 0 }) {
   const { pageLabel, pageCount } = getTopicPageInfo(topic);
 
   return (
     <motion.div
+      initial={{ opacity: 0, y: 12, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.25, delay: index * 0.04 }}
       whileHover={{ y: -2 }}
       className={`p-4 rounded-2xl bg-[#222730] border shadow-md neu-card-dark space-y-3 transition-transform ${
         isOverdue ? 'border-rose-500/40' : isNew ? 'border-emerald-500/40' : 'border-slate-700/60'
