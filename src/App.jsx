@@ -35723,6 +35723,106 @@ Return your response strictly as a JSON object matching this schema:
                 </div>
               )}
 
+              {/* Quick FSRS Recall Rating Popover Modal for Subject Tracker */}
+              <AnimatePresence>
+                {ratingPopoverTopic && (
+                  <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.92, y: 20 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.92, y: 20 }}
+                      transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                      className={`relative w-full max-w-md rounded-3xl p-6 shadow-2xl border text-left space-y-5 ${
+                        settingsThemeMode === 'dark'
+                          ? 'neu-card-dark text-white border-slate-700/80 bg-[#222730]'
+                          : 'neu-card-light text-slate-800 border-slate-200 bg-white'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-lg border ${
+                            settingsThemeMode === 'dark'
+                              ? 'bg-slate-800/80 text-blue-400 border-blue-500/30'
+                              : 'bg-blue-50 text-blue-700 border-blue-200'
+                          }`}>
+                            {ratingPopoverTopic.subject}
+                          </span>
+                          <h4 className="text-base font-black tracking-tight mt-2 text-inherit">{ratingPopoverTopic.topicName}</h4>
+                          <p className={`text-xs font-semibold mt-1 ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
+                            Log session date: <span className="font-mono text-blue-500 font-bold">{ratingPopoverTopic.dateStr}</span>
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setRatingPopoverTopic(null)}
+                          className={`p-1.5 rounded-xl transition cursor-pointer ${
+                            settingsThemeMode === 'dark' ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-400 hover:text-slate-800 hover:bg-slate-100'
+                          }`}
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
+
+                      <div className="space-y-2.5">
+                        <label className={`text-[10px] font-black uppercase tracking-wider block ${
+                          settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'
+                        }`}>
+                          Rate FSRS Recall Quality
+                        </label>
+                        <div className="grid grid-cols-2 gap-2.5">
+                          <button
+                            onClick={async () => {
+                              const { subject, topicName, dateStr } = ratingPopoverTopic;
+                              setRatingPopoverTopic(null);
+                              await handleLogTrackerStudyDate(subject, topicName, dateStr, 1);
+                            }}
+                            className="p-3.5 rounded-2xl text-xs font-black bg-rose-500/15 hover:bg-rose-500/25 text-rose-500 border border-rose-500/30 active:scale-95 transition-all text-center cursor-pointer flex flex-col items-center justify-center gap-0.5"
+                          >
+                            <span>Again (1)</span>
+                            <span className="text-[9px] font-bold opacity-80">Forgotten / Fail</span>
+                          </button>
+
+                          <button
+                            onClick={async () => {
+                              const { subject, topicName, dateStr } = ratingPopoverTopic;
+                              setRatingPopoverTopic(null);
+                              await handleLogTrackerStudyDate(subject, topicName, dateStr, 2);
+                            }}
+                            className="p-3.5 rounded-2xl text-xs font-black bg-amber-500/15 hover:bg-amber-500/25 text-amber-500 border border-amber-500/30 active:scale-95 transition-all text-center cursor-pointer flex flex-col items-center justify-center gap-0.5"
+                          >
+                            <span>Hard (2)</span>
+                            <span className="text-[9px] font-bold opacity-80">High Effort</span>
+                          </button>
+
+                          <button
+                            onClick={async () => {
+                              const { subject, topicName, dateStr } = ratingPopoverTopic;
+                              setRatingPopoverTopic(null);
+                              await handleLogTrackerStudyDate(subject, topicName, dateStr, 3);
+                            }}
+                            className="p-3.5 rounded-2xl text-xs font-black bg-blue-500/15 hover:bg-blue-500/25 text-blue-500 border border-blue-500/30 active:scale-95 transition-all text-center cursor-pointer flex flex-col items-center justify-center gap-0.5"
+                          >
+                            <span>Good (3)</span>
+                            <span className="text-[9px] font-bold opacity-80">Standard Recall</span>
+                          </button>
+
+                          <button
+                            onClick={async () => {
+                              const { subject, topicName, dateStr } = ratingPopoverTopic;
+                              setRatingPopoverTopic(null);
+                              await handleLogTrackerStudyDate(subject, topicName, dateStr, 4);
+                            }}
+                            className="p-3.5 rounded-2xl text-xs font-black bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-500 border border-emerald-500/30 active:scale-95 transition-all text-center cursor-pointer flex flex-col items-center justify-center gap-0.5"
+                          >
+                            <span>Easy (4)</span>
+                            <span className="text-[9px] font-bold opacity-80">Instant / Perfect</span>
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  </div>
+                )}
+              </AnimatePresence>
+
               {moveDialog.isOpen && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
                   <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-white border border-gray-800' : 'neu-card-light text-gray-900 border border-white'} rounded-[2.5rem] w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in duration-300`}>
