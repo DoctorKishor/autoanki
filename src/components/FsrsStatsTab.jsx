@@ -68,19 +68,33 @@ export default function FsrsStatsTab({ subjectTrackerData = [], studyLogs = [], 
     let countFSRS = 0;
     const leechList = [];
 
+    // Set of topic names present in current filtered study logs
+    const reviewedTopicNames = new Set();
+    filteredLogs.forEach(log => {
+      if (log && log.topicName) {
+        reviewedTopicNames.add(log.topicName.trim().toLowerCase());
+      }
+    });
+
     subjectTrackerData.forEach(subDoc => {
       const subName = subDoc.subject;
       if (subDoc.topics) {
         Object.values(subDoc.topics).forEach(topic => {
           if (typeof topic.name === 'string' && topic.name.trim().length > 0) {
             totalTopicsCount++;
-            if (topic.stability != null && topic.difficulty != null) {
+            const cleanName = topic.name.trim().toLowerCase();
+            const hasActiveLogs = reviewedTopicNames.has(cleanName);
+            const hasReviews = (topic.reviewCount || 0) > 0;
+
+            // Only aggregate stability & difficulty if active revision logs exist for topic
+            if (filteredLogs.length > 0 && hasActiveLogs && hasReviews && topic.stability != null && topic.difficulty != null) {
               sumStability += topic.stability;
               sumDifficulty += topic.difficulty;
               countFSRS++;
             }
+
             const lapses = topic.lapses || topic.lapsesCount || 0;
-            if (lapses >= (fsrsConfig.lapses?.leechThreshold ?? 8) || topic.isLeech) {
+            if ((hasActiveLogs || hasReviews) && (lapses >= (fsrsConfig.lapses?.leechThreshold ?? 8) || topic.isLeech)) {
               leechList.push({ ...topic, subject: subName, lapses });
             }
           }
@@ -88,11 +102,11 @@ export default function FsrsStatsTab({ subjectTrackerData = [], studyLogs = [], 
       }
     });
 
-    const avgStability = countFSRS > 0 ? (sumStability / countFSRS).toFixed(1) : 'N/A';
-    const avgDifficulty = countFSRS > 0 ? (sumDifficulty / countFSRS).toFixed(1) : 'N/A';
+    const avgStability = countFSRS > 0 ? (sumStability / countFSRS).toFixed(1) : '0.0';
+    const avgDifficulty = countFSRS > 0 ? (sumDifficulty / countFSRS).toFixed(1) : '0.0';
 
     return { totalTopicsCount, avgStability, avgDifficulty, leechList };
-  }, [subjectTrackerData, fsrsConfig]);
+  }, [subjectTrackerData, fsrsConfig, filteredLogs]);
 
   // 30-Day Forecast Data Calculation
   const forecastData = useMemo(() => {
