@@ -12701,9 +12701,23 @@ JSON Format:
       const currentTopic = topicsMap[topicName];
 
       if (currentTopic) {
-        if (remainingLogs.length === 0 && lastItem.previousDoc && lastItem.previousDoc.topics && lastItem.previousDoc.topics[topicName]) {
-          // Restore exact pre-rating topic snapshot so it returns to its exact queue position
-          topicsMap[topicName] = JSON.parse(JSON.stringify(lastItem.previousDoc.topics[topicName]));
+        if (remainingLogs.length === 0) {
+          // If 0 logs remain, restore previous doc snapshot or clear FSRS parameters & studyDates completely
+          let restoredTopic = (lastItem.previousDoc && lastItem.previousDoc.topics && lastItem.previousDoc.topics[topicName])
+            ? JSON.parse(JSON.stringify(lastItem.previousDoc.topics[topicName]))
+            : { ...currentTopic };
+
+          delete restoredTopic.difficulty;
+          delete restoredTopic.stability;
+          delete restoredTopic.retrievability;
+          delete restoredTopic.interval;
+          delete restoredTopic.nextReviewDue;
+          delete restoredTopic.lastReviewDate;
+          restoredTopic.reviewCount = 0;
+          restoredTopic.lapses = 0;
+          restoredTopic.isLeech = false;
+          restoredTopic.studyDates = [];
+          topicsMap[topicName] = restoredTopic;
         } else {
           const recalculatedTopic = recalculateTopicFSRSFromLogs(currentTopic, remainingLogs, fsrsConfig, list);
           topicsMap[topicName] = recalculatedTopic;

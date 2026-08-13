@@ -115,7 +115,13 @@ export default function SmartReviewHub({
 
           // A topic is NEW if it has 0 reviewCount and no lastReviewDate (has never completed a review session)
           const isUnstudied = (!topic.reviewCount || topic.reviewCount === 0) && !topic.lastReviewDate;
-          const isPickedForToday = activeNewTopicIds.has(topicId) || topic.isPickedForToday || topic.activatedDate === todayStr;
+          const cleanName = topic.name.trim().toLowerCase();
+          const isPickedForToday = activeNewTopicIds.has(topicId) ||
+                                   activeNewTopicIds.has(cleanName) ||
+                                   activeNewTopicIds.has(`${subName}_${topic.name}`) ||
+                                   activeNewTopicIds.has(`${subName.toLowerCase()}_${cleanName}`) ||
+                                   topic.isPickedForToday ||
+                                   topic.activatedDate === todayStr;
 
           if (isUnstudied && isPickedForToday) {
             newItems.push(topicObj);
@@ -146,7 +152,7 @@ export default function SmartReviewHub({
       totalNewPagesToday: newPages,
       leechTopics: leeches
     };
-  }, [subjectTrackerData, fsrsConfig]);
+  }, [subjectTrackerData, fsrsConfig, activeNewTopicIds]);
 
   // Upcoming Exam Countdown from studySchedule
   const nextExam = useMemo(() => {
@@ -578,7 +584,13 @@ export default function SmartReviewHub({
         themeMode={themeMode}
         onActivateTopics={(selectedTopics) => {
           const todayStr = getLocalDateStr();
-          const activatedIds = selectedTopics.map(t => t.id || `${t.subject}_${t.name}`);
+          const activatedIds = selectedTopics.flatMap(t => [
+            t.id,
+            `${t.subject}_${t.name}`,
+            t.name ? t.name.trim().toLowerCase() : '',
+            t.subject && t.name ? `${t.subject.toLowerCase()}_${t.name.trim().toLowerCase()}` : ''
+          ]).filter(Boolean);
+
           setActiveNewTopicIds(prev => {
             const next = new Set(prev);
             activatedIds.forEach(id => next.add(id));
