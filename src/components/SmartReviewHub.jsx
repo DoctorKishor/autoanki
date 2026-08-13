@@ -632,7 +632,4 @@ function TopicCard({ topic, onRate, isOverdue = false, isNew = false, index = 0 
       </div>
     </motion.div>
   );
-}   </div>
-    </motion.div>
-  );
 }
