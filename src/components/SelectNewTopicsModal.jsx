@@ -156,11 +156,13 @@ export default function SelectNewTopicsModal({
   };
 
   // AI Recommendation Generator via Gemini API
-  const generateAiRecommendations = async (feedbackText = '') => {
+  const generateAiRecommendations = async (feedbackText = '', overrideMode = null) => {
     if (unstudiedCatalog.length === 0) {
       setAiError("No unstudied textbook topics available to recommend.");
       return;
     }
+
+    const activeStrategyMode = overrideMode || aiStrategyMode;
 
     setAiLoading(true);
     setAiError('');
@@ -182,7 +184,25 @@ export default function SelectNewTopicsModal({
     // 2. Select Model Fallback Sequence
     const modelsList = (aiFeatureModels && aiFeatureModels.cardGeneration) || DEFAULT_CARD_GEN_MODELS;
 
-    const payloadCatalog = unstudiedCatalog.slice(0, 30).map(t => ({
+    // Subject-balanced catalog sampling
+    const subjectBuckets = {};
+    unstudiedCatalog.forEach(t => {
+      if (!subjectBuckets[t.subject]) subjectBuckets[t.subject] = [];
+      subjectBuckets[t.subject].push(t);
+    });
+
+    const sampledCatalog = [];
+    const subjects = Object.keys(subjectBuckets);
+    let sampleIdx = 0;
+    while (sampledCatalog.length < 30 && subjects.some(s => subjectBuckets[s].length > 0)) {
+      const sub = subjects[sampleIdx % subjects.length];
+      if (subjectBuckets[sub] && subjectBuckets[sub].length > 0) {
+        sampledCatalog.push(subjectBuckets[sub].shift());
+      }
+      sampleIdx++;
+    }
+
+    const payloadCatalog = sampledCatalog.map(t => ({
       subject: t.subject,
       topicName: t.name,
       pageCount: t.pageWeight
@@ -193,7 +213,7 @@ Select 2 to 4 unstudied topics from the student's catalog.
 
 STRICT CONSTRAINTS:
 1. The SUM of the page counts of selected topics MUST NOT exceed ${dailyCapPages} pages.
-2. ${feedbackText ? `STUDENT FEEDBACK: "${feedbackText}". Strictly satisfy the student's request.` : `Strategy Mode: ${aiStrategyMode}.`}
+2. ${feedbackText ? `STUDENT FEEDBACK: "${feedbackText}". Strictly satisfy the student's request.` : `Strategy Mode: ${activeStrategyMode}.`}
 
 Format response strictly as JSON with this schema:
 {
@@ -301,13 +321,39 @@ Format response strictly as JSON with this schema:
     onClose();
   };
 
+  const handleActivateSingleAiTopic = (rec) => {
+    if (!rec) return;
+    const cleanRName = (rec.topicName || rec.name || '').trim().toLowerCase();
+    const cleanRSub = (rec.subject || '').trim().toLowerCase();
+
+    const matchedTopic = unstudiedCatalog.find(t => {
+      const cleanTName = t.name.trim().toLowerCase();
+      const cleanTSub = t.subject.trim().toLowerCase();
+      return cleanTName === cleanRName || (cleanTSub === cleanRSub && cleanTName.includes(cleanRName));
+    });
+
+    if (matchedTopic && typeof onActivateTopics === 'function') {
+      onActivateTopics([matchedTopic]);
+    }
+  };
+
   const handleActivateAiPlan = () => {
     if (aiRecommendations.length === 0) return;
     const aiSelectedTopics = unstudiedCatalog.filter(t => {
-      return aiRecommendations.some(r => r.topicName === t.name && r.subject === t.subject);
+      const cleanTName = t.name.trim().toLowerCase();
+      const cleanTSub = t.subject.trim().toLowerCase();
+      return aiRecommendations.some(r => {
+        const cleanRName = (r.topicName || r.name || '').trim().toLowerCase();
+        const cleanRSub = (r.subject || '').trim().toLowerCase();
+        return cleanTName === cleanRName || (cleanTSub === cleanRSub && (cleanTName.includes(cleanRName) || cleanRName.includes(cleanTName)));
+      });
     });
+
     if (aiSelectedTopics.length > 0 && typeof onActivateTopics === 'function') {
       onActivateTopics(aiSelectedTopics);
+    } else if (unstudiedCatalog.length > 0 && typeof onActivateTopics === 'function') {
+      // Fallback: activate top unstudied topics matching recommendation count
+      onActivateTopics(unstudiedCatalog.slice(0, aiRecommendations.length));
     }
     onClose();
   };
@@ -567,7 +613,10 @@ Format response strictly as JSON with this schema:
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <button
-                      onClick={() => setAiStrategyMode('cross_subject')}
+                      onClick={() => {
+                        setAiStrategyMode('cross_subject');
+                        generateAiRecommendations('', 'cross_subject');
+                      }}
                       className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                         aiStrategyMode === 'cross_subject'
                           ? 'bg-amber-500/20 border-amber-500/60 text-amber-400'
@@ -579,7 +628,10 @@ Format response strictly as JSON with this schema:
                     </button>
 
                     <button
-                      onClick={() => setAiStrategyMode('interleaving')}
+                      onClick={() => {
+                        setAiStrategyMode('interleaving');
+                        generateAiRecommendations('', 'interleaving');
+                      }}
                       className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                         aiStrategyMode === 'interleaving'
                           ? 'bg-amber-500/20 border-amber-500/60 text-amber-400'
@@ -591,7 +643,10 @@ Format response strictly as JSON with this schema:
                     </button>
 
                     <button
-                      onClick={() => setAiStrategyMode('exam_sprint')}
+                      onClick={() => {
+                        setAiStrategyMode('exam_sprint');
+                        generateAiRecommendations('', 'exam_sprint');
+                      }}
                       className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                         aiStrategyMode === 'exam_sprint'
                           ? 'bg-amber-500/20 border-amber-500/60 text-amber-400'
@@ -644,16 +699,27 @@ Format response strictly as JSON with this schema:
                             isDark ? 'bg-[#222730] border-amber-500/40 neu-card-dark' : 'bg-white border-amber-300 neu-card-light'
                           }`}
                         >
-                          <div className="flex justify-between items-start">
+                          <div className="flex justify-between items-start gap-2">
                             <div>
                               <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-500 border border-amber-500/30">
                                 {rec.subject}
                               </span>
                               <h5 className={`text-xs font-bold mt-1.5 ${isDark ? 'text-white' : 'text-slate-900'}`}>{rec.topicName}</h5>
                             </div>
-                            <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/30">
-                              {rec.yieldScore || 'High-Yield'}
-                            </span>
+                            <div className="flex flex-col items-end gap-1">
+                              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/30">
+                                {rec.yieldScore || 'High-Yield'}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleActivateSingleAiTopic(rec)}
+                                className={`px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider border transition-all cursor-pointer shadow-sm active:scale-95 flex items-center gap-1 ${
+                                  isDark ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-amber-500/40' : 'bg-amber-100 hover:bg-amber-200 text-amber-800 border-amber-300'
+                                }`}
+                              >
+                                <span>+ Add to Today</span>
+                              </button>
+                            </div>
                           </div>
 
                           {/* Linkage Reason */}
