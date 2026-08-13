@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Brain, Calendar, AlertTriangle, CheckCircle, Clock, BookOpen, Layers, Sparkles, RotateCcw, RotateCw, Zap, Undo2 } from 'lucide-react';
+import { Brain, Calendar, AlertTriangle, CheckCircle, Clock, BookOpen, Layers, Sparkles, RotateCcw, RotateCw, Zap, Undo2, X } from 'lucide-react';
 import FsrsStatsTab from './FsrsStatsTab';
 import FsrsSettingsModal from './FsrsSettingsModal';
 import SelectNewTopicsModal from './SelectNewTopicsModal';
