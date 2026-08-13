@@ -74,11 +74,19 @@ export default function SmartReviewHub({
 
   // Upcoming Exam Countdown from studySchedule
   const nextExam = useMemo(() => {
-    if (!studySchedule || studySchedule.length === 0) return null;
+    if (!studySchedule) return null;
+    const scheduleArray = Array.isArray(studySchedule)
+      ? studySchedule
+      : typeof studySchedule === 'object'
+        ? Object.values(studySchedule)
+        : [];
+    if (scheduleArray.length === 0) return null;
     const today = new Date();
-    const sorted = [...studySchedule]
-      .map(item => ({ ...item, dateObj: new Date(item.date || item.examDate) }))
-      .filter(item => item.dateObj >= today)
+    today.setHours(0, 0, 0, 0);
+    const sorted = scheduleArray
+      .filter(item => item && (item.date || item.examDate || item.dateStr))
+      .map(item => ({ ...item, dateObj: new Date(item.date || item.examDate || item.dateStr) }))
+      .filter(item => !isNaN(item.dateObj.getTime()) && item.dateObj >= today)
       .sort((a, b) => a.dateObj - b.dateObj);
     return sorted[0] || null;
   }, [studySchedule]);
