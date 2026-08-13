@@ -365,6 +365,7 @@ export const recalculateTopicFSRSFromLogs = (topic, topicLogs, fsrsConfig, subje
     delete cleaned.lastReviewDate;
     cleaned.reviewCount = 0;
     cleaned.lapses = 0;
+    cleaned.isLeech = false;
     return cleaned;
   }
 

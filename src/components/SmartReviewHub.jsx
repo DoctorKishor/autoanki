@@ -614,6 +614,9 @@ export default function SmartReviewHub({
 function TopicCard({ topic, onRate, isOverdue = false, isNew = false, index = 0, isDark = true }) {
   const { pageLabel, pageCount } = getTopicPageInfo(topic);
 
+  // A topic is truly reviewed only if reviewCount > 0 AND it has a lastReviewDate AND is not in New queue
+  const isReviewed = !isNew && (topic.reviewCount || 0) > 0 && !!topic.lastReviewDate;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12, scale: 0.98 }}
@@ -641,8 +644,12 @@ function TopicCard({ topic, onRate, isOverdue = false, isNew = false, index = 0,
         </div>
 
         <div className="text-right">
-          <div className={`text-[11px] font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>S: <span className="text-sky-500 font-bold">{topic.stability != null ? topic.stability.toFixed(1) : 'New'}d</span></div>
-          <div className={`text-[11px] font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>D: <span className="text-amber-500 font-bold">{topic.difficulty != null ? topic.difficulty.toFixed(1) : '5.0'}</span></div>
+          <div className={`text-[11px] font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            S: <span className="text-sky-500 font-bold">{isReviewed && topic.stability != null ? `${topic.stability.toFixed(1)}d` : 'New'}</span>
+          </div>
+          <div className={`text-[11px] font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            D: <span className="text-amber-500 font-bold">{isReviewed && topic.difficulty != null ? topic.difficulty.toFixed(1) : 'Unstudied'}</span>
+          </div>
         </div>
       </div>
 
