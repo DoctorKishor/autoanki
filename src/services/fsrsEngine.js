@@ -347,3 +347,62 @@ export const calculateNextFSRSState = (
     engineVersion: 'FSRS-6',
   };
 };
+
+/**
+ * Recalculates a topic's FSRS state from its complete chronological sequence of review logs.
+ * Ensures 100% deterministic consistency when logs are deleted, edited, or redone.
+ */
+export const recalculateTopicFSRSFromLogs = (topic, topicLogs, fsrsConfig, subjectTrackerData = []) => {
+  if (!topic) return topic;
+
+  if (!topicLogs || !Array.isArray(topicLogs) || topicLogs.length === 0) {
+    const cleaned = { ...topic };
+    delete cleaned.difficulty;
+    delete cleaned.stability;
+    delete cleaned.retrievability;
+    delete cleaned.interval;
+    delete cleaned.nextReviewDue;
+    delete cleaned.lastReviewDate;
+    cleaned.reviewCount = 0;
+    cleaned.lapses = 0;
+    return cleaned;
+  }
+
+  const sortedLogs = [...topicLogs].sort((a, b) => {
+    const tA = a.timestamp || a.dateStr || '';
+    const tB = b.timestamp || b.dateStr || '';
+    return tA.localeCompare(tB);
+  });
+
+  const subjectName = topic.subject || '';
+  const activeDR = fsrsConfig?.retentionMode === 'perSubject'
+    ? (fsrsConfig.perSubjectRetention?.[subjectName] || fsrsConfig.globalDesiredRetention || 0.90)
+    : (fsrsConfig?.globalDesiredRetention || 0.90);
+
+  const weights = fsrsConfig?.weights || DEFAULT_FSRS6_WEIGHTS;
+
+  let currentFsrsState = null;
+
+  sortedLogs.forEach(log => {
+    const rating = typeof log.rating === 'number' ? log.rating : 3;
+    const dateStr = log.dateStr || (log.timestamp ? log.timestamp.split('T')[0] : new Date().toISOString().split('T')[0]);
+
+    currentFsrsState = calculateNextFSRSState(
+      currentFsrsState,
+      rating,
+      dateStr,
+      weights,
+      activeDR,
+      {
+        subjectTrackerData,
+        easyDays: fsrsConfig?.easyDays || {},
+        enableLoadBalancing: false
+      }
+    );
+  });
+
+  return {
+    ...topic,
+    ...currentFsrsState
+  };
+};

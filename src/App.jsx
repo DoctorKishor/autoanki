@@ -12589,32 +12589,6 @@ JSON Format:
     };
 
     const ratingLabels = { 1: 'Again (1)', 2: 'Hard (2)', 3: 'Good (3)', 4: 'Easy (4)' };
-    const undoItem = {
-      docId,
-      previousDoc: previousDocSnapshot,
-      updatedDoc,
-      topicName: cleanTopicName,
-      ratingLabel: ratingLabels[rating] || `Rating ${rating}`,
-      timestamp: Date.now()
-    };
-
-    setReviewUndoStack(prev => [...prev, undoItem]);
-    setReviewRedoStack([]); // Clear redo stack on new rating
-
-    // 1. Instant Optimistic React State Update
-    setSubjectTrackerData(prev => {
-      const list = Array.isArray(prev) ? prev : [];
-      const idx = list.findIndex(d => d.id === docId);
-      if (idx >= 0) {
-        return list.map(d => d.id === docId ? updatedDoc : d);
-      }
-      return [...list, updatedDoc];
-    });
-
-    // 2. Auto-Persist to LocalDB immediately
-    saveLocalSubjectTrackerDoc(docId, updatedDoc).catch(err => {
-      console.error("[LocalDB] Error saving subject doc:", err);
-    });
 
     const logEntry = {
       id: 'log_' + Math.random().toString(36).substring(2, 9),
@@ -12627,11 +12601,49 @@ JSON Format:
       nextReviewDue: fsrsResult.nextReviewDue,
       timestamp: new Date().toISOString()
     };
-    saveLocalStudyLog(logEntry).catch(err => {
-      console.error("[LocalDB] Error saving study log:", err);
+
+    const undoItem = {
+      docId,
+      previousDoc: previousDocSnapshot,
+      updatedDoc,
+      topicName: cleanTopicName,
+      ratingLabel: ratingLabels[rating] || `Rating ${rating}`,
+      logEntry,
+      timestamp: Date.now()
+    };
+
+    setReviewUndoStack(prev => [...prev, undoItem]);
+    setReviewRedoStack([]); // Clear redo stack on new rating
+
+    // 1. Instant Optimistic React State Update for Subject Tracker Data
+    setSubjectTrackerData(prev => {
+      const list = Array.isArray(prev) ? prev : [];
+      const idx = list.findIndex(d => d.id === docId);
+      if (idx >= 0) {
+        return list.map(d => d.id === docId ? updatedDoc : d);
+      }
+      return [...list, updatedDoc];
     });
 
-    // 3. Set Toast Feedback
+    // 2. Auto-Persist Subject Tracker Doc to LocalDB immediately
+    saveLocalSubjectTrackerDoc(docId, updatedDoc).catch(err => {
+      console.error("[LocalDB] Error saving subject doc:", err);
+    });
+
+    // 3. Synchronize studyLogs State and LocalDB Storage
+    setStudyLogs(prev => {
+      const prevDayLog = prev[todayStr] || { questions: 0, cards: 0, hours: 0, pages: 0, gts: [], fsrsLogs: [] };
+      const updatedDayLog = {
+        ...prevDayLog,
+        cards: (prevDayLog.cards || 0) + 1,
+        pages: (prevDayLog.pages || 0) + (topic.pageCount || 1),
+        fsrsLogs: [...(prevDayLog.fsrsLogs || []), logEntry]
+      };
+      saveLocalStudyLog(todayStr, updatedDayLog).catch(err => console.error("[LocalDB] Error saving study log:", err));
+      return { ...prev, [todayStr]: updatedDayLog };
+    });
+
+    // 4. Set Toast Feedback
     setLastRatedToast({
       message: `Rated "${cleanTopicName}" as ${ratingLabels[rating]}`,
       topicName: cleanTopicName,
@@ -12646,9 +12658,9 @@ JSON Format:
     setReviewUndoStack(prev => prev.slice(0, prev.length - 1));
     setReviewRedoStack(prev => [...prev, lastItem]);
 
-    const { docId, previousDoc, topicName } = lastItem;
+    const { docId, previousDoc, topicName, logEntry } = lastItem;
 
-    // Optimistically revert state
+    // 1. Optimistically revert Subject Tracker Data state
     setSubjectTrackerData(prev => {
       const list = Array.isArray(prev) ? prev : [];
       const idx = list.findIndex(d => d.id === docId);
@@ -12662,6 +12674,23 @@ JSON Format:
     await saveLocalSubjectTrackerDoc(docId, previousDoc).catch(err => {
       console.error("[LocalDB] Error reverting document:", err);
     });
+
+    // 2. Synchronize studyLogs state: remove the logEntry on Undo
+    if (logEntry && logEntry.dateStr) {
+      const targetDate = logEntry.dateStr;
+      setStudyLogs(prev => {
+        const prevDayLog = prev[targetDate];
+        if (!prevDayLog) return prev;
+        const filteredFsrsLogs = (prevDayLog.fsrsLogs || []).filter(l => l.id !== logEntry.id);
+        const updatedDayLog = {
+          ...prevDayLog,
+          cards: Math.max(0, (prevDayLog.cards || 0) - 1),
+          fsrsLogs: filteredFsrsLogs
+        };
+        saveLocalStudyLog(targetDate, updatedDayLog).catch(err => console.error("[LocalDB] Error undoing study log:", err));
+        return { ...prev, [targetDate]: updatedDayLog };
+      });
+    }
 
     setLastRatedToast({
       message: `Undid review for "${topicName}"`,
@@ -12677,9 +12706,9 @@ JSON Format:
     setReviewRedoStack(prev => prev.slice(0, prev.length - 1));
     setReviewUndoStack(prev => [...prev, lastItem]);
 
-    const { docId, updatedDoc, topicName } = lastItem;
+    const { docId, updatedDoc, topicName, logEntry } = lastItem;
 
-    // Optimistically re-apply state
+    // 1. Optimistically re-apply Subject Tracker Data state
     setSubjectTrackerData(prev => {
       const list = Array.isArray(prev) ? prev : [];
       const idx = list.findIndex(d => d.id === docId);
@@ -12693,6 +12722,21 @@ JSON Format:
     await saveLocalSubjectTrackerDoc(docId, updatedDoc).catch(err => {
       console.error("[LocalDB] Error re-applying document:", err);
     });
+
+    // 2. Synchronize studyLogs state: restore the logEntry on Redo
+    if (logEntry && logEntry.dateStr) {
+      const targetDate = logEntry.dateStr;
+      setStudyLogs(prev => {
+        const prevDayLog = prev[targetDate] || { questions: 0, cards: 0, hours: 0, pages: 0, gts: [], fsrsLogs: [] };
+        const updatedDayLog = {
+          ...prevDayLog,
+          cards: (prevDayLog.cards || 0) + 1,
+          fsrsLogs: [...(prevDayLog.fsrsLogs || []), logEntry]
+        };
+        saveLocalStudyLog(targetDate, updatedDayLog).catch(err => console.error("[LocalDB] Error redoing study log:", err));
+        return { ...prev, [targetDate]: updatedDayLog };
+      });
+    }
 
     setLastRatedToast({
       message: `Redid review for "${topicName}"`,
