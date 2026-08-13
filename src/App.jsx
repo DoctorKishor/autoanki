@@ -34461,7 +34461,7 @@ Return your response strictly as a JSON object matching this schema:
 
                     {/* SMART REVIEW VIEW (Desktop) */}
                     {currentTab === 'smartReview' && (
-                      <div className="flex-grow p-4 lg:p-6 flex gap-6 max-w-[1200px] mx-auto w-full h-full overflow-hidden text-left animate-in fade-in duration-200">
+                      <div className="flex-grow p-4 lg:p-6 flex flex-col gap-6 max-w-[1200px] mx-auto w-full h-full overflow-y-auto custom-scrollbar no-scrollbar text-left animate-in fade-in duration-200 pb-16">
                         {renderSmartReviewTab(false)}
                       </div>
                     )}

@@ -173,7 +173,7 @@ export default function SmartReviewHub({
   const isNewOverCap = !isNewUnlimited && totalNewPagesToday > (dailyLimits.newPagesPerDay || 10);
 
   return (
-    <div className={`w-full space-y-6 relative ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+    <div className={`w-full space-y-6 relative pb-16 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
       {/* Interactive Visual Toast Notification */}
       <AnimatePresence>
         {toastMessage && (
