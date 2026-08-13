@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { UploadCloud, Brain, Calendar, AlertTriangle, CheckCircle, Clock, BookOpen, ChevronRight, Layers, Sparkles } from 'lucide-react';
 import FsrsStatsTab from './FsrsStatsTab';
 import FsrsSettingsModal from './FsrsSettingsModal';
+import { saveLocalSubjectTrackerDoc } from '../services/localDb';
 
 export function getTopicPageInfo(topic) {
   if (!topic) return { startPage: null, endPage: null, pageCount: 1, pageLabel: 'No pgs' };
@@ -133,8 +134,32 @@ export default function SmartReviewHub({
     return sorted[0] || null;
   }, [studySchedule]);
 
-  const handleMnemonicChange = (topicId, text) => {
-    setMnemonicNotes(prev => ({ ...prev, [topicId]: text }));
+  const handleMnemonicChange = (item, text) => {
+    if (!item) return;
+    const topicKey = item.id || item.name;
+    setMnemonicNotes(prev => ({ ...prev, [topicKey]: text }));
+
+    if (!item.subject || !subjectTrackerData) return;
+
+    const subDoc = subjectTrackerData.find(d => d.subject === item.subject || d.subject?.toLowerCase() === item.subject?.toLowerCase());
+    if (subDoc && subDoc.topics) {
+      const clonedTopics = { ...subDoc.topics };
+      let topicEntryKey = Object.keys(clonedTopics).find(k => k === item.name || clonedTopics[k]?.name === item.name || clonedTopics[k]?.id === item.id);
+      if (topicEntryKey) {
+        clonedTopics[topicEntryKey] = {
+          ...clonedTopics[topicEntryKey],
+          mnemonicNote: text
+        };
+        const updatedDoc = {
+          ...subDoc,
+          topics: clonedTopics,
+          updatedAt: new Date().toISOString()
+        };
+        saveLocalSubjectTrackerDoc(updatedDoc).catch(err => {
+          console.error("Failed to save mnemonic note to IndexedDB:", err);
+        });
+      }
+    }
   };
 
   return (
@@ -405,8 +430,9 @@ export default function SmartReviewHub({
                   <div className="space-y-1">
                     <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Mnemonic Note / Revision Memory Cue</label>
                     <textarea
-                      value={mnemonicNotes[item.id] || item.mnemonicNote || ''}
-                      onChange={(e) => handleMnemonicChange(item.id, e.target.value)}
+                      value={mnemonicNotes[item.id || item.name] !== undefined ? mnemonicNotes[item.id || item.name] : (item.mnemonicNote || '')}
+                      onChange={(e) => handleMnemonicChange(item, e.target.value)}
+                      onBlur={(e) => handleMnemonicChange(item, e.target.value)}
                       placeholder="Write a mnemonic or key memory clue..."
                       className="w-full p-2.5 rounded-xl bg-slate-900/80 border border-slate-700 text-xs text-slate-200 focus:outline-none focus:border-amber-500/60 resize-none h-16"
                     />
