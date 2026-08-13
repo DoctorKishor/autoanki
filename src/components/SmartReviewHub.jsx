@@ -6,6 +6,7 @@ import FsrsSettingsModal from './FsrsSettingsModal';
 import SelectNewTopicsModal from './SelectNewTopicsModal';
 import { saveLocalSubjectTrackerDoc, getActiveNewTopicIds, saveActiveNewTopicIds } from '../services/localDb';
 import { parsePageNumbers, getTopicPageWeight } from '../utils/pageUtils';
+import { calculateNextFSRSState } from '../services/fsrsEngine';
 
 export function getLocalDateStr(d = new Date()) {
   const dateObj = typeof d === 'string' ? new Date(d) : d;
@@ -525,7 +526,7 @@ export default function SmartReviewHub({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <AnimatePresence mode="popLayout">
                     {overdueTopics.map((topic, idx) => (
-                      <TopicCard key={topic.id || (topic.subject + '_' + topic.name)} topic={topic} onRate={onRateTopic} onOpenNotes={onOpenNotesModal} isOverdue index={idx} isDark={isDark} />
+                      <TopicCard key={topic.id || (topic.subject + '_' + topic.name)} topic={topic} onRate={onRateTopic} onOpenNotes={onOpenNotesModal} fsrsConfig={fsrsConfig} isOverdue index={idx} isDark={isDark} />
                     ))}
                   </AnimatePresence>
                 </div>
@@ -541,7 +542,7 @@ export default function SmartReviewHub({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <AnimatePresence mode="popLayout">
                     {dueTodayTopics.map((topic, idx) => (
-                      <TopicCard key={topic.id || (topic.subject + '_' + topic.name)} topic={topic} onRate={onRateTopic} onOpenNotes={onOpenNotesModal} index={idx} isDark={isDark} />
+                      <TopicCard key={topic.id || (topic.subject + '_' + topic.name)} topic={topic} onRate={onRateTopic} onOpenNotes={onOpenNotesModal} fsrsConfig={fsrsConfig} index={idx} isDark={isDark} />
                     ))}
                   </AnimatePresence>
                 </div>
@@ -583,6 +584,7 @@ export default function SmartReviewHub({
                         onRate={onRateTopic}
                         onRemove={handleRemoveNewTopic}
                         onOpenNotes={onOpenNotesModal}
+                        fsrsConfig={fsrsConfig}
                         isNew
                         index={idx}
                         isDark={isDark}
@@ -717,7 +719,7 @@ export default function SmartReviewHub({
 }
 
 // Sub-component: Individual Topic Queue Card
-function TopicCard({ topic, onRate, onRemove, onOpenNotes, isOverdue = false, isNew = false, index = 0, isDark = true }) {
+function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue = false, isNew = false, index = 0, isDark = true }) {
   const { pageLabel, pageCount } = getTopicPageInfo(topic);
   const [isNotesExpanded, setIsNotesExpanded] = useState(!!topic.notes);
 
@@ -727,6 +729,36 @@ function TopicCard({ topic, onRate, onRemove, onOpenNotes, isOverdue = false, is
       setIsNotesExpanded(true);
     }
   }, [topic.notes]);
+
+  // Calculate upcoming FSRS interval previews in days for Again(1), Hard(2), Good(3), Easy(4)
+  const intervalPreviews = useMemo(() => {
+    try {
+      const todayStr = getLocalDateStr();
+      const weights = fsrsConfig?.weights;
+      const dr = fsrsConfig?.globalDesiredRetention || 0.90;
+
+      const state1 = calculateNextFSRSState(topic, 1, todayStr, weights, dr);
+      const state2 = calculateNextFSRSState(topic, 2, todayStr, weights, dr);
+      const state3 = calculateNextFSRSState(topic, 3, todayStr, weights, dr);
+      const state4 = calculateNextFSRSState(topic, 4, todayStr, weights, dr);
+
+      const formatDays = (d) => {
+        if (!d || d <= 1) return '1d';
+        if (d < 30) return `${d}d`;
+        if (d < 365) return `${(d / 30).toFixed(1)}m`;
+        return `${(d / 365).toFixed(1)}y`;
+      };
+
+      return {
+        1: formatDays(state1?.interval),
+        2: formatDays(state2?.interval),
+        3: formatDays(state3?.interval),
+        4: formatDays(state4?.interval)
+      };
+    } catch (e) {
+      return { 1: '1d', 2: '2d', 3: '4d', 4: '8d' };
+    }
+  }, [topic, fsrsConfig]);
 
   // A topic is truly reviewed only if reviewCount > 0 AND it has a lastReviewDate AND is not in New queue
   const isReviewed = !isNew && (topic.reviewCount || 0) > 0 && !!topic.lastReviewDate;
@@ -871,31 +903,43 @@ function TopicCard({ topic, onRate, onRemove, onOpenNotes, isOverdue = false, is
         )}
       </AnimatePresence>
 
-      {/* 4 Rating Buttons */}
+      {/* 4 Rating Buttons with Calculated FSRS Scheduled Interval Previews */}
       <div className="grid grid-cols-4 gap-1.5 pt-1">
         <button
+          type="button"
           onClick={() => onRate && onRate(topic, 1)}
-          className="py-1.5 rounded-xl text-[10px] font-black bg-rose-500/20 hover:bg-rose-500/30 text-rose-500 border border-rose-500/30 active:scale-95 transition-all cursor-pointer"
+          title={`Again: Grade 1 (Next review in ${intervalPreviews[1]})`}
+          className="py-1.5 px-1 rounded-xl text-[10px] font-black bg-rose-500/20 hover:bg-rose-500/30 text-rose-500 border border-rose-500/30 active:scale-95 transition-all cursor-pointer flex flex-col items-center justify-center"
         >
-          Again (1)
+          <span>Again (1)</span>
+          <span className="text-[9px] opacity-75 font-mono font-bold mt-0.5">{intervalPreviews[1]}</span>
         </button>
         <button
+          type="button"
           onClick={() => onRate && onRate(topic, 2)}
-          className="py-1.5 rounded-xl text-[10px] font-black bg-amber-500/20 hover:bg-amber-500/30 text-amber-600 border border-amber-500/30 active:scale-95 transition-all cursor-pointer"
+          title={`Hard: Grade 2 (Next review in ${intervalPreviews[2]})`}
+          className="py-1.5 px-1 rounded-xl text-[10px] font-black bg-amber-500/20 hover:bg-amber-500/30 text-amber-600 border border-amber-500/30 active:scale-95 transition-all cursor-pointer flex flex-col items-center justify-center"
         >
-          Hard (2)
+          <span>Hard (2)</span>
+          <span className="text-[9px] opacity-75 font-mono font-bold mt-0.5">{intervalPreviews[2]}</span>
         </button>
         <button
+          type="button"
           onClick={() => onRate && onRate(topic, 3)}
-          className="py-1.5 rounded-xl text-[10px] font-black bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-600 border border-indigo-500/30 active:scale-95 transition-all cursor-pointer"
+          title={`Good: Grade 3 (Next review in ${intervalPreviews[3]})`}
+          className="py-1.5 px-1 rounded-xl text-[10px] font-black bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-600 border border-indigo-500/30 active:scale-95 transition-all cursor-pointer flex flex-col items-center justify-center"
         >
-          Good (3)
+          <span>Good (3)</span>
+          <span className="text-[9px] opacity-75 font-mono font-bold mt-0.5">{intervalPreviews[3]}</span>
         </button>
         <button
+          type="button"
           onClick={() => onRate && onRate(topic, 4)}
-          className="py-1.5 rounded-xl text-[10px] font-black bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-600 border border-emerald-500/30 active:scale-95 transition-all cursor-pointer"
+          title={`Easy: Grade 4 (Next review in ${intervalPreviews[4]})`}
+          className="py-1.5 px-1 rounded-xl text-[10px] font-black bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-600 border border-emerald-500/30 active:scale-95 transition-all cursor-pointer flex flex-col items-center justify-center"
         >
-          Easy (4)
+          <span>Easy (4)</span>
+          <span className="text-[9px] opacity-75 font-mono font-bold mt-0.5">{intervalPreviews[4]}</span>
         </button>
       </div>
     </motion.div>

@@ -168,42 +168,54 @@ export default function SelectNewTopicsModal({
     setAiLoading(true);
     setAiError('');
 
-    // 1. Gather Recent History (Past 7 Days)
+    // 1. Gather Recent Review History (Past 15 Logs) with Ratings & Lapses
     const recentHistory = [];
+    const ratingLabels = { 1: 'Again (Lapse)', 2: 'Hard', 3: 'Good', 4: 'Easy' };
+
     if (studyLogs && typeof studyLogs === 'object') {
       Object.entries(studyLogs).forEach(([dateStr, dayLog]) => {
         if (dayLog && Array.isArray(dayLog.fsrsLogs)) {
           dayLog.fsrsLogs.forEach(l => {
             if (l && l.topicName) {
-              recentHistory.push({ subject: l.subject || 'General', topicName: l.topicName, date: dateStr });
+              recentHistory.push({
+                subject: l.subject || 'General',
+                topicName: l.topicName,
+                date: dateStr,
+                rating: l.rating || 3,
+                ratingLabel: ratingLabels[l.rating] || 'Good'
+              });
             }
           });
         }
       });
     }
 
-    // 2. Select Model Fallback Sequence
-    const modelsList = (aiFeatureModels && aiFeatureModels.cardGeneration) || DEFAULT_CARD_GEN_MODELS;
-
-    // Subject-balanced catalog sampling
-    const subjectBuckets = {};
-    unstudiedCatalog.forEach(t => {
-      if (!subjectBuckets[t.subject]) subjectBuckets[t.subject] = [];
-      subjectBuckets[t.subject].push(t);
-    });
-
-    const sampledCatalog = [];
-    const subjects = Object.keys(subjectBuckets);
-    let sampleIdx = 0;
-    while (sampledCatalog.length < 30 && subjects.some(s => subjectBuckets[s].length > 0)) {
-      const sub = subjects[sampleIdx % subjects.length];
-      if (subjectBuckets[sub] && subjectBuckets[sub].length > 0) {
-        sampledCatalog.push(subjectBuckets[sub].shift());
-      }
-      sampleIdx++;
+    // 2. Gather Weak Topics & Memory Lapses from Subject Tracker
+    const weakLapsesAndLeeches = [];
+    if (Array.isArray(subjectTrackerData)) {
+      subjectTrackerData.forEach(subDoc => {
+        const subName = subDoc.subject || 'General';
+        if (subDoc.topics) {
+          Object.values(subDoc.topics).forEach(t => {
+            if (t && (t.lapses > 0 || t.isLeech || t.difficulty > 6.5)) {
+              weakLapsesAndLeeches.push({
+                subject: subName,
+                topicName: t.name,
+                lapses: t.lapses || 0,
+                difficulty: t.difficulty ? parseFloat(t.difficulty.toFixed(1)) : 'Unstudied',
+                isLeech: !!t.isLeech
+              });
+            }
+          });
+        }
+      });
     }
 
-    const payloadCatalog = sampledCatalog.map(t => ({
+    // 3. Select Model Fallback Sequence
+    const modelsList = (aiFeatureModels && aiFeatureModels.cardGeneration) || DEFAULT_CARD_GEN_MODELS;
+
+    // Send ALL unstudied topics in student catalog (no 30-item truncation)
+    const payloadCatalog = unstudiedCatalog.map(t => ({
       subject: t.subject,
       topicName: t.name,
       pageCount: t.pageWeight
@@ -238,7 +250,14 @@ Format response strictly as JSON with this schema:
           role: "user",
           parts: [
             { text: systemPrompt },
-            { text: JSON.stringify({ recentHistory: recentHistory.slice(-15), unstudiedCatalog: payloadCatalog, dailyCapPages }) }
+            { 
+              text: JSON.stringify({ 
+                recentHistory: recentHistory.slice(-15), 
+                weakLapsesAndLeeches: weakLapsesAndLeeches.slice(0, 20),
+                unstudiedCatalog: payloadCatalog, 
+                dailyCapPages 
+              }) 
+            }
           ]
         }
       ],
