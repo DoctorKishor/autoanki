@@ -12252,6 +12252,20 @@ JSON Format:
             topics[cleanTopicName].studyDates.push(review.dateStr);
             topics[cleanTopicName].studyDates.sort((a, b) => a.localeCompare(b));
           }
+
+          // Save studyLog to IndexedDB for offline FSRS Analytics tracking
+          const logEntry = {
+            id: 'log_' + Math.random().toString(36).substring(2, 9),
+            subject: subjectName.trim(),
+            topicName: cleanTopicName,
+            dateStr: review.dateStr || new Date().toISOString().split('T')[0],
+            rating: review.rating,
+            stability: fsrsResult.stability,
+            difficulty: fsrsResult.difficulty,
+            nextReviewDue: fsrsResult.nextReviewDue,
+            timestamp: new Date().toISOString()
+          };
+          saveLocalStudyLog(logEntry).catch(err => console.error("[LocalDB] Error saving study log:", err));
         });
 
         await saveLocalSubjectTrackerDoc(docId, {
@@ -12457,7 +12471,6 @@ JSON Format:
     }
   };
 
-
   const renderSmartReviewTab = (isMobileView = false) => {
     return (
       <SmartReviewHub
@@ -12477,7 +12490,9 @@ JSON Format:
             dateStr: todayStr,
             rating
           };
-          setBatchedReviews(prev => [...prev, newReview]);
+          if (typeof setBatchedReviews === 'function') {
+            setBatchedReviews(prev => [...(prev || []), newReview]);
+          }
         }}
         studySchedule={studySchedule}
       />
