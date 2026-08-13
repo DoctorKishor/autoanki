@@ -168,7 +168,13 @@ export default function SmartReviewHub({
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const sorted = scheduleArray
-      .filter(item => item && (item.date || item.examDate || item.dateStr))
+      .filter(item => {
+        if (!item || !(item.date || item.examDate || item.dateStr)) return false;
+        const hasTasks = Array.isArray(item.tasks) && item.tasks.length > 0;
+        const hasNotes = typeof item.notes === 'string' && item.notes.trim().length > 0;
+        const hasExamTitle = Boolean(item.examTitle || item.title || item.subject);
+        return hasTasks || hasNotes || hasExamTitle;
+      })
       .map(item => ({ ...item, dateObj: new Date(item.date || item.examDate || item.dateStr) }))
       .filter(item => !isNaN(item.dateObj.getTime()) && item.dateObj >= today)
       .sort((a, b) => a.dateObj - b.dateObj);

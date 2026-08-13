@@ -493,7 +493,28 @@ export async function getLocalStudySchedule() {
 export async function saveLocalScheduleEntry(dateStr, entryData) {
   if (!dateStr) return await getLocalStudySchedule();
   const current = await getLocalStudySchedule();
-  const updated = { ...current, [dateStr]: { ...(current[dateStr] || {}), ...entryData } };
+  const mergedEntry = { ...(current[dateStr] || {}), ...entryData };
+
+  const hasTasks = Array.isArray(mergedEntry.tasks) && mergedEntry.tasks.length > 0;
+  const hasNotes = typeof mergedEntry.notes === 'string' && mergedEntry.notes.trim().length > 0;
+  const hasExamTitle = Boolean(mergedEntry.examTitle || mergedEntry.title || mergedEntry.subject);
+
+  const updated = { ...current };
+  if (!hasTasks && !hasNotes && !hasExamTitle) {
+    delete updated[dateStr];
+  } else {
+    updated[dateStr] = mergedEntry;
+  }
+
+  await setLocalKV('study_schedule', updated);
+  return updated;
+}
+
+export async function deleteLocalScheduleEntry(dateStr) {
+  if (!dateStr) return await getLocalStudySchedule();
+  const current = await getLocalStudySchedule();
+  const updated = { ...current };
+  delete updated[dateStr];
   await setLocalKV('study_schedule', updated);
   return updated;
 }
@@ -711,6 +732,7 @@ export default {
   replaceAllLocalSubjectTrackerData,
   getLocalStudySchedule,
   saveLocalScheduleEntry,
+  deleteLocalScheduleEntry,
   replaceAllLocalStudySchedule,
   DEFAULT_FSRS_CONFIG,
   getFSRSConfig,
