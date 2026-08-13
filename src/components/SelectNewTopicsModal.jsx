@@ -613,10 +613,7 @@ Format response strictly as JSON with this schema:
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <button
-                      onClick={() => {
-                        setAiStrategyMode('cross_subject');
-                        generateAiRecommendations('', 'cross_subject');
-                      }}
+                      onClick={() => setAiStrategyMode('cross_subject')}
                       className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                         aiStrategyMode === 'cross_subject'
                           ? 'bg-amber-500/20 border-amber-500/60 text-amber-400'
@@ -628,10 +625,7 @@ Format response strictly as JSON with this schema:
                     </button>
 
                     <button
-                      onClick={() => {
-                        setAiStrategyMode('interleaving');
-                        generateAiRecommendations('', 'interleaving');
-                      }}
+                      onClick={() => setAiStrategyMode('interleaving')}
                       className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                         aiStrategyMode === 'interleaving'
                           ? 'bg-amber-500/20 border-amber-500/60 text-amber-400'
@@ -643,10 +637,7 @@ Format response strictly as JSON with this schema:
                     </button>
 
                     <button
-                      onClick={() => {
-                        setAiStrategyMode('exam_sprint');
-                        generateAiRecommendations('', 'exam_sprint');
-                      }}
+                      onClick={() => setAiStrategyMode('exam_sprint')}
                       className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                         aiStrategyMode === 'exam_sprint'
                           ? 'bg-amber-500/20 border-amber-500/60 text-amber-400'
