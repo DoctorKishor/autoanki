@@ -3324,7 +3324,8 @@ const ReactFlipDigit = ({ digit, theme }) => {
   );
 };
 
-const QuickLogger = ({ todayLog, todayStr, setStudyLogs }) => {
+const QuickLogger = ({ todayLog, todayStr, setStudyLogs, isDark: isDarkProp }) => {
+  const isDark = isDarkProp ?? false;
   const [qsVal, setQsVal] = useState('');
   const [cardsVal, setCardsVal] = useState('');
   const [hoursVal, setHoursVal] = useState('');
@@ -3403,57 +3404,73 @@ const QuickLogger = ({ todayLog, todayStr, setStudyLogs }) => {
   };
 
   return (
-    <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex flex-col hover:shadow-md transition w-full">
-      <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-4 flex items-center gap-1.5">
+    <div className={`p-6 rounded-3xl flex flex-col transition-colors duration-300 w-full text-left ${
+      isDark ? 'neu-card-dark border border-white/5 shadow-xl' : 'neu-card-light border border-white/70 shadow-md'
+    }`}>
+      <span className={`text-[10px] font-black uppercase tracking-widest mb-4 flex items-center gap-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
         📝 Quick Session Logger (Today)
       </span>
 
       <div className="grid grid-cols-2 gap-4 mb-4">
         {/* Solved Qs */}
-        <div className="bg-gray-50 p-4 border border-gray-100 rounded-2xl flex flex-col">
-          <span className="text-[8px] font-black text-gray-400 uppercase tracking-wider">Solved Qs</span>
+        <div className={`p-4 rounded-2xl flex flex-col transition ${
+          isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'
+        }`}>
+          <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Solved Qs</span>
           <input
             type="number"
             value={qsVal}
             onChange={(e) => setQsVal(e.target.value)}
-            className="bg-transparent text-xl font-black text-gray-800 focus:outline-none mt-1 border-b border-transparent focus:border-orange-500 font-mono w-full"
+            className={`bg-transparent text-xl font-black focus:outline-none mt-1 border-b border-transparent focus:border-orange-500 font-mono w-full ${
+              isDark ? 'text-slate-100 placeholder-slate-600' : 'text-slate-800 placeholder-slate-400'
+            }`}
             placeholder="0"
           />
         </div>
 
         {/* Studied Cards */}
-        <div className="bg-gray-50 p-4 border border-gray-100 rounded-2xl flex flex-col">
-          <span className="text-[8px] font-black text-gray-400 uppercase tracking-wider">Studied Cards</span>
+        <div className={`p-4 rounded-2xl flex flex-col transition ${
+          isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'
+        }`}>
+          <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Studied Cards</span>
           <input
             type="number"
             value={cardsVal}
             onChange={(e) => setCardsVal(e.target.value)}
-            className="bg-transparent text-xl font-black text-gray-800 focus:outline-none mt-1 border-b border-transparent focus:border-orange-500 font-mono w-full"
+            className={`bg-transparent text-xl font-black focus:outline-none mt-1 border-b border-transparent focus:border-orange-500 font-mono w-full ${
+              isDark ? 'text-slate-100 placeholder-slate-600' : 'text-slate-800 placeholder-slate-400'
+            }`}
             placeholder="0"
           />
         </div>
 
         {/* Hours Focus */}
-        <div className="bg-gray-50 p-4 border border-gray-100 rounded-2xl flex flex-col">
-          <span className="text-[8px] font-black text-gray-400 uppercase tracking-wider">Hours Focus</span>
+        <div className={`p-4 rounded-2xl flex flex-col transition ${
+          isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'
+        }`}>
+          <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Hours Focus</span>
           <div className="flex items-center gap-2 mt-1">
             <div className="flex-1 min-w-0">
               <input
                 type="number"
                 value={hoursVal}
                 onChange={(e) => setHoursVal(e.target.value)}
-                className="bg-transparent text-xl font-black text-gray-800 focus:outline-none border-b border-transparent focus:border-orange-500 font-mono w-full text-center"
+                className={`bg-transparent text-xl font-black focus:outline-none border-b border-transparent focus:border-orange-500 font-mono w-full text-center ${
+                  isDark ? 'text-slate-100 placeholder-slate-600' : 'text-slate-800 placeholder-slate-400'
+                }`}
                 placeholder="0"
                 min="0"
               />
             </div>
-            <span className="text-gray-400 font-bold text-xs">:</span>
+            <span className={`font-bold text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>:</span>
             <div className="flex-1 min-w-0">
               <input
                 type="number"
                 value={minsVal}
                 onChange={(e) => setMinsVal(e.target.value)}
-                className="bg-transparent text-xl font-black text-gray-800 focus:outline-none border-b border-transparent focus:border-orange-500 font-mono w-full text-center"
+                className={`bg-transparent text-xl font-black focus:outline-none border-b border-transparent focus:border-orange-500 font-mono w-full text-center ${
+                  isDark ? 'text-slate-100 placeholder-slate-600' : 'text-slate-800 placeholder-slate-400'
+                }`}
                 placeholder="00"
                 min="0"
                 max="59"
@@ -3463,13 +3480,17 @@ const QuickLogger = ({ todayLog, todayStr, setStudyLogs }) => {
         </div>
 
         {/* Pages Read */}
-        <div className="bg-gray-50 p-4 border border-gray-100 rounded-2xl flex flex-col">
-          <span className="text-[8px] font-black text-gray-400 uppercase tracking-wider">Pages Read</span>
+        <div className={`p-4 rounded-2xl flex flex-col transition ${
+          isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'
+        }`}>
+          <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Pages Read</span>
           <input
             type="number"
             value={pagesVal}
             onChange={(e) => setPagesVal(e.target.value)}
-            className="bg-transparent text-xl font-black text-gray-800 focus:outline-none mt-1 border-b border-transparent focus:border-orange-500 font-mono w-full"
+            className={`bg-transparent text-xl font-black focus:outline-none mt-1 border-b border-transparent focus:border-orange-500 font-mono w-full ${
+              isDark ? 'text-slate-100 placeholder-slate-600' : 'text-slate-800 placeholder-slate-400'
+            }`}
             placeholder="0"
           />
         </div>
@@ -3477,13 +3498,13 @@ const QuickLogger = ({ todayLog, todayStr, setStudyLogs }) => {
 
       <button
         onClick={handleSaveSession}
-        className="w-full bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold py-2.5 px-4 rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm active:scale-95"
+        className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:opacity-90 text-white text-xs font-black py-3 px-4 rounded-xl transition flex items-center justify-center gap-1.5 shadow-md active:scale-95 uppercase tracking-wider"
       >
         <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
         Add Session
       </button>
 
-      <p className="text-[9px] text-gray-400 font-bold leading-normal mt-3">
+      <p className={`text-[9px] font-bold leading-normal mt-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
         💡 Enter stats for your current study session, then click "Add Session" to add them to today's cumulative totals.
       </p>
     </div>
@@ -10862,37 +10883,43 @@ JSON Format:
       }
     };
 
+    const isDark = settingsThemeMode === 'dark';
     const currentTheme = getThemeClasses(activeType);
 
     return (
-      <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex flex-col hover:shadow-md transition w-full text-left">
+      <div className={`p-6 rounded-3xl flex flex-col transition-colors duration-300 w-full text-left ${
+        isDark ? 'neu-card-dark border border-white/5 shadow-xl' : 'neu-card-light border border-white/70 shadow-md'
+      }`}>
         {/* Tab Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-5">
+        <div className={`flex items-center justify-between pb-3 border-b mb-5 ${isDark ? 'border-white/5' : 'border-slate-200/60'}`}>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-1.5">
+            <span className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
               ⏱️ Focus Timer Hub
             </span>
             <button
               onClick={() => setIsTimerFullscreen(true)}
-              className="p-1 rounded-lg hover:bg-gray-150 text-gray-400 hover:text-gray-700 transition"
+              className={`p-1 rounded-lg transition ${isDark ? 'hover:bg-white/10 text-slate-400 hover:text-slate-200' : 'hover:bg-slate-200/50 text-slate-500 hover:text-slate-800'}`}
               title="Fullscreen Mode"
             >
               <Maximize className="w-3.5 h-3.5" />
             </button>
           </div>
-          <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase font-mono tracking-wider ${isRunning ? 'bg-green-50 text-green-600 animate-pulse' : isPaused ? 'bg-amber-50 text-amber-600' : 'bg-gray-50 text-gray-400'
-            }`}>
+          <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase font-mono tracking-wider ${
+            isRunning ? 'bg-emerald-500/20 text-emerald-500 animate-pulse border border-emerald-500/30' : isPaused ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30' : isDark ? 'bg-white/5 text-slate-400' : 'bg-slate-200/60 text-slate-500'
+          }`}>
             {isRunning ? 'Running' : isPaused ? 'Paused' : 'Ready'}
           </span>
         </div>
 
         {/* Tab Selector */}
-        <div className="grid grid-cols-3 gap-1.5 p-1 bg-gray-50 rounded-2xl mb-6">
+        <div className={`grid grid-cols-3 gap-1.5 p-1.5 rounded-2xl mb-6 ${
+          isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'
+        }`}>
           <button
             onClick={() => handleSwitchTimerType('pomodoro')}
             className={`py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition flex items-center justify-center gap-1.5 ${activeType === 'pomodoro'
-              ? 'bg-white shadow-sm text-orange-600 border border-orange-100'
-              : 'text-gray-400 hover:text-gray-600'
+              ? isDark ? 'neu-btn-dark text-orange-400 border border-orange-500/30 shadow-md' : 'neu-btn-light text-orange-600 border border-orange-200 shadow-sm'
+              : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
               }`}
           >
             <Clock className="w-3.5 h-3.5" />
@@ -10901,8 +10928,8 @@ JSON Format:
           <button
             onClick={() => handleSwitchTimerType('timer')}
             className={`py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition flex items-center justify-center gap-1.5 ${activeType === 'timer'
-              ? 'bg-white shadow-sm text-indigo-600 border border-indigo-100'
-              : 'text-gray-400 hover:text-gray-600'
+              ? isDark ? 'neu-btn-dark text-indigo-400 border border-indigo-500/30 shadow-md' : 'neu-btn-light text-indigo-600 border border-indigo-200 shadow-sm'
+              : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
               }`}
           >
             <Hourglass className="w-3.5 h-3.5" />
@@ -10911,8 +10938,8 @@ JSON Format:
           <button
             onClick={() => handleSwitchTimerType('stopwatch')}
             className={`py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition flex items-center justify-center gap-1.5 ${activeType === 'stopwatch'
-              ? 'bg-white shadow-sm text-emerald-600 border border-emerald-100'
-              : 'text-gray-400 hover:text-gray-600'
+              ? isDark ? 'neu-btn-dark text-emerald-400 border border-emerald-500/30 shadow-md' : 'neu-btn-light text-emerald-600 border border-emerald-200 shadow-sm'
+              : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
               }`}
           >
             <Timer className="w-3.5 h-3.5" />
@@ -10932,7 +10959,7 @@ JSON Format:
                     cy="50"
                     r="44"
                     fill="transparent"
-                    stroke="#F3F4F6"
+                    stroke={isDark ? '#1a1f26' : '#d8deea'}
                     strokeWidth="6"
                   />
                   <circle
@@ -10954,10 +10981,10 @@ JSON Format:
                   <span className="text-[9px] font-black uppercase tracking-widest text-orange-500 mb-0.5">
                     {timerState.mode === 'study' ? '📚 Focus' : '☕ Break'}
                   </span>
-                  <span className="text-3xl font-black font-mono text-gray-800 leading-none">
+                  <span className={`text-3xl font-black font-mono leading-none ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
                     {formatTime(localTimerTimeLeft)}
                   </span>
-                  <span className="text-[8px] font-bold text-gray-400 mt-1">
+                  <span className={`text-[8px] font-bold mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                     Round {(timerState.pomodoroRounds || 0) + 1}/{timerState.pomodoroTargetRounds || 4}
                   </span>
                 </div>
@@ -10966,13 +10993,15 @@ JSON Format:
               {isIdle && (
                 <div className="w-full flex flex-col gap-4">
                   <div>
-                    <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider block mb-2">Focus Presets</span>
+                    <span className={`text-[9px] font-black uppercase tracking-wider block mb-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Focus Presets</span>
                     <div className="flex flex-wrap gap-1.5">
                       {[15, 25, 45, 60].map(mins => (
                         <button
                           key={mins}
                           onClick={() => handleStartPomodoro(mins, pomodoroBreakMins, pomodoroLongBreakMins, pomodoroTargetRounds, false)}
-                          className={`px-3 py-1.5 text-xs font-bold rounded-xl border transition ${currentTheme.presetBg}`}
+                          className={`px-3 py-1.5 text-xs font-bold rounded-xl border transition ${
+                            isDark ? 'neu-btn-dark text-slate-200 border-white/5' : 'neu-btn-light text-slate-700 border-white/70'
+                          }`}
                         >
                           {mins}m
                         </button>
@@ -10981,13 +11010,15 @@ JSON Format:
                   </div>
 
                   <div>
-                    <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider block mb-2">Break Presets</span>
+                    <span className={`text-[9px] font-black uppercase tracking-wider block mb-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Break Presets</span>
                     <div className="flex flex-wrap gap-1.5">
                       {[5, 10, 15, 30].map(mins => (
                         <button
                           key={mins}
                           onClick={() => handleStartPomodoro(pomodoroFocusMins, mins, pomodoroLongBreakMins, pomodoroTargetRounds, false)}
-                          className={`px-3 py-1.5 text-xs font-bold rounded-xl border transition ${currentTheme.presetBg}`}
+                          className={`px-3 py-1.5 text-xs font-bold rounded-xl border transition ${
+                            isDark ? 'neu-btn-dark text-slate-200 border-white/5' : 'neu-btn-light text-slate-700 border-white/70'
+                          }`}
                         >
                           {mins}m
                         </button>
@@ -10996,53 +11027,63 @@ JSON Format:
                   </div>
 
                   {/* Custom Pomodoro config */}
-                  <div className="border-t border-gray-100 pt-4 w-full text-left">
-                    <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider block mb-2">Custom Settings</span>
+                  <div className={`border-t pt-4 w-full text-left ${isDark ? 'border-white/5' : 'border-slate-200/60'}`}>
+                    <span className={`text-[9px] font-black uppercase tracking-wider block mb-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Custom Settings</span>
                     <div className="grid grid-cols-2 gap-2 mb-3">
-                      <div className="flex flex-col bg-gray-50 border border-gray-100 p-2 rounded-2xl">
-                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-wide">Focus (mins)</span>
+                      <div className={`flex flex-col p-2.5 rounded-2xl ${isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'}`}>
+                        <span className={`text-[8px] font-black uppercase tracking-wide ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Focus (mins)</span>
                         <input
                           type="number"
                           value={pomodoroFocusMins}
                           onChange={e => setPomodoroFocusMins(Math.max(1, Number(e.target.value) || 25))}
-                          className="bg-transparent text-sm font-black text-gray-800 focus:outline-none mt-1 border-b border-transparent focus:border-orange-500 font-mono w-full"
+                          className={`bg-transparent text-sm font-black focus:outline-none mt-1 border-b border-transparent focus:border-orange-500 font-mono w-full ${
+                            isDark ? 'text-slate-100 placeholder-slate-600' : 'text-slate-800 placeholder-slate-400'
+                          }`}
                           placeholder="25"
                         />
                       </div>
-                      <div className="flex flex-col bg-gray-50 border border-gray-100 p-2 rounded-2xl">
-                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-wide">Short Break (mins)</span>
+                      <div className={`flex flex-col p-2.5 rounded-2xl ${isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'}`}>
+                        <span className={`text-[8px] font-black uppercase tracking-wide ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Short Break (mins)</span>
                         <input
                           type="number"
                           value={pomodoroBreakMins}
                           onChange={e => setPomodoroBreakMins(Math.max(1, Number(e.target.value) || 5))}
-                          className="bg-transparent text-sm font-black text-gray-800 focus:outline-none mt-1 border-b border-transparent focus:border-orange-500 font-mono w-full"
+                          className={`bg-transparent text-sm font-black focus:outline-none mt-1 border-b border-transparent focus:border-orange-500 font-mono w-full ${
+                            isDark ? 'text-slate-100 placeholder-slate-600' : 'text-slate-800 placeholder-slate-400'
+                          }`}
                           placeholder="5"
                         />
                       </div>
-                      <div className="flex flex-col bg-gray-50 border border-gray-100 p-2 rounded-2xl">
-                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-wide">Long Break (mins)</span>
+                      <div className={`flex flex-col p-2.5 rounded-2xl ${isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'}`}>
+                        <span className={`text-[8px] font-black uppercase tracking-wide ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Long Break (mins)</span>
                         <input
                           type="number"
                           value={pomodoroLongBreakMins}
                           onChange={e => setPomodoroLongBreakMins(Math.max(1, Number(e.target.value) || 20))}
-                          className="bg-transparent text-sm font-black text-gray-800 focus:outline-none mt-1 border-b border-transparent focus:border-orange-500 font-mono w-full"
+                          className={`bg-transparent text-sm font-black focus:outline-none mt-1 border-b border-transparent focus:border-orange-500 font-mono w-full ${
+                            isDark ? 'text-slate-100 placeholder-slate-600' : 'text-slate-800 placeholder-slate-400'
+                          }`}
                           placeholder="20"
                         />
                       </div>
-                      <div className="flex flex-col bg-gray-50 border border-gray-100 p-2 rounded-2xl">
-                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-wide">Rounds Cycle</span>
+                      <div className={`flex flex-col p-2.5 rounded-2xl ${isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'}`}>
+                        <span className={`text-[8px] font-black uppercase tracking-wide ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Rounds Cycle</span>
                         <input
                           type="number"
                           value={pomodoroTargetRounds}
                           onChange={e => setPomodoroTargetRounds(Math.max(1, Number(e.target.value) || 4))}
-                          className="bg-transparent text-sm font-black text-gray-800 focus:outline-none mt-1 border-b border-transparent focus:border-orange-500 font-mono w-full"
+                          className={`bg-transparent text-sm font-black focus:outline-none mt-1 border-b border-transparent focus:border-orange-500 font-mono w-full ${
+                            isDark ? 'text-slate-100 placeholder-slate-600' : 'text-slate-800 placeholder-slate-400'
+                          }`}
                           placeholder="4"
                         />
                       </div>
                     </div>
                     <button
                       onClick={() => handleStartPomodoro(pomodoroFocusMins, pomodoroBreakMins, pomodoroLongBreakMins, pomodoroTargetRounds, false)}
-                      className="w-full py-2.5 bg-gray-800 text-white font-black text-xs uppercase tracking-wider rounded-xl hover:bg-gray-900 active:scale-95 transition text-center"
+                      className={`w-full py-2.5 font-black text-xs uppercase tracking-wider rounded-xl active:scale-95 transition text-center ${
+                        isDark ? 'neu-btn-dark text-slate-200 hover:text-white' : 'neu-btn-light text-slate-800 hover:text-black'
+                      }`}
                     >
                       Apply Custom Cycles
                     </button>
@@ -11062,7 +11103,7 @@ JSON Format:
                     cy="50"
                     r="44"
                     fill="transparent"
-                    stroke="#F3F4F6"
+                    stroke={isDark ? '#1a1f26' : '#d8deea'}
                     strokeWidth="6"
                   />
                   <circle
@@ -11084,10 +11125,10 @@ JSON Format:
                   <span className="text-[9px] font-black uppercase tracking-widest text-indigo-500 mb-0.5">
                     ⏰ Countdown
                   </span>
-                  <span className="text-3xl font-black font-mono text-gray-800 leading-none">
+                  <span className={`text-3xl font-black font-mono leading-none ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
                     {formatTime(localCustomTimerTimeLeft)}
                   </span>
-                  <span className="text-[8px] font-bold text-gray-400 mt-1">
+                  <span className={`text-[8px] font-bold mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                     of {formatTime(timerState.customTimerDuration)}
                   </span>
                 </div>
@@ -11096,13 +11137,15 @@ JSON Format:
               {isIdle && (
                 <div className="w-full flex flex-col gap-4">
                   <div>
-                    <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider block mb-2">Timer Presets</span>
+                    <span className={`text-[9px] font-black uppercase tracking-wider block mb-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Timer Presets</span>
                     <div className="grid grid-cols-4 gap-1.5">
                       {[1, 5, 10, 15, 20, 30, 45, 60].map(mins => (
                         <button
                           key={mins}
                           onClick={() => handleStartCountdownTimer(mins * 60)}
-                          className={`px-2.5 py-1.5 text-xs font-bold rounded-xl border transition ${currentTheme.presetBg}`}
+                          className={`px-2.5 py-1.5 text-xs font-bold rounded-xl border transition ${
+                            isDark ? 'neu-btn-dark text-slate-200 border-white/5' : 'neu-btn-light text-slate-700 border-white/70'
+                          }`}
                         >
                           {mins}m
                         </button>
@@ -11111,36 +11154,42 @@ JSON Format:
                   </div>
 
                   {/* Custom duration inputs */}
-                  <div className="border-t border-gray-100 pt-4">
-                    <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider block mb-2">Custom Timer</span>
+                  <div className={`border-t pt-4 ${isDark ? 'border-white/5' : 'border-slate-200/60'}`}>
+                    <span className={`text-[9px] font-black uppercase tracking-wider block mb-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Custom Timer</span>
                     <div className="flex items-center gap-2">
-                      <div className="flex-1 flex flex-col bg-gray-50 border border-gray-100 p-2 rounded-2xl">
-                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-wide">Hrs</span>
+                      <div className={`flex-1 flex flex-col p-2 rounded-2xl ${isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'}`}>
+                        <span className={`text-[8px] font-black uppercase tracking-wide ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Hrs</span>
                         <input
                           type="number"
                           value={customTimerHours}
                           onChange={e => setCustomTimerHours(Math.max(0, Math.min(23, Number(e.target.value) || 0)))}
-                          className="bg-transparent text-sm font-black text-gray-800 focus:outline-none mt-1 border-b border-transparent focus:border-indigo-500 font-mono w-full"
+                          className={`bg-transparent text-sm font-black focus:outline-none mt-1 border-b border-transparent focus:border-indigo-500 font-mono w-full ${
+                            isDark ? 'text-slate-100 placeholder-slate-600' : 'text-slate-800 placeholder-slate-400'
+                          }`}
                           placeholder="0"
                         />
                       </div>
-                      <div className="flex-1 flex flex-col bg-gray-50 border border-gray-100 p-2 rounded-2xl">
-                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-wide">Mins</span>
+                      <div className={`flex-1 flex flex-col p-2 rounded-2xl ${isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'}`}>
+                        <span className={`text-[8px] font-black uppercase tracking-wide ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Mins</span>
                         <input
                           type="number"
                           value={customTimerMins}
                           onChange={e => setCustomTimerMins(Math.max(0, Math.min(59, Number(e.target.value) || 0)))}
-                          className="bg-transparent text-sm font-black text-gray-800 focus:outline-none mt-1 border-b border-transparent focus:border-indigo-500 font-mono w-full"
+                          className={`bg-transparent text-sm font-black focus:outline-none mt-1 border-b border-transparent focus:border-indigo-500 font-mono w-full ${
+                            isDark ? 'text-slate-100 placeholder-slate-600' : 'text-slate-800 placeholder-slate-400'
+                          }`}
                           placeholder="10"
                         />
                       </div>
-                      <div className="flex-1 flex flex-col bg-gray-50 border border-gray-100 p-2 rounded-2xl">
-                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-wide">Secs</span>
+                      <div className={`flex-1 flex flex-col p-2 rounded-2xl ${isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'}`}>
+                        <span className={`text-[8px] font-black uppercase tracking-wide ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Secs</span>
                         <input
                           type="number"
                           value={customTimerSecs}
                           onChange={e => setCustomTimerSecs(Math.max(0, Math.min(59, Number(e.target.value) || 0)))}
-                          className="bg-transparent text-sm font-black text-gray-800 focus:outline-none mt-1 border-b border-transparent focus:border-indigo-500 font-mono w-full"
+                          className={`bg-transparent text-sm font-black focus:outline-none mt-1 border-b border-transparent focus:border-indigo-500 font-mono w-full ${
+                            isDark ? 'text-slate-100 placeholder-slate-600' : 'text-slate-800 placeholder-slate-400'
+                          }`}
                           placeholder="0"
                         />
                       </div>
@@ -11153,7 +11202,9 @@ JSON Format:
                             alert("Please enter a duration greater than 0.");
                           }
                         }}
-                        className="h-full px-4 py-3.5 bg-gray-800 text-white font-black text-xs uppercase tracking-wider rounded-2xl hover:bg-gray-900 active:scale-95 transition"
+                        className={`h-full px-4 py-3.5 font-black text-xs uppercase tracking-wider rounded-2xl active:scale-95 transition ${
+                          isDark ? 'neu-btn-dark text-indigo-400 hover:text-indigo-300' : 'neu-btn-light text-indigo-600 hover:text-indigo-700'
+                        }`}
                       >
                         Set
                       </button>
@@ -11171,14 +11222,14 @@ JSON Format:
                 <span className="text-[9px] font-black uppercase tracking-widest text-emerald-500 mb-1">
                   ⏱️ Stopwatch Time
                 </span>
-                <span className="text-4xl font-black font-mono text-gray-800 leading-tight tracking-tight">
+                <span className={`text-4xl font-black font-mono leading-tight tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
                   {formatStopwatch(localStopwatchTime)}
                 </span>
                 <button
                   onClick={() => setShowMilliseconds(!showMilliseconds)}
-                  className={`mt-2 px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all border ${showMilliseconds
-                    ? 'bg-emerald-50 border-emerald-250 text-emerald-600'
-                    : 'bg-gray-100 hover:bg-gray-200 text-gray-500 border-gray-200'
+                  className={`mt-3 px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all border ${showMilliseconds
+                    ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-500 shadow-sm'
+                    : isDark ? 'neu-btn-dark text-slate-400 border-white/5' : 'neu-btn-light text-slate-600 border-white/70'
                     }`}
                 >
                   {showMilliseconds ? 'Hide ms' : 'Show ms'}
@@ -11187,18 +11238,20 @@ JSON Format:
 
               {/* Laps List */}
               {((timerState.stopwatchLaps && timerState.stopwatchLaps.length > 0) || !isIdle) && (
-                <div className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 mt-4 text-left max-h-[140px] overflow-y-auto">
-                  <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider block mb-2">Laps ({timerState.stopwatchLaps?.length || 0})</span>
+                <div className={`w-full rounded-2xl p-4 mt-4 text-left max-h-[140px] overflow-y-auto ${
+                  isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'
+                }`}>
+                  <span className={`text-[9px] font-black uppercase tracking-wider block mb-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Laps ({timerState.stopwatchLaps?.length || 0})</span>
                   {(!timerState.stopwatchLaps || timerState.stopwatchLaps.length === 0) ? (
-                    <span className="text-[10px] text-gray-400 font-bold block py-2 text-center">No laps recorded yet.</span>
+                    <span className={`text-[10px] font-bold block py-2 text-center ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>No laps recorded yet.</span>
                   ) : (
                     <div className="space-y-1.5 font-mono">
                       {[...timerState.stopwatchLaps].reverse().map(lap => (
-                        <div key={lap.lapNumber} className="flex justify-between items-center text-xs py-1 border-b border-gray-100 last:border-b-0">
-                          <span className="text-gray-400 font-bold">Lap {lap.lapNumber}</span>
+                        <div key={lap.lapNumber} className={`flex justify-between items-center text-xs py-1 border-b last:border-b-0 ${isDark ? 'border-white/5' : 'border-slate-200/60'}`}>
+                          <span className={`font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Lap {lap.lapNumber}</span>
                           <div className="flex gap-4">
-                            <span className="text-emerald-600 font-extrabold font-mono">+{formatLapTime(lap.splitTime)}</span>
-                            <span className="text-gray-800 font-black font-mono">{formatLapTime(lap.overallTime)}</span>
+                            <span className="text-emerald-500 font-extrabold font-mono">+{formatLapTime(lap.splitTime)}</span>
+                            <span className={`font-black font-mono ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{formatLapTime(lap.overallTime)}</span>
                           </div>
                         </div>
                       ))}
@@ -11219,10 +11272,10 @@ JSON Format:
                 });
               }}
               className={`w-full mb-2 py-3 px-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all duration-300 shadow-md transform hover:scale-[1.02] flex items-center justify-center gap-2 animate-pulse ${activeType === 'stopwatch'
-                ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-500/10'
+                ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-emerald-500/20'
                 : activeType === 'timer'
-                  ? 'bg-indigo-500 hover:bg-indigo-600 text-white shadow-indigo-500/10'
-                  : 'bg-orange-500 hover:bg-orange-600 text-white shadow-orange-500/10'
+                  ? 'bg-gradient-to-r from-indigo-500 to-blue-500 text-white shadow-indigo-500/20'
+                  : 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-orange-500/20'
                 }`}
             >
               ➕ Add {formatElapsedText(getElapsedSeconds())} to Today's Session?
@@ -11230,12 +11283,12 @@ JSON Format:
           )}
 
           {/* Action Control Panel */}
-          <div className="w-full flex gap-2 mt-6 border-t border-gray-50 pt-5">
+          <div className={`w-full flex gap-2 mt-6 border-t pt-5 ${isDark ? 'border-white/5' : 'border-slate-200/60'}`}>
             {isIdle ? (
               activeType === 'pomodoro' ? (
                 <button
                   onClick={() => handleStartPomodoro(pomodoroFocusMins, pomodoroBreakMins, pomodoroLongBreakMins, pomodoroTargetRounds, true)}
-                  className="flex-1 py-3 px-4 bg-orange-500 hover:bg-orange-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl active:scale-95 transition flex items-center justify-center gap-2"
+                  className="flex-1 py-3.5 px-4 bg-gradient-to-r from-orange-500 to-amber-500 hover:opacity-90 text-white font-black text-xs uppercase tracking-widest rounded-2xl active:scale-95 transition flex items-center justify-center gap-2 shadow-lg shadow-orange-500/20"
                 >
                   <Play className="w-4 h-4 fill-white" />
                   Start Focus
@@ -11246,7 +11299,7 @@ JSON Format:
                     const totalSecs = customTimerHours * 3600 + customTimerMins * 60 + customTimerSecs;
                     handleStartCountdownTimer(totalSecs || 600);
                   }}
-                  className="flex-1 py-3 px-4 bg-indigo-500 hover:bg-indigo-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl active:scale-95 transition flex items-center justify-center gap-2"
+                  className="flex-1 py-3.5 px-4 bg-gradient-to-r from-indigo-500 to-blue-500 hover:opacity-90 text-white font-black text-xs uppercase tracking-widest rounded-2xl active:scale-95 transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20"
                 >
                   <Play className="w-4 h-4 fill-white" />
                   Start Timer
@@ -11254,7 +11307,7 @@ JSON Format:
               ) : (
                 <button
                   onClick={() => handleStartStopwatchTimer()}
-                  className="flex-1 py-3 px-4 bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl active:scale-95 transition flex items-center justify-center gap-2"
+                  className="flex-1 py-3.5 px-4 bg-gradient-to-r from-emerald-500 to-teal-500 hover:opacity-90 text-white font-black text-xs uppercase tracking-widest rounded-2xl active:scale-95 transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"
                 >
                   <Play className="w-4 h-4 fill-white" />
                   Start Stopwatch
@@ -11265,7 +11318,7 @@ JSON Format:
                 {isRunning ? (
                   <button
                     onClick={() => handlePauseActiveTimer()}
-                    className="flex-1 py-3 px-4 bg-amber-500 hover:bg-amber-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl active:scale-95 transition flex items-center justify-center gap-2"
+                    className="flex-1 py-3.5 px-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:opacity-90 text-white font-black text-xs uppercase tracking-widest rounded-2xl active:scale-95 transition flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20"
                   >
                     <Pause className="w-4 h-4 fill-white" />
                     Pause
@@ -11273,7 +11326,7 @@ JSON Format:
                 ) : (
                   <button
                     onClick={() => handleResumeActiveTimer()}
-                    className="flex-1 py-3 px-4 bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl active:scale-95 transition flex items-center justify-center gap-2"
+                    className="flex-1 py-3.5 px-4 bg-gradient-to-r from-emerald-500 to-teal-500 hover:opacity-90 text-white font-black text-xs uppercase tracking-widest rounded-2xl active:scale-95 transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"
                   >
                     <Play className="w-4 h-4 fill-white" />
                     Resume
@@ -28225,6 +28278,7 @@ Return your response strictly as a JSON object matching this schema:
                                       todayLog={todayLog}
                                       todayStr={todayStr}
                                       setStudyLogs={setStudyLogs}
+                                      isDark={isDark}
                                     />
                                   );
                                 })()}
@@ -28766,14 +28820,14 @@ Return your response strictly as a JSON object matching this schema:
                         {isStudyLoggerModalOpen && (
                           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
                             <div className={`rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col animate-in zoom-in duration-300 transition-colors ${
-                              isDark ? 'neu-card-dark border border-white/10 bg-[#222730] text-slate-100' : 'bg-white text-slate-900'
+                              isDark ? 'neu-card-dark border border-white/10 bg-[#222730] text-slate-100' : 'neu-card-light border border-white/80 bg-[#e6ecf5] text-slate-900 shadow-2xl'
                             }`}>
 
                               {/* Modal Header */}
-                              <div className={`p-6 border-b flex justify-between items-center ${isDark ? 'border-white/10 bg-[#1c2128]' : 'bg-gray-50 border-slate-200'}`}>
+                              <div className={`p-6 border-b flex justify-between items-center ${isDark ? 'border-white/10 bg-[#1c2128]' : 'bg-[#e6ecf5] border-slate-300/60'}`}>
                                 <div className="text-left">
-                                  <h3 className={`font-black uppercase tracking-widest text-xs ${isDark ? 'text-slate-200' : 'text-gray-900'}`}>Manual Study Report</h3>
-                                  <span className={`text-[9px] font-bold font-mono ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>{formatAppDate(loggerDate)}</span>
+                                  <h3 className={`font-black uppercase tracking-widest text-xs ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>Manual Study Report</h3>
+                                  <span className={`text-[9px] font-bold font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{formatAppDate(loggerDate)}</span>
                                 </div>
 
                                 <button
@@ -29300,23 +29354,25 @@ Return your response strictly as a JSON object matching this schema:
                         {/* EDIT GRAND TEST MODAL DIALOG (TARGETED SCORE & SUBJECT-WISE BREAKDOWN ADJUSTER) */}
                         {isEditGtModalOpen && (
                           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
-                            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col animate-in zoom-in duration-300">
+                            <div className={`rounded-3xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col animate-in zoom-in duration-300 transition-colors ${
+                              isDark ? 'neu-card-dark border border-white/10 bg-[#222730] text-slate-100' : 'neu-card-light border border-white/80 bg-[#e6ecf5] text-slate-900 shadow-2xl'
+                            }`}>
 
                               {/* Modal Header */}
-                              <div className="bg-gray-50 p-6 border-b flex justify-between items-center">
+                              <div className={`p-6 border-b flex justify-between items-center ${isDark ? 'border-white/10 bg-[#1c2128]' : 'bg-[#e6ecf5] border-slate-300/60'}`}>
                                 <div className="text-left">
-                                  <h3 className="font-black text-gray-900 uppercase tracking-widest text-xs flex items-center gap-1.5">
+                                  <h3 className={`font-black uppercase tracking-widest text-xs flex items-center gap-1.5 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
                                     <Award className="w-4 h-4 text-orange-500 animate-pulse" />
                                     Edit Grand Test Entry
                                   </h3>
-                                  <span className="text-[9px] font-bold text-gray-400 font-mono">
+                                  <span className={`text-[9px] font-bold font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                     Logged on {formatAppDate(editGtTargetDate)}
                                   </span>
                                 </div>
 
                                 <button
                                   onClick={() => setIsEditGtModalOpen(false)}
-                                  className="text-gray-400 hover:text-gray-600 p-1.5 hover:bg-gray-100 rounded-xl transition"
+                                  className={`p-1.5 rounded-xl transition ${isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-white/10' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/60'}`}
                                 >
                                   <X className="w-5 h-5" />
                                 </button>
@@ -29332,42 +29388,54 @@ Return your response strictly as a JSON object matching this schema:
 
                                     <div className="grid grid-cols-2 gap-4">
                                       <div>
-                                        <label className="block text-[9px] font-black uppercase tracking-wider text-gray-400 mb-1">Test Name</label>
+                                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Test Name</label>
                                         <input
                                           type="text"
                                           value={editGtName}
                                           onChange={(e) => setEditGtName(e.target.value)}
                                           placeholder="e.g. Grand Test 14"
-                                          className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                                          className={`w-full p-2.5 rounded-xl text-xs font-semibold focus:outline-none ${
+                                            isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-300/80 text-slate-900 placeholder-slate-400'
+                                          }`}
                                         />
                                       </div>
 
                                       <div>
-                                        <label className="block text-[9px] font-black uppercase tracking-wider text-gray-400 mb-1">Platform</label>
+                                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Platform</label>
                                         <input
                                           type="text"
                                           value={editGtPlatform}
                                           onChange={(e) => setEditGtPlatform(e.target.value)}
                                           placeholder="e.g. Marrow"
-                                          className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                                          className={`w-full p-2.5 rounded-xl text-xs font-semibold focus:outline-none ${
+                                            isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-300/80 text-slate-900 placeholder-slate-400'
+                                          }`}
                                         />
                                       </div>
                                     </div>
 
                                     <div>
-                                      <label className="block text-[9px] font-black uppercase tracking-wider text-gray-400 mb-1">GT Scoring Model</label>
+                                      <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>GT Scoring Model</label>
                                       <div className="flex gap-2">
                                         <button
                                           type="button"
                                           onClick={() => setEditGtType('NEETPG')}
-                                          className={`flex-1 py-2 text-xs font-black rounded-xl border transition ${editGtType === 'NEETPG' ? 'bg-orange-500 text-white border-transparent shadow-sm' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+                                          className={`flex-1 py-2 text-xs font-black rounded-xl border transition ${
+                                            editGtType === 'NEETPG'
+                                              ? 'bg-orange-500 text-white border-transparent shadow-sm'
+                                              : isDark ? 'neu-btn-dark text-slate-300 border-white/10' : 'neu-btn-light text-slate-700 border-white/70'
+                                          }`}
                                         >
                                           NEET PG (+4, -1)
                                         </button>
                                         <button
                                           type="button"
                                           onClick={() => setEditGtType('INICET')}
-                                          className={`flex-1 py-2 text-xs font-black rounded-xl border transition ${editGtType === 'INICET' ? 'bg-orange-500 text-white border-transparent shadow-sm' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+                                          className={`flex-1 py-2 text-xs font-black rounded-xl border transition ${
+                                            editGtType === 'INICET'
+                                              ? 'bg-orange-500 text-white border-transparent shadow-sm'
+                                              : isDark ? 'neu-btn-dark text-slate-300 border-white/10' : 'neu-btn-light text-slate-700 border-white/70'
+                                          }`}
                                         >
                                           INI CET (+1, -1/3)
                                         </button>
@@ -29376,24 +29444,28 @@ Return your response strictly as a JSON object matching this schema:
 
                                     <div className="grid grid-cols-2 gap-4">
                                       <div>
-                                        <label className="block text-[9px] font-black uppercase tracking-wider text-gray-400 mb-1">Correct Qs</label>
+                                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Correct Qs</label>
                                         <input
                                           type="number"
                                           value={editGtCorrect}
                                           onChange={(e) => setEditGtCorrect(e.target.value)}
                                           placeholder="e.g. 130"
-                                          className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                                          className={`w-full p-2.5 rounded-xl text-xs font-mono font-bold focus:outline-none ${
+                                            isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
+                                          }`}
                                         />
                                       </div>
 
                                       <div>
-                                        <label className="block text-[9px] font-black uppercase tracking-wider text-gray-400 mb-1">Incorrect Qs</label>
+                                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Incorrect Qs</label>
                                         <input
                                           type="number"
                                           value={editGtIncorrect}
                                           onChange={(e) => setEditGtIncorrect(e.target.value)}
                                           placeholder="e.g. 50"
-                                          className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                                          className={`w-full p-2.5 rounded-xl text-xs font-mono font-bold focus:outline-none ${
+                                            isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
+                                          }`}
                                         />
                                       </div>
                                     </div>
@@ -29413,21 +29485,23 @@ Return your response strictly as a JSON object matching this schema:
                                       const accuracy = attended > 0 ? ((correct / attended) * 100).toFixed(1) : '100';
 
                                       return (
-                                        <div className="bg-orange-50/50 p-4 rounded-2xl border border-orange-100/50 space-y-2 text-xs">
-                                          <div className="flex items-center justify-between text-gray-700">
-                                            <span>Attended: <strong className="text-orange-600 font-mono">{attended} / 200</strong></span>
-                                            <span>Unattempted: <strong className="text-gray-600 font-mono">{Math.max(0, 200 - attended)}</strong></span>
+                                        <div className={`p-4 rounded-2xl border space-y-2 text-xs ${
+                                          isDark ? 'bg-orange-500/10 border-orange-500/20 text-slate-300' : 'bg-orange-50/60 border-orange-200/60 text-slate-700'
+                                        }`}>
+                                          <div className="flex items-center justify-between">
+                                            <span>Attended: <strong className="text-orange-500 font-mono">{attended} / 200</strong></span>
+                                            <span>Unattempted: <strong className={`font-mono ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{Math.max(0, 200 - attended)}</strong></span>
                                           </div>
-                                          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                          <div className={`h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-white/10' : 'bg-slate-200'}`}>
                                             <div className="h-full bg-orange-500 transition-all duration-300" style={{ width: `${Math.min(100, (attended / 200) * 100)}%` }} />
                                           </div>
                                           <div className="flex items-center justify-between pt-1 font-bold">
-                                            <span className="text-gray-600">Calculated Score:</span>
-                                            <span className="text-sm text-orange-600 font-black font-mono">
+                                            <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>Calculated Score:</span>
+                                            <span className="text-sm text-orange-500 font-black font-mono">
                                               {editGtType === 'INICET' ? score.toFixed(4) : score} / {maxMarks}
                                             </span>
                                           </div>
-                                          <div className="flex items-center justify-between text-[10px] text-gray-500 italic">
+                                          <div className={`flex items-center justify-between text-[10px] italic ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                             <span>Accuracy Rate: <strong>{accuracy}%</strong></span>
                                             <span>{editGtType === 'NEETPG' ? 'Score = Correct * 4 - Incorrect' : 'Score = Correct - Incorrect * (1/3)'}</span>
                                           </div>
@@ -29437,58 +29511,68 @@ Return your response strictly as a JSON object matching this schema:
 
                                     <div className="grid grid-cols-3 gap-3">
                                       <div>
-                                        <label className="block text-[9px] font-black uppercase tracking-wider text-gray-400 mb-1">Percentile (%ile)</label>
+                                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Percentile (%ile)</label>
                                         <input
                                           type="number"
                                           step="0.01"
                                           value={editGtPercentage}
                                           onChange={(e) => setEditGtPercentage(e.target.value)}
                                           placeholder="e.g. 98.7"
-                                          className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                                          className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${
+                                            isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
+                                          }`}
                                         />
                                       </div>
 
                                       <div>
-                                        <label className="block text-[9px] font-black uppercase tracking-wider text-gray-400 mb-1">National AIR</label>
+                                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>National AIR</label>
                                         <input
                                           type="number"
                                           value={editGtRank}
                                           onChange={(e) => setEditGtRank(e.target.value)}
                                           placeholder="e.g. 1414"
-                                          className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                                          className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${
+                                            isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
+                                          }`}
                                         />
                                       </div>
 
                                       <div>
-                                        <label className="block text-[9px] font-black uppercase tracking-wider text-gray-400 mb-1">Contestants</label>
+                                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Contestants</label>
                                         <input
                                           type="number"
                                           value={editGtRankTotal}
                                           onChange={(e) => setEditGtRankTotal(e.target.value)}
                                           placeholder="e.g. 8757"
-                                          className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                                          className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${
+                                            isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
+                                          }`}
                                         />
                                       </div>
                                     </div>
 
                                     <div className="grid grid-cols-3 gap-3">
                                       <div>
-                                        <label className="block text-[9px] font-black uppercase tracking-wider text-gray-400 mb-1">State Rank</label>
+                                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>State Rank</label>
                                         <input
                                           type="number"
                                           value={editGtStateRank}
                                           onChange={(e) => setEditGtStateRank(e.target.value)}
                                           placeholder="e.g. 82"
-                                          className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                                          className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${
+                                            isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
+                                          }`}
                                         />
                                       </div>
 
                                       <div className="col-span-2">
-                                        <label className="block text-[9px] font-black uppercase tracking-wider text-gray-400 mb-1">Home State</label>
+                                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Home State</label>
                                         <select
                                           value={editGtState}
                                           onChange={(e) => setEditGtState(e.target.value)}
-                                          className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                                          className={`w-full p-2.5 rounded-xl text-xs font-semibold focus:outline-none ${
+                                            isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
+                                          }`}
                                         >
                                           <option value="">Select Home State...</option>
                                           {INDIAN_STATES.map((st) => (
@@ -29499,13 +29583,15 @@ Return your response strictly as a JSON object matching this schema:
                                     </div>
 
                                     <div>
-                                      <label className="block text-[9px] font-black uppercase tracking-wider text-gray-400 mb-1">Weaknesses / Strengths / Strategy Notes</label>
+                                      <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Weaknesses / Strengths / Strategy Notes</label>
                                       <textarea
                                         rows={3}
                                         value={editGtNotes}
                                         onChange={(e) => setEditGtNotes(e.target.value)}
                                         placeholder="Notes / Weak points to focus on..."
-                                        className="w-full p-3 bg-white border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                                        className={`w-full p-3 rounded-xl text-xs focus:outline-none ${
+                                          isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-300/80 text-slate-900 placeholder-slate-400'
+                                        }`}
                                       />
                                     </div>
                                   </div>
@@ -29517,7 +29603,9 @@ Return your response strictly as a JSON object matching this schema:
                                       <button
                                         type="button"
                                         onClick={() => setEditGtShowSubjects(!editGtShowSubjects)}
-                                        className="px-2 py-0.5 bg-orange-100 text-orange-600 rounded text-[9px] font-black uppercase hover:bg-orange-200 transition"
+                                        className={`px-2 py-0.5 rounded text-[9px] font-black uppercase transition ${
+                                          isDark ? 'bg-orange-500/20 text-orange-400 hover:bg-orange-500/30' : 'bg-orange-100 text-orange-600 hover:bg-orange-200'
+                                        }`}
                                       >
                                         {editGtShowSubjects ? "Collapse View" : "Expand View"}
                                       </button>
@@ -29545,27 +29633,31 @@ Return your response strictly as a JSON object matching this schema:
 
                                       if (!isPristine && (correctSum > 0 || incorrectSum > 0 || totalSum > 0)) {
                                         return (
-                                          <div className="p-3 bg-rose-50 border border-rose-100 rounded-2xl text-[10px] text-rose-700 space-y-1 text-left leading-normal animate-pulse">
+                                          <div className={`p-3 border rounded-2xl text-[10px] space-y-1 text-left leading-normal animate-pulse ${
+                                            isDark ? 'bg-rose-500/10 border-rose-500/20 text-rose-300' : 'bg-rose-50 border-rose-100 text-rose-700'
+                                          }`}>
                                             <span className="font-black uppercase tracking-wider block">⚠️ Math Consistency Warning</span>
                                             <div className="grid grid-cols-3 gap-2 text-[9px] font-bold font-mono">
-                                              <span className={isCorrectMatch ? 'text-emerald-600' : 'text-rose-600'}>
+                                              <span className={isCorrectMatch ? 'text-emerald-500' : 'text-rose-500'}>
                                                 Correct: {correctSum} vs {targetCorrect}
                                               </span>
-                                              <span className={isIncorrectMatch ? 'text-emerald-600' : 'text-rose-600'}>
+                                              <span className={isIncorrectMatch ? 'text-emerald-500' : 'text-rose-500'}>
                                                 Incorrect: {incorrectSum} vs {targetIncorrect}
                                               </span>
-                                              <span className={isTotalMatch ? 'text-emerald-600' : 'text-rose-600'}>
+                                              <span className={isTotalMatch ? 'text-emerald-500' : 'text-rose-500'}>
                                                 Total Qs: {totalSum} / 200
                                               </span>
                                             </div>
-                                            <p className="text-[8.5px] text-rose-500 italic font-medium pt-1">
+                                            <p className={`text-[8.5px] italic font-medium pt-1 ${isDark ? 'text-rose-400' : 'text-rose-500'}`}>
                                               Adjust subject entries below to match overall stats for perfectly calibrated analytics.
                                             </p>
                                           </div>
                                         );
                                       } else if (isPristine && correctSum > 0) {
                                         return (
-                                          <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-2xl text-[9px] text-emerald-700 font-bold flex items-center gap-1">
+                                          <div className={`p-3 border rounded-2xl text-[9px] font-bold flex items-center gap-1 ${
+                                            isDark ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-emerald-50 border-emerald-100 text-emerald-700'
+                                          }`}>
                                             <span>✅ Subject counts sum up to exactly 200 questions with perfect scoring alignment!</span>
                                           </div>
                                         );
@@ -29573,16 +29665,22 @@ Return your response strictly as a JSON object matching this schema:
                                       return null;
                                     })()}
 
-                                    <div className={`border border-gray-150 rounded-2xl p-4 bg-gray-50/50 space-y-3.5 overflow-y-auto shadow-inner transition-all duration-300 ${editGtShowSubjects ? 'max-h-[500px]' : 'max-h-[250px]'}`}>
+                                    <div className={`border rounded-2xl p-4 space-y-3.5 overflow-y-auto transition-all duration-300 ${
+                                      editGtShowSubjects ? 'max-h-[500px]' : 'max-h-[250px]'
+                                    } ${
+                                      isDark ? 'neu-pressed-dark border-white/5' : 'neu-pressed-light border-white/70'
+                                    }`}>
                                       <div className="space-y-3">
                                         {SYSTEM_SUBJECTS.map((sub) => {
                                           const subData = editGtSubjects[sub.name] || { correct: '', incorrect: '', total: sub.weight };
                                           return (
-                                            <div key={sub.name} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-2.5 text-xs">
-                                              <span className="font-extrabold text-gray-700 min-w-[130px] text-left">{sub.name}</span>
+                                            <div key={sub.name} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-2.5 text-xs ${
+                                              isDark ? 'border-white/5' : 'border-slate-200/60'
+                                            }`}>
+                                              <span className={`font-extrabold min-w-[130px] text-left ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{sub.name}</span>
                                               <div className="flex items-center gap-3">
                                                 <div className="flex items-center gap-1">
-                                                  <span className="text-[9px] text-emerald-600 font-extrabold uppercase font-mono">C:</span>
+                                                  <span className="text-[9px] text-emerald-500 font-extrabold uppercase font-mono">C:</span>
                                                   <input
                                                     type="number"
                                                     value={subData.correct}
@@ -29597,7 +29695,9 @@ Return your response strictly as a JSON object matching this schema:
                                                       }));
                                                     }}
                                                     placeholder="0"
-                                                    className="w-11 p-1 bg-white border border-gray-200 rounded text-center text-xs font-mono font-bold focus:ring-1 focus:ring-orange-500/20 outline-none"
+                                                    className={`w-11 p-1 rounded text-center text-xs font-mono font-bold outline-none ${
+                                                      isDark ? 'bg-[#1e232b] border border-white/10 text-slate-100' : 'bg-white border border-slate-200 text-slate-900'
+                                                    }`}
                                                   />
                                                 </div>
 
@@ -29617,12 +29717,14 @@ Return your response strictly as a JSON object matching this schema:
                                                       }));
                                                     }}
                                                     placeholder="0"
-                                                    className="w-11 p-1 bg-white border border-gray-200 rounded text-center text-xs font-mono font-bold focus:ring-1 focus:ring-orange-500/20 outline-none"
+                                                    className={`w-11 p-1 rounded text-center text-xs font-mono font-bold outline-none ${
+                                                      isDark ? 'bg-[#1e232b] border border-white/10 text-slate-100' : 'bg-white border border-slate-200 text-slate-900'
+                                                    }`}
                                                   />
                                                 </div>
 
                                                 <div className="flex items-center gap-1">
-                                                  <span className="text-[9px] text-gray-400 font-extrabold uppercase font-mono">T:</span>
+                                                  <span className={`text-[9px] font-extrabold uppercase font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>T:</span>
                                                   <input
                                                     type="number"
                                                     value={subData.total}
@@ -29636,7 +29738,9 @@ Return your response strictly as a JSON object matching this schema:
                                                       }));
                                                     }}
                                                     placeholder={sub.weight}
-                                                    className="w-11 p-1 bg-white border border-gray-200 rounded text-center text-xs font-mono focus:ring-1 focus:ring-orange-500/20 outline-none"
+                                                    className={`w-11 p-1 rounded text-center text-xs font-mono outline-none ${
+                                                      isDark ? 'bg-[#1e232b] border border-white/10 text-slate-100' : 'bg-white border border-slate-200 text-slate-900'
+                                                    }`}
                                                   />
                                                 </div>
                                               </div>
@@ -29651,10 +29755,12 @@ Return your response strictly as a JSON object matching this schema:
                               </div>
 
                               {/* Modal Footer */}
-                              <div className="p-6 bg-gray-50 border-t flex justify-end gap-4">
+                              <div className={`p-6 border-t flex justify-end gap-4 ${isDark ? 'border-white/10 bg-[#1c2128]' : 'bg-[#e6ecf5] border-slate-300/60'}`}>
                                 <button
                                   onClick={() => setIsEditGtModalOpen(false)}
-                                  className="px-8 py-3 text-xs font-bold text-gray-500 hover:bg-gray-200 rounded-2xl transition"
+                                  className={`px-8 py-3 text-xs font-bold rounded-2xl transition ${
+                                    isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
+                                  }`}
                                 >
                                   Cancel
                                 </button>
@@ -29662,7 +29768,7 @@ Return your response strictly as a JSON object matching this schema:
                                 <button
                                   onClick={handleSaveEditedGt}
                                   disabled={isSaving}
-                                  className="px-10 py-3 bg-orange-500 text-white text-xs font-black rounded-2xl hover:bg-orange-600 shadow-xl shadow-orange-500/20 flex items-center gap-2 active:scale-95 transition-all disabled:opacity-50"
+                                  className="px-10 py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-xs font-black rounded-2xl hover:shadow-lg shadow-orange-500/20 flex items-center gap-2 active:scale-95 transition-all disabled:opacity-50"
                                 >
                                   {isSaving ? (
                                     <>
