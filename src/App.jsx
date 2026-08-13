@@ -37,6 +37,7 @@ import ConflictInspectorModal from './components/ConflictInspectorModal';
 import FsrsSettingsModal from './components/FsrsSettingsModal';
 import FsrsStatsTab from './components/FsrsStatsTab';
 import SmartReviewHub from './components/SmartReviewHub';
+import TopicNotesModal from './components/TopicNotesModal';
 import { cropAndMaskDiagram } from './utils/imageCropper';
 import { getTopicPageWeight, parsePageNumbers } from './utils/pageUtils';
 import { getLocalSetting, saveLocalSetting, getLocalCards, saveLocalCards, replaceAllLocalCards, saveLocalCard, deleteLocalCard, getLocalPages, saveLocalPages, replaceAllLocalPages, saveLocalPage, deleteLocalPage, getLocalKV, setLocalKV, getLocalPrompts, saveLocalPrompt, deleteLocalPrompt, getAllLocalPytTopics, saveLocalPytTopic, getAllLocalPytProgress, saveLocalPytProgressDoc, getLocalTextbooksMetadata, saveLocalTextbooksMetadata, getLocalStudyLogs, saveLocalStudyLog, replaceAllLocalStudyLogs, getLocalSubjectTrackerData, saveLocalSubjectTrackerDoc, replaceAllLocalSubjectTrackerData, getLocalStudySchedule, saveLocalScheduleEntry, replaceAllLocalStudySchedule, getFSRSConfig, saveFSRSConfig, DEFAULT_FSRS_CONFIG } from './services/localDb';
@@ -7031,6 +7032,7 @@ export default function App() {
   const [reviewRedoStack, setReviewRedoStack] = useState([]);
   const [lastRatedToast, setLastRatedToast] = useState(null);
   const [ratingPopoverTopic, setRatingPopoverTopic] = useState(null);
+  const [notesModalTopic, setNotesModalTopic] = useState(null);
   const [examProfiles, setExamProfiles] = useState([]);
   const isExamProfilesLoaded = useRef(false);
 
@@ -8411,6 +8413,40 @@ export default function App() {
       });
     } catch (err) {
       console.error("Error adding tracker topic locally:", err);
+    }
+  };
+
+  const handleSaveTopicNotes = async (subject, topicName, notesHtml) => {
+    if (!subject || !topicName) return;
+    const docId = subject.trim().toLowerCase();
+    const cleanTopicName = topicName.trim();
+
+    const existingDoc = subjectTrackerData.find(p => p.id === docId);
+    const currentTopics = existingDoc && existingDoc.topics ? JSON.parse(JSON.stringify(existingDoc.topics)) : {};
+    const topicObj = currentTopics[cleanTopicName] || { name: cleanTopicName, studyDates: [] };
+
+    topicObj.notes = notesHtml;
+    currentTopics[cleanTopicName] = topicObj;
+
+    const updatedDoc = {
+      ...existingDoc,
+      id: docId,
+      subject: subject.trim(),
+      topics: currentTopics,
+      updatedAt: new Date().toISOString()
+    };
+
+    setSubjectTrackerData(prev => {
+      const list = Array.isArray(prev) ? prev : [];
+      const idx = list.findIndex(d => d.id === docId);
+      if (idx >= 0) return list.map(d => d.id === docId ? updatedDoc : d);
+      return [...list, updatedDoc];
+    });
+
+    try {
+      await saveLocalSubjectTrackerDoc(docId, updatedDoc);
+    } catch (err) {
+      console.error("[LocalDB] Error saving topic notes:", err);
     }
   };
 
@@ -34321,6 +34357,19 @@ Return your response strictly as a JSON object matching this schema:
                                                       </button>
 
                                                       <button
+                                                        title="Edit Rich Text Notes"
+                                                        onClick={() => {
+                                                          setNotesModalTopic({ subject: selectedTrackerSubject, ...topicItem });
+                                                        }}
+                                                        className={`p-2 rounded-xl transition ${topicItem.notes
+                                                          ? isDark ? 'text-amber-400 bg-amber-500/10 hover:bg-amber-500/20' : 'text-amber-600 bg-amber-50 hover:bg-amber-100'
+                                                          : isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-400 hover:text-slate-800 hover:bg-slate-100'
+                                                          }`}
+                                                      >
+                                                        <FileText className="w-3.5 h-3.5" />
+                                                      </button>
+
+                                                      <button
                                                         title={isExpanded ? 'Collapse' : 'Expand'}
                                                         onClick={() => {
                                                           setExpandedTrackerTopics(prev => ({
@@ -34385,6 +34434,39 @@ Return your response strictly as a JSON object matching this schema:
                                                             />
                                                           </div>
                                                         </div>
+                                                      </div>
+
+                                                      {/* Rich Text Topic Notes Section */}
+                                                      <div className="pt-2 border-t space-y-2 border-slate-200/40 dark:border-slate-800/60">
+                                                        <div className="flex items-center justify-between">
+                                                          <span className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>High-Yield Notes</span>
+                                                          <button
+                                                            onClick={() => setNotesModalTopic({ subject: selectedTrackerSubject, ...topicItem })}
+                                                            className={`text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg border transition flex items-center gap-1 ${
+                                                              isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300 border-slate-700' : 'neu-btn-light text-blue-600 border-slate-300'
+                                                            }`}
+                                                          >
+                                                            <FileText className="w-3 h-3" /> Edit Notes
+                                                          </button>
+                                                        </div>
+                                                        {topicItem.notes ? (
+                                                          <div
+                                                            onClick={() => setNotesModalTopic({ subject: selectedTrackerSubject, ...topicItem })}
+                                                            className={`p-3 rounded-xl text-xs leading-relaxed max-h-32 overflow-y-auto cursor-pointer transition border ${
+                                                              isDark ? 'neu-pressed-dark text-slate-200 border-slate-800 hover:border-blue-500/40' : 'neu-pressed-light text-slate-800 border-slate-200 hover:border-blue-400'
+                                                            }`}
+                                                            dangerouslySetInnerHTML={{ __html: topicItem.notes }}
+                                                          />
+                                                        ) : (
+                                                          <p
+                                                            onClick={() => setNotesModalTopic({ subject: selectedTrackerSubject, ...topicItem })}
+                                                            className={`text-[10px] italic py-2 px-3 rounded-xl border border-dashed cursor-pointer transition ${
+                                                              isDark ? 'text-slate-500 border-slate-800 hover:text-slate-300' : 'text-slate-400 border-slate-200 hover:text-slate-600'
+                                                            }`}
+                                                          >
+                                                            No rich notes added yet. Click to add mnemonics, clinical pearls, or bullet points...
+                                                          </p>
+                                                        )}
                                                       </div>
 
                                                       {/* Logged Revision Dates Horizontal Ribbon */}
@@ -35241,6 +35323,14 @@ Return your response strictly as a JSON object matching this schema:
                   </div>
                 </div>
               )}
+
+              <TopicNotesModal
+                isOpen={!!notesModalTopic}
+                onClose={() => setNotesModalTopic(null)}
+                topic={notesModalTopic}
+                onSaveNotes={handleSaveTopicNotes}
+                themeMode={settingsThemeMode}
+              />
 
               <ManualCardModal
                 isOpen={isManualCardModalOpen}

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Brain, Calendar, AlertTriangle, CheckCircle, Clock, BookOpen, Layers, Sparkles, RotateCcw, RotateCw, Zap, Undo2, X } from 'lucide-react';
+import { Brain, Calendar, AlertTriangle, CheckCircle, Clock, BookOpen, Layers, Sparkles, RotateCcw, RotateCw, Zap, Undo2, X, FileText } from 'lucide-react';
 import FsrsStatsTab from './FsrsStatsTab';
 import FsrsSettingsModal from './FsrsSettingsModal';
 import SelectNewTopicsModal from './SelectNewTopicsModal';
@@ -33,7 +33,8 @@ export default function SmartReviewHub({
   studySchedule = [],
   onUpdateSubjectDoc,
   geminiApiKey = '',
-  aiFeatureModels = {}
+  aiFeatureModels = {},
+  onOpenNotesModal
 }) {
   const isDark = themeMode === 'dark';
   const [subTab, setSubTab] = useState('queue'); // 'queue', 'analytics', 'leeches'
@@ -524,7 +525,7 @@ export default function SmartReviewHub({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <AnimatePresence mode="popLayout">
                     {overdueTopics.map((topic, idx) => (
-                      <TopicCard key={topic.id || (topic.subject + '_' + topic.name)} topic={topic} onRate={onRateTopic} isOverdue index={idx} isDark={isDark} />
+                      <TopicCard key={topic.id || (topic.subject + '_' + topic.name)} topic={topic} onRate={onRateTopic} onOpenNotes={onOpenNotesModal} isOverdue index={idx} isDark={isDark} />
                     ))}
                   </AnimatePresence>
                 </div>
@@ -540,7 +541,7 @@ export default function SmartReviewHub({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <AnimatePresence mode="popLayout">
                     {dueTodayTopics.map((topic, idx) => (
-                      <TopicCard key={topic.id || (topic.subject + '_' + topic.name)} topic={topic} onRate={onRateTopic} index={idx} isDark={isDark} />
+                      <TopicCard key={topic.id || (topic.subject + '_' + topic.name)} topic={topic} onRate={onRateTopic} onOpenNotes={onOpenNotesModal} index={idx} isDark={isDark} />
                     ))}
                   </AnimatePresence>
                 </div>
@@ -581,6 +582,7 @@ export default function SmartReviewHub({
                         topic={topic}
                         onRate={onRateTopic}
                         onRemove={handleRemoveNewTopic}
+                        onOpenNotes={onOpenNotesModal}
                         isNew
                         index={idx}
                         isDark={isDark}
@@ -715,7 +717,7 @@ export default function SmartReviewHub({
 }
 
 // Sub-component: Individual Topic Queue Card
-function TopicCard({ topic, onRate, onRemove, isOverdue = false, isNew = false, index = 0, isDark = true }) {
+function TopicCard({ topic, onRate, onRemove, onOpenNotes, isOverdue = false, isNew = false, index = 0, isDark = true }) {
   const { pageLabel, pageCount } = getTopicPageInfo(topic);
 
   // A topic is truly reviewed only if reviewCount > 0 AND it has a lastReviewDate AND is not in New queue
@@ -747,8 +749,8 @@ function TopicCard({ topic, onRate, onRemove, isOverdue = false, isNew = false, 
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="text-right">
+        <div className="flex items-center gap-1.5">
+          <div className="text-right mr-1">
             <div className={`text-[11px] font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
               S: <span className="text-sky-500 font-bold">{isReviewed && topic.stability != null ? `${topic.stability.toFixed(1)}d` : 'New'}</span>
             </div>
@@ -756,6 +758,27 @@ function TopicCard({ topic, onRate, onRemove, isOverdue = false, isNew = false, 
               D: <span className="text-amber-500 font-bold">{isReviewed && topic.difficulty != null ? topic.difficulty.toFixed(1) : 'Unstudied'}</span>
             </div>
           </div>
+
+          {/* Rich Text Topic Notes Button */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenNotes && onOpenNotes(topic);
+            }}
+            title={topic.notes ? "View/Edit Rich Topic Notes" : "Add Rich Topic Notes"}
+            className={`p-1.5 rounded-xl border transition-all cursor-pointer ${
+              topic.notes
+                ? isDark
+                  ? 'bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20'
+                  : 'bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100'
+                : isDark
+                  ? 'bg-slate-800 text-slate-400 hover:text-white border-slate-700'
+                  : 'bg-slate-100 text-slate-500 hover:text-slate-900 border-slate-200'
+            }`}
+          >
+            <FileText className="w-3.5 h-3.5" />
+          </button>
 
           {/* Remove button for New Topics */}
           {isNew && onRemove && (
@@ -766,7 +789,7 @@ function TopicCard({ topic, onRate, onRemove, isOverdue = false, isNew = false, 
                 onRemove(topic);
               }}
               title="Remove from Today's Queue"
-              className={`p-1 rounded-xl border transition-all cursor-pointer ${
+              className={`p-1.5 rounded-xl border transition-all cursor-pointer ${
                 isDark
                   ? 'bg-slate-800/80 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border-slate-700 hover:border-rose-500/40'
                   : 'bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-600 border-slate-200 hover:border-rose-300'
