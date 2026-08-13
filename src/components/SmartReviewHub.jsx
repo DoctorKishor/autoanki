@@ -107,12 +107,13 @@ export default function SmartReviewHub({
             if (topic.nextReviewDue < todayStr) {
               overdue.push(topicObj);
               reviewPages += topicWeight;
-            } else {
+            } else if (topic.nextReviewDue === todayStr) {
               dueToday.push(topicObj);
               reviewPages += topicWeight;
             }
+            // If topic.nextReviewDue > todayStr, it is scheduled for a future date and moves OUT of today's review list.
           } else {
-            // Fallback: If topic is not new and has no future nextReviewDue date, include in Due Today so it NEVER goes invisible!
+            // Fallback: If topic has review history but no nextReviewDue set, keep in Due Today
             dueToday.push(topicObj);
             reviewPages += topicWeight;
           }
