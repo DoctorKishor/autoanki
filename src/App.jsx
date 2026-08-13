@@ -1413,8 +1413,8 @@ const NeumorphicSelect = ({ value, onChange, options = [], isDark: isDarkProp, t
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={`w-full p-3.5 rounded-2xl flex items-center justify-between text-xs font-black transition-all cursor-pointer ${isDark
-            ? 'neu-pressed-dark text-gray-100 border border-gray-800 hover:border-gray-700'
-            : 'neu-pressed-light text-gray-900 border border-white/80 hover:border-gray-300'
+          ? 'neu-pressed-dark text-gray-100 border border-gray-800 hover:border-gray-700'
+          : 'neu-pressed-light text-gray-900 border border-white/80 hover:border-gray-300'
           }`}
       >
         <span className="truncate pr-2 font-sans">{selectedOption ? selectedOption.label : placeholder}</span>
@@ -1429,8 +1429,8 @@ const NeumorphicSelect = ({ value, onChange, options = [], isDark: isDarkProp, t
             exit={{ opacity: 0, y: -6, scale: 0.98 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
             className={`absolute left-0 right-0 top-full mt-2 z-50 p-2 rounded-2xl shadow-2xl backdrop-blur-md transition-all ${isDark
-                ? 'neu-card-dark border border-gray-800/90 text-gray-100 bg-[#222730]/95'
-                : 'neu-card-light border border-white/90 text-gray-900 bg-[#e6ecf5]/95'
+              ? 'neu-card-dark border border-gray-800/90 text-gray-100 bg-[#222730]/95'
+              : 'neu-card-light border border-white/90 text-gray-900 bg-[#e6ecf5]/95'
               }`}
           >
             <div className="max-h-64 overflow-y-auto space-y-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
@@ -1445,12 +1445,12 @@ const NeumorphicSelect = ({ value, onChange, options = [], isDark: isDarkProp, t
                       setIsOpen(false);
                     }}
                     className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold flex items-center justify-between transition-all cursor-pointer ${isSelected
-                        ? (isDark
-                          ? 'neu-pressed-dark text-blue-400 font-extrabold border border-blue-500/30'
-                          : 'neu-pressed-light text-blue-600 font-extrabold border border-blue-400/40')
-                        : (isDark
-                          ? 'text-gray-200 hover:bg-gray-800/60 hover:text-white'
-                          : 'text-gray-800 hover:bg-white/70 hover:text-gray-900')
+                      ? (isDark
+                        ? 'neu-pressed-dark text-blue-400 font-extrabold border border-blue-500/30'
+                        : 'neu-pressed-light text-blue-600 font-extrabold border border-blue-400/40')
+                      : (isDark
+                        ? 'text-gray-200 hover:bg-gray-800/60 hover:text-white'
+                        : 'text-gray-800 hover:bg-white/70 hover:text-gray-900')
                       }`}
                   >
                     <span className="truncate pr-2">{opt.label}</span>
@@ -3534,8 +3534,8 @@ const NeumorphicDropdown = ({ value, onChange, options, isDark, label }) => {
                     setIsOpen(false);
                   }}
                   className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition flex items-center justify-between ${isSelected
-                      ? (isDark ? 'neu-pressed-dark text-blue-400 font-black' : 'neu-pressed-light text-blue-600 font-black')
-                      : (isDark ? 'hover:bg-slate-800/60 text-slate-200' : 'hover:bg-slate-200/50 text-slate-700')
+                    ? (isDark ? 'neu-pressed-dark text-blue-400 font-black' : 'neu-pressed-light text-blue-600 font-black')
+                    : (isDark ? 'hover:bg-slate-800/60 text-slate-200' : 'hover:bg-slate-200/50 text-slate-700')
                     }`}
                 >
                   <span className="truncate">{lbl}</span>
@@ -4228,8 +4228,8 @@ export default function App() {
                         type="button"
                         onClick={() => setActiveSettingsFeatureKey(fKey)}
                         className={`px-4 py-2.5 rounded-2xl flex items-center gap-2 text-xs font-black transition-all shrink-0 active:scale-95 ${isSelected
-                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20'
-                            : settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-700'
+                          ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20'
+                          : settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-700'
                           }`}
                       >
                         <FIcon className="w-3.5 h-3.5" />
@@ -4278,14 +4278,14 @@ export default function App() {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, scale: 0.95 }}
                           className={`p-3.5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 border transition-all ${isFirst
-                              ? settingsThemeMode === 'dark' ? 'neu-item-dark border-blue-500/40 bg-blue-500/5' : 'neu-item-light border-blue-400/50 bg-blue-50/40'
-                              : settingsThemeMode === 'dark' ? 'neu-item-dark border-slate-800' : 'neu-item-light border-slate-200'
+                            ? settingsThemeMode === 'dark' ? 'neu-item-dark border-blue-500/40 bg-blue-500/5' : 'neu-item-light border-blue-400/50 bg-blue-50/40'
+                            : settingsThemeMode === 'dark' ? 'neu-item-dark border-slate-800' : 'neu-item-light border-slate-200'
                             }`}
                         >
                           <div className="flex items-center gap-3 flex-grow">
                             <span className={`px-2.5 py-1 rounded-xl text-[9px] font-mono font-black uppercase tracking-wider shrink-0 ${isFirst
-                                ? 'bg-blue-600 text-white shadow-md'
-                                : settingsThemeMode === 'dark' ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-700'
+                              ? 'bg-blue-600 text-white shadow-md'
+                              : settingsThemeMode === 'dark' ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-700'
                               }`}>
                               {isFirst ? '#1 Primary' : `#${idx + 1} Fallback`}
                             </span>
@@ -4642,10 +4642,10 @@ export default function App() {
                                       {...prov.draggableProps}
                                       {...prov.dragHandleProps}
                                       className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl border text-xs md:text-sm font-bold transition select-none ${snapshot.isDragging
-                                          ? 'border-blue-400 shadow-lg shadow-blue-500/20 scale-[1.01]'
-                                          : settingsThemeMode === 'dark'
-                                            ? 'neu-pressed-dark border-slate-700/80'
-                                            : 'neu-pressed-light border-slate-200'
+                                        ? 'border-blue-400 shadow-lg shadow-blue-500/20 scale-[1.01]'
+                                        : settingsThemeMode === 'dark'
+                                          ? 'neu-pressed-dark border-slate-700/80'
+                                          : 'neu-pressed-light border-slate-200'
                                         }`}
                                     >
                                       <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
@@ -4801,6 +4801,9 @@ export default function App() {
   const [trackerSortBy, setTrackerSortBy] = useState('page');
   const [trackerLogDateInputs, setTrackerLogDateInputs] = useState({});
   const [expandedTrackerTopics, setExpandedTrackerTopics] = useState({});
+  const [subjectSearchQuery, setSubjectSearchQuery] = useState('');
+  const [isAiExtractorCollapsed, setIsAiExtractorCollapsed] = useState(false);
+  const [mobileSubjectViewMode, setMobileSubjectViewMode] = useState('topics');
   const [dreamCollege, setDreamCollege] = useState('Madras Medical College (MMC), Chennai (TN)');
   const [dreamBranch, setDreamBranch] = useState('MD General Medicine');
   const [dreamCollegeStateFilter, setDreamCollegeStateFilter] = useState('All');
@@ -22198,8 +22201,8 @@ Return your response strictly as a JSON object matching this schema:
                             type="button"
                             onClick={() => setCardGenerationInputMode('image')}
                             className={`py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-200 active:scale-95 cursor-pointer ${cardGenerationInputMode === 'image'
-                                ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400 border border-blue-500/30' : 'neu-btn-light text-blue-600 border border-blue-200/70')
-                                : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200 font-bold' : 'text-gray-500 hover:text-gray-800 font-bold')
+                              ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400 border border-blue-500/30' : 'neu-btn-light text-blue-600 border border-blue-200/70')
+                              : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200 font-bold' : 'text-gray-500 hover:text-gray-800 font-bold')
                               }`}
                           >
                             <span>🖼️</span> Image Mode
@@ -22208,8 +22211,8 @@ Return your response strictly as a JSON object matching this schema:
                             type="button"
                             onClick={() => setCardGenerationInputMode('text')}
                             className={`py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-200 active:scale-95 cursor-pointer ${cardGenerationInputMode === 'text'
-                                ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400 border border-blue-500/30' : 'neu-btn-light text-blue-600 border border-blue-200/70')
-                                : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200 font-bold' : 'text-gray-500 hover:text-gray-800 font-bold')
+                              ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400 border border-blue-500/30' : 'neu-btn-light text-blue-600 border border-blue-200/70')
+                              : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200 font-bold' : 'text-gray-500 hover:text-gray-800 font-bold')
                               }`}
                           >
                             <span>📝</span> Raw Text Mode
@@ -22223,8 +22226,8 @@ Return your response strictly as a JSON object matching this schema:
                               type="button"
                               onClick={() => setRawTextSubMode('pure')}
                               className={`py-2 px-2.5 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-95 cursor-pointer ${rawTextSubMode === 'pure'
-                                  ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-amber-400 border border-amber-500/30' : 'neu-btn-light text-amber-600 border border-amber-200/70')
-                                  : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-800')
+                                ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-amber-400 border border-amber-500/30' : 'neu-btn-light text-amber-600 border border-amber-200/70')
+                                : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-800')
                                 }`}
                             >
                               <span>⚡</span> Pure Parser
@@ -22233,8 +22236,8 @@ Return your response strictly as a JSON object matching this schema:
                               type="button"
                               onClick={() => setRawTextSubMode('ai')}
                               className={`py-2 px-2.5 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-95 cursor-pointer ${rawTextSubMode === 'ai'
-                                  ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-purple-400 border border-purple-500/30' : 'neu-btn-light text-purple-600 border border-purple-200/70')
-                                  : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-800')
+                                ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-purple-400 border border-purple-500/30' : 'neu-btn-light text-purple-600 border border-purple-200/70')
+                                : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-800')
                                 }`}
                             >
                               <span>🧠</span> AI Extractor
@@ -24058,8 +24061,8 @@ Return your response strictly as a JSON object matching this schema:
                                     key={sub.id}
                                     onClick={() => setAnalyticsSubTab(sub.id)}
                                     className={`w-24 py-2 text-[9.5px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-1.5 transition-colors duration-300 shrink-0 ${isActive
-                                        ? 'text-white font-extrabold'
-                                        : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                                      ? 'text-white font-extrabold'
+                                      : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
                                       }`}
                                   >
                                     <IconComp className="w-3.5 h-3.5 shrink-0" />
@@ -24719,8 +24722,8 @@ Return your response strictly as a JSON object matching this schema:
                                             disabled={studyIntensityOffset >= 0}
                                             onClick={() => setStudyIntensityOffset(prev => Math.min(0, prev + 1))}
                                             className={`p-1 rounded-lg ${studyIntensityOffset >= 0
-                                                ? 'opacity-30 cursor-not-allowed text-gray-400'
-                                                : (isDark ? 'bg-slate-800 text-slate-300' : 'bg-gray-200 text-slate-700')
+                                              ? 'opacity-30 cursor-not-allowed text-gray-400'
+                                              : (isDark ? 'bg-slate-800 text-slate-300' : 'bg-gray-200 text-slate-700')
                                               }`}
                                           >
                                             <ChevronRight className="w-3.5 h-3.5" />
@@ -24980,8 +24983,8 @@ Return your response strictly as a JSON object matching this schema:
                             const estimatedScore = Math.round(defaultTargetRank / 200 * 20 + 400);
                             return (
                               <div className={`p-6 rounded-3xl space-y-4 shadow-xl transition-all duration-300 ${isDark
-                                  ? 'neu-card-dark border border-indigo-500/20 bg-gradient-to-br from-indigo-950/90 via-[#222730] to-purple-950/90 text-white'
-                                  : 'bg-gradient-to-br from-indigo-900 via-indigo-950 to-purple-950 text-white shadow-purple-950/20'
+                                ? 'neu-card-dark border border-indigo-500/20 bg-gradient-to-br from-indigo-950/90 via-[#222730] to-purple-950/90 text-white'
+                                : 'bg-gradient-to-br from-indigo-900 via-indigo-950 to-purple-950 text-white shadow-purple-950/20'
                                 }`}>
                                 <div className="flex items-center gap-3">
                                   <Trophy className="w-6 h-6 text-amber-400 animate-pulse" />
@@ -25029,8 +25032,8 @@ Return your response strictly as a JSON object matching this schema:
                                     <label
                                       key={idx}
                                       className={`flex items-start gap-3 p-3.5 rounded-2xl transition-all duration-200 cursor-pointer ${isChecked
-                                          ? (isDark ? 'neu-pressed-dark border border-gray-800/80 opacity-60' : 'neu-pressed-light border border-white/80 opacity-60')
-                                          : (isDark ? 'neu-card-dark hover:border-indigo-500/30' : 'neu-card-light hover:border-indigo-300')
+                                        ? (isDark ? 'neu-pressed-dark border border-gray-800/80 opacity-60' : 'neu-pressed-light border border-white/80 opacity-60')
+                                        : (isDark ? 'neu-card-dark hover:border-indigo-500/30' : 'neu-card-light hover:border-indigo-300')
                                         }`}
                                     >
                                       <input
@@ -25044,8 +25047,8 @@ Return your response strictly as a JSON object matching this schema:
                                         className="mt-0.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500/20 cursor-pointer"
                                       />
                                       <span className={`text-xs leading-relaxed ${isChecked
-                                          ? (isDark ? 'text-gray-500 line-through font-semibold' : 'text-gray-400 line-through font-semibold')
-                                          : (isDark ? 'text-gray-200 font-bold' : 'text-gray-800 font-bold')
+                                        ? (isDark ? 'text-gray-500 line-through font-semibold' : 'text-gray-400 line-through font-semibold')
+                                        : (isDark ? 'text-gray-200 font-bold' : 'text-gray-800 font-bold')
                                         }`}>
                                         {task}
                                       </span>
@@ -25188,8 +25191,8 @@ Return your response strictly as a JSON object matching this schema:
                                     key={stat.subject}
                                     onClick={() => setSelectedAnalyticsPytSubject(stat.subject)}
                                     className={`w-full text-left p-3.5 rounded-2xl transition-all ${isSelected
-                                        ? (isDark ? 'neu-pressed-dark border border-blue-500/40 shadow-sm' : 'neu-pressed-light border border-blue-400 shadow-sm')
-                                        : (isDark ? 'neu-card-dark border border-gray-800/80 hover:border-gray-700' : 'neu-card-light hover:border-gray-300')
+                                      ? (isDark ? 'neu-pressed-dark border border-blue-500/40 shadow-sm' : 'neu-pressed-light border border-blue-400 shadow-sm')
+                                      : (isDark ? 'neu-card-dark border border-gray-800/80 hover:border-gray-700' : 'neu-card-light hover:border-gray-300')
                                       }`}
                                   >
                                     <div className="flex justify-between items-center mb-1.5">
@@ -25317,8 +25320,8 @@ Return your response strictly as a JSON object matching this schema:
                               key={fmt.id}
                               onClick={() => setExportFormat(fmt.id)}
                               className={`p-3 rounded-2xl flex flex-col justify-between h-20 text-left transition-all active:scale-95 ${exportFormat === fmt.id
-                                  ? 'bg-gradient-to-br from-blue-500/20 to-blue-600/10 border-2 border-blue-500 shadow-lg shadow-blue-500/10'
-                                  : settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'
+                                ? 'bg-gradient-to-br from-blue-500/20 to-blue-600/10 border-2 border-blue-500 shadow-lg shadow-blue-500/10'
+                                : settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'
                                 }`}
                             >
                               {fmt.icon}
@@ -25337,8 +25340,8 @@ Return your response strictly as a JSON object matching this schema:
                               key={s.val}
                               onClick={() => setExportScope(s.val)}
                               className={`py-2 px-1 rounded-xl text-[10px] font-black transition active:scale-95 ${exportScope === s.val
-                                  ? 'bg-gradient-to-br from-blue-500/20 to-blue-600/10 border-2 border-blue-500 text-blue-500 shadow-md shadow-blue-500/10'
-                                  : settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-500'
+                                ? 'bg-gradient-to-br from-blue-500/20 to-blue-600/10 border-2 border-blue-500 text-blue-500 shadow-md shadow-blue-500/10'
+                                : settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-500'
                                 }`}
                             >
                               {s.label}
@@ -25413,8 +25416,8 @@ Return your response strictly as a JSON object matching this schema:
 
                       {/* Sticky bottom mobile download action bar */}
                       <div className={`fixed bottom-[72px] left-0 right-0 backdrop-blur-md border-t px-5 py-4 shadow-lg z-45 flex items-center justify-between gap-3 ${settingsThemeMode === 'dark'
-                          ? 'bg-[#222730]/95 border-slate-600/40'
-                          : 'bg-[#e6ecf5]/95 border-slate-200/80'
+                        ? 'bg-[#222730]/95 border-slate-600/40'
+                        : 'bg-[#e6ecf5]/95 border-slate-200/80'
                         }`}>
                         <div className="min-w-0">
                           <h3 className={`text-xs font-black truncate ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-800'}`}>Compile Deck</h3>
@@ -25424,8 +25427,8 @@ Return your response strictly as a JSON object matching this schema:
                           onClick={() => exportDeck(exportFormat)}
                           disabled={exportCount === 0}
                           className={`px-5 py-2.5 text-[10px] font-black rounded-xl transition flex items-center gap-1.5 active:scale-95 ${exportCount === 0
-                              ? settingsThemeMode === 'dark' ? 'bg-slate-700 text-slate-500' : 'bg-slate-200 text-slate-400'
-                              : 'bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-lg shadow-blue-500/30'
+                            ? settingsThemeMode === 'dark' ? 'bg-slate-700 text-slate-500' : 'bg-slate-200 text-slate-400'
+                            : 'bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-lg shadow-blue-500/30'
                             }`}
                         >
                           <Download className="w-3.5 h-3.5" /> Compile
@@ -25474,8 +25477,8 @@ Return your response strictly as a JSON object matching this schema:
                               type="button"
                               onClick={() => { setPromptCategoryTab('image'); setSelectedPromptId('default'); }}
                               className={`py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition ${promptCategoryTab === 'image'
-                                  ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400 border border-blue-500/30' : 'neu-btn-light text-blue-600 border border-blue-200')
-                                  : (settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500')
+                                ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400 border border-blue-500/30' : 'neu-btn-light text-blue-600 border border-blue-200')
+                                : (settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500')
                                 }`}
                             >
                               <span>🖼️</span> Image Extraction Prompts
@@ -25484,8 +25487,8 @@ Return your response strictly as a JSON object matching this schema:
                               type="button"
                               onClick={() => { setPromptCategoryTab('text'); setSelectedPromptId('text_default'); }}
                               className={`py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition ${promptCategoryTab === 'text'
-                                  ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-purple-400 border border-purple-500/30' : 'neu-btn-light text-purple-600 border border-purple-200')
-                                  : (settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500')
+                                ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-purple-400 border border-purple-500/30' : 'neu-btn-light text-purple-600 border border-purple-200')
+                                : (settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500')
                                 }`}
                             >
                               <span>📝</span> Text Extraction Prompts
@@ -26225,544 +26228,567 @@ Return your response strictly as a JSON object matching this schema:
 
                   {currentTab === 'subjectTracker' && (() => {
                     const isDark = settingsThemeMode === 'dark';
+                    const allSubjectsList = ["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"];
+                    
+                    const activeDocId = selectedTrackerSubject.trim().toLowerCase();
+                    const activeDoc = subjectTrackerData.find(p => p.id === activeDocId);
+                    const activeTopicsMap = activeDoc?.topics || {};
+                    const activeTopicsList = Object.values(activeTopicsMap);
+                    const totalTopicsCount = activeTopicsList.length;
+                    const revisedTopicsCount = activeTopicsList.filter(t => (t.studyDates || []).length > 0).length;
+                    const totalRevsCount = activeTopicsList.reduce((acc, t) => acc + (t.studyDates || []).length, 0);
+                    const coveragePercent = totalTopicsCount > 0 ? Math.round((revisedTopicsCount / totalTopicsCount) * 100) : 0;
+
                     return (
                       <motion.div
                         initial={{ opacity: 0, y: 16 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-                        className="space-y-4 text-left pb-24 p-3.5"
+                        className="space-y-4 text-left pb-24 p-3"
                       >
-                        {/* Mobile Header / Selector info */}
+                        {/* Mobile Top Workspace Header */}
                         <motion.div
                           initial={{ opacity: 0, y: 12 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.4, delay: 0.05 }}
-                          className={`p-5 rounded-3xl transition-all space-y-4 ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
-                            }`}
+                          className={`p-4 rounded-3xl transition-all space-y-3.5 ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'}`}
                         >
-                          <div className={`flex items-center gap-2 pb-3 border-b ${isDark ? 'border-slate-750' : 'border-slate-200/80'}`}>
-                            <div className={`p-2 rounded-xl ${isDark ? 'neu-pressed-dark text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
-                              <ListChecks className="w-5 h-5" />
+                          <div className={`flex items-center justify-between pb-2.5 border-b ${isDark ? 'border-slate-750' : 'border-slate-200/80'}`}>
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className={`p-2 rounded-xl shrink-0 ${isDark ? 'neu-pressed-dark text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
+                                <ListChecks className="w-5 h-5" />
+                              </div>
+                              <div className="min-w-0">
+                                <h2 className="text-sm font-black tracking-tight truncate">{selectedTrackerSubject}</h2>
+                                <p className={`text-[9px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Subject Tracker</p>
+                              </div>
                             </div>
-                            <div>
-                              <h2 className="text-sm font-black tracking-tight">Subject Tracker</h2>
-                              <p className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Track study topics and logged revision sessions</p>
-                            </div>
-                          </div>
 
-                          {/* Switcher Pill */}
-                          <div className={`relative flex items-center p-1 rounded-2xl ${isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'}`}>
-                            <div
-                              className="absolute top-1 bottom-1 rounded-xl bg-blue-600 shadow-md transition-all"
-                              style={{
-                                width: 'calc(50% - 4px)',
-                                left: subjectTrackerSubTab === 'manager' ? '4px' : 'calc(50%)',
-                                transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
-                              }}
-                            />
-                            <button
-                              onClick={() => setSubjectTrackerSubTab('manager')}
-                              className={`relative z-10 flex-grow py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center justify-center gap-1.5 ${subjectTrackerSubTab === 'manager' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
-                                }`}
-                            >
-                              <ListChecks className="w-3.5 h-3.5" />
-                              Manager
-                            </button>
-                            <button
-                              onClick={() => setSubjectTrackerSubTab('coverage')}
-                              className={`relative z-10 flex-grow py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center justify-center gap-1.5 ${subjectTrackerSubTab === 'coverage' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
-                                }`}
-                            >
-                              <Layers className="w-3.5 h-3.5" />
-                              Coverage
-                            </button>
-                          </div>
-
-                          <div className="space-y-3">
-                            <div>
-                              <label className={`block text-[9px] font-black uppercase tracking-widest mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Select Subject</label>
-                              <NeumorphicSelect
-                                value={selectedTrackerSubject}
-                                onChange={(val) => setSelectedTrackerSubject(val)}
-                                options={["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"]}
-                                isDark={isDark}
+                            {/* Subtab Switcher Pill */}
+                            <div className={`relative flex items-center p-1 rounded-2xl shrink-0 ${isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'}`}>
+                              <div
+                                className="absolute top-1 bottom-1 rounded-xl bg-blue-600 shadow-md transition-all"
+                                style={{
+                                  width: 'calc(50% - 4px)',
+                                  left: subjectTrackerSubTab === 'manager' ? '4px' : 'calc(50%)',
+                                  transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                                }}
                               />
+                              <button
+                                onClick={() => setSubjectTrackerSubTab('manager')}
+                                className={`relative z-10 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center gap-1 ${subjectTrackerSubTab === 'manager' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'}`}
+                              >
+                                <ListChecks className="w-3 h-3" />
+                                Manager
+                              </button>
+                              <button
+                                onClick={() => setSubjectTrackerSubTab('coverage')}
+                                className={`relative z-10 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center gap-1 ${subjectTrackerSubTab === 'coverage' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'}`}
+                              >
+                                <Layers className="w-3 h-3" />
+                                Coverage
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Quick Metrics Bar */}
+                          <div className="grid grid-cols-3 gap-2">
+                            <div className={`p-2 rounded-2xl text-center border ${isDark ? 'neu-pressed-dark border-slate-800' : 'neu-pressed-light border-slate-200/80'}`}>
+                              <span className={`block text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Topics</span>
+                              <span className="text-xs font-black text-blue-500">{revisedTopicsCount}/{totalTopicsCount}</span>
+                            </div>
+                            <div className={`p-2 rounded-2xl text-center border ${isDark ? 'neu-pressed-dark border-slate-800' : 'neu-pressed-light border-slate-200/80'}`}>
+                              <span className={`block text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Revisions</span>
+                              <span className="text-xs font-black text-amber-500">🔥 {totalRevsCount}</span>
+                            </div>
+                            <div className={`p-2 rounded-2xl text-center border ${isDark ? 'neu-pressed-dark border-slate-800' : 'neu-pressed-light border-slate-200/80'}`}>
+                              <span className={`block text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Coverage</span>
+                              <span className="text-xs font-black text-emerald-500">{coveragePercent}%</span>
+                            </div>
+                          </div>
+
+                          {/* Horizontal Subject Carousel Strip */}
+                          <div className="space-y-1.5 pt-1">
+                            <span className={`block text-[9px] font-black uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Select Subject</span>
+                            <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar no-scrollbar">
+                              {allSubjectsList.map(sub => {
+                                const docId = sub.trim().toLowerCase();
+                                const trackerDoc = subjectTrackerData.find(p => p.id === docId);
+                                const count = trackerDoc && trackerDoc.topics ? Object.keys(trackerDoc.topics).length : 0;
+                                const isSelected = selectedTrackerSubject === sub;
+
+                                return (
+                                  <button
+                                    key={sub}
+                                    onClick={() => setSelectedTrackerSubject(sub)}
+                                    className={`px-3 py-2 rounded-2xl text-xs font-black whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0 border ${isSelected
+                                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-blue-500 shadow-md scale-[1.02]'
+                                      : isDark
+                                        ? 'neu-card-dark text-slate-300 border-slate-800'
+                                        : 'neu-card-light text-slate-700 border-slate-200'
+                                    }`}
+                                  >
+                                    <span>{sub}</span>
+                                    <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md ${isSelected ? 'bg-blue-700/60 text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>
+                                      {count}
+                                    </span>
+                                  </button>
+                                );
+                              })}
                             </div>
                           </div>
                         </motion.div>
 
                         {subjectTrackerSubTab === 'manager' ? (
                           <>
-                            {/* Primary Source configuration card */}
-                            <motion.div
-                              initial={{ opacity: 0, y: 12 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ duration: 0.4, delay: 0.1 }}
-                              className={`p-5 rounded-3xl transition-all space-y-3 ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
-                                }`}
-                            >
-                              <label className={`block text-[9px] font-black uppercase tracking-widest mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Primary Source Material</label>
-                              <div className="flex gap-2 items-center w-full">
-                                <input
-                                  type="text"
-                                  placeholder="e.g. Marrow + First Aid"
-                                  value={
-                                    trackerSourceInputs[selectedTrackerSubject] !== undefined
-                                      ? trackerSourceInputs[selectedTrackerSubject]
-                                      : (subjectTrackerData.find(p => p.id === selectedTrackerSubject.trim().toLowerCase())?.primarySource || "")
-                                  }
-                                  onChange={(e) => {
-                                    setTrackerSourceInputs(prev => ({
-                                      ...prev,
-                                      [selectedTrackerSubject]: e.target.value
-                                    }));
-                                  }}
-                                  onBlur={() => {
-                                    const sourceVal = trackerSourceInputs[selectedTrackerSubject] !== undefined
-                                      ? trackerSourceInputs[selectedTrackerSubject]
-                                      : (subjectTrackerData.find(p => p.id === selectedTrackerSubject.trim().toLowerCase())?.primarySource || "");
-                                    handleSavePrimarySource(selectedTrackerSubject, sourceVal);
-                                  }}
-                                  className={`w-0 min-w-0 flex-grow p-2.5 rounded-xl text-xs font-bold outline-none transition ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'
-                                    }`}
-                                />
-                                <motion.button
-                                  whileHover={{ scale: 1.02 }}
-                                  whileTap={{ scale: 0.95 }}
-                                  onClick={() => {
-                                    const sourceVal = trackerSourceInputs[selectedTrackerSubject] !== undefined
-                                      ? trackerSourceInputs[selectedTrackerSubject]
-                                      : (subjectTrackerData.find(p => p.id === selectedTrackerSubject.trim().toLowerCase())?.primarySource || "");
-                                    handleSavePrimarySource(selectedTrackerSubject, sourceVal);
-                                    alert("Primary source saved!");
-                                  }}
-                                  className={`px-3.5 py-2.5 shrink-0 rounded-xl text-[10px] font-black uppercase tracking-wider transition ${isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300' : 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                                    }`}
-                                >
-                                  Save
-                                </motion.button>
-                              </div>
-                            </motion.div>
-
-                            {/* AI Index Extractor Widget */}
-                            <motion.div
-                              initial={{ opacity: 0, y: 12 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ duration: 0.4, delay: 0.15 }}
-                              tabIndex={0}
-                              onDragOver={(e) => {
-                                e.preventDefault();
-                                setIsTrackerDragOver(true);
-                              }}
-                              onDragLeave={() => {
-                                setIsTrackerDragOver(false);
-                              }}
-                              onDrop={(e) => {
-                                e.preventDefault();
-                                setIsTrackerDragOver(false);
-                                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                                  processIndexFiles(e.dataTransfer.files, selectedTrackerSubject);
-                                }
-                              }}
-                              onPaste={(e) => {
-                                if (e.clipboardData.files && e.clipboardData.files.length > 0) {
-                                  e.preventDefault();
-                                  processIndexFiles(e.clipboardData.files, selectedTrackerSubject);
-                                }
-                              }}
-                              className={`flex flex-col gap-3 rounded-3xl p-5 outline-none transition-all duration-300 ${isDark
-                                  ? 'neu-card-dark bg-gradient-to-br from-slate-900 via-indigo-950/40 to-slate-900 border border-indigo-900/40 text-white'
-                                  : 'neu-card-light bg-gradient-to-br from-violet-50/70 via-white to-indigo-50/70 border border-indigo-100 text-slate-800'
-                                } ${isTrackerDragOver ? (isDark ? 'border-violet-500/80 bg-violet-950/40 scale-[1.02]' : 'border-violet-400 bg-violet-100/50 scale-[1.02]') : ''}`}
-                            >
-                              <div className="text-left">
-                                <h4 className={`text-xs font-black flex items-center gap-1.5 ${isDark ? 'text-indigo-300' : 'text-indigo-950'}`}>
-                                  <Sparkles className="w-4 h-4 text-violet-500 animate-pulse" /> AI Book Index Extractor
-                                </h4>
-                                <p className={`text-[10px] font-bold mt-1 leading-relaxed ${isDark ? 'text-indigo-300/80' : 'text-indigo-600/80'}`}>
-                                  Drag & drop multiple index pages, paste images, or click to upload.
-                                </p>
-                              </div>
-                              <label className={`w-full py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer shadow-md active:scale-95 transition-all flex items-center justify-center gap-1.5 ${isTrackerAiExtracting ? 'opacity-50 pointer-events-none' : ''}`}>
-                                {isTrackerAiExtracting ? (
-                                  <>
-                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                    Extracting...
-                                  </>
-                                ) : (
-                                  <>
-                                    <Upload className="w-3.5 h-3.5" />
-                                    Upload Index
-                                  </>
-                                )}
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  multiple={true}
-                                  onChange={(e) => handleUploadIndexImage(e, selectedTrackerSubject)}
-                                  className="hidden"
-                                  disabled={isTrackerAiExtracting}
-                                />
-                              </label>
-                            </motion.div>
-
-                            {/* Add Tracked Topic Card */}
-                            <motion.div
-                              initial={{ opacity: 0, y: 12 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ duration: 0.4, delay: 0.2 }}
-                              className={`p-4 rounded-3xl transition-all space-y-2.5 border ${isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-800 border-slate-200'
-                                }`}
-                            >
-                              <label className={`block text-[9px] font-black uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Add Topic to Track</label>
-                              <form
-                                onSubmit={(e) => {
-                                  e.preventDefault();
-                                  const name = trackerNewTopicInput.trim();
-                                  if (!name) return;
-                                  handleAddTrackerTopic(selectedTrackerSubject, name, trackerNewTopicPage.trim(), trackerNewTopicEndPage.trim());
-                                  setTrackerNewTopicInput("");
-                                  setTrackerNewTopicPage("");
-                                  setTrackerNewTopicEndPage("");
+                            {/* Mobile View Mode Segmented Switcher (Topics vs Source & AI Tools) */}
+                            <div className={`relative grid grid-cols-2 p-1 rounded-2xl ${isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'}`}>
+                              <div
+                                className="absolute top-1 bottom-1 rounded-xl bg-blue-600 shadow-md transition-all"
+                                style={{
+                                  width: 'calc(50% - 4px)',
+                                  left: mobileSubjectViewMode === 'topics' ? '4px' : 'calc(50%)',
+                                  transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
                                 }}
-                                className="flex flex-col gap-2.5"
+                              />
+                              <button
+                                onClick={() => setMobileSubjectViewMode('topics')}
+                                className={`relative z-10 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center justify-center gap-1.5 ${mobileSubjectViewMode === 'topics' ? 'text-white' : isDark ? 'text-slate-400' : 'text-slate-500'}`}
                               >
-                                {/* Row 1: Topic Title Input */}
-                                <input
-                                  type="text"
-                                  placeholder="Type topic name (e.g. Cranial Nerves)..."
-                                  value={trackerNewTopicInput}
-                                  onChange={(e) => setTrackerNewTopicInput(e.target.value)}
-                                  className={`w-full p-2.5 rounded-xl text-xs font-bold outline-none transition ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'
-                                    }`}
-                                />
+                                <ListChecks className="w-3.5 h-3.5" />
+                                Topics Checklist
+                              </button>
+                              <button
+                                onClick={() => setMobileSubjectViewMode('tools')}
+                                className={`relative z-10 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center justify-center gap-1.5 ${mobileSubjectViewMode === 'tools' ? 'text-white' : isDark ? 'text-slate-400' : 'text-slate-500'}`}
+                              >
+                                <Sparkles className="w-3.5 h-3.5" />
+                                Source & AI Tools
+                              </button>
+                            </div>
 
-                                {/* Row 2: Start/End Page Inputs & Add Button */}
-                                <div className="flex gap-2 items-center">
-                                  <input
-                                    type="number"
-                                    placeholder="Start Pg"
-                                    value={trackerNewTopicPage}
-                                    onChange={(e) => setTrackerNewTopicPage(e.target.value)}
-                                    className={`w-20 p-2.5 rounded-xl text-xs font-bold outline-none transition text-center shrink-0 ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'
-                                      }`}
-                                  />
-                                  <input
-                                    type="number"
-                                    placeholder="End Pg"
-                                    value={trackerNewTopicEndPage}
-                                    onChange={(e) => setTrackerNewTopicEndPage(e.target.value)}
-                                    className={`w-20 p-2.5 rounded-xl text-xs font-bold outline-none transition text-center shrink-0 ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'
-                                      }`}
-                                  />
-                                  <motion.button
-                                    whileHover={{ scale: 1.02 }}
-                                    whileTap={{ scale: 0.95 }}
-                                    type="submit"
-                                    className={`flex-grow h-[38px] rounded-xl text-[10px] font-black uppercase tracking-wider transition flex items-center justify-center gap-1.5 ${isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300' : 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                                      }`}
+                            {mobileSubjectViewMode === 'topics' ? (
+                              <>
+                                {/* Add Tracked Topic Form */}
+                                <motion.div
+                                  initial={{ opacity: 0, y: 12 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  transition={{ duration: 0.4 }}
+                                  className={`p-3.5 rounded-3xl transition-all space-y-2 border ${isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-800 border-slate-200'}`}
+                                >
+                                  <form
+                                    onSubmit={(e) => {
+                                      e.preventDefault();
+                                      const name = trackerNewTopicInput.trim();
+                                      if (!name) return;
+                                      handleAddTrackerTopic(selectedTrackerSubject, name, trackerNewTopicPage.trim(), trackerNewTopicEndPage.trim());
+                                      setTrackerNewTopicInput("");
+                                      setTrackerNewTopicPage("");
+                                      setTrackerNewTopicEndPage("");
+                                    }}
+                                    className="flex flex-col gap-2"
                                   >
-                                    <Plus className="w-3.5 h-3.5" /> Add Topic
-                                  </motion.button>
-                                </div>
-                              </form>
-                            </motion.div>
-
-                            {/* Tracked Topics Checklist Header */}
-                            <motion.div
-                              initial={{ opacity: 0, y: 12 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ duration: 0.4, delay: 0.25 }}
-                              className="flex justify-between items-center mt-6"
-                            >
-                              <label className={`text-[10px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Tracked Topics</label>
-
-                              {/* Sort Toggle Pill */}
-                              <div className={`relative grid grid-cols-3 p-1 rounded-xl text-[9px] font-black uppercase tracking-wider w-[220px] ${isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'
-                                }`}>
-                                <div
-                                  className="absolute top-1 bottom-1 rounded-lg bg-blue-600 shadow-sm transition-all"
-                                  style={{
-                                    width: 'calc(33.333% - 2.6px)',
-                                    left: trackerSortBy === 'page' ? '4px' : trackerSortBy === 'uncompleted' ? 'calc(33.333% + 1.3px)' : 'calc(66.666% - 1.3px)',
-                                    transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
-                                  }}
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => setTrackerSortBy('page')}
-                                  className={`relative z-10 py-1 text-center truncate transition-colors duration-200 ${trackerSortBy === 'page' ? 'text-white font-black' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
-                                    }`}
-                                >
-                                  Page #
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setTrackerSortBy('uncompleted')}
-                                  className={`relative z-10 py-1 text-center truncate transition-colors duration-200 ${trackerSortBy === 'uncompleted' ? 'text-white font-black' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
-                                    }`}
-                                >
-                                  Pending
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setTrackerSortBy('completed')}
-                                  className={`relative z-10 py-1 text-center truncate transition-colors duration-200 ${trackerSortBy === 'completed' ? 'text-white font-black' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
-                                    }`}
-                                >
-                                  Done
-                                </button>
-                              </div>
-                            </motion.div>
-
-                            {/* Tracked Topics Checklist Grid */}
-                            <div className="space-y-3.5 mt-2 p-2.5">
-                              {(() => {
-                                const docId = selectedTrackerSubject.trim().toLowerCase();
-                                const trackerDoc = subjectTrackerData.find(p => p.id === docId);
-                                const topicsMap = trackerDoc?.topics || {};
-                                const topicsList = getSortedTopics(Object.values(topicsMap));
-
-                                if (topicsList.length === 0) {
-                                  return (
-                                    <div className={`p-8 rounded-3xl text-center border transition-all ${isDark ? 'neu-card-dark text-slate-400 border-slate-800' : 'neu-card-light text-slate-500 border-slate-200'
-                                      }`}>
-                                      <p className="text-xs font-bold">No tracked topics found for {selectedTrackerSubject}.</p>
+                                    <input
+                                      type="text"
+                                      placeholder="Topic title (e.g. Cranial Nerves)..."
+                                      value={trackerNewTopicInput}
+                                      onChange={(e) => setTrackerNewTopicInput(e.target.value)}
+                                      className={`w-full p-2.5 rounded-xl text-xs font-bold outline-none transition ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'}`}
+                                    />
+                                    <div className="flex gap-2 items-center">
+                                      <input
+                                        type="number"
+                                        placeholder="Start Pg"
+                                        value={trackerNewTopicPage}
+                                        onChange={(e) => setTrackerNewTopicPage(e.target.value)}
+                                        className={`w-20 p-2.5 rounded-xl text-xs font-bold outline-none text-center shrink-0 ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'}`}
+                                      />
+                                      <input
+                                        type="number"
+                                        placeholder="End Pg"
+                                        value={trackerNewTopicEndPage}
+                                        onChange={(e) => setTrackerNewTopicEndPage(e.target.value)}
+                                        className={`w-20 p-2.5 rounded-xl text-xs font-bold outline-none text-center shrink-0 ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'}`}
+                                      />
+                                      <motion.button
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        type="submit"
+                                        className={`flex-grow h-[38px] rounded-xl text-[10px] font-black uppercase tracking-wider transition flex items-center justify-center gap-1.5 ${isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300' : 'bg-blue-600 text-white shadow-md shadow-blue-500/20'}`}
+                                      >
+                                        <Plus className="w-3.5 h-3.5" /> Add Topic
+                                      </motion.button>
                                     </div>
-                                  );
-                                }
+                                  </form>
+                                </motion.div>
 
-                                return (
-                                  <AnimatePresence mode="popLayout">
-                                    {topicsList.map((topicItem, tIdx) => {
-                                      const dates = topicItem.studyDates || [];
-                                      const selectedDate = trackerLogDateInputs[topicItem.name] || todayStr;
-                                      const isExpanded = !!expandedTrackerTopics[topicItem.name];
-                                      const hasRevisions = dates.length > 0;
+                                {/* Sort Bar */}
+                                <div className="flex justify-between items-center px-1">
+                                  <span className={`text-[10px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Topics Checklist</span>
+                                  <div className={`relative grid grid-cols-3 p-1 rounded-xl text-[9px] font-black uppercase tracking-wider w-[200px] ${isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'}`}>
+                                    <div
+                                      className="absolute top-1 bottom-1 rounded-lg bg-blue-600 shadow-sm transition-all"
+                                      style={{
+                                        width: 'calc(33.333% - 2.6px)',
+                                        left: trackerSortBy === 'page' ? '4px' : trackerSortBy === 'uncompleted' ? 'calc(33.333% + 1.3px)' : 'calc(66.666% - 1.3px)',
+                                        transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                                      }}
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => setTrackerSortBy('page')}
+                                      className={`relative z-10 py-1 text-center truncate transition-colors duration-200 ${trackerSortBy === 'page' ? 'text-white font-black' : isDark ? 'text-slate-400' : 'text-slate-500'}`}
+                                    >
+                                      Page #
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setTrackerSortBy('uncompleted')}
+                                      className={`relative z-10 py-1 text-center truncate transition-colors duration-200 ${trackerSortBy === 'uncompleted' ? 'text-white font-black' : isDark ? 'text-slate-400' : 'text-slate-500'}`}
+                                    >
+                                      Pending
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setTrackerSortBy('completed')}
+                                      className={`relative z-10 py-1 text-center truncate transition-colors duration-200 ${trackerSortBy === 'completed' ? 'text-white font-black' : isDark ? 'text-slate-400' : 'text-slate-500'}`}
+                                    >
+                                      Done
+                                    </button>
+                                  </div>
+                                </div>
 
+                                {/* Tracked Topics List */}
+                                <div className="space-y-3">
+                                  {(() => {
+                                    const docId = selectedTrackerSubject.trim().toLowerCase();
+                                    const trackerDoc = subjectTrackerData.find(p => p.id === docId);
+                                    const topicsMap = trackerDoc?.topics || {};
+                                    const topicsList = getSortedTopics(Object.values(topicsMap));
+
+                                    if (topicsList.length === 0) {
                                       return (
-                                        <motion.div
-                                          key={topicItem.name}
-                                          initial={{ opacity: 0, y: 10, scale: 0.99 }}
-                                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                                          exit={{ opacity: 0, scale: 0.96 }}
-                                          transition={{ duration: 0.25, delay: Math.min(tIdx * 0.02, 0.2) }}
-                                          className={`rounded-2xl transition-all border ${isDark
-                                              ? 'neu-card-dark text-white border-slate-800/80 hover:border-slate-750'
-                                              : 'neu-card-light text-slate-800 border-slate-200/80 hover:border-slate-300'
-                                            }`}
-                                        >
-                                          {/* Main Header Bar (Thin & Scan-friendly) */}
-                                          <div className="p-3 flex items-center justify-between gap-2.5 text-left">
-                                            {/* Left: Status icon & Title */}
-                                            <div className="flex items-center gap-2.5 min-w-0 flex-grow">
-                                              <button
-                                                onClick={() => {
-                                                  setExpandedTrackerTopics(prev => ({
-                                                    ...prev,
-                                                    [topicItem.name]: !prev[topicItem.name]
-                                                  }));
-                                                }}
-                                                className={`p-1.5 rounded-xl transition shrink-0 ${hasRevisions
-                                                    ? isDark ? 'neu-pressed-dark text-emerald-400' : 'bg-emerald-100 text-emerald-600'
-                                                    : isDark ? 'neu-pressed-dark text-slate-500 hover:text-slate-300' : 'bg-slate-100 text-slate-400 hover:text-slate-600'
-                                                  }`}
-                                              >
-                                                <CheckCircle2 className="w-3.5 h-3.5" />
-                                              </button>
-                                              <div className="min-w-0">
-                                                <div className="flex items-center gap-1.5 flex-wrap">
-                                                  <h4 className="text-xs font-black tracking-tight leading-snug truncate max-w-[200px]">
-                                                    {topicItem.name}
-                                                  </h4>
-                                                  <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-lg border ${topicItem.endPage
-                                                      ? isDark ? 'text-emerald-400 bg-emerald-950/40 border-emerald-800/60' : 'text-emerald-700 bg-emerald-50 border-emerald-100'
-                                                      : isDark ? 'text-amber-400 bg-amber-950/40 border-amber-800/60' : 'text-amber-700 bg-amber-50 border-amber-100'
-                                                    }`}>
-                                                    {topicItem.page ? `p. ${topicItem.page}${topicItem.endPage ? `–${topicItem.endPage}` : ''}` : 'No pgs'} ({getTopicWeight(topicItem, topicsList)} pgs)
-                                                  </span>
-                                                </div>
-                                              </div>
-                                            </div>
+                                        <div className={`p-6 rounded-3xl text-center border transition-all ${isDark ? 'neu-card-dark text-slate-400 border-slate-800' : 'neu-card-light text-slate-500 border-slate-200'}`}>
+                                          <p className="text-xs font-bold">No tracked topics found for {selectedTrackerSubject}.</p>
+                                        </div>
+                                      );
+                                    }
 
-                                            {/* Right: Revision count badge & Action Buttons */}
-                                            <div className="flex items-center gap-1 shrink-0">
-                                              {/* Revision Count Badge */}
-                                              <button
-                                                onClick={() => {
-                                                  setExpandedTrackerTopics(prev => ({
-                                                    ...prev,
-                                                    [topicItem.name]: !prev[topicItem.name]
-                                                  }));
-                                                }}
-                                                className={`px-2 py-1 rounded-xl text-[9px] font-black uppercase tracking-wider transition flex items-center gap-1 ${hasRevisions
-                                                    ? isDark ? 'neu-pressed-dark text-blue-400 border border-blue-900/50' : 'bg-blue-50 text-blue-600 border border-blue-100'
-                                                    : isDark ? 'neu-pressed-dark text-slate-400' : 'bg-slate-100 text-slate-500'
-                                                  }`}
-                                              >
-                                                <Flame className={`w-3 h-3 ${hasRevisions ? 'text-amber-500' : ''}`} />
-                                                {dates.length}
-                                              </button>
+                                    return (
+                                      <AnimatePresence mode="popLayout">
+                                        {topicsList.map((topicItem, tIdx) => {
+                                          const dates = topicItem.studyDates || [];
+                                          const selectedDate = trackerLogDateInputs[topicItem.name] || todayStr;
+                                          const isExpanded = !!expandedTrackerTopics[topicItem.name];
+                                          const revCount = dates.length;
+                                          const hasRevisions = revCount > 0;
 
-                                              {/* Quick One-Click Log Today Button */}
-                                              <motion.button
-                                                whileHover={{ scale: 1.05 }}
-                                                whileTap={{ scale: 0.92 }}
-                                                title="Log today's revision"
-                                                onClick={() => handleLogTrackerStudyDate(selectedTrackerSubject, topicItem.name, todayStr)}
-                                                className={`p-1.5 rounded-xl transition ${isDark ? 'neu-btn-dark text-emerald-400 hover:text-emerald-300' : 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'
-                                                  }`}
-                                              >
-                                                <Plus className="w-3.5 h-3.5" />
-                                              </motion.button>
+                                          // Color-coded left accent border by revision count
+                                          const statusBorderClass = revCount >= 3
+                                            ? 'border-l-4 border-l-emerald-500'
+                                            : revCount >= 1
+                                              ? 'border-l-4 border-l-amber-500'
+                                              : 'border-l-4 border-l-slate-400/60';
 
-                                              {/* Schedule Button */}
-                                              <button
-                                                title="Schedule review session"
-                                                onClick={() => {
-                                                  const topicLabel = `${selectedTrackerSubject}: ${topicItem.name}`;
-                                                  setSchedulerEditingTask({
-                                                    date: todayStr,
-                                                    id: null,
-                                                    topic: topicLabel,
-                                                    startTime: '09:00',
-                                                    endTime: '10:00',
-                                                    color: 'blue',
-                                                    completed: false,
-                                                    notes: ""
-                                                  });
-                                                  setCurrentTab('studyScheduler');
-                                                  setIsMobileDrawerOpen(false);
-                                                }}
-                                                className={`p-1.5 rounded-xl transition ${isDark ? 'text-blue-400 hover:text-blue-300 hover:bg-slate-800' : 'text-blue-500 hover:text-blue-700 hover:bg-slate-100'}`}
-                                              >
-                                                <Calendar className="w-3.5 h-3.5" />
-                                              </button>
-
-                                              {/* Toggle Expand Details Button */}
-                                              <button
-                                                onClick={() => {
-                                                  setExpandedTrackerTopics(prev => ({
-                                                    ...prev,
-                                                    [topicItem.name]: !prev[topicItem.name]
-                                                  }));
-                                                }}
-                                                className={`p-1.5 rounded-xl transition ${isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-400 hover:text-slate-800 hover:bg-slate-100'}`}
-                                              >
-                                                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${isExpanded ? 'rotate-180 text-blue-500' : ''}`} />
-                                              </button>
-
-                                              {/* Delete Topic Button */}
-                                              <button
-                                                title="Delete topic"
-                                                onClick={() => {
-                                                  if (window.confirm(`Delete topic "${topicItem.name}"?`)) {
-                                                    handleDeleteTrackerTopic(selectedTrackerSubject, topicItem.name);
-                                                  }
-                                                }}
-                                                className={`p-1.5 rounded-xl transition ${isDark ? 'text-slate-500 hover:text-rose-400 hover:bg-slate-800' : 'text-slate-400 hover:text-rose-600 hover:bg-slate-100'}`}
-                                              >
-                                                <Trash2 className="w-3.5 h-3.5" />
-                                              </button>
-                                            </div>
-                                          </div>
-
-                                          {/* Expandable Drawer (Page Number Editing & Date Logger) */}
-                                          <AnimatePresence>
-                                            {isExpanded && (
-                                              <motion.div
-                                                initial={{ height: 0, opacity: 0 }}
-                                                animate={{ height: 'auto', opacity: 1 }}
-                                                exit={{ height: 0, opacity: 0 }}
-                                                transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                                                className={`overflow-hidden border-t px-3.5 py-3 space-y-3 ${isDark ? 'border-slate-800 bg-slate-900/60' : 'border-slate-100 bg-slate-50/70'
-                                                  }`}
-                                              >
-                                                {/* Page Range Settings */}
-                                                <div className="flex items-center gap-3 flex-wrap text-xs font-bold">
-                                                  <span className={`text-[9px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Pages Config:</span>
-                                                  <div className="flex items-center gap-1.5">
-                                                    <span className={`text-[9px] uppercase font-black ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Start:</span>
-                                                    <input
-                                                      type="number"
-                                                      value={topicItem.page || ""}
-                                                      onChange={(e) => handleUpdateTrackerTopicPages(selectedTrackerSubject, topicItem.name, e.target.value, topicItem.endPage || "")}
-                                                      className={`w-20 p-1.5 rounded-xl text-center text-xs font-bold outline-none ${isDark ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'
-                                                        }`}
-                                                      placeholder="Start"
-                                                    />
-                                                  </div>
-                                                  <div className="flex items-center gap-1.5">
-                                                    <span className={`text-[9px] uppercase font-black ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>End:</span>
-                                                    <input
-                                                      type="number"
-                                                      value={topicItem.endPage || ""}
-                                                      onChange={(e) => handleUpdateTrackerTopicPages(selectedTrackerSubject, topicItem.name, topicItem.page || "", e.target.value)}
-                                                      className={`w-20 p-1.5 rounded-xl text-center text-xs font-bold outline-none ${isDark ? 'neu-pressed-dark text-indigo-400' : 'neu-pressed-light text-indigo-600'
-                                                        }`}
-                                                      placeholder={getTopicEndPagePlaceholder(topicItem, topicsList)}
-                                                    />
-                                                  </div>
-                                                </div>
-
-                                                {/* Logged revision history dates tag list */}
-                                                {dates.length > 0 && (
-                                                  <div className="space-y-1.5">
-                                                    <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Logged Revision Dates ({dates.length}):</span>
-                                                    <div className="flex flex-wrap gap-1.5 items-center">
-                                                      {dates.map((dateVal, dIdx) => (
-                                                        <span
-                                                          key={dIdx}
-                                                          className={`rounded-lg px-2 py-0.5 text-[9px] font-black flex items-center gap-1.5 border ${isDark ? 'bg-emerald-950/40 text-emerald-300 border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                                                            }`}
-                                                        >
-                                                          📅 {formatAppDate(dateVal)}
-                                                          <button
-                                                            onClick={() => handleDeleteTrackerStudyDate(selectedTrackerSubject, topicItem.name, dIdx)}
-                                                            className="hover:text-rose-500 transition font-bold"
-                                                          >
-                                                            ✖
-                                                          </button>
-                                                        </span>
-                                                      ))}
+                                          return (
+                                            <motion.div
+                                              key={topicItem.name}
+                                              initial={{ opacity: 0, y: 10, scale: 0.99 }}
+                                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                                              exit={{ opacity: 0, scale: 0.96 }}
+                                              transition={{ duration: 0.25, delay: Math.min(tIdx * 0.02, 0.2) }}
+                                              className={`rounded-2xl transition-all border ${statusBorderClass} ${isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-800 border-slate-200'}`}
+                                            >
+                                              <div className="p-3 flex items-center justify-between gap-2 text-left">
+                                                <div className="flex items-center gap-2.5 min-w-0 flex-grow">
+                                                  <button
+                                                    onClick={() => {
+                                                      setExpandedTrackerTopics(prev => ({
+                                                        ...prev,
+                                                        [topicItem.name]: !prev[topicItem.name]
+                                                      }));
+                                                    }}
+                                                    className={`p-2 rounded-xl transition shrink-0 ${hasRevisions
+                                                      ? isDark ? 'neu-pressed-dark text-emerald-400' : 'bg-emerald-100 text-emerald-600'
+                                                      : isDark ? 'neu-pressed-dark text-slate-500' : 'bg-slate-100 text-slate-400'}`}
+                                                  >
+                                                    <CheckCircle2 className="w-4 h-4" />
+                                                  </button>
+                                                  <div className="min-w-0">
+                                                    <h4 className="text-xs font-black tracking-tight leading-snug truncate max-w-[160px]">
+                                                      {topicItem.name}
+                                                    </h4>
+                                                    <div className="flex items-center gap-1 mt-0.5">
+                                                      <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md border ${topicItem.endPage
+                                                        ? isDark ? 'text-emerald-400 bg-emerald-950/40 border-emerald-800/60' : 'text-emerald-700 bg-emerald-50 border-emerald-100'
+                                                        : isDark ? 'text-amber-400 bg-amber-950/40 border-amber-800/60' : 'text-amber-700 bg-amber-50 border-amber-100'}`}>
+                                                        {topicItem.page ? `p. ${topicItem.page}${topicItem.endPage ? `–${topicItem.endPage}` : ''}` : 'No pgs'}
+                                                      </span>
                                                     </div>
                                                   </div>
-                                                )}
-
-                                                {/* Date Logger Form */}
-                                                <div className="flex items-center gap-2 pt-1">
-                                                  <input
-                                                    type="date"
-                                                    value={selectedDate}
-                                                    onChange={(e) => {
-                                                      trackerLogDateInputs[topicItem.name] = e.target.value;
-                                                      setTrackerLogDateInputs({ ...trackerLogDateInputs });
-                                                    }}
-                                                    className={`p-1.5 rounded-xl text-[10px] font-bold outline-none flex-grow ${isDark ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-slate-800'
-                                                      }`}
-                                                  />
-                                                  <motion.button
-                                                    whileHover={{ scale: 1.02 }}
-                                                    whileTap={{ scale: 0.95 }}
-                                                    onClick={() => {
-                                                      handleLogTrackerStudyDate(selectedTrackerSubject, topicItem.name, selectedDate);
-                                                    }}
-                                                    className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition flex items-center gap-1 shrink-0 ${isDark ? 'neu-btn-dark text-emerald-400' : 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'
-                                                      }`}
-                                                  >
-                                                    <Plus className="w-3 h-3" /> Log Session
-                                                  </motion.button>
                                                 </div>
-                                              </motion.div>
-                                            )}
-                                          </AnimatePresence>
-                                        </motion.div>
-                                      );
-                                    })}
-                                  </AnimatePresence>
-                                );
-                              })()}
-                            </div>
+
+                                                <div className="flex items-center gap-1.5 shrink-0">
+                                                  <button
+                                                    onClick={() => {
+                                                      setExpandedTrackerTopics(prev => ({
+                                                        ...prev,
+                                                        [topicItem.name]: !prev[topicItem.name]
+                                                      }));
+                                                    }}
+                                                    className={`px-2 py-1.5 rounded-xl text-[9px] font-black transition flex items-center gap-1 ${hasRevisions
+                                                      ? isDark ? 'neu-pressed-dark text-blue-400 border border-blue-900/50' : 'bg-blue-50 text-blue-600 border border-blue-100'
+                                                      : isDark ? 'neu-pressed-dark text-slate-400' : 'bg-slate-100 text-slate-500'}`}
+                                                  >
+                                                    <Flame className={`w-3.5 h-3.5 ${hasRevisions ? 'text-amber-500' : ''}`} />
+                                                    {revCount}
+                                                  </button>
+
+                                                  <motion.button
+                                                    whileHover={{ scale: 1.05 }}
+                                                    whileTap={{ scale: 0.92 }}
+                                                    title="Log today's revision"
+                                                    onClick={() => handleLogTrackerStudyDate(selectedTrackerSubject, topicItem.name, todayStr)}
+                                                    className={`p-2 rounded-xl transition ${isDark ? 'neu-btn-dark text-emerald-400 hover:text-emerald-300' : 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'}`}
+                                                  >
+                                                    <Plus className="w-4 h-4" />
+                                                  </motion.button>
+
+                                                  <button
+                                                    onClick={() => {
+                                                      setExpandedTrackerTopics(prev => ({
+                                                        ...prev,
+                                                        [topicItem.name]: !prev[topicItem.name]
+                                                      }));
+                                                    }}
+                                                    className={`p-2 rounded-xl transition ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-400 hover:text-slate-800'}`}
+                                                  >
+                                                    <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isExpanded ? 'rotate-180 text-blue-500' : ''}`} />
+                                                  </button>
+                                                </div>
+                                              </div>
+
+                                              {/* Mobile Expanded Drawer */}
+                                              <AnimatePresence>
+                                                {isExpanded && (
+                                                  <motion.div
+                                                    initial={{ height: 0, opacity: 0 }}
+                                                    animate={{ height: 'auto', opacity: 1 }}
+                                                    exit={{ height: 0, opacity: 0 }}
+                                                    transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                                                    className={`overflow-hidden border-t px-3.5 py-3 space-y-3 ${isDark ? 'border-slate-800 bg-slate-900/60' : 'border-slate-100 bg-slate-50/70'}`}
+                                                  >
+                                                    {/* Page Range Inputs */}
+                                                    <div className="flex items-center gap-2 text-xs font-bold flex-wrap">
+                                                      <span className={`text-[9px] font-black uppercase font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Pages:</span>
+                                                      <div className="flex items-center gap-1.5">
+                                                        <input
+                                                          type="number"
+                                                          value={topicItem.page || ""}
+                                                          onChange={(e) => handleUpdateTrackerTopicPages(selectedTrackerSubject, topicItem.name, e.target.value, topicItem.endPage || "")}
+                                                          className={`w-16 p-1.5 rounded-xl text-center text-xs font-bold outline-none ${isDark ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'}`}
+                                                          placeholder="Start"
+                                                        />
+                                                        <span className="text-slate-400">-</span>
+                                                        <input
+                                                          type="number"
+                                                          value={topicItem.endPage || ""}
+                                                          onChange={(e) => handleUpdateTrackerTopicPages(selectedTrackerSubject, topicItem.name, topicItem.page || "", e.target.value)}
+                                                          className={`w-16 p-1.5 rounded-xl text-center text-xs font-bold outline-none ${isDark ? 'neu-pressed-dark text-indigo-400' : 'neu-pressed-light text-indigo-600'}`}
+                                                          placeholder="End"
+                                                        />
+                                                      </div>
+                                                    </div>
+
+                                                    {/* Logged Revision Date Chips Ribbon */}
+                                                    {dates.length > 0 && (
+                                                      <div className="space-y-1.5">
+                                                        <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Logged Revisions ({dates.length}):</span>
+                                                        <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                                                          {dates.map((dateVal, dIdx) => (
+                                                            <span
+                                                              key={dIdx}
+                                                              className={`rounded-lg px-2 py-0.5 text-[9px] font-black flex items-center gap-1 shrink-0 border ${isDark ? 'bg-emerald-950/40 text-emerald-300 border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border-emerald-100'}`}
+                                                            >
+                                                              📅 {formatAppDate(dateVal)}
+                                                              <button
+                                                                onClick={() => handleDeleteTrackerStudyDate(selectedTrackerSubject, topicItem.name, dIdx)}
+                                                                className="hover:text-rose-500 transition font-bold"
+                                                              >
+                                                                ✖
+                                                              </button>
+                                                            </span>
+                                                          ))}
+                                                        </div>
+                                                      </div>
+                                                    )}
+
+                                                    {/* Session Logger & Secondary Action Row */}
+                                                    <div className="flex items-center gap-2 pt-1">
+                                                      <input
+                                                        type="date"
+                                                        value={selectedDate}
+                                                        onChange={(e) => {
+                                                          trackerLogDateInputs[topicItem.name] = e.target.value;
+                                                          setTrackerLogDateInputs({ ...trackerLogDateInputs });
+                                                        }}
+                                                        className={`p-1.5 rounded-xl text-[10px] font-bold outline-none flex-grow ${isDark ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-slate-800'}`}
+                                                      />
+                                                      <motion.button
+                                                        whileHover={{ scale: 1.02 }}
+                                                        whileTap={{ scale: 0.95 }}
+                                                        onClick={() => handleLogTrackerStudyDate(selectedTrackerSubject, topicItem.name, selectedDate)}
+                                                        className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition shrink-0 ${isDark ? 'neu-btn-dark text-emerald-400' : 'bg-emerald-600 text-white shadow-sm'}`}
+                                                      >
+                                                        Log Date
+                                                      </motion.button>
+                                                      <button
+                                                        title="Schedule review"
+                                                        onClick={() => {
+                                                          const topicLabel = `${selectedTrackerSubject}: ${topicItem.name}`;
+                                                          setSchedulerEditingTask({
+                                                            date: todayStr,
+                                                            id: null,
+                                                            topic: topicLabel,
+                                                            startTime: '09:00',
+                                                            endTime: '10:00',
+                                                            color: 'blue',
+                                                            completed: false,
+                                                            notes: ""
+                                                          });
+                                                          setCurrentTab('studyScheduler');
+                                                        }}
+                                                        className={`p-2 rounded-xl transition ${isDark ? 'text-blue-400 neu-pressed-dark' : 'text-blue-600 bg-blue-50'}`}
+                                                      >
+                                                        <Calendar className="w-3.5 h-3.5" />
+                                                      </button>
+                                                      <button
+                                                        title="Delete topic"
+                                                        onClick={() => {
+                                                          if (window.confirm(`Delete topic "${topicItem.name}"?`)) {
+                                                            handleDeleteTrackerTopic(selectedTrackerSubject, topicItem.name);
+                                                          }
+                                                        }}
+                                                        className={`p-2 rounded-xl transition ${isDark ? 'text-rose-400 neu-pressed-dark' : 'text-rose-600 bg-rose-50'}`}
+                                                      >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                      </button>
+                                                    </div>
+                                                  </motion.div>
+                                                )}
+                                              </AnimatePresence>
+                                            </motion.div>
+                                          );
+                                        })}
+                                      </AnimatePresence>
+                                    );
+                                  })()}
+                                </div>
+                              </>
+                            ) : (
+                              /* Mobile Source & AI Tools Tab */
+                              <div className="space-y-4">
+                                {/* Primary Source Card */}
+                                <div className={`p-4 rounded-3xl space-y-3 transition-all ${isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-800 border-slate-200'}`}>
+                                  <label className={`block text-[9px] font-black uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Primary Source Material</label>
+                                  <div className="flex gap-2 items-center w-full">
+                                    <input
+                                      type="text"
+                                      placeholder="e.g. Marrow + First Aid"
+                                      value={
+                                        trackerSourceInputs[selectedTrackerSubject] !== undefined
+                                          ? trackerSourceInputs[selectedTrackerSubject]
+                                          : (subjectTrackerData.find(p => p.id === selectedTrackerSubject.trim().toLowerCase())?.primarySource || "")
+                                      }
+                                      onChange={(e) => {
+                                        setTrackerSourceInputs(prev => ({
+                                          ...prev,
+                                          [selectedTrackerSubject]: e.target.value
+                                        }));
+                                      }}
+                                      onBlur={() => {
+                                        const sourceVal = trackerSourceInputs[selectedTrackerSubject] !== undefined
+                                          ? trackerSourceInputs[selectedTrackerSubject]
+                                          : (subjectTrackerData.find(p => p.id === selectedTrackerSubject.trim().toLowerCase())?.primarySource || "");
+                                        handleSavePrimarySource(selectedTrackerSubject, sourceVal);
+                                      }}
+                                      className={`w-0 min-w-0 flex-grow p-2.5 rounded-xl text-xs font-bold outline-none transition ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'}`}
+                                    />
+                                    <motion.button
+                                      whileHover={{ scale: 1.02 }}
+                                      whileTap={{ scale: 0.95 }}
+                                      onClick={() => {
+                                        const sourceVal = trackerSourceInputs[selectedTrackerSubject] !== undefined
+                                          ? trackerSourceInputs[selectedTrackerSubject]
+                                          : (subjectTrackerData.find(p => p.id === selectedTrackerSubject.trim().toLowerCase())?.primarySource || "");
+                                        handleSavePrimarySource(selectedTrackerSubject, sourceVal);
+                                        alert("Primary source saved!");
+                                      }}
+                                      className={`px-3.5 py-2.5 shrink-0 rounded-xl text-[10px] font-black uppercase tracking-wider transition ${isDark ? 'neu-btn-dark text-blue-400' : 'bg-blue-600 text-white shadow-md'}`}
+                                    >
+                                      Save
+                                    </motion.button>
+                                  </div>
+                                </div>
+
+                                {/* AI Book Index Extractor */}
+                                <div
+                                  tabIndex={0}
+                                  onDragOver={(e) => {
+                                    e.preventDefault();
+                                    setIsTrackerDragOver(true);
+                                  }}
+                                  onDragLeave={() => setIsTrackerDragOver(false)}
+                                  onDrop={(e) => {
+                                    e.preventDefault();
+                                    setIsTrackerDragOver(false);
+                                    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                                      processIndexFiles(e.dataTransfer.files, selectedTrackerSubject);
+                                    }
+                                  }}
+                                  onPaste={(e) => {
+                                    if (e.clipboardData.files && e.clipboardData.files.length > 0) {
+                                      e.preventDefault();
+                                      processIndexFiles(e.clipboardData.files, selectedTrackerSubject);
+                                    }
+                                  }}
+                                  className={`flex flex-col gap-3 rounded-3xl p-5 outline-none transition-all duration-300 ${isDark
+                                    ? 'neu-card-dark bg-gradient-to-br from-slate-900 via-indigo-950/40 to-slate-900 border border-indigo-900/40 text-white'
+                                    : 'neu-card-light bg-gradient-to-br from-violet-50/70 via-white to-indigo-50/70 border border-indigo-100 text-slate-800'
+                                  }`}
+                                >
+                                  <div className="text-left">
+                                    <h4 className={`text-xs font-black flex items-center gap-1.5 ${isDark ? 'text-indigo-300' : 'text-indigo-950'}`}>
+                                      <Sparkles className="w-4 h-4 text-violet-500 animate-pulse" /> AI Book Index Extractor
+                                    </h4>
+                                    <p className={`text-[10px] font-bold mt-1 leading-relaxed ${isDark ? 'text-indigo-300/80' : 'text-indigo-600/80'}`}>
+                                      Upload textbook index images or PDFs to auto-extract topics.
+                                    </p>
+                                  </div>
+                                  <label className={`w-full py-3 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer shadow-md active:scale-95 transition-all flex items-center justify-center gap-1.5 ${isTrackerAiExtracting ? 'opacity-50 pointer-events-none' : ''}`}>
+                                    {isTrackerAiExtracting ? (
+                                      <>
+                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                        Extracting Topics...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Upload className="w-3.5 h-3.5" />
+                                        Upload Index Image / PDF
+                                      </>
+                                    )}
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      multiple={true}
+                                      onChange={(e) => handleUploadIndexImage(e, selectedTrackerSubject)}
+                                      className="hidden"
+                                      disabled={isTrackerAiExtracting}
+                                    />
+                                  </label>
+                                </div>
+                              </div>
+                            )}
                           </>
                         ) : (
                           <div className="w-full">
@@ -27368,8 +27394,8 @@ Return your response strictly as a JSON object matching this schema:
                                 type="button"
                                 onClick={() => setCardGenerationInputMode('image')}
                                 className={`py-2 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-200 active:scale-95 cursor-pointer ${cardGenerationInputMode === 'image'
-                                    ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400 border border-blue-500/30' : 'neu-btn-light text-blue-600 border border-blue-200/70')
-                                    : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200 font-bold' : 'text-gray-500 hover:text-gray-800 font-bold')
+                                  ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400 border border-blue-500/30' : 'neu-btn-light text-blue-600 border border-blue-200/70')
+                                  : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200 font-bold' : 'text-gray-500 hover:text-gray-800 font-bold')
                                   }`}
                               >
                                 <span>🖼️</span> Image Mode
@@ -27378,8 +27404,8 @@ Return your response strictly as a JSON object matching this schema:
                                 type="button"
                                 onClick={() => setCardGenerationInputMode('text')}
                                 className={`py-2 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-200 active:scale-95 cursor-pointer ${cardGenerationInputMode === 'text'
-                                    ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400 border border-blue-500/30' : 'neu-btn-light text-blue-600 border border-blue-200/70')
-                                    : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200 font-bold' : 'text-gray-500 hover:text-gray-800 font-bold')
+                                  ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400 border border-blue-500/30' : 'neu-btn-light text-blue-600 border border-blue-200/70')
+                                  : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200 font-bold' : 'text-gray-500 hover:text-gray-800 font-bold')
                                   }`}
                               >
                                 <span>📝</span> Raw Text Mode
@@ -27393,8 +27419,8 @@ Return your response strictly as a JSON object matching this schema:
                                   type="button"
                                   onClick={() => setRawTextSubMode('pure')}
                                   className={`py-1.5 px-2 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-95 cursor-pointer ${rawTextSubMode === 'pure'
-                                      ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-amber-400 border border-amber-500/30' : 'neu-btn-light text-amber-600 border border-amber-200/70')
-                                      : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-800')
+                                    ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-amber-400 border border-amber-500/30' : 'neu-btn-light text-amber-600 border border-amber-200/70')
+                                    : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-800')
                                     }`}
                                 >
                                   <span>⚡</span> Pure Parser
@@ -27403,8 +27429,8 @@ Return your response strictly as a JSON object matching this schema:
                                   type="button"
                                   onClick={() => setRawTextSubMode('ai')}
                                   className={`py-1.5 px-2 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-95 cursor-pointer ${rawTextSubMode === 'ai'
-                                      ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-purple-400 border border-purple-500/30' : 'neu-btn-light text-purple-600 border border-purple-200/70')
-                                      : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-800')
+                                    ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-purple-400 border border-purple-500/30' : 'neu-btn-light text-purple-600 border border-purple-200/70')
+                                    : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-800')
                                     }`}
                                 >
                                   <span>🧠</span> AI Extractor
@@ -30592,8 +30618,8 @@ Return your response strictly as a JSON object matching this schema:
                                           key={item.id}
                                           onClick={() => setAnalyticsSubTab(item.id)}
                                           className={`py-3 text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-2 transition-colors duration-300 ${isActive
-                                              ? 'text-white font-extrabold'
-                                              : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                                            ? 'text-white font-extrabold'
+                                            : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
                                             }`}
                                         >
                                           <IconComp className="w-4 h-4 shrink-0" />
@@ -30853,8 +30879,8 @@ Return your response strictly as a JSON object matching this schema:
                                               disabled={contributionOffset >= 0}
                                               onClick={() => setContributionOffset(prev => Math.min(0, prev + 1))}
                                               className={`p-1.5 rounded-xl transition-all ${contributionOffset >= 0
-                                                  ? 'opacity-25 cursor-not-allowed text-gray-400'
-                                                  : (isDark ? 'hover:bg-slate-800 text-slate-300 cursor-pointer' : 'hover:bg-gray-200 text-slate-700 cursor-pointer')
+                                                ? 'opacity-25 cursor-not-allowed text-gray-400'
+                                                : (isDark ? 'hover:bg-slate-800 text-slate-300 cursor-pointer' : 'hover:bg-gray-200 text-slate-700 cursor-pointer')
                                                 }`}
                                               title={`Next ${contributionTimeframe.charAt(0).toUpperCase() + contributionTimeframe.slice(1)}`}
                                             >
@@ -30894,8 +30920,8 @@ Return your response strictly as a JSON object matching this schema:
                                                         setContributionOffset(0);
                                                       }}
                                                       className={`relative w-24 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${isActive
-                                                          ? 'text-white font-extrabold'
-                                                          : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                                                        ? 'text-white font-extrabold'
+                                                        : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
                                                         }`}
                                                     >
                                                       <span>{item.label}</span>
@@ -31506,8 +31532,8 @@ Return your response strictly as a JSON object matching this schema:
                                                   disabled={studyIntensityOffset >= 0}
                                                   onClick={() => setStudyIntensityOffset(prev => Math.min(0, prev + 1))}
                                                   className={`p-1.5 rounded-xl transition-all ${studyIntensityOffset >= 0
-                                                      ? 'opacity-25 cursor-not-allowed text-gray-400'
-                                                      : (isDark ? 'hover:bg-slate-800 text-slate-300 cursor-pointer' : 'hover:bg-gray-200 text-slate-700 cursor-pointer')
+                                                    ? 'opacity-25 cursor-not-allowed text-gray-400'
+                                                    : (isDark ? 'hover:bg-slate-800 text-slate-300 cursor-pointer' : 'hover:bg-gray-200 text-slate-700 cursor-pointer')
                                                     }`}
                                                   title={`Next ${studyIntensityTimeframe.charAt(0).toUpperCase() + studyIntensityTimeframe.slice(1)}`}
                                                 >
@@ -31547,8 +31573,8 @@ Return your response strictly as a JSON object matching this schema:
                                                             setStudyIntensityOffset(0);
                                                           }}
                                                           className={`relative w-24 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${isActive
-                                                              ? 'text-white font-extrabold'
-                                                              : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                                                            ? 'text-white font-extrabold'
+                                                            : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
                                                             }`}
                                                         >
                                                           <span>{item.label}</span>
@@ -31600,8 +31626,8 @@ Return your response strictly as a JSON object matching this schema:
                                                           {dayNum}
                                                         </span>
                                                         <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-md ${hours > 0 || qCount > 0 || cardCount > 0
-                                                            ? 'bg-gray-900/80 text-orange-300'
-                                                            : (isDark ? 'bg-slate-800/60 text-slate-500' : 'bg-gray-200/60 text-slate-500')
+                                                          ? 'bg-gray-900/80 text-orange-300'
+                                                          : (isDark ? 'bg-slate-800/60 text-slate-500' : 'bg-gray-200/60 text-slate-500')
                                                           }`}>
                                                           {hours > 0 ? `${formatHoursToHrsMinsShort(hours)}` : (qCount > 0 ? `${qCount}q` : '0h')}
                                                         </span>
@@ -33020,8 +33046,8 @@ Return your response strictly as a JSON object matching this schema:
                                         type="button"
                                         onClick={() => setSelectedCategory(cat)}
                                         className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${selectedCategory === cat
-                                            ? (isDark ? 'neu-btn-accent-dark text-white font-mono scale-105 shadow-md' : 'neu-btn-accent-light text-white font-mono scale-105 shadow-md')
-                                            : (isDark ? 'neu-btn-dark text-gray-300 hover:text-white font-mono' : 'neu-btn-light text-gray-600 hover:text-gray-900 font-mono')
+                                          ? (isDark ? 'neu-btn-accent-dark text-white font-mono scale-105 shadow-md' : 'neu-btn-accent-light text-white font-mono scale-105 shadow-md')
+                                          : (isDark ? 'neu-btn-dark text-gray-300 hover:text-white font-mono' : 'neu-btn-light text-gray-600 hover:text-gray-900 font-mono')
                                           }`}
                                       >
                                         {cat}
@@ -33294,8 +33320,8 @@ Return your response strictly as a JSON object matching this schema:
                                                 className="rounded text-indigo-600 focus:ring-indigo-500 border-indigo-200 mt-0.5 cursor-pointer w-3.5 h-3.5 shrink-0"
                                               />
                                               <span className={`text-[10px] leading-relaxed transition-all ${isChecked
-                                                  ? (isDark ? 'text-gray-500 line-through font-semibold' : 'text-gray-400 line-through font-semibold')
-                                                  : (isDark ? 'text-gray-200 group-hover:text-indigo-300 font-bold' : 'text-gray-800 group-hover:text-indigo-950 font-extrabold')
+                                                ? (isDark ? 'text-gray-500 line-through font-semibold' : 'text-gray-400 line-through font-semibold')
+                                                : (isDark ? 'text-gray-200 group-hover:text-indigo-300 font-bold' : 'text-gray-800 group-hover:text-indigo-950 font-extrabold')
                                                 }`}>
                                                 {task}
                                               </span>
@@ -33455,8 +33481,8 @@ Return your response strictly as a JSON object matching this schema:
                                         key={stat.subject}
                                         onClick={() => setSelectedAnalyticsPytSubject(stat.subject)}
                                         className={`w-full text-left p-4 rounded-2xl border transition-all ${isSelected
-                                            ? (isDark ? 'neu-pressed-dark border border-blue-500/40 scale-[1.01]' : 'neu-pressed-light border border-blue-400 scale-[1.01]')
-                                            : (isDark ? 'neu-card-dark border border-gray-800/80 hover:border-gray-700' : 'neu-card-light hover:border-gray-300')
+                                          ? (isDark ? 'neu-pressed-dark border border-blue-500/40 scale-[1.01]' : 'neu-pressed-light border border-blue-400 scale-[1.01]')
+                                          : (isDark ? 'neu-card-dark border border-gray-800/80 hover:border-gray-700' : 'neu-card-light hover:border-gray-300')
                                           }`}
                                       >
                                         <div className="flex justify-between items-start mb-2">
@@ -33761,8 +33787,8 @@ Return your response strictly as a JSON object matching this schema:
                                       key={fmt.id}
                                       onClick={() => setExportFormat(fmt.id)}
                                       className={`p-4 rounded-2xl flex flex-col justify-between h-28 text-left transition-all active:scale-95 ${exportFormat === fmt.id
-                                          ? 'bg-gradient-to-br from-blue-500/20 to-blue-600/10 border-2 border-blue-500 shadow-lg shadow-blue-500/10'
-                                          : settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'
+                                        ? 'bg-gradient-to-br from-blue-500/20 to-blue-600/10 border-2 border-blue-500 shadow-lg shadow-blue-500/10'
+                                        : settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'
                                         }`}
                                     >
                                       {fmt.icon}
@@ -33784,8 +33810,8 @@ Return your response strictly as a JSON object matching this schema:
                                       key={s.val}
                                       onClick={() => setExportScope(s.val)}
                                       className={`py-2.5 px-3 rounded-xl text-xs font-black transition active:scale-95 ${exportScope === s.val
-                                          ? 'bg-gradient-to-br from-blue-500/20 to-blue-600/10 border-2 border-blue-500 text-blue-500 shadow-md shadow-blue-500/10'
-                                          : settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-500'
+                                        ? 'bg-gradient-to-br from-blue-500/20 to-blue-600/10 border-2 border-blue-500 text-blue-500 shadow-md shadow-blue-500/10'
+                                        : settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-500'
                                         }`}
                                     >
                                       {s.label}
@@ -33880,8 +33906,8 @@ Return your response strictly as a JSON object matching this schema:
 
                         {/* Sticky Prominent Action Bar at the Bottom */}
                         <div className={`sticky bottom-0 left-0 right-0 backdrop-blur-md border-t px-6 lg:px-12 py-5 z-40 flex flex-col md:flex-row items-center justify-between gap-4 shrink-0 max-w-[1400px] mx-auto w-full rounded-t-[2.5rem] border-x ${settingsThemeMode === 'dark'
-                            ? 'bg-[#222730]/95 border-slate-600/40 shadow-[0_-10px_30px_rgba(0,0,0,0.25)]'
-                            : 'bg-[#e6ecf5]/95 border-slate-200/80 shadow-[0_-10px_30px_rgba(0,0,0,0.04)]'
+                          ? 'bg-[#222730]/95 border-slate-600/40 shadow-[0_-10px_30px_rgba(0,0,0,0.25)]'
+                          : 'bg-[#e6ecf5]/95 border-slate-200/80 shadow-[0_-10px_30px_rgba(0,0,0,0.04)]'
                           }`}>
                           <div>
                             <h3 className={`text-sm font-black tracking-tight flex items-center gap-2 ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-800'}`}>
@@ -33895,8 +33921,8 @@ Return your response strictly as a JSON object matching this schema:
                             onClick={() => exportDeck(exportFormat)}
                             disabled={exportCount === 0}
                             className={`w-full md:w-auto px-8 py-3.5 text-xs font-black rounded-2xl transition flex items-center justify-center gap-2.5 active:scale-95 duration-200 ${exportCount === 0
-                                ? settingsThemeMode === 'dark' ? 'bg-slate-700 text-slate-500' : 'bg-slate-200 text-slate-400'
-                                : 'bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-xl shadow-blue-500/30 hover:from-blue-600 hover:to-blue-800'
+                              ? settingsThemeMode === 'dark' ? 'bg-slate-700 text-slate-500' : 'bg-slate-200 text-slate-400'
+                              : 'bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-xl shadow-blue-500/30 hover:from-blue-600 hover:to-blue-800'
                               }`}
                           >
                             <Download className="w-4 h-4" /> Compile & Download Package ({exportCount} cards)
@@ -33948,8 +33974,8 @@ Return your response strictly as a JSON object matching this schema:
                                 type="button"
                                 onClick={() => { setPromptCategoryTab('image'); setSelectedPromptId('default'); }}
                                 className={`py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition ${promptCategoryTab === 'image'
-                                    ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400 border border-blue-500/30' : 'neu-btn-light text-blue-600 border border-blue-200')
-                                    : (settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500')
+                                  ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400 border border-blue-500/30' : 'neu-btn-light text-blue-600 border border-blue-200')
+                                  : (settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500')
                                   }`}
                               >
                                 <span>🖼️</span> Image Extraction Prompts
@@ -33958,8 +33984,8 @@ Return your response strictly as a JSON object matching this schema:
                                 type="button"
                                 onClick={() => { setPromptCategoryTab('text'); setSelectedPromptId('text_default'); }}
                                 className={`py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition ${promptCategoryTab === 'text'
-                                    ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-purple-400 border border-purple-500/30' : 'neu-btn-light text-purple-600 border border-purple-200')
-                                    : (settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500')
+                                  ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-purple-400 border border-purple-500/30' : 'neu-btn-light text-purple-600 border border-purple-200')
+                                  : (settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500')
                                   }`}
                               >
                                 <span>📝</span> Text Extraction Prompts
@@ -35051,10 +35077,92 @@ Return your response strictly as a JSON object matching this schema:
                       </div>
                     )}
 
-
                     {/* SUBJECT TRACKER VIEW (Desktop) */}
                     {currentTab === 'subjectTracker' && (() => {
                       const isDark = settingsThemeMode === 'dark';
+                      const allSubjects = ["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"];
+                      
+                      const subjectCategories = [
+                        { name: "Pre-Clinical", subjects: ["Anatomy", "Physiology", "Biochemistry"] },
+                        { name: "Para-Clinical", subjects: ["Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine"] },
+                        { name: "Clinical", subjects: ["Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"] }
+                      ];
+
+                      const filteredSubjects = subjectSearchQuery.trim()
+                        ? allSubjects.filter(s => s.toLowerCase().includes(subjectSearchQuery.toLowerCase().trim()))
+                        : null;
+
+                      // Active subject metrics
+                      const activeDocId = selectedTrackerSubject.trim().toLowerCase();
+                      const activeDoc = subjectTrackerData.find(p => p.id === activeDocId);
+                      const activeTopicsMap = activeDoc?.topics || {};
+                      const activeTopicsList = Object.values(activeTopicsMap);
+                      const totalTopicsCount = activeTopicsList.length;
+                      const revisedTopicsCount = activeTopicsList.filter(t => (t.studyDates || []).length > 0).length;
+                      const totalRevsCount = activeTopicsList.reduce((acc, t) => acc + (t.studyDates || []).length, 0);
+                      const coveragePercent = totalTopicsCount > 0 ? Math.round((revisedTopicsCount / totalTopicsCount) * 100) : 0;
+
+                      const renderSubjectCard = (sub) => {
+                        const docId = sub.trim().toLowerCase();
+                        const trackerDoc = subjectTrackerData.find(p => p.id === docId);
+                        const primarySource = trackerDoc?.primarySource || "";
+                        const topicsMap = trackerDoc?.topics || {};
+                        const topicsList = Object.values(topicsMap);
+                        const topicsCount = topicsList.length;
+                        const revisedCount = topicsList.filter(t => (t.studyDates || []).length > 0).length;
+                        const subjectPercent = topicsCount > 0 ? Math.round((revisedCount / topicsCount) * 100) : 0;
+                        const isSelected = selectedTrackerSubject === sub;
+
+                        return (
+                          <motion.button
+                            key={sub}
+                            whileHover={{ scale: 1.01 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => setSelectedTrackerSubject(sub)}
+                            className={`w-full text-left p-3.5 rounded-2xl transition-all duration-200 flex flex-col gap-1.5 border ${isSelected
+                              ? isDark
+                                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white neu-pressed-dark border-l-4 border-l-blue-400 shadow-lg shadow-blue-950/60'
+                                : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-l-4 border-l-blue-400 shadow-lg shadow-blue-600/20'
+                              : isDark
+                                ? 'neu-card-dark text-slate-200 border-slate-800 hover:border-slate-700'
+                                : 'neu-card-light text-slate-700 border-slate-200 hover:bg-slate-50'
+                              }`}
+                          >
+                            <div className="flex justify-between items-center w-full">
+                              <span className="text-xs font-black tracking-tight">{sub}</span>
+                              <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${isSelected
+                                ? 'text-white bg-blue-700/50'
+                                : isDark ? 'text-slate-300 bg-slate-800/80' : 'text-slate-600 bg-slate-100'
+                                }`}>
+                                {topicsCount} {topicsCount === 1 ? 'topic' : 'topics'}
+                              </span>
+                            </div>
+
+                            <span className={`text-[9px] truncate max-w-full font-medium ${isSelected ? 'text-blue-100' : isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                              {primarySource ? `📖 ${primarySource}` : "No source set"}
+                            </span>
+
+                            {/* Visual Progress Bar */}
+                            <div className="w-full space-y-0.5 pt-0.5">
+                              <div className="flex justify-between text-[8px] font-black uppercase tracking-wider">
+                                <span className={isSelected ? 'text-blue-200' : isDark ? 'text-slate-400' : 'text-slate-500'}>
+                                  {revisedCount}/{topicsCount} revised
+                                </span>
+                                <span className={isSelected ? 'text-blue-100' : isDark ? 'text-blue-400' : 'text-blue-600'}>
+                                  {subjectPercent}%
+                                </span>
+                              </div>
+                              <div className={`w-full h-1.5 rounded-full overflow-hidden ${isSelected ? 'bg-blue-900/40' : isDark ? 'bg-slate-800' : 'bg-slate-200'}`}>
+                                <div
+                                  className={`h-full transition-all duration-500 rounded-full ${isSelected ? 'bg-white' : 'bg-gradient-to-r from-blue-500 to-indigo-500'}`}
+                                  style={{ width: `${subjectPercent}%` }}
+                                />
+                              </div>
+                            </div>
+                          </motion.button>
+                        );
+                      };
+
                       return (
                         <motion.div
                           initial={{ opacity: 0, y: 16 }}
@@ -35067,57 +35175,63 @@ Return your response strictly as a JSON object matching this schema:
                             initial={{ opacity: 0, x: -12 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ duration: 0.4, delay: 0.05 }}
-                            className={`w-1/3 rounded-3xl p-6 flex flex-col h-full overflow-y-auto custom-scrollbar transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
-                              }`}
+                            className={`w-1/3 rounded-3xl p-5 flex flex-col h-full overflow-y-auto custom-scrollbar transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'}`}
                           >
-                            <div className="mb-6 shrink-0">
-                              <h3 className="text-base font-black tracking-tight flex items-center gap-2">
-                                <div className={`p-2 rounded-xl ${isDark ? 'neu-pressed-dark text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
-                                  <ListChecks className="w-5 h-5" />
-                                </div>
-                                Subject Tracker
-                              </h3>
-                              <p className={`text-[10px] font-bold uppercase tracking-wider mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Select a medical subject to track</p>
+                            <div className="mb-4 shrink-0 space-y-3">
+                              <div className="flex items-center justify-between">
+                                <h3 className="text-base font-black tracking-tight flex items-center gap-2">
+                                  <div className={`p-2 rounded-xl ${isDark ? 'neu-pressed-dark text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
+                                    <ListChecks className="w-5 h-5" />
+                                  </div>
+                                  Subject Tracker
+                                </h3>
+                              </div>
+
+                              {/* Search Subjects Input */}
+                              <div className="relative w-full">
+                                <Search className={`w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+                                <input
+                                  type="text"
+                                  placeholder="Filter subjects..."
+                                  value={subjectSearchQuery}
+                                  onChange={(e) => setSubjectSearchQuery(e.target.value)}
+                                  className={`w-full pl-8 pr-7 py-2 rounded-xl text-xs font-bold outline-none transition ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'}`}
+                                />
+                                {subjectSearchQuery && (
+                                  <button
+                                    onClick={() => setSubjectSearchQuery('')}
+                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 text-xs font-bold"
+                                  >
+                                    ✕
+                                  </button>
+                                )}
+                              </div>
                             </div>
 
-                            <div className="space-y-2 flex-grow">
-                              {["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"].map(sub => {
-                                const docId = sub.trim().toLowerCase();
-                                const trackerDoc = subjectTrackerData.find(p => p.id === docId);
-                                const primarySource = trackerDoc?.primarySource || "";
-                                const topicsCount = trackerDoc && trackerDoc.topics ? Object.keys(trackerDoc.topics).length : 0;
-                                const isSelected = selectedTrackerSubject === sub;
-
-                                return (
-                                  <motion.button
-                                    key={sub}
-                                    whileHover={{ scale: 1.01 }}
-                                    whileTap={{ scale: 0.98 }}
-                                    onClick={() => setSelectedTrackerSubject(sub)}
-                                    className={`w-full text-left p-3.5 rounded-2xl border transition-all duration-200 flex flex-col gap-1 ${isSelected
-                                        ? isDark
-                                          ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white neu-pressed-dark border-blue-500/50 shadow-lg shadow-blue-950/60'
-                                          : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-600/20 border-blue-600'
-                                        : isDark
-                                          ? 'neu-card-dark text-slate-200 border-slate-800 hover:border-slate-700'
-                                          : 'neu-card-light text-slate-700 border-slate-200 hover:bg-slate-50'
-                                      }`}
-                                  >
-                                    <span className="text-xs font-black tracking-tight">{sub}</span>
-                                    <div className="flex justify-between items-center w-full mt-1">
-                                      <span className={`text-[9px] truncate max-w-[70%] font-medium ${isSelected ? 'text-blue-100' : isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                        {primarySource ? `📖 ${primarySource}` : "No source set"}
-                                      </span>
-                                      <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${isSelected
-                                          ? 'text-white bg-blue-700/50'
-                                          : isDark ? 'text-slate-300 bg-slate-800/80' : 'text-slate-600 bg-slate-100'
-                                        }`}>
-                                        {topicsCount} {topicsCount === 1 ? 'topic' : 'topics'}
-                                      </span>
+                            {/* Subject List Area */}
+                            <div className="space-y-4 flex-grow custom-scrollbar">
+                              {filteredSubjects ? (
+                                <div className="space-y-2">
+                                  {filteredSubjects.length > 0 ? (
+                                    filteredSubjects.map(sub => renderSubjectCard(sub))
+                                  ) : (
+                                    <p className={`text-xs font-bold text-center py-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                      No subjects found for "{subjectSearchQuery}"
+                                    </p>
+                                  )}
+                                </div>
+                              ) : (
+                                subjectCategories.map(cat => (
+                                  <div key={cat.name} className="space-y-2">
+                                    <div className={`text-[9px] font-black uppercase tracking-widest px-1 font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                      {cat.name}
                                     </div>
-                                  </motion.button>
-                                );
-                              })}
+                                    <div className="space-y-2">
+                                      {cat.subjects.map(sub => renderSubjectCard(sub))}
+                                    </div>
+                                  </div>
+                                ))
+                              )}
                             </div>
                           </motion.div>
 
@@ -35126,19 +35240,32 @@ Return your response strictly as a JSON object matching this schema:
                             initial={{ opacity: 0, x: 12 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ duration: 0.4, delay: 0.1 }}
-                            className={`w-2/3 rounded-3xl p-6 flex flex-col h-full overflow-hidden relative transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
-                              }`}
+                            className={`w-2/3 rounded-3xl p-6 flex flex-col h-full overflow-hidden relative transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'}`}
                           >
-                            <div className={`flex justify-between items-center border-b pb-4 mb-6 shrink-0 ${isDark ? 'border-slate-750' : 'border-slate-200/80'}`}>
+                            {/* Sticky Header Bar with Title & Stats Summary */}
+                            <div className={`flex justify-between items-center border-b pb-4 mb-5 shrink-0 ${isDark ? 'border-slate-750' : 'border-slate-200/80'}`}>
                               <div>
                                 <span className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>Active Workspace</span>
-                                <h2 className="text-xl font-black tracking-tight mt-0.5">
-                                  {selectedTrackerSubject} Tracking
+                                <h2 className="text-xl font-black tracking-tight mt-0.5 flex items-center gap-3">
+                                  <span>{selectedTrackerSubject} Tracking</span>
                                 </h2>
+
+                                {/* Quick Stats Summary Pills */}
+                                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                  <span className={`text-[9px] font-black px-2.5 py-1 rounded-xl border flex items-center gap-1 ${isDark ? 'neu-pressed-dark text-blue-300 border-slate-800' : 'neu-pressed-light text-blue-700 border-slate-200'}`}>
+                                    📌 {revisedTopicsCount}/{totalTopicsCount} Topics
+                                  </span>
+                                  <span className={`text-[9px] font-black px-2.5 py-1 rounded-xl border flex items-center gap-1 ${isDark ? 'neu-pressed-dark text-amber-400 border-slate-800' : 'neu-pressed-light text-amber-700 border-slate-200'}`}>
+                                    🔥 {totalRevsCount} Revs
+                                  </span>
+                                  <span className={`text-[9px] font-black px-2.5 py-1 rounded-xl border flex items-center gap-1 ${isDark ? 'neu-pressed-dark text-emerald-400 border-slate-800' : 'neu-pressed-light text-emerald-700 border-slate-200'}`}>
+                                    📈 {coveragePercent}% Coverage
+                                  </span>
+                                </div>
                               </div>
+
                               {/* Subtab Switcher Pill */}
-                              <div className={`relative flex items-center p-1 rounded-2xl shrink-0 ${isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'
-                                }`}>
+                              <div className={`relative flex items-center p-1 rounded-2xl shrink-0 ${isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'}`}>
                                 <div
                                   className="absolute top-1 bottom-1 rounded-xl bg-blue-600 shadow-md transition-all"
                                   style={{
@@ -35149,16 +35276,14 @@ Return your response strictly as a JSON object matching this schema:
                                 />
                                 <button
                                   onClick={() => setSubjectTrackerSubTab('manager')}
-                                  className={`relative z-10 px-4 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center gap-1.5 ${subjectTrackerSubTab === 'manager' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
-                                    }`}
+                                  className={`relative z-10 px-4 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center gap-1.5 ${subjectTrackerSubTab === 'manager' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'}`}
                                 >
                                   <ListChecks className="w-3.5 h-3.5" />
                                   Manager
                                 </button>
                                 <button
                                   onClick={() => setSubjectTrackerSubTab('coverage')}
-                                  className={`relative z-10 px-4 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center gap-1.5 ${subjectTrackerSubTab === 'coverage' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
-                                    }`}
+                                  className={`relative z-10 px-4 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center gap-1.5 ${subjectTrackerSubTab === 'coverage' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'}`}
                                 >
                                   <Layers className="w-3.5 h-3.5" />
                                   Coverage
@@ -35167,16 +35292,14 @@ Return your response strictly as a JSON object matching this schema:
                             </div>
 
                             {subjectTrackerSubTab === 'manager' ? (
-                              <div className="flex-grow flex gap-6 min-h-0 p-3.5">
+                              <div className="flex-grow flex gap-6 min-h-0 p-1">
                                 {/* Left Side: Topic Checklist & Actions */}
-                                <div className={`w-7/12 flex flex-col h-full min-h-0 rounded-2xl p-5 space-y-4 ${isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-800 border-slate-200'
-                                  }`}>
+                                <div className={`w-7/12 flex flex-col h-full min-h-0 rounded-2xl p-5 space-y-4 ${isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-800 border-slate-200'}`}>
                                   <div className="flex justify-between items-center shrink-0">
                                     <label className={`text-[10px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Tracked Topics Checklist</label>
 
                                     {/* Sort Toggle Pill */}
-                                    <div className={`relative grid grid-cols-3 p-1 rounded-xl text-[9px] font-black uppercase tracking-wider w-[220px] ${isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'
-                                      }`}>
+                                    <div className={`relative grid grid-cols-3 p-1 rounded-xl text-[9px] font-black uppercase tracking-wider w-[220px] ${isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'}`}>
                                       <div
                                         className="absolute top-1 bottom-1 rounded-lg bg-blue-600 shadow-sm transition-all"
                                         style={{
@@ -35188,24 +35311,21 @@ Return your response strictly as a JSON object matching this schema:
                                       <button
                                         type="button"
                                         onClick={() => setTrackerSortBy('page')}
-                                        className={`relative z-10 py-1 text-center truncate transition-colors duration-200 ${trackerSortBy === 'page' ? 'text-white font-black' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
-                                          }`}
+                                        className={`relative z-10 py-1 text-center truncate transition-colors duration-200 ${trackerSortBy === 'page' ? 'text-white font-black' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'}`}
                                       >
                                         Page #
                                       </button>
                                       <button
                                         type="button"
                                         onClick={() => setTrackerSortBy('uncompleted')}
-                                        className={`relative z-10 py-1 text-center truncate transition-colors duration-200 ${trackerSortBy === 'uncompleted' ? 'text-white font-black' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
-                                          }`}
+                                        className={`relative z-10 py-1 text-center truncate transition-colors duration-200 ${trackerSortBy === 'uncompleted' ? 'text-white font-black' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'}`}
                                       >
                                         Pending
                                       </button>
                                       <button
                                         type="button"
                                         onClick={() => setTrackerSortBy('completed')}
-                                        className={`relative z-10 py-1 text-center truncate transition-colors duration-200 ${trackerSortBy === 'completed' ? 'text-white font-black' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
-                                          }`}
+                                        className={`relative z-10 py-1 text-center truncate transition-colors duration-200 ${trackerSortBy === 'completed' ? 'text-white font-black' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'}`}
                                       >
                                         Done
                                       </button>
@@ -35213,8 +35333,7 @@ Return your response strictly as a JSON object matching this schema:
                                   </div>
 
                                   {/* Add Topic Form Box */}
-                                  <div className={`p-2.5 rounded-2xl border transition-all ${isDark ? 'bg-slate-900/40 border-slate-800 neu-pressed-dark' : 'bg-slate-50/70 border-slate-200/80 neu-pressed-light'
-                                    } shrink-0`}>
+                                  <div className={`p-3 rounded-2xl border transition-all ${isDark ? 'bg-slate-900/40 border-slate-800 neu-pressed-dark' : 'bg-slate-50/70 border-slate-200/80 neu-pressed-light'} shrink-0`}>
                                     <form
                                       onSubmit={(e) => {
                                         e.preventDefault();
@@ -35232,17 +35351,15 @@ Return your response strictly as a JSON object matching this schema:
                                         placeholder="Add topic (e.g. Cranial Nerves)..."
                                         value={trackerNewTopicInput}
                                         onChange={(e) => setTrackerNewTopicInput(e.target.value)}
-                                        className={`flex-grow min-w-0 px-3.5 py-2 rounded-xl text-xs font-bold outline-none transition ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'bg-white border border-slate-200 text-slate-800 placeholder-slate-400 shadow-inner'
-                                          }`}
+                                        className={`flex-grow min-w-0 px-3.5 py-2.5 rounded-xl text-xs font-bold outline-none transition ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'bg-white border border-slate-200 text-slate-800 placeholder-slate-400 shadow-inner'}`}
                                       />
-                                      <div className="flex items-center gap-1 shrink-0">
+                                      <div className="flex items-center gap-1.5 shrink-0">
                                         <input
                                           type="number"
                                           placeholder="Start"
                                           value={trackerNewTopicPage}
                                           onChange={(e) => setTrackerNewTopicPage(e.target.value)}
-                                          className={`w-13 px-1.5 py-2 rounded-xl text-xs font-bold outline-none transition text-center ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'bg-white border border-slate-200 text-slate-800 placeholder-slate-400 shadow-inner'
-                                            }`}
+                                          className={`w-20 px-2.5 py-2.5 rounded-xl text-xs font-bold outline-none transition text-center ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'bg-white border border-slate-200 text-slate-800 placeholder-slate-400 shadow-inner'}`}
                                         />
                                         <span className={`text-xs font-bold ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>-</span>
                                         <input
@@ -35250,16 +35367,15 @@ Return your response strictly as a JSON object matching this schema:
                                           placeholder="End"
                                           value={trackerNewTopicEndPage}
                                           onChange={(e) => setTrackerNewTopicEndPage(e.target.value)}
-                                          className={`w-13 px-1.5 py-2 rounded-xl text-xs font-bold outline-none transition text-center ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'bg-white border border-slate-200 text-slate-800 placeholder-slate-400 shadow-inner'
-                                            }`}
+                                          className={`w-20 px-2.5 py-2.5 rounded-xl text-xs font-bold outline-none transition text-center ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'bg-white border border-slate-200 text-slate-800 placeholder-slate-400 shadow-inner'}`}
                                         />
                                       </div>
                                       <motion.button
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.95 }}
                                         type="submit"
-                                        className={`px-3.5 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition shrink-0 flex items-center gap-1 ${isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-500/20'
-                                          }`}
+                                        title="Press Enter to Add"
+                                        className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition shrink-0 flex items-center gap-1.5 ${isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-500/20'}`}
                                       >
                                         <Plus className="w-3.5 h-3.5" /> Add
                                       </motion.button>
@@ -35267,7 +35383,7 @@ Return your response strictly as a JSON object matching this schema:
                                   </div>
 
                                   {/* List Scroll Area */}
-                                  <div className="flex-grow overflow-y-auto p-3.5 custom-scrollbar space-y-3.5 min-h-0">
+                                  <div className="flex-grow overflow-y-auto p-2 custom-scrollbar space-y-3 min-h-0">
                                     {(() => {
                                       const docId = selectedTrackerSubject.trim().toLowerCase();
                                       const trackerDoc = subjectTrackerData.find(p => p.id === docId);
@@ -35288,7 +35404,15 @@ Return your response strictly as a JSON object matching this schema:
                                             const dates = topicItem.studyDates || [];
                                             const selectedDate = trackerLogDateInputs[topicItem.name] || todayStr;
                                             const isExpanded = !!expandedTrackerTopics[topicItem.name];
-                                            const hasRevisions = dates.length > 0;
+                                            const revCount = dates.length;
+                                            const hasRevisions = revCount > 0;
+
+                                            // Status Accent Left Border based on revisions
+                                            const statusBorderClass = revCount >= 3
+                                              ? 'border-l-4 border-l-emerald-500'
+                                              : revCount >= 1
+                                                ? 'border-l-4 border-l-amber-500'
+                                                : 'border-l-4 border-l-slate-400/60';
 
                                             return (
                                               <motion.div
@@ -35297,14 +35421,13 @@ Return your response strictly as a JSON object matching this schema:
                                                 animate={{ opacity: 1, y: 0, scale: 1 }}
                                                 exit={{ opacity: 0, scale: 0.96 }}
                                                 transition={{ duration: 0.25, delay: Math.min(tIdx * 0.02, 0.2) }}
-                                                className={`rounded-2xl transition-all border ${isDark
-                                                    ? 'neu-card-dark text-white border-slate-800/80 hover:border-slate-750'
-                                                    : 'neu-card-light text-slate-800 border-slate-200/80 hover:border-slate-300'
+                                                className={`rounded-2xl transition-all border ${statusBorderClass} ${isDark
+                                                  ? 'neu-card-dark text-white border-slate-800/80 hover:border-slate-750'
+                                                  : 'neu-card-light text-slate-800 border-slate-200/80 hover:border-slate-300'
                                                   }`}
                                               >
-                                                {/* Main Header Bar (Thin & Scan-friendly) */}
+                                                {/* Main Topic Header */}
                                                 <div className="p-3.5 flex items-center justify-between gap-3 text-left">
-                                                  {/* Left: Status icon & Title */}
                                                   <div className="flex items-center gap-3 min-w-0 flex-grow">
                                                     <button
                                                       onClick={() => {
@@ -35314,20 +35437,20 @@ Return your response strictly as a JSON object matching this schema:
                                                         }));
                                                       }}
                                                       className={`p-1.5 rounded-xl transition shrink-0 ${hasRevisions
-                                                          ? isDark ? 'neu-pressed-dark text-emerald-400' : 'bg-emerald-100 text-emerald-600'
-                                                          : isDark ? 'neu-pressed-dark text-slate-500 hover:text-slate-300' : 'bg-slate-100 text-slate-400 hover:text-slate-600'
+                                                        ? isDark ? 'neu-pressed-dark text-emerald-400' : 'bg-emerald-100 text-emerald-600'
+                                                        : isDark ? 'neu-pressed-dark text-slate-500 hover:text-slate-300' : 'bg-slate-100 text-slate-400 hover:text-slate-600'
                                                         }`}
                                                     >
                                                       <CheckCircle2 className="w-4 h-4" />
                                                     </button>
                                                     <div className="min-w-0">
                                                       <div className="flex items-center gap-2 flex-wrap">
-                                                        <h4 className="text-xs font-black tracking-tight leading-snug truncate max-w-[280px]">
+                                                        <h4 className="text-xs font-black tracking-tight leading-snug truncate max-w-[260px]">
                                                           {topicItem.name}
                                                         </h4>
                                                         <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg border ${topicItem.endPage
-                                                            ? isDark ? 'text-emerald-400 bg-emerald-950/40 border-emerald-800/60' : 'text-emerald-700 bg-emerald-50 border-emerald-100'
-                                                            : isDark ? 'text-amber-400 bg-amber-950/40 border-amber-800/60' : 'text-amber-700 bg-amber-50 border-amber-100'
+                                                          ? isDark ? 'text-emerald-400 bg-emerald-950/40 border-emerald-800/60' : 'text-emerald-700 bg-emerald-50 border-emerald-100'
+                                                          : isDark ? 'text-amber-400 bg-amber-950/40 border-amber-800/60' : 'text-amber-700 bg-amber-50 border-amber-100'
                                                           }`}>
                                                           {topicItem.page ? `p. ${topicItem.page}${topicItem.endPage ? `–${topicItem.endPage}` : ''}` : 'No pgs'} ({getTopicWeight(topicItem, topicsList)} pgs)
                                                         </span>
@@ -35335,9 +35458,8 @@ Return your response strictly as a JSON object matching this schema:
                                                     </div>
                                                   </div>
 
-                                                  {/* Right: Revision count badge & Action Buttons */}
+                                                  {/* Right: Revision badge & Action buttons */}
                                                   <div className="flex items-center gap-1.5 shrink-0">
-                                                    {/* Revision Count Badge */}
                                                     <button
                                                       onClick={() => {
                                                         setExpandedTrackerTopics(prev => ({
@@ -35346,27 +35468,24 @@ Return your response strictly as a JSON object matching this schema:
                                                         }));
                                                       }}
                                                       className={`px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-wider transition flex items-center gap-1.5 ${hasRevisions
-                                                          ? isDark ? 'neu-pressed-dark text-blue-400 border border-blue-900/50' : 'bg-blue-50 text-blue-600 border border-blue-100'
-                                                          : isDark ? 'neu-pressed-dark text-slate-400' : 'bg-slate-100 text-slate-500'
+                                                        ? isDark ? 'neu-pressed-dark text-blue-400 border border-blue-900/50' : 'bg-blue-50 text-blue-600 border border-blue-100'
+                                                        : isDark ? 'neu-pressed-dark text-slate-400' : 'bg-slate-100 text-slate-500'
                                                         }`}
                                                     >
                                                       <Flame className={`w-3 h-3 ${hasRevisions ? 'text-amber-500' : ''}`} />
                                                       {dates.length} {dates.length === 1 ? 'rev' : 'revs'}
                                                     </button>
 
-                                                    {/* Quick One-Click Log Today Button */}
                                                     <motion.button
                                                       whileHover={{ scale: 1.05 }}
                                                       whileTap={{ scale: 0.92 }}
                                                       title="Log today's revision"
                                                       onClick={() => handleLogTrackerStudyDate(selectedTrackerSubject, topicItem.name, todayStr)}
-                                                      className={`p-1.5 rounded-xl transition ${isDark ? 'neu-btn-dark text-emerald-400 hover:text-emerald-300' : 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'
-                                                        }`}
+                                                      className={`p-1.5 rounded-xl transition ${isDark ? 'neu-btn-dark text-emerald-400 hover:text-emerald-300' : 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'}`}
                                                     >
                                                       <Plus className="w-3.5 h-3.5" />
                                                     </motion.button>
 
-                                                    {/* Schedule Button */}
                                                     <button
                                                       title="Schedule review session"
                                                       onClick={() => {
@@ -35388,7 +35507,6 @@ Return your response strictly as a JSON object matching this schema:
                                                       <Calendar className="w-3.5 h-3.5" />
                                                     </button>
 
-                                                    {/* Toggle Expand Details Button */}
                                                     <button
                                                       onClick={() => {
                                                         setExpandedTrackerTopics(prev => ({
@@ -35401,7 +35519,6 @@ Return your response strictly as a JSON object matching this schema:
                                                       <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${isExpanded ? 'rotate-180 text-blue-500' : ''}`} />
                                                     </button>
 
-                                                    {/* Delete Topic Button */}
                                                     <button
                                                       title="Delete topic"
                                                       onClick={() => {
@@ -35416,7 +35533,7 @@ Return your response strictly as a JSON object matching this schema:
                                                   </div>
                                                 </div>
 
-                                                {/* Expandable Drawer (Page Number Editing & Date Logger) */}
+                                                {/* Expanded Topic Drawer */}
                                                 <AnimatePresence>
                                                   {isExpanded && (
                                                     <motion.div
@@ -35424,10 +35541,9 @@ Return your response strictly as a JSON object matching this schema:
                                                       animate={{ height: 'auto', opacity: 1 }}
                                                       exit={{ height: 0, opacity: 0 }}
                                                       transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                                                      className={`overflow-hidden border-t px-4 py-3 space-y-3 ${isDark ? 'border-slate-800 bg-slate-900/60' : 'border-slate-100 bg-slate-50/70'
-                                                        }`}
+                                                      className={`overflow-hidden border-t px-4 py-3 space-y-3 ${isDark ? 'border-slate-800 bg-slate-900/60' : 'border-slate-100 bg-slate-50/70'}`}
                                                     >
-                                                      {/* Page Range Settings */}
+                                                      {/* Page Config */}
                                                       <div className="flex items-center gap-3 flex-wrap text-xs font-bold">
                                                         <span className={`text-[9px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Pages Config:</span>
                                                         <div className="flex items-center gap-1.5">
@@ -35436,8 +35552,7 @@ Return your response strictly as a JSON object matching this schema:
                                                             type="number"
                                                             value={topicItem.page || ""}
                                                             onChange={(e) => handleUpdateTrackerTopicPages(selectedTrackerSubject, topicItem.name, e.target.value, topicItem.endPage || "")}
-                                                            className={`w-20 p-1.5 rounded-xl text-center text-xs font-bold outline-none ${isDark ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'
-                                                              }`}
+                                                            className={`w-20 p-1.5 rounded-xl text-center text-xs font-bold outline-none ${isDark ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'}`}
                                                             placeholder="Start"
                                                           />
                                                         </div>
@@ -35447,23 +35562,21 @@ Return your response strictly as a JSON object matching this schema:
                                                             type="number"
                                                             value={topicItem.endPage || ""}
                                                             onChange={(e) => handleUpdateTrackerTopicPages(selectedTrackerSubject, topicItem.name, topicItem.page || "", e.target.value)}
-                                                            className={`w-20 p-1.5 rounded-xl text-center text-xs font-bold outline-none ${isDark ? 'neu-pressed-dark text-indigo-400' : 'neu-pressed-light text-indigo-600'
-                                                              }`}
+                                                            className={`w-20 p-1.5 rounded-xl text-center text-xs font-bold outline-none ${isDark ? 'neu-pressed-dark text-indigo-400' : 'neu-pressed-light text-indigo-600'}`}
                                                             placeholder={getTopicEndPagePlaceholder(topicItem, topicsList)}
                                                           />
                                                         </div>
                                                       </div>
 
-                                                      {/* Logged revision history dates tag list */}
+                                                      {/* Logged Revision Dates Horizontal Ribbon */}
                                                       {dates.length > 0 && (
                                                         <div className="space-y-1.5">
                                                           <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Logged Revision Dates ({dates.length}):</span>
-                                                          <div className="flex flex-wrap gap-1.5 items-center">
+                                                          <div className="flex gap-1.5 items-center overflow-x-auto pb-1 custom-scrollbar">
                                                             {dates.map((dateVal, dIdx) => (
                                                               <span
                                                                 key={dIdx}
-                                                                className={`rounded-lg px-2 py-0.5 text-[9px] font-black flex items-center gap-1.5 border ${isDark ? 'bg-emerald-950/40 text-emerald-300 border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                                                                  }`}
+                                                                className={`rounded-lg px-2 py-0.5 text-[9px] font-black flex items-center gap-1.5 shrink-0 border ${isDark ? 'bg-emerald-950/40 text-emerald-300 border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border-emerald-100'}`}
                                                               >
                                                                 📅 {formatAppDate(dateVal)}
                                                                 <button
@@ -35487,8 +35600,7 @@ Return your response strictly as a JSON object matching this schema:
                                                             trackerLogDateInputs[topicItem.name] = e.target.value;
                                                             setTrackerLogDateInputs({ ...trackerLogDateInputs });
                                                           }}
-                                                          className={`p-1.5 rounded-xl text-[10px] font-bold outline-none flex-grow ${isDark ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-slate-800'
-                                                            }`}
+                                                          className={`p-1.5 rounded-xl text-[10px] font-bold outline-none flex-grow ${isDark ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-slate-800'}`}
                                                         />
                                                         <motion.button
                                                           whileHover={{ scale: 1.02 }}
@@ -35496,8 +35608,7 @@ Return your response strictly as a JSON object matching this schema:
                                                           onClick={() => {
                                                             handleLogTrackerStudyDate(selectedTrackerSubject, topicItem.name, selectedDate);
                                                           }}
-                                                          className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition flex items-center gap-1 shrink-0 ${isDark ? 'neu-btn-dark text-emerald-400' : 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'
-                                                            }`}
+                                                          className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition flex items-center gap-1 shrink-0 ${isDark ? 'neu-btn-dark text-emerald-400' : 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'}`}
                                                         >
                                                           <Plus className="w-3 h-3" /> Log Session
                                                         </motion.button>
@@ -35514,16 +35625,15 @@ Return your response strictly as a JSON object matching this schema:
                                   </div>
                                 </div>
 
-                                {/* Right Side: Source material & Gemini extractor */}
-                                <div className="w-5/12 flex flex-col gap-5 overflow-y-auto p-3.5 custom-scrollbar shrink-0">
-                                  {/* Primary Source configuration card */}
-                                  <div className={`p-5 rounded-2xl space-y-3 transition-all ${isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-800 border-slate-200'
-                                    }`}>
+                                {/* Right Side: Primary Source & AI Extractor */}
+                                <div className="w-5/12 flex flex-col gap-4 overflow-y-auto p-1 custom-scrollbar shrink-0">
+                                  {/* Primary Source Card */}
+                                  <div className={`p-4 rounded-2xl space-y-2.5 transition-all ${isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-800 border-slate-200'}`}>
                                     <label className={`text-[10px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Primary Source Material / Textbooks</label>
                                     <div className="flex gap-2 items-center w-full">
                                       <input
                                         type="text"
-                                        placeholder="e.g. Marrow Video Lectures + First Aid USMLE"
+                                        placeholder="e.g. Marrow + First Aid"
                                         value={
                                           trackerSourceInputs[selectedTrackerSubject] !== undefined
                                             ? trackerSourceInputs[selectedTrackerSubject]
@@ -35541,8 +35651,7 @@ Return your response strictly as a JSON object matching this schema:
                                             : (subjectTrackerData.find(p => p.id === selectedTrackerSubject.trim().toLowerCase())?.primarySource || "");
                                           handleSavePrimarySource(selectedTrackerSubject, sourceVal);
                                         }}
-                                        className={`w-0 min-w-0 flex-grow p-3 rounded-xl text-xs font-bold outline-none transition ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'
-                                          }`}
+                                        className={`w-0 min-w-0 flex-grow p-2.5 rounded-xl text-xs font-bold outline-none transition ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'}`}
                                       />
                                       <motion.button
                                         whileHover={{ scale: 1.02 }}
@@ -35554,24 +35663,21 @@ Return your response strictly as a JSON object matching this schema:
                                           handleSavePrimarySource(selectedTrackerSubject, sourceVal);
                                           alert("Primary source saved successfully!");
                                         }}
-                                        className={`px-3.5 py-3 rounded-xl text-xs font-black uppercase tracking-wider transition shrink-0 flex items-center gap-1.5 ${isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300' : 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                                          }`}
+                                        className={`px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition shrink-0 flex items-center gap-1 ${isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300' : 'bg-blue-600 text-white shadow-md shadow-blue-500/20'}`}
                                       >
                                         <Save className="w-3.5 h-3.5" /> Save
                                       </motion.button>
                                     </div>
                                   </div>
 
-                                  {/* AI Book Index Extractor Card */}
+                                  {/* Collapsible AI Extractor Card */}
                                   <div
                                     tabIndex={0}
                                     onDragOver={(e) => {
                                       e.preventDefault();
                                       setIsTrackerDragOver(true);
                                     }}
-                                    onDragLeave={() => {
-                                      setIsTrackerDragOver(false);
-                                    }}
+                                    onDragLeave={() => setIsTrackerDragOver(false)}
                                     onDrop={(e) => {
                                       e.preventDefault();
                                       setIsTrackerDragOver(false);
@@ -35585,40 +35691,51 @@ Return your response strictly as a JSON object matching this schema:
                                         processIndexFiles(e.clipboardData.files, selectedTrackerSubject);
                                       }
                                     }}
-                                    className={`flex flex-col gap-4 rounded-3xl p-5 outline-none transition-all duration-300 ${isDark
-                                        ? 'neu-card-dark bg-gradient-to-br from-slate-900 via-indigo-950/40 to-slate-900 border border-indigo-900/40 text-white'
-                                        : 'neu-card-light bg-gradient-to-br from-violet-50/70 via-white to-indigo-50/70 border border-indigo-100 text-slate-800'
-                                      } ${isTrackerDragOver ? (isDark ? 'border-violet-500/80 bg-violet-950/40 scale-[1.02]' : 'border-violet-400 bg-violet-100/50 scale-[1.02]') : ''}`}
+                                    className={`flex flex-col gap-3 rounded-2xl p-4 outline-none transition-all duration-300 ${isDark
+                                      ? 'neu-card-dark bg-gradient-to-br from-slate-900 via-indigo-950/40 to-slate-900 border border-indigo-900/40 text-white'
+                                      : 'neu-card-light bg-gradient-to-br from-violet-50/70 via-white to-indigo-50/70 border border-indigo-100 text-slate-800'
+                                      } ${isTrackerDragOver ? (isDark ? 'border-violet-500/80 bg-violet-950/40 scale-[1.01]' : 'border-violet-400 bg-violet-100/50 scale-[1.01]') : ''}`}
                                   >
-                                    <div className="text-left">
+                                    <div className="flex justify-between items-center text-left">
                                       <h4 className={`text-xs font-black flex items-center gap-1.5 ${isDark ? 'text-indigo-300' : 'text-indigo-950'}`}>
-                                        <Sparkles className="w-4 h-4 text-violet-500 animate-pulse" /> AI Book Index Extractor
+                                        <Sparkles className="w-4 h-4 text-violet-500 animate-pulse" /> AI Index Extractor
                                       </h4>
-                                      <p className={`text-[10px] font-bold mt-1 leading-relaxed ${isDark ? 'text-indigo-300/80' : 'text-indigo-600/80'}`}>
-                                        Drag & drop multiple index pages, paste images, or click to upload.
-                                      </p>
+                                      <button
+                                        onClick={() => setIsAiExtractorCollapsed(!isAiExtractorCollapsed)}
+                                        className={`p-1 rounded-lg transition ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-400 hover:text-slate-800'}`}
+                                      >
+                                        {isAiExtractorCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+                                      </button>
                                     </div>
-                                    <label className={`w-full py-3 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white text-xs font-black uppercase tracking-wider rounded-2xl cursor-pointer shadow-lg shadow-indigo-600/10 active:scale-95 transition-all flex items-center justify-center gap-2 ${isTrackerAiExtracting ? 'opacity-50 pointer-events-none' : ''}`}>
-                                      {isTrackerAiExtracting ? (
-                                        <>
-                                          <Loader2 className="w-4 h-4 animate-spin" />
-                                          Extracting topics...
-                                        </>
-                                      ) : (
-                                        <>
-                                          <Upload className="w-4 h-4" />
-                                          Upload Index Page
-                                        </>
-                                      )}
-                                      <input
-                                        type="file"
-                                        accept="image/*"
-                                        multiple={true}
-                                        onChange={(e) => handleUploadIndexImage(e, selectedTrackerSubject)}
-                                        className="hidden"
-                                        disabled={isTrackerAiExtracting}
-                                      />
-                                    </label>
+
+                                    {!isAiExtractorCollapsed && (
+                                      <>
+                                        <p className={`text-[10px] font-bold leading-relaxed ${isDark ? 'text-indigo-300/80' : 'text-indigo-600/80'}`}>
+                                          Drag & drop index pages, paste screenshots, or upload files to auto-extract topics.
+                                        </p>
+                                        <label className={`w-full py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer shadow-md active:scale-95 transition-all flex items-center justify-center gap-1.5 ${isTrackerAiExtracting ? 'opacity-50 pointer-events-none' : ''}`}>
+                                          {isTrackerAiExtracting ? (
+                                            <>
+                                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                              Extracting topics...
+                                            </>
+                                          ) : (
+                                            <>
+                                              <Upload className="w-3.5 h-3.5" />
+                                              Upload Index Page
+                                            </>
+                                          )}
+                                          <input
+                                            type="file"
+                                            accept="image/*"
+                                            multiple={true}
+                                            onChange={(e) => handleUploadIndexImage(e, selectedTrackerSubject)}
+                                            className="hidden"
+                                            disabled={isTrackerAiExtracting}
+                                          />
+                                        </label>
+                                      </>
+                                    )}
                                   </div>
                                 </div>
                               </div>
