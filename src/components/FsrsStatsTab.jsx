@@ -9,21 +9,25 @@ export default function FsrsStatsTab({ subjectTrackerData = [], studyLogs = [], 
 
   // Filter study logs based on selected time range
   const filteredLogs = useMemo(() => {
-    let logsArray = [];
+    let rawFsrsLogs = [];
     if (Array.isArray(studyLogs)) {
-      logsArray = studyLogs;
+      rawFsrsLogs = studyLogs;
     } else if (studyLogs && typeof studyLogs === 'object') {
-      const vals = Object.values(studyLogs);
-      vals.forEach(val => {
-        if (Array.isArray(val)) {
-          logsArray.push(...val);
-        } else if (val && typeof val === 'object') {
-          logsArray.push(val);
+      Object.entries(studyLogs).forEach(([dateKey, dayLog]) => {
+        if (Array.isArray(dayLog)) {
+          rawFsrsLogs.push(...dayLog);
+        } else if (dayLog && typeof dayLog === 'object') {
+          if (Array.isArray(dayLog.fsrsLogs)) {
+            rawFsrsLogs.push(...dayLog.fsrsLogs);
+          } else if (dayLog.rating) {
+            rawFsrsLogs.push(dayLog);
+          }
         }
       });
     }
 
-    if (logsArray.length === 0) return [];
+    if (rawFsrsLogs.length === 0) return [];
+
     const now = new Date();
     let cutoff = new Date();
 
@@ -32,9 +36,12 @@ export default function FsrsStatsTab({ subjectTrackerData = [], studyLogs = [], 
     else if (timeRange === '1Y') cutoff.setDate(now.getDate() - 365);
     else cutoff = new Date(0); // All time
 
-    return logsArray.filter(log => {
-      if (!log) return false;
-      const logDate = new Date(log.timestamp || log.date || log.createdAt || 0);
+    return rawFsrsLogs.filter(log => {
+      if (!log || typeof log !== 'object') return false;
+      const dateString = log.timestamp || log.dateStr || log.date || log.createdAt;
+      if (!dateString) return true; // If no date, include in All Time
+      const logDate = new Date(dateString);
+      if (isNaN(logDate.getTime())) return true;
       return logDate >= cutoff;
     });
   }, [studyLogs, timeRange]);

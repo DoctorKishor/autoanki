@@ -40,7 +40,7 @@ import SmartReviewHub from './components/SmartReviewHub';
 import { cropAndMaskDiagram } from './utils/imageCropper';
 import { getTopicPageWeight, parsePageNumbers } from './utils/pageUtils';
 import { getLocalSetting, saveLocalSetting, getLocalCards, saveLocalCards, replaceAllLocalCards, saveLocalCard, deleteLocalCard, getLocalPages, saveLocalPages, replaceAllLocalPages, saveLocalPage, deleteLocalPage, getLocalKV, setLocalKV, getLocalPrompts, saveLocalPrompt, deleteLocalPrompt, getAllLocalPytTopics, saveLocalPytTopic, getAllLocalPytProgress, saveLocalPytProgressDoc, getLocalTextbooksMetadata, saveLocalTextbooksMetadata, getLocalStudyLogs, saveLocalStudyLog, replaceAllLocalStudyLogs, getLocalSubjectTrackerData, saveLocalSubjectTrackerDoc, replaceAllLocalSubjectTrackerData, getLocalStudySchedule, saveLocalScheduleEntry, replaceAllLocalStudySchedule, getFSRSConfig, saveFSRSConfig, DEFAULT_FSRS_CONFIG } from './services/localDb';
-import { calculateNextFSRSState, calculateInitialState, DEFAULT_FSRS6_WEIGHTS, getTopicPageLength } from './services/fsrsEngine';
+import { calculateNextFSRSState, calculateInitialState, DEFAULT_FSRS6_WEIGHTS, getTopicPageLength, recalculateTopicFSRSFromLogs } from './services/fsrsEngine';
 import { motion, AnimatePresence } from 'framer-motion';
 import UiverseButton from './components/UiverseButton';
 import UiverseGlassRadio from './components/UiverseGlassRadio';
@@ -12658,39 +12658,63 @@ JSON Format:
     setReviewUndoStack(prev => prev.slice(0, prev.length - 1));
     setReviewRedoStack(prev => [...prev, lastItem]);
 
-    const { docId, previousDoc, topicName, logEntry } = lastItem;
+    const { docId, topicName, logEntry } = lastItem;
 
-    // 1. Optimistically revert Subject Tracker Data state
-    setSubjectTrackerData(prev => {
-      const list = Array.isArray(prev) ? prev : [];
-      const idx = list.findIndex(d => d.id === docId);
-      if (idx >= 0) {
-        return list.map(d => d.id === docId ? previousDoc : d);
-      }
-      return [...list, previousDoc];
-    });
-
-    // Save reverted doc to LocalDB
-    await saveLocalSubjectTrackerDoc(docId, previousDoc).catch(err => {
-      console.error("[LocalDB] Error reverting document:", err);
-    });
-
-    // 2. Synchronize studyLogs state: remove the logEntry on Undo
+    // 1. Synchronize studyLogs state: remove the logEntry on Undo
+    let nextStudyLogs = { ...studyLogs };
     if (logEntry && logEntry.dateStr) {
       const targetDate = logEntry.dateStr;
-      setStudyLogs(prev => {
-        const prevDayLog = prev[targetDate];
-        if (!prevDayLog) return prev;
+      const prevDayLog = nextStudyLogs[targetDate];
+      if (prevDayLog) {
         const filteredFsrsLogs = (prevDayLog.fsrsLogs || []).filter(l => l.id !== logEntry.id);
         const updatedDayLog = {
           ...prevDayLog,
           cards: Math.max(0, (prevDayLog.cards || 0) - 1),
           fsrsLogs: filteredFsrsLogs
         };
+        nextStudyLogs = { ...nextStudyLogs, [targetDate]: updatedDayLog };
         saveLocalStudyLog(targetDate, updatedDayLog).catch(err => console.error("[LocalDB] Error undoing study log:", err));
-        return { ...prev, [targetDate]: updatedDayLog };
-      });
+      }
     }
+    setStudyLogs(nextStudyLogs);
+
+    // 2. Gather ALL remaining FSRS logs for topicName across all dates
+    const remainingLogs = [];
+    Object.values(nextStudyLogs).forEach(dayLog => {
+      if (dayLog && Array.isArray(dayLog.fsrsLogs)) {
+        dayLog.fsrsLogs.forEach(l => {
+          if (l && l.topicName && l.topicName.trim().toLowerCase() === topicName.trim().toLowerCase()) {
+            remainingLogs.push(l);
+          }
+        });
+      }
+    });
+
+    // 3. Recalculate topic FSRS state in subjectTrackerData from remainingLogs
+    setSubjectTrackerData(prev => {
+      const list = Array.isArray(prev) ? prev : [];
+      const idx = list.findIndex(d => d.id === docId);
+      if (idx < 0) return list;
+
+      const existingDoc = list[idx];
+      const topicsMap = JSON.parse(JSON.stringify(existingDoc.topics || {}));
+      const currentTopic = topicsMap[topicName];
+
+      if (currentTopic) {
+        const recalculatedTopic = recalculateTopicFSRSFromLogs(currentTopic, remainingLogs, fsrsConfig, list);
+        topicsMap[topicName] = recalculatedTopic;
+      }
+
+      const updatedDoc = {
+        ...existingDoc,
+        topics: topicsMap,
+        updatedAt: new Date().toISOString()
+      };
+
+      saveLocalSubjectTrackerDoc(docId, updatedDoc).catch(err => console.error("[LocalDB] Error updating subject doc on undo:", err));
+
+      return list.map(d => d.id === docId ? updatedDoc : d);
+    });
 
     setLastRatedToast({
       message: `Undid review for "${topicName}"`,
@@ -12706,37 +12730,60 @@ JSON Format:
     setReviewRedoStack(prev => prev.slice(0, prev.length - 1));
     setReviewUndoStack(prev => [...prev, lastItem]);
 
-    const { docId, updatedDoc, topicName, logEntry } = lastItem;
+    const { docId, topicName, logEntry } = lastItem;
 
-    // 1. Optimistically re-apply Subject Tracker Data state
+    // 1. Synchronize studyLogs state: restore the logEntry on Redo
+    let nextStudyLogs = { ...studyLogs };
+    if (logEntry && logEntry.dateStr) {
+      const targetDate = logEntry.dateStr;
+      const prevDayLog = nextStudyLogs[targetDate] || { questions: 0, cards: 0, hours: 0, pages: 0, gts: [], fsrsLogs: [] };
+      const updatedDayLog = {
+        ...prevDayLog,
+        cards: (prevDayLog.cards || 0) + 1,
+        fsrsLogs: [...(prevDayLog.fsrsLogs || []), logEntry]
+      };
+      nextStudyLogs = { ...nextStudyLogs, [targetDate]: updatedDayLog };
+      saveLocalStudyLog(targetDate, updatedDayLog).catch(err => console.error("[LocalDB] Error redoing study log:", err));
+    }
+    setStudyLogs(nextStudyLogs);
+
+    // 2. Gather ALL FSRS logs for topicName
+    const topicLogs = [];
+    Object.values(nextStudyLogs).forEach(dayLog => {
+      if (dayLog && Array.isArray(dayLog.fsrsLogs)) {
+        dayLog.fsrsLogs.forEach(l => {
+          if (l && l.topicName && l.topicName.trim().toLowerCase() === topicName.trim().toLowerCase()) {
+            topicLogs.push(l);
+          }
+        });
+      }
+    });
+
+    // 3. Recalculate topic FSRS state in subjectTrackerData
     setSubjectTrackerData(prev => {
       const list = Array.isArray(prev) ? prev : [];
       const idx = list.findIndex(d => d.id === docId);
-      if (idx >= 0) {
-        return list.map(d => d.id === docId ? updatedDoc : d);
+      if (idx < 0) return list;
+
+      const existingDoc = list[idx];
+      const topicsMap = JSON.parse(JSON.stringify(existingDoc.topics || {}));
+      const currentTopic = topicsMap[topicName];
+
+      if (currentTopic) {
+        const recalculatedTopic = recalculateTopicFSRSFromLogs(currentTopic, topicLogs, fsrsConfig, list);
+        topicsMap[topicName] = recalculatedTopic;
       }
-      return [...list, updatedDoc];
-    });
 
-    // Save updated doc to LocalDB
-    await saveLocalSubjectTrackerDoc(docId, updatedDoc).catch(err => {
-      console.error("[LocalDB] Error re-applying document:", err);
-    });
+      const updatedDoc = {
+        ...existingDoc,
+        topics: topicsMap,
+        updatedAt: new Date().toISOString()
+      };
 
-    // 2. Synchronize studyLogs state: restore the logEntry on Redo
-    if (logEntry && logEntry.dateStr) {
-      const targetDate = logEntry.dateStr;
-      setStudyLogs(prev => {
-        const prevDayLog = prev[targetDate] || { questions: 0, cards: 0, hours: 0, pages: 0, gts: [], fsrsLogs: [] };
-        const updatedDayLog = {
-          ...prevDayLog,
-          cards: (prevDayLog.cards || 0) + 1,
-          fsrsLogs: [...(prevDayLog.fsrsLogs || []), logEntry]
-        };
-        saveLocalStudyLog(targetDate, updatedDayLog).catch(err => console.error("[LocalDB] Error redoing study log:", err));
-        return { ...prev, [targetDate]: updatedDayLog };
-      });
-    }
+      saveLocalSubjectTrackerDoc(docId, updatedDoc).catch(err => console.error("[LocalDB] Error updating subject doc on redo:", err));
+
+      return list.map(d => d.id === docId ? updatedDoc : d);
+    });
 
     setLastRatedToast({
       message: `Redid review for "${topicName}"`,
