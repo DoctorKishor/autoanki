@@ -22000,7 +22000,14 @@ Return your response strictly as a JSON object matching this schema:
 
                   {/* STUDY ROOM COMPANION VIEW */}
                   {currentTab === 'studyRoom' && (
-                    <div className="flex flex-col space-y-4 pb-24 text-left">
+                    <motion.div
+                      key="study-room-tab"
+                      initial={{ opacity: 0, y: 16, scale: 0.98 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -12, scale: 0.98 }}
+                      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                      className={`flex flex-col space-y-4 pb-24 text-left p-1 transition-colors duration-300 ${isDark ? 'text-slate-100' : 'text-slate-800'}`}
+                    >
 
                       {/* Header Card */}
                       <div className="bg-gradient-to-r from-orange-500 to-amber-500 p-5 rounded-3xl text-white shadow-xl shadow-orange-500/10 flex items-center gap-4 relative overflow-hidden shrink-0">
@@ -22020,24 +22027,41 @@ Return your response strictly as a JSON object matching this schema:
                       </div>
 
                       {/* Segmented Sub-Tab Switcher */}
-                      <div className="bg-white p-1 rounded-2xl border border-gray-150 shadow-sm grid grid-cols-3 gap-1 shrink-0 font-extrabold text-[9px] uppercase tracking-wider">
+                      <div className={`p-1 rounded-2xl grid grid-cols-3 gap-1 shrink-0 font-extrabold text-[9px] uppercase tracking-wider transition-colors duration-300 ${
+                        isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70 bg-slate-200/60'
+                      }`}>
                         <button
                           onClick={() => setCompanionSubTab('timeline')}
-                          className={`py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 ${companionSubTab === 'timeline' ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-50'}`}
+                          style={{ transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)' }}
+                          className={`py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition ${
+                            companionSubTab === 'timeline'
+                              ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md font-black'
+                              : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
+                          }`}
                         >
                           <Flame className="w-3.5 h-3.5" />
                           Sprints
                         </button>
                         <button
                           onClick={() => setCompanionSubTab('scanner')}
-                          className={`py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 ${companionSubTab === 'scanner' ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-50'}`}
+                          style={{ transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)' }}
+                          className={`py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition ${
+                            companionSubTab === 'scanner'
+                              ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md font-black'
+                              : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
+                          }`}
                         >
                           <Camera className="w-3.5 h-3.5" />
                           Scanner
                         </button>
                         <button
                           onClick={() => setCompanionSubTab('pomodoro')}
-                          className={`py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 ${companionSubTab === 'pomodoro' ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-50'}`}
+                          style={{ transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)' }}
+                          className={`py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition ${
+                            companionSubTab === 'pomodoro'
+                              ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md font-black'
+                              : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
+                          }`}
                         >
                           <Clock className="w-3.5 h-3.5" />
                           Pomodoro
@@ -22055,63 +22079,73 @@ Return your response strictly as a JSON object matching this schema:
                             return (
                               <div className="grid grid-cols-4 gap-1.5 w-full shrink-0">
                                 {/* Focus Hours Card */}
-                                <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
-                                  <div className="bg-orange-50 p-1.5 rounded-xl mb-1 text-orange-500">
+                                <div className={`p-3 rounded-2xl flex flex-col items-center justify-center text-center transition-colors duration-300 ${
+                                  isDark ? 'neu-card-dark border border-white/5' : 'neu-card-light border border-white/70'
+                                }`}>
+                                  <div className={`p-1.5 rounded-xl mb-1 ${isDark ? 'bg-orange-500/10 text-orange-400' : 'bg-orange-50 text-orange-500'}`}>
                                     <Clock className="w-4 h-4 stroke-[2.5]" />
                                   </div>
-                                  <span className="text-[16px] font-black text-gray-800 leading-none font-mono">
+                                  <span className={`text-[16px] font-black leading-none font-mono ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
                                     {todayLog.hours || 0}
                                   </span>
-                                  <span className="text-[7px] font-black text-gray-400 uppercase tracking-widest mt-1">Hours Logged</span>
+                                  <span className={`text-[7px] font-black uppercase tracking-widest mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Hours Logged</span>
                                 </div>
 
                                 {/* Questions Card */}
-                                <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
-                                  <div className="bg-emerald-50 p-1.5 rounded-xl mb-1 text-emerald-500">
+                                <div className={`p-3 rounded-2xl flex flex-col items-center justify-center text-center transition-colors duration-300 ${
+                                  isDark ? 'neu-card-dark border border-white/5' : 'neu-card-light border border-white/70'
+                                }`}>
+                                  <div className={`p-1.5 rounded-xl mb-1 ${isDark ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-500'}`}>
                                     <BookOpen className="w-4 h-4 stroke-[2.5]" />
                                   </div>
-                                  <span className="text-[16px] font-black text-gray-800 leading-none font-mono">
+                                  <span className={`text-[16px] font-black leading-none font-mono ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
                                     {todayLog.questions || 0}
                                   </span>
-                                  <span className="text-[7px] font-black text-gray-400 uppercase tracking-widest mt-1">Qs Solved</span>
+                                  <span className={`text-[7px] font-black uppercase tracking-widest mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Qs Solved</span>
                                 </div>
 
                                 {/* Cards Reviewed Card */}
-                                <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
-                                  <div className="bg-blue-50 p-1.5 rounded-xl mb-1 text-blue-500">
+                                <div className={`p-3 rounded-2xl flex flex-col items-center justify-center text-center transition-colors duration-300 ${
+                                  isDark ? 'neu-card-dark border border-white/5' : 'neu-card-light border border-white/70'
+                                }`}>
+                                  <div className={`p-1.5 rounded-xl mb-1 ${isDark ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-50 text-blue-500'}`}>
                                     <Activity className="w-4 h-4 stroke-[2.5]" />
                                   </div>
-                                  <span className="text-[16px] font-black text-gray-800 leading-none font-mono">
+                                  <span className={`text-[16px] font-black leading-none font-mono ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
                                     {todayLog.cards || 0}
                                   </span>
-                                  <span className="text-[7px] font-black text-gray-400 uppercase tracking-widest mt-1">Cards Done</span>
+                                  <span className={`text-[7px] font-black uppercase tracking-widest mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Cards Done</span>
                                 </div>
 
                                 {/* Pages Read Card */}
-                                <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
-                                  <div className="bg-indigo-50 p-1.5 rounded-xl mb-1 text-indigo-500">
+                                <div className={`p-3 rounded-2xl flex flex-col items-center justify-center text-center transition-colors duration-300 ${
+                                  isDark ? 'neu-card-dark border border-white/5' : 'neu-card-light border border-white/70'
+                                }`}>
+                                  <div className={`p-1.5 rounded-xl mb-1 ${isDark ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-500'}`}>
                                     <BookOpen className="w-4 h-4 stroke-[2.5]" />
                                   </div>
-                                  <span className="text-[16px] font-black text-gray-800 leading-none font-mono">
+                                  <span className={`text-[16px] font-black leading-none font-mono ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
                                     {todayLog.pages || 0}
                                   </span>
-                                  <span className="text-[7px] font-black text-gray-400 uppercase tracking-widest mt-1">Pages Read</span>
+                                  <span className={`text-[7px] font-black uppercase tracking-widest mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Pages Read</span>
                                 </div>
                               </div>
                             );
                           })()}
 
                           {/* Quick Study Session Logger */}
-                          <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm space-y-4">
-                            <div className="flex items-center gap-2 pb-2 border-b border-gray-50">
+                          <div className={`p-5 rounded-3xl space-y-4 transition-colors duration-300 ${
+                            isDark ? 'neu-card-dark border border-white/5' : 'neu-card-light border border-white/70 shadow-md'
+                          }`}>
+                            <div className={`flex items-center gap-2 pb-2 border-b ${isDark ? 'border-white/5' : 'border-slate-100'}`}>
                               <Flame className="w-4 h-4 text-orange-500 fill-current" />
-                              <h3 className="text-[10px] font-black uppercase tracking-wider text-gray-700">Log A Study Session</h3>
+                              <h3 className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Log A Study Session</h3>
                             </div>
 
                             <div className="space-y-3">
                               {/* Hours Input */}
                               <div>
-                                <label className="block text-[8px] font-black uppercase tracking-wider text-gray-400 mb-1">Focus Duration</label>
+                                <label className={`block text-[8px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Focus Duration</label>
                                 <div className="flex gap-2">
                                   <input
                                     type="number"
@@ -22119,7 +22153,11 @@ Return your response strictly as a JSON object matching this schema:
                                     placeholder="e.g. 1.5 hours"
                                     value={mobileSessionHours}
                                     onChange={(e) => setMobileSessionHours(e.target.value)}
-                                    className="flex-grow p-2.5 bg-gray-50 border border-gray-100 rounded-xl focus:ring-4 focus:ring-orange-500/10 outline-none text-xs font-mono font-bold"
+                                    className={`flex-grow p-2.5 rounded-xl outline-none text-xs font-mono font-bold transition ${
+                                      isDark
+                                        ? 'neu-pressed-dark border border-white/5 text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-orange-500/30'
+                                        : 'neu-pressed-light border border-white/70 text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-orange-500/20'
+                                    }`}
                                   />
                                   <div className="flex gap-1 shrink-0">
                                     {['0.5', '1', '2'].map((h) => (
@@ -22129,7 +22167,9 @@ Return your response strictly as a JSON object matching this schema:
                                           const current = Number(prev) || 0;
                                           return String(Math.round((current + Number(h)) * 10) / 10);
                                         })}
-                                        className="px-2 bg-orange-50 text-orange-600 border border-orange-100 rounded-xl text-[9px] font-extrabold hover:bg-orange-100 transition active:scale-95"
+                                        className={`px-2 rounded-xl text-[9px] font-extrabold transition active:scale-95 ${
+                                          isDark ? 'neu-btn-dark text-orange-400 border border-orange-500/20 hover:bg-orange-500/20' : 'neu-btn-light text-orange-600 border border-orange-200 hover:bg-orange-100'
+                                        }`}
                                       >
                                         +{h}h
                                       </button>
@@ -22140,14 +22180,18 @@ Return your response strictly as a JSON object matching this schema:
 
                               {/* Questions Solved */}
                               <div>
-                                <label className="block text-[8px] font-black uppercase tracking-wider text-gray-400 mb-1">Questions Completed</label>
+                                <label className={`block text-[8px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Questions Completed</label>
                                 <div className="flex gap-2">
                                   <input
                                     type="number"
                                     placeholder="e.g. 35 questions"
                                     value={mobileSessionQuestions}
                                     onChange={(e) => setMobileSessionQuestions(e.target.value)}
-                                    className="flex-grow p-2.5 bg-gray-50 border border-gray-100 rounded-xl focus:ring-4 focus:ring-orange-500/10 outline-none text-xs font-mono font-bold"
+                                    className={`flex-grow p-2.5 rounded-xl outline-none text-xs font-mono font-bold transition ${
+                                      isDark
+                                        ? 'neu-pressed-dark border border-white/5 text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-orange-500/30'
+                                        : 'neu-pressed-light border border-white/70 text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-orange-500/20'
+                                    }`}
                                   />
                                   <div className="flex gap-1 shrink-0">
                                     {['10', '25', '50'].map((q) => (
@@ -22157,7 +22201,9 @@ Return your response strictly as a JSON object matching this schema:
                                           const current = Number(prev) || 0;
                                           return String(current + Number(q));
                                         })}
-                                        className="px-2 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-xl text-[9px] font-extrabold hover:bg-emerald-100 transition active:scale-95"
+                                        className={`px-2 rounded-xl text-[9px] font-extrabold transition active:scale-95 ${
+                                          isDark ? 'neu-btn-dark text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20' : 'neu-btn-light text-emerald-600 border border-emerald-200 hover:bg-emerald-100'
+                                        }`}
                                       >
                                         +{q}
                                       </button>
@@ -22168,14 +22214,18 @@ Return your response strictly as a JSON object matching this schema:
 
                               {/* Cards Studied */}
                               <div>
-                                <label className="block text-[8px] font-black uppercase tracking-wider text-gray-400 mb-1">Cards Reviewed</label>
+                                <label className={`block text-[8px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Cards Reviewed</label>
                                 <div className="flex gap-2">
                                   <input
                                     type="number"
                                     placeholder="e.g. 60 cards"
                                     value={mobileSessionCards}
                                     onChange={(e) => setMobileSessionCards(e.target.value)}
-                                    className="flex-grow p-2.5 bg-gray-50 border border-gray-100 rounded-xl focus:ring-4 focus:ring-orange-500/10 outline-none text-xs font-mono font-bold"
+                                    className={`flex-grow p-2.5 rounded-xl outline-none text-xs font-mono font-bold transition ${
+                                      isDark
+                                        ? 'neu-pressed-dark border border-white/5 text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-orange-500/30'
+                                        : 'neu-pressed-light border border-white/70 text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-orange-500/20'
+                                    }`}
                                   />
                                   <div className="flex gap-1 shrink-0">
                                     {['20', '50', '100'].map((c) => (
@@ -22185,7 +22235,9 @@ Return your response strictly as a JSON object matching this schema:
                                           const current = Number(prev) || 0;
                                           return String(current + Number(c));
                                         })}
-                                        className="px-2 bg-blue-50 text-blue-600 border border-blue-100 rounded-xl text-[9px] font-extrabold hover:bg-blue-100 transition active:scale-95"
+                                        className={`px-2 rounded-xl text-[9px] font-extrabold transition active:scale-95 ${
+                                          isDark ? 'neu-btn-dark text-blue-400 border border-blue-500/20 hover:bg-blue-500/20' : 'neu-btn-light text-blue-600 border border-blue-200 hover:bg-blue-100'
+                                        }`}
                                       >
                                         +{c}
                                       </button>
@@ -22196,14 +22248,18 @@ Return your response strictly as a JSON object matching this schema:
 
                               {/* Pages Read */}
                               <div>
-                                <label className="block text-[8px] font-black uppercase tracking-wider text-gray-400 mb-1">Pages Read</label>
+                                <label className={`block text-[8px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Pages Read</label>
                                 <div className="flex gap-2">
                                   <input
                                     type="number"
                                     placeholder="e.g. 15 pages"
                                     value={mobileSessionPages}
                                     onChange={(e) => setMobileSessionPages(e.target.value)}
-                                    className="flex-grow p-2.5 bg-gray-50 border border-gray-100 rounded-xl focus:ring-4 focus:ring-orange-500/10 outline-none text-xs font-mono font-bold"
+                                    className={`flex-grow p-2.5 rounded-xl outline-none text-xs font-mono font-bold transition ${
+                                      isDark
+                                        ? 'neu-pressed-dark border border-white/5 text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-orange-500/30'
+                                        : 'neu-pressed-light border border-white/70 text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-orange-500/20'
+                                    }`}
                                   />
                                   <div className="flex gap-1 shrink-0">
                                     {['5', '10', '25'].map((p) => (
@@ -22213,7 +22269,9 @@ Return your response strictly as a JSON object matching this schema:
                                           const current = Number(prev) || 0;
                                           return String(current + Number(p));
                                         })}
-                                        className="px-2 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-xl text-[9px] font-extrabold hover:bg-indigo-100 transition active:scale-95"
+                                        className={`px-2 rounded-xl text-[9px] font-extrabold transition active:scale-95 ${
+                                          isDark ? 'neu-btn-dark text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20' : 'neu-btn-light text-indigo-600 border border-indigo-200 hover:bg-indigo-100'
+                                        }`}
                                       >
                                         +{p}
                                       </button>
@@ -22240,13 +22298,17 @@ Return your response strictly as a JSON object matching this schema:
                           </div>
 
                           {/* Timeline of Individual Sessions Today */}
-                          <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm space-y-3">
-                            <div className="flex items-center justify-between pb-2 border-b border-gray-50">
+                          <div className={`p-5 rounded-3xl space-y-3 transition-colors duration-300 ${
+                            isDark ? 'neu-card-dark border border-white/5' : 'neu-card-light border border-white/70 shadow-md'
+                          }`}>
+                            <div className={`flex items-center justify-between pb-2 border-b ${isDark ? 'border-white/5' : 'border-slate-100'}`}>
                               <div className="flex items-center gap-2">
                                 <Clock className="w-3.5 h-3.5 text-orange-500" />
-                                <h3 className="text-[10px] font-black uppercase tracking-wider text-gray-700">Today's Sessions Timeline</h3>
+                                <h3 className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Today's Sessions Timeline</h3>
                               </div>
-                              <span className="text-[7px] font-black px-1.5 py-0.5 rounded-full bg-orange-50 text-orange-600 uppercase font-mono tracking-wider">
+                              <span className={`text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase font-mono tracking-wider ${
+                                isDark ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20' : 'bg-orange-50 text-orange-600 border border-orange-200'
+                              }`}>
                                 <button
                                   onClick={() => {
                                     const tzoffset = (new Date()).getTimezoneOffset() * 60000;
@@ -22281,9 +22343,9 @@ Return your response strictly as a JSON object matching this schema:
 
                               if (sessions.length === 0) {
                                 return (
-                                  <div className="py-4 text-center text-gray-400 space-y-1">
-                                    <p className="text-[10px] font-bold">No sessions logged today yet.</p>
-                                    <p className="text-[8px] text-gray-300">Your logged sprints will show here in real-time!</p>
+                                  <div className="py-4 text-center space-y-1">
+                                    <p className={`text-[10px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>No sessions logged today yet.</p>
+                                    <p className={`text-[8px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Your logged sprints will show here in real-time!</p>
                                   </div>
                                 );
                               }
@@ -22291,69 +22353,78 @@ Return your response strictly as a JSON object matching this schema:
                               return (
                                 <div className="space-y-2.5 max-h-[220px] overflow-y-auto pr-1">
                                   {sessions.map((sess, idx) => (
-                                    <div key={sess.id || idx} className="p-3 bg-gray-50 border border-gray-100 rounded-xl flex flex-col gap-2 animate-in fade-in duration-200">
+                                    <div key={sess.id || idx} className={`p-3 rounded-xl flex flex-col gap-2 transition ${
+                                      isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'
+                                    }`}>
                                       <div className="flex items-center justify-between text-xs">
                                         <div className="flex items-center gap-1.5">
                                           <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></span>
-                                          <span className="font-mono font-black text-gray-500 text-[9px]">{sess.timestamp}</span>
+                                          <span className={`font-mono font-black text-[9px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{sess.timestamp}</span>
                                         </div>
                                         <div className="flex items-center gap-2.5 font-mono font-extrabold text-[9px]">
-                                          {sess.hours > 0 && <span className="text-orange-600">+{sess.hours}h</span>}
-                                          {sess.questions > 0 && <span className="text-emerald-600">+{sess.questions} Qs</span>}
-                                          {sess.cards > 0 && <span className="text-blue-600">+{sess.cards} Cds</span>}
-                                          {sess.pages > 0 && <span className="text-indigo-600">+{sess.pages} Pgs</span>}
+                                          {sess.hours > 0 && <span className="text-orange-500">+{sess.hours}h</span>}
+                                          {sess.questions > 0 && <span className="text-emerald-500">+{sess.questions} Qs</span>}
+                                          {sess.cards > 0 && <span className="text-blue-500">+{sess.cards} Cds</span>}
+                                          {sess.pages > 0 && <span className="text-indigo-500">+{sess.pages} Pgs</span>}
                                         </div>
                                       </div>
 
                                       {/* Inline Edit Form when editing this session */}
                                       {editingSessionId === sess.id ? (
-                                        <div className="p-2.5 bg-white rounded-lg border border-gray-150 space-y-2 mt-1">
+                                        <div className={`p-2.5 rounded-lg border space-y-2 mt-1 ${isDark ? 'neu-card-dark border-white/10' : 'bg-white border-slate-200'}`}>
                                           <div className="grid grid-cols-4 gap-1.5 text-[9px] text-left">
                                             <div>
-                                              <label className="text-[7px] text-gray-400 font-bold block mb-0.5">Hours</label>
+                                              <label className={`text-[7px] font-bold block mb-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Hours</label>
                                               <input
                                                 type="number"
                                                 step="0.1"
                                                 value={editingSessionHours}
                                                 onChange={(e) => setEditingSessionHours(e.target.value)}
-                                                className="w-full p-1 bg-gray-50 border border-gray-250 rounded text-xs font-mono font-bold focus:ring-2 focus:ring-orange-500/20 outline-none"
+                                                className={`w-full p-1 rounded text-xs font-mono font-bold outline-none ${
+                                                  isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                                                }`}
                                               />
                                             </div>
                                             <div>
-                                              <label className="text-[7px] text-gray-400 font-bold block mb-0.5">Questions</label>
+                                              <label className={`text-[7px] font-bold block mb-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Questions</label>
                                               <input
                                                 type="number"
                                                 value={editingSessionQuestions}
                                                 onChange={(e) => setEditingSessionQuestions(e.target.value)}
-                                                className="w-full p-1 bg-gray-50 border border-gray-250 rounded text-xs font-mono font-bold focus:ring-2 focus:ring-orange-500/20 outline-none"
+                                                className={`w-full p-1 rounded text-xs font-mono font-bold outline-none ${
+                                                  isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                                                }`}
                                               />
                                             </div>
                                             <div>
-                                              <label className="text-[7px] text-gray-400 font-bold block mb-0.5">Cards</label>
+                                              <label className={`text-[7px] font-bold block mb-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Cards</label>
                                               <input
                                                 type="number"
                                                 value={editingSessionCards}
                                                 onChange={(e) => setEditingSessionCards(e.target.value)}
-                                                className="w-full p-1 bg-gray-50 border border-gray-250 rounded text-xs font-mono font-bold focus:ring-2 focus:ring-orange-500/20 outline-none"
+                                                className={`w-full p-1 rounded text-xs font-mono font-bold outline-none ${
+                                                  isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                                                }`}
                                               />
                                             </div>
                                             <div>
-                                              <label className="text-[7px] text-gray-400 font-bold block mb-0.5">Pages</label>
+                                              <label className={`text-[7px] font-bold block mb-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Pages</label>
                                               <input
                                                 type="number"
                                                 value={editingSessionPages}
                                                 onChange={(e) => setEditingSessionPages(e.target.value)}
-                                                className="w-full p-1 bg-gray-50 border border-gray-250 rounded text-xs font-mono font-bold focus:ring-2 focus:ring-orange-500/20 outline-none"
+                                                className={`w-full p-1 rounded text-xs font-mono font-bold outline-none ${
+                                                  isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                                                }`}
                                               />
                                             </div>
                                           </div>
                                           <div className="flex justify-end gap-1.5 text-[8px] pt-1">
                                             <button
-                                              onClick={() => {
-                                                setHierarchy(card.deck || hierarchy || (deckPaths[0] || 'General'));
-                                                setEditingSessionId(null);
-                                              }}
-                                              className="px-2 py-1 bg-gray-100 rounded text-gray-600 font-extrabold uppercase hover:bg-gray-250 transition active:scale-95"
+                                              onClick={() => setEditingSessionId(null)}
+                                              className={`px-2 py-1 rounded font-extrabold uppercase transition active:scale-95 ${
+                                                isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
+                                              }`}
                                             >
                                               Cancel
                                             </button>
@@ -22366,7 +22437,7 @@ Return your response strictly as a JSON object matching this schema:
                                           </div>
                                         </div>
                                       ) : (
-                                        <div className="flex justify-end gap-3 pt-1.5 border-t border-gray-200/40">
+                                        <div className={`flex justify-end gap-3 pt-1.5 border-t ${isDark ? 'border-white/5' : 'border-slate-200/50'}`}>
                                           <button
                                             onClick={() => {
                                               setEditingSessionId(sess.id);
@@ -22396,16 +22467,20 @@ Return your response strictly as a JSON object matching this schema:
                           </div>
 
                           {/* Grand Test (GT) Mobile Creator Form */}
-                          <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm space-y-3">
+                          <div className={`p-5 rounded-3xl space-y-3 transition-colors duration-300 ${
+                            isDark ? 'neu-card-dark border border-white/5' : 'neu-card-light border border-white/70 shadow-md'
+                          }`}>
                             <div className="flex items-center justify-between pb-1">
                               <div className="flex items-center gap-2">
                                 <Trophy className="w-3.5 h-3.5 text-orange-500 fill-orange-50" />
-                                <h3 className="text-[10px] font-black uppercase tracking-wider text-gray-700">Mock Tests (GTs) Log</h3>
+                                <h3 className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Mock Tests (GTs) Log</h3>
                               </div>
                               {!isMobileAddingGt && (
                                 <button
                                   onClick={() => setIsMobileAddingGt(true)}
-                                  className="text-[8px] font-black text-orange-500 bg-orange-50 px-2 py-1 rounded-lg hover:bg-orange-100 active:scale-95 transition"
+                                  className={`text-[8px] font-black px-2 py-1 rounded-lg transition active:scale-95 ${
+                                    isDark ? 'neu-btn-dark text-orange-400 border border-orange-500/20 hover:bg-orange-500/20' : 'neu-btn-light text-orange-600 border border-orange-200 hover:bg-orange-100'
+                                  }`}
                                 >
                                   + Add Mock Test
                                 </button>
@@ -22423,15 +22498,21 @@ Return your response strictly as a JSON object matching this schema:
                                 return (
                                   <div className="space-y-2">
                                     {gts.map((gt, idx) => (
-                                      <div key={idx} className="p-2.5 bg-gray-50 border border-gray-100 rounded-xl flex items-center justify-between">
+                                      <div key={idx} className={`p-2.5 rounded-xl flex items-center justify-between transition ${
+                                        isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'
+                                      }`}>
                                         <div>
                                           <div className="flex items-center gap-1.5 flex-wrap">
-                                            {gt.platform && <span className="text-[8px] font-black uppercase bg-orange-100 text-orange-600 px-1 py-0.5 rounded font-mono">{gt.platform}</span>}
-                                            <span className="text-xs font-black text-gray-800">{gt.name}</span>
+                                            {gt.platform && <span className={`text-[8px] font-black uppercase px-1 py-0.5 rounded font-mono ${
+                                              isDark ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-orange-100 text-orange-600'
+                                            }`}>{gt.platform}</span>}
+                                            <span className={`text-xs font-black ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{gt.name}</span>
                                           </div>
-                                          <span className="text-[9px] font-mono font-bold text-gray-400 block mt-1">Score: {gt.scoreStr} ({gt.accuracy}% Acc)</span>
+                                          <span className={`text-[9px] font-mono font-bold block mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Score: {gt.scoreStr} ({gt.accuracy}% Acc)</span>
                                         </div>
-                                        <span className="text-[8px] font-black uppercase bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded">
+                                        <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${
+                                          isDark ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600'
+                                        }`}>
                                           {gt.type === 'NEETPG' ? 'NEET PG' : 'INI CET'}
                                         </span>
                                       </div>
@@ -22443,39 +22524,45 @@ Return your response strictly as a JSON object matching this schema:
                             })()}
 
                             {isMobileAddingGt && (
-                              <div className="pt-2 border-t border-gray-50 space-y-3 text-xs animate-in slide-in-from-top duration-300">
+                              <div className={`pt-2 border-t space-y-3 text-xs animate-in slide-in-from-top duration-300 ${isDark ? 'border-white/5' : 'border-slate-100'}`}>
                                 <span className="text-[9px] font-black uppercase tracking-widest text-orange-500 block mb-1">New Grand Test Details</span>
 
                                 {/* General Setup */}
-                                <div className="space-y-2.5 bg-gray-50/50 p-3 rounded-2xl border border-gray-100">
+                                <div className={`space-y-2.5 p-3 rounded-2xl border ${isDark ? 'neu-pressed-dark border-white/5' : 'neu-pressed-light border-white/70'}`}>
                                   <div>
-                                    <label className="block text-[8px] font-black uppercase tracking-wider text-gray-400 mb-1">Test Name</label>
+                                    <label className={`block text-[8px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Test Name</label>
                                     <input
                                       type="text"
                                       value={loggerGtName}
                                       onChange={(e) => setLoggerGtName(e.target.value)}
                                       placeholder="e.g. Marrow Grand Test 14"
-                                      className="w-full p-2 bg-white border border-gray-200 rounded-xl focus:ring-4 focus:ring-orange-500/10 outline-none font-bold text-xs"
+                                      className={`w-full p-2 rounded-xl outline-none font-bold text-xs ${
+                                        isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-200 text-slate-900 placeholder-slate-400'
+                                      }`}
                                     />
                                   </div>
 
                                   <div className="grid grid-cols-2 gap-2.5">
                                     <div>
-                                      <label className="block text-[8px] font-black uppercase tracking-wider text-gray-400 mb-1">Exam Platform</label>
+                                      <label className={`block text-[8px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Exam Platform</label>
                                       <input
                                         type="text"
                                         value={loggerGtPlatform}
                                         onChange={(e) => setLoggerGtPlatform(e.target.value)}
                                         placeholder="e.g. Marrow"
-                                        className="w-full p-2 bg-white border border-gray-200 rounded-xl focus:ring-4 focus:ring-orange-500/10 outline-none font-bold text-xs"
+                                        className={`w-full p-2 rounded-xl outline-none font-bold text-xs ${
+                                          isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-200 text-slate-900 placeholder-slate-400'
+                                        }`}
                                       />
                                     </div>
                                     <div>
-                                      <label className="block text-[8px] font-black uppercase tracking-wider text-gray-400 mb-1">Exam Type</label>
+                                      <label className={`block text-[8px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Exam Type</label>
                                       <select
                                         value={loggerGtType}
                                         onChange={(e) => setLoggerGtType(e.target.value)}
-                                        className="w-full p-2 bg-white border border-gray-200 rounded-xl focus:ring-4 focus:ring-orange-500/10 outline-none font-bold text-xs"
+                                        className={`w-full p-2 rounded-xl outline-none font-bold text-xs ${
+                                          isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                                        }`}
                                       >
                                         <option value="NEETPG">NEET PG</option>
                                         <option value="INICET">INI CET</option>
@@ -22485,80 +22572,94 @@ Return your response strictly as a JSON object matching this schema:
                                 </div>
 
                                 {/* Performance Metrics */}
-                                <div className="space-y-2.5 bg-gray-50/50 p-3 rounded-2xl border border-gray-100">
+                                <div className={`space-y-2.5 p-3 rounded-2xl border ${isDark ? 'neu-pressed-dark border-white/5' : 'neu-pressed-light border-white/70'}`}>
                                   <div className="grid grid-cols-2 gap-2.5">
                                     <div>
-                                      <label className="block text-[8px] font-black uppercase tracking-wider text-gray-400 mb-1">Correct Qs</label>
+                                      <label className={`block text-[8px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Correct Qs</label>
                                       <input
                                         type="number"
                                         value={loggerGtCorrect}
                                         onChange={(e) => setLoggerGtCorrect(e.target.value)}
                                         placeholder="0-200"
-                                        className="w-full p-2 bg-white border border-gray-200 rounded-xl focus:ring-4 focus:ring-orange-500/10 outline-none font-bold font-mono text-center text-xs"
+                                        className={`w-full p-2 rounded-xl outline-none font-bold font-mono text-center text-xs ${
+                                          isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                                        }`}
                                       />
                                     </div>
                                     <div>
-                                      <label className="block text-[8px] font-black uppercase tracking-wider text-gray-400 mb-1">Incorrect Qs</label>
+                                      <label className={`block text-[8px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Incorrect Qs</label>
                                       <input
                                         type="number"
                                         value={loggerGtIncorrect}
                                         onChange={(e) => setLoggerGtIncorrect(e.target.value)}
                                         placeholder="0-200"
-                                        className="w-full p-2 bg-white border border-gray-200 rounded-xl focus:ring-4 focus:ring-orange-500/10 outline-none font-bold font-mono text-center text-xs"
+                                        className={`w-full p-2 rounded-xl outline-none font-bold font-mono text-center text-xs ${
+                                          isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                                        }`}
                                       />
                                     </div>
                                   </div>
 
                                   <div className="grid grid-cols-3 gap-1.5">
                                     <div>
-                                      <label className="block text-[8px] font-black uppercase tracking-wider text-gray-400 mb-1">Percentile (%ile)</label>
+                                      <label className={`block text-[8px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Percentile (%ile)</label>
                                       <input
                                         type="text"
                                         value={loggerGtPercentage}
                                         onChange={(e) => setLoggerGtPercentage(e.target.value)}
                                         placeholder="98.4"
-                                        className="w-full p-2 bg-white border border-gray-200 rounded-xl focus:ring-4 focus:ring-orange-500/10 outline-none font-bold font-mono text-center text-xs"
+                                        className={`w-full p-2 rounded-xl outline-none font-bold font-mono text-center text-xs ${
+                                          isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                                        }`}
                                       />
                                     </div>
                                     <div>
-                                      <label className="block text-[8px] font-black uppercase tracking-wider text-gray-400 mb-1">Rank</label>
+                                      <label className={`block text-[8px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Rank</label>
                                       <input
                                         type="number"
                                         value={loggerGtRank}
                                         onChange={(e) => setLoggerGtRank(e.target.value)}
                                         placeholder="1420"
-                                        className="w-full p-2 bg-white border border-gray-200 rounded-xl focus:ring-4 focus:ring-orange-500/10 outline-none font-bold font-mono text-center text-xs"
+                                        className={`w-full p-2 rounded-xl outline-none font-bold font-mono text-center text-xs ${
+                                          isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                                        }`}
                                       />
                                     </div>
                                     <div>
-                                      <label className="block text-[8px] font-black uppercase tracking-wider text-gray-400 mb-1">Total Cand.</label>
+                                      <label className={`block text-[8px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Total Cand.</label>
                                       <input
                                         type="number"
                                         value={loggerGtRankTotal}
                                         onChange={(e) => setLoggerGtRankTotal(e.target.value)}
                                         placeholder="45000"
-                                        className="w-full p-2 bg-white border border-gray-200 rounded-xl focus:ring-4 focus:ring-orange-500/10 outline-none font-bold font-mono text-center text-xs"
+                                        className={`w-full p-2 rounded-xl outline-none font-bold font-mono text-center text-xs ${
+                                          isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                                        }`}
                                       />
                                     </div>
                                   </div>
 
                                   <div className="grid grid-cols-2 gap-2.5">
                                     <div>
-                                      <label className="block text-[8px] font-black uppercase tracking-wider text-gray-400 mb-1">State Rank</label>
+                                      <label className={`block text-[8px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>State Rank</label>
                                       <input
                                         type="number"
                                         value={loggerGtStateRank}
                                         onChange={(e) => setLoggerGtStateRank(e.target.value)}
                                         placeholder="210"
-                                        className="w-full p-2 bg-white border border-gray-200 rounded-xl focus:ring-4 focus:ring-orange-500/10 outline-none font-bold font-mono text-center text-xs"
+                                        className={`w-full p-2 rounded-xl outline-none font-bold font-mono text-center text-xs ${
+                                          isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                                        }`}
                                       />
                                     </div>
                                     <div>
-                                      <label className="block text-[8px] font-black uppercase tracking-wider text-gray-400 mb-1">Home State</label>
+                                      <label className={`block text-[8px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Home State</label>
                                       <select
                                         value={loggerGtState}
                                         onChange={(e) => setLoggerGtState(e.target.value)}
-                                        className="w-full p-2 bg-white border border-gray-200 rounded-xl focus:ring-4 focus:ring-orange-500/10 outline-none font-bold text-xs"
+                                        className={`w-full p-2 rounded-xl outline-none font-bold text-xs ${
+                                          isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                                        }`}
                                       >
                                         <option value="">Select State</option>
                                         {INDIAN_STATES.map((st) => (
@@ -22571,13 +22672,15 @@ Return your response strictly as a JSON object matching this schema:
 
                                 {/* Weaknesses / Notes */}
                                 <div>
-                                  <label className="block text-[8px] font-black uppercase tracking-wider text-gray-400 mb-1">Key Takeaways & Weaknesses</label>
+                                  <label className={`block text-[8px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Key Takeaways & Weaknesses</label>
                                   <textarea
                                     value={loggerGtNotes}
                                     onChange={(e) => setLoggerGtNotes(e.target.value)}
                                     placeholder="Detail any topics or subject areas where you lost marks..."
                                     rows={2}
-                                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-orange-500/10 outline-none text-xs font-medium"
+                                    className={`w-full p-2.5 rounded-xl outline-none text-xs font-medium ${
+                                      isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-200 text-slate-900 placeholder-slate-400'
+                                    }`}
                                   />
                                 </div>
 
@@ -22586,24 +22689,30 @@ Return your response strictly as a JSON object matching this schema:
                                   <button
                                     type="button"
                                     onClick={() => setLoggerGtShowSubjects(!loggerGtShowSubjects)}
-                                    className="w-full py-2 bg-gray-100 hover:bg-gray-200 rounded-xl text-[9px] font-black uppercase tracking-wider text-gray-600 transition flex items-center justify-center gap-1.5"
+                                    className={`w-full py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition flex items-center justify-center gap-1.5 ${
+                                      isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
+                                    }`}
                                   >
                                     {loggerGtShowSubjects ? 'Hide Subject Breakdown' : 'Show Subject Breakdown (19 Subjects)'}
                                   </button>
 
                                   {loggerGtShowSubjects && (
                                     <div className="mt-2.5 space-y-2 max-h-[220px] overflow-y-auto pr-1">
-                                      <div className="p-2.5 bg-amber-50 border border-amber-150 rounded-xl text-[8px] text-amber-700 font-bold leading-normal">
+                                      <div className={`p-2.5 rounded-xl text-[8px] font-bold leading-normal ${
+                                        isDark ? 'bg-amber-500/10 border border-amber-500/20 text-amber-400' : 'bg-amber-50 border border-amber-200 text-amber-800'
+                                      }`}>
                                         Note: Enter correct and incorrect counts per subject.
                                       </div>
                                       {SYSTEM_SUBJECTS.map((sub) => {
                                         const subData = loggerGtSubjects[sub.name] || { correct: '', incorrect: '', total: sub.weight };
                                         return (
-                                          <div key={sub.name} className="p-2 bg-gray-50 border border-gray-100 rounded-xl flex items-center justify-between gap-2.5 text-[9px]">
-                                            <span className="font-extrabold text-gray-700 w-20 shrink-0 truncate">{sub.name}</span>
+                                          <div key={sub.name} className={`p-2 rounded-xl flex items-center justify-between gap-2.5 text-[9px] ${
+                                            isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-slate-200/60'
+                                          }`}>
+                                            <span className={`font-extrabold w-20 shrink-0 truncate ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{sub.name}</span>
                                             <div className="flex items-center gap-1.5 flex-grow justify-end">
                                               <div className="flex items-center gap-1">
-                                                <span className="text-[6px] text-emerald-600 font-bold uppercase">Cor</span>
+                                                <span className="text-[6px] text-emerald-500 font-bold uppercase">Cor</span>
                                                 <input
                                                   type="number"
                                                   value={subData.correct}
@@ -22618,7 +22727,9 @@ Return your response strictly as a JSON object matching this schema:
                                                     }));
                                                   }}
                                                   placeholder="0"
-                                                  className="w-8 p-0.5 bg-white border border-gray-200 rounded text-center text-xs font-mono font-bold"
+                                                  className={`w-8 p-0.5 rounded text-center text-xs font-mono font-bold outline-none ${
+                                                    isDark ? 'bg-[#161a20] border border-white/10 text-slate-100' : 'bg-white border border-slate-200 text-slate-900'
+                                                  }`}
                                                 />
                                               </div>
                                               <div className="flex items-center gap-1">
@@ -22637,11 +22748,13 @@ Return your response strictly as a JSON object matching this schema:
                                                     }));
                                                   }}
                                                   placeholder="0"
-                                                  className="w-8 p-0.5 bg-white border border-gray-200 rounded text-center text-xs font-mono font-bold"
+                                                  className={`w-8 p-0.5 rounded text-center text-xs font-mono font-bold outline-none ${
+                                                    isDark ? 'bg-[#161a20] border border-white/10 text-slate-100' : 'bg-white border border-slate-200 text-slate-900'
+                                                  }`}
                                                 />
                                               </div>
                                               <div className="flex items-center gap-1">
-                                                <span className="text-[6px] text-gray-400 font-bold uppercase">Tot</span>
+                                                <span className={`text-[6px] font-bold uppercase ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Tot</span>
                                                 <input
                                                   type="number"
                                                   value={subData.total}
@@ -22655,7 +22768,9 @@ Return your response strictly as a JSON object matching this schema:
                                                     }));
                                                   }}
                                                   placeholder={sub.weight}
-                                                  className="w-8 p-0.5 bg-white border border-gray-200 rounded text-center text-xs font-mono"
+                                                  className={`w-8 p-0.5 rounded text-center text-xs font-mono outline-none ${
+                                                    isDark ? 'bg-[#161a20] border border-white/10 text-slate-100' : 'bg-white border border-slate-200 text-slate-900'
+                                                  }`}
                                                 />
                                               </div>
                                             </div>
@@ -22686,7 +22801,9 @@ Return your response strictly as a JSON object matching this schema:
                                       setLoggerGtShowSubjects(false);
                                       setLoggerGtSubjects({});
                                     }}
-                                    className="flex-grow py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 font-black uppercase text-[9px] tracking-wider rounded-2xl transition active:scale-95"
+                                    className={`flex-grow py-2.5 font-black uppercase text-[9px] tracking-wider rounded-2xl transition active:scale-95 ${
+                                      isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
+                                    }`}
                                   >
                                     Cancel
                                   </button>
@@ -22709,21 +22826,25 @@ Return your response strictly as a JSON object matching this schema:
                         </>
                       )}
                       {companionSubTab === 'scanner' && (
-                        <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm space-y-4 animate-in fade-in duration-300">
-                          <div className="flex items-center gap-2 pb-2 border-b border-gray-50">
+                        <div className={`p-5 rounded-3xl space-y-4 animate-in fade-in duration-300 transition-colors duration-300 ${
+                          isDark ? 'neu-card-dark border border-white/5' : 'neu-card-light border border-white/70 shadow-md'
+                        }`}>
+                          <div className={`flex items-center gap-2 pb-2 border-b ${isDark ? 'border-white/5' : 'border-slate-100'}`}>
                             <Camera className="w-4 h-4 text-orange-500" />
-                            <h3 className="text-[10px] font-black uppercase tracking-wider text-gray-700">Mobile Document Scanner</h3>
+                            <h3 className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Mobile Document Scanner</h3>
                           </div>
 
-                          <p className="text-[10px] text-gray-500 font-medium leading-relaxed">
+                          <p className={`text-[10px] font-medium leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                             Instantly capture and send pages, slides, or handwritten notes directly to your Desktop Library Inbox.
                           </p>
 
-                          <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50 relative group transition hover:border-orange-400">
+                          <div className={`flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-2xl relative group transition hover:border-orange-400 ${
+                            isDark ? 'neu-pressed-dark border-white/10' : 'bg-slate-50 border-slate-200'
+                          }`}>
                             {isScanning ? (
                               <div className="flex flex-col items-center py-6">
                                 <span className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mb-2"></span>
-                                <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest animate-pulse">Uploading Scan...</span>
+                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Uploading Scan...</span>
                               </div>
                             ) : scanPreviewBase64 ? (
                               <div className="space-y-4 w-full">
@@ -22744,11 +22865,13 @@ Return your response strictly as a JSON object matching this schema:
                               </div>
                             ) : (
                               <label className="flex flex-col items-center py-8 cursor-pointer w-full h-full">
-                                <div className="bg-orange-50 p-4 rounded-full text-orange-500 mb-3 group-hover:scale-110 transition duration-300">
+                                <div className={`p-4 rounded-full mb-3 group-hover:scale-110 transition duration-300 ${
+                                  isDark ? 'bg-orange-500/10 text-orange-400' : 'bg-orange-50 text-orange-500'
+                                }`}>
                                   <Camera className="w-8 h-8 stroke-[2.5]" />
                                 </div>
-                                <span className="text-[10px] font-black text-gray-700 uppercase tracking-wider">Take Photo / Upload Scan</span>
-                                <span className="text-[8px] font-bold text-gray-400 mt-1">Uses mobile camera or library</span>
+                                <span className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Take Photo / Upload Scan</span>
+                                <span className={`text-[8px] font-bold mt-1 ${isDark ? 'text-slate-400' : 'text-slate-400'}`}>Uses mobile camera or library</span>
                                 <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleMobileScanUpload} />
                               </label>
                             )}
@@ -22757,7 +22880,7 @@ Return your response strictly as a JSON object matching this schema:
                       )}
 
                       {companionSubTab === 'pomodoro' && renderTimerHub(true)}
-                    </div>
+                    </motion.div>
                   )}
 
 
