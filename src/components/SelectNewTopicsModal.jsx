@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Sparkles, BookOpen, Clock, Check, Search, Filter, RefreshCw, Send,
-  Zap, Brain, AlertCircle, ChevronRight, CheckCircle2, MessageSquare, Layers, Award
+  Zap, Brain, AlertCircle, ChevronRight, CheckCircle2, MessageSquare, Layers, Award, HelpCircle
 } from 'lucide-react';
 import { parsePageNumbers, getTopicPageWeight } from '../utils/pageUtils';
 import { getAiTopicRecommendations, saveAiTopicRecommendations } from '../services/localDb';
@@ -42,6 +42,7 @@ export default function SelectNewTopicsModal({
   const [aiLoading, setAiLoading] = useState(false);
   const [userChatPrompt, setUserChatPrompt] = useState('');
   const [aiError, setAiError] = useState('');
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   const dailyCapPages = dailyLimits.newPagesPerDay ?? 10;
   const isUnlimited = dailyCapPages >= 9999;
@@ -598,6 +599,18 @@ Format response strictly as JSON with this schema:
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-black uppercase tracking-wider text-amber-500 flex items-center gap-1.5">
                       <Sparkles className="w-4 h-4" /> Choose AI Strategy Mode
+                      <button
+                        type="button"
+                        onClick={() => setIsHelpOpen(true)}
+                        title="Learn about AI Strategy Modes"
+                        className={`p-1 rounded-full border transition-all cursor-pointer ${
+                          isDark
+                            ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30'
+                            : 'bg-amber-100 text-amber-700 border-amber-300 hover:bg-amber-200'
+                        }`}
+                      >
+                        <HelpCircle className="w-3.5 h-3.5" />
+                      </button>
                     </span>
                     <button
                       onClick={() => generateAiRecommendations()}
@@ -824,6 +837,105 @@ Format response strictly as JSON with this schema:
           </div>
         </motion.div>
       </div>
+
+      {/* Strategy Guide Help Modal */}
+      <AnimatePresence>
+        {isHelpOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto no-scrollbar">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 16 }}
+              transition={{ duration: 0.25 }}
+              className={`w-full max-w-xl p-5 sm:p-6 rounded-3xl border shadow-2xl space-y-5 ${
+                isDark ? 'bg-[#222730] border-amber-500/40 text-slate-200 neu-card-dark' : 'bg-white border-amber-300 text-slate-800 neu-card-light'
+              }`}
+            >
+              <div className="flex items-center justify-between border-b pb-3 border-amber-500/20">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-amber-500" />
+                  <h3 className={`text-base font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    AI Topper Strategy Guide
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setIsHelpOpen(false)}
+                  className={`p-1.5 rounded-xl border transition-all cursor-pointer ${
+                    isDark ? 'neu-btn-dark text-slate-400 hover:text-white' : 'neu-btn-light text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="space-y-4 max-h-[65vh] overflow-y-auto no-scrollbar pr-1">
+                {/* Mode 1 */}
+                <div className={`p-4 rounded-2xl border space-y-2 ${
+                  isDark ? 'bg-slate-900/60 border-slate-700/60' : 'bg-amber-50/50 border-amber-200'
+                }`}>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-black">
+                      🔗 Mode 1
+                    </span>
+                    <h4 className={`text-xs font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                      Cross-Subject Integration (Default)
+                    </h4>
+                  </div>
+                  <p className="text-[11px] font-semibold text-amber-500">What it means: <span className={isDark ? 'text-slate-300 font-normal' : 'text-slate-700 font-normal'}>Links basic medical sciences to clinical application.</span></p>
+                  <p className="text-[11px] font-semibold text-amber-500">How it works: <span className={isDark ? 'text-slate-300 font-normal' : 'text-slate-700 font-normal'}>The AI checks what you studied over the past 3–7 days and picks unstudied topics from related subjects that build upon that knowledge.</span></p>
+                  <p className="text-[11px] font-semibold text-amber-500">Example: <span className={isDark ? 'text-indigo-300 font-normal italic' : 'text-indigo-700 font-normal italic'}>If you studied Anatomy: Lower Limb Nerves yesterday, the AI will recommend Orthopedics: Lower Limb Fractures & Nerve Injuries today.</span></p>
+                  <p className="text-[11px] font-semibold text-amber-500">Best used for: <span className={isDark ? 'text-emerald-400 font-normal' : 'text-emerald-700 font-normal'}>Building strong long-term retention by linking concepts across subjects.</span></p>
+                </div>
+
+                {/* Mode 2 */}
+                <div className={`p-4 rounded-2xl border space-y-2 ${
+                  isDark ? 'bg-slate-900/60 border-slate-700/60' : 'bg-amber-50/50 border-amber-200'
+                }`}>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-black">
+                      🛠️ Mode 2
+                    </span>
+                    <h4 className={`text-xs font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                      Weakness Interleaving
+                    </h4>
+                  </div>
+                  <p className="text-[11px] font-semibold text-amber-500">What it means: <span className={isDark ? 'text-slate-300 font-normal' : 'text-slate-700 font-normal'}>Pairs new topics with your highest-lapse / lowest-retention subjects.</span></p>
+                  <p className="text-[11px] font-semibold text-amber-500">How it works: <span className={isDark ? 'text-slate-300 font-normal' : 'text-slate-700 font-normal'}>Instead of studying easy or favorite subjects back-to-back, the AI identifies subjects where you have recent low ratings or lapses, and selects fresh topics from those weaker areas.</span></p>
+                  <p className="text-[11px] font-semibold text-amber-500">Example: <span className={isDark ? 'text-indigo-300 font-normal italic' : 'text-indigo-700 font-normal italic'}>If Pathology has high lapse counts, the AI recommends new Pathology chapters to eliminate memory blindspots.</span></p>
+                  <p className="text-[11px] font-semibold text-amber-500">Best used for: <span className={isDark ? 'text-emerald-400 font-normal' : 'text-emerald-700 font-normal'}>Overcoming subject weaknesses and avoiding topic decay.</span></p>
+                </div>
+
+                {/* Mode 3 */}
+                <div className={`p-4 rounded-2xl border space-y-2 ${
+                  isDark ? 'bg-slate-900/60 border-slate-700/60' : 'bg-amber-50/50 border-amber-200'
+                }`}>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-black">
+                      🎯 Mode 3
+                    </span>
+                    <h4 className={`text-xs font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                      Exam Target Sprint
+                    </h4>
+                  </div>
+                  <p className="text-[11px] font-semibold text-amber-500">What it means: <span className={isDark ? 'text-slate-300 font-normal' : 'text-slate-700 font-normal'}>Prioritizes new topics relevant to your upcoming scheduled exam target.</span></p>
+                  <p className="text-[11px] font-semibold text-amber-500">How it works: <span className={isDark ? 'text-slate-300 font-normal' : 'text-slate-700 font-normal'}>The AI inspects your upcoming target exam schedule (from studySchedule) and picks high-yield unstudied topics required for that specific target.</span></p>
+                  <p className="text-[11px] font-semibold text-amber-500">Example: <span className={isDark ? 'text-indigo-300 font-normal italic' : 'text-indigo-700 font-normal italic'}>If your Orthopedics exam is in 10 days, the AI prioritizes unstudied Orthopedics chapters within your daily page limit.</span></p>
+                  <p className="text-[11px] font-semibold text-amber-500">Best used for: <span className={isDark ? 'text-emerald-400 font-normal' : 'text-emerald-700 font-normal'}>Fast exam preparation and target deadline sprints.</span></p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setIsHelpOpen(false)}
+                className={`w-full py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider border cursor-pointer ${
+                  isDark ? 'neu-btn-dark text-white border-slate-700' : 'neu-btn-light text-slate-800 border-slate-300'
+                }`}
+              >
+                Got it
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </AnimatePresence>
   );
 }
