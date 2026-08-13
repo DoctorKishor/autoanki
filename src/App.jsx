@@ -7030,6 +7030,7 @@ export default function App() {
   const [reviewUndoStack, setReviewUndoStack] = useState([]);
   const [reviewRedoStack, setReviewRedoStack] = useState([]);
   const [lastRatedToast, setLastRatedToast] = useState(null);
+  const [ratingPopoverTopic, setRatingPopoverTopic] = useState(null);
   const [examProfiles, setExamProfiles] = useState([]);
   const isExamProfilesLoaded = useRef(false);
 
@@ -8901,37 +8902,100 @@ JSON Format:
     }
   };
 
-  const handleLogTrackerStudyDate = async (subject, topicName, dateStr) => {
+  const handleLogTrackerStudyDate = async (subject, topicName, dateStr, rating = 3) => {
     if (!subject || !topicName || !dateStr) return;
     const docId = subject.trim().toLowerCase();
+    const subjectName = subject.trim();
+    const cleanTopicName = topicName.trim();
 
-    const localData = await getLocalSubjectTrackerData();
-    const docExists = localData.find(p => p.id === docId);
-    const currentTopics = docExists ? docExists.topics || {} : {};
-    const topicObj = currentTopics[topicName] || { name: topicName, studyDates: [] };
-    const currentDates = topicObj.studyDates || [];
-    const updatedDates = [...currentDates, dateStr].sort((a, b) => a.localeCompare(b));
-    const updatedTopics = {
-      ...currentTopics,
-      [topicName]: {
-        ...topicObj,
-        studyDates: updatedDates
-      }
+    const existingDoc = subjectTrackerData.find(p => p.id === docId);
+    const topicsMap = existingDoc && existingDoc.topics ? JSON.parse(JSON.stringify(existingDoc.topics)) : {};
+    const topicObj = topicsMap[cleanTopicName] || { name: cleanTopicName, studyDates: [] };
+
+    const currentFsrsState = {
+      difficulty: topicObj.difficulty,
+      stability: topicObj.stability,
+      lastReviewDate: topicObj.lastReviewDate,
+      reviewCount: topicObj.reviewCount,
     };
 
+    const activeDR = fsrsConfig.retentionMode === 'perSubject'
+      ? (fsrsConfig.perSubjectRetention?.[subjectName] || fsrsConfig.globalDesiredRetention || 0.90)
+      : (fsrsConfig.globalDesiredRetention || 0.90);
+
+    const fsrsInput = currentFsrsState.stability != null ? currentFsrsState : null;
+    const fsrsResult = calculateNextFSRSState(
+      fsrsInput,
+      rating,
+      dateStr,
+      fsrsConfig.weights || DEFAULT_FSRS6_WEIGHTS,
+      activeDR,
+      {
+        subjectTrackerData,
+        easyDays: fsrsConfig.easyDays || {},
+        enableLoadBalancing: true
+      }
+    );
+
+    topicObj.difficulty = fsrsResult.difficulty;
+    topicObj.stability = fsrsResult.stability;
+    topicObj.retrievability = fsrsResult.retrievability;
+    topicObj.interval = fsrsResult.interval;
+    topicObj.nextReviewDue = fsrsResult.nextReviewDue;
+    topicObj.lastReviewDate = fsrsResult.lastReviewDate;
+    topicObj.reviewCount = fsrsResult.reviewCount;
+    topicObj.lapses = fsrsResult.lapses != null ? fsrsResult.lapses : (topicObj.lapses || 0) + (rating === 1 ? 1 : 0);
+
+    if (!Array.isArray(topicObj.studyDates)) {
+      topicObj.studyDates = [];
+    }
+    if (!topicObj.studyDates.includes(dateStr)) {
+      topicObj.studyDates.push(dateStr);
+      topicObj.studyDates.sort((a, b) => a.localeCompare(b));
+    }
+
+    topicsMap[cleanTopicName] = topicObj;
+
+    const updatedDoc = {
+      ...existingDoc,
+      id: docId,
+      subject: subjectName,
+      topics: topicsMap,
+      updatedAt: new Date().toISOString()
+    };
+
+    // 1. Optimistic React State Update
     setSubjectTrackerData(prev => {
-      const exists = prev.find(p => p.id === docId);
-      if (!exists) return prev;
-      return prev.map(p => p.id === docId ? { ...p, topics: updatedTopics } : p);
+      const list = Array.isArray(prev) ? prev : [];
+      const idx = list.findIndex(d => d.id === docId);
+      if (idx >= 0) {
+        return list.map(d => d.id === docId ? updatedDoc : d);
+      }
+      return [...list, updatedDoc];
     });
 
+    // 2. Save updated subject doc to LocalDB
     try {
-      await saveLocalSubjectTrackerDoc(docId, {
-        topics: updatedTopics
-      });
+      await saveLocalSubjectTrackerDoc(docId, updatedDoc);
     } catch (err) {
-      console.error("Error logging study date locally:", err);
+      console.error("[LocalDB] Error logging study date:", err);
     }
+
+    // 3. Save study log entry for analytics
+    const logEntry = {
+      id: 'log_' + Math.random().toString(36).substring(2, 9),
+      subject: subjectName,
+      topicName: cleanTopicName,
+      dateStr,
+      rating,
+      stability: fsrsResult.stability,
+      difficulty: fsrsResult.difficulty,
+      nextReviewDue: fsrsResult.nextReviewDue,
+      timestamp: new Date().toISOString()
+    };
+    saveLocalStudyLog(logEntry).catch(err => {
+      console.error("[LocalDB] Error saving study log:", err);
+    });
   };
 
   const handleDeleteTrackerStudyDate = async (subject, topicName, dateIndex) => {
@@ -25179,7 +25243,7 @@ Return your response strictly as a JSON object matching this schema:
                                                     whileHover={{ scale: 1.05 }}
                                                     whileTap={{ scale: 0.92 }}
                                                     title="Log today's revision"
-                                                    onClick={() => handleLogTrackerStudyDate(selectedTrackerSubject, topicItem.name, todayStr)}
+                                                    onClick={() => setRatingPopoverTopic({ subject: selectedTrackerSubject, topicName: topicItem.name, dateStr: todayStr })}
                                                     className={`p-2 rounded-xl transition ${isDark ? 'neu-btn-dark text-emerald-400 hover:text-emerald-300' : 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'}`}
                                                   >
                                                     <Plus className="w-4 h-4" />
@@ -25268,7 +25332,7 @@ Return your response strictly as a JSON object matching this schema:
                                                       <motion.button
                                                         whileHover={{ scale: 1.02 }}
                                                         whileTap={{ scale: 0.95 }}
-                                                        onClick={() => handleLogTrackerStudyDate(selectedTrackerSubject, topicItem.name, selectedDate)}
+                                                        onClick={() => setRatingPopoverTopic({ subject: selectedTrackerSubject, topicName: topicItem.name, dateStr: selectedDate || todayStr })}
                                                         className={`px-3.5 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition shrink-0 ${isDark ? 'neu-btn-dark text-emerald-400' : 'bg-emerald-600 text-white shadow-sm'}`}
                                                       >
                                                         Log Date
@@ -34106,7 +34170,7 @@ Return your response strictly as a JSON object matching this schema:
                                                         whileHover={{ scale: 1.08 }}
                                                         whileTap={{ scale: 0.92 }}
                                                         title="Log today's revision"
-                                                        onClick={() => handleLogTrackerStudyDate(selectedTrackerSubject, topicItem.name, todayStr)}
+                                                        onClick={() => setRatingPopoverTopic({ subject: selectedTrackerSubject, topicName: topicItem.name, dateStr: todayStr })}
                                                         className={`p-2 rounded-xl transition ${isDark ? 'neu-btn-dark text-emerald-400 hover:text-emerald-300' : 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'}`}
                                                       >
                                                         <Plus className="w-3.5 h-3.5" />
@@ -34235,7 +34299,7 @@ Return your response strictly as a JSON object matching this schema:
                                                           whileHover={{ scale: 1.02 }}
                                                           whileTap={{ scale: 0.95 }}
                                                           onClick={() => {
-                                                            handleLogTrackerStudyDate(selectedTrackerSubject, topicItem.name, selectedDate);
+                                                            setRatingPopoverTopic({ subject: selectedTrackerSubject, topicName: topicItem.name, dateStr: selectedDate || todayStr });
                                                           }}
                                                           className={`px-4 py-2 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-wider transition flex items-center gap-1.5 shrink-0 ${isDark ? 'neu-btn-dark text-emerald-400' : 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'}`}
                                                         >
