@@ -98,7 +98,8 @@ export default function SmartReviewHub({
             leeches.push(topicObj);
           }
 
-          const isNewItem = (!topic.reviewCount || topic.reviewCount === 0) && !topic.lastReviewDate && (!topic.studyDates || topic.studyDates.length === 0);
+          // A topic is NEW if it has 0 reviewCount and no lastReviewDate (has never completed a review session)
+          const isNewItem = (!topic.reviewCount || topic.reviewCount === 0) && !topic.lastReviewDate;
 
           if (isNewItem) {
             newItems.push(topicObj);
