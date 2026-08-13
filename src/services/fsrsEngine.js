@@ -97,9 +97,124 @@ export const calculateInitialStability = (rating, weights = DEFAULT_FSRS6_WEIGHT
 };
 
 /**
+ * Calculates fuzz radius (in days) for a calculated interval.
+ *
+ * Short intervals (< 3 days): 0 fuzz (exact date).
+ * Medium intervals (3 to 6 days): ±1 day.
+ * Longer intervals (7+ days): percentage window.
+ */
+export const calculateFuzzRange = (interval) => {
+  if (interval < 3) return 0;
+  if (interval < 7) return 1;
+  if (interval < 30) return Math.max(1, Math.round(interval * 0.15));
+  return Math.max(2, Math.round(interval * 0.05));
+};
+
+/**
+ * Calculates page length for a topic object.
+ */
+export const getTopicPageLength = (topic) => {
+  if (!topic) return 1;
+  const start = parseInt(topic.page, 10);
+  const end = parseInt(topic.endPage, 10);
+  if (!isNaN(start) && !isNaN(end) && end >= start) {
+    return (end - start) + 1;
+  }
+  return 1;
+};
+
+/**
+ * Scans candidate day window [baseNextDate - fuzz, baseNextDate + fuzz]
+ * and returns the candidate date with the lowest total scheduled page workload.
+ *
+ * Also incorporates weekly Easy Days configuration ('minimum', 'reduced', 'normal').
+ */
+export const findOptimalLoadBalancedDate = (
+  baseNextDate,
+  interval,
+  loadBalancingOptions = {}
+) => {
+  const {
+    subjectTrackerData = [],
+    easyDays = {},
+    enableLoadBalancing = true,
+  } = loadBalancingOptions;
+
+  const formatDateStr = (d) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  const fuzzRadius = enableLoadBalancing ? calculateFuzzRange(interval) : 0;
+  if (fuzzRadius <= 0) {
+    return formatDateStr(baseNextDate);
+  }
+
+  // Pre-aggregate daily scheduled page loads from subjectTrackerData
+  const dailyPageLoads = {};
+  if (Array.isArray(subjectTrackerData)) {
+    subjectTrackerData.forEach(subDoc => {
+      if (subDoc.topics) {
+        Object.values(subDoc.topics).forEach(topic => {
+          if (topic.nextReviewDue) {
+            const weight = getTopicPageLength(topic);
+            dailyPageLoads[topic.nextReviewDue] = (dailyPageLoads[topic.nextReviewDue] || 0) + weight;
+          }
+        });
+      }
+    });
+  }
+
+  const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+
+  let bestDateStr = formatDateStr(baseNextDate);
+  let minWorkloadScore = Infinity;
+
+  // Evaluate each candidate offset in window [-fuzzRadius, +fuzzRadius]
+  for (let offset = -fuzzRadius; offset <= fuzzRadius; offset++) {
+    const candidateDate = new Date(baseNextDate);
+    candidateDate.setDate(candidateDate.getDate() + offset);
+    const dateStr = formatDateStr(candidateDate);
+
+    // Calculate existing scheduled pages on this day
+    const existingPageLoad = dailyPageLoads[dateStr] || 0;
+
+    // Apply Easy Days workload adjustment penalty
+    const dayName = DAY_KEYS[candidateDate.getDay()];
+    const easyDaySetting = (easyDays[dayName] || 'normal').toLowerCase();
+    let easyDayPenalty = 0;
+    if (easyDaySetting === 'minimum') {
+      easyDayPenalty = 50; // Heavy penalty to steer topics away from minimum days
+    } else if (easyDaySetting === 'reduced') {
+      easyDayPenalty = 20; // Moderate penalty
+    }
+
+    // Distance penalty to mildly favor dates closer to base next date if workloads are equal
+    const distancePenalty = Math.abs(offset) * 0.1;
+
+    const workloadScore = existingPageLoad + easyDayPenalty + distancePenalty;
+
+    if (workloadScore < minWorkloadScore) {
+      minWorkloadScore = workloadScore;
+      bestDateStr = dateStr;
+    }
+  }
+
+  return bestDateStr;
+};
+
+/**
  * Bootstrap state for a brand new topic's first review.
  */
-export const calculateInitialState = (rating, reviewDateStr, weights = DEFAULT_FSRS6_WEIGHTS, desiredRetention = 0.90) => {
+export const calculateInitialState = (
+  rating,
+  reviewDateStr,
+  weights = DEFAULT_FSRS6_WEIGHTS,
+  desiredRetention = 0.90,
+  loadBalancingOptions = {}
+) => {
   const w = weights || DEFAULT_FSRS6_WEIGHTS;
   const r = clamp(rating, 1, 4);
   const w20 = w[20] ?? DEFAULT_FSRS6_WEIGHTS[20];
@@ -112,8 +227,10 @@ export const calculateInitialState = (rating, reviewDateStr, weights = DEFAULT_F
   const reviewDate = new Date(reviewDateStr ? `${reviewDateStr}T00:00:00` : new Date());
   reviewDate.setHours(0, 0, 0, 0);
 
-  const nextDate = new Date(reviewDate);
-  nextDate.setDate(nextDate.getDate() + interval);
+  const baseNextDate = new Date(reviewDate);
+  baseNextDate.setDate(baseNextDate.getDate() + interval);
+
+  const optimalNextReviewDue = findOptimalLoadBalancedDate(baseNextDate, interval, loadBalancingOptions);
 
   const formatDateStr = (d) => {
     const y = d.getFullYear();
@@ -127,7 +244,7 @@ export const calculateInitialState = (rating, reviewDateStr, weights = DEFAULT_F
     stability: parseFloat(S.toFixed(4)),
     retrievability: parseFloat(R.toFixed(4)),
     interval,
-    nextReviewDue: formatDateStr(nextDate),
+    nextReviewDue: optimalNextReviewDue,
     lastReviewDate: formatDateStr(reviewDate),
     reviewCount: 1,
     isNew: true,
@@ -143,6 +260,7 @@ export const calculateInitialState = (rating, reviewDateStr, weights = DEFAULT_F
  * @param {string} [reviewDateStr] "YYYY-MM-DD" review date string
  * @param {number[]} [weights] 21-parameter vector w0..w20
  * @param {number} [desiredRetention=0.90] Target retention rate DR
+ * @param {object} [loadBalancingOptions] Options for load-balancing fuzzing { subjectTrackerData, easyDays, enableLoadBalancing }
  * @returns {object} Updated state payload
  */
 export const calculateNextFSRSState = (
@@ -150,7 +268,8 @@ export const calculateNextFSRSState = (
   rating,
   reviewDateStr,
   weights = DEFAULT_FSRS6_WEIGHTS,
-  desiredRetention = 0.90
+  desiredRetention = 0.90,
+  loadBalancingOptions = {}
 ) => {
   const w = weights && weights.length >= 21 ? weights : DEFAULT_FSRS6_WEIGHTS;
   const w20 = w[20] ?? DEFAULT_FSRS6_WEIGHTS[20];
@@ -158,7 +277,7 @@ export const calculateNextFSRSState = (
 
   // If topic has no stability, bootstrap as initial review
   if (!priorState || priorState.stability == null || priorState.stability <= 0) {
-    return calculateInitialState(r, reviewDateStr, w, desiredRetention);
+    return calculateInitialState(r, reviewDateStr, w, desiredRetention, loadBalancingOptions);
   }
 
   const reviewDate = new Date(reviewDateStr ? `${reviewDateStr}T00:00:00` : new Date());
@@ -199,8 +318,10 @@ export const calculateNextFSRSState = (
   // 3. Interval calculation based on Desired Retention DR
   const interval = calculateInterval(newS, desiredRetention, w20);
 
-  const nextDate = new Date(reviewDate);
-  nextDate.setDate(nextDate.getDate() + interval);
+  const baseNextDate = new Date(reviewDate);
+  baseNextDate.setDate(baseNextDate.getDate() + interval);
+
+  const optimalNextReviewDue = findOptimalLoadBalancedDate(baseNextDate, interval, loadBalancingOptions);
 
   const formatDateStr = (d) => {
     const y = d.getFullYear();
@@ -214,7 +335,7 @@ export const calculateNextFSRSState = (
     stability: parseFloat(newS.toFixed(4)),
     retrievability: parseFloat(R.toFixed(4)),
     interval,
-    nextReviewDue: formatDateStr(nextDate),
+    nextReviewDue: optimalNextReviewDue,
     lastReviewDate: formatDateStr(reviewDate),
     reviewCount: (priorState.reviewCount || 0) + 1,
     isNew: false,
