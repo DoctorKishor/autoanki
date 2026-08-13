@@ -35674,10 +35674,9 @@ Return your response strictly as a JSON object matching this schema:
                                                       <div className="flex items-center gap-2 pt-1">
                                                         <input
                                                           type="date"
-                                                          value={selectedDate}
+                                                          value={trackerLogDateInputs[`${selectedTrackerSubject}_${topicItem.name}`] || new Date().toISOString().split('T')[0]}
                                                           onChange={(e) => {
-                                                            trackerLogDateInputs[topicItem.name] = e.target.value;
-                                                            setTrackerLogDateInputs({ ...trackerLogDateInputs });
+                                                            setTrackerLogDateInputs({ ...trackerLogDateInputs, [`${selectedTrackerSubject}_${topicItem.name}`]: e.target.value });
                                                           }}
                                                           className={`p-1.5 rounded-xl text-[10px] font-bold outline-none flex-grow ${
                                                             isDark ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-slate-800'
@@ -35687,7 +35686,8 @@ Return your response strictly as a JSON object matching this schema:
                                                           whileHover={{ scale: 1.02 }}
                                                           whileTap={{ scale: 0.95 }}
                                                           onClick={() => {
-                                                            handleLogTrackerStudyDate(selectedTrackerSubject, topicItem.name, selectedDate);
+                                                            const selDate = trackerLogDateInputs[`${selectedTrackerSubject}_${topicItem.name}`] || new Date().toISOString().split('T')[0];
+                                                            handleLogTrackerStudyDate(selectedTrackerSubject, topicItem.name, selDate);
                                                           }}
                                                           className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition flex items-center gap-1 shrink-0 ${
                                                             isDark ? 'neu-btn-dark text-emerald-400' : 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'
@@ -35715,7 +35715,7 @@ Return your response strictly as a JSON object matching this schema:
                                     isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-800 border-slate-200'
                                   }`}>
                                     <label className={`text-[10px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Primary Source Material / Textbooks</label>
-                                    <div className="flex gap-2 items-center w-full">
+                                    <div className="grid grid-cols-12 gap-2 items-center w-full">
                                       <input
                                         type="text"
                                         placeholder="e.g. Marrow Video Lectures + First Aid USMLE"
@@ -35736,7 +35736,7 @@ Return your response strictly as a JSON object matching this schema:
                                             : (subjectTrackerData.find(p => p.id === selectedTrackerSubject.trim().toLowerCase())?.primarySource || "");
                                           handleSavePrimarySource(selectedTrackerSubject, sourceVal);
                                         }}
-                                        className={`w-0 min-w-0 flex-grow p-3 rounded-xl text-xs font-bold outline-none transition ${
+                                        className={`col-span-9 min-w-0 p-2.5 rounded-xl text-xs font-bold outline-none transition truncate ${
                                           isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'
                                         }`}
                                       />
