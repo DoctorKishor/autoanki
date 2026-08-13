@@ -26513,12 +26513,12 @@ Return your response strictly as a JSON object matching this schema:
                                                   >
                                                     <CheckCircle2 className="w-4 h-4" />
                                                   </button>
-                                                  <div className="min-w-0">
-                                                    <h4 className="text-xs sm:text-sm font-black tracking-tight leading-snug truncate max-w-[170px] sm:max-w-[220px]">
+                                                  <div className="min-w-0 flex-grow">
+                                                    <h4 className="text-xs sm:text-sm font-black tracking-tight leading-snug truncate w-full">
                                                       {topicItem.name}
                                                     </h4>
-                                                    <div className="flex items-center gap-1.5 mt-0.5">
-                                                      <span className={`text-[9px] font-black px-2 py-0.5 rounded-md border ${topicItem.endPage
+                                                    <div className="flex items-center gap-1.5 mt-1">
+                                                      <span className={`text-[9px] font-black px-2 py-0.5 rounded-md border whitespace-nowrap shrink-0 ${topicItem.endPage
                                                         ? isDark ? 'text-emerald-400 bg-emerald-950/40 border-emerald-800/60' : 'text-emerald-700 bg-emerald-50 border-emerald-100'
                                                         : isDark ? 'text-amber-400 bg-amber-950/40 border-amber-800/60' : 'text-amber-700 bg-amber-50 border-amber-100'}`}>
                                                         {topicItem.page ? `p. ${topicItem.page}${topicItem.endPage ? `–${topicItem.endPage}` : ''}` : 'No pgs'}
@@ -35396,7 +35396,6 @@ Return your response strictly as a JSON object matching this schema:
                                           </div>
                                         );
                                       }
-
                                       return (
                                         <AnimatePresence mode="popLayout">
                                           {topicsList.map((topicItem, tIdx) => {
@@ -35442,12 +35441,12 @@ Return your response strictly as a JSON object matching this schema:
                                                     >
                                                       <CheckCircle2 className="w-4.5 h-4.5" />
                                                     </button>
-                                                    <div className="min-w-0">
-                                                      <div className="flex items-center gap-2 flex-wrap">
-                                                        <h4 className="text-xs sm:text-sm font-black tracking-tight leading-snug truncate max-w-[260px]">
-                                                          {topicItem.name}
-                                                        </h4>
-                                                        <span className={`text-[9px] sm:text-[10px] font-black px-2.5 py-0.5 rounded-lg border ${topicItem.endPage
+                                                    <div className="min-w-0 flex-grow">
+                                                      <h4 className="text-xs sm:text-sm font-black tracking-tight leading-snug truncate w-full">
+                                                        {topicItem.name}
+                                                      </h4>
+                                                      <div className="flex items-center gap-2 mt-1">
+                                                        <span className={`text-[9px] sm:text-[10px] font-black px-2.5 py-0.5 rounded-lg border whitespace-nowrap shrink-0 ${topicItem.endPage
                                                           ? isDark ? 'text-emerald-400 bg-emerald-950/40 border-emerald-800/60' : 'text-emerald-700 bg-emerald-50 border-emerald-100'
                                                           : isDark ? 'text-amber-400 bg-amber-950/40 border-amber-800/60' : 'text-amber-700 bg-amber-50 border-amber-100'
                                                           }`}>
