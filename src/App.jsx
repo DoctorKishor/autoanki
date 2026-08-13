@@ -1300,8 +1300,8 @@ const ExportTreeFolder = ({ node, level = 0, selectedDecks, onToggle, themeMode 
     <div className="flex flex-col select-none relative">
       <div
         className={`flex items-center justify-between py-2 px-3 rounded-[1.2rem] transition-all duration-200 cursor-pointer group my-1 mx-1 ${isChecked
-            ? (themeMode === 'dark' ? 'neu-item-pressed-dark border border-blue-500/50 text-blue-300' : 'neu-item-pressed-light border border-blue-300/80 text-blue-900 font-bold')
-            : (themeMode === 'dark' ? 'neu-item-dark text-gray-300 hover:border-gray-700' : 'neu-item-light text-gray-700 hover:border-blue-300/80')
+          ? (themeMode === 'dark' ? 'neu-item-pressed-dark border border-blue-500/50 text-blue-300' : 'neu-item-pressed-light border border-blue-300/80 text-blue-900 font-bold')
+          : (themeMode === 'dark' ? 'neu-item-dark text-gray-300 hover:border-gray-700' : 'neu-item-light text-gray-700 hover:border-blue-300/80')
           }`}
         style={{ marginLeft: `${level * 18 + 4}px` }}
       >
@@ -1343,8 +1343,8 @@ const ExportTreeFolder = ({ node, level = 0, selectedDecks, onToggle, themeMode 
         </div>
 
         <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-lg shrink-0 select-none ${isChecked
-            ? (themeMode === 'dark' ? 'neu-pressed-dark text-blue-400 border border-blue-500/30' : 'neu-pressed-light text-blue-700 border border-blue-200')
-            : (themeMode === 'dark' ? 'neu-pressed-dark text-gray-400 border border-gray-800' : 'neu-pressed-light text-gray-500 border border-gray-200/50')
+          ? (themeMode === 'dark' ? 'neu-pressed-dark text-blue-400 border border-blue-500/30' : 'neu-pressed-light text-blue-700 border border-blue-200')
+          : (themeMode === 'dark' ? 'neu-pressed-dark text-gray-400 border border-gray-800' : 'neu-pressed-light text-gray-500 border border-gray-200/50')
           }`}>
           {node.tCCount}
         </span>
@@ -1412,11 +1412,10 @@ const NeumorphicSelect = ({ value, onChange, options = [], isDark: isDarkProp, t
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full p-3.5 rounded-2xl flex items-center justify-between text-xs font-black transition-all cursor-pointer ${
-          isDark
+        className={`w-full p-3.5 rounded-2xl flex items-center justify-between text-xs font-black transition-all cursor-pointer ${isDark
             ? 'neu-pressed-dark text-gray-100 border border-gray-800 hover:border-gray-700'
             : 'neu-pressed-light text-gray-900 border border-white/80 hover:border-gray-300'
-        }`}
+          }`}
       >
         <span className="truncate pr-2 font-sans">{selectedOption ? selectedOption.label : placeholder}</span>
         <ChevronDown className={`w-4 h-4 shrink-0 transition-transform duration-300 ${isOpen ? 'rotate-180 text-blue-500' : (isDark ? 'text-gray-400' : 'text-gray-600')}`} />
@@ -1429,11 +1428,10 @@ const NeumorphicSelect = ({ value, onChange, options = [], isDark: isDarkProp, t
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.98 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className={`absolute left-0 right-0 top-full mt-2 z-50 p-2 rounded-2xl shadow-2xl backdrop-blur-md transition-all ${
-              isDark
+            className={`absolute left-0 right-0 top-full mt-2 z-50 p-2 rounded-2xl shadow-2xl backdrop-blur-md transition-all ${isDark
                 ? 'neu-card-dark border border-gray-800/90 text-gray-100 bg-[#222730]/95'
                 : 'neu-card-light border border-white/90 text-gray-900 bg-[#e6ecf5]/95'
-            }`}
+              }`}
           >
             <div className="max-h-64 overflow-y-auto space-y-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
               {formattedOptions.map((opt) => {
@@ -1446,15 +1444,14 @@ const NeumorphicSelect = ({ value, onChange, options = [], isDark: isDarkProp, t
                       onChange(opt.value);
                       setIsOpen(false);
                     }}
-                    className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold flex items-center justify-between transition-all cursor-pointer ${
-                      isSelected
+                    className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold flex items-center justify-between transition-all cursor-pointer ${isSelected
                         ? (isDark
-                            ? 'neu-pressed-dark text-blue-400 font-extrabold border border-blue-500/30'
-                            : 'neu-pressed-light text-blue-600 font-extrabold border border-blue-400/40')
+                          ? 'neu-pressed-dark text-blue-400 font-extrabold border border-blue-500/30'
+                          : 'neu-pressed-light text-blue-600 font-extrabold border border-blue-400/40')
                         : (isDark
-                            ? 'text-gray-200 hover:bg-gray-800/60 hover:text-white'
-                            : 'text-gray-800 hover:bg-white/70 hover:text-gray-900')
-                    }`}
+                          ? 'text-gray-200 hover:bg-gray-800/60 hover:text-white'
+                          : 'text-gray-800 hover:bg-white/70 hover:text-gray-900')
+                      }`}
                   >
                     <span className="truncate pr-2">{opt.label}</span>
                     {isSelected && <Check className="w-3.5 h-3.5 text-blue-500 shrink-0" />}
@@ -1638,8 +1635,8 @@ const TreeFolder = ({ node, level = 0, selectedPath, onSelect, onAdd, onRename, 
               <button
                 onClick={(e) => { e.stopPropagation(); setMenuPath(showMenu ? null : node.path); }}
                 className={`p-1.5 rounded-xl transition-all ${isSelected
-                    ? (themeMode === 'dark' ? 'hover:bg-blue-500/20 text-blue-300' : 'hover:bg-blue-200/50 text-blue-800')
-                    : (themeMode === 'dark' ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-200/60 text-gray-500')
+                  ? (themeMode === 'dark' ? 'hover:bg-blue-500/20 text-blue-300' : 'hover:bg-blue-200/50 text-blue-800')
+                  : (themeMode === 'dark' ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-200/60 text-gray-500')
                   } ${showMenu ? (themeMode === 'dark' ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600') : ''}`}
               >
                 <MoreVertical className="w-3.5 h-3.5" />
@@ -1723,8 +1720,8 @@ const TreeFolder = ({ node, level = 0, selectedPath, onSelect, onAdd, onRename, 
             }
           }}
           className={`py-1.5 mx-1 text-[10px] uppercase tracking-wider font-bold text-center border-2 border-dashed rounded-xl mb-2 transition ${isRootDragOver
-              ? (themeMode === 'dark' ? 'border-blue-500 bg-blue-500/10 text-blue-400' : 'border-blue-500 bg-blue-50 text-blue-700')
-              : (themeMode === 'dark' ? 'border-gray-800 text-gray-500 hover:border-gray-700' : 'border-gray-200 text-gray-400 hover:border-gray-300')
+            ? (themeMode === 'dark' ? 'border-blue-500 bg-blue-500/10 text-blue-400' : 'border-blue-500 bg-blue-50 text-blue-700')
+            : (themeMode === 'dark' ? 'border-gray-800 text-gray-500 hover:border-gray-700' : 'border-gray-200 text-gray-400 hover:border-gray-300')
             }`}
         >
           {isRootDragOver ? "Drop to Root" : "Drag to Root"}
@@ -1933,7 +1930,7 @@ const callGeminiWithRetry = async (apiKey, prompt, base64Image, mimeType, retrie
           return parsed.cardGeneration;
         }
       }
-    } catch (e) {}
+    } catch (e) { }
     return DEFAULT_AI_FEATURE_MODELS.cardGeneration;
   };
 
@@ -2101,7 +2098,7 @@ const callGeminiIndexExtractor = async (apiKey, base64Image, mimeType, retries =
           return parsed.pageIndexing;
         }
       }
-    } catch (e) {}
+    } catch (e) { }
     return DEFAULT_AI_FEATURE_MODELS.pageIndexing;
   };
 
@@ -3536,11 +3533,10 @@ const NeumorphicDropdown = ({ value, onChange, options, isDark, label }) => {
                     onChange(val);
                     setIsOpen(false);
                   }}
-                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition flex items-center justify-between ${
-                    isSelected
+                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition flex items-center justify-between ${isSelected
                       ? (isDark ? 'neu-pressed-dark text-blue-400 font-black' : 'neu-pressed-light text-blue-600 font-black')
                       : (isDark ? 'hover:bg-slate-800/60 text-slate-200' : 'hover:bg-slate-200/50 text-slate-700')
-                  }`}
+                    }`}
                 >
                   <span className="truncate">{lbl}</span>
                   {isSelected && <Check className="w-3.5 h-3.5 text-blue-500 shrink-0" />}
@@ -4231,11 +4227,10 @@ export default function App() {
                         key={fKey}
                         type="button"
                         onClick={() => setActiveSettingsFeatureKey(fKey)}
-                        className={`px-4 py-2.5 rounded-2xl flex items-center gap-2 text-xs font-black transition-all shrink-0 active:scale-95 ${
-                          isSelected
+                        className={`px-4 py-2.5 rounded-2xl flex items-center gap-2 text-xs font-black transition-all shrink-0 active:scale-95 ${isSelected
                             ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20'
                             : settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-700'
-                        }`}
+                          }`}
                       >
                         <FIcon className="w-3.5 h-3.5" />
                         <span>{fMeta.title}</span>
@@ -4282,18 +4277,16 @@ export default function App() {
                           initial={{ opacity: 0, y: 8 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, scale: 0.95 }}
-                          className={`p-3.5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 border transition-all ${
-                            isFirst
+                          className={`p-3.5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 border transition-all ${isFirst
                               ? settingsThemeMode === 'dark' ? 'neu-item-dark border-blue-500/40 bg-blue-500/5' : 'neu-item-light border-blue-400/50 bg-blue-50/40'
                               : settingsThemeMode === 'dark' ? 'neu-item-dark border-slate-800' : 'neu-item-light border-slate-200'
-                          }`}
+                            }`}
                         >
                           <div className="flex items-center gap-3 flex-grow">
-                            <span className={`px-2.5 py-1 rounded-xl text-[9px] font-mono font-black uppercase tracking-wider shrink-0 ${
-                              isFirst
+                            <span className={`px-2.5 py-1 rounded-xl text-[9px] font-mono font-black uppercase tracking-wider shrink-0 ${isFirst
                                 ? 'bg-blue-600 text-white shadow-md'
                                 : settingsThemeMode === 'dark' ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-700'
-                            }`}>
+                              }`}>
                               {isFirst ? '#1 Primary' : `#${idx + 1} Fallback`}
                             </span>
 
@@ -4302,9 +4295,8 @@ export default function App() {
                               value={modelName}
                               onChange={(e) => handleUpdateModelInChain(activeSettingsFeatureKey, idx, e.target.value)}
                               placeholder="e.g. gemini-3.5-flash-lite"
-                              className={`flex-grow p-2 px-3 rounded-xl outline-none text-xs font-mono font-bold transition ${
-                                settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white border-[#2b323e] focus:border-blue-500/50' : 'neu-pressed-light text-slate-800 border-white/60 focus:border-blue-500/50'
-                              }`}
+                              className={`flex-grow p-2 px-3 rounded-xl outline-none text-xs font-mono font-bold transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white border-[#2b323e] focus:border-blue-500/50' : 'neu-pressed-light text-slate-800 border-white/60 focus:border-blue-500/50'
+                                }`}
                             />
                           </div>
 
@@ -4649,13 +4641,12 @@ export default function App() {
                                       ref={prov.innerRef}
                                       {...prov.draggableProps}
                                       {...prov.dragHandleProps}
-                                      className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl border text-xs md:text-sm font-bold transition select-none ${
-                                        snapshot.isDragging
+                                      className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl border text-xs md:text-sm font-bold transition select-none ${snapshot.isDragging
                                           ? 'border-blue-400 shadow-lg shadow-blue-500/20 scale-[1.01]'
                                           : settingsThemeMode === 'dark'
                                             ? 'neu-pressed-dark border-slate-700/80'
                                             : 'neu-pressed-light border-slate-200'
-                                      }`}
+                                        }`}
                                     >
                                       <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
                                         <span className="text-gray-400 font-black cursor-grab text-sm shrink-0">⠿</span>
@@ -7220,7 +7211,7 @@ export default function App() {
         setEditingCard(sanitized);
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingCard?.id]);
   const [isManualCardModalOpen, setIsManualCardModalOpen] = useState(false);
   const [manualCardInitial, setManualCardInitial] = useState(null);
@@ -14067,9 +14058,8 @@ JSON Format:
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 0.4, delay: 0.05 }}
             whileHover={{ scale: 1.005 }}
-            className={`p-6 rounded-3xl flex flex-col justify-between transition-all ${
-              isDark ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'
-            }`}
+            className={`p-6 rounded-3xl flex flex-col justify-between transition-all ${isDark ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'
+              }`}
           >
             <div className="space-y-4">
               <h3 className={`text-sm font-black uppercase tracking-wider ${isDark ? 'text-white' : 'text-gray-800'}`}>
@@ -14127,9 +14117,8 @@ JSON Format:
               })()}
             </div>
 
-            <div className={`flex justify-between text-[10px] font-black border-t pt-3 ${
-              isDark ? 'border-slate-800/80 text-slate-400' : 'border-slate-200/80 text-slate-500'
-            }`}>
+            <div className={`flex justify-between text-[10px] font-black border-t pt-3 ${isDark ? 'border-slate-800/80 text-slate-400' : 'border-slate-200/80 text-slate-500'
+              }`}>
               <span>Total: {activeStat.totalTopics} topics</span>
               <span className={isDark ? 'text-emerald-400' : 'text-emerald-600'}>Covered: {activeStat.coveredTopics}</span>
               <span className={isDark ? 'text-slate-400' : 'text-gray-400'}>Remaining: {activeStat.remainingTopics}</span>
@@ -14142,9 +14131,8 @@ JSON Format:
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 0.4, delay: 0.12 }}
             whileHover={{ scale: 1.005 }}
-            className={`lg:col-span-2 p-6 rounded-3xl flex flex-col justify-between transition-all ${
-              isDark ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'
-            }`}
+            className={`lg:col-span-2 p-6 rounded-3xl flex flex-col justify-between transition-all ${isDark ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'
+              }`}
           >
             <div className="mb-4">
               <h3 className={`text-sm font-black uppercase tracking-wider ${isDark ? 'text-white' : 'text-gray-800'}`}>
@@ -14168,9 +14156,8 @@ JSON Format:
                           if (active && payload && payload.length) {
                             const data = payload[0].payload;
                             return (
-                              <div className={`p-3 rounded-2xl shadow-xl text-xs font-bold transition-all ${
-                                isDark ? 'neu-card-dark text-slate-100 border border-[#2b323e]' : 'neu-card-light text-slate-800 border border-white/60'
-                              }`}>
+                              <div className={`p-3 rounded-2xl shadow-xl text-xs font-bold transition-all ${isDark ? 'neu-card-dark text-slate-100 border border-[#2b323e]' : 'neu-card-light text-slate-800 border border-white/60'
+                                }`}>
                                 <p className={`font-extrabold mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>{data.subject}</p>
                                 <p className={isDark ? 'text-emerald-400' : 'text-emerald-600'}>Coverage: {data.coveragePercent}%</p>
                                 <p className={isDark ? 'text-slate-400' : 'text-gray-500'}>{data.coveredTopics} of {data.totalTopics} topics covered</p>
@@ -14198,13 +14185,11 @@ JSON Format:
           initial={{ opacity: 0, y: 16, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.4, delay: 0.20 }}
-          className={`p-6 rounded-3xl space-y-4 transition-all ${
-            isDark ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'
-          }`}
+          className={`p-6 rounded-3xl space-y-4 transition-all ${isDark ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'
+            }`}
         >
-          <div className={`flex justify-between items-center border-b pb-3 ${
-            isDark ? 'border-slate-800/80' : 'border-slate-100'
-          }`}>
+          <div className={`flex justify-between items-center border-b pb-3 ${isDark ? 'border-slate-800/80' : 'border-slate-100'
+            }`}>
             <div>
               <h3 className={`text-sm font-black uppercase tracking-wider ${isDark ? 'text-white' : 'text-gray-800'}`}>
                 {activeStat.subject} Detailed Coverage
@@ -14214,9 +14199,8 @@ JSON Format:
               </p>
             </div>
             <div className="text-right">
-              <span className={`text-xs font-black px-3 py-1 rounded-full border ${
-                isDark ? 'neu-pressed-dark text-blue-400 border-blue-900/40' : 'bg-blue-50 text-blue-600 border-blue-100'
-              }`}>
+              <span className={`text-xs font-black px-3 py-1 rounded-full border ${isDark ? 'neu-pressed-dark text-blue-400 border-blue-900/40' : 'bg-blue-50 text-blue-600 border-blue-100'
+                }`}>
                 {activeStat.coveredTopics} / {activeStat.totalTopics} Completed
               </span>
             </div>
@@ -14230,24 +14214,21 @@ JSON Format:
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Covered List */}
               <div className="space-y-3">
-                <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md border ${
-                  isDark ? 'bg-emerald-950/70 text-emerald-300 border-emerald-800/50' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                }`}>
+                <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md border ${isDark ? 'bg-emerald-950/70 text-emerald-300 border-emerald-800/50' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                  }`}>
                   Covered ({activeStat.coveredTopics})
                 </span>
                 <div className="space-y-2 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
                   {activeStat.topicsList.filter(t => t.studyDates && t.studyDates.length > 0).map(topic => (
-                    <div key={topic.name} className={`flex justify-between items-center p-3 rounded-xl border ${
-                      isDark ? 'neu-item-dark border-emerald-900/40' : 'bg-emerald-50/10 border-emerald-100'
-                    }`}>
+                    <div key={topic.name} className={`flex justify-between items-center p-3 rounded-xl border ${isDark ? 'neu-item-dark border-emerald-900/40' : 'bg-emerald-50/10 border-emerald-100'
+                      }`}>
                       <div className="flex items-center gap-2 pr-2 min-w-0">
                         <Check className="w-4 h-4 text-emerald-500 shrink-0" />
                         <span className={`text-xs font-bold truncate ${isDark ? 'text-slate-200' : 'text-gray-800'}`}>{topic.name}</span>
                       </div>
                       {topic.page && (
-                        <span className={`text-[9px] font-mono font-black px-1.5 py-0.5 rounded shrink-0 ${
-                          isDark ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/50' : 'bg-emerald-100 text-emerald-600'
-                        }`}>
+                        <span className={`text-[9px] font-mono font-black px-1.5 py-0.5 rounded shrink-0 ${isDark ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/50' : 'bg-emerald-100 text-emerald-600'
+                          }`}>
                           p. {topic.page}
                         </span>
                       )}
@@ -14261,24 +14242,21 @@ JSON Format:
 
               {/* Remaining List */}
               <div className="space-y-3">
-                <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md border ${
-                  isDark ? 'bg-slate-800/80 text-slate-300 border-slate-700' : 'bg-gray-50 text-gray-500 border border-gray-200'
-                }`}>
+                <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md border ${isDark ? 'bg-slate-800/80 text-slate-300 border-slate-700' : 'bg-gray-50 text-gray-500 border border-gray-200'
+                  }`}>
                   Yet to Cover ({activeStat.remainingTopics})
                 </span>
                 <div className="space-y-2 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
                   {activeStat.topicsList.filter(t => !t.studyDates || t.studyDates.length === 0).map(topic => (
-                    <div key={topic.name} className={`flex justify-between items-center p-3 rounded-xl border ${
-                      isDark ? 'neu-item-dark border-slate-800' : 'bg-gray-50/20 border-gray-200'
-                    }`}>
+                    <div key={topic.name} className={`flex justify-between items-center p-3 rounded-xl border ${isDark ? 'neu-item-dark border-slate-800' : 'bg-gray-50/20 border-gray-200'
+                      }`}>
                       <div className="flex items-center gap-2 pr-2 min-w-0">
                         <div className={`w-4 h-4 rounded-full border shrink-0 ${isDark ? 'border-slate-600' : 'border-gray-300'}`} />
                         <span className={`text-xs font-bold truncate ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>{topic.name}</span>
                       </div>
                       {topic.page && (
-                        <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded shrink-0 ${
-                          isDark ? 'bg-slate-800 text-slate-400 border border-slate-700' : 'bg-gray-100 text-gray-400'
-                        }`}>
+                        <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded shrink-0 ${isDark ? 'bg-slate-800 text-slate-400 border border-slate-700' : 'bg-gray-100 text-gray-400'
+                          }`}>
                           p. {topic.page}
                         </span>
                       )}
@@ -14345,8 +14323,8 @@ JSON Format:
                     <div
                       key={pIdx}
                       className={`px-2 py-1 text-[10px] font-bold flex items-center gap-1.5 rounded-lg border ${isDark
-                          ? 'neu-item-dark text-blue-300 border-slate-700/60'
-                          : 'bg-blue-50 text-blue-700 border-blue-100/80'
+                        ? 'neu-item-dark text-blue-300 border-slate-700/60'
+                        : 'bg-blue-50 text-blue-700 border-blue-100/80'
                         }`}
                     >
                       <span className={`${isDark ? 'text-slate-400' : 'text-slate-500'} font-medium select-none`}>📖 {p.source}:</span>
@@ -14355,8 +14333,8 @@ JSON Format:
                           <span
                             key={pageIdx}
                             className={`px-1.5 py-0.5 rounded font-mono text-[9px] font-bold ${isDark
-                                ? 'bg-blue-900/40 text-blue-200 border border-blue-800/40'
-                                : 'bg-blue-100/60 text-blue-700 border border-blue-200/60'
+                              ? 'bg-blue-900/40 text-blue-200 border border-blue-800/40'
+                              : 'bg-blue-100/60 text-blue-700 border border-blue-200/60'
                               }`}
                           >
                             p.{page}
@@ -14400,8 +14378,8 @@ JSON Format:
               setPytNewPagePages('');
             }}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition text-xs ${isEditingPages
-                ? (isDark ? 'neu-btn-accent-dark text-white border-transparent' : 'bg-blue-600 border-blue-600 text-white')
-                : (isDark ? 'neu-btn-dark text-slate-300 border-transparent' : 'neu-btn-light text-slate-700 border-transparent')
+              ? (isDark ? 'neu-btn-accent-dark text-white border-transparent' : 'bg-blue-600 border-blue-600 text-white')
+              : (isDark ? 'neu-btn-dark text-slate-300 border-transparent' : 'neu-btn-light text-slate-700 border-transparent')
               }`}
           >
             <BookOpen className="w-3.5 h-3.5" />
@@ -14411,8 +14389,8 @@ JSON Format:
           <button
             onClick={() => setPytMergingSourceTopic(isMerging ? null : topic)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition text-xs ${isMerging
-                ? 'bg-orange-600 border-orange-600 text-white'
-                : (isDark ? 'neu-btn-dark text-slate-300 border-transparent' : 'neu-btn-light text-slate-700 border-transparent')
+              ? 'bg-orange-600 border-orange-600 text-white'
+              : (isDark ? 'neu-btn-dark text-slate-300 border-transparent' : 'neu-btn-light text-slate-700 border-transparent')
               }`}
           >
             <GitMerge className="w-3.5 h-3.5" />
@@ -16150,10 +16128,10 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     const currentPromptName = generationPromptId === 'default'
       ? 'Default Medical Anki Creator'
       : generationPromptId === 'pyt_generator'
-      ? 'High-Yield PYT Generator'
-      : generationPromptId === 'qbank_engine'
-      ? 'Q-Bank engine/ error log'
-      : (customPrompts.find(p => p.id === generationPromptId)?.name || '');
+        ? 'High-Yield PYT Generator'
+        : generationPromptId === 'qbank_engine'
+          ? 'Q-Bank engine/ error log'
+          : (customPrompts.find(p => p.id === generationPromptId)?.name || '');
 
     const isHighYield = currentPromptName.toLowerCase().includes('high-yield');
 
@@ -16298,7 +16276,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
               return parsed.cardGeneration;
             }
           }
-        } catch (e) {}
+        } catch (e) { }
         return ['gemini-2.5-flash', 'gemini-1.5-flash'];
       };
 
@@ -16675,9 +16653,9 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     if (!val || typeof val !== 'string') return val || null;
     if (val.includes('<img') || val.includes('<br>') || val.includes('<div') || val.includes('<p>') || val.includes('<span') || val.includes('\n')) {
       return (
-        <div 
+        <div
           className="prose prose-sm dark:prose-invert max-w-full break-words leading-relaxed inline-card-html"
-          dangerouslySetInnerHTML={{ __html: val.replace(/\n/g, '<br>') }} 
+          dangerouslySetInnerHTML={{ __html: val.replace(/\n/g, '<br>') }}
         />
       );
     }
@@ -22219,22 +22197,20 @@ Return your response strictly as a JSON object matching this schema:
                           <button
                             type="button"
                             onClick={() => setCardGenerationInputMode('image')}
-                            className={`py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-200 active:scale-95 cursor-pointer ${
-                              cardGenerationInputMode === 'image'
+                            className={`py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-200 active:scale-95 cursor-pointer ${cardGenerationInputMode === 'image'
                                 ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400 border border-blue-500/30' : 'neu-btn-light text-blue-600 border border-blue-200/70')
                                 : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200 font-bold' : 'text-gray-500 hover:text-gray-800 font-bold')
-                            }`}
+                              }`}
                           >
                             <span>🖼️</span> Image Mode
                           </button>
                           <button
                             type="button"
                             onClick={() => setCardGenerationInputMode('text')}
-                            className={`py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-200 active:scale-95 cursor-pointer ${
-                              cardGenerationInputMode === 'text'
+                            className={`py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-200 active:scale-95 cursor-pointer ${cardGenerationInputMode === 'text'
                                 ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400 border border-blue-500/30' : 'neu-btn-light text-blue-600 border border-blue-200/70')
                                 : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200 font-bold' : 'text-gray-500 hover:text-gray-800 font-bold')
-                            }`}
+                              }`}
                           >
                             <span>📝</span> Raw Text Mode
                           </button>
@@ -22246,22 +22222,20 @@ Return your response strictly as a JSON object matching this schema:
                             <button
                               type="button"
                               onClick={() => setRawTextSubMode('pure')}
-                              className={`py-2 px-2.5 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-95 cursor-pointer ${
-                                rawTextSubMode === 'pure'
+                              className={`py-2 px-2.5 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-95 cursor-pointer ${rawTextSubMode === 'pure'
                                   ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-amber-400 border border-amber-500/30' : 'neu-btn-light text-amber-600 border border-amber-200/70')
                                   : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-800')
-                              }`}
+                                }`}
                             >
                               <span>⚡</span> Pure Parser
                             </button>
                             <button
                               type="button"
                               onClick={() => setRawTextSubMode('ai')}
-                              className={`py-2 px-2.5 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-95 cursor-pointer ${
-                                rawTextSubMode === 'ai'
+                              className={`py-2 px-2.5 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-95 cursor-pointer ${rawTextSubMode === 'ai'
                                   ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-purple-400 border border-purple-500/30' : 'neu-btn-light text-purple-600 border border-purple-200/70')
                                   : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-800')
-                              }`}
+                                }`}
                             >
                               <span>🧠</span> AI Extractor
                             </button>
@@ -22313,10 +22287,10 @@ Return your response strictly as a JSON object matching this schema:
                               const currentPromptName = generationPromptId === 'default'
                                 ? 'Default Medical Prompt'
                                 : generationPromptId === 'pyt_generator'
-                                ? 'High-Yield PYT Generator'
-                                : generationPromptId === 'qbank_engine'
-                                ? 'Q-Bank engine/ error log'
-                                : (customPrompts.find(p => p.id === generationPromptId)?.name || '');
+                                  ? 'High-Yield PYT Generator'
+                                  : generationPromptId === 'qbank_engine'
+                                    ? 'Q-Bank engine/ error log'
+                                    : (customPrompts.find(p => p.id === generationPromptId)?.name || '');
                               const isHighYield = currentPromptName.toLowerCase().includes('high-yield');
                               if (isHighYield) {
                                 const subjects = Array.from(new Set(pytTopicsList.map(p => p.subject).filter(Boolean)));
@@ -22438,8 +22412,8 @@ Return your response strictly as a JSON object matching this schema:
                                     onMouseLeave={() => setHoveredQueuePageId(null)}
                                     onClick={() => setActiveQueueId(item.id)}
                                     className={`p-2.5 rounded-2xl border transition-all flex flex-col justify-between items-center text-center cursor-pointer relative group ${isSelected || isHovered
-                                        ? (settingsThemeMode === 'dark' ? 'neu-pressed-dark ring-2 ring-blue-500 border-blue-500' : 'neu-pressed-light ring-2 ring-blue-500 border-blue-400')
-                                        : (settingsThemeMode === 'dark' ? 'neu-card-dark border-gray-800 hover:border-gray-700' : 'neu-card-light border-gray-200 hover:border-gray-300')
+                                      ? (settingsThemeMode === 'dark' ? 'neu-pressed-dark ring-2 ring-blue-500 border-blue-500' : 'neu-pressed-light ring-2 ring-blue-500 border-blue-400')
+                                      : (settingsThemeMode === 'dark' ? 'neu-card-dark border-gray-800 hover:border-gray-700' : 'neu-card-light border-gray-200 hover:border-gray-300')
                                       }`}
                                   >
                                     <div className={`w-full aspect-[4/3] rounded-xl overflow-hidden mb-2 relative flex items-center justify-center p-0.5 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
@@ -22816,17 +22790,17 @@ Return your response strictly as a JSON object matching this schema:
                       className="space-y-4"
                     >
                       {/* Mobile Add Card FAB - always visible in library */}
-              <motion.button
-                whileHover={{ scale: 1.06 }}
-                whileTap={{ scale: 0.94 }}
-                onClick={() => openManualCardModal(null)}
-                className="fixed bottom-24 right-5 z-[80] w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-2xl shadow-purple-500/30 flex items-center justify-center border-2 border-white/20"
-                title="Add Manual Flashcard"
-              >
-                <Plus className="w-6 h-6" />
-              </motion.button>
+                      <motion.button
+                        whileHover={{ scale: 1.06 }}
+                        whileTap={{ scale: 0.94 }}
+                        onClick={() => openManualCardModal(null)}
+                        className="fixed bottom-24 right-5 z-[80] w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-2xl shadow-purple-500/30 flex items-center justify-center border-2 border-white/20"
+                        title="Add Manual Flashcard"
+                      >
+                        <Plus className="w-6 h-6" />
+                      </motion.button>
 
-              {mobileLibraryLevel === 'folders' && (
+                      {mobileLibraryLevel === 'folders' && (
                         <motion.div
                           initial={{ opacity: 0, scale: 0.97 }}
                           animate={{ opacity: 1, scale: 1 }}
@@ -23027,7 +23001,7 @@ Return your response strictly as a JSON object matching this schema:
                                       className={`aspect-square rounded-2xl overflow-hidden cursor-pointer relative select-none ${isPageSelected
                                         ? 'ring-[3px] ring-blue-500 shadow-lg shadow-blue-500/20'
                                         : settingsThemeMode === 'dark' ? 'neu-item-dark border border-gray-800' : 'neu-item-light border border-white'
-                                      }`}
+                                        }`}
                                       onClick={() => {
                                         if (mobileSelectionMode) {
                                           setSelectedPages(prev => {
@@ -24063,14 +24037,12 @@ Return your response strictly as a JSON object matching this schema:
                         const activeIndex = Math.max(0, mobileSubtabs.findIndex(s => s.id === analyticsSubTab));
 
                         return (
-                          <div className={`relative flex items-center p-1.5 rounded-2xl shrink-0 select-none overflow-x-auto custom-scrollbar ${
-                            isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
-                          }`}>
+                          <div className={`relative flex items-center p-1.5 rounded-2xl shrink-0 select-none overflow-x-auto custom-scrollbar ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
+                            }`}>
                             {/* Sliding Active Pill */}
                             <div
-                              className={`absolute top-1.5 bottom-1.5 w-24 rounded-xl shadow-md ${
-                                isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
-                              }`}
+                              className={`absolute top-1.5 bottom-1.5 w-24 rounded-xl shadow-md ${isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+                                }`}
                               style={{
                                 left: `calc(0.375rem + ${activeIndex} * (6rem + 0.25rem))`,
                                 transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
@@ -24085,11 +24057,10 @@ Return your response strictly as a JSON object matching this schema:
                                   <button
                                     key={sub.id}
                                     onClick={() => setAnalyticsSubTab(sub.id)}
-                                    className={`w-24 py-2 text-[9.5px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-1.5 transition-colors duration-300 shrink-0 ${
-                                      isActive
+                                    className={`w-24 py-2 text-[9.5px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-1.5 transition-colors duration-300 shrink-0 ${isActive
                                         ? 'text-white font-extrabold'
                                         : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
-                                    }`}
+                                      }`}
                                   >
                                     <IconComp className="w-3.5 h-3.5 shrink-0" />
                                     <span className="truncate">{sub.label}</span>
@@ -24106,9 +24077,8 @@ Return your response strictly as a JSON object matching this schema:
                         <div className="space-y-6">
                           {/* KPI Grid */}
                           <div className="grid grid-cols-2 gap-3">
-                            <div className={`p-4 rounded-2xl transition-all flex items-center justify-between ${
-                              isDark ? 'neu-item-dark text-white' : 'neu-item-light text-slate-800'
-                            }`}>
+                            <div className={`p-4 rounded-2xl transition-all flex items-center justify-between ${isDark ? 'neu-item-dark text-white' : 'neu-item-light text-slate-800'
+                              }`}>
                               <div>
                                 <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Curation Rate</span>
                                 <h3 className={`text-lg font-black mt-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>{analyticsData.pageCompletionRate}%</h3>
@@ -24125,30 +24095,26 @@ Return your response strictly as a JSON object matching this schema:
                                 <span className="absolute text-[8px] font-black text-blue-500">{analyticsData.pageCompletionRate}%</span>
                               </div>
                             </div>
-                            <div className={`p-4 rounded-2xl transition-all flex flex-col justify-between ${
-                              isDark ? 'neu-item-dark text-white' : 'neu-item-light text-slate-800'
-                            }`}>
+                            <div className={`p-4 rounded-2xl transition-all flex flex-col justify-between ${isDark ? 'neu-item-dark text-white' : 'neu-item-light text-slate-800'
+                              }`}>
                               <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Time Saved</span>
                               <h3 className={`text-lg font-black mt-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>{analyticsData.timeSavedHours} hrs</h3>
                             </div>
-                            <div className={`p-4 rounded-2xl transition-all flex flex-col justify-between ${
-                              isDark ? 'neu-item-dark text-white' : 'neu-item-light text-slate-800'
-                            }`}>
+                            <div className={`p-4 rounded-2xl transition-all flex flex-col justify-between ${isDark ? 'neu-item-dark text-white' : 'neu-item-light text-slate-800'
+                              }`}>
                               <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Total Cards</span>
                               <h3 className={`text-lg font-black mt-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>{analyticsData.totalCardsCount}</h3>
                             </div>
-                            <div className={`p-4 rounded-2xl transition-all flex flex-col justify-between ${
-                              isDark ? 'neu-item-dark text-white' : 'neu-item-light text-slate-800'
-                            }`}>
+                            <div className={`p-4 rounded-2xl transition-all flex flex-col justify-between ${isDark ? 'neu-item-dark text-white' : 'neu-item-light text-slate-800'
+                              }`}>
                               <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Active Domains</span>
                               <h3 className={`text-lg font-black mt-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>{analyticsData.uniqueTagsCount}</h3>
                             </div>
                           </div>
 
                           {/* Hierarchical Sunburst */}
-                          <div className={`p-5 rounded-3xl transition-all ${
-                            isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
-                          }`}>
+                          <div className={`p-5 rounded-3xl transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                            }`}>
                             <h4 className={`text-[10px] font-black uppercase tracking-wider mb-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Sunburst Deck Map</h4>
                             <div className="overflow-x-auto">
                               <HierarchicalSunburst
@@ -24169,9 +24135,8 @@ Return your response strictly as a JSON object matching this schema:
                           </div>
 
                           {/* Tag Concept Web */}
-                          <div className={`p-5 rounded-3xl transition-all ${
-                            isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
-                          }`}>
+                          <div className={`p-5 rounded-3xl transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                            }`}>
                             <h4 className={`text-[10px] font-black uppercase tracking-wider mb-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Concept Tag Web</h4>
                             <TagConceptWeb
                               cards={cards}
@@ -24184,9 +24149,8 @@ Return your response strictly as a JSON object matching this schema:
                           </div>
 
                           {/* Mobile Contribution Activity Heatmap */}
-                          <div className={`p-5 rounded-3xl transition-all h-[360px] flex flex-col justify-between ${
-                            isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
-                          }`}>
+                          <div className={`p-5 rounded-3xl transition-all h-[360px] flex flex-col justify-between ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                            }`}>
                             {(() => {
                               const today = new Date();
                               let dateKeys = [];
@@ -24271,9 +24235,8 @@ Return your response strictly as a JSON object matching this schema:
                                         >
                                           <ChevronLeft className="w-3.5 h-3.5" />
                                         </motion.button>
-                                        <span className={`text-[9px] font-black uppercase font-mono px-2 py-0.5 rounded ${
-                                          isDark ? 'bg-slate-800 text-blue-400' : 'bg-blue-50 text-blue-700'
-                                        }`}>
+                                        <span className={`text-[9px] font-black uppercase font-mono px-2 py-0.5 rounded ${isDark ? 'bg-slate-800 text-blue-400' : 'bg-blue-50 text-blue-700'
+                                          }`}>
                                           {periodLabel}
                                         </span>
                                         <motion.button
@@ -24298,13 +24261,11 @@ Return your response strictly as a JSON object matching this schema:
                                         const activeIndex = Math.max(0, subtabs.findIndex(t => t.id === contributionTimeframe));
 
                                         return (
-                                          <div className={`relative flex items-center p-1 rounded-xl gap-1 shrink-0 select-none ${
-                                            isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
-                                          }`}>
+                                          <div className={`relative flex items-center p-1 rounded-xl gap-1 shrink-0 select-none ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
+                                            }`}>
                                             <div
-                                              className={`absolute top-1 bottom-1 w-20 rounded-lg shadow-md ${
-                                                isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
-                                              }`}
+                                              className={`absolute top-1 bottom-1 w-20 rounded-lg shadow-md ${isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+                                                }`}
                                               style={{
                                                 left: `calc(0.25rem + ${activeIndex} * (5rem + 0.25rem))`,
                                                 transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
@@ -24317,9 +24278,8 @@ Return your response strictly as a JSON object matching this schema:
                                                   setContributionTimeframe(item.id);
                                                   setContributionOffset(0);
                                                 }}
-                                                className={`relative w-20 py-1 text-[9px] font-black uppercase tracking-wider rounded-lg cursor-pointer select-none flex items-center justify-center z-10 ${
-                                                  contributionTimeframe === item.id ? 'text-white font-extrabold' : (isDark ? 'text-slate-400' : 'text-slate-600')
-                                                }`}
+                                                className={`relative w-20 py-1 text-[9px] font-black uppercase tracking-wider rounded-lg cursor-pointer select-none flex items-center justify-center z-10 ${contributionTimeframe === item.id ? 'text-white font-extrabold' : (isDark ? 'text-slate-400' : 'text-slate-600')
+                                                  }`}
                                               >
                                                 <span>{item.label}</span>
                                               </button>
@@ -24351,9 +24311,8 @@ Return your response strictly as a JSON object matching this schema:
                                           return (
                                             <div
                                               key={dateStr}
-                                              className={`relative group hover:z-50 flex flex-col items-center justify-between p-1.5 rounded-xl border ${
-                                                isDark ? 'bg-[#222730] border-gray-800' : 'bg-white border-gray-200'
-                                              }`}
+                                              className={`relative group hover:z-50 flex flex-col items-center justify-between p-1.5 rounded-xl border ${isDark ? 'bg-[#222730] border-gray-800' : 'bg-white border-gray-200'
+                                                }`}
                                             >
                                               <span className={`text-[9px] font-black uppercase ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{dayName}</span>
                                               <div
@@ -24461,9 +24420,8 @@ Return your response strictly as a JSON object matching this schema:
                                                 return (
                                                   <div
                                                     key={dateStr}
-                                                    className={`w-2.5 h-2.5 rounded-sm relative group hover:z-50 cursor-pointer border ${
-                                                      count > 0 ? 'border-transparent' : (isDark ? 'border-gray-800/80' : 'border-gray-300/60')
-                                                    }`}
+                                                    className={`w-2.5 h-2.5 rounded-sm relative group hover:z-50 cursor-pointer border ${count > 0 ? 'border-transparent' : (isDark ? 'border-gray-800/80' : 'border-gray-300/60')
+                                                      }`}
                                                     style={{ backgroundColor: color }}
                                                   >
                                                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-gray-900 text-white text-[8px] font-bold px-2 py-1 rounded shadow-xl opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-50">
@@ -24480,9 +24438,8 @@ Return your response strictly as a JSON object matching this schema:
                                   </div>
 
                                   {/* Mobile Footer: HSL Activity Legend */}
-                                  <div className={`flex items-center justify-between text-[8px] font-bold px-2 pt-1 select-none border-t ${
-                                    isDark ? 'border-gray-800/60 text-slate-400' : 'border-gray-100 text-slate-500'
-                                  }`}>
+                                  <div className={`flex items-center justify-between text-[8px] font-bold px-2 pt-1 select-none border-t ${isDark ? 'border-gray-800/60 text-slate-400' : 'border-gray-100 text-slate-500'
+                                    }`}>
                                     <span className="font-mono">{periodDetailText}</span>
                                     <div className="flex items-center gap-1">
                                       <span>Less</span>
@@ -24554,9 +24511,8 @@ Return your response strictly as a JSON object matching this schema:
                             {/* KPI Grid */}
                             <div className="grid grid-cols-2 gap-3">
                               {/* Total Hours */}
-                              <div className={`p-4 rounded-2xl flex items-center justify-between transition-all ${
-                                isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
-                              }`}>
+                              <div className={`p-4 rounded-2xl flex items-center justify-between transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                }`}>
                                 <div className="min-w-0 text-left">
                                   <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Hours Studied</span>
                                   <h3 className={`text-base font-black mt-1 truncate ${isDark ? 'text-white' : 'text-gray-800'}`}>{formatHoursToHrsMinsShort(totalHours)}</h3>
@@ -24568,9 +24524,8 @@ Return your response strictly as a JSON object matching this schema:
                               </div>
 
                               {/* Qbank Solved */}
-                              <div className={`p-4 rounded-2xl flex items-center justify-between transition-all ${
-                                isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
-                              }`}>
+                              <div className={`p-4 rounded-2xl flex items-center justify-between transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                }`}>
                                 <div className="min-w-0 text-left">
                                   <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Qbank Solved</span>
                                   <h3 className={`text-base font-black mt-1 truncate ${isDark ? 'text-white' : 'text-gray-800'}`}>{totalQuestions}</h3>
@@ -24582,9 +24537,8 @@ Return your response strictly as a JSON object matching this schema:
                               </div>
 
                               {/* Anki Review */}
-                              <div className={`p-4 rounded-2xl flex items-center justify-between transition-all ${
-                                isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
-                              }`}>
+                              <div className={`p-4 rounded-2xl flex items-center justify-between transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                }`}>
                                 <div className="min-w-0 text-left">
                                   <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Cards Reviewed</span>
                                   <h3 className={`text-base font-black mt-1 truncate ${isDark ? 'text-white' : 'text-gray-800'}`}>{totalCards}</h3>
@@ -24596,9 +24550,8 @@ Return your response strictly as a JSON object matching this schema:
                               </div>
 
                               {/* Grand Tests */}
-                              <div className={`p-4 rounded-2xl flex items-center justify-between transition-all ${
-                                isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
-                              }`}>
+                              <div className={`p-4 rounded-2xl flex items-center justify-between transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                }`}>
                                 <div className="min-w-0 text-left">
                                   <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Grand Tests</span>
                                   <h3 className={`text-base font-black mt-1 truncate ${isDark ? 'text-white' : 'text-gray-800'}`}>{totalGtsCount}</h3>
@@ -24610,9 +24563,8 @@ Return your response strictly as a JSON object matching this schema:
                               </div>
 
                               {/* Daily Pace */}
-                              <div className={`p-4 rounded-2xl col-span-2 flex items-center justify-between transition-all ${
-                                isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
-                              }`}>
+                              <div className={`p-4 rounded-2xl col-span-2 flex items-center justify-between transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                }`}>
                                 <div className="min-w-0 text-left">
                                   <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Daily Pace</span>
                                   <h3 className={`text-base font-black mt-1 truncate ${isDark ? 'text-white' : 'text-gray-800'}`}>{averageHours} hrs/day</h3>
@@ -24625,9 +24577,8 @@ Return your response strictly as a JSON object matching this schema:
                             </div>
 
                             {/* Today's Goal Progress Circle */}
-                            <div className={`p-5 rounded-3xl flex items-center gap-5 transition-all ${
-                              isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
-                            }`}>
+                            <div className={`p-5 rounded-3xl flex items-center gap-5 transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                              }`}>
                               <div className="relative shrink-0 flex items-center justify-center">
                                 <svg className="w-20 h-20 transform -rotate-90">
                                   <circle cx="40" cy="40" r="34" stroke={isDark ? '#2d3440' : '#f3f4f6'} strokeWidth="6" fill="transparent" />
@@ -24657,9 +24608,8 @@ Return your response strictly as a JSON object matching this schema:
                             </div>
 
                             {/* Mobile Study Room Intensity Map */}
-                            <div className={`p-5 rounded-3xl transition-all flex flex-col justify-between ${
-                              isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
-                            }`}>
+                            <div className={`p-5 rounded-3xl transition-all flex flex-col justify-between ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                              }`}>
                               {(() => {
                                 const today = new Date();
                                 let dateKeys = [];
@@ -24751,9 +24701,8 @@ Return your response strictly as a JSON object matching this schema:
                                         </div>
 
                                         {/* Mobile Period Navigation */}
-                                        <div className={`flex items-center gap-1 p-0.5 rounded-xl select-none ${
-                                          isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
-                                        }`}>
+                                        <div className={`flex items-center gap-1 p-0.5 rounded-xl select-none ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
+                                          }`}>
                                           <motion.button
                                             whileTap={{ scale: 0.9 }}
                                             onClick={() => setStudyIntensityOffset(prev => prev - 1)}
@@ -24761,20 +24710,18 @@ Return your response strictly as a JSON object matching this schema:
                                           >
                                             <ChevronLeft className="w-3.5 h-3.5" />
                                           </motion.button>
-                                          <span className={`text-[9px] font-black uppercase font-mono px-2 py-0.5 rounded ${
-                                            isDark ? 'bg-slate-800 text-orange-400' : 'bg-orange-50 text-orange-700'
-                                          }`}>
+                                          <span className={`text-[9px] font-black uppercase font-mono px-2 py-0.5 rounded ${isDark ? 'bg-slate-800 text-orange-400' : 'bg-orange-50 text-orange-700'
+                                            }`}>
                                             {periodLabel}
                                           </span>
                                           <motion.button
                                             whileTap={{ scale: 0.9 }}
                                             disabled={studyIntensityOffset >= 0}
                                             onClick={() => setStudyIntensityOffset(prev => Math.min(0, prev + 1))}
-                                            className={`p-1 rounded-lg ${
-                                              studyIntensityOffset >= 0
+                                            className={`p-1 rounded-lg ${studyIntensityOffset >= 0
                                                 ? 'opacity-30 cursor-not-allowed text-gray-400'
                                                 : (isDark ? 'bg-slate-800 text-slate-300' : 'bg-gray-200 text-slate-700')
-                                            }`}
+                                              }`}
                                           >
                                             <ChevronRight className="w-3.5 h-3.5" />
                                           </motion.button>
@@ -24792,13 +24739,11 @@ Return your response strictly as a JSON object matching this schema:
                                           const activeIndex = Math.max(0, subtabs.findIndex(t => t.id === studyIntensityTimeframe));
 
                                           return (
-                                            <div className={`relative flex items-center p-1 rounded-xl gap-1 shrink-0 select-none ${
-                                              isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
-                                            }`}>
+                                            <div className={`relative flex items-center p-1 rounded-xl gap-1 shrink-0 select-none ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
+                                              }`}>
                                               <div
-                                                className={`absolute top-1 bottom-1 w-20 rounded-lg shadow-md ${
-                                                  isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
-                                                }`}
+                                                className={`absolute top-1 bottom-1 w-20 rounded-lg shadow-md ${isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+                                                  }`}
                                                 style={{
                                                   left: `calc(0.25rem + ${activeIndex} * (5rem + 0.25rem))`,
                                                   transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
@@ -24811,9 +24756,8 @@ Return your response strictly as a JSON object matching this schema:
                                                     setStudyIntensityTimeframe(item.id);
                                                     setStudyIntensityOffset(0);
                                                   }}
-                                                  className={`relative w-20 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${
-                                                    studyIntensityTimeframe === item.id ? 'text-white font-extrabold' : (isDark ? 'text-slate-400' : 'text-slate-600')
-                                                  }`}
+                                                  className={`relative w-20 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${studyIntensityTimeframe === item.id ? 'text-white font-extrabold' : (isDark ? 'text-slate-400' : 'text-slate-600')
+                                                    }`}
                                                 >
                                                   <span>{item.label}</span>
                                                 </button>
@@ -24884,9 +24828,8 @@ Return your response strictly as a JSON object matching this schema:
                                                     className={`w-5 h-5 mx-auto rounded transition duration-150 cursor-pointer relative group hover:z-[100] border flex items-center justify-center ${border}`}
                                                     style={{ backgroundColor: color }}
                                                   >
-                                                    <span className={`text-[8.5px] font-mono font-black ${
-                                                      hasActivity ? 'text-gray-900' : (isDark ? 'text-slate-400' : 'text-slate-600')
-                                                    }`}>
+                                                    <span className={`text-[8.5px] font-mono font-black ${hasActivity ? 'text-gray-900' : (isDark ? 'text-slate-400' : 'text-slate-600')
+                                                      }`}>
                                                       {dayNum}
                                                     </span>
 
@@ -24995,9 +24938,8 @@ Return your response strictly as a JSON object matching this schema:
                                 <select
                                   value={selectedCategory}
                                   onChange={(e) => setSelectedCategory(e.target.value)}
-                                  className={`w-full p-3.5 rounded-2xl text-xs font-bold outline-none transition cursor-pointer ${
-                                    isDark ? 'neu-pressed-dark text-gray-100 border border-gray-800' : 'neu-pressed-light text-gray-900 border border-white/80'
-                                  }`}
+                                  className={`w-full p-3.5 rounded-2xl text-xs font-bold outline-none transition cursor-pointer ${isDark ? 'neu-pressed-dark text-gray-100 border border-gray-800' : 'neu-pressed-light text-gray-900 border border-white/80'
+                                    }`}
                                 >
                                   {['General', 'OBC', 'SC', 'ST', 'EWS'].map(cat => (
                                     <option key={cat} value={cat} className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>
@@ -25011,9 +24953,8 @@ Return your response strictly as a JSON object matching this schema:
                                 <select
                                   value={dreamCollege}
                                   onChange={(e) => setDreamCollege(e.target.value)}
-                                  className={`w-full p-3.5 rounded-2xl text-xs font-bold outline-none transition cursor-pointer ${
-                                    isDark ? 'neu-pressed-dark text-gray-100 border border-gray-800' : 'neu-pressed-light text-gray-900 border border-white/80'
-                                  }`}
+                                  className={`w-full p-3.5 rounded-2xl text-xs font-bold outline-none transition cursor-pointer ${isDark ? 'neu-pressed-dark text-gray-100 border border-gray-800' : 'neu-pressed-light text-gray-900 border border-white/80'
+                                    }`}
                                 >
                                   {['AIIMS, New Delhi', 'JIPMER, Puducherry', 'PGIMER, Chandigarh', 'Madras Medical College (MMC), Chennai (TN)', 'Seth GS Medical College, Mumbai (MH)', 'MAMC, New Delhi', 'AIIMS, Jodhpur', 'AIIMS, Bhopal', 'AIIMS, Bhubaneswar', 'CMC Vellore', 'NIMHANS, Bengaluru'].map(inst => (
                                     <option key={inst} value={inst} className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>{inst}</option>
@@ -25038,11 +24979,10 @@ Return your response strictly as a JSON object matching this schema:
                             const defaultTargetRank = mobileGetTargetRank(dreamCollege, dreamBranch);
                             const estimatedScore = Math.round(defaultTargetRank / 200 * 20 + 400);
                             return (
-                              <div className={`p-6 rounded-3xl space-y-4 shadow-xl transition-all duration-300 ${
-                                isDark 
-                                  ? 'neu-card-dark border border-indigo-500/20 bg-gradient-to-br from-indigo-950/90 via-[#222730] to-purple-950/90 text-white' 
+                              <div className={`p-6 rounded-3xl space-y-4 shadow-xl transition-all duration-300 ${isDark
+                                  ? 'neu-card-dark border border-indigo-500/20 bg-gradient-to-br from-indigo-950/90 via-[#222730] to-purple-950/90 text-white'
                                   : 'bg-gradient-to-br from-indigo-900 via-indigo-950 to-purple-950 text-white shadow-purple-950/20'
-                              }`}>
+                                }`}>
                                 <div className="flex items-center gap-3">
                                   <Trophy className="w-6 h-6 text-amber-400 animate-pulse" />
                                   <div>
@@ -25088,11 +25028,10 @@ Return your response strictly as a JSON object matching this schema:
                                   return (
                                     <label
                                       key={idx}
-                                      className={`flex items-start gap-3 p-3.5 rounded-2xl transition-all duration-200 cursor-pointer ${
-                                        isChecked 
+                                      className={`flex items-start gap-3 p-3.5 rounded-2xl transition-all duration-200 cursor-pointer ${isChecked
                                           ? (isDark ? 'neu-pressed-dark border border-gray-800/80 opacity-60' : 'neu-pressed-light border border-white/80 opacity-60')
                                           : (isDark ? 'neu-card-dark hover:border-indigo-500/30' : 'neu-card-light hover:border-indigo-300')
-                                      }`}
+                                        }`}
                                     >
                                       <input
                                         type="checkbox"
@@ -25104,11 +25043,10 @@ Return your response strictly as a JSON object matching this schema:
                                         }}
                                         className="mt-0.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500/20 cursor-pointer"
                                       />
-                                      <span className={`text-xs leading-relaxed ${
-                                        isChecked 
-                                          ? (isDark ? 'text-gray-500 line-through font-semibold' : 'text-gray-400 line-through font-semibold') 
+                                      <span className={`text-xs leading-relaxed ${isChecked
+                                          ? (isDark ? 'text-gray-500 line-through font-semibold' : 'text-gray-400 line-through font-semibold')
                                           : (isDark ? 'text-gray-200 font-bold' : 'text-gray-800 font-bold')
-                                      }`}>
+                                        }`}>
                                         {task}
                                       </span>
                                     </label>
@@ -25211,9 +25149,8 @@ Return your response strictly as a JSON object matching this schema:
                                           if (active && payload && payload.length) {
                                             const data = payload[0].payload;
                                             return (
-                                              <div className={`p-3 rounded-2xl shadow-xl text-xs font-bold ${
-                                                isDark ? 'neu-card-dark border border-gray-800 text-gray-100' : 'bg-white border border-gray-200 text-gray-900 shadow-md'
-                                              }`}>
+                                              <div className={`p-3 rounded-2xl shadow-xl text-xs font-bold ${isDark ? 'neu-card-dark border border-gray-800 text-gray-100' : 'bg-white border border-gray-200 text-gray-900 shadow-md'
+                                                }`}>
                                                 <p className={isDark ? 'text-gray-100 font-extrabold' : 'text-gray-900 font-extrabold'}>{data.name}</p>
                                                 <p className="text-blue-500 font-mono mt-0.5">{data.percentage}% ({data.count} topics)</p>
                                               </div>
@@ -25238,9 +25175,8 @@ Return your response strictly as a JSON object matching this schema:
                           <div className={`p-6 rounded-3xl space-y-4 ${isDark ? 'neu-card-dark' : 'neu-card-light'}`}>
                             <div className="flex justify-between items-center">
                               <h3 className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>All Subjects Overview</h3>
-                              <span className={`text-[10px] font-black px-2.5 py-1 rounded-full border ${
-                                isDark ? 'neu-pressed-dark text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                              }`}>
+                              <span className={`text-[10px] font-black px-2.5 py-1 rounded-full border ${isDark ? 'neu-pressed-dark text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                }`}>
                                 Avg: {pytCoverageStats.overallAverageCoverage}%
                               </span>
                             </div>
@@ -25251,11 +25187,10 @@ Return your response strictly as a JSON object matching this schema:
                                   <button
                                     key={stat.subject}
                                     onClick={() => setSelectedAnalyticsPytSubject(stat.subject)}
-                                    className={`w-full text-left p-3.5 rounded-2xl transition-all ${
-                                      isSelected 
-                                        ? (isDark ? 'neu-pressed-dark border border-blue-500/40 shadow-sm' : 'neu-pressed-light border border-blue-400 shadow-sm') 
+                                    className={`w-full text-left p-3.5 rounded-2xl transition-all ${isSelected
+                                        ? (isDark ? 'neu-pressed-dark border border-blue-500/40 shadow-sm' : 'neu-pressed-light border border-blue-400 shadow-sm')
                                         : (isDark ? 'neu-card-dark border border-gray-800/80 hover:border-gray-700' : 'neu-card-light hover:border-gray-300')
-                                    }`}
+                                      }`}
                                   >
                                     <div className="flex justify-between items-center mb-1.5">
                                       <span className={`text-[11px] font-black truncate max-w-[150px] ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>{stat.subject}</span>
@@ -25377,15 +25312,14 @@ Return your response strictly as a JSON object matching this schema:
                       <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-5 rounded-3xl flex flex-col gap-4`}>
                         <label className={`block text-[10px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-400'}`}>2. Select Target Format</label>
                         <div className="grid grid-cols-2 gap-3">
-                          {[{id:'apkg',icon:<Layers className="w-4 h-4 text-purple-400"/>,label:'Anki Package (.apkg)'},{id:'anki',icon:<FileText className="w-4 h-4 text-orange-400"/>,label:'Anki TSV'},{id:'notion',icon:<Grid className="w-4 h-4 text-blue-400"/>,label:'Notion CSV'},{id:'pdf',icon:<Layers className="w-4 h-4 text-emerald-400"/>,label:'PDF Sheet'}].map(fmt => (
+                          {[{ id: 'apkg', icon: <Layers className="w-4 h-4 text-purple-400" />, label: 'Anki Package (.apkg)' }, { id: 'anki', icon: <FileText className="w-4 h-4 text-orange-400" />, label: 'Anki TSV' }, { id: 'notion', icon: <Grid className="w-4 h-4 text-blue-400" />, label: 'Notion CSV' }, { id: 'pdf', icon: <Layers className="w-4 h-4 text-emerald-400" />, label: 'PDF Sheet' }].map(fmt => (
                             <button
                               key={fmt.id}
                               onClick={() => setExportFormat(fmt.id)}
-                              className={`p-3 rounded-2xl flex flex-col justify-between h-20 text-left transition-all active:scale-95 ${
-                                exportFormat === fmt.id
+                              className={`p-3 rounded-2xl flex flex-col justify-between h-20 text-left transition-all active:scale-95 ${exportFormat === fmt.id
                                   ? 'bg-gradient-to-br from-blue-500/20 to-blue-600/10 border-2 border-blue-500 shadow-lg shadow-blue-500/10'
                                   : settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'
-                              }`}
+                                }`}
                             >
                               {fmt.icon}
                               <div className={`text-[10px] font-black leading-none ${exportFormat === fmt.id ? 'text-blue-500' : settingsThemeMode === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>{fmt.label}</div>
@@ -25398,15 +25332,14 @@ Return your response strictly as a JSON object matching this schema:
                       <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-5 rounded-3xl flex flex-col gap-3`}>
                         <label className={`block text-[10px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-400'}`}>3. Filter Export Scope</label>
                         <div className="grid grid-cols-3 gap-2">
-                          {[{val:'all',label:`All (${totalInExport})`},{val:'unexported',label:`New (${unexportedInExport})`},{val:'exported',label:`Done (${exportedInExport})`}].map(s => (
+                          {[{ val: 'all', label: `All (${totalInExport})` }, { val: 'unexported', label: `New (${unexportedInExport})` }, { val: 'exported', label: `Done (${exportedInExport})` }].map(s => (
                             <button
                               key={s.val}
                               onClick={() => setExportScope(s.val)}
-                              className={`py-2 px-1 rounded-xl text-[10px] font-black transition active:scale-95 ${
-                                exportScope === s.val
+                              className={`py-2 px-1 rounded-xl text-[10px] font-black transition active:scale-95 ${exportScope === s.val
                                   ? 'bg-gradient-to-br from-blue-500/20 to-blue-600/10 border-2 border-blue-500 text-blue-500 shadow-md shadow-blue-500/10'
                                   : settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-500'
-                              }`}
+                                }`}
                             >
                               {s.label}
                             </button>
@@ -25479,11 +25412,10 @@ Return your response strictly as a JSON object matching this schema:
                       </div>
 
                       {/* Sticky bottom mobile download action bar */}
-                      <div className={`fixed bottom-[72px] left-0 right-0 backdrop-blur-md border-t px-5 py-4 shadow-lg z-45 flex items-center justify-between gap-3 ${
-                        settingsThemeMode === 'dark'
+                      <div className={`fixed bottom-[72px] left-0 right-0 backdrop-blur-md border-t px-5 py-4 shadow-lg z-45 flex items-center justify-between gap-3 ${settingsThemeMode === 'dark'
                           ? 'bg-[#222730]/95 border-slate-600/40'
                           : 'bg-[#e6ecf5]/95 border-slate-200/80'
-                      }`}>
+                        }`}>
                         <div className="min-w-0">
                           <h3 className={`text-xs font-black truncate ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-800'}`}>Compile Deck</h3>
                           <p className={`text-[8px] font-bold mt-0.5 ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>{exportCount} cards in {exportFormat.toUpperCase()}</p>
@@ -25491,11 +25423,10 @@ Return your response strictly as a JSON object matching this schema:
                         <button
                           onClick={() => exportDeck(exportFormat)}
                           disabled={exportCount === 0}
-                          className={`px-5 py-2.5 text-[10px] font-black rounded-xl transition flex items-center gap-1.5 active:scale-95 ${
-                            exportCount === 0
+                          className={`px-5 py-2.5 text-[10px] font-black rounded-xl transition flex items-center gap-1.5 active:scale-95 ${exportCount === 0
                               ? settingsThemeMode === 'dark' ? 'bg-slate-700 text-slate-500' : 'bg-slate-200 text-slate-400'
                               : 'bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-lg shadow-blue-500/30'
-                          }`}
+                            }`}
                         >
                           <Download className="w-3.5 h-3.5" /> Compile
                         </button>
@@ -25503,9 +25434,8 @@ Return your response strictly as a JSON object matching this schema:
 
                       {/* Mobile Export Progress Overlay */}
                       {isExporting && (
-                        <div className={`fixed inset-0 backdrop-blur-sm z-[200] flex flex-col items-center justify-center p-6 text-center ${
-                          settingsThemeMode === 'dark' ? 'bg-[#222730]/95' : 'bg-[#e6ecf5]/95'
-                        }`}>
+                        <div className={`fixed inset-0 backdrop-blur-sm z-[200] flex flex-col items-center justify-center p-6 text-center ${settingsThemeMode === 'dark' ? 'bg-[#222730]/95' : 'bg-[#e6ecf5]/95'
+                          }`}>
                           <div className="relative mb-4 flex items-center justify-center">
                             <OrbitalLoader themeMode={settingsThemeMode} size="large" />
                           </div>
@@ -25543,22 +25473,20 @@ Return your response strictly as a JSON object matching this schema:
                             <button
                               type="button"
                               onClick={() => { setPromptCategoryTab('image'); setSelectedPromptId('default'); }}
-                              className={`py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition ${
-                                promptCategoryTab === 'image'
+                              className={`py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition ${promptCategoryTab === 'image'
                                   ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400 border border-blue-500/30' : 'neu-btn-light text-blue-600 border border-blue-200')
                                   : (settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500')
-                              }`}
+                                }`}
                             >
                               <span>🖼️</span> Image Extraction Prompts
                             </button>
                             <button
                               type="button"
                               onClick={() => { setPromptCategoryTab('text'); setSelectedPromptId('text_default'); }}
-                              className={`py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition ${
-                                promptCategoryTab === 'text'
+                              className={`py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition ${promptCategoryTab === 'text'
                                   ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-purple-400 border border-purple-500/30' : 'neu-btn-light text-purple-600 border border-purple-200')
                                   : (settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500')
-                              }`}
+                                }`}
                             >
                               <span>📝</span> Text Extraction Prompts
                             </button>
@@ -25726,15 +25654,15 @@ Return your response strictly as a JSON object matching this schema:
                               <Info className="w-4 h-4 shrink-0 mt-0.5" />
                               <div className="text-[10px]">
                                 <p className="font-bold">
-                                  {selectedPromptId === 'default' 
-                                    ? 'System Default (Read-only)' 
+                                  {selectedPromptId === 'default'
+                                    ? 'System Default (Read-only)'
                                     : selectedPromptId === 'pyt_generator'
-                                    ? 'High-Yield PYT Generator (Read-only)'
-                                    : selectedPromptId === 'qbank_engine'
-                                    ? 'Q-Bank engine/ error log (Read-only)'
-                                    : selectedPromptId === 'text_default'
-                                    ? 'Default Text Extractor (Read-only)'
-                                    : 'Strict 1:1 Verbatim Extractor (Read-only)'}
+                                      ? 'High-Yield PYT Generator (Read-only)'
+                                      : selectedPromptId === 'qbank_engine'
+                                        ? 'Q-Bank engine/ error log (Read-only)'
+                                        : selectedPromptId === 'text_default'
+                                          ? 'Default Text Extractor (Read-only)'
+                                          : 'Strict 1:1 Verbatim Extractor (Read-only)'}
                                 </p>
                                 <p className="mt-0.5 opacity-90">To customize, click **Duplicate** to create an editable custom copy.</p>
                               </div>
@@ -26309,9 +26237,8 @@ Return your response strictly as a JSON object matching this schema:
                           initial={{ opacity: 0, y: 12 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.4, delay: 0.05 }}
-                          className={`p-5 rounded-3xl transition-all space-y-4 ${
-                            isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
-                          }`}
+                          className={`p-5 rounded-3xl transition-all space-y-4 ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                            }`}
                         >
                           <div className={`flex items-center gap-2 pb-3 border-b ${isDark ? 'border-slate-750' : 'border-slate-200/80'}`}>
                             <div className={`p-2 rounded-xl ${isDark ? 'neu-pressed-dark text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
@@ -26335,18 +26262,16 @@ Return your response strictly as a JSON object matching this schema:
                             />
                             <button
                               onClick={() => setSubjectTrackerSubTab('manager')}
-                              className={`relative z-10 flex-grow py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center justify-center gap-1.5 ${
-                                subjectTrackerSubTab === 'manager' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
-                              }`}
+                              className={`relative z-10 flex-grow py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center justify-center gap-1.5 ${subjectTrackerSubTab === 'manager' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
+                                }`}
                             >
                               <ListChecks className="w-3.5 h-3.5" />
                               Manager
                             </button>
                             <button
                               onClick={() => setSubjectTrackerSubTab('coverage')}
-                              className={`relative z-10 flex-grow py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center justify-center gap-1.5 ${
-                                subjectTrackerSubTab === 'coverage' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
-                              }`}
+                              className={`relative z-10 flex-grow py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center justify-center gap-1.5 ${subjectTrackerSubTab === 'coverage' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
+                                }`}
                             >
                               <Layers className="w-3.5 h-3.5" />
                               Coverage
@@ -26373,9 +26298,8 @@ Return your response strictly as a JSON object matching this schema:
                               initial={{ opacity: 0, y: 12 }}
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ duration: 0.4, delay: 0.1 }}
-                              className={`p-5 rounded-3xl transition-all space-y-3 ${
-                                isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
-                              }`}
+                              className={`p-5 rounded-3xl transition-all space-y-3 ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                }`}
                             >
                               <label className={`block text-[9px] font-black uppercase tracking-widest mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Primary Source Material</label>
                               <div className="flex gap-2 items-center w-full">
@@ -26399,9 +26323,8 @@ Return your response strictly as a JSON object matching this schema:
                                       : (subjectTrackerData.find(p => p.id === selectedTrackerSubject.trim().toLowerCase())?.primarySource || "");
                                     handleSavePrimarySource(selectedTrackerSubject, sourceVal);
                                   }}
-                                  className={`w-0 min-w-0 flex-grow p-2.5 rounded-xl text-xs font-bold outline-none transition ${
-                                    isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'
-                                  }`}
+                                  className={`w-0 min-w-0 flex-grow p-2.5 rounded-xl text-xs font-bold outline-none transition ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'
+                                    }`}
                                 />
                                 <motion.button
                                   whileHover={{ scale: 1.02 }}
@@ -26413,9 +26336,8 @@ Return your response strictly as a JSON object matching this schema:
                                     handleSavePrimarySource(selectedTrackerSubject, sourceVal);
                                     alert("Primary source saved!");
                                   }}
-                                  className={`px-3.5 py-2.5 shrink-0 rounded-xl text-[10px] font-black uppercase tracking-wider transition ${
-                                    isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300' : 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                                  }`}
+                                  className={`px-3.5 py-2.5 shrink-0 rounded-xl text-[10px] font-black uppercase tracking-wider transition ${isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300' : 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                                    }`}
                                 >
                                   Save
                                 </motion.button>
@@ -26448,11 +26370,10 @@ Return your response strictly as a JSON object matching this schema:
                                   processIndexFiles(e.clipboardData.files, selectedTrackerSubject);
                                 }
                               }}
-                              className={`flex flex-col gap-3 rounded-3xl p-5 outline-none transition-all duration-300 ${
-                                isDark
+                              className={`flex flex-col gap-3 rounded-3xl p-5 outline-none transition-all duration-300 ${isDark
                                   ? 'neu-card-dark bg-gradient-to-br from-slate-900 via-indigo-950/40 to-slate-900 border border-indigo-900/40 text-white'
                                   : 'neu-card-light bg-gradient-to-br from-violet-50/70 via-white to-indigo-50/70 border border-indigo-100 text-slate-800'
-                              } ${isTrackerDragOver ? (isDark ? 'border-violet-500/80 bg-violet-950/40 scale-[1.02]' : 'border-violet-400 bg-violet-100/50 scale-[1.02]') : ''}`}
+                                } ${isTrackerDragOver ? (isDark ? 'border-violet-500/80 bg-violet-950/40 scale-[1.02]' : 'border-violet-400 bg-violet-100/50 scale-[1.02]') : ''}`}
                             >
                               <div className="text-left">
                                 <h4 className={`text-xs font-black flex items-center gap-1.5 ${isDark ? 'text-indigo-300' : 'text-indigo-950'}`}>
@@ -26490,9 +26411,8 @@ Return your response strictly as a JSON object matching this schema:
                               initial={{ opacity: 0, y: 12 }}
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ duration: 0.4, delay: 0.2 }}
-                              className={`p-4 rounded-3xl transition-all space-y-2.5 border ${
-                                isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-800 border-slate-200'
-                              }`}
+                              className={`p-4 rounded-3xl transition-all space-y-2.5 border ${isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-800 border-slate-200'
+                                }`}
                             >
                               <label className={`block text-[9px] font-black uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Add Topic to Track</label>
                               <form
@@ -26513,9 +26433,8 @@ Return your response strictly as a JSON object matching this schema:
                                   placeholder="Type topic name (e.g. Cranial Nerves)..."
                                   value={trackerNewTopicInput}
                                   onChange={(e) => setTrackerNewTopicInput(e.target.value)}
-                                  className={`w-full p-2.5 rounded-xl text-xs font-bold outline-none transition ${
-                                    isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'
-                                  }`}
+                                  className={`w-full p-2.5 rounded-xl text-xs font-bold outline-none transition ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'
+                                    }`}
                                 />
 
                                 {/* Row 2: Start/End Page Inputs & Add Button */}
@@ -26525,26 +26444,23 @@ Return your response strictly as a JSON object matching this schema:
                                     placeholder="Start Pg"
                                     value={trackerNewTopicPage}
                                     onChange={(e) => setTrackerNewTopicPage(e.target.value)}
-                                    className={`w-20 p-2.5 rounded-xl text-xs font-bold outline-none transition text-center shrink-0 ${
-                                      isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'
-                                    }`}
+                                    className={`w-20 p-2.5 rounded-xl text-xs font-bold outline-none transition text-center shrink-0 ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'
+                                      }`}
                                   />
                                   <input
                                     type="number"
                                     placeholder="End Pg"
                                     value={trackerNewTopicEndPage}
                                     onChange={(e) => setTrackerNewTopicEndPage(e.target.value)}
-                                    className={`w-20 p-2.5 rounded-xl text-xs font-bold outline-none transition text-center shrink-0 ${
-                                      isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'
-                                    }`}
+                                    className={`w-20 p-2.5 rounded-xl text-xs font-bold outline-none transition text-center shrink-0 ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'
+                                      }`}
                                   />
                                   <motion.button
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.95 }}
                                     type="submit"
-                                    className={`flex-grow h-[38px] rounded-xl text-[10px] font-black uppercase tracking-wider transition flex items-center justify-center gap-1.5 ${
-                                      isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300' : 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                                    }`}
+                                    className={`flex-grow h-[38px] rounded-xl text-[10px] font-black uppercase tracking-wider transition flex items-center justify-center gap-1.5 ${isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300' : 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                                      }`}
                                   >
                                     <Plus className="w-3.5 h-3.5" /> Add Topic
                                   </motion.button>
@@ -26562,9 +26478,8 @@ Return your response strictly as a JSON object matching this schema:
                               <label className={`text-[10px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Tracked Topics</label>
 
                               {/* Sort Toggle Pill */}
-                              <div className={`relative grid grid-cols-3 p-1 rounded-xl text-[9px] font-black uppercase tracking-wider w-[220px] ${
-                                isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'
-                              }`}>
+                              <div className={`relative grid grid-cols-3 p-1 rounded-xl text-[9px] font-black uppercase tracking-wider w-[220px] ${isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'
+                                }`}>
                                 <div
                                   className="absolute top-1 bottom-1 rounded-lg bg-blue-600 shadow-sm transition-all"
                                   style={{
@@ -26576,27 +26491,24 @@ Return your response strictly as a JSON object matching this schema:
                                 <button
                                   type="button"
                                   onClick={() => setTrackerSortBy('page')}
-                                  className={`relative z-10 py-1 text-center truncate transition-colors duration-200 ${
-                                    trackerSortBy === 'page' ? 'text-white font-black' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
-                                  }`}
+                                  className={`relative z-10 py-1 text-center truncate transition-colors duration-200 ${trackerSortBy === 'page' ? 'text-white font-black' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
+                                    }`}
                                 >
                                   Page #
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => setTrackerSortBy('uncompleted')}
-                                  className={`relative z-10 py-1 text-center truncate transition-colors duration-200 ${
-                                    trackerSortBy === 'uncompleted' ? 'text-white font-black' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
-                                  }`}
+                                  className={`relative z-10 py-1 text-center truncate transition-colors duration-200 ${trackerSortBy === 'uncompleted' ? 'text-white font-black' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
+                                    }`}
                                 >
                                   Pending
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => setTrackerSortBy('completed')}
-                                  className={`relative z-10 py-1 text-center truncate transition-colors duration-200 ${
-                                    trackerSortBy === 'completed' ? 'text-white font-black' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
-                                  }`}
+                                  className={`relative z-10 py-1 text-center truncate transition-colors duration-200 ${trackerSortBy === 'completed' ? 'text-white font-black' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
+                                    }`}
                                 >
                                   Done
                                 </button>
@@ -26613,9 +26525,8 @@ Return your response strictly as a JSON object matching this schema:
 
                                 if (topicsList.length === 0) {
                                   return (
-                                    <div className={`p-8 rounded-3xl text-center border transition-all ${
-                                      isDark ? 'neu-card-dark text-slate-400 border-slate-800' : 'neu-card-light text-slate-500 border-slate-200'
-                                    }`}>
+                                    <div className={`p-8 rounded-3xl text-center border transition-all ${isDark ? 'neu-card-dark text-slate-400 border-slate-800' : 'neu-card-light text-slate-500 border-slate-200'
+                                      }`}>
                                       <p className="text-xs font-bold">No tracked topics found for {selectedTrackerSubject}.</p>
                                     </div>
                                   );
@@ -26636,11 +26547,10 @@ Return your response strictly as a JSON object matching this schema:
                                           animate={{ opacity: 1, y: 0, scale: 1 }}
                                           exit={{ opacity: 0, scale: 0.96 }}
                                           transition={{ duration: 0.25, delay: Math.min(tIdx * 0.02, 0.2) }}
-                                          className={`rounded-2xl transition-all border ${
-                                            isDark
+                                          className={`rounded-2xl transition-all border ${isDark
                                               ? 'neu-card-dark text-white border-slate-800/80 hover:border-slate-750'
                                               : 'neu-card-light text-slate-800 border-slate-200/80 hover:border-slate-300'
-                                          }`}
+                                            }`}
                                         >
                                           {/* Main Header Bar (Thin & Scan-friendly) */}
                                           <div className="p-3 flex items-center justify-between gap-2.5 text-left">
@@ -26653,11 +26563,10 @@ Return your response strictly as a JSON object matching this schema:
                                                     [topicItem.name]: !prev[topicItem.name]
                                                   }));
                                                 }}
-                                                className={`p-1.5 rounded-xl transition shrink-0 ${
-                                                  hasRevisions
+                                                className={`p-1.5 rounded-xl transition shrink-0 ${hasRevisions
                                                     ? isDark ? 'neu-pressed-dark text-emerald-400' : 'bg-emerald-100 text-emerald-600'
                                                     : isDark ? 'neu-pressed-dark text-slate-500 hover:text-slate-300' : 'bg-slate-100 text-slate-400 hover:text-slate-600'
-                                                }`}
+                                                  }`}
                                               >
                                                 <CheckCircle2 className="w-3.5 h-3.5" />
                                               </button>
@@ -26666,11 +26575,10 @@ Return your response strictly as a JSON object matching this schema:
                                                   <h4 className="text-xs font-black tracking-tight leading-snug truncate max-w-[200px]">
                                                     {topicItem.name}
                                                   </h4>
-                                                  <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-lg border ${
-                                                    topicItem.endPage
+                                                  <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-lg border ${topicItem.endPage
                                                       ? isDark ? 'text-emerald-400 bg-emerald-950/40 border-emerald-800/60' : 'text-emerald-700 bg-emerald-50 border-emerald-100'
                                                       : isDark ? 'text-amber-400 bg-amber-950/40 border-amber-800/60' : 'text-amber-700 bg-amber-50 border-amber-100'
-                                                  }`}>
+                                                    }`}>
                                                     {topicItem.page ? `p. ${topicItem.page}${topicItem.endPage ? `–${topicItem.endPage}` : ''}` : 'No pgs'} ({getTopicWeight(topicItem, topicsList)} pgs)
                                                   </span>
                                                 </div>
@@ -26687,11 +26595,10 @@ Return your response strictly as a JSON object matching this schema:
                                                     [topicItem.name]: !prev[topicItem.name]
                                                   }));
                                                 }}
-                                                className={`px-2 py-1 rounded-xl text-[9px] font-black uppercase tracking-wider transition flex items-center gap-1 ${
-                                                  hasRevisions
+                                                className={`px-2 py-1 rounded-xl text-[9px] font-black uppercase tracking-wider transition flex items-center gap-1 ${hasRevisions
                                                     ? isDark ? 'neu-pressed-dark text-blue-400 border border-blue-900/50' : 'bg-blue-50 text-blue-600 border border-blue-100'
                                                     : isDark ? 'neu-pressed-dark text-slate-400' : 'bg-slate-100 text-slate-500'
-                                                }`}
+                                                  }`}
                                               >
                                                 <Flame className={`w-3 h-3 ${hasRevisions ? 'text-amber-500' : ''}`} />
                                                 {dates.length}
@@ -26703,9 +26610,8 @@ Return your response strictly as a JSON object matching this schema:
                                                 whileTap={{ scale: 0.92 }}
                                                 title="Log today's revision"
                                                 onClick={() => handleLogTrackerStudyDate(selectedTrackerSubject, topicItem.name, todayStr)}
-                                                className={`p-1.5 rounded-xl transition ${
-                                                  isDark ? 'neu-btn-dark text-emerald-400 hover:text-emerald-300' : 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'
-                                                }`}
+                                                className={`p-1.5 rounded-xl transition ${isDark ? 'neu-btn-dark text-emerald-400 hover:text-emerald-300' : 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'
+                                                  }`}
                                               >
                                                 <Plus className="w-3.5 h-3.5" />
                                               </motion.button>
@@ -26769,9 +26675,8 @@ Return your response strictly as a JSON object matching this schema:
                                                 animate={{ height: 'auto', opacity: 1 }}
                                                 exit={{ height: 0, opacity: 0 }}
                                                 transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                                                className={`overflow-hidden border-t px-3.5 py-3 space-y-3 ${
-                                                  isDark ? 'border-slate-800 bg-slate-900/60' : 'border-slate-100 bg-slate-50/70'
-                                                }`}
+                                                className={`overflow-hidden border-t px-3.5 py-3 space-y-3 ${isDark ? 'border-slate-800 bg-slate-900/60' : 'border-slate-100 bg-slate-50/70'
+                                                  }`}
                                               >
                                                 {/* Page Range Settings */}
                                                 <div className="flex items-center gap-3 flex-wrap text-xs font-bold">
@@ -26782,9 +26687,8 @@ Return your response strictly as a JSON object matching this schema:
                                                       type="number"
                                                       value={topicItem.page || ""}
                                                       onChange={(e) => handleUpdateTrackerTopicPages(selectedTrackerSubject, topicItem.name, e.target.value, topicItem.endPage || "")}
-                                                      className={`w-20 p-1.5 rounded-xl text-center text-xs font-bold outline-none ${
-                                                        isDark ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'
-                                                      }`}
+                                                      className={`w-20 p-1.5 rounded-xl text-center text-xs font-bold outline-none ${isDark ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'
+                                                        }`}
                                                       placeholder="Start"
                                                     />
                                                   </div>
@@ -26794,9 +26698,8 @@ Return your response strictly as a JSON object matching this schema:
                                                       type="number"
                                                       value={topicItem.endPage || ""}
                                                       onChange={(e) => handleUpdateTrackerTopicPages(selectedTrackerSubject, topicItem.name, topicItem.page || "", e.target.value)}
-                                                      className={`w-20 p-1.5 rounded-xl text-center text-xs font-bold outline-none ${
-                                                        isDark ? 'neu-pressed-dark text-indigo-400' : 'neu-pressed-light text-indigo-600'
-                                                      }`}
+                                                      className={`w-20 p-1.5 rounded-xl text-center text-xs font-bold outline-none ${isDark ? 'neu-pressed-dark text-indigo-400' : 'neu-pressed-light text-indigo-600'
+                                                        }`}
                                                       placeholder={getTopicEndPagePlaceholder(topicItem, topicsList)}
                                                     />
                                                   </div>
@@ -26810,9 +26713,8 @@ Return your response strictly as a JSON object matching this schema:
                                                       {dates.map((dateVal, dIdx) => (
                                                         <span
                                                           key={dIdx}
-                                                          className={`rounded-lg px-2 py-0.5 text-[9px] font-black flex items-center gap-1.5 border ${
-                                                            isDark ? 'bg-emerald-950/40 text-emerald-300 border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                                                          }`}
+                                                          className={`rounded-lg px-2 py-0.5 text-[9px] font-black flex items-center gap-1.5 border ${isDark ? 'bg-emerald-950/40 text-emerald-300 border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                                            }`}
                                                         >
                                                           📅 {formatAppDate(dateVal)}
                                                           <button
@@ -26836,9 +26738,8 @@ Return your response strictly as a JSON object matching this schema:
                                                       trackerLogDateInputs[topicItem.name] = e.target.value;
                                                       setTrackerLogDateInputs({ ...trackerLogDateInputs });
                                                     }}
-                                                    className={`p-1.5 rounded-xl text-[10px] font-bold outline-none flex-grow ${
-                                                      isDark ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-slate-800'
-                                                    }`}
+                                                    className={`p-1.5 rounded-xl text-[10px] font-bold outline-none flex-grow ${isDark ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-slate-800'
+                                                      }`}
                                                   />
                                                   <motion.button
                                                     whileHover={{ scale: 1.02 }}
@@ -26846,9 +26747,8 @@ Return your response strictly as a JSON object matching this schema:
                                                     onClick={() => {
                                                       handleLogTrackerStudyDate(selectedTrackerSubject, topicItem.name, selectedDate);
                                                     }}
-                                                    className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition flex items-center gap-1 shrink-0 ${
-                                                      isDark ? 'neu-btn-dark text-emerald-400' : 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'
-                                                    }`}
+                                                    className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition flex items-center gap-1 shrink-0 ${isDark ? 'neu-btn-dark text-emerald-400' : 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'
+                                                      }`}
                                                   >
                                                     <Plus className="w-3 h-3" /> Log Session
                                                   </motion.button>
@@ -27176,8 +27076,8 @@ Return your response strictly as a JSON object matching this schema:
                         exit={{ opacity: 0, x: -10, scale: 0.85 }}
                         transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
                         className={`fixed z-[99999] pointer-events-none ${settingsThemeMode === 'dark'
-                            ? 'bg-[#242832] text-white border-1.5 border-sky-400/40 shadow-[0_6px_22px_rgba(56,189,248,0.35)]'
-                            : 'bg-white text-slate-900 border-1.5 border-blue-500/35 shadow-[0_6px_22px_rgba(37,99,235,0.25)]'
+                          ? 'bg-[#242832] text-white border-1.5 border-sky-400/40 shadow-[0_6px_22px_rgba(56,189,248,0.35)]'
+                          : 'bg-white text-slate-900 border-1.5 border-blue-500/35 shadow-[0_6px_22px_rgba(37,99,235,0.25)]'
                           } px-4 py-1.5 rounded-full font-black text-xs whitespace-nowrap flex items-center justify-center`}
                         style={{
                           left: '88px',
@@ -27467,22 +27367,20 @@ Return your response strictly as a JSON object matching this schema:
                               <button
                                 type="button"
                                 onClick={() => setCardGenerationInputMode('image')}
-                                className={`py-2 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-200 active:scale-95 cursor-pointer ${
-                                  cardGenerationInputMode === 'image'
+                                className={`py-2 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-200 active:scale-95 cursor-pointer ${cardGenerationInputMode === 'image'
                                     ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400 border border-blue-500/30' : 'neu-btn-light text-blue-600 border border-blue-200/70')
                                     : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200 font-bold' : 'text-gray-500 hover:text-gray-800 font-bold')
-                                }`}
+                                  }`}
                               >
                                 <span>🖼️</span> Image Mode
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setCardGenerationInputMode('text')}
-                                className={`py-2 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-200 active:scale-95 cursor-pointer ${
-                                  cardGenerationInputMode === 'text'
+                                className={`py-2 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-200 active:scale-95 cursor-pointer ${cardGenerationInputMode === 'text'
                                     ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400 border border-blue-500/30' : 'neu-btn-light text-blue-600 border border-blue-200/70')
                                     : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200 font-bold' : 'text-gray-500 hover:text-gray-800 font-bold')
-                                }`}
+                                  }`}
                               >
                                 <span>📝</span> Raw Text Mode
                               </button>
@@ -27494,22 +27392,20 @@ Return your response strictly as a JSON object matching this schema:
                                 <button
                                   type="button"
                                   onClick={() => setRawTextSubMode('pure')}
-                                  className={`py-1.5 px-2 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-95 cursor-pointer ${
-                                    rawTextSubMode === 'pure'
+                                  className={`py-1.5 px-2 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-95 cursor-pointer ${rawTextSubMode === 'pure'
                                       ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-amber-400 border border-amber-500/30' : 'neu-btn-light text-amber-600 border border-amber-200/70')
                                       : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-800')
-                                  }`}
+                                    }`}
                                 >
                                   <span>⚡</span> Pure Parser
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => setRawTextSubMode('ai')}
-                                  className={`py-1.5 px-2 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-95 cursor-pointer ${
-                                    rawTextSubMode === 'ai'
+                                  className={`py-1.5 px-2 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-95 cursor-pointer ${rawTextSubMode === 'ai'
                                       ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-purple-400 border border-purple-500/30' : 'neu-btn-light text-purple-600 border border-purple-200/70')
                                       : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-800')
-                                  }`}
+                                    }`}
                                 >
                                   <span>🧠</span> AI Extractor
                                 </button>
@@ -28061,9 +27957,9 @@ Return your response strictly as a JSON object matching this schema:
                                             <div className="flex items-center justify-between gap-2 mb-2.5 w-full">
                                               <div className="flex items-center gap-1.5 flex-wrap">
                                                 <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full ${colorClass === 'blue' ? 'bg-blue-500/15 text-blue-500 border border-blue-500/25' :
-                                                    colorClass === 'green' ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/25' :
-                                                      colorClass === 'purple' ? 'bg-purple-500/15 text-purple-500 border border-purple-500/25' :
-                                                        'bg-red-500/15 text-red-500 border border-red-500/25'
+                                                  colorClass === 'green' ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/25' :
+                                                    colorClass === 'purple' ? 'bg-purple-500/15 text-purple-500 border border-purple-500/25' :
+                                                      'bg-red-500/15 text-red-500 border border-red-500/25'
                                                   }`}>
                                                   {card.type}
                                                 </span>
@@ -28310,10 +28206,10 @@ Return your response strictly as a JSON object matching this schema:
                                           }
                                         }}
                                         className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all text-xs font-bold ${isSelected
-                                            ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/30'
-                                            : settingsThemeMode === 'dark'
-                                              ? 'neu-item-dark text-gray-200 hover:text-blue-400'
-                                              : 'neu-item-light text-gray-700 hover:text-blue-600'
+                                          ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/30'
+                                          : settingsThemeMode === 'dark'
+                                            ? 'neu-item-dark text-gray-200 hover:text-blue-400'
+                                            : 'neu-item-light text-gray-700 hover:text-blue-600'
                                           }`}
                                       >
                                         <span className="truncate">{tag}</span>
@@ -28659,9 +28555,9 @@ Return your response strictly as a JSON object matching this schema:
                                                   <div className="flex items-center justify-between gap-2 mb-2.5 w-full">
                                                     <div className="flex items-center gap-1.5 flex-wrap">
                                                       <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full ${colorClass === 'blue' ? 'bg-blue-500/15 text-blue-500 border border-blue-500/25' :
-                                                          colorClass === 'green' ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/25' :
-                                                            colorClass === 'purple' ? 'bg-purple-500/15 text-purple-500 border border-purple-500/25' :
-                                                              'bg-red-500/15 text-red-500 border border-red-500/25'
+                                                        colorClass === 'green' ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/25' :
+                                                          colorClass === 'purple' ? 'bg-purple-500/15 text-purple-500 border border-purple-500/25' :
+                                                            'bg-red-500/15 text-red-500 border border-red-500/25'
                                                         }`}>
                                                         {card.type || 'BASIC'}
                                                       </span>
@@ -28961,8 +28857,8 @@ Return your response strictly as a JSON object matching this schema:
                                                     type="button"
                                                     onClick={handleSelectAllFolderPages}
                                                     className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-[10px] font-bold border transition-all active:scale-95 cursor-pointer ${allFolderPagesSelected
-                                                        ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20'
-                                                        : settingsThemeMode === 'dark' ? 'neu-item-dark text-gray-300 border-gray-700' : 'neu-item-light text-gray-700 border-gray-200'
+                                                      ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20'
+                                                      : settingsThemeMode === 'dark' ? 'neu-item-dark text-gray-300 border-gray-700' : 'neu-item-light text-gray-700 border-gray-200'
                                                       }`}
                                                   >
                                                     <input
@@ -29032,8 +28928,8 @@ Return your response strictly as a JSON object matching this schema:
                                                   setActiveQueueId(page.id);
                                                 }}
                                                 className={`aspect-[3/4] rounded-2xl overflow-hidden cursor-pointer relative group shadow-sm hover:shadow-xl ${selectedPages.has(page.id)
-                                                    ? 'ring-4 ring-blue-500/30 border-2 border-blue-500'
-                                                    : settingsThemeMode === 'dark' ? 'neu-item-dark border border-gray-800' : 'neu-item-light border border-white'
+                                                  ? 'ring-4 ring-blue-500/30 border-2 border-blue-500'
+                                                  : settingsThemeMode === 'dark' ? 'neu-item-dark border border-gray-800' : 'neu-item-light border border-white'
                                                   }`}
                                               >
                                                 <img
@@ -29092,15 +28988,14 @@ Return your response strictly as a JSON object matching this schema:
                                               <div className="flex items-center justify-between w-full">
                                                 <div className="flex items-center gap-2 flex-wrap">
                                                   <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full inline-block ${card.type === 'Cloze'
-                                                      ? (settingsThemeMode === 'dark' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-100')
-                                                      : (settingsThemeMode === 'dark' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-red-50 text-red-600 border border-red-100')
+                                                    ? (settingsThemeMode === 'dark' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-100')
+                                                    : (settingsThemeMode === 'dark' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-red-50 text-red-600 border border-red-100')
                                                     }`}>
                                                     {card.type || 'BASIC'}
                                                   </span>
                                                   {card.isManual && (
-                                                    <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full inline-block ${
-                                                      settingsThemeMode === 'dark' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'bg-purple-50 text-purple-600 border border-purple-100'
-                                                    }`}>Manual</span>
+                                                    <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full inline-block ${settingsThemeMode === 'dark' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'bg-purple-50 text-purple-600 border border-purple-100'
+                                                      }`}>Manual</span>
                                                   )}
                                                   {Boolean(card.has_image || (card.img_box && (Array.isArray(card.img_box) ? card.img_box.length === 4 : card.img_box.ymin !== undefined)) || card.include_image) && (
                                                     <span className="text-[9px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-500 border border-emerald-500/25 px-2 py-0.5 rounded-full flex items-center gap-1">
@@ -29121,8 +29016,8 @@ Return your response strictly as a JSON object matching this schema:
                                                           }
                                                         }}
                                                         className={`text-[9px] font-bold px-2.5 py-1 rounded-lg transition cursor-pointer ${selectedTags.includes(cleanTag)
-                                                            ? 'bg-blue-600 text-white font-black shadow-md shadow-blue-500/20'
-                                                            : settingsThemeMode === 'dark' ? 'bg-gray-800/90 text-gray-300 hover:text-blue-400 hover:bg-gray-700/80' : 'bg-gray-100 text-gray-600 hover:bg-blue-50 hover:text-blue-600'
+                                                          ? 'bg-blue-600 text-white font-black shadow-md shadow-blue-500/20'
+                                                          : settingsThemeMode === 'dark' ? 'bg-gray-800/90 text-gray-300 hover:text-blue-400 hover:bg-gray-700/80' : 'bg-gray-100 text-gray-600 hover:bg-blue-50 hover:text-blue-600'
                                                           }`}
                                                       >
                                                         {cleanTag}
@@ -30661,9 +30556,8 @@ Return your response strictly as a JSON object matching this schema:
                             initial={{ opacity: 0, y: -12 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                            className={`p-2 rounded-3xl text-left ${
-                              isDark ? 'neu-card-dark' : 'neu-card-light'
-                            }`}
+                            className={`p-2 rounded-3xl text-left ${isDark ? 'neu-card-dark' : 'neu-card-light'
+                              }`}
                           >
                             {(() => {
                               const desktopSubtabs = [
@@ -30676,14 +30570,12 @@ Return your response strictly as a JSON object matching this schema:
                               const activeIndex = Math.max(0, desktopSubtabs.findIndex(s => s.id === analyticsSubTab));
 
                               return (
-                                <div className={`relative flex items-center p-1.5 rounded-2xl w-full select-none ${
-                                  isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
-                                }`}>
+                                <div className={`relative flex items-center p-1.5 rounded-2xl w-full select-none ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
+                                  }`}>
                                   {/* Single Sliding Pill Indicator with exact 0.6s cubic-bezier(0,0,0,1) transition */}
                                   <div
-                                    className={`absolute top-1.5 bottom-1.5 rounded-xl shadow-md ${
-                                      isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
-                                    }`}
+                                    className={`absolute top-1.5 bottom-1.5 rounded-xl shadow-md ${isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+                                      }`}
                                     style={{
                                       width: `calc((100% - 0.75rem) / 5)`,
                                       left: `calc(0.375rem + ${activeIndex} * ((100% - 0.75rem) / 5))`,
@@ -30699,11 +30591,10 @@ Return your response strictly as a JSON object matching this schema:
                                         <button
                                           key={item.id}
                                           onClick={() => setAnalyticsSubTab(item.id)}
-                                          className={`py-3 text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-2 transition-colors duration-300 ${
-                                            isActive
+                                          className={`py-3 text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-2 transition-colors duration-300 ${isActive
                                               ? 'text-white font-extrabold'
                                               : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
-                                          }`}
+                                            }`}
                                         >
                                           <IconComp className="w-4 h-4 shrink-0" />
                                           <span className="truncate">{item.label}</span>
@@ -30729,9 +30620,8 @@ Return your response strictly as a JSON object matching this schema:
                                   animate={{ opacity: 1, y: 0, scale: 1 }}
                                   transition={{ duration: 0.4, delay: 0.05 }}
                                   whileHover={{ scale: 1.01 }}
-                                  className={`p-6 rounded-3xl flex items-center justify-between transition-all ${
-                                    isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
-                                  }`}
+                                  className={`p-6 rounded-3xl flex items-center justify-between transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                    }`}
                                 >
                                   <div>
                                     <span className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Curation Rate</span>
@@ -30760,9 +30650,8 @@ Return your response strictly as a JSON object matching this schema:
                                   animate={{ opacity: 1, y: 0, scale: 1 }}
                                   transition={{ duration: 0.4, delay: 0.10 }}
                                   whileHover={{ scale: 1.01 }}
-                                  className={`p-6 rounded-3xl flex flex-col justify-between transition-all ${
-                                    isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
-                                  }`}
+                                  className={`p-6 rounded-3xl flex flex-col justify-between transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                    }`}
                                 >
                                   <div>
                                     <span className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Time Saved</span>
@@ -30777,9 +30666,8 @@ Return your response strictly as a JSON object matching this schema:
                                   animate={{ opacity: 1, y: 0, scale: 1 }}
                                   transition={{ duration: 0.4, delay: 0.15 }}
                                   whileHover={{ scale: 1.01 }}
-                                  className={`p-6 rounded-3xl flex flex-col justify-between transition-all ${
-                                    isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
-                                  }`}
+                                  className={`p-6 rounded-3xl flex flex-col justify-between transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                    }`}
                                 >
                                   <div>
                                     <span className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Total Cards</span>
@@ -30794,9 +30682,8 @@ Return your response strictly as a JSON object matching this schema:
                                   animate={{ opacity: 1, y: 0, scale: 1 }}
                                   transition={{ duration: 0.4, delay: 0.20 }}
                                   whileHover={{ scale: 1.01 }}
-                                  className={`p-6 rounded-3xl flex flex-col justify-between transition-all ${
-                                    isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
-                                  }`}
+                                  className={`p-6 rounded-3xl flex flex-col justify-between transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                    }`}
                                 >
                                   <div>
                                     <span className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Active Concepts</span>
@@ -30851,9 +30738,8 @@ Return your response strictly as a JSON object matching this schema:
                                 animate={{ opacity: 1, y: 0, scale: 1 }}
                                 transition={{ duration: 0.4, delay: 0.35 }}
                                 whileHover={{ scale: 1.005 }}
-                                className={`p-6 rounded-3xl transition-all h-[330px] flex flex-col justify-between ${
-                                  isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
-                                }`}
+                                className={`p-6 rounded-3xl transition-all h-[330px] flex flex-col justify-between ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                  }`}
                               >
                                 {(() => {
                                   const today = new Date();
@@ -30943,24 +30829,21 @@ Return your response strictly as a JSON object matching this schema:
                                         {/* Center Zone: Prev/Next Date Navigation Pill + Timeframe Switcher */}
                                         <div className="flex flex-wrap items-center justify-center gap-3">
                                           {/* Navigation Controls: Previous / Next Date Navigator */}
-                                          <div className={`flex items-center gap-1.5 p-1 rounded-2xl select-none ${
-                                            isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
-                                          }`}>
+                                          <div className={`flex items-center gap-1.5 p-1 rounded-2xl select-none ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
+                                            }`}>
                                             <motion.button
                                               whileHover={{ scale: 1.08 }}
                                               whileTap={{ scale: 0.92 }}
                                               onClick={() => setContributionOffset(prev => prev - 1)}
-                                              className={`p-1.5 rounded-xl transition-all cursor-pointer ${
-                                                isDark ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-gray-200 text-slate-700'
-                                              }`}
+                                              className={`p-1.5 rounded-xl transition-all cursor-pointer ${isDark ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-gray-200 text-slate-700'
+                                                }`}
                                               title={`Previous ${contributionTimeframe.charAt(0).toUpperCase() + contributionTimeframe.slice(1)}`}
                                             >
                                               <ChevronLeft className="w-4 h-4" />
                                             </motion.button>
 
-                                            <span className={`text-[10px] font-black uppercase tracking-wider font-mono px-3 py-1 rounded-xl whitespace-nowrap shrink-0 ${
-                                              isDark ? 'bg-slate-800/90 text-blue-400 border border-slate-700/60 shadow-inner' : 'bg-blue-50/90 text-blue-700 border border-blue-200/80 shadow-inner'
-                                            }`}>
+                                            <span className={`text-[10px] font-black uppercase tracking-wider font-mono px-3 py-1 rounded-xl whitespace-nowrap shrink-0 ${isDark ? 'bg-slate-800/90 text-blue-400 border border-slate-700/60 shadow-inner' : 'bg-blue-50/90 text-blue-700 border border-blue-200/80 shadow-inner'
+                                              }`}>
                                               {periodLabel}
                                             </span>
 
@@ -30969,11 +30852,10 @@ Return your response strictly as a JSON object matching this schema:
                                               whileTap={contributionOffset < 0 ? { scale: 0.92 } : {}}
                                               disabled={contributionOffset >= 0}
                                               onClick={() => setContributionOffset(prev => Math.min(0, prev + 1))}
-                                              className={`p-1.5 rounded-xl transition-all ${
-                                                contributionOffset >= 0
+                                              className={`p-1.5 rounded-xl transition-all ${contributionOffset >= 0
                                                   ? 'opacity-25 cursor-not-allowed text-gray-400'
                                                   : (isDark ? 'hover:bg-slate-800 text-slate-300 cursor-pointer' : 'hover:bg-gray-200 text-slate-700 cursor-pointer')
-                                              }`}
+                                                }`}
                                               title={`Next ${contributionTimeframe.charAt(0).toUpperCase() + contributionTimeframe.slice(1)}`}
                                             >
                                               <ChevronRight className="w-4 h-4" />
@@ -30990,14 +30872,12 @@ Return your response strictly as a JSON object matching this schema:
                                             const activeIndex = Math.max(0, subtabs.findIndex(t => t.id === contributionTimeframe));
 
                                             return (
-                                              <div className={`relative flex items-center p-1.5 rounded-2xl gap-1 shrink-0 select-none ${
-                                                isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
-                                              }`}>
+                                              <div className={`relative flex items-center p-1.5 rounded-2xl gap-1 shrink-0 select-none ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
+                                                }`}>
                                                 {/* Single Sliding Pill Indicator with exact 0.6s cubic-bezier(0,0,0,1) transition */}
                                                 <div
-                                                  className={`absolute top-1.5 bottom-1.5 w-24 rounded-xl shadow-md ${
-                                                    isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
-                                                  }`}
+                                                  className={`absolute top-1.5 bottom-1.5 w-24 rounded-xl shadow-md ${isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+                                                    }`}
                                                   style={{
                                                     left: `calc(0.375rem + ${activeIndex} * (6rem + 0.25rem))`,
                                                     transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
@@ -31013,11 +30893,10 @@ Return your response strictly as a JSON object matching this schema:
                                                         setContributionTimeframe(item.id);
                                                         setContributionOffset(0);
                                                       }}
-                                                      className={`relative w-24 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${
-                                                        isActive
+                                                      className={`relative w-24 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${isActive
                                                           ? 'text-white font-extrabold'
                                                           : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
-                                                      }`}
+                                                        }`}
                                                     >
                                                       <span>{item.label}</span>
                                                     </button>
@@ -31076,9 +30955,8 @@ Return your response strictly as a JSON object matching this schema:
                                                 <motion.div
                                                   key={dateStr}
                                                   whileHover={{ scale: 1.05, y: -2 }}
-                                                  className={`relative group hover:z-50 flex flex-col items-center justify-between p-3 rounded-2xl border transition-all h-28 ${
-                                                    isDark ? 'bg-[#222730] border-gray-800 shadow-md' : 'bg-white border-gray-200 shadow-sm'
-                                                  }`}
+                                                  className={`relative group hover:z-50 flex flex-col items-center justify-between p-3 rounded-2xl border transition-all h-28 ${isDark ? 'bg-[#222730] border-gray-800 shadow-md' : 'bg-white border-gray-200 shadow-sm'
+                                                    }`}
                                                 >
                                                   <span className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                                     {dayName}
@@ -31147,14 +31025,12 @@ Return your response strictly as a JSON object matching this schema:
                                                   return (
                                                     <div
                                                       key={dateStr}
-                                                      className={`w-7 h-7 mx-auto rounded-lg flex items-center justify-center relative group hover:z-50 cursor-pointer transition duration-150 hover:scale-110 border ${
-                                                        isDark ? 'border-gray-800/60' : 'border-gray-200/60'
-                                                      }`}
+                                                      className={`w-7 h-7 mx-auto rounded-lg flex items-center justify-center relative group hover:z-50 cursor-pointer transition duration-150 hover:scale-110 border ${isDark ? 'border-gray-800/60' : 'border-gray-200/60'
+                                                        }`}
                                                       style={{ backgroundColor: color }}
                                                     >
-                                                      <span className={`text-[9.5px] font-mono font-black ${
-                                                        count > 0 ? 'text-white drop-shadow-sm' : (isDark ? 'text-slate-400' : 'text-gray-600')
-                                                      }`}>
+                                                      <span className={`text-[9.5px] font-mono font-black ${count > 0 ? 'text-white drop-shadow-sm' : (isDark ? 'text-slate-400' : 'text-gray-600')
+                                                        }`}>
                                                         {dayNum}
                                                       </span>
 
@@ -31236,9 +31112,8 @@ Return your response strictly as a JSON object matching this schema:
                                                         return (
                                                           <div
                                                             key={dateStr}
-                                                            className={`w-full aspect-square rounded-[1.5px] transition duration-150 hover:scale-125 cursor-pointer relative group hover:z-[200] border ${
-                                                              count > 0 ? 'border-transparent' : (isDark ? 'border-gray-800/80' : 'border-gray-300/60')
-                                                            }`}
+                                                            className={`w-full aspect-square rounded-[1.5px] transition duration-150 hover:scale-125 cursor-pointer relative group hover:z-[200] border ${count > 0 ? 'border-transparent' : (isDark ? 'border-gray-800/80' : 'border-gray-300/60')
+                                                              }`}
                                                             style={{ backgroundColor: color }}
                                                           >
                                                             {/* Tooltip popup */}
@@ -31267,9 +31142,8 @@ Return your response strictly as a JSON object matching this schema:
                                 animate={{ opacity: 1, y: 0, scale: 1 }}
                                 transition={{ duration: 0.4, delay: 0.40 }}
                                 whileHover={{ scale: 1.005 }}
-                                className={`p-6 rounded-3xl transition-all ${
-                                  isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
-                                }`}
+                                className={`p-6 rounded-3xl transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                  }`}
                               >
                                 <h3 className={`text-sm font-black uppercase tracking-wider flex items-center gap-2 mb-6 ${isDark ? 'text-white' : 'text-gray-900'}`}>
                                   <TrendingUp className={`w-4 h-4 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} /> Library Growth Curve
@@ -31401,9 +31275,8 @@ Return your response strictly as a JSON object matching this schema:
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                     transition={{ duration: 0.4, delay: 0.05 }}
                                     whileHover={{ scale: 1.01 }}
-                                    className={`p-6 rounded-3xl flex items-center justify-between transition-all ${
-                                      isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
-                                    }`}
+                                    className={`p-6 rounded-3xl flex items-center justify-between transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                      }`}
                                   >
                                     <div>
                                       <span className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Hours Studied</span>
@@ -31421,9 +31294,8 @@ Return your response strictly as a JSON object matching this schema:
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                     transition={{ duration: 0.4, delay: 0.10 }}
                                     whileHover={{ scale: 1.01 }}
-                                    className={`p-6 rounded-3xl flex items-center justify-between transition-all ${
-                                      isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
-                                    }`}
+                                    className={`p-6 rounded-3xl flex items-center justify-between transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                      }`}
                                   >
                                     <div>
                                       <span className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Qbank Solved</span>
@@ -31441,9 +31313,8 @@ Return your response strictly as a JSON object matching this schema:
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                     transition={{ duration: 0.4, delay: 0.15 }}
                                     whileHover={{ scale: 1.01 }}
-                                    className={`p-6 rounded-3xl flex items-center justify-between transition-all ${
-                                      isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
-                                    }`}
+                                    className={`p-6 rounded-3xl flex items-center justify-between transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                      }`}
                                   >
                                     <div>
                                       <span className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Anki Cards Reviewed</span>
@@ -31461,9 +31332,8 @@ Return your response strictly as a JSON object matching this schema:
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                     transition={{ duration: 0.4, delay: 0.20 }}
                                     whileHover={{ scale: 1.01 }}
-                                    className={`p-6 rounded-3xl flex items-center justify-between transition-all ${
-                                      isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
-                                    }`}
+                                    className={`p-6 rounded-3xl flex items-center justify-between transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                      }`}
                                   >
                                     <div>
                                       <span className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Grand Tests</span>
@@ -31481,9 +31351,8 @@ Return your response strictly as a JSON object matching this schema:
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                     transition={{ duration: 0.4, delay: 0.25 }}
                                     whileHover={{ scale: 1.01 }}
-                                    className={`p-6 rounded-3xl flex items-center justify-between transition-all ${
-                                      isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
-                                    }`}
+                                    className={`p-6 rounded-3xl flex items-center justify-between transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                      }`}
                                   >
                                     <div>
                                       <span className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Daily Pace</span>
@@ -31506,9 +31375,8 @@ Return your response strictly as a JSON object matching this schema:
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                     transition={{ duration: 0.4, delay: 0.30 }}
                                     whileHover={{ scale: 1.005 }}
-                                    className={`lg:col-span-8 p-6 rounded-3xl flex flex-col justify-between transition-all ${
-                                      isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
-                                    }`}
+                                    className={`lg:col-span-8 p-6 rounded-3xl flex flex-col justify-between transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                      }`}
                                   >
                                     {(() => {
                                       const today = new Date();
@@ -31614,24 +31482,21 @@ Return your response strictly as a JSON object matching this schema:
                                             {/* Center Zone: Prev/Next Date Navigation Pill + Timeframe Switcher */}
                                             <div className="flex flex-wrap items-center justify-center gap-3">
                                               {/* Navigation Controls: Previous / Next Date Navigator */}
-                                              <div className={`flex items-center gap-1.5 p-1 rounded-2xl select-none ${
-                                                isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
-                                              }`}>
+                                              <div className={`flex items-center gap-1.5 p-1 rounded-2xl select-none ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
+                                                }`}>
                                                 <motion.button
                                                   whileHover={{ scale: 1.08 }}
                                                   whileTap={{ scale: 0.92 }}
                                                   onClick={() => setStudyIntensityOffset(prev => prev - 1)}
-                                                  className={`p-1.5 rounded-xl transition-all cursor-pointer ${
-                                                    isDark ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-gray-200 text-slate-700'
-                                                  }`}
+                                                  className={`p-1.5 rounded-xl transition-all cursor-pointer ${isDark ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-gray-200 text-slate-700'
+                                                    }`}
                                                   title={`Previous ${studyIntensityTimeframe.charAt(0).toUpperCase() + studyIntensityTimeframe.slice(1)}`}
                                                 >
                                                   <ChevronLeft className="w-4 h-4" />
                                                 </motion.button>
 
-                                                <span className={`text-[10px] font-black uppercase tracking-wider font-mono px-3 py-1 rounded-xl whitespace-nowrap shrink-0 ${
-                                                  isDark ? 'bg-slate-800/90 text-orange-400 border border-slate-700/60 shadow-inner' : 'bg-orange-50/90 text-orange-700 border border-orange-200/80 shadow-inner'
-                                                }`}>
+                                                <span className={`text-[10px] font-black uppercase tracking-wider font-mono px-3 py-1 rounded-xl whitespace-nowrap shrink-0 ${isDark ? 'bg-slate-800/90 text-orange-400 border border-slate-700/60 shadow-inner' : 'bg-orange-50/90 text-orange-700 border border-orange-200/80 shadow-inner'
+                                                  }`}>
                                                   {periodLabel}
                                                 </span>
 
@@ -31640,11 +31505,10 @@ Return your response strictly as a JSON object matching this schema:
                                                   whileTap={studyIntensityOffset < 0 ? { scale: 0.92 } : {}}
                                                   disabled={studyIntensityOffset >= 0}
                                                   onClick={() => setStudyIntensityOffset(prev => Math.min(0, prev + 1))}
-                                                  className={`p-1.5 rounded-xl transition-all ${
-                                                    studyIntensityOffset >= 0
+                                                  className={`p-1.5 rounded-xl transition-all ${studyIntensityOffset >= 0
                                                       ? 'opacity-25 cursor-not-allowed text-gray-400'
                                                       : (isDark ? 'hover:bg-slate-800 text-slate-300 cursor-pointer' : 'hover:bg-gray-200 text-slate-700 cursor-pointer')
-                                                  }`}
+                                                    }`}
                                                   title={`Next ${studyIntensityTimeframe.charAt(0).toUpperCase() + studyIntensityTimeframe.slice(1)}`}
                                                 >
                                                   <ChevronRight className="w-4 h-4" />
@@ -31661,14 +31525,12 @@ Return your response strictly as a JSON object matching this schema:
                                                 const activeIndex = Math.max(0, subtabs.findIndex(t => t.id === studyIntensityTimeframe));
 
                                                 return (
-                                                  <div className={`relative flex items-center p-1.5 rounded-2xl gap-1 shrink-0 select-none ${
-                                                    isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
-                                                  }`}>
+                                                  <div className={`relative flex items-center p-1.5 rounded-2xl gap-1 shrink-0 select-none ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'
+                                                    }`}>
                                                     {/* Single Sliding Pill Indicator */}
                                                     <div
-                                                      className={`absolute top-1.5 bottom-1.5 w-24 rounded-xl shadow-md ${
-                                                        isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
-                                                      }`}
+                                                      className={`absolute top-1.5 bottom-1.5 w-24 rounded-xl shadow-md ${isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+                                                        }`}
                                                       style={{
                                                         left: `calc(0.375rem + ${activeIndex} * (6rem + 0.25rem))`,
                                                         transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
@@ -31684,11 +31546,10 @@ Return your response strictly as a JSON object matching this schema:
                                                             setStudyIntensityTimeframe(item.id);
                                                             setStudyIntensityOffset(0);
                                                           }}
-                                                          className={`relative w-24 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${
-                                                            isActive
+                                                          className={`relative w-24 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${isActive
                                                               ? 'text-white font-extrabold'
                                                               : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
-                                                          }`}
+                                                            }`}
                                                         >
                                                           <span>{item.label}</span>
                                                         </button>
@@ -31713,9 +31574,8 @@ Return your response strictly as a JSON object matching this schema:
                                           </div>
 
                                           {/* View Renderers Container (Uniform Height 210px) */}
-                                          <div className={`rounded-2xl border p-4 ${
-                                            isDark ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-white/80'
-                                          }`}>
+                                          <div className={`rounded-2xl border p-4 ${isDark ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-white/80'
+                                            }`}>
                                             <div className="h-[210px] w-full flex items-center justify-center">
 
                                               {/* 1. WEEKLY VIEW (Exactly 7 Cards) */}
@@ -31739,11 +31599,10 @@ Return your response strictly as a JSON object matching this schema:
                                                         <span className={`text-sm font-black my-1 ${hours > 0 || qCount > 0 || cardCount > 0 ? 'text-gray-900' : (isDark ? 'text-slate-300' : 'text-slate-700')}`}>
                                                           {dayNum}
                                                         </span>
-                                                        <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-md ${
-                                                          hours > 0 || qCount > 0 || cardCount > 0
+                                                        <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-md ${hours > 0 || qCount > 0 || cardCount > 0
                                                             ? 'bg-gray-900/80 text-orange-300'
                                                             : (isDark ? 'bg-slate-800/60 text-slate-500' : 'bg-gray-200/60 text-slate-500')
-                                                        }`}>
+                                                          }`}>
                                                           {hours > 0 ? `${formatHoursToHrsMinsShort(hours)}` : (qCount > 0 ? `${qCount}q` : '0h')}
                                                         </span>
 
@@ -31805,9 +31664,8 @@ Return your response strictly as a JSON object matching this schema:
                                                             className={`w-7 h-7 mx-auto rounded-lg transition duration-150 hover:scale-125 cursor-pointer relative group hover:z-[100] border flex items-center justify-center ${border}`}
                                                             style={{ backgroundColor: color }}
                                                           >
-                                                            <span className={`text-[10px] font-mono font-black ${
-                                                              hasActivity ? 'text-gray-900' : (isDark ? 'text-slate-400' : 'text-slate-600')
-                                                            }`}>
+                                                            <span className={`text-[10px] font-mono font-black ${hasActivity ? 'text-gray-900' : (isDark ? 'text-slate-400' : 'text-slate-600')
+                                                              }`}>
                                                               {dayNum}
                                                             </span>
 
@@ -31941,9 +31799,8 @@ Return your response strictly as a JSON object matching this schema:
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                     transition={{ duration: 0.4, delay: 0.35 }}
                                     whileHover={{ scale: 1.005 }}
-                                    className={`lg:col-span-4 p-6 rounded-3xl flex flex-col items-center text-center relative overflow-hidden transition-all w-full h-full justify-center ${
-                                      isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
-                                    }`}
+                                    className={`lg:col-span-4 p-6 rounded-3xl flex flex-col items-center text-center relative overflow-hidden transition-all w-full h-full justify-center ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                      }`}
                                   >
                                     <span className={`text-[10px] font-black uppercase tracking-widest mb-4 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Today's Progress</span>
 
@@ -31991,9 +31848,8 @@ Return your response strictly as a JSON object matching this schema:
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                     transition={{ duration: 0.4, delay: 0.40 }}
                                     whileHover={{ scale: 1.005 }}
-                                    className={`p-6 rounded-3xl transition-all ${
-                                      isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
-                                    }`}
+                                    className={`p-6 rounded-3xl transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                      }`}
                                   >
                                     <h3 className={`text-sm font-black uppercase tracking-wider flex items-center gap-2 mb-6 ${isDark ? 'text-white' : 'text-gray-900'}`}>
                                       <TrendingUp className={`w-4 h-4 ${isDark ? 'text-orange-400' : 'text-orange-500'}`} /> Study Duration Analytics (Active Days)
@@ -32005,9 +31861,8 @@ Return your response strictly as a JSON object matching this schema:
 
                                       if (chartDays.length === 0) {
                                         return (
-                                          <div className={`h-[180px] flex flex-col items-center justify-center text-center p-6 rounded-2xl ${
-                                            isDark ? 'neu-pressed-dark border border-gray-800' : 'bg-gray-50/50 border border-dashed border-gray-200'
-                                          }`}>
+                                          <div className={`h-[180px] flex flex-col items-center justify-center text-center p-6 rounded-2xl ${isDark ? 'neu-pressed-dark border border-gray-800' : 'bg-gray-50/50 border border-dashed border-gray-200'
+                                            }`}>
                                             <Clock className={`w-8 h-8 mb-2 ${isDark ? 'text-slate-600' : 'text-gray-300'}`} />
                                             <span className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>No hours logged yet</span>
                                           </div>
@@ -32071,9 +31926,8 @@ Return your response strictly as a JSON object matching this schema:
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                     transition={{ duration: 0.4, delay: 0.45 }}
                                     whileHover={{ scale: 1.005 }}
-                                    className={`p-6 rounded-3xl transition-all ${
-                                      isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
-                                    }`}
+                                    className={`p-6 rounded-3xl transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                                      }`}
                                   >
                                     <h3 className={`text-sm font-black uppercase tracking-wider flex items-center gap-2 mb-6 ${isDark ? 'text-white' : 'text-gray-900'}`}>
                                       <Activity className={`w-4 h-4 ${isDark ? 'text-orange-400' : 'text-orange-500'}`} /> Qbank vs. Anki Balance Index
@@ -32088,9 +31942,8 @@ Return your response strictly as a JSON object matching this schema:
 
                                       if (chartDays.length === 0) {
                                         return (
-                                          <div className={`h-[180px] flex flex-col items-center justify-center text-center p-6 rounded-2xl ${
-                                            isDark ? 'neu-pressed-dark border border-gray-800' : 'bg-gray-50/50 border border-dashed border-gray-200'
-                                          }`}>
+                                          <div className={`h-[180px] flex flex-col items-center justify-center text-center p-6 rounded-2xl ${isDark ? 'neu-pressed-dark border border-gray-800' : 'bg-gray-50/50 border border-dashed border-gray-200'
+                                            }`}>
                                             <Activity className={`w-8 h-8 mb-2 ${isDark ? 'text-slate-600' : 'text-gray-300'}`} />
                                             <span className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>No study data logged yet</span>
                                           </div>
@@ -32099,9 +31952,8 @@ Return your response strictly as a JSON object matching this schema:
 
                                       return (
                                         <div className="w-full">
-                                          <div className={`h-[140px] flex items-end justify-between gap-2 px-2 pt-4 rounded-2xl border ${
-                                            isDark ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-white/80'
-                                          }`}>
+                                          <div className={`h-[140px] flex items-end justify-between gap-2 px-2 pt-4 rounded-2xl border ${isDark ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-white/80'
+                                            }`}>
                                             {chartDays.map((d, i) => {
                                               const l = studyLogs[d];
                                               const qPercent = Math.min(100, ((Number(l.questions) || 0) / maxVal) * 100);
@@ -32152,715 +32004,122 @@ Return your response strictly as a JSON object matching this schema:
                             );
                           })()}
 
-                        {/* Sub-tab 3: Counselling & GT Analysis */}
-                        {analyticsSubTab === 'counselling' && (() => {
-                          const allGts = [];
-                          Object.keys(studyLogs).sort().forEach(dateStr => {
-                            const log = studyLogs[dateStr];
-                            if (log.gts && Array.isArray(log.gts)) {
-                              log.gts.forEach((gt, idx) => {
-                                // Extract score and percentile safely
-                                let parsedScore = Number(gt.score);
-                                if (isNaN(parsedScore)) {
-                                  const parts = String(gt.score).split('/');
-                                  parsedScore = Number(parts[0]) || 0;
-                                }
-
-                                let parsedPercentile = gt.percentile;
-                                if (parsedPercentile === undefined || parsedPercentile === null) {
-                                  if (gt.percentage) {
-                                    const pct = parseFloat(gt.percentage);
-                                    parsedPercentile = isNaN(pct) ? null : pct;
-                                  } else if (gt.rank && (gt.rankTotal || gt.total)) {
-                                    const tot = Number(gt.rankTotal || gt.total) || 1;
-                                    parsedPercentile = Number((((tot - Number(gt.rank)) / tot) * 100).toFixed(2));
-                                  }
-                                }
-
-                                const inferredType = (() => {
-                                  if (gt.type) {
-                                    const t = String(gt.type).toUpperCase();
-                                    if (t.includes('NEET')) return 'NEETPG';
-                                    if (t.includes('INI')) return 'INICET';
-                                  }
-                                  if (gt.name) {
-                                    const n = String(gt.name).toUpperCase();
-                                    if (n.includes('NEET')) return 'NEETPG';
-                                    if (n.includes('INI')) return 'INICET';
-                                  }
-                                  if (gt.scoreStr) {
-                                    if (gt.scoreStr.includes('/800')) return 'NEETPG';
-                                    if (gt.scoreStr.includes('/200')) return 'INICET';
-                                  }
-                                  const maxM = Number(gt.maxMarks);
-                                  if (maxM === 800) return 'NEETPG';
-                                  if (maxM === 200) return 'INICET';
-                                  let scoreVal = Number(gt.score);
-                                  if (isNaN(scoreVal) && gt.score) {
+                          {/* Sub-tab 3: Counselling & GT Analysis */}
+                          {analyticsSubTab === 'counselling' && (() => {
+                            const allGts = [];
+                            Object.keys(studyLogs).sort().forEach(dateStr => {
+                              const log = studyLogs[dateStr];
+                              if (log.gts && Array.isArray(log.gts)) {
+                                log.gts.forEach((gt, idx) => {
+                                  // Extract score and percentile safely
+                                  let parsedScore = Number(gt.score);
+                                  if (isNaN(parsedScore)) {
                                     const parts = String(gt.score).split('/');
-                                    scoreVal = Number(parts[0]) || 0;
+                                    parsedScore = Number(parts[0]) || 0;
                                   }
-                                  if (scoreVal > 200) return 'NEETPG';
-                                  return 'NEETPG';
-                                })();
 
-                                const maxMarks = gt.maxMarks || (inferredType === 'NEETPG' ? 800 : 200);
+                                  let parsedPercentile = gt.percentile;
+                                  if (parsedPercentile === undefined || parsedPercentile === null) {
+                                    if (gt.percentage) {
+                                      const pct = parseFloat(gt.percentage);
+                                      parsedPercentile = isNaN(pct) ? null : pct;
+                                    } else if (gt.rank && (gt.rankTotal || gt.total)) {
+                                      const tot = Number(gt.rankTotal || gt.total) || 1;
+                                      parsedPercentile = Number((((tot - Number(gt.rank)) / tot) * 100).toFixed(2));
+                                    }
+                                  }
 
-                                allGts.push({
-                                  id: `${dateStr}_${idx}`,
-                                  date: dateStr,
-                                  name: gt.name || `Mock Test ${idx + 1}`,
-                                  platform: gt.platform || '',
-                                  type: inferredType,
-                                  correct: gt.correct !== undefined ? Number(gt.correct) : parsedScore,
-                                  incorrect: gt.incorrect !== undefined ? Number(gt.incorrect) : 0,
-                                  attended: gt.attended !== undefined ? Number(gt.attended) : parsedScore,
-                                  unattempted: gt.unattempted !== undefined ? Number(gt.unattempted) : Math.max(0, 200 - (Number(gt.attended) || parsedScore)),
-                                  score: parsedScore,
-                                  maxMarks: maxMarks,
-                                  accuracy: gt.accuracy !== undefined ? Number(gt.accuracy) : 100,
-                                  percentile: parsedPercentile !== null ? Number(parsedPercentile) : null,
-                                  rank: gt.rank ? Number(gt.rank) : null,
-                                  rankTotal: gt.rankTotal || gt.total || null,
-                                  stateRank: gt.stateRank || null,
-                                  state: gt.state || '',
-                                  notes: gt.notes || '',
-                                  subjects: gt.subjects || {}
+                                  const inferredType = (() => {
+                                    if (gt.type) {
+                                      const t = String(gt.type).toUpperCase();
+                                      if (t.includes('NEET')) return 'NEETPG';
+                                      if (t.includes('INI')) return 'INICET';
+                                    }
+                                    if (gt.name) {
+                                      const n = String(gt.name).toUpperCase();
+                                      if (n.includes('NEET')) return 'NEETPG';
+                                      if (n.includes('INI')) return 'INICET';
+                                    }
+                                    if (gt.scoreStr) {
+                                      if (gt.scoreStr.includes('/800')) return 'NEETPG';
+                                      if (gt.scoreStr.includes('/200')) return 'INICET';
+                                    }
+                                    const maxM = Number(gt.maxMarks);
+                                    if (maxM === 800) return 'NEETPG';
+                                    if (maxM === 200) return 'INICET';
+                                    let scoreVal = Number(gt.score);
+                                    if (isNaN(scoreVal) && gt.score) {
+                                      const parts = String(gt.score).split('/');
+                                      scoreVal = Number(parts[0]) || 0;
+                                    }
+                                    if (scoreVal > 200) return 'NEETPG';
+                                    return 'NEETPG';
+                                  })();
+
+                                  const maxMarks = gt.maxMarks || (inferredType === 'NEETPG' ? 800 : 200);
+
+                                  allGts.push({
+                                    id: `${dateStr}_${idx}`,
+                                    date: dateStr,
+                                    name: gt.name || `Mock Test ${idx + 1}`,
+                                    platform: gt.platform || '',
+                                    type: inferredType,
+                                    correct: gt.correct !== undefined ? Number(gt.correct) : parsedScore,
+                                    incorrect: gt.incorrect !== undefined ? Number(gt.incorrect) : 0,
+                                    attended: gt.attended !== undefined ? Number(gt.attended) : parsedScore,
+                                    unattempted: gt.unattempted !== undefined ? Number(gt.unattempted) : Math.max(0, 200 - (Number(gt.attended) || parsedScore)),
+                                    score: parsedScore,
+                                    maxMarks: maxMarks,
+                                    accuracy: gt.accuracy !== undefined ? Number(gt.accuracy) : 100,
+                                    percentile: parsedPercentile !== null ? Number(parsedPercentile) : null,
+                                    rank: gt.rank ? Number(gt.rank) : null,
+                                    rankTotal: gt.rankTotal || gt.total || null,
+                                    stateRank: gt.stateRank || null,
+                                    state: gt.state || '',
+                                    notes: gt.notes || '',
+                                    subjects: gt.subjects || {}
+                                  });
                                 });
-                              });
-                            }
-                          });
-
-
-                          // Reconstruct the Counselling and GT Analysis Sub-tab!
-                          if (allGts.length === 0) {
-                            return (
-                              <div className="flex flex-col items-center justify-center text-center p-8 border border-dashed border-gray-200 rounded-3xl bg-gray-50/50 py-12">
-                                <div className="bg-orange-50 p-4 rounded-full text-orange-500 mb-3 animate-pulse">
-                                  <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                                  </svg>
-                                </div>
-                                <h4 className="text-sm font-black text-gray-700 uppercase tracking-wider">No Mock Metrics Found</h4>
-                                <p className="text-xs text-gray-400 mt-1 max-w-sm leading-relaxed font-semibold">
-                                  Start logging simulated Grand Tests in your daily study logger to populate rich national performance charts and unlock AI Counselling diagnostics!
-                                </p>
-                              </div>
-                            );
-                          }
-
-                          // Filters and active mock selection
-                          const filteredGts = allGts.filter(gt => {
-                            if (gtFilter === 'NEETPG') return gt.type === 'NEETPG';
-                            if (gtFilter === 'INICET') return gt.type === 'INICET';
-                            return true;
-                          });
-
-                          if (filteredGts.length === 0) {
-                            return (
-                              <div className="space-y-4">
-                                {/* Filter Bar */}
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-150 pb-3">
-                                  <div className="text-left">
-                                    <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider font-mono">Interactive Performance Trend Chart</span>
-                                    <h4 className="text-xs font-black text-gray-800 uppercase tracking-widest mt-0.5 font-mono">
-                                      Y-Axis: {loggerGtYAxisMetric === 'percentile' ? 'Percentile (%ile)' : loggerGtYAxisMetric === 'accuracy' ? 'Accuracy Rate (%)' : 'Correct Questions (Qs)'}
-                                    </h4>
-                                  </div>
-                                  <div className="flex bg-white p-0.5 rounded-xl border border-gray-200 shadow-sm shrink-0 select-none font-mono">
-                                    {['All', 'NEETPG', 'INICET'].map(e => (
-                                      <button
-                                        key={e}
-                                        type="button"
-                                        onClick={() => { setGtFilter(e); setSelectedGtForAnalysisId(null); }}
-                                        className={`px-3 py-1.5 text-[9px] font-black uppercase rounded-lg transition-all duration-200 ${gtFilter === e ? 'bg-orange-500 text-white shadow-sm font-extrabold' : 'text-gray-500 hover:text-gray-700'}`}
-                                      >
-                                        {e === 'All' ? 'All Tests' : e === 'NEETPG' ? 'NEET PG' : 'INI CET'}
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
-
-                                <div className="flex flex-col items-center justify-center text-center p-8 border border-dashed border-gray-200 rounded-3xl bg-gray-50/50 py-12">
-                                  <AlertCircle className="w-12 h-12 text-gray-300 mb-3 animate-pulse" />
-                                  <h4 className="text-sm font-black text-gray-700 uppercase tracking-wider">No mock metrics found</h4>
-                                  <p className="text-xs text-gray-400 mt-1 max-w-sm leading-relaxed font-semibold">
-                                    Start logging simulated {gtFilter === 'NEETPG' ? 'NEET PG' : 'INI CET'} Grand Tests in your daily study logger to populate rich national performance charts!
-                                  </p>
-                                </div>
-                              </div>
-                            );
-                          }
-
-                          const activeGt = filteredGts.find(gt => gt.id === selectedGtForAnalysisId) || filteredGts[filteredGts.length - 1];
-
-                          // Calculate chart coordinates dynamically
-                          const chartPoints = filteredGts.map((gt, idx) => {
-                            const pctVal = gt.percentile === null ? Number((gt.score / gt.maxMarks * 100).toFixed(1)) : gt.percentile;
-                            let plottedVal = 0;
-                            let maxVal = 100;
-                            if (loggerGtYAxisMetric === 'percentile') {
-                              plottedVal = pctVal;
-                              maxVal = 100;
-                            } else if (loggerGtYAxisMetric === 'accuracy') {
-                              plottedVal = gt.accuracy === undefined ? 100 : Number(gt.accuracy);
-                              maxVal = 100;
-                            } else if (loggerGtYAxisMetric === 'correct') {
-                              plottedVal = gt.correct === undefined ? 0 : Number(gt.correct);
-                              maxVal = 200; // max correct is normalized to 200
-                            }
-
-                            return {
-                              x: 45 + (filteredGts.length === 1 ? 725 / 2 : idx / (filteredGts.length - 1) * 725),
-                              y: 20 + (1 - plottedVal / maxVal) * 170,
-                              percentileVal: pctVal,
-                              plottedVal: plottedVal,
-                              maxVal: maxVal,
-                              ...gt
-                            };
-                          });
-
-                          const linePath = chartPoints.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
-                          const fillPath = chartPoints.length > 0 ? `${linePath} L ${chartPoints[chartPoints.length - 1].x} 190 L ${chartPoints[0].x} 190 Z` : '';
-
-                          // Counseling diagnostics formulas
-                          const isNeetPg = activeGt.type === 'NEETPG';
-                          const totalCandidates = isNeetPg ? 200000 : 80000;
-                          const poolLabel = isNeetPg ? 'NEET PG' : 'INI CET';
-
-                          let percentileFraction = 0.5;
-                          if (activeGt.rank && activeGt.rankTotal) {
-                            percentileFraction = Number(activeGt.rank) / Number(activeGt.rankTotal);
-                          } else {
-                            const pct = activeGt.percentile === null ? (activeGt.score / activeGt.maxMarks * 100) : activeGt.percentile;
-                            percentileFraction = (100 - pct) / 100;
-                          }
-                          if (percentileFraction < 1e-4) percentileFraction = 1e-4;
-
-                          const projectedAir = Math.max(1, Math.round(percentileFraction * totalCandidates));
-                          const categoryMultiplier = selectedCategory === 'OBC' ? 1.3 : selectedCategory === 'EWS' ? 1.25 : selectedCategory === 'SC' ? 2.8 : selectedCategory === 'ST' ? 4.5 : 1.0;
-                          const effectiveCategoryRank = Math.max(1, Math.round(projectedAir / categoryMultiplier));
-
-                          // Matches & predictions
-                          let standingTierLabel = '';
-                          let tierClass = '';
-                          let matchProbability = 0;
-                          let diagnosticOverview = '';
-                          let matchedColleges = [];
-                          let trendPredictionText = '';
-
-                          if (isNeetPg) {
-                            if (effectiveCategoryRank <= 1500) {
-                              standingTierLabel = 'ELITE Govt Clinical Tier';
-                              tierClass = 'text-emerald-600 bg-emerald-50 border-emerald-200';
-                              matchProbability = 98;
-                              diagnosticOverview = `Absolute green-zone for ${selectedCategory} category. Your category-adjusted rank (~${effectiveCategoryRank.toLocaleString()}) puts you in the top 0.75% nationally, granting access to premium clinical PG MD/MS seats in prime central and state government medical colleges across Tamil Nadu, Karnataka, Kerala, Andhra, Telangana, and the rest of India.`;
-                              matchedColleges = [
-                                { college: 'Madras Medical College (MMC), Chennai (TN)', course: 'MD General Medicine / MD Radiodiagnosis' },
-                                { college: 'Stanley Medical College (SMC), Chennai (TN)', course: 'MS Orthopedics / MD Pediatrics' },
-                                { college: 'Kilpauk Medical College (KMC), Chennai (TN)', course: 'MD General Medicine / MD OBG' },
-                                { college: 'Christian Medical College (CMC), Vellore (TN)', course: 'MD Radiodiagnosis / MS General Surgery' },
-                                { college: 'Bangalore Medical College (BMCRI), Bengaluru (KA)', course: 'MD General Medicine / MD Pediatrics' },
-                                { college: 'Government Medical College, Kozhikode (KL)', course: 'MD General Medicine / MS Orthopedics' },
-                                { college: 'Government Medical College, Thiruvananthapuram (KL)', course: 'MD Radiodiagnosis / MS General Surgery' },
-                                { college: 'Government Medical College, Kottayam (KL)', course: 'MD Pediatrics / MD OBG' },
-                                { college: 'Osmania Medical College, Hyderabad (TS)', course: 'MD General Medicine / MD Radiodiagnosis' },
-                                { college: 'Gandhi Medical College, Secunderabad (TS)', course: 'MD Pediatrics / MS General Surgery' },
-                                { college: 'Andhra Medical College, Visakhapatnam (AP)', course: 'MD General Medicine / MS Orthopedics' },
-                                { college: 'Sri Venkateswara Medical College (SVMC), Tirupati (AP)', course: 'MD Pediatrics / MD OBG' },
-                                { college: 'Guntur Medical College, Guntur (AP)', course: 'MD General Medicine / MS General Surgery' },
-                                { college: 'Maulana Azad Medical College (MAMC), New Delhi', course: 'MD General Medicine / MD Radiodiagnosis' },
-                                { college: 'VMMC & Safdarjung Hospital, New Delhi', course: 'MD Pediatrics / MS Orthopedics' },
-                                { college: 'Seth GS Medical College & KEM Hospital, Mumbai', course: 'MD Radiodiagnosis / MD General Medicine' },
-                                { college: 'King George\'s Medical University (KGMU), Lucknow', course: 'MD Pediatrics / MD OBG' },
-                                { college: 'IPGMER & SSKM Hospital, Kolkata', course: 'MD Radiodiagnosis / MS Orthopedics' },
-                                { college: 'Sawai Man Singh (SMS) Medical College, Jaipur', course: 'MD Radiodiagnosis / MS Orthopedics' }
-                              ];
-                              trendPredictionText = `Rank trends for ${selectedCategory} category indicate elite medical seats remain extremely competitive. Upward drift is minimal. Maintain a score of 150+ correct answers in subsequent mocks to insulate against any shifts.`;
-                            } else if (effectiveCategoryRank <= 8000) {
-                              standingTierLabel = 'Govt Clinical AIQ Secure';
-                              tierClass = 'text-blue-600 bg-blue-50 border-blue-200';
-                              matchProbability = 85;
-                              diagnosticOverview = `Solid standing for ${selectedCategory} category. Your category-adjusted rank (~${effectiveCategoryRank.toLocaleString()}) places you in the top 4% of aspirants, sufficient to secure desirable core clinical MD/MS branches in premier state government medical colleges across Tamil Nadu, Karnataka, Kerala, Andhra Pradesh, and Telangana.`;
-                              matchedColleges = [
-                                { college: 'Coimbatore Medical College, Coimbatore (TN)', course: 'MD Pediatrics / MS General Surgery' },
-                                { college: 'Madurai Medical College, Madurai (TN)', course: 'MD General Medicine / MD OBG' },
-                                { college: 'Government Mohan Kumaramangalam Medical College, Salem (TN)', course: 'MS Orthopedics / MD Pediatrics' },
-                                { college: 'Thanjavur Medical College, Thanjavur (TN)', course: 'MS General Surgery / MD OBG' },
-                                { college: 'Chengalpattu Medical College, Chengalpattu (TN)', course: 'MD General Medicine / MS Orthopedics' },
-                                { college: 'Tirunelveli Medical College, Tirunelveli (TN)', course: 'MD Pediatrics / MS General Surgery' },
-                                { college: 'K.A.P. Viswanathan Government Medical College, Trichy (TN)', course: 'MD General Medicine / MD OBG' },
-                                { college: 'Government Theni Medical College, Theni (TN)', course: 'MS Orthopedics / MD Pediatrics' },
-                                { college: 'Government Thoothukudi Medical College, Thoothukudi (TN)', course: 'MS General Surgery / MD OBG' },
-                                { college: 'Kanyakumari Government Medical College, Asaripallam (TN)', course: 'MD General Medicine / MD Pediatrics' },
-                                { college: 'Vellore Government Medical College, Vellore (TN)', course: 'MS Orthopedics / MD OBG font-mono' },
-                                { college: 'Government Dharmapuri Medical College, Dharmapuri (TN)', course: 'MS General Surgery / MD Pediatrics' },
-                                { college: 'ESIC Medical College & PGIMSR, KK Nagar, Chennai (TN)', course: 'MD General Medicine / MS Orthopedics' },
-                                { college: 'Mysore Medical College and Research Institute (MMCRI), Mysuru (KA)', course: 'MD OBG / MD Pediatrics' },
-                                { college: 'Karnataka Institute of Medical Sciences (KIMS), Hubballi (KA)', course: 'MD General Medicine / MS General Surgery' },
-                                { college: 'Vijayanagar Institute of Medical Sciences (VIMS), Ballari (KA)', course: 'MS Orthopedics / MD Pediatrics font-mono' },
-                                { college: 'Bowring & Lady Curzon Medical College & RI, Bengaluru (KA)', course: 'MD General Medicine / MD OBG' },
-                                { college: 'Mandya Institute of Medical Sciences, Mandya (KA)', course: 'MS General Surgery / MD Pediatrics' },
-                                { college: 'Hassan Institute of Medical Sciences, Hassan (KA)', course: 'MS Orthopedics / MD OBG' },
-                                { college: 'Belagavi Institute of Medical Sciences, Belagavi (KA)', course: 'MD General Medicine / MS General Surgery' },
-                                { college: 'Government Medical College, Thrissur (KL)', course: 'MD General Medicine / MD Pediatrics' },
-                                { college: 'Government Medical College, Alappuzha (KL)', course: 'MD OBG / MS General Surgery' },
-                                { college: 'Kakatiya Medical College, Warangal (TS)', course: 'MD General Medicine / MS Orthopedics' },
-                                { college: 'Siddhartha Medical College, Vijayawada (AP)', course: 'MD Pediatrics / MS General Surgery' },
-                                { college: 'Rangaraya Medical College, Kakinada (AP)', course: 'MD General Medicine / MD OBG' },
-                                { college: 'Kurnool Medical College, Kurnool (AP)', course: 'MS Orthopedics / MD Pediatrics' },
-                                { college: 'SMS Medical College, Jaipur', course: 'MS General Surgery / MD Pediatrics' },
-                                { college: 'B.J. Medical College (BJMC), Pune', course: 'MS Orthopedics / MD OBG' },
-                                { college: 'Government Medical College (GMC), Nagpur', course: 'MS Ophthalmology / MD Anesthesiology' },
-                                { college: 'Gandhi Medical College, Secunderabad', course: 'MS General Surgery / MD OBG' },
-                                { college: 'Pt. B.D. Sharma PGIMS, Rohtak', course: 'MD General Medicine / MS General Surgery' },
-                                { college: 'SCB Medical College, Cuttack', course: 'MD Pediatrics / MD OBG' },
-                                { college: 'Gauhati Medical College, Guwahati', course: 'MD General Medicine / MS General Surgery' },
-                                { college: 'Indira Gandhi Medical College (IGMC), Shimla', course: 'MD General Medicine / MS Orthopedics' },
-                                { college: 'Government Medical College, Surat', course: 'MS General Surgery / MD Pediatrics' },
-                                { college: 'Medical College, Kolkata', course: 'MS General Surgery / MD Pediatrics' },
-                                { college: 'Government Medical College, Patiala', course: 'MD Pediatrics / MS General Surgery' },
-                                { college: 'M.G.M. Medical College, Indore', course: 'MD General Medicine / MS Orthopedics' }
-                              ];
-                              trendPredictionText = `Cutoff trends for ${selectedCategory} category reveal an upward rank shift in state government MD/MS clinical seats. A mock score increase of +20 marks in upcoming attempts will elevate you into the elite central quota bracket.`;
-                            } else if (effectiveCategoryRank <= 18000) {
-                              standingTierLabel = 'Mid-Clinical Govt / Secure DNB';
-                              tierClass = 'text-amber-600 bg-amber-50 border-amber-200';
-                              matchProbability = 55;
-                              diagnosticOverview = `Borderline for core govt clinical seats under AIQ for ${selectedCategory} category. Securely positioned for state mid-clinical branches (MD Anesthesiology, MD Psychiatry, MS ENT, MS Ophthalmology) or core clinical DNB residencies in major high-volume southern private hospitals.`;
-                              matchedColleges = [
-                                { college: 'Government Villupuram Medical College, Villupuram (TN)', course: 'MD Anesthesiology / MS ENT' },
-                                { college: 'Government Thiruvarur Medical College, Thiruvarur (TN)', course: 'MS Ophthalmology / MD Psychiatry' },
-                                { college: 'Government Sivagangai Medical College, Sivagangai (TN)', course: 'MD Anesthesiology / MS ENT' },
-                                { college: 'Government Tiruvannamalai Medical College, Tiruvannamalai (TN)', course: 'MS Ophthalmology / MD Psychiatry' },
-                                { college: 'Government Pudukkottai Medical College, Pudukkottai (TN)', course: 'MD Anesthesiology / MS ENT' },
-                                { college: 'Government Karur Medical College, Karur (TN)', course: 'MS Ophthalmology / MD Anesthesiology' },
-                                { college: 'PSG Institute of Medical Sciences & Research, Coimbatore (TN)', course: 'MD General Medicine / MS General Surgery' },
-                                { college: 'Shimoga Institute of Medical Sciences, Shivamogga (KA)', course: 'MD Anesthesiology / MS ENT' },
-                                { college: 'Bidar Institute of Medical Sciences, Bidar (KA)', course: 'MS Ophthalmology / MD Psychiatry' },
-                                { college: 'Raichur Institute of Medical Sciences, Raichur (KA)', course: 'MD Anesthesiology / MS ENT' },
-                                { college: 'Gulbarga Institute of Medical Sciences, Kalaburagi (KA)', course: 'MS Ophthalmology / MD Anesthesiology' },
-                                { college: 'Karwar Institute of Medical Sciences, Karwar (KA)', course: 'MD Anesthesiology / MS ENT' },
-                                { college: 'Chamrajanagar Institute of Medical Sciences, Chamarajanagar (KA)', course: 'MS Ophthalmology / MD Psychiatry' },
-                                { college: 'Koppal Institute of Medical Sciences, Koppal (KA)', course: 'MD Anesthesiology / MS ENT' },
-                                { college: 'Gadag Institute of Medical Sciences, Gadag (KA)', course: 'MS Ophthalmology / MD Anesthesiology' },
-                                { college: 'Kodagu Institute of Medical Sciences, Madikeri (KA)', course: 'MD Anesthesiology / MS ENT' },
-                                { college: 'St. John\'s Medical College, Bengaluru (KA)', course: 'MD Anesthesiology / MS Ophthalmology font-mono' },
-                                { college: 'Kempegowda Institute of Medical Sciences (KIMS), Bengaluru (KA)', course: 'MS ENT / MD Psychiatry' },
-                                { college: 'M.S. Ramaiah Medical College, Bengaluru (KA)', course: 'MD Anesthesiology / MS Ophthalmology' },
-                                { college: 'Government Medical College, Ernakulam (KL)', course: 'MD Anesthesiology / MS ENT' },
-                                { college: 'Government Medical College, Kannur (KL)', course: 'MS Ophthalmology / MD Psychiatry' },
-                                { college: 'Government Medical College, Kollam (KL)', course: 'MD Anesthesiology / MS ENT' },
-                                { college: 'Government Medical College, Manjeri (KL)', course: 'MS Ophthalmology / MD Anesthesiology' },
-                                { college: 'Rajiv Gandhi Institute of Medical Sciences (RIMS), Kadapa (AP)', course: 'MD Anesthesiology / MS ENT' },
-                                { college: 'RIMS, Srikakulam (AP)', course: 'MS Ophthalmology / MD Psychiatry' },
-                                { college: 'RIMS, Ongole (AP)', course: 'MD Anesthesiology / MS ENT' },
-                                { college: 'RIMS, Adilabad (TS)', course: 'MS Ophthalmology / MD Anesthesiology' },
-                                { college: 'Government Medical College, Anantapur (AP)', course: 'MD Anesthesiology / MS ENT' },
-                                { college: 'Government Medical College, Nizamabad (TS)', course: 'MS Ophthalmology / MD Psychiatry' },
-                                { college: 'Government Medical College, Mahabubnagar (TS)', course: 'MD Anesthesiology / MS ENT' },
-                                { college: 'Government Medical College, Siddipet (TS)', course: 'MS Ophthalmology / MD Anesthesiology' },
-                                { college: 'Government Medical College, Suryapet (TS)', course: 'MD Anesthesiology / MS ENT' },
-                                { college: 'Government Medical College, Nalgonda (TS)', course: 'MS Ophthalmology / MD Psychiatry' },
-                                { college: 'Sir Ganga Ram Hospital, New Delhi', course: 'DNB General Medicine / DNB Pediatrics' },
-                                { college: 'P. D. Hinduja National Hospital, Mumbai', course: 'DNB General Surgery / DNB OBG' },
-                                { college: 'Medanta - The Medicity, Gurugram', course: 'DNB General Medicine / DNB Radiodiagnosis' },
-                                { college: 'Kokilaben Dhirubhai Ambani Hospital, Mumbai', course: 'DNB Pediatrics / DNB Orthopedics' },
-                                { college: 'Apollo Hospitals, Greams Road, Chennai', course: 'DNB General Medicine / DNB OBG' },
-                                { college: 'Fortis Memorial Research Institute, Gurugram', course: 'DNB General Medicine / DNB General Surgery' },
-                                { college: 'Manipal Hospital, Bengaluru (KA)', course: 'DNB General Medicine / DNB Pediatrics' }
-                              ];
-                              trendPredictionText = `Mid-clinical specialities and DNB corporate seats are seeing accelerated demand under ${selectedCategory} category. If your target is an absolute govt medical college clinical seat, focus heavily on weak subjects to push category-adjusted rank under 8,000.`;
-                            } else if (effectiveCategoryRank <= 35000) {
-                              standingTierLabel = 'Para-Clinical AIQ / Private Clinical';
-                              tierClass = 'text-orange-600 bg-orange-50 border-orange-200';
-                              matchProbability = 25;
-                              diagnosticOverview = `Insufficient for government clinical AIQ seats under ${selectedCategory} category. Secure for state government para-clinical branches (MD Pathology, MD Microbiology, MD Forensic Medicine, MD Pharmacology) or paid clinical seats in prestigious South Deemed Universities.`;
-                              matchedColleges = [
-                                { college: 'Government Medical College, Erode (IRT Perundurai) (TN)', course: 'MD Pathology / MD Pharmacology' },
-                                { college: 'Government Medical College and Hospital, Cuddalore (Rajah Muthiah) (TN)', course: 'MD Microbiology / MD Biochemistry' },
-                                { college: 'Government Medical College, Ariyalur (TN)', course: 'MD Pathology / MD Forensic Medicine' },
-                                { college: 'Government Medical College, Dindigul (TN)', course: 'MD Microbiology / MD Pathology' },
-                                { college: 'Government Medical College, Kallakurichi (TN)', course: 'MD Pathology / MD Pharmacology' },
-                                { college: 'Government Medical College, Krishnagiri (TN)', course: 'MD Microbiology / MD Pathology' },
-                                { college: 'Government Medical College, Nagapattinam (TN)', course: 'MD Pathology / MD Forensic Medicine' },
-                                { college: 'Government Medical College, Namakkal (TN)', course: 'MD Pathology / MD Pharmacology' },
-                                { college: 'Government Medical College, The Nilgiris (TN)', course: 'MD Microbiology / MD Pathology' },
-                                { college: 'Government Medical College, Ramanathapuram (TN)', course: 'MD Pathology / MD Forensic Medicine' },
-                                { college: 'Government Medical College, Thiruvallur (TN)', course: 'MD Pathology / MD Pharmacology font-mono' },
-                                { college: 'Government Medical College, Tiruppur (TN)', course: 'MD Pathology / MD Microbiology' },
-                                { college: 'Sri Ramachandra Medical College & RI, Chennai (TN)', course: 'MD General Medicine / MS General Surgery (Deemed Paid)' },
-                                { college: 'SRM Medical College Hospital & RI, Chennai (TN)', course: 'MD Pediatrics / MD OBG (Deemed Paid)' },
-                                { college: 'Saveetha Medical College, Chennai (TN)', course: 'MD General Medicine / MS Orthopedics (Deemed Paid)' },
-                                { college: 'Chettinad Hospital & Research Institute, Kelambakkam (TN)', course: 'MD Pediatrics / MS General Surgery (Deemed Paid)' },
-                                { college: 'Chitradurga Government Medical College, Chitradurga (KA)', course: 'MD Pathology / MD Forensic Medicine font-mono' },
-                                { college: 'Haveri Institute of Medical Sciences, Haveri (KA)', course: 'MD Microbiology / MD Pathology' },
-                                { college: 'Yadgiri Institute of Medical Sciences, Yadgiri (KA)', course: 'MD Pathology / MD Pharmacology' },
-                                { college: 'Chikkamagaluru Institute of Medical Sciences, Chikkamagaluru (KA)', course: 'MD Pathology / MD Microbiology' },
-                                { college: 'ESIC Medical College, Gulbarga (KA)', course: 'MD Pathology / MD Pharmacology' },
-                                { college: 'Kasturba Medical College (KMC), Manipal (KA)', course: 'MD Pediatrics / MS General Surgery (Deemed Paid)' },
-                                { college: 'Kasturba Medical College (KMC), Mangaluru (KA)', course: 'MD Pediatrics / MS Orthopedics (Deemed Paid)' },
-                                { college: 'JSS Medical College, Mysuru (KA)', course: 'MD Pediatrics / MD OBG (Deemed Paid)' },
-                                { college: 'K.S. Hegde Medical Academy, Mangaluru (KA)', course: 'MD Pediatrics / MD OBG (Deemed Paid)' },
-                                { college: 'Yenepoya Medical College, Mangaluru (KA)', course: 'MD General Medicine / MS General Surgery (Deemed Paid)' },
-                                { college: 'Vydehi Institute of Medical Sciences & RC, Bengaluru (KA)', course: 'MD General Medicine / MS General Surgery (Private)' },
-                                { college: 'Father Muller Medical College, Mangaluru (KA)', course: 'MD Pediatrics / MS Orthopedics (Private)' },
-                                { college: 'Government Medical College, Palakkad (KL)', course: 'MD Pathology / MD Microbiology' },
-                                { college: 'Government Medical College, Idukki (KL)', course: 'MD Pathology / MD Pharmacology' },
-                                { college: 'Government Medical College, Konni (KL)', course: 'MD Pathology / MD Forensic Medicine' },
-                                { college: 'Jubilee Mission Medical College & RI, Thrissur (KL)', course: 'MD General Medicine / MS General Surgery (Private)' },
-                                { college: 'Amala Institute of Medical Sciences, Thrissur (KL)', course: 'MD Pediatrics / MD OBG (Private)' },
-                                { college: 'Pushpagiri Institute of Medical Sciences & RC, Thiruvalla (KL)', course: 'MD General Medicine / MS Orthopedics (Private)' },
-                                { college: 'Government Medical College, Eluru (AP)', course: 'MD Pathology / MD Pharmacology' },
-                                { college: 'Government Medical College, Machilipatnam (AP)', course: 'MD Pathology / MD Forensic Medicine' },
-                                { college: 'Government Medical College, Rajamahendravaram (AP)', course: 'MD Microbiology / MD Biochemistry' },
-                                { college: 'Government Medical College, Vizianagaram (AP)', course: 'MD Pathology / MD Pharmacology' },
-                                { college: 'Government Medical College, Nandyal (AP)', course: 'MD Pathology / MD Microbiology font-mono' },
-                                { college: 'Narayana Medical College, Nellore (AP)', course: 'MD General Medicine / MS General Surgery (Private)' }
-                              ];
-                              trendPredictionText = `Govt Para-clinical cutoffs remain stable for ${selectedCategory} candidates. Deemed/Private clinical fee caps are rising. Identify weak subjects in bottom grids to elevate scores by +40 marks.`;
-                            } else {
-                              standingTierLabel = 'Govt Non-Clinical / Private Paid';
-                              tierClass = 'text-red-600 bg-red-50 border-red-200';
-                              matchProbability = 5;
-                              diagnosticOverview = `Highly restrictive rank level under ${selectedCategory} category. Government non-clinical seats (MD Anatomy, MD Physiology, MD Biochemistry) are accessible, but for a clinical career, we advise micro-reviews to push rank under 15,000.`;
-                              matchedColleges = [
-                                { college: 'Annapoorna Medical College & Hospital, Salem (TN)', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
-                                { college: 'Meenakshi Medical College Hospital & RI, Kanchipuram (TN)', course: 'MD Physiology / MD Biochemistry' },
-                                { college: 'Sree Balaji Medical College & Hospital, Chennai (TN)', course: 'MD Anatomy / MD Physiology font-mono' },
-                                { college: 'Vinayaka Mission\'s Kirupananda Variyar Medical College, Salem (TN)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'Karpagam Faculty of Medical Sciences & Research, Coimbatore (TN)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'Velammal Medical College Hospital & RI, Madurai (TN)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'Trichy SRM Medical College Hospital & RC, Trichy (TN)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'Dhanalakshmi Srinivasan Medical College, Perambalur (TN)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'Tagore Medical College & Hospital, Chennai (TN)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'Karpaga Vinayaga Institute of Medical Sciences, Maduranthagam (TN)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'Melmaruvathur Adhiparasakthi Institute of Medical Sciences, Melmaruvathur (TN)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'Sri Muthukumaran Medical College, Chennai (TN)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'Madha Medical College & Hospital, Chennai (TN)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'KMCH Institute of Health Sciences & Research, Coimbatore (TN)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'Panimalar Medical College Hospital & RI, Chennai (TN)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'Indira Medical College and Hospital, Thiruvallur (TN)', course: 'MD Anatomy / MD Physiology font-mono' },
-                                { college: 'Arunai Medical College and Hospital, Tiruvannamalai (TN)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'Swamy Vivekanandha Medical College Hospital, Namakkal (TN)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'St. Peter\'s Medical College Hospital & RI, Hosur (TN)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'PSP Medical College Hospital and RI, Kanchipuram (TN)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'Nandha Medical College and Hospital, Erode (TN)', course: 'MD Anatomy / MD Physiology font-mono' },
-                                { college: 'Dhanalakshmi Srinivasan University Medical College, Samayapuram (TN)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'Shri B.M. Patil Medical College (BLDE), Vijayapura (KA)', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
-                                { college: 'Sri Siddhartha Medical College, Tumakuru (KA)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'Basaveshwara Medical College & Hospital, Chitradurga (KA)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'K.V.G. Medical College, Sullia (KA)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'Basaveshwara Medical College, Chitradurga (KA)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'Srinivasa Institute of Medical Sciences, Mangaluru (KA)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'Subbaiah Institute of Medical Sciences, Shimoga (KA)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'BGS Global Institute of Medical Sciences, Bengaluru (KA)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'East Point College of Medical Sciences, Bengaluru (KA)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'Kanachur Institute of Medical Sciences, Mangaluru (KA)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'Akash Institute of Medical Sciences, Bengaluru (KA)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'The Oxford Medical College, Hospital & RC, Bengaluru (KA)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'Shridevi Institute of Medical Sciences & RC, Tumakuru (KA)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'Sapthagiri Institute of Medical Sciences, Bengaluru (KA)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'G.R. Medical College, Mangaluru (KA)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'Dr. Chandramma Dayananda Sagar Institute of Medical Sciences, Harohalli (KA)', course: 'MD Anatomy / MD Physiology font-mono' },
-                                { college: 'Jagadguru Gangadhar Mahaswamigalu Moorusavirmath (JGMM) Medical College, Hubballi (KA)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'Malankara Orthodox Syrian Church (MOSC) Medical College, Kolenchery (KL)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'MES Medical College, Perinthalmanna (KL)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'Karuna Medical College, Palakkad (KL)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'KMCT Medical College, Kozhikode (KL)', course: 'MD Anatomy / MD Physiology font-mono' },
-                                { college: 'Sree Gokulam Medical College, Venjaramoodu, Thiruvananthapuram (KL)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'Believers Church Medical College Hospital, Thiruvalla (KL)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'DM Wayanad Institute of Medical Sciences, Wayanad (KL)', course: 'MD Anatomy / MD Physiology font-mono' },
-                                { college: 'Azeezia Institute of Medical Sciences & RI, Kollam (KL)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'Travancore Medicity Medical College, Kollam (KL)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'SUT Academy of Medical Sciences, Thiruvananthapuram (KL)', course: 'MD Anatomy / MD Physiology font-mono' },
-                                { college: 'Somervell Memorial CSI Medical College, Karakonam, Thiruvananthapuram (KL)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'Mount Zion Medical College, Adoor (KL)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'PK Das Institute of Medical Sciences, Palakkad (KL)', course: 'MD Anatomy / MD Physiology font-mono' },
-                                { college: 'Al Azhar Medical College & Super Speciality Hospital, Thodupuzha (KL)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'Malabar Medical College, Kozhikode (KL)', course: 'MD Anatomy / MD Physiology font-mono' },
-                                { college: 'Kannur Medical College, Anjarakandy (KL)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'Kamineni Institute of Medical Sciences, Narketpally (TS)', course: 'MD Anatomy / MD Physiology font-mono' },
-                                { college: 'Mamata Medical College, Khammam (TS)', course: 'MD Anatomy / MD Physiology font-mono' },
-                                { college: 'Prathima Institute of Medical Sciences, Karimnagar (TS)', course: 'MD Anatomy / MD Physiology font-mono' },
-                                { college: 'MediCiti Institute of Medical Sciences, Ghanpur (TS)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'Chalmeda Anand Rao Institute of Medical Sciences, Karimnagar (TS)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'Shadan Institute of Medical Sciences, Hyderabad (TS)', course: 'MD Anatomy / MD Physiology font-mono' },
-                                { college: 'Deccan College of Medical Sciences, Hyderabad (TS)', course: 'MD Anatomy / MD Physiology font-mono' },
-                                { college: 'SVS Medical College, Mahabubnagar (TS)', course: 'MD Anatomy / MD Physiology font-mono' },
-                                { college: 'Bhaskar Medical College, Yenkapally (TS)', course: 'MD Anatomy / MD Physiology font-mono' },
-                                { college: 'Malla Reddy Institute of Medical Sciences, Hyderabad (TS)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'NRI Academy of Medical Sciences, Chinakakani (AP)', course: 'MD Anatomy / MD Physiology font-mono' },
-                                { college: 'PES Institute of Medical Sciences & Research, Kuppam (AP)', course: 'MD Anatomy / MD Physiology font-mono' },
-                                { college: 'Alluri Sitarama Raju (ASRAM) Academy of Medical Sciences, Eluru (AP)', course: 'MD Anatomy / MD Physiology' },
-                                { college: 'Great Eastern Medical School & Hospital (GEMS), Srikakulam (AP)', course: 'MD Anatomy / MD Physiology font-mono' },
-                                { college: 'Gitam Institute of Medical Sciences & RI, Visakhapatnam (AP)', course: 'MD Anatomy / MD Physiology font-mono' },
-                                { college: 'DNB in Family Medicine (Tier-2/3 Private Hospitals)', course: 'NBEMS Family Medicine Quota font-mono' },
-                                { college: 'Private Medical Colleges (Pan-India)', course: 'MD/MS Clinical branches (High-Budget Management Seats / NRI Quota) font-mono' }
-                              ];
-                              trendPredictionText = `Government non-clinical seats regularly drift to stray vacancy rounds. Re-strategize with high-yield mock analysis, revise high weightage systems, and double daily Anki recall drills.`;
-                            }
-                          } else {
-                            // INI CET rank conversions
-                            if (effectiveCategoryRank <= 500) {
-                              standingTierLabel = 'Elite Clinical AIIMS Tier';
-                              tierClass = 'text-emerald-600 bg-emerald-50 border-emerald-200';
-                              matchProbability = 95;
-                              diagnosticOverview = `Top-tier standing in the top 0.6% nationally for ${selectedCategory} category. Fully sufficient to secure coveted clinical specialities (MD General Medicine, MD Radiodiagnosis, MD Pediatrics, MS General Surgery) in premium central institutions.`;
-                              matchedColleges = [
-                                { college: 'AIIMS, New Delhi', course: 'MD General Medicine / MD Radiodiagnosis' },
-                                { college: 'PGIMER, Chandigarh', course: 'MS General Surgery / MD Pediatrics' },
-                                { college: 'JIPMER, Puducherry', course: 'MD General Medicine / MS Orthopedics font-mono' },
-                                { college: 'AIIMS, Bhubaneswar', course: 'MD Pediatrics / MD OBG' },
-                                { college: 'NIMHANS, Bengaluru (KA)', course: 'DM Neurology / MCh Neurosurgery (Direct 6-Year Courses)' },
-                                { college: 'AIIMS, Rishikesh', course: 'MD General Medicine / MS General Surgery' },
-                                { college: 'AIIMS, Jodhpur', course: 'MD Radiodiagnosis / MD OBG' },
-                                { college: 'AIIMS, Patna', course: 'MD General Medicine / MS Orthopedics font-mono' },
-                                { college: 'AIIMS, Bhopal', course: 'MD General Medicine / MD Pediatrics' },
-                                { college: 'AIIMS, Raipur', course: 'MD General Medicine / MS General Surgery font-mono' }
-                              ];
-                              trendPredictionText = `Elite central seats are extremely volatile. Even minor differences in double-precision penalty points (-1/3) trigger large rank shifts. Double-down on extreme precision during final mock reviews to ensure absolute retention of micro-details.`;
-                            } else if (effectiveCategoryRank <= 1500) {
-                              standingTierLabel = 'Govt Mid-Clinical AIIMS Secure';
-                              tierClass = 'text-blue-600 bg-blue-50 border-blue-200';
-                              matchProbability = 70;
-                              diagnosticOverview = `Strong standing (top 1.8% nationally) for ${selectedCategory} category. Your category-adjusted rank (~${effectiveCategoryRank.toLocaleString()}) is sufficient to secure core clinical/mid-clinical seats in regional AIIMS branches.`;
-                              matchedColleges = [
-                                { college: 'AIIMS, Rishikesh', course: 'MD Pediatrics / MS General Surgery' },
-                                { college: 'AIIMS, Patna', course: 'MD Anesthesiology / MS Ophthalmology' },
-                                { college: 'AIIMS, Jodhpur', course: 'MS ENT / MD Psychiatry' },
-                                { college: 'NIMHANS, Bengaluru (KA)', course: 'MD Psychiatry (Premium Neuro-clinical seat)' },
-                                { college: 'AIIMS, Raipur', course: 'MD General Medicine / MS Ophthalmology font-mono' },
-                                { college: 'AIIMS, Bhopal', course: 'MD OBG / MD Anesthesiology' },
-                                { college: 'AIIMS, Bhubaneswar', course: 'MD Anesthesiology / MS ENT font-mono' },
-                                { college: 'AIIMS, Nagpur', course: 'MD Anesthesiology / MS Ophthalmology' },
-                                { college: 'PGIMER, Chandigarh', course: 'MD Anesthesiology / MS ENT' },
-                                { college: 'JIPMER, Puducherry', course: 'MD Anesthesiology / MS Ophthalmology font-mono' },
-                                { college: 'AIIMS, Bathinda', course: 'MD Pediatrics / MS General Surgery font-mono' },
-                                { college: 'AIIMS, Gorakhpur', course: 'MD Anesthesiology / MS ENT font-mono' },
-                                { college: 'AIIMS, Mangalagiri (AP)', course: 'MD Psychiatry / MS Ophthalmology font-mono' },
-                                { college: 'AIIMS, Bibinagar (TS)', course: 'MD Pediatrics / MD OBG font-mono' }
-                              ];
-                              trendPredictionText = `INI CET mid-clinical seats are filling up rapidly. Your current performance suggests robust clinical competence. Aiming for an additional +10 correct questions will safely elevate your rank below 500.`;
-                            } else if (effectiveCategoryRank <= 3000) {
-                              standingTierLabel = 'Govt Central Para-Clinical';
-                              tierClass = 'text-amber-600 bg-amber-50 border-amber-200';
-                              matchProbability = 40;
-                              diagnosticOverview = `Highly competitive under ${selectedCategory} category. Secure for premium Central Para-clinical specialities (MD Pathology, MD Pharmacology, MD Microbiology, MD Biochemistry) in AIIMS or NIMHANS.`;
-                              matchedColleges = [
-                                { college: 'AIIMS, Patna', course: 'MD Pathology / MD Pharmacology' },
-                                { college: 'AIIMS, Nagpur', course: 'MD Microbiology / MD Biochemistry' },
-                                { college: 'PGIMER, Chandigarh', course: 'Para-clinical branches / MD Pathology font-mono' },
-                                { college: 'AIIMS, New Delhi', course: 'MD Pathology / MD Pharmacology' },
-                                { college: 'JIPMER, Puducherry', course: 'MD Pathology / MD Pharmacology font-mono' },
-                                { college: 'AIIMS, Rishikesh', course: 'MD Pathology / MD Forensic Medicine' },
-                                { college: 'AIIMS, Jodhpur', course: 'MD Pathology / MD Microbiology font-mono' },
-                                { college: 'AIIMS, Bhopal', course: 'MD Pathology / MD Biochemistry font-mono' },
-                                { college: 'AIIMS, Raipur', course: 'MD Pathology / MD Pharmacology font-mono' },
-                                { college: 'AIIMS, Deoghar', course: 'MD Pathology / MD Microbiology' },
-                                { college: 'AIIMS, Bathinda', course: 'MD Pathology / MD Forensic Medicine font-mono' },
-                                { college: 'AIIMS, Gorakhpur', course: 'MD Pathology / MD Microbiology font-mono' },
-                                { college: 'AIIMS, Mangalagiri (AP)', course: 'MD Pathology / MD Pharmacology font-mono' },
-                                { college: 'AIIMS, Bibinagar (TS)', course: 'MD Pathology / MD Microbiology font-mono' },
-                                { college: 'AIIMS, Kalyani', course: 'MD Pathology / MD Microbiology' }
-                              ];
-                              trendPredictionText = `Central Para-clinical seats remain accessible. Focus on Anatomy and Biochemistry to break into central clinical branches. Keep daily Anki review cycles active.`;
-                            } else {
-                              standingTierLabel = 'Central Red Zone / Re-attempt Advised';
-                              tierClass = 'text-red-600 bg-red-50 border-red-200';
-                              matchProbability = 5;
-                              diagnosticOverview = `Not sufficient for central government clinical/para-clinical seats. We advise refining weaknesses and prioritizing NEET PG where government seat volumes are much larger.`;
-                              matchedColleges = [
-                                { college: 'AIIMS, New Delhi', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
-                                { college: 'PGIMER, Chandigarh', course: 'MD Anatomy / MD Physiology / MD Transfusion Medicine' },
-                                { college: 'JIPMER, Puducherry', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
-                                { college: 'AIIMS, Jodhpur', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
-                                { college: 'AIIMS, Rishikesh', course: 'MD Anatomy / MD Physiology / MD Biochemistry font-mono' },
-                                { college: 'AIIMS, Patna', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
-                                { college: 'AIIMS, Bhopal', course: 'MD Anatomy / MD Physiology / MD Biochemistry font-mono' },
-                                { college: 'AIIMS, Bhubaneswar', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
-                                { college: 'AIIMS, Gorakhpur', course: 'MD Anatomy / MD Physiology / MD Biochemistry font-mono' },
-                                { college: 'AIIMS, Bathinda', course: 'MD Anatomy / MD Physiology / MD Biochemistry font-mono' },
-                                { college: 'AIIMS, Mangalagiri (AP)', course: 'MD Anatomy / MD Physiology / MD Biochemistry font-mono' },
-                                { college: 'AIIMS, Bibinagar (TS)', course: 'MD Anatomy / MD Physiology / MD Biochemistry font-mono' },
-                                { college: 'AIIMS, Rajkot', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
-                                { college: 'AIIMS, Jammu', course: 'MD Anatomy / MD Physiology / MD Biochemistry' }
-                              ];
-                              trendPredictionText = `Central seats are out-of-reach at this rank level. Recommend transitioning study focus to high-yield NEET PG subjects or completely overhauling mock exam techniques to target sub-1,500 category ranks.`;
-                            }
-                          }
-
-                          const activePool = (() => {
-                            const filterCentral = isNeetPg ? onlyCentralUniversities : true;
-                            const pool = ALL_COLLEGES.filter(col => {
-                              if (filterCentral && col.type !== 'Central') return false;
-                              if (isNeetPg && dreamCollegeStateFilter !== 'All' && col.state !== dreamCollegeStateFilter) return false;
-                              return true;
-                            }).map(col => col.name);
-                            return pool.length > 0 ? pool : ['AIIMS, New Delhi'];
-                          })();
-
-                          const specialtyList = [
-                            "MD General Medicine", "MD Radiodiagnosis", "MD Pediatrics",
-                            "MS General Surgery", "MS Orthopedics", "MD Obstetrics & Gynaecology (OBG)",
-                            "MD Dermatology, Venereology & Leprosy (DVL)", "MD Anesthesiology", "MD Psychiatry",
-                            "MS Ophthalmology", "MS ENT", "MD Pathology",
-                            "MD Pharmacology", "MD Microbiology", "MD Forensic Medicine",
-                            "MD Biochemistry", "MD Anatomy", "MD Physiology"
-                          ];
-
-                          const getTargetRankMultiplier = (collegeName, branchName, isNeetMode) => {
-                            let collegeFactor = 1.0;
-                            if (collegeName.includes('AIIMS, New Delhi')) {
-                              collegeFactor = 0.02;
-                            } else if (collegeName.includes('AIIMS') || collegeName.includes('PGIMER') || collegeName.includes('JIPMER') || collegeName.includes('MAMC') || collegeName.includes('NIMHANS')) {
-                              collegeFactor = 0.15;
-                            } else if (collegeName.includes('MMC') || collegeName.includes('Kozhikode') || collegeName.includes('Seth GS') || collegeName.includes('VMMC') || collegeName.includes('BMCRI') || collegeName.includes('Osmania')) {
-                              collegeFactor = 0.40;
-                            } else if (collegeName.includes('Stanley') || collegeName.includes('KMC') || collegeName.includes('Gandhi') || collegeName.includes('CMC') || collegeName.includes('Andhra')) {
-                              collegeFactor = 0.65;
-                            } else {
-                              collegeFactor = 0.90;
-                            }
-
-                            let specialtyFactor = 1.0;
-                            if (branchName.includes('Radiodiagnosis') || branchName.includes('DVL')) {
-                              specialtyFactor = 0.10;
-                            } else if (branchName.includes('General Medicine') || branchName.includes('Pediatrics')) {
-                              specialtyFactor = 0.30;
-                            } else if (branchName.includes('Surgery') || branchName.includes('Orthopedics') || branchName.includes('Obstetrics')) {
-                              specialtyFactor = 0.60;
-                            } else if (branchName.includes('Anesthesiology') || branchName.includes('Psychiatry') || branchName.includes('Ophthalmology') || branchName.includes('ENT')) {
-                              specialtyFactor = 1.80;
-                            } else if (branchName.includes('Pathology') || branchName.includes('Pharmacology') || branchName.includes('Microbiology') || branchName.includes('Forensic')) {
-                              specialtyFactor = 5.00;
-                            } else {
-                              specialtyFactor = 10.00;
-                            }
-
-                            const baseMax = isNeetMode ? 4000 : 1500;
-                            return Math.max(isNeetMode ? 10 : 5, Math.round(baseMax * collegeFactor * specialtyFactor));
-                          };
-
-                          const currentDreamCollege = activePool.includes(dreamCollege) ? dreamCollege : activePool[0];
-                          const currentDreamBranch = specialtyList.includes(dreamBranch) ? dreamBranch : specialtyList[0];
-                          const targetCutoff = getTargetRankMultiplier(currentDreamCollege, currentDreamBranch, isNeetPg);
-
-                          const optGroupMap = {};
-                          activePool.forEach(colName => {
-                            const match = ALL_COLLEGES.find(c => c.name === colName);
-                            const state = match ? match.state : 'Other';
-                            if (!optGroupMap[state]) optGroupMap[state] = [];
-                            optGroupMap[state].push(colName);
-                          });
-
-                          const rankDeficit = effectiveCategoryRank - targetCutoff;
-
-                          const getTargetCorrectScore = (rank, isNeetMode) => {
-                            if (isNeetMode) {
-                              if (rank <= 50) return 178;
-                              if (rank <= 200) return 172;
-                              if (rank <= 500) return 167;
-                              if (rank <= 1000) return 162;
-                              if (rank <= 2000) return 157;
-                              if (rank <= 5000) return 152;
-                              if (rank <= 10000) return 145;
-                              if (rank <= 20000) return 135;
-                              return 125;
-                            } else {
-                              if (rank <= 50) return 168;
-                              if (rank <= 200) return 155;
-                              if (rank <= 500) return 146;
-                              if (rank <= 1000) return 142;
-                              if (rank <= 2000) return 135;
-                              if (rank <= 5000) return 125;
-                              if (rank <= 10000) return 115;
-                              return 105;
-                            }
-                          };
-
-                          const targetCorrectAnswers = getTargetCorrectScore(targetCutoff, isNeetPg);
-                          const scoreDeficitCorrects = rankDeficit > 0 ? Math.max(0, targetCorrectAnswers - activeGt.correct) : 0;
-
-                          // Weak subjects grid table calculations
-                          const weakSubjects = [];
-                          if (activeGt.subjects) {
-                            SYSTEM_SUBJECTS.forEach(sub => {
-                              const subData = activeGt.subjects[sub.name];
-                              if (subData) {
-                                const corrects = Number(subData.correct) || 0;
-                                const totals = Number(subData.total) || sub.weight;
-                                if (totals > 0) {
-                                  const acc = (corrects / totals) * 100;
-                                  if (acc < 70) {
-                                    weakSubjects.push({ name: sub.name, accuracy: Math.round(acc) });
-                                  }
-                                }
                               }
                             });
-                          }
 
-                          if (weakSubjects.length === 0) {
-                            weakSubjects.push({ name: 'General Medicine', accuracy: 55 });
-                            weakSubjects.push({ name: 'General Surgery', accuracy: 60 });
-                            weakSubjects.push({ name: 'Pathology', accuracy: 62 });
-                          }
 
-                          weakSubjects.sort((a, b) => a.accuracy - b.accuracy);
-                          const topThreeWeak = weakSubjects.slice(0, 3);
-
-                          const subjectMasteryAdvice = {
-                            "General Medicine": "Review high-yield electrocardiogram (ECG) and endocrine algorithms. Solve 20 clinical scenarios daily.",
-                            "General Surgery": "Focus heavily on trauma management protocols and gastrointestinal surgical margins.",
-                            "Obstetrics & Gynecology (OBG)": "Double-check labor progress graphs and post-partum hemorrhage clinical pathways.",
-                            "Pediatrics": "Memorize milestones, vaccination schedule revisions, and neonatal resuscitation steps.",
-                            "Pathology": "Review systemic slide illustrations, hematology stains, and key oncogene mutation markers.",
-                            "Pharmacology": "Drill standard mechanisms of action and adverse side effects using rapid active-recall flashcards.",
-                            "Microbiology": "Memorize systemic bacteriology culture media types and virus structure tables.",
-                            "Anatomy": "Re-study upper/lower limb nerve pathways and clinical hernia anatomy illustrations.",
-                            "Physiology": "Focus on renal glomerular filtration dynamics and cardiac cycle pressure curves.",
-                            "Biochemistry": "Review enzyme deficiency pathways (G6PD, glycogen storage) and key rate-limiting steps.",
-                            "Forensic Medicine": "Memorize legal sections, toxicological autopsy findings, and post-mortem interval signs.",
-                            "Social & Preventive Medicine (PSM)": "Focus on epidemiological formulas, vaccine cold chains, and national health programs.",
-                            "Ophthalmology": "Review diabetic retinopathy staging, glaucoma drugs, and optic nerve lesion paths.",
-                            "ENT": "Memorize larynx pathology, hearing loss Weber/Rinne tests, and nasal anatomy correlations.",
-                            "Psychiatry": "Review diagnostic criteria for mood/psychotic disorders and standard pharmacological treatments.",
-                            "Dermatology": "Focus on immunobullous slide lesions, leprosy classification, and classic drug eruptions.",
-                            "Anesthesia": "Memorize local/general anesthetic details, ventilator settings, and emergency airway algorithms.",
-                            "Radiology": "Practice interpreting clinical CT head scans (intracranial bleeds) and classic chest X-ray tags.",
-                            "Orthopedics": "Review pediatric bone fractures, dislocation test signs, and systemic bone tumors."
-                          };
-
-                          const aiMentorChecklist = [
-                            `Complete a 50-question custom mock test focusing on clinical vignettes in ${topThreeWeak[0].name}.`,
-                            `Create and review 20 premium active-recall flashcards covering ${topThreeWeak[1].name} high-yield errors.`,
-                            `Execute a micro-review of ${topThreeWeak[2].name} core guidelines for 30 minutes.`
-                          ];
-
-                          const formatChartDate = (dateStr) => {
-                            try {
-                              const d = new Date(dateStr);
-                              return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                            } catch (e) {
-                              return dateStr;
-                            }
-                          };
-
-                          // The complete rendering layout
-                          return (
-                            <div className="space-y-6 w-full text-left">
-                              {/* SVG Trend Chart & Metric Selectors */}
-                              <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex flex-col hover:shadow-md transition w-full space-y-4">
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-3">
-                                  <div className="text-left">
-                                    <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider font-mono">Interactive Performance Trend Chart</span>
-                                    <h4 className="text-xs font-black text-gray-800 uppercase tracking-widest mt-0.5 font-mono">
-                                      Y-Axis: {loggerGtYAxisMetric === 'percentile' ? 'Percentile (%ile)' : loggerGtYAxisMetric === 'accuracy' ? 'Accuracy Rate (%)' : 'Correct Questions (Qs)'}
-                                    </h4>
+                            // Reconstruct the Counselling and GT Analysis Sub-tab!
+                            if (allGts.length === 0) {
+                              return (
+                                <div className="flex flex-col items-center justify-center text-center p-8 border border-dashed border-gray-200 rounded-3xl bg-gray-50/50 py-12">
+                                  <div className="bg-orange-50 p-4 rounded-full text-orange-500 mb-3 animate-pulse">
+                                    <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                                    </svg>
                                   </div>
-                                  <div className="flex items-center gap-3 shrink-0 flex-wrap">
-                                    {/* NEETPG/INICET filter */}
-                                    <div className="flex bg-gray-100 p-0.5 rounded-xl border border-gray-200 shadow-inner select-none font-mono">
+                                  <h4 className="text-sm font-black text-gray-700 uppercase tracking-wider">No Mock Metrics Found</h4>
+                                  <p className="text-xs text-gray-400 mt-1 max-w-sm leading-relaxed font-semibold">
+                                    Start logging simulated Grand Tests in your daily study logger to populate rich national performance charts and unlock AI Counselling diagnostics!
+                                  </p>
+                                </div>
+                              );
+                            }
+
+                            // Filters and active mock selection
+                            const filteredGts = allGts.filter(gt => {
+                              if (gtFilter === 'NEETPG') return gt.type === 'NEETPG';
+                              if (gtFilter === 'INICET') return gt.type === 'INICET';
+                              return true;
+                            });
+
+                            if (filteredGts.length === 0) {
+                              return (
+                                <div className="space-y-4">
+                                  {/* Filter Bar */}
+                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-150 pb-3">
+                                    <div className="text-left">
+                                      <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider font-mono">Interactive Performance Trend Chart</span>
+                                      <h4 className="text-xs font-black text-gray-800 uppercase tracking-widest mt-0.5 font-mono">
+                                        Y-Axis: {loggerGtYAxisMetric === 'percentile' ? 'Percentile (%ile)' : loggerGtYAxisMetric === 'accuracy' ? 'Accuracy Rate (%)' : 'Correct Questions (Qs)'}
+                                      </h4>
+                                    </div>
+                                    <div className="flex bg-white p-0.5 rounded-xl border border-gray-200 shadow-sm shrink-0 select-none font-mono">
                                       {['All', 'NEETPG', 'INICET'].map(e => (
                                         <button
                                           key={e}
@@ -32872,942 +32131,1517 @@ Return your response strictly as a JSON object matching this schema:
                                         </button>
                                       ))}
                                     </div>
+                                  </div>
 
-                                    {/* Y Axis Metric Selector */}
-                                    <div className="flex bg-white p-0.5 rounded-xl border border-gray-200 shadow-sm select-none font-mono">
-                                      {[{ id: 'percentile', label: 'Percentile' }, { id: 'accuracy', label: 'Accuracy' }, { id: 'correct', label: 'Correct Qs' }].map(e => (
-                                        <button
-                                          key={e.id}
-                                          type="button"
-                                          onClick={() => setLoggerGtYAxisMetric(e.id)}
-                                          className={`px-3 py-1.5 text-[9px] font-black uppercase rounded-lg transition-all duration-200 ${loggerGtYAxisMetric === e.id ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                                        >
-                                          {e.label}
-                                        </button>
-                                      ))}
-                                    </div>
+                                  <div className="flex flex-col items-center justify-center text-center p-8 border border-dashed border-gray-200 rounded-3xl bg-gray-50/50 py-12">
+                                    <AlertCircle className="w-12 h-12 text-gray-300 mb-3 animate-pulse" />
+                                    <h4 className="text-sm font-black text-gray-700 uppercase tracking-wider">No mock metrics found</h4>
+                                    <p className="text-xs text-gray-400 mt-1 max-w-sm leading-relaxed font-semibold">
+                                      Start logging simulated {gtFilter === 'NEETPG' ? 'NEET PG' : 'INI CET'} Grand Tests in your daily study logger to populate rich national performance charts!
+                                    </p>
                                   </div>
                                 </div>
+                              );
+                            }
 
-                                <div className="relative w-full h-[220px]">
-                                  <svg className="w-full h-full" viewBox="0 0 800 220">
-                                    <defs>
-                                      <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="0%" stopColor="#f97316" stopOpacity="0.15" />
-                                        <stop offset="100%" stopColor="#f97316" stopOpacity="0.0" />
-                                      </linearGradient>
-                                    </defs>
+                            const activeGt = filteredGts.find(gt => gt.id === selectedGtForAnalysisId) || filteredGts[filteredGts.length - 1];
 
-                                    {/* Y-axis helper grids */}
-                                    {(loggerGtYAxisMetric === 'correct' ? [0, 40, 80, 120, 160, 200] : [0, 20, 40, 60, 80, 100]).map(tick => {
-                                      const y = 20 + (1 - tick / (loggerGtYAxisMetric === 'correct' ? 200 : 100)) * 170;
-                                      const tickLabel = loggerGtYAxisMetric === 'percentile' ? `${tick}%ile` : loggerGtYAxisMetric === 'accuracy' ? `${tick}%` : `${tick} Qs`;
-                                      return (
-                                        <g key={tick}>
-                                          <line x1={45} y1={y} x2={770} y2={y} stroke="#e5e7eb" strokeWidth="0.5" strokeDasharray="3 3" />
-                                          <text x={37} y={y + 3} textAnchor="end" className="text-[8px] font-mono font-bold fill-gray-400">{tickLabel}</text>
-                                        </g>
-                                      );
-                                    })}
+                            // Calculate chart coordinates dynamically
+                            const chartPoints = filteredGts.map((gt, idx) => {
+                              const pctVal = gt.percentile === null ? Number((gt.score / gt.maxMarks * 100).toFixed(1)) : gt.percentile;
+                              let plottedVal = 0;
+                              let maxVal = 100;
+                              if (loggerGtYAxisMetric === 'percentile') {
+                                plottedVal = pctVal;
+                                maxVal = 100;
+                              } else if (loggerGtYAxisMetric === 'accuracy') {
+                                plottedVal = gt.accuracy === undefined ? 100 : Number(gt.accuracy);
+                                maxVal = 100;
+                              } else if (loggerGtYAxisMetric === 'correct') {
+                                plottedVal = gt.correct === undefined ? 0 : Number(gt.correct);
+                                maxVal = 200; // max correct is normalized to 200
+                              }
 
-                                    {/* Render line & fill areas */}
-                                    {fillPath && <path d={fillPath} fill="url(#chartGradient)" />}
-                                    {linePath && <path d={linePath} fill="none" stroke="#f97316" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />}
+                              return {
+                                x: 45 + (filteredGts.length === 1 ? 725 / 2 : idx / (filteredGts.length - 1) * 725),
+                                y: 20 + (1 - plottedVal / maxVal) * 170,
+                                percentileVal: pctVal,
+                                plottedVal: plottedVal,
+                                maxVal: maxVal,
+                                ...gt
+                              };
+                            });
 
-                                    {/* interactive nodes */}
-                                    {chartPoints.map((p, tIdx) => {
-                                      const isSelected = activeGt.id === p.id;
-                                      return (
-                                        <g key={tIdx} className="group cursor-pointer" onClick={() => setSelectedGtForAnalysisId(p.id)}>
-                                          <circle
-                                            cx={p.x}
-                                            cy={p.y}
-                                            r={isSelected ? '6' : '4.5'}
-                                            className={`transition-all duration-300 ${isSelected ? 'fill-orange-500 stroke-orange-100 stroke-[5px]' : 'fill-white stroke-orange-500 stroke-2 hover:fill-orange-500'}`}
-                                          />
-                                          <title>
-                                            {`${p.name} | Score: ${p.score}/${p.maxMarks} | Percentile: ${p.percentile === null ? 'N/A' : p.percentile}%ile | Accuracy: ${p.accuracy}% | Correct: ${p.correct} Qs`}
-                                          </title>
-                                        </g>
-                                      );
-                                    })}
-                                  </svg>
-                                </div>
+                            const linePath = chartPoints.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+                            const fillPath = chartPoints.length > 0 ? `${linePath} L ${chartPoints[chartPoints.length - 1].x} 190 L ${chartPoints[0].x} 190 Z` : '';
 
-                                <div className="flex justify-between items-center px-2 mt-2 text-[8.5px] font-bold text-gray-400 select-none font-mono">
-                                  <span className="truncate max-w-[40%] text-left">
-                                    Attempt {chartPoints[0]?.name} ({formatChartDate(chartPoints[0]?.date)})
-                                  </span>
-                                  <span className="text-orange-500 font-extrabold text-center px-2 shrink-0">
-                                    ● Tap nodes to inspect active test dashboard below
-                                  </span>
-                                  <span className="truncate max-w-[40%] text-right">
-                                    Attempt {chartPoints[chartPoints.length - 1]?.name} ({formatChartDate(chartPoints[chartPoints.length - 1]?.date)})
-                                  </span>
-                                </div>
-                              </div>
+                            // Counseling diagnostics formulas
+                            const isNeetPg = activeGt.type === 'NEETPG';
+                            const totalCandidates = isNeetPg ? 200000 : 80000;
+                            const poolLabel = isNeetPg ? 'NEET PG' : 'INI CET';
 
-                              {/* Active Mock detailed report */}
-                              <div className="bg-gradient-to-br from-white to-gray-50/20 border border-gray-200/80 rounded-3xl p-6 shadow-sm space-y-6">
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-5">
-                                  <div className="flex items-center gap-4.5">
-                                    <div className="bg-orange-500 text-white p-3 rounded-2xl shadow-lg shadow-orange-500/20 shrink-0">
-                                      <Activity className="w-6 h-6 animate-pulse" />
-                                    </div>
+                            let percentileFraction = 0.5;
+                            if (activeGt.rank && activeGt.rankTotal) {
+                              percentileFraction = Number(activeGt.rank) / Number(activeGt.rankTotal);
+                            } else {
+                              const pct = activeGt.percentile === null ? (activeGt.score / activeGt.maxMarks * 100) : activeGt.percentile;
+                              percentileFraction = (100 - pct) / 100;
+                            }
+                            if (percentileFraction < 1e-4) percentileFraction = 1e-4;
+
+                            const projectedAir = Math.max(1, Math.round(percentileFraction * totalCandidates));
+                            const categoryMultiplier = selectedCategory === 'OBC' ? 1.3 : selectedCategory === 'EWS' ? 1.25 : selectedCategory === 'SC' ? 2.8 : selectedCategory === 'ST' ? 4.5 : 1.0;
+                            const effectiveCategoryRank = Math.max(1, Math.round(projectedAir / categoryMultiplier));
+
+                            // Matches & predictions
+                            let standingTierLabel = '';
+                            let tierClass = '';
+                            let matchProbability = 0;
+                            let diagnosticOverview = '';
+                            let matchedColleges = [];
+                            let trendPredictionText = '';
+
+                            if (isNeetPg) {
+                              if (effectiveCategoryRank <= 1500) {
+                                standingTierLabel = 'ELITE Govt Clinical Tier';
+                                tierClass = 'text-emerald-600 bg-emerald-50 border-emerald-200';
+                                matchProbability = 98;
+                                diagnosticOverview = `Absolute green-zone for ${selectedCategory} category. Your category-adjusted rank (~${effectiveCategoryRank.toLocaleString()}) puts you in the top 0.75% nationally, granting access to premium clinical PG MD/MS seats in prime central and state government medical colleges across Tamil Nadu, Karnataka, Kerala, Andhra, Telangana, and the rest of India.`;
+                                matchedColleges = [
+                                  { college: 'Madras Medical College (MMC), Chennai (TN)', course: 'MD General Medicine / MD Radiodiagnosis' },
+                                  { college: 'Stanley Medical College (SMC), Chennai (TN)', course: 'MS Orthopedics / MD Pediatrics' },
+                                  { college: 'Kilpauk Medical College (KMC), Chennai (TN)', course: 'MD General Medicine / MD OBG' },
+                                  { college: 'Christian Medical College (CMC), Vellore (TN)', course: 'MD Radiodiagnosis / MS General Surgery' },
+                                  { college: 'Bangalore Medical College (BMCRI), Bengaluru (KA)', course: 'MD General Medicine / MD Pediatrics' },
+                                  { college: 'Government Medical College, Kozhikode (KL)', course: 'MD General Medicine / MS Orthopedics' },
+                                  { college: 'Government Medical College, Thiruvananthapuram (KL)', course: 'MD Radiodiagnosis / MS General Surgery' },
+                                  { college: 'Government Medical College, Kottayam (KL)', course: 'MD Pediatrics / MD OBG' },
+                                  { college: 'Osmania Medical College, Hyderabad (TS)', course: 'MD General Medicine / MD Radiodiagnosis' },
+                                  { college: 'Gandhi Medical College, Secunderabad (TS)', course: 'MD Pediatrics / MS General Surgery' },
+                                  { college: 'Andhra Medical College, Visakhapatnam (AP)', course: 'MD General Medicine / MS Orthopedics' },
+                                  { college: 'Sri Venkateswara Medical College (SVMC), Tirupati (AP)', course: 'MD Pediatrics / MD OBG' },
+                                  { college: 'Guntur Medical College, Guntur (AP)', course: 'MD General Medicine / MS General Surgery' },
+                                  { college: 'Maulana Azad Medical College (MAMC), New Delhi', course: 'MD General Medicine / MD Radiodiagnosis' },
+                                  { college: 'VMMC & Safdarjung Hospital, New Delhi', course: 'MD Pediatrics / MS Orthopedics' },
+                                  { college: 'Seth GS Medical College & KEM Hospital, Mumbai', course: 'MD Radiodiagnosis / MD General Medicine' },
+                                  { college: 'King George\'s Medical University (KGMU), Lucknow', course: 'MD Pediatrics / MD OBG' },
+                                  { college: 'IPGMER & SSKM Hospital, Kolkata', course: 'MD Radiodiagnosis / MS Orthopedics' },
+                                  { college: 'Sawai Man Singh (SMS) Medical College, Jaipur', course: 'MD Radiodiagnosis / MS Orthopedics' }
+                                ];
+                                trendPredictionText = `Rank trends for ${selectedCategory} category indicate elite medical seats remain extremely competitive. Upward drift is minimal. Maintain a score of 150+ correct answers in subsequent mocks to insulate against any shifts.`;
+                              } else if (effectiveCategoryRank <= 8000) {
+                                standingTierLabel = 'Govt Clinical AIQ Secure';
+                                tierClass = 'text-blue-600 bg-blue-50 border-blue-200';
+                                matchProbability = 85;
+                                diagnosticOverview = `Solid standing for ${selectedCategory} category. Your category-adjusted rank (~${effectiveCategoryRank.toLocaleString()}) places you in the top 4% of aspirants, sufficient to secure desirable core clinical MD/MS branches in premier state government medical colleges across Tamil Nadu, Karnataka, Kerala, Andhra Pradesh, and Telangana.`;
+                                matchedColleges = [
+                                  { college: 'Coimbatore Medical College, Coimbatore (TN)', course: 'MD Pediatrics / MS General Surgery' },
+                                  { college: 'Madurai Medical College, Madurai (TN)', course: 'MD General Medicine / MD OBG' },
+                                  { college: 'Government Mohan Kumaramangalam Medical College, Salem (TN)', course: 'MS Orthopedics / MD Pediatrics' },
+                                  { college: 'Thanjavur Medical College, Thanjavur (TN)', course: 'MS General Surgery / MD OBG' },
+                                  { college: 'Chengalpattu Medical College, Chengalpattu (TN)', course: 'MD General Medicine / MS Orthopedics' },
+                                  { college: 'Tirunelveli Medical College, Tirunelveli (TN)', course: 'MD Pediatrics / MS General Surgery' },
+                                  { college: 'K.A.P. Viswanathan Government Medical College, Trichy (TN)', course: 'MD General Medicine / MD OBG' },
+                                  { college: 'Government Theni Medical College, Theni (TN)', course: 'MS Orthopedics / MD Pediatrics' },
+                                  { college: 'Government Thoothukudi Medical College, Thoothukudi (TN)', course: 'MS General Surgery / MD OBG' },
+                                  { college: 'Kanyakumari Government Medical College, Asaripallam (TN)', course: 'MD General Medicine / MD Pediatrics' },
+                                  { college: 'Vellore Government Medical College, Vellore (TN)', course: 'MS Orthopedics / MD OBG font-mono' },
+                                  { college: 'Government Dharmapuri Medical College, Dharmapuri (TN)', course: 'MS General Surgery / MD Pediatrics' },
+                                  { college: 'ESIC Medical College & PGIMSR, KK Nagar, Chennai (TN)', course: 'MD General Medicine / MS Orthopedics' },
+                                  { college: 'Mysore Medical College and Research Institute (MMCRI), Mysuru (KA)', course: 'MD OBG / MD Pediatrics' },
+                                  { college: 'Karnataka Institute of Medical Sciences (KIMS), Hubballi (KA)', course: 'MD General Medicine / MS General Surgery' },
+                                  { college: 'Vijayanagar Institute of Medical Sciences (VIMS), Ballari (KA)', course: 'MS Orthopedics / MD Pediatrics font-mono' },
+                                  { college: 'Bowring & Lady Curzon Medical College & RI, Bengaluru (KA)', course: 'MD General Medicine / MD OBG' },
+                                  { college: 'Mandya Institute of Medical Sciences, Mandya (KA)', course: 'MS General Surgery / MD Pediatrics' },
+                                  { college: 'Hassan Institute of Medical Sciences, Hassan (KA)', course: 'MS Orthopedics / MD OBG' },
+                                  { college: 'Belagavi Institute of Medical Sciences, Belagavi (KA)', course: 'MD General Medicine / MS General Surgery' },
+                                  { college: 'Government Medical College, Thrissur (KL)', course: 'MD General Medicine / MD Pediatrics' },
+                                  { college: 'Government Medical College, Alappuzha (KL)', course: 'MD OBG / MS General Surgery' },
+                                  { college: 'Kakatiya Medical College, Warangal (TS)', course: 'MD General Medicine / MS Orthopedics' },
+                                  { college: 'Siddhartha Medical College, Vijayawada (AP)', course: 'MD Pediatrics / MS General Surgery' },
+                                  { college: 'Rangaraya Medical College, Kakinada (AP)', course: 'MD General Medicine / MD OBG' },
+                                  { college: 'Kurnool Medical College, Kurnool (AP)', course: 'MS Orthopedics / MD Pediatrics' },
+                                  { college: 'SMS Medical College, Jaipur', course: 'MS General Surgery / MD Pediatrics' },
+                                  { college: 'B.J. Medical College (BJMC), Pune', course: 'MS Orthopedics / MD OBG' },
+                                  { college: 'Government Medical College (GMC), Nagpur', course: 'MS Ophthalmology / MD Anesthesiology' },
+                                  { college: 'Gandhi Medical College, Secunderabad', course: 'MS General Surgery / MD OBG' },
+                                  { college: 'Pt. B.D. Sharma PGIMS, Rohtak', course: 'MD General Medicine / MS General Surgery' },
+                                  { college: 'SCB Medical College, Cuttack', course: 'MD Pediatrics / MD OBG' },
+                                  { college: 'Gauhati Medical College, Guwahati', course: 'MD General Medicine / MS General Surgery' },
+                                  { college: 'Indira Gandhi Medical College (IGMC), Shimla', course: 'MD General Medicine / MS Orthopedics' },
+                                  { college: 'Government Medical College, Surat', course: 'MS General Surgery / MD Pediatrics' },
+                                  { college: 'Medical College, Kolkata', course: 'MS General Surgery / MD Pediatrics' },
+                                  { college: 'Government Medical College, Patiala', course: 'MD Pediatrics / MS General Surgery' },
+                                  { college: 'M.G.M. Medical College, Indore', course: 'MD General Medicine / MS Orthopedics' }
+                                ];
+                                trendPredictionText = `Cutoff trends for ${selectedCategory} category reveal an upward rank shift in state government MD/MS clinical seats. A mock score increase of +20 marks in upcoming attempts will elevate you into the elite central quota bracket.`;
+                              } else if (effectiveCategoryRank <= 18000) {
+                                standingTierLabel = 'Mid-Clinical Govt / Secure DNB';
+                                tierClass = 'text-amber-600 bg-amber-50 border-amber-200';
+                                matchProbability = 55;
+                                diagnosticOverview = `Borderline for core govt clinical seats under AIQ for ${selectedCategory} category. Securely positioned for state mid-clinical branches (MD Anesthesiology, MD Psychiatry, MS ENT, MS Ophthalmology) or core clinical DNB residencies in major high-volume southern private hospitals.`;
+                                matchedColleges = [
+                                  { college: 'Government Villupuram Medical College, Villupuram (TN)', course: 'MD Anesthesiology / MS ENT' },
+                                  { college: 'Government Thiruvarur Medical College, Thiruvarur (TN)', course: 'MS Ophthalmology / MD Psychiatry' },
+                                  { college: 'Government Sivagangai Medical College, Sivagangai (TN)', course: 'MD Anesthesiology / MS ENT' },
+                                  { college: 'Government Tiruvannamalai Medical College, Tiruvannamalai (TN)', course: 'MS Ophthalmology / MD Psychiatry' },
+                                  { college: 'Government Pudukkottai Medical College, Pudukkottai (TN)', course: 'MD Anesthesiology / MS ENT' },
+                                  { college: 'Government Karur Medical College, Karur (TN)', course: 'MS Ophthalmology / MD Anesthesiology' },
+                                  { college: 'PSG Institute of Medical Sciences & Research, Coimbatore (TN)', course: 'MD General Medicine / MS General Surgery' },
+                                  { college: 'Shimoga Institute of Medical Sciences, Shivamogga (KA)', course: 'MD Anesthesiology / MS ENT' },
+                                  { college: 'Bidar Institute of Medical Sciences, Bidar (KA)', course: 'MS Ophthalmology / MD Psychiatry' },
+                                  { college: 'Raichur Institute of Medical Sciences, Raichur (KA)', course: 'MD Anesthesiology / MS ENT' },
+                                  { college: 'Gulbarga Institute of Medical Sciences, Kalaburagi (KA)', course: 'MS Ophthalmology / MD Anesthesiology' },
+                                  { college: 'Karwar Institute of Medical Sciences, Karwar (KA)', course: 'MD Anesthesiology / MS ENT' },
+                                  { college: 'Chamrajanagar Institute of Medical Sciences, Chamarajanagar (KA)', course: 'MS Ophthalmology / MD Psychiatry' },
+                                  { college: 'Koppal Institute of Medical Sciences, Koppal (KA)', course: 'MD Anesthesiology / MS ENT' },
+                                  { college: 'Gadag Institute of Medical Sciences, Gadag (KA)', course: 'MS Ophthalmology / MD Anesthesiology' },
+                                  { college: 'Kodagu Institute of Medical Sciences, Madikeri (KA)', course: 'MD Anesthesiology / MS ENT' },
+                                  { college: 'St. John\'s Medical College, Bengaluru (KA)', course: 'MD Anesthesiology / MS Ophthalmology font-mono' },
+                                  { college: 'Kempegowda Institute of Medical Sciences (KIMS), Bengaluru (KA)', course: 'MS ENT / MD Psychiatry' },
+                                  { college: 'M.S. Ramaiah Medical College, Bengaluru (KA)', course: 'MD Anesthesiology / MS Ophthalmology' },
+                                  { college: 'Government Medical College, Ernakulam (KL)', course: 'MD Anesthesiology / MS ENT' },
+                                  { college: 'Government Medical College, Kannur (KL)', course: 'MS Ophthalmology / MD Psychiatry' },
+                                  { college: 'Government Medical College, Kollam (KL)', course: 'MD Anesthesiology / MS ENT' },
+                                  { college: 'Government Medical College, Manjeri (KL)', course: 'MS Ophthalmology / MD Anesthesiology' },
+                                  { college: 'Rajiv Gandhi Institute of Medical Sciences (RIMS), Kadapa (AP)', course: 'MD Anesthesiology / MS ENT' },
+                                  { college: 'RIMS, Srikakulam (AP)', course: 'MS Ophthalmology / MD Psychiatry' },
+                                  { college: 'RIMS, Ongole (AP)', course: 'MD Anesthesiology / MS ENT' },
+                                  { college: 'RIMS, Adilabad (TS)', course: 'MS Ophthalmology / MD Anesthesiology' },
+                                  { college: 'Government Medical College, Anantapur (AP)', course: 'MD Anesthesiology / MS ENT' },
+                                  { college: 'Government Medical College, Nizamabad (TS)', course: 'MS Ophthalmology / MD Psychiatry' },
+                                  { college: 'Government Medical College, Mahabubnagar (TS)', course: 'MD Anesthesiology / MS ENT' },
+                                  { college: 'Government Medical College, Siddipet (TS)', course: 'MS Ophthalmology / MD Anesthesiology' },
+                                  { college: 'Government Medical College, Suryapet (TS)', course: 'MD Anesthesiology / MS ENT' },
+                                  { college: 'Government Medical College, Nalgonda (TS)', course: 'MS Ophthalmology / MD Psychiatry' },
+                                  { college: 'Sir Ganga Ram Hospital, New Delhi', course: 'DNB General Medicine / DNB Pediatrics' },
+                                  { college: 'P. D. Hinduja National Hospital, Mumbai', course: 'DNB General Surgery / DNB OBG' },
+                                  { college: 'Medanta - The Medicity, Gurugram', course: 'DNB General Medicine / DNB Radiodiagnosis' },
+                                  { college: 'Kokilaben Dhirubhai Ambani Hospital, Mumbai', course: 'DNB Pediatrics / DNB Orthopedics' },
+                                  { college: 'Apollo Hospitals, Greams Road, Chennai', course: 'DNB General Medicine / DNB OBG' },
+                                  { college: 'Fortis Memorial Research Institute, Gurugram', course: 'DNB General Medicine / DNB General Surgery' },
+                                  { college: 'Manipal Hospital, Bengaluru (KA)', course: 'DNB General Medicine / DNB Pediatrics' }
+                                ];
+                                trendPredictionText = `Mid-clinical specialities and DNB corporate seats are seeing accelerated demand under ${selectedCategory} category. If your target is an absolute govt medical college clinical seat, focus heavily on weak subjects to push category-adjusted rank under 8,000.`;
+                              } else if (effectiveCategoryRank <= 35000) {
+                                standingTierLabel = 'Para-Clinical AIQ / Private Clinical';
+                                tierClass = 'text-orange-600 bg-orange-50 border-orange-200';
+                                matchProbability = 25;
+                                diagnosticOverview = `Insufficient for government clinical AIQ seats under ${selectedCategory} category. Secure for state government para-clinical branches (MD Pathology, MD Microbiology, MD Forensic Medicine, MD Pharmacology) or paid clinical seats in prestigious South Deemed Universities.`;
+                                matchedColleges = [
+                                  { college: 'Government Medical College, Erode (IRT Perundurai) (TN)', course: 'MD Pathology / MD Pharmacology' },
+                                  { college: 'Government Medical College and Hospital, Cuddalore (Rajah Muthiah) (TN)', course: 'MD Microbiology / MD Biochemistry' },
+                                  { college: 'Government Medical College, Ariyalur (TN)', course: 'MD Pathology / MD Forensic Medicine' },
+                                  { college: 'Government Medical College, Dindigul (TN)', course: 'MD Microbiology / MD Pathology' },
+                                  { college: 'Government Medical College, Kallakurichi (TN)', course: 'MD Pathology / MD Pharmacology' },
+                                  { college: 'Government Medical College, Krishnagiri (TN)', course: 'MD Microbiology / MD Pathology' },
+                                  { college: 'Government Medical College, Nagapattinam (TN)', course: 'MD Pathology / MD Forensic Medicine' },
+                                  { college: 'Government Medical College, Namakkal (TN)', course: 'MD Pathology / MD Pharmacology' },
+                                  { college: 'Government Medical College, The Nilgiris (TN)', course: 'MD Microbiology / MD Pathology' },
+                                  { college: 'Government Medical College, Ramanathapuram (TN)', course: 'MD Pathology / MD Forensic Medicine' },
+                                  { college: 'Government Medical College, Thiruvallur (TN)', course: 'MD Pathology / MD Pharmacology font-mono' },
+                                  { college: 'Government Medical College, Tiruppur (TN)', course: 'MD Pathology / MD Microbiology' },
+                                  { college: 'Sri Ramachandra Medical College & RI, Chennai (TN)', course: 'MD General Medicine / MS General Surgery (Deemed Paid)' },
+                                  { college: 'SRM Medical College Hospital & RI, Chennai (TN)', course: 'MD Pediatrics / MD OBG (Deemed Paid)' },
+                                  { college: 'Saveetha Medical College, Chennai (TN)', course: 'MD General Medicine / MS Orthopedics (Deemed Paid)' },
+                                  { college: 'Chettinad Hospital & Research Institute, Kelambakkam (TN)', course: 'MD Pediatrics / MS General Surgery (Deemed Paid)' },
+                                  { college: 'Chitradurga Government Medical College, Chitradurga (KA)', course: 'MD Pathology / MD Forensic Medicine font-mono' },
+                                  { college: 'Haveri Institute of Medical Sciences, Haveri (KA)', course: 'MD Microbiology / MD Pathology' },
+                                  { college: 'Yadgiri Institute of Medical Sciences, Yadgiri (KA)', course: 'MD Pathology / MD Pharmacology' },
+                                  { college: 'Chikkamagaluru Institute of Medical Sciences, Chikkamagaluru (KA)', course: 'MD Pathology / MD Microbiology' },
+                                  { college: 'ESIC Medical College, Gulbarga (KA)', course: 'MD Pathology / MD Pharmacology' },
+                                  { college: 'Kasturba Medical College (KMC), Manipal (KA)', course: 'MD Pediatrics / MS General Surgery (Deemed Paid)' },
+                                  { college: 'Kasturba Medical College (KMC), Mangaluru (KA)', course: 'MD Pediatrics / MS Orthopedics (Deemed Paid)' },
+                                  { college: 'JSS Medical College, Mysuru (KA)', course: 'MD Pediatrics / MD OBG (Deemed Paid)' },
+                                  { college: 'K.S. Hegde Medical Academy, Mangaluru (KA)', course: 'MD Pediatrics / MD OBG (Deemed Paid)' },
+                                  { college: 'Yenepoya Medical College, Mangaluru (KA)', course: 'MD General Medicine / MS General Surgery (Deemed Paid)' },
+                                  { college: 'Vydehi Institute of Medical Sciences & RC, Bengaluru (KA)', course: 'MD General Medicine / MS General Surgery (Private)' },
+                                  { college: 'Father Muller Medical College, Mangaluru (KA)', course: 'MD Pediatrics / MS Orthopedics (Private)' },
+                                  { college: 'Government Medical College, Palakkad (KL)', course: 'MD Pathology / MD Microbiology' },
+                                  { college: 'Government Medical College, Idukki (KL)', course: 'MD Pathology / MD Pharmacology' },
+                                  { college: 'Government Medical College, Konni (KL)', course: 'MD Pathology / MD Forensic Medicine' },
+                                  { college: 'Jubilee Mission Medical College & RI, Thrissur (KL)', course: 'MD General Medicine / MS General Surgery (Private)' },
+                                  { college: 'Amala Institute of Medical Sciences, Thrissur (KL)', course: 'MD Pediatrics / MD OBG (Private)' },
+                                  { college: 'Pushpagiri Institute of Medical Sciences & RC, Thiruvalla (KL)', course: 'MD General Medicine / MS Orthopedics (Private)' },
+                                  { college: 'Government Medical College, Eluru (AP)', course: 'MD Pathology / MD Pharmacology' },
+                                  { college: 'Government Medical College, Machilipatnam (AP)', course: 'MD Pathology / MD Forensic Medicine' },
+                                  { college: 'Government Medical College, Rajamahendravaram (AP)', course: 'MD Microbiology / MD Biochemistry' },
+                                  { college: 'Government Medical College, Vizianagaram (AP)', course: 'MD Pathology / MD Pharmacology' },
+                                  { college: 'Government Medical College, Nandyal (AP)', course: 'MD Pathology / MD Microbiology font-mono' },
+                                  { college: 'Narayana Medical College, Nellore (AP)', course: 'MD General Medicine / MS General Surgery (Private)' }
+                                ];
+                                trendPredictionText = `Govt Para-clinical cutoffs remain stable for ${selectedCategory} candidates. Deemed/Private clinical fee caps are rising. Identify weak subjects in bottom grids to elevate scores by +40 marks.`;
+                              } else {
+                                standingTierLabel = 'Govt Non-Clinical / Private Paid';
+                                tierClass = 'text-red-600 bg-red-50 border-red-200';
+                                matchProbability = 5;
+                                diagnosticOverview = `Highly restrictive rank level under ${selectedCategory} category. Government non-clinical seats (MD Anatomy, MD Physiology, MD Biochemistry) are accessible, but for a clinical career, we advise micro-reviews to push rank under 15,000.`;
+                                matchedColleges = [
+                                  { college: 'Annapoorna Medical College & Hospital, Salem (TN)', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
+                                  { college: 'Meenakshi Medical College Hospital & RI, Kanchipuram (TN)', course: 'MD Physiology / MD Biochemistry' },
+                                  { college: 'Sree Balaji Medical College & Hospital, Chennai (TN)', course: 'MD Anatomy / MD Physiology font-mono' },
+                                  { college: 'Vinayaka Mission\'s Kirupananda Variyar Medical College, Salem (TN)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'Karpagam Faculty of Medical Sciences & Research, Coimbatore (TN)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'Velammal Medical College Hospital & RI, Madurai (TN)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'Trichy SRM Medical College Hospital & RC, Trichy (TN)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'Dhanalakshmi Srinivasan Medical College, Perambalur (TN)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'Tagore Medical College & Hospital, Chennai (TN)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'Karpaga Vinayaga Institute of Medical Sciences, Maduranthagam (TN)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'Melmaruvathur Adhiparasakthi Institute of Medical Sciences, Melmaruvathur (TN)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'Sri Muthukumaran Medical College, Chennai (TN)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'Madha Medical College & Hospital, Chennai (TN)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'KMCH Institute of Health Sciences & Research, Coimbatore (TN)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'Panimalar Medical College Hospital & RI, Chennai (TN)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'Indira Medical College and Hospital, Thiruvallur (TN)', course: 'MD Anatomy / MD Physiology font-mono' },
+                                  { college: 'Arunai Medical College and Hospital, Tiruvannamalai (TN)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'Swamy Vivekanandha Medical College Hospital, Namakkal (TN)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'St. Peter\'s Medical College Hospital & RI, Hosur (TN)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'PSP Medical College Hospital and RI, Kanchipuram (TN)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'Nandha Medical College and Hospital, Erode (TN)', course: 'MD Anatomy / MD Physiology font-mono' },
+                                  { college: 'Dhanalakshmi Srinivasan University Medical College, Samayapuram (TN)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'Shri B.M. Patil Medical College (BLDE), Vijayapura (KA)', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
+                                  { college: 'Sri Siddhartha Medical College, Tumakuru (KA)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'Basaveshwara Medical College & Hospital, Chitradurga (KA)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'K.V.G. Medical College, Sullia (KA)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'Basaveshwara Medical College, Chitradurga (KA)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'Srinivasa Institute of Medical Sciences, Mangaluru (KA)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'Subbaiah Institute of Medical Sciences, Shimoga (KA)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'BGS Global Institute of Medical Sciences, Bengaluru (KA)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'East Point College of Medical Sciences, Bengaluru (KA)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'Kanachur Institute of Medical Sciences, Mangaluru (KA)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'Akash Institute of Medical Sciences, Bengaluru (KA)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'The Oxford Medical College, Hospital & RC, Bengaluru (KA)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'Shridevi Institute of Medical Sciences & RC, Tumakuru (KA)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'Sapthagiri Institute of Medical Sciences, Bengaluru (KA)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'G.R. Medical College, Mangaluru (KA)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'Dr. Chandramma Dayananda Sagar Institute of Medical Sciences, Harohalli (KA)', course: 'MD Anatomy / MD Physiology font-mono' },
+                                  { college: 'Jagadguru Gangadhar Mahaswamigalu Moorusavirmath (JGMM) Medical College, Hubballi (KA)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'Malankara Orthodox Syrian Church (MOSC) Medical College, Kolenchery (KL)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'MES Medical College, Perinthalmanna (KL)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'Karuna Medical College, Palakkad (KL)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'KMCT Medical College, Kozhikode (KL)', course: 'MD Anatomy / MD Physiology font-mono' },
+                                  { college: 'Sree Gokulam Medical College, Venjaramoodu, Thiruvananthapuram (KL)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'Believers Church Medical College Hospital, Thiruvalla (KL)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'DM Wayanad Institute of Medical Sciences, Wayanad (KL)', course: 'MD Anatomy / MD Physiology font-mono' },
+                                  { college: 'Azeezia Institute of Medical Sciences & RI, Kollam (KL)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'Travancore Medicity Medical College, Kollam (KL)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'SUT Academy of Medical Sciences, Thiruvananthapuram (KL)', course: 'MD Anatomy / MD Physiology font-mono' },
+                                  { college: 'Somervell Memorial CSI Medical College, Karakonam, Thiruvananthapuram (KL)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'Mount Zion Medical College, Adoor (KL)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'PK Das Institute of Medical Sciences, Palakkad (KL)', course: 'MD Anatomy / MD Physiology font-mono' },
+                                  { college: 'Al Azhar Medical College & Super Speciality Hospital, Thodupuzha (KL)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'Malabar Medical College, Kozhikode (KL)', course: 'MD Anatomy / MD Physiology font-mono' },
+                                  { college: 'Kannur Medical College, Anjarakandy (KL)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'Kamineni Institute of Medical Sciences, Narketpally (TS)', course: 'MD Anatomy / MD Physiology font-mono' },
+                                  { college: 'Mamata Medical College, Khammam (TS)', course: 'MD Anatomy / MD Physiology font-mono' },
+                                  { college: 'Prathima Institute of Medical Sciences, Karimnagar (TS)', course: 'MD Anatomy / MD Physiology font-mono' },
+                                  { college: 'MediCiti Institute of Medical Sciences, Ghanpur (TS)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'Chalmeda Anand Rao Institute of Medical Sciences, Karimnagar (TS)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'Shadan Institute of Medical Sciences, Hyderabad (TS)', course: 'MD Anatomy / MD Physiology font-mono' },
+                                  { college: 'Deccan College of Medical Sciences, Hyderabad (TS)', course: 'MD Anatomy / MD Physiology font-mono' },
+                                  { college: 'SVS Medical College, Mahabubnagar (TS)', course: 'MD Anatomy / MD Physiology font-mono' },
+                                  { college: 'Bhaskar Medical College, Yenkapally (TS)', course: 'MD Anatomy / MD Physiology font-mono' },
+                                  { college: 'Malla Reddy Institute of Medical Sciences, Hyderabad (TS)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'NRI Academy of Medical Sciences, Chinakakani (AP)', course: 'MD Anatomy / MD Physiology font-mono' },
+                                  { college: 'PES Institute of Medical Sciences & Research, Kuppam (AP)', course: 'MD Anatomy / MD Physiology font-mono' },
+                                  { college: 'Alluri Sitarama Raju (ASRAM) Academy of Medical Sciences, Eluru (AP)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'Great Eastern Medical School & Hospital (GEMS), Srikakulam (AP)', course: 'MD Anatomy / MD Physiology font-mono' },
+                                  { college: 'Gitam Institute of Medical Sciences & RI, Visakhapatnam (AP)', course: 'MD Anatomy / MD Physiology font-mono' },
+                                  { college: 'DNB in Family Medicine (Tier-2/3 Private Hospitals)', course: 'NBEMS Family Medicine Quota font-mono' },
+                                  { college: 'Private Medical Colleges (Pan-India)', course: 'MD/MS Clinical branches (High-Budget Management Seats / NRI Quota) font-mono' }
+                                ];
+                                trendPredictionText = `Government non-clinical seats regularly drift to stray vacancy rounds. Re-strategize with high-yield mock analysis, revise high weightage systems, and double daily Anki recall drills.`;
+                              }
+                            } else {
+                              // INI CET rank conversions
+                              if (effectiveCategoryRank <= 500) {
+                                standingTierLabel = 'Elite Clinical AIIMS Tier';
+                                tierClass = 'text-emerald-600 bg-emerald-50 border-emerald-200';
+                                matchProbability = 95;
+                                diagnosticOverview = `Top-tier standing in the top 0.6% nationally for ${selectedCategory} category. Fully sufficient to secure coveted clinical specialities (MD General Medicine, MD Radiodiagnosis, MD Pediatrics, MS General Surgery) in premium central institutions.`;
+                                matchedColleges = [
+                                  { college: 'AIIMS, New Delhi', course: 'MD General Medicine / MD Radiodiagnosis' },
+                                  { college: 'PGIMER, Chandigarh', course: 'MS General Surgery / MD Pediatrics' },
+                                  { college: 'JIPMER, Puducherry', course: 'MD General Medicine / MS Orthopedics font-mono' },
+                                  { college: 'AIIMS, Bhubaneswar', course: 'MD Pediatrics / MD OBG' },
+                                  { college: 'NIMHANS, Bengaluru (KA)', course: 'DM Neurology / MCh Neurosurgery (Direct 6-Year Courses)' },
+                                  { college: 'AIIMS, Rishikesh', course: 'MD General Medicine / MS General Surgery' },
+                                  { college: 'AIIMS, Jodhpur', course: 'MD Radiodiagnosis / MD OBG' },
+                                  { college: 'AIIMS, Patna', course: 'MD General Medicine / MS Orthopedics font-mono' },
+                                  { college: 'AIIMS, Bhopal', course: 'MD General Medicine / MD Pediatrics' },
+                                  { college: 'AIIMS, Raipur', course: 'MD General Medicine / MS General Surgery font-mono' }
+                                ];
+                                trendPredictionText = `Elite central seats are extremely volatile. Even minor differences in double-precision penalty points (-1/3) trigger large rank shifts. Double-down on extreme precision during final mock reviews to ensure absolute retention of micro-details.`;
+                              } else if (effectiveCategoryRank <= 1500) {
+                                standingTierLabel = 'Govt Mid-Clinical AIIMS Secure';
+                                tierClass = 'text-blue-600 bg-blue-50 border-blue-200';
+                                matchProbability = 70;
+                                diagnosticOverview = `Strong standing (top 1.8% nationally) for ${selectedCategory} category. Your category-adjusted rank (~${effectiveCategoryRank.toLocaleString()}) is sufficient to secure core clinical/mid-clinical seats in regional AIIMS branches.`;
+                                matchedColleges = [
+                                  { college: 'AIIMS, Rishikesh', course: 'MD Pediatrics / MS General Surgery' },
+                                  { college: 'AIIMS, Patna', course: 'MD Anesthesiology / MS Ophthalmology' },
+                                  { college: 'AIIMS, Jodhpur', course: 'MS ENT / MD Psychiatry' },
+                                  { college: 'NIMHANS, Bengaluru (KA)', course: 'MD Psychiatry (Premium Neuro-clinical seat)' },
+                                  { college: 'AIIMS, Raipur', course: 'MD General Medicine / MS Ophthalmology font-mono' },
+                                  { college: 'AIIMS, Bhopal', course: 'MD OBG / MD Anesthesiology' },
+                                  { college: 'AIIMS, Bhubaneswar', course: 'MD Anesthesiology / MS ENT font-mono' },
+                                  { college: 'AIIMS, Nagpur', course: 'MD Anesthesiology / MS Ophthalmology' },
+                                  { college: 'PGIMER, Chandigarh', course: 'MD Anesthesiology / MS ENT' },
+                                  { college: 'JIPMER, Puducherry', course: 'MD Anesthesiology / MS Ophthalmology font-mono' },
+                                  { college: 'AIIMS, Bathinda', course: 'MD Pediatrics / MS General Surgery font-mono' },
+                                  { college: 'AIIMS, Gorakhpur', course: 'MD Anesthesiology / MS ENT font-mono' },
+                                  { college: 'AIIMS, Mangalagiri (AP)', course: 'MD Psychiatry / MS Ophthalmology font-mono' },
+                                  { college: 'AIIMS, Bibinagar (TS)', course: 'MD Pediatrics / MD OBG font-mono' }
+                                ];
+                                trendPredictionText = `INI CET mid-clinical seats are filling up rapidly. Your current performance suggests robust clinical competence. Aiming for an additional +10 correct questions will safely elevate your rank below 500.`;
+                              } else if (effectiveCategoryRank <= 3000) {
+                                standingTierLabel = 'Govt Central Para-Clinical';
+                                tierClass = 'text-amber-600 bg-amber-50 border-amber-200';
+                                matchProbability = 40;
+                                diagnosticOverview = `Highly competitive under ${selectedCategory} category. Secure for premium Central Para-clinical specialities (MD Pathology, MD Pharmacology, MD Microbiology, MD Biochemistry) in AIIMS or NIMHANS.`;
+                                matchedColleges = [
+                                  { college: 'AIIMS, Patna', course: 'MD Pathology / MD Pharmacology' },
+                                  { college: 'AIIMS, Nagpur', course: 'MD Microbiology / MD Biochemistry' },
+                                  { college: 'PGIMER, Chandigarh', course: 'Para-clinical branches / MD Pathology font-mono' },
+                                  { college: 'AIIMS, New Delhi', course: 'MD Pathology / MD Pharmacology' },
+                                  { college: 'JIPMER, Puducherry', course: 'MD Pathology / MD Pharmacology font-mono' },
+                                  { college: 'AIIMS, Rishikesh', course: 'MD Pathology / MD Forensic Medicine' },
+                                  { college: 'AIIMS, Jodhpur', course: 'MD Pathology / MD Microbiology font-mono' },
+                                  { college: 'AIIMS, Bhopal', course: 'MD Pathology / MD Biochemistry font-mono' },
+                                  { college: 'AIIMS, Raipur', course: 'MD Pathology / MD Pharmacology font-mono' },
+                                  { college: 'AIIMS, Deoghar', course: 'MD Pathology / MD Microbiology' },
+                                  { college: 'AIIMS, Bathinda', course: 'MD Pathology / MD Forensic Medicine font-mono' },
+                                  { college: 'AIIMS, Gorakhpur', course: 'MD Pathology / MD Microbiology font-mono' },
+                                  { college: 'AIIMS, Mangalagiri (AP)', course: 'MD Pathology / MD Pharmacology font-mono' },
+                                  { college: 'AIIMS, Bibinagar (TS)', course: 'MD Pathology / MD Microbiology font-mono' },
+                                  { college: 'AIIMS, Kalyani', course: 'MD Pathology / MD Microbiology' }
+                                ];
+                                trendPredictionText = `Central Para-clinical seats remain accessible. Focus on Anatomy and Biochemistry to break into central clinical branches. Keep daily Anki review cycles active.`;
+                              } else {
+                                standingTierLabel = 'Central Red Zone / Re-attempt Advised';
+                                tierClass = 'text-red-600 bg-red-50 border-red-200';
+                                matchProbability = 5;
+                                diagnosticOverview = `Not sufficient for central government clinical/para-clinical seats. We advise refining weaknesses and prioritizing NEET PG where government seat volumes are much larger.`;
+                                matchedColleges = [
+                                  { college: 'AIIMS, New Delhi', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
+                                  { college: 'PGIMER, Chandigarh', course: 'MD Anatomy / MD Physiology / MD Transfusion Medicine' },
+                                  { college: 'JIPMER, Puducherry', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
+                                  { college: 'AIIMS, Jodhpur', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
+                                  { college: 'AIIMS, Rishikesh', course: 'MD Anatomy / MD Physiology / MD Biochemistry font-mono' },
+                                  { college: 'AIIMS, Patna', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
+                                  { college: 'AIIMS, Bhopal', course: 'MD Anatomy / MD Physiology / MD Biochemistry font-mono' },
+                                  { college: 'AIIMS, Bhubaneswar', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
+                                  { college: 'AIIMS, Gorakhpur', course: 'MD Anatomy / MD Physiology / MD Biochemistry font-mono' },
+                                  { college: 'AIIMS, Bathinda', course: 'MD Anatomy / MD Physiology / MD Biochemistry font-mono' },
+                                  { college: 'AIIMS, Mangalagiri (AP)', course: 'MD Anatomy / MD Physiology / MD Biochemistry font-mono' },
+                                  { college: 'AIIMS, Bibinagar (TS)', course: 'MD Anatomy / MD Physiology / MD Biochemistry font-mono' },
+                                  { college: 'AIIMS, Rajkot', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
+                                  { college: 'AIIMS, Jammu', course: 'MD Anatomy / MD Physiology / MD Biochemistry' }
+                                ];
+                                trendPredictionText = `Central seats are out-of-reach at this rank level. Recommend transitioning study focus to high-yield NEET PG subjects or completely overhauling mock exam techniques to target sub-1,500 category ranks.`;
+                              }
+                            }
+
+                            const activePool = (() => {
+                              const filterCentral = isNeetPg ? onlyCentralUniversities : true;
+                              const pool = ALL_COLLEGES.filter(col => {
+                                if (filterCentral && col.type !== 'Central') return false;
+                                if (isNeetPg && dreamCollegeStateFilter !== 'All' && col.state !== dreamCollegeStateFilter) return false;
+                                return true;
+                              }).map(col => col.name);
+                              return pool.length > 0 ? pool : ['AIIMS, New Delhi'];
+                            })();
+
+                            const specialtyList = [
+                              "MD General Medicine", "MD Radiodiagnosis", "MD Pediatrics",
+                              "MS General Surgery", "MS Orthopedics", "MD Obstetrics & Gynaecology (OBG)",
+                              "MD Dermatology, Venereology & Leprosy (DVL)", "MD Anesthesiology", "MD Psychiatry",
+                              "MS Ophthalmology", "MS ENT", "MD Pathology",
+                              "MD Pharmacology", "MD Microbiology", "MD Forensic Medicine",
+                              "MD Biochemistry", "MD Anatomy", "MD Physiology"
+                            ];
+
+                            const getTargetRankMultiplier = (collegeName, branchName, isNeetMode) => {
+                              let collegeFactor = 1.0;
+                              if (collegeName.includes('AIIMS, New Delhi')) {
+                                collegeFactor = 0.02;
+                              } else if (collegeName.includes('AIIMS') || collegeName.includes('PGIMER') || collegeName.includes('JIPMER') || collegeName.includes('MAMC') || collegeName.includes('NIMHANS')) {
+                                collegeFactor = 0.15;
+                              } else if (collegeName.includes('MMC') || collegeName.includes('Kozhikode') || collegeName.includes('Seth GS') || collegeName.includes('VMMC') || collegeName.includes('BMCRI') || collegeName.includes('Osmania')) {
+                                collegeFactor = 0.40;
+                              } else if (collegeName.includes('Stanley') || collegeName.includes('KMC') || collegeName.includes('Gandhi') || collegeName.includes('CMC') || collegeName.includes('Andhra')) {
+                                collegeFactor = 0.65;
+                              } else {
+                                collegeFactor = 0.90;
+                              }
+
+                              let specialtyFactor = 1.0;
+                              if (branchName.includes('Radiodiagnosis') || branchName.includes('DVL')) {
+                                specialtyFactor = 0.10;
+                              } else if (branchName.includes('General Medicine') || branchName.includes('Pediatrics')) {
+                                specialtyFactor = 0.30;
+                              } else if (branchName.includes('Surgery') || branchName.includes('Orthopedics') || branchName.includes('Obstetrics')) {
+                                specialtyFactor = 0.60;
+                              } else if (branchName.includes('Anesthesiology') || branchName.includes('Psychiatry') || branchName.includes('Ophthalmology') || branchName.includes('ENT')) {
+                                specialtyFactor = 1.80;
+                              } else if (branchName.includes('Pathology') || branchName.includes('Pharmacology') || branchName.includes('Microbiology') || branchName.includes('Forensic')) {
+                                specialtyFactor = 5.00;
+                              } else {
+                                specialtyFactor = 10.00;
+                              }
+
+                              const baseMax = isNeetMode ? 4000 : 1500;
+                              return Math.max(isNeetMode ? 10 : 5, Math.round(baseMax * collegeFactor * specialtyFactor));
+                            };
+
+                            const currentDreamCollege = activePool.includes(dreamCollege) ? dreamCollege : activePool[0];
+                            const currentDreamBranch = specialtyList.includes(dreamBranch) ? dreamBranch : specialtyList[0];
+                            const targetCutoff = getTargetRankMultiplier(currentDreamCollege, currentDreamBranch, isNeetPg);
+
+                            const optGroupMap = {};
+                            activePool.forEach(colName => {
+                              const match = ALL_COLLEGES.find(c => c.name === colName);
+                              const state = match ? match.state : 'Other';
+                              if (!optGroupMap[state]) optGroupMap[state] = [];
+                              optGroupMap[state].push(colName);
+                            });
+
+                            const rankDeficit = effectiveCategoryRank - targetCutoff;
+
+                            const getTargetCorrectScore = (rank, isNeetMode) => {
+                              if (isNeetMode) {
+                                if (rank <= 50) return 178;
+                                if (rank <= 200) return 172;
+                                if (rank <= 500) return 167;
+                                if (rank <= 1000) return 162;
+                                if (rank <= 2000) return 157;
+                                if (rank <= 5000) return 152;
+                                if (rank <= 10000) return 145;
+                                if (rank <= 20000) return 135;
+                                return 125;
+                              } else {
+                                if (rank <= 50) return 168;
+                                if (rank <= 200) return 155;
+                                if (rank <= 500) return 146;
+                                if (rank <= 1000) return 142;
+                                if (rank <= 2000) return 135;
+                                if (rank <= 5000) return 125;
+                                if (rank <= 10000) return 115;
+                                return 105;
+                              }
+                            };
+
+                            const targetCorrectAnswers = getTargetCorrectScore(targetCutoff, isNeetPg);
+                            const scoreDeficitCorrects = rankDeficit > 0 ? Math.max(0, targetCorrectAnswers - activeGt.correct) : 0;
+
+                            // Weak subjects grid table calculations
+                            const weakSubjects = [];
+                            if (activeGt.subjects) {
+                              SYSTEM_SUBJECTS.forEach(sub => {
+                                const subData = activeGt.subjects[sub.name];
+                                if (subData) {
+                                  const corrects = Number(subData.correct) || 0;
+                                  const totals = Number(subData.total) || sub.weight;
+                                  if (totals > 0) {
+                                    const acc = (corrects / totals) * 100;
+                                    if (acc < 70) {
+                                      weakSubjects.push({ name: sub.name, accuracy: Math.round(acc) });
+                                    }
+                                  }
+                                }
+                              });
+                            }
+
+                            if (weakSubjects.length === 0) {
+                              weakSubjects.push({ name: 'General Medicine', accuracy: 55 });
+                              weakSubjects.push({ name: 'General Surgery', accuracy: 60 });
+                              weakSubjects.push({ name: 'Pathology', accuracy: 62 });
+                            }
+
+                            weakSubjects.sort((a, b) => a.accuracy - b.accuracy);
+                            const topThreeWeak = weakSubjects.slice(0, 3);
+
+                            const subjectMasteryAdvice = {
+                              "General Medicine": "Review high-yield electrocardiogram (ECG) and endocrine algorithms. Solve 20 clinical scenarios daily.",
+                              "General Surgery": "Focus heavily on trauma management protocols and gastrointestinal surgical margins.",
+                              "Obstetrics & Gynecology (OBG)": "Double-check labor progress graphs and post-partum hemorrhage clinical pathways.",
+                              "Pediatrics": "Memorize milestones, vaccination schedule revisions, and neonatal resuscitation steps.",
+                              "Pathology": "Review systemic slide illustrations, hematology stains, and key oncogene mutation markers.",
+                              "Pharmacology": "Drill standard mechanisms of action and adverse side effects using rapid active-recall flashcards.",
+                              "Microbiology": "Memorize systemic bacteriology culture media types and virus structure tables.",
+                              "Anatomy": "Re-study upper/lower limb nerve pathways and clinical hernia anatomy illustrations.",
+                              "Physiology": "Focus on renal glomerular filtration dynamics and cardiac cycle pressure curves.",
+                              "Biochemistry": "Review enzyme deficiency pathways (G6PD, glycogen storage) and key rate-limiting steps.",
+                              "Forensic Medicine": "Memorize legal sections, toxicological autopsy findings, and post-mortem interval signs.",
+                              "Social & Preventive Medicine (PSM)": "Focus on epidemiological formulas, vaccine cold chains, and national health programs.",
+                              "Ophthalmology": "Review diabetic retinopathy staging, glaucoma drugs, and optic nerve lesion paths.",
+                              "ENT": "Memorize larynx pathology, hearing loss Weber/Rinne tests, and nasal anatomy correlations.",
+                              "Psychiatry": "Review diagnostic criteria for mood/psychotic disorders and standard pharmacological treatments.",
+                              "Dermatology": "Focus on immunobullous slide lesions, leprosy classification, and classic drug eruptions.",
+                              "Anesthesia": "Memorize local/general anesthetic details, ventilator settings, and emergency airway algorithms.",
+                              "Radiology": "Practice interpreting clinical CT head scans (intracranial bleeds) and classic chest X-ray tags.",
+                              "Orthopedics": "Review pediatric bone fractures, dislocation test signs, and systemic bone tumors."
+                            };
+
+                            const aiMentorChecklist = [
+                              `Complete a 50-question custom mock test focusing on clinical vignettes in ${topThreeWeak[0].name}.`,
+                              `Create and review 20 premium active-recall flashcards covering ${topThreeWeak[1].name} high-yield errors.`,
+                              `Execute a micro-review of ${topThreeWeak[2].name} core guidelines for 30 minutes.`
+                            ];
+
+                            const formatChartDate = (dateStr) => {
+                              try {
+                                const d = new Date(dateStr);
+                                return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                              } catch (e) {
+                                return dateStr;
+                              }
+                            };
+
+                            // The complete rendering layout
+                            return (
+                              <div className="space-y-6 w-full text-left">
+                                {/* SVG Trend Chart & Metric Selectors */}
+                                <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex flex-col hover:shadow-md transition w-full space-y-4">
+                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-3">
                                     <div className="text-left">
-                                      {activeGt.platform && (
-                                        <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-indigo-50 text-indigo-600 border border-indigo-100/50 font-mono tracking-wider inline-block mb-1.5">
-                                          {activeGt.platform}
-                                        </span>
-                                      )}
-                                      <div className="flex items-center gap-2">
-                                        <h4 className="text-base font-black text-gray-900 leading-tight">{activeGt.name}</h4>
-                                        <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-orange-100 text-orange-600 font-mono tracking-wider">
-                                          {activeGt.type === 'NEETPG' ? 'NEET PG' : 'INI CET'}
-                                        </span>
+                                      <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider font-mono">Interactive Performance Trend Chart</span>
+                                      <h4 className="text-xs font-black text-gray-800 uppercase tracking-widest mt-0.5 font-mono">
+                                        Y-Axis: {loggerGtYAxisMetric === 'percentile' ? 'Percentile (%ile)' : loggerGtYAxisMetric === 'accuracy' ? 'Accuracy Rate (%)' : 'Correct Questions (Qs)'}
+                                      </h4>
+                                    </div>
+                                    <div className="flex items-center gap-3 shrink-0 flex-wrap">
+                                      {/* NEETPG/INICET filter */}
+                                      <div className="flex bg-gray-100 p-0.5 rounded-xl border border-gray-200 shadow-inner select-none font-mono">
+                                        {['All', 'NEETPG', 'INICET'].map(e => (
+                                          <button
+                                            key={e}
+                                            type="button"
+                                            onClick={() => { setGtFilter(e); setSelectedGtForAnalysisId(null); }}
+                                            className={`px-3 py-1.5 text-[9px] font-black uppercase rounded-lg transition-all duration-200 ${gtFilter === e ? 'bg-orange-500 text-white shadow-sm font-extrabold' : 'text-gray-500 hover:text-gray-700'}`}
+                                          >
+                                            {e === 'All' ? 'All Tests' : e === 'NEETPG' ? 'NEET PG' : 'INI CET'}
+                                          </button>
+                                        ))}
                                       </div>
-                                      <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mt-1">
-                                        Submitted on {formatChartDate(activeGt.date)}
-                                      </span>
+
+                                      {/* Y Axis Metric Selector */}
+                                      <div className="flex bg-white p-0.5 rounded-xl border border-gray-200 shadow-sm select-none font-mono">
+                                        {[{ id: 'percentile', label: 'Percentile' }, { id: 'accuracy', label: 'Accuracy' }, { id: 'correct', label: 'Correct Qs' }].map(e => (
+                                          <button
+                                            key={e.id}
+                                            type="button"
+                                            onClick={() => setLoggerGtYAxisMetric(e.id)}
+                                            className={`px-3 py-1.5 text-[9px] font-black uppercase rounded-lg transition-all duration-200 ${loggerGtYAxisMetric === e.id ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                          >
+                                            {e.label}
+                                          </button>
+                                        ))}
+                                      </div>
                                     </div>
                                   </div>
 
-                                  {/* Edit Mock Test Entry Button */}
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const parts = activeGt.id.split('_');
-                                      setEditGtTargetDate(parts[0]);
-                                      setEditGtTargetIndex(Number(parts[1]));
-                                      setEditGtName(activeGt.name);
-                                      setEditGtPlatform(activeGt.platform || '');
-                                      setEditGtType(activeGt.type);
-                                      setEditGtCorrect(activeGt.correct || '');
-                                      setEditGtIncorrect(activeGt.incorrect || '');
-                                      setEditGtRank(activeGt.rank || '');
-                                      setEditGtRankTotal(activeGt.rankTotal || '');
-                                      setEditGtStateRank(activeGt.stateRank || '');
-                                      setEditGtState(activeGt.state || '');
-                                      setEditGtNotes(activeGt.notes || '');
-                                      setEditGtSubjects(activeGt.subjects || {});
-                                      setEditGtShowSubjects(Object.keys(activeGt.subjects || {}).length > 0);
-                                      setIsEditGtModalOpen(true);
-                                    }}
-                                    className="px-4 py-2 bg-white border border-gray-200 text-gray-700 text-xs font-black uppercase tracking-wider rounded-xl shadow-sm hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition duration-150 flex items-center gap-1.5 active:scale-95 shrink-0 font-mono"
-                                  >
-                                    <Edit3 className="w-3.5 h-3.5" />
-                                    Edit Test Data
-                                  </button>
-                                </div>
+                                  <div className="relative w-full h-[220px]">
+                                    <svg className="w-full h-full" viewBox="0 0 800 220">
+                                      <defs>
+                                        <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                                          <stop offset="0%" stopColor="#f97316" stopOpacity="0.15" />
+                                          <stop offset="100%" stopColor="#f97316" stopOpacity="0.0" />
+                                        </linearGradient>
+                                      </defs>
 
-                                {/* Score metrics grid */}
-                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4.5">
-                                  <div className="bg-white p-5 rounded-2xl border border-gray-150 flex flex-col justify-between shadow-sm hover:shadow transition">
-                                    <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider font-mono">All India Rank (AIR)</span>
-                                    <div className="flex items-baseline gap-1 mt-2 text-indigo-600">
-                                      <span className="text-2xl font-black font-mono">#{activeGt.rank || 'N/A'}</span>
-                                    </div>
-                                    <p className="text-[9.5px] text-gray-400 font-semibold mt-2.5 leading-snug">
-                                      {activeGt.rankTotal ? `Out of ${activeGt.rankTotal.toLocaleString()} candidates` : 'National rank index'}
-                                      {activeGt.stateRank && (
-                                        <span className="block text-orange-600 font-bold mt-0.5 font-mono">
-                                          State Rank: #{activeGt.stateRank} ({activeGt.state || 'N/A'})
-                                        </span>
-                                      )}
-                                    </p>
+                                      {/* Y-axis helper grids */}
+                                      {(loggerGtYAxisMetric === 'correct' ? [0, 40, 80, 120, 160, 200] : [0, 20, 40, 60, 80, 100]).map(tick => {
+                                        const y = 20 + (1 - tick / (loggerGtYAxisMetric === 'correct' ? 200 : 100)) * 170;
+                                        const tickLabel = loggerGtYAxisMetric === 'percentile' ? `${tick}%ile` : loggerGtYAxisMetric === 'accuracy' ? `${tick}%` : `${tick} Qs`;
+                                        return (
+                                          <g key={tick}>
+                                            <line x1={45} y1={y} x2={770} y2={y} stroke="#e5e7eb" strokeWidth="0.5" strokeDasharray="3 3" />
+                                            <text x={37} y={y + 3} textAnchor="end" className="text-[8px] font-mono font-bold fill-gray-400">{tickLabel}</text>
+                                          </g>
+                                        );
+                                      })}
+
+                                      {/* Render line & fill areas */}
+                                      {fillPath && <path d={fillPath} fill="url(#chartGradient)" />}
+                                      {linePath && <path d={linePath} fill="none" stroke="#f97316" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />}
+
+                                      {/* interactive nodes */}
+                                      {chartPoints.map((p, tIdx) => {
+                                        const isSelected = activeGt.id === p.id;
+                                        return (
+                                          <g key={tIdx} className="group cursor-pointer" onClick={() => setSelectedGtForAnalysisId(p.id)}>
+                                            <circle
+                                              cx={p.x}
+                                              cy={p.y}
+                                              r={isSelected ? '6' : '4.5'}
+                                              className={`transition-all duration-300 ${isSelected ? 'fill-orange-500 stroke-orange-100 stroke-[5px]' : 'fill-white stroke-orange-500 stroke-2 hover:fill-orange-500'}`}
+                                            />
+                                            <title>
+                                              {`${p.name} | Score: ${p.score}/${p.maxMarks} | Percentile: ${p.percentile === null ? 'N/A' : p.percentile}%ile | Accuracy: ${p.accuracy}% | Correct: ${p.correct} Qs`}
+                                            </title>
+                                          </g>
+                                        );
+                                      })}
+                                    </svg>
                                   </div>
 
-                                  <div className="bg-white p-5 rounded-2xl border border-gray-150 flex flex-col justify-between shadow-sm hover:shadow transition">
-                                    <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider font-mono">Your Marks</span>
-                                    <div className="flex items-baseline gap-1 mt-2 text-orange-600">
-                                      <span className="text-2xl font-black font-mono">{activeGt.score}</span>
-                                      <span className="text-xs text-gray-400 font-bold">/ {activeGt.maxMarks}</span>
-                                    </div>
-                                    <p className="text-[9.5px] text-gray-400 font-semibold mt-2.5">
-                                      {activeGt.type === 'NEETPG' ? 'Scoring: +4 correct, -1 incorrect' : 'Scoring: +1 correct, -1/3 incorrect'}
-                                    </p>
-                                  </div>
-
-                                  <div className="bg-white p-5 rounded-2xl border border-gray-150 flex flex-col justify-between shadow-sm hover:shadow transition">
-                                    <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider font-mono">Percentile</span>
-                                    <div className="flex items-baseline gap-1 mt-2 text-blue-600">
-                                      <span className="text-2xl font-black font-mono">{activeGt.percentile === null ? 'N/A' : activeGt.percentile.toFixed(2)}</span>
-                                      <span className="text-xs text-blue-400 font-bold">%ile</span>
-                                    </div>
-                                    <p className="text-[9.5px] text-gray-400 font-semibold mt-2.5">
-                                      National rank percentile curve
-                                    </p>
-                                  </div>
-
-                                  <div className="bg-white p-5 rounded-2xl border border-gray-150 flex flex-col justify-between shadow-sm hover:shadow transition">
-                                    <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider font-mono">Accuracy Rate</span>
-                                    <div className="flex items-baseline gap-1 mt-2 text-emerald-600">
-                                      <span className="text-2xl font-black font-mono">{activeGt.accuracy}%</span>
-                                    </div>
-                                    <p className="text-[9.5px] text-gray-400 font-semibold mt-2.5">
-                                      {activeGt.correct} Correct of {activeGt.attended} Attended
-                                    </p>
-                                  </div>
-                                </div>
-
-                                {/* Attended vs Incorrect vs Unattempted Progress Bar */}
-                                <div className="bg-gray-50 border border-gray-150 p-4.5 rounded-2xl space-y-3.5">
-                                  <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-gray-500 font-mono">
-                                    <span>Simulated Paper Completion</span>
-                                    <span className="text-gray-700 font-bold font-sans">
-                                      {activeGt.correct + activeGt.incorrect} / {activeGt.maxMarks === 800 ? 200 : 200} Questions Attempted
+                                  <div className="flex justify-between items-center px-2 mt-2 text-[8.5px] font-bold text-gray-400 select-none font-mono">
+                                    <span className="truncate max-w-[40%] text-left">
+                                      Attempt {chartPoints[0]?.name} ({formatChartDate(chartPoints[0]?.date)})
+                                    </span>
+                                    <span className="text-orange-500 font-extrabold text-center px-2 shrink-0">
+                                      ● Tap nodes to inspect active test dashboard below
+                                    </span>
+                                    <span className="truncate max-w-[40%] text-right">
+                                      Attempt {chartPoints[chartPoints.length - 1]?.name} ({formatChartDate(chartPoints[chartPoints.length - 1]?.date)})
                                     </span>
                                   </div>
-                                  <div className="relative w-full bg-gray-200 rounded-full h-3 flex overflow-hidden">
-                                    <div
-                                      style={{ width: `${(activeGt.correct / (activeGt.maxMarks === 800 ? 200 : 200)) * 100}%` }}
-                                      className="bg-emerald-500 h-full transition-all duration-300"
-                                      title={`${activeGt.correct} Correct`}
-                                    />
-                                    <div
-                                      style={{ width: `${(activeGt.incorrect / (activeGt.maxMarks === 800 ? 200 : 200)) * 100}%` }}
-                                      className="bg-red-500 h-full transition-all duration-300"
-                                      title={`${activeGt.incorrect} Incorrect`}
-                                    />
-                                    <div
-                                      style={{ width: `${(activeGt.unattempted / (activeGt.maxMarks === 800 ? 200 : 200)) * 100}%` }}
-                                      className="bg-gray-300 h-full transition-all duration-300"
-                                      title={`${activeGt.unattempted} Unattempted`}
-                                    />
-                                  </div>
-                                  <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-wider font-mono">
-                                    <div className="flex items-center gap-1.5 text-emerald-600">
-                                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
-                                      Correct: {activeGt.correct} Qs
-                                    </div>
-                                    <div className="flex items-center gap-1.5 text-red-600">
-                                      <span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block" />
-                                      Incorrect: {activeGt.incorrect} Qs
-                                    </div>
-                                    <div className="flex items-center gap-1.5 text-gray-400">
-                                      <span className="w-2.5 h-2.5 rounded-full bg-gray-300 inline-block" />
-                                      Unattempted: {activeGt.unattempted} Qs
-                                    </div>
-                                  </div>
                                 </div>
 
-                                {/* Detailed Subject Accuracy Table */}
-                                {Object.keys(activeGt.subjects || {}).length > 0 && (
-                                  <div className="space-y-3">
-                                    <h5 className="text-[10px] font-black uppercase text-gray-400 tracking-wider font-mono text-left">Subject-wise Performance Scorecard</h5>
-                                    <div className="border border-gray-150 rounded-2xl overflow-hidden bg-white shadow-sm">
-                                      <div className="overflow-x-auto">
-                                        <table className="w-full border-collapse text-left text-xs text-gray-600">
-                                          <thead>
-                                            <tr className="bg-gray-50 border-b border-gray-150 font-mono text-[9px] font-black text-gray-400 uppercase tracking-wider">
-                                              <th className="px-4 py-2.5">Subject Name</th>
-                                              <th className="px-4 py-2.5">Correct Qs</th>
-                                              <th className="px-4 py-2.5">Total Qs</th>
-                                              <th className="px-4 py-2.5">Weight (SYSTEM)</th>
-                                              <th className="px-4 py-2.5">Accuracy Rate</th>
-                                              <th className="px-4 py-2.5">Status Card</th>
-                                            </tr>
-                                          </thead>
-                                          <tbody className="divide-y divide-gray-100 font-semibold">
-                                            {SYSTEM_SUBJECTS.map(sysSub => {
-                                              const subScore = activeGt.subjects[sysSub.name] || { correct: 0, total: sysSub.weight };
-                                              const cCount = Number(subScore.correct) || 0;
-                                              const tCount = Number(subScore.total) || sysSub.weight;
-                                              const subAcc = tCount > 0 ? (cCount / tCount) * 100 : 0;
-                                              const accClass = subAcc >= 80 ? 'text-emerald-600 bg-emerald-50 border-emerald-200' : subAcc >= 70 ? 'text-blue-600 bg-blue-50 border-blue-200' : subAcc >= 50 ? 'text-amber-600 bg-amber-50 border-amber-200' : 'text-red-600 bg-red-50 border-red-200';
-                                              const accLabel = subAcc >= 80 ? 'Mastered' : subAcc >= 70 ? 'Proficient' : subAcc >= 50 ? 'Needs Practice' : 'Critical Weakness';
-
-                                              return (
-                                                <tr key={sysSub.name} className="hover:bg-gray-50/50">
-                                                  <td className="px-4 py-2 font-bold text-gray-800">{sysSub.name}</td>
-                                                  <td className="px-4 py-2 font-mono text-[10px] text-gray-700">{cCount}</td>
-                                                  <td className="px-4 py-2 font-mono text-[10px] text-gray-500">{tCount}</td>
-                                                  <td className="px-4 py-2 font-mono text-[10px] text-gray-400">{sysSub.weight} Qs</td>
-                                                  <td className="px-4 py-2">
-                                                    <div className="flex items-center gap-1.5">
-                                                      <span className="font-bold font-mono text-[10.5px] text-gray-700">{Math.round(subAcc)}%</span>
-                                                      <div className="w-16 bg-gray-100 h-1.5 rounded-full overflow-hidden shrink-0">
-                                                        <div style={{ width: `${subAcc}%` }} className={`h-full rounded-full ${subAcc >= 70 ? 'bg-emerald-500' : subAcc >= 50 ? 'bg-amber-500' : 'bg-red-500'}`} />
-                                                      </div>
-                                                    </div>
-                                                  </td>
-                                                  <td className="px-4 py-2">
-                                                    <span className={`px-2 py-0.5 rounded-full border text-[8px] font-black uppercase tracking-wider font-mono ${accClass}`}>
-                                                      {accLabel}
-                                                    </span>
-                                                  </td>
-                                                </tr>
-                                              );
-                                            })}
-                                          </tbody>
-                                        </table>
+                                {/* Active Mock detailed report */}
+                                <div className="bg-gradient-to-br from-white to-gray-50/20 border border-gray-200/80 rounded-3xl p-6 shadow-sm space-y-6">
+                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-5">
+                                    <div className="flex items-center gap-4.5">
+                                      <div className="bg-orange-500 text-white p-3 rounded-2xl shadow-lg shadow-orange-500/20 shrink-0">
+                                        <Activity className="w-6 h-6 animate-pulse" />
                                       </div>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Counselling diagnostics */}
-                              <div className={`p-6 rounded-3xl text-left space-y-5 transition ${isDark ? 'neu-card-dark' : 'neu-card-light'}`}>
-                                <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3 ${isDark ? 'border-gray-800/80' : 'border-gray-200'}`}>
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-[14px]">🩺</span>
-                                    <h4 className={`text-xs font-black uppercase tracking-wider font-mono ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>Realist All India Counselling Diagnostics</h4>
-                                  </div>
-                                  <div className={`px-3 py-1 rounded-full border text-[9px] font-black uppercase tracking-wider ${isDark ? 'neu-pressed-dark border-opacity-40' : ''} ${tierClass}`}>
-                                    {standingTierLabel}
-                                  </div>
-                                </div>
-
-                                {/* Category selector */}
-                                <div className={`flex flex-wrap items-center gap-2 p-2.5 rounded-2xl ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
-                                  <span className={`text-[9px] font-black uppercase font-mono mr-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Counselling Category:</span>
-                                  {['General', 'OBC', 'EWS', 'SC', 'ST'].map(cat => (
-                                    <button
-                                      key={cat}
-                                      type="button"
-                                      onClick={() => setSelectedCategory(cat)}
-                                      className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${
-                                        selectedCategory === cat 
-                                          ? (isDark ? 'neu-btn-accent-dark text-white font-mono scale-105 shadow-md' : 'neu-btn-accent-light text-white font-mono scale-105 shadow-md') 
-                                          : (isDark ? 'neu-btn-dark text-gray-300 hover:text-white font-mono' : 'neu-btn-light text-gray-600 hover:text-gray-900 font-mono')
-                                      }`}
-                                    >
-                                      {cat}
-                                    </button>
-                                  ))}
-                                </div>
-
-                                {/* diagnostics metrics */}
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                  <div className={`p-4 rounded-2xl flex flex-col justify-between ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
-                                    <span className={`text-[9px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-gray-400' : 'text-gray-700'}`}>National Aspirant Pool</span>
-                                    <span className={`text-lg font-black mt-1 font-mono ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>{totalCandidates.toLocaleString()} Performed</span>
-                                    <span className={`text-[8px] font-bold mt-1 ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>Aspirants nationwide for {poolLabel}</span>
-                                  </div>
-
-                                  <div className={`p-4 rounded-2xl flex flex-col justify-between ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
-                                    <span className={`text-[9px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-gray-400' : 'text-gray-700'}`}>Standing ({selectedCategory} Category)</span>
-                                    <span className={`text-lg font-black mt-1 font-mono ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>AIR ~{projectedAir.toLocaleString()}</span>
-                                    <span className={`text-[8px] font-bold mt-1 font-mono ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>Effective Category Rank: ~{effectiveCategoryRank.toLocaleString()}</span>
-                                  </div>
-
-                                  <div className={`p-4 rounded-2xl flex flex-col justify-between ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
-                                    <span className={`text-[9px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-gray-400' : 'text-gray-700'}`}>Clinical Seat Probability</span>
-                                    <div className="flex items-center gap-2 mt-1">
-                                      <div className={`flex-grow rounded-full h-2 overflow-hidden ${isDark ? 'bg-gray-800' : 'bg-gray-200'}`}>
-                                        <div
-                                          style={{ width: `${matchProbability}%` }}
-                                          className={`h-full rounded-full ${matchProbability >= 80 ? 'bg-emerald-500' : matchProbability >= 50 ? 'bg-blue-500' : matchProbability >= 20 ? 'bg-amber-500' : 'bg-red-500'}`}
-                                        />
-                                      </div>
-                                      <span className={`text-xs font-black font-mono shrink-0 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>{matchProbability}%</span>
-                                    </div>
-                                    <span className={`text-[8px] font-bold mt-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>AI counselling match threshold</span>
-                                  </div>
-                                </div>
-
-                                {/* Match explanation text */}
-                                <div className={`p-4 rounded-2xl text-xs leading-relaxed font-semibold relative overflow-hidden ${
-                                  isDark ? 'neu-pressed-dark text-gray-200 border border-gray-800/80' : 'neu-pressed-light text-gray-900 border border-white/80'
-                                }`}>
-                                  <div className={`absolute top-0 left-0 bottom-0 w-1 ${isDark ? 'bg-orange-400' : 'bg-orange-500'}`} />
-                                  <p>{diagnosticOverview}</p>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                  <div className={`p-4 rounded-2xl space-y-3 ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
-                                    <h5 className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 font-mono ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
-                                      <span>🏥</span> Cutoff-based Match (Last Counseling)
-                                    </h5>
-                                    <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1 scrollbar-thin">
-                                      {matchedColleges.map((col, idx) => (
-                                        <div key={idx} className={`border-b pb-2 last:border-b-0 last:pb-0 text-left ${isDark ? 'border-gray-800/60' : 'border-gray-200'}`}>
-                                          <p className={`text-[10.5px] font-extrabold leading-tight ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>{col.college}</p>
-                                          <p className={`text-[9px] font-bold mt-0.5 uppercase font-mono ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{col.course}</p>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-
-                                  <div className={`p-4 rounded-2xl space-y-2 text-left ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
-                                    <h5 className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 font-mono ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
-                                      <span>📈</span> Counseling Trends & Predictions
-                                    </h5>
-                                    <p className={`text-[10.5px] font-semibold leading-relaxed text-left ${isDark ? 'text-gray-300' : 'text-gray-800'}`}>
-                                      {trendPredictionText}
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* AI mentor card */}
-                              <div className={`p-6 rounded-3xl text-left space-y-5 relative overflow-hidden transition ${
-                                isDark ? 'neu-card-dark border border-indigo-500/20' : 'neu-card-light border border-indigo-200/60'
-                              }`}>
-                                <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-2xl ${isDark ? 'bg-indigo-500/10' : 'bg-indigo-500/5'}`} />
-                                <div className={`absolute -bottom-8 -left-8 w-24 h-24 rounded-full blur-xl ${isDark ? 'bg-blue-500/10' : 'bg-blue-500/5'}`} />
-
-                                <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3 ${isDark ? 'border-indigo-500/20' : 'border-indigo-100'}`}>
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-[14px]">✨</span>
-                                    <h4 className={`text-xs font-black uppercase tracking-wider font-mono ${isDark ? 'text-indigo-300' : 'text-indigo-950'}`}>Personal AI Counselling Mentor</h4>
-                                  </div>
-                                  <div className={`px-3 py-1 rounded-full border text-[9px] font-black uppercase tracking-wider ${rankDeficit > 0 ? 'text-amber-600 bg-amber-50 border-amber-200' : 'text-emerald-600 bg-emerald-50 border-emerald-200'}`}>
-                                    {rankDeficit > 0 ? 'Clinical Deficit' : 'Target Achieved'}
-                                  </div>
-                                </div>
-
-                                {/* Filters */}
-                                <div className={`p-4 rounded-2xl space-y-3 ${isDark ? 'neu-pressed-dark border border-indigo-500/20' : 'neu-pressed-light border border-indigo-100/60'}`}>
-                                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-xs">🏥</span>
-                                      <span className={`text-[10px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-indigo-300' : 'text-indigo-950'}`}>Database Filters</span>
-                                    </div>
-                                    <label className="inline-flex items-center gap-2 cursor-pointer group">
-                                      <input
-                                        type="checkbox"
-                                        checked={isNeetPg ? onlyCentralUniversities : true}
-                                        disabled={!isNeetPg}
-                                        onChange={e => setOnlyCentralUniversities(e.target.checked)}
-                                        className="rounded text-indigo-600 focus:ring-indigo-500 border-gray-300 w-3.5 h-3.5 cursor-pointer disabled:opacity-50"
-                                      />
-                                      <span className={`text-[10px] font-bold transition ${isDark ? 'text-gray-300 group-hover:text-indigo-300' : 'text-gray-700 group-hover:text-indigo-950'}`}>
-                                        {isNeetPg ? 'Only Central Universities' : 'Only Central (Locked for INI CET)'}
-                                      </span>
-                                    </label>
-                                  </div>
-
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <div className="flex flex-col gap-1">
-                                      <label className={`text-[8px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-gray-400' : 'text-gray-700'}`}>Filter by State</label>
-                                      <select
-                                        value={isNeetPg ? dreamCollegeStateFilter : 'Central'}
-                                        disabled={!isNeetPg || onlyCentralUniversities}
-                                        onChange={e => setDreamCollegeStateFilter(e.target.value)}
-                                        className={`w-full text-xs font-bold px-3 py-2 rounded-xl focus:outline-none transition cursor-pointer disabled:opacity-50 ${
-                                          isDark ? 'neu-pressed-dark text-gray-100 border border-indigo-500/30' : 'neu-pressed-light text-gray-900 border border-white/80'
-                                        }`}
-                                      >
-                                        {!isNeetPg || onlyCentralUniversities ? (
-                                          <option value="Central" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>Central Universities / AIIMS Mode</option>
-                                        ) : (
-                                          <>
-                                            <option value="All" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>All States / Regions</option>
-                                            <option value="Tamil Nadu" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>Tamil Nadu</option>
-                                            <option value="Karnataka" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>Karnataka</option>
-                                            <option value="Kerala" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>Kerala</option>
-                                            <option value="Andhra Pradesh" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>Andhra Pradesh</option>
-                                            <option value="Telangana" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>Telangana</option>
-                                            <option value="Delhi" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>Delhi</option>
-                                            <option value="Maharashtra" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>Maharashtra</option>
-                                            <option value="Uttar Pradesh" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>Uttar Pradesh</option>
-                                            <option value="West Bengal" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>West Bengal</option>
-                                            <option value="Rajasthan" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>Rajasthan</option>
-                                          </>
+                                      <div className="text-left">
+                                        {activeGt.platform && (
+                                          <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-indigo-50 text-indigo-600 border border-indigo-100/50 font-mono tracking-wider inline-block mb-1.5">
+                                            {activeGt.platform}
+                                          </span>
                                         )}
+                                        <div className="flex items-center gap-2">
+                                          <h4 className="text-base font-black text-gray-900 leading-tight">{activeGt.name}</h4>
+                                          <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-orange-100 text-orange-600 font-mono tracking-wider">
+                                            {activeGt.type === 'NEETPG' ? 'NEET PG' : 'INI CET'}
+                                          </span>
+                                        </div>
+                                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mt-1">
+                                          Submitted on {formatChartDate(activeGt.date)}
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    {/* Edit Mock Test Entry Button */}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const parts = activeGt.id.split('_');
+                                        setEditGtTargetDate(parts[0]);
+                                        setEditGtTargetIndex(Number(parts[1]));
+                                        setEditGtName(activeGt.name);
+                                        setEditGtPlatform(activeGt.platform || '');
+                                        setEditGtType(activeGt.type);
+                                        setEditGtCorrect(activeGt.correct || '');
+                                        setEditGtIncorrect(activeGt.incorrect || '');
+                                        setEditGtRank(activeGt.rank || '');
+                                        setEditGtRankTotal(activeGt.rankTotal || '');
+                                        setEditGtStateRank(activeGt.stateRank || '');
+                                        setEditGtState(activeGt.state || '');
+                                        setEditGtNotes(activeGt.notes || '');
+                                        setEditGtSubjects(activeGt.subjects || {});
+                                        setEditGtShowSubjects(Object.keys(activeGt.subjects || {}).length > 0);
+                                        setIsEditGtModalOpen(true);
+                                      }}
+                                      className="px-4 py-2 bg-white border border-gray-200 text-gray-700 text-xs font-black uppercase tracking-wider rounded-xl shadow-sm hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition duration-150 flex items-center gap-1.5 active:scale-95 shrink-0 font-mono"
+                                    >
+                                      <Edit3 className="w-3.5 h-3.5" />
+                                      Edit Test Data
+                                    </button>
+                                  </div>
+
+                                  {/* Score metrics grid */}
+                                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4.5">
+                                    <div className="bg-white p-5 rounded-2xl border border-gray-150 flex flex-col justify-between shadow-sm hover:shadow transition">
+                                      <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider font-mono">All India Rank (AIR)</span>
+                                      <div className="flex items-baseline gap-1 mt-2 text-indigo-600">
+                                        <span className="text-2xl font-black font-mono">#{activeGt.rank || 'N/A'}</span>
+                                      </div>
+                                      <p className="text-[9.5px] text-gray-400 font-semibold mt-2.5 leading-snug">
+                                        {activeGt.rankTotal ? `Out of ${activeGt.rankTotal.toLocaleString()} candidates` : 'National rank index'}
+                                        {activeGt.stateRank && (
+                                          <span className="block text-orange-600 font-bold mt-0.5 font-mono">
+                                            State Rank: #{activeGt.stateRank} ({activeGt.state || 'N/A'})
+                                          </span>
+                                        )}
+                                      </p>
+                                    </div>
+
+                                    <div className="bg-white p-5 rounded-2xl border border-gray-150 flex flex-col justify-between shadow-sm hover:shadow transition">
+                                      <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider font-mono">Your Marks</span>
+                                      <div className="flex items-baseline gap-1 mt-2 text-orange-600">
+                                        <span className="text-2xl font-black font-mono">{activeGt.score}</span>
+                                        <span className="text-xs text-gray-400 font-bold">/ {activeGt.maxMarks}</span>
+                                      </div>
+                                      <p className="text-[9.5px] text-gray-400 font-semibold mt-2.5">
+                                        {activeGt.type === 'NEETPG' ? 'Scoring: +4 correct, -1 incorrect' : 'Scoring: +1 correct, -1/3 incorrect'}
+                                      </p>
+                                    </div>
+
+                                    <div className="bg-white p-5 rounded-2xl border border-gray-150 flex flex-col justify-between shadow-sm hover:shadow transition">
+                                      <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider font-mono">Percentile</span>
+                                      <div className="flex items-baseline gap-1 mt-2 text-blue-600">
+                                        <span className="text-2xl font-black font-mono">{activeGt.percentile === null ? 'N/A' : activeGt.percentile.toFixed(2)}</span>
+                                        <span className="text-xs text-blue-400 font-bold">%ile</span>
+                                      </div>
+                                      <p className="text-[9.5px] text-gray-400 font-semibold mt-2.5">
+                                        National rank percentile curve
+                                      </p>
+                                    </div>
+
+                                    <div className="bg-white p-5 rounded-2xl border border-gray-150 flex flex-col justify-between shadow-sm hover:shadow transition">
+                                      <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider font-mono">Accuracy Rate</span>
+                                      <div className="flex items-baseline gap-1 mt-2 text-emerald-600">
+                                        <span className="text-2xl font-black font-mono">{activeGt.accuracy}%</span>
+                                      </div>
+                                      <p className="text-[9.5px] text-gray-400 font-semibold mt-2.5">
+                                        {activeGt.correct} Correct of {activeGt.attended} Attended
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  {/* Attended vs Incorrect vs Unattempted Progress Bar */}
+                                  <div className="bg-gray-50 border border-gray-150 p-4.5 rounded-2xl space-y-3.5">
+                                    <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-gray-500 font-mono">
+                                      <span>Simulated Paper Completion</span>
+                                      <span className="text-gray-700 font-bold font-sans">
+                                        {activeGt.correct + activeGt.incorrect} / {activeGt.maxMarks === 800 ? 200 : 200} Questions Attempted
+                                      </span>
+                                    </div>
+                                    <div className="relative w-full bg-gray-200 rounded-full h-3 flex overflow-hidden">
+                                      <div
+                                        style={{ width: `${(activeGt.correct / (activeGt.maxMarks === 800 ? 200 : 200)) * 100}%` }}
+                                        className="bg-emerald-500 h-full transition-all duration-300"
+                                        title={`${activeGt.correct} Correct`}
+                                      />
+                                      <div
+                                        style={{ width: `${(activeGt.incorrect / (activeGt.maxMarks === 800 ? 200 : 200)) * 100}%` }}
+                                        className="bg-red-500 h-full transition-all duration-300"
+                                        title={`${activeGt.incorrect} Incorrect`}
+                                      />
+                                      <div
+                                        style={{ width: `${(activeGt.unattempted / (activeGt.maxMarks === 800 ? 200 : 200)) * 100}%` }}
+                                        className="bg-gray-300 h-full transition-all duration-300"
+                                        title={`${activeGt.unattempted} Unattempted`}
+                                      />
+                                    </div>
+                                    <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-wider font-mono">
+                                      <div className="flex items-center gap-1.5 text-emerald-600">
+                                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
+                                        Correct: {activeGt.correct} Qs
+                                      </div>
+                                      <div className="flex items-center gap-1.5 text-red-600">
+                                        <span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block" />
+                                        Incorrect: {activeGt.incorrect} Qs
+                                      </div>
+                                      <div className="flex items-center gap-1.5 text-gray-400">
+                                        <span className="w-2.5 h-2.5 rounded-full bg-gray-300 inline-block" />
+                                        Unattempted: {activeGt.unattempted} Qs
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Detailed Subject Accuracy Table */}
+                                  {Object.keys(activeGt.subjects || {}).length > 0 && (
+                                    <div className="space-y-3">
+                                      <h5 className="text-[10px] font-black uppercase text-gray-400 tracking-wider font-mono text-left">Subject-wise Performance Scorecard</h5>
+                                      <div className="border border-gray-150 rounded-2xl overflow-hidden bg-white shadow-sm">
+                                        <div className="overflow-x-auto">
+                                          <table className="w-full border-collapse text-left text-xs text-gray-600">
+                                            <thead>
+                                              <tr className="bg-gray-50 border-b border-gray-150 font-mono text-[9px] font-black text-gray-400 uppercase tracking-wider">
+                                                <th className="px-4 py-2.5">Subject Name</th>
+                                                <th className="px-4 py-2.5">Correct Qs</th>
+                                                <th className="px-4 py-2.5">Total Qs</th>
+                                                <th className="px-4 py-2.5">Weight (SYSTEM)</th>
+                                                <th className="px-4 py-2.5">Accuracy Rate</th>
+                                                <th className="px-4 py-2.5">Status Card</th>
+                                              </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-100 font-semibold">
+                                              {SYSTEM_SUBJECTS.map(sysSub => {
+                                                const subScore = activeGt.subjects[sysSub.name] || { correct: 0, total: sysSub.weight };
+                                                const cCount = Number(subScore.correct) || 0;
+                                                const tCount = Number(subScore.total) || sysSub.weight;
+                                                const subAcc = tCount > 0 ? (cCount / tCount) * 100 : 0;
+                                                const accClass = subAcc >= 80 ? 'text-emerald-600 bg-emerald-50 border-emerald-200' : subAcc >= 70 ? 'text-blue-600 bg-blue-50 border-blue-200' : subAcc >= 50 ? 'text-amber-600 bg-amber-50 border-amber-200' : 'text-red-600 bg-red-50 border-red-200';
+                                                const accLabel = subAcc >= 80 ? 'Mastered' : subAcc >= 70 ? 'Proficient' : subAcc >= 50 ? 'Needs Practice' : 'Critical Weakness';
+
+                                                return (
+                                                  <tr key={sysSub.name} className="hover:bg-gray-50/50">
+                                                    <td className="px-4 py-2 font-bold text-gray-800">{sysSub.name}</td>
+                                                    <td className="px-4 py-2 font-mono text-[10px] text-gray-700">{cCount}</td>
+                                                    <td className="px-4 py-2 font-mono text-[10px] text-gray-500">{tCount}</td>
+                                                    <td className="px-4 py-2 font-mono text-[10px] text-gray-400">{sysSub.weight} Qs</td>
+                                                    <td className="px-4 py-2">
+                                                      <div className="flex items-center gap-1.5">
+                                                        <span className="font-bold font-mono text-[10.5px] text-gray-700">{Math.round(subAcc)}%</span>
+                                                        <div className="w-16 bg-gray-100 h-1.5 rounded-full overflow-hidden shrink-0">
+                                                          <div style={{ width: `${subAcc}%` }} className={`h-full rounded-full ${subAcc >= 70 ? 'bg-emerald-500' : subAcc >= 50 ? 'bg-amber-500' : 'bg-red-500'}`} />
+                                                        </div>
+                                                      </div>
+                                                    </td>
+                                                    <td className="px-4 py-2">
+                                                      <span className={`px-2 py-0.5 rounded-full border text-[8px] font-black uppercase tracking-wider font-mono ${accClass}`}>
+                                                        {accLabel}
+                                                      </span>
+                                                    </td>
+                                                  </tr>
+                                                );
+                                              })}
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Counselling diagnostics */}
+                                <div className={`p-6 rounded-3xl text-left space-y-5 transition ${isDark ? 'neu-card-dark' : 'neu-card-light'}`}>
+                                  <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3 ${isDark ? 'border-gray-800/80' : 'border-gray-200'}`}>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-[14px]">🩺</span>
+                                      <h4 className={`text-xs font-black uppercase tracking-wider font-mono ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>Realist All India Counselling Diagnostics</h4>
+                                    </div>
+                                    <div className={`px-3 py-1 rounded-full border text-[9px] font-black uppercase tracking-wider ${isDark ? 'neu-pressed-dark border-opacity-40' : ''} ${tierClass}`}>
+                                      {standingTierLabel}
+                                    </div>
+                                  </div>
+
+                                  {/* Category selector */}
+                                  <div className={`flex flex-wrap items-center gap-2 p-2.5 rounded-2xl ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
+                                    <span className={`text-[9px] font-black uppercase font-mono mr-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Counselling Category:</span>
+                                    {['General', 'OBC', 'EWS', 'SC', 'ST'].map(cat => (
+                                      <button
+                                        key={cat}
+                                        type="button"
+                                        onClick={() => setSelectedCategory(cat)}
+                                        className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${selectedCategory === cat
+                                            ? (isDark ? 'neu-btn-accent-dark text-white font-mono scale-105 shadow-md' : 'neu-btn-accent-light text-white font-mono scale-105 shadow-md')
+                                            : (isDark ? 'neu-btn-dark text-gray-300 hover:text-white font-mono' : 'neu-btn-light text-gray-600 hover:text-gray-900 font-mono')
+                                          }`}
+                                      >
+                                        {cat}
+                                      </button>
+                                    ))}
+                                  </div>
+
+                                  {/* diagnostics metrics */}
+                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className={`p-4 rounded-2xl flex flex-col justify-between ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
+                                      <span className={`text-[9px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-gray-400' : 'text-gray-700'}`}>National Aspirant Pool</span>
+                                      <span className={`text-lg font-black mt-1 font-mono ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>{totalCandidates.toLocaleString()} Performed</span>
+                                      <span className={`text-[8px] font-bold mt-1 ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>Aspirants nationwide for {poolLabel}</span>
+                                    </div>
+
+                                    <div className={`p-4 rounded-2xl flex flex-col justify-between ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
+                                      <span className={`text-[9px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-gray-400' : 'text-gray-700'}`}>Standing ({selectedCategory} Category)</span>
+                                      <span className={`text-lg font-black mt-1 font-mono ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>AIR ~{projectedAir.toLocaleString()}</span>
+                                      <span className={`text-[8px] font-bold mt-1 font-mono ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>Effective Category Rank: ~{effectiveCategoryRank.toLocaleString()}</span>
+                                    </div>
+
+                                    <div className={`p-4 rounded-2xl flex flex-col justify-between ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
+                                      <span className={`text-[9px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-gray-400' : 'text-gray-700'}`}>Clinical Seat Probability</span>
+                                      <div className="flex items-center gap-2 mt-1">
+                                        <div className={`flex-grow rounded-full h-2 overflow-hidden ${isDark ? 'bg-gray-800' : 'bg-gray-200'}`}>
+                                          <div
+                                            style={{ width: `${matchProbability}%` }}
+                                            className={`h-full rounded-full ${matchProbability >= 80 ? 'bg-emerald-500' : matchProbability >= 50 ? 'bg-blue-500' : matchProbability >= 20 ? 'bg-amber-500' : 'bg-red-500'}`}
+                                          />
+                                        </div>
+                                        <span className={`text-xs font-black font-mono shrink-0 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>{matchProbability}%</span>
+                                      </div>
+                                      <span className={`text-[8px] font-bold mt-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>AI counselling match threshold</span>
+                                    </div>
+                                  </div>
+
+                                  {/* Match explanation text */}
+                                  <div className={`p-4 rounded-2xl text-xs leading-relaxed font-semibold relative overflow-hidden ${isDark ? 'neu-pressed-dark text-gray-200 border border-gray-800/80' : 'neu-pressed-light text-gray-900 border border-white/80'
+                                    }`}>
+                                    <div className={`absolute top-0 left-0 bottom-0 w-1 ${isDark ? 'bg-orange-400' : 'bg-orange-500'}`} />
+                                    <p>{diagnosticOverview}</p>
+                                  </div>
+
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className={`p-4 rounded-2xl space-y-3 ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
+                                      <h5 className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 font-mono ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
+                                        <span>🏥</span> Cutoff-based Match (Last Counseling)
+                                      </h5>
+                                      <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1 scrollbar-thin">
+                                        {matchedColleges.map((col, idx) => (
+                                          <div key={idx} className={`border-b pb-2 last:border-b-0 last:pb-0 text-left ${isDark ? 'border-gray-800/60' : 'border-gray-200'}`}>
+                                            <p className={`text-[10.5px] font-extrabold leading-tight ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>{col.college}</p>
+                                            <p className={`text-[9px] font-bold mt-0.5 uppercase font-mono ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{col.course}</p>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+
+                                    <div className={`p-4 rounded-2xl space-y-2 text-left ${isDark ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-white/80'}`}>
+                                      <h5 className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 font-mono ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
+                                        <span>📈</span> Counseling Trends & Predictions
+                                      </h5>
+                                      <p className={`text-[10.5px] font-semibold leading-relaxed text-left ${isDark ? 'text-gray-300' : 'text-gray-800'}`}>
+                                        {trendPredictionText}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* AI mentor card */}
+                                <div className={`p-6 rounded-3xl text-left space-y-5 relative overflow-hidden transition ${isDark ? 'neu-card-dark border border-indigo-500/20' : 'neu-card-light border border-indigo-200/60'
+                                  }`}>
+                                  <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-2xl ${isDark ? 'bg-indigo-500/10' : 'bg-indigo-500/5'}`} />
+                                  <div className={`absolute -bottom-8 -left-8 w-24 h-24 rounded-full blur-xl ${isDark ? 'bg-blue-500/10' : 'bg-blue-500/5'}`} />
+
+                                  <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3 ${isDark ? 'border-indigo-500/20' : 'border-indigo-100'}`}>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-[14px]">✨</span>
+                                      <h4 className={`text-xs font-black uppercase tracking-wider font-mono ${isDark ? 'text-indigo-300' : 'text-indigo-950'}`}>Personal AI Counselling Mentor</h4>
+                                    </div>
+                                    <div className={`px-3 py-1 rounded-full border text-[9px] font-black uppercase tracking-wider ${rankDeficit > 0 ? 'text-amber-600 bg-amber-50 border-amber-200' : 'text-emerald-600 bg-emerald-50 border-emerald-200'}`}>
+                                      {rankDeficit > 0 ? 'Clinical Deficit' : 'Target Achieved'}
+                                    </div>
+                                  </div>
+
+                                  {/* Filters */}
+                                  <div className={`p-4 rounded-2xl space-y-3 ${isDark ? 'neu-pressed-dark border border-indigo-500/20' : 'neu-pressed-light border border-indigo-100/60'}`}>
+                                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-xs">🏥</span>
+                                        <span className={`text-[10px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-indigo-300' : 'text-indigo-950'}`}>Database Filters</span>
+                                      </div>
+                                      <label className="inline-flex items-center gap-2 cursor-pointer group">
+                                        <input
+                                          type="checkbox"
+                                          checked={isNeetPg ? onlyCentralUniversities : true}
+                                          disabled={!isNeetPg}
+                                          onChange={e => setOnlyCentralUniversities(e.target.checked)}
+                                          className="rounded text-indigo-600 focus:ring-indigo-500 border-gray-300 w-3.5 h-3.5 cursor-pointer disabled:opacity-50"
+                                        />
+                                        <span className={`text-[10px] font-bold transition ${isDark ? 'text-gray-300 group-hover:text-indigo-300' : 'text-gray-700 group-hover:text-indigo-950'}`}>
+                                          {isNeetPg ? 'Only Central Universities' : 'Only Central (Locked for INI CET)'}
+                                        </span>
+                                      </label>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                      <div className="flex flex-col gap-1">
+                                        <label className={`text-[8px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-gray-400' : 'text-gray-700'}`}>Filter by State</label>
+                                        <select
+                                          value={isNeetPg ? dreamCollegeStateFilter : 'Central'}
+                                          disabled={!isNeetPg || onlyCentralUniversities}
+                                          onChange={e => setDreamCollegeStateFilter(e.target.value)}
+                                          className={`w-full text-xs font-bold px-3 py-2 rounded-xl focus:outline-none transition cursor-pointer disabled:opacity-50 ${isDark ? 'neu-pressed-dark text-gray-100 border border-indigo-500/30' : 'neu-pressed-light text-gray-900 border border-white/80'
+                                            }`}
+                                        >
+                                          {!isNeetPg || onlyCentralUniversities ? (
+                                            <option value="Central" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>Central Universities / AIIMS Mode</option>
+                                          ) : (
+                                            <>
+                                              <option value="All" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>All States / Regions</option>
+                                              <option value="Tamil Nadu" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>Tamil Nadu</option>
+                                              <option value="Karnataka" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>Karnataka</option>
+                                              <option value="Kerala" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>Kerala</option>
+                                              <option value="Andhra Pradesh" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>Andhra Pradesh</option>
+                                              <option value="Telangana" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>Telangana</option>
+                                              <option value="Delhi" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>Delhi</option>
+                                              <option value="Maharashtra" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>Maharashtra</option>
+                                              <option value="Uttar Pradesh" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>Uttar Pradesh</option>
+                                              <option value="West Bengal" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>West Bengal</option>
+                                              <option value="Rajasthan" className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>Rajasthan</option>
+                                            </>
+                                          )}
+                                        </select>
+                                      </div>
+
+                                      <div className="flex flex-col justify-end">
+                                        <div className={`text-[9px] font-bold rounded-xl px-3 py-2 flex items-center justify-between ${isDark ? 'neu-pressed-dark text-indigo-300 border border-indigo-500/20' : 'bg-indigo-50/80 text-indigo-800 border border-indigo-100'
+                                          }`}>
+                                          <span>Active Pool:</span>
+                                          <span className={`font-black font-mono text-[10px] ${isDark ? 'text-indigo-200' : 'text-indigo-950'}`}>{activePool.length} Colleges available</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Selectors */}
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="flex flex-col gap-1.5">
+                                      <label className={`text-[9px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-gray-400' : 'text-gray-700'}`}>Select Dream College</label>
+                                      <select
+                                        value={currentDreamCollege}
+                                        onChange={e => setDreamCollege(e.target.value)}
+                                        className={`w-full text-xs font-bold px-3 py-2 rounded-xl focus:outline-none transition cursor-pointer ${isDark ? 'neu-pressed-dark text-gray-100 border border-indigo-500/30' : 'neu-pressed-light text-gray-900 border border-white/80'
+                                          }`}
+                                      >
+                                        {Object.keys(optGroupMap).sort().map(grpState => (
+                                          <optgroup key={grpState} label={grpState} className={`text-[10px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-indigo-300 bg-[#1a1f26]' : 'text-indigo-950 bg-indigo-50'}`}>
+                                            {optGroupMap[grpState].map(colName => (
+                                              <option key={colName} value={colName} className={`text-xs font-bold normal-case font-sans ${isDark ? 'text-gray-100 bg-[#222730]' : 'text-gray-900 bg-white'}`}>
+                                                {colName}
+                                              </option>
+                                            ))}
+                                          </optgroup>
+                                        ))}
                                       </select>
                                     </div>
 
-                                    <div className="flex flex-col justify-end">
-                                      <div className={`text-[9px] font-bold rounded-xl px-3 py-2 flex items-center justify-between ${
-                                        isDark ? 'neu-pressed-dark text-indigo-300 border border-indigo-500/20' : 'bg-indigo-50/80 text-indigo-800 border border-indigo-100'
-                                      }`}>
-                                        <span>Active Pool:</span>
-                                        <span className={`font-black font-mono text-[10px] ${isDark ? 'text-indigo-200' : 'text-indigo-950'}`}>{activePool.length} Colleges available</span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Selectors */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                  <div className="flex flex-col gap-1.5">
-                                    <label className={`text-[9px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-gray-400' : 'text-gray-700'}`}>Select Dream College</label>
-                                    <select
-                                      value={currentDreamCollege}
-                                      onChange={e => setDreamCollege(e.target.value)}
-                                      className={`w-full text-xs font-bold px-3 py-2 rounded-xl focus:outline-none transition cursor-pointer ${
-                                        isDark ? 'neu-pressed-dark text-gray-100 border border-indigo-500/30' : 'neu-pressed-light text-gray-900 border border-white/80'
-                                      }`}
-                                    >
-                                      {Object.keys(optGroupMap).sort().map(grpState => (
-                                        <optgroup key={grpState} label={grpState} className={`text-[10px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-indigo-300 bg-[#1a1f26]' : 'text-indigo-950 bg-indigo-50'}`}>
-                                          {optGroupMap[grpState].map(colName => (
-                                            <option key={colName} value={colName} className={`text-xs font-bold normal-case font-sans ${isDark ? 'text-gray-100 bg-[#222730]' : 'text-gray-900 bg-white'}`}>
-                                              {colName}
-                                            </option>
-                                          ))}
-                                        </optgroup>
-                                      ))}
-                                    </select>
-                                  </div>
-
-                                  <div className="flex flex-col gap-1.5">
-                                    <label className={`text-[9px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-gray-400' : 'text-gray-700'}`}>Select Dream Specialty</label>
-                                    <select
-                                      value={currentDreamBranch}
-                                      onChange={e => setDreamBranch(e.target.value)}
-                                      className={`w-full text-xs font-bold px-3 py-2 rounded-xl focus:outline-none transition cursor-pointer ${
-                                        isDark ? 'neu-pressed-dark text-gray-100 border border-indigo-500/30' : 'neu-pressed-light text-gray-900 border border-white/80'
-                                      }`}
-                                    >
-                                      {specialtyList.map(spec => (
-                                        <option key={spec} value={spec} className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>{spec}</option>
-                                      ))}
-                                    </select>
-                                  </div>
-                                </div>
-
-                                {/* Dream College Rank metrics */}
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
-                                  <div className={`p-4 rounded-2xl flex flex-col justify-between shadow-sm transition ${
-                                    isDark ? 'neu-pressed-dark border border-indigo-500/20' : 'neu-pressed-light border border-indigo-100/60'
-                                  }`}>
-                                    <span className={`text-[9px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-indigo-300/70' : 'text-indigo-950 font-extrabold'}`}>Target AIR Cutoff</span>
-                                    <span className={`text-lg font-black mt-1 font-mono ${isDark ? 'text-indigo-100' : 'text-indigo-950'}`}>AIR ~{targetCutoff.toLocaleString()}</span>
-                                    <span className={`text-[8px] font-bold mt-1 ${isDark ? 'text-indigo-400' : 'text-indigo-700'}`}>PrepLadder calibrated historical threshold</span>
-                                  </div>
-
-                                  <div className={`p-4 rounded-2xl flex flex-col justify-between shadow-sm transition ${
-                                    isDark ? 'neu-pressed-dark border border-indigo-500/20' : 'neu-pressed-light border border-indigo-100/60'
-                                  }`}>
-                                    <span className={`text-[9px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-indigo-300/70' : 'text-indigo-950 font-extrabold'}`}>Current Standing</span>
-                                    <span className={`text-lg font-black mt-1 font-mono ${isDark ? 'text-indigo-100' : 'text-indigo-950'}`}>AIR ~{effectiveCategoryRank.toLocaleString()}</span>
-                                    <span className={`text-[8px] font-bold mt-1 ${isDark ? 'text-indigo-400' : 'text-indigo-700'}`}>Based on active simulated score ({activeGt.score} Qs)</span>
-                                  </div>
-
-                                  <div className={`p-4 rounded-2xl flex flex-col justify-between shadow-sm transition ${
-                                    isDark ? 'neu-pressed-dark border border-indigo-500/20' : 'neu-pressed-light border border-indigo-100/60'
-                                  }`}>
-                                    <span className={`text-[9px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-indigo-300/70' : 'text-indigo-950 font-extrabold'}`}>Cushion / Deficit Buffer</span>
-                                    <span className={`text-lg font-black mt-1 font-mono ${rankDeficit > 0 ? 'text-amber-500' : 'text-emerald-500'}`}>
-                                      {rankDeficit > 0 ? `-${rankDeficit.toLocaleString()} ranks` : `+${Math.abs(rankDeficit).toLocaleString()} cushion`}
-                                    </span>
-                                    <span className={`text-[8px] font-bold mt-1 font-mono ${isDark ? 'text-indigo-400' : 'text-indigo-700'}`}>
-                                      {rankDeficit > 0 ? `Needs +${scoreDeficitCorrects} correct answers` : 'Safely in target zone'}
-                                    </span>
-                                  </div>
-                                </div>
-
-                                {/* Mentor AI output paragraph */}
-                                <div className={`p-4 rounded-2xl text-left relative overflow-hidden space-y-2 ${
-                                  isDark ? 'neu-pressed-dark text-gray-200 border border-indigo-500/20' : 'neu-pressed-light text-gray-900 border border-indigo-100/60'
-                                }`}>
-                                  <div className={`absolute top-0 left-0 bottom-0 w-1 ${isDark ? 'bg-indigo-400' : 'bg-indigo-500'}`} />
-                                  <h5 className={`text-[9px] font-black uppercase tracking-wider font-mono flex items-center gap-1.5 ${isDark ? 'text-indigo-400' : 'text-indigo-700'}`}>
-                                    <Sparkles className="w-3.5 h-3.5 animate-spin" /> AI Mentor Review & Strategic Advice
-                                  </h5>
-                                  <p className={`text-[10.5px] leading-relaxed font-semibold ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
-                                    {rankDeficit > 0 ? (
-                                      `To bridge your clinical deficit of ${rankDeficit.toLocaleString()} ranks for securing ${currentDreamBranch} at ${currentDreamCollege}, you must raise your score by approximately ${scoreDeficitCorrects} correct answers in future attempts. Focus intensely on target active reviews and key high-volume systems outlined below.`
-                                    ) : (
-                                      `Outstanding! Your category-adjusted rank of ${effectiveCategoryRank.toLocaleString()} exceeds the historical cutoff of ${targetCutoff.toLocaleString()} by a cushion of ${Math.abs(rankDeficit).toLocaleString()} ranks. Keep up the consistent Anki recall cycles to cement your secure placement.`
-                                    )}
-                                  </p>
-                                </div>
-
-                                {/* Action Plan & Top 3 weakest subjects */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                  {/* Weakest subjects action list */}
-                                  <div className={`p-4 rounded-2xl space-y-3.5 text-left ${
-                                    isDark ? 'neu-pressed-dark border border-indigo-500/20' : 'neu-pressed-light border border-indigo-100/60'
-                                  }`}>
-                                    <h5 className={`text-[9px] font-black uppercase tracking-wider font-mono flex items-center gap-1 ${isDark ? 'text-indigo-400' : 'text-indigo-700'}`}>
-                                      <span>🩺</span> Weak Subject Diagnostic Review
-                                    </h5>
-                                    <div className="space-y-3.5">
-                                      {topThreeWeak.map((sub, idx) => (
-                                        <div key={idx} className={`space-y-1 p-3 rounded-xl ${isDark ? 'neu-card-dark border border-gray-800' : 'neu-card-light border border-gray-200'}`}>
-                                          <div className="flex items-center justify-between text-[10px] font-black">
-                                            <span className={`font-bold ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>{sub.name}</span>
-                                            <span className="text-red-500 font-mono">{sub.accuracy}% Accuracy</span>
-                                          </div>
-                                          <p className={`text-[9.5px] leading-relaxed font-semibold ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                                            {subjectMasteryAdvice[sub.name] || 'Drill high-yield questions and review standard mechanisms using active-recall cards.'}
-                                          </p>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-
-                                  {/* Custom checkboxes action plan */}
-                                  <div className={`p-4 rounded-2xl space-y-3 text-left ${
-                                    isDark ? 'neu-pressed-dark border border-indigo-500/20' : 'neu-pressed-light border border-indigo-100/60'
-                                  }`}>
-                                    <h5 className={`text-[9px] font-black uppercase tracking-wider font-mono flex items-center gap-1 ${isDark ? 'text-indigo-400' : 'text-indigo-700'}`}>
-                                      <span>🎯</span> Recommended Prep Checklist
-                                    </h5>
-                                    <div className="space-y-3">
-                                      {aiMentorChecklist.map((task, idx) => {
-                                        const isChecked = mentorTasksChecked[idx] || false;
-                                        return (
-                                          <label key={idx} className="flex items-start gap-2.5 cursor-pointer group">
-                                            <input
-                                              type="checkbox"
-                                              checked={isChecked}
-                                              onChange={e => {
-                                                const updated = [...mentorTasksChecked];
-                                                updated[idx] = e.target.checked;
-                                                setMentorTasksChecked(updated);
-                                              }}
-                                              className="rounded text-indigo-600 focus:ring-indigo-500 border-indigo-200 mt-0.5 cursor-pointer w-3.5 h-3.5 shrink-0"
-                                            />
-                                            <span className={`text-[10px] leading-relaxed transition-all ${
-                                              isChecked 
-                                                ? (isDark ? 'text-gray-500 line-through font-semibold' : 'text-gray-400 line-through font-semibold') 
-                                                : (isDark ? 'text-gray-200 group-hover:text-indigo-300 font-bold' : 'text-gray-800 group-hover:text-indigo-950 font-extrabold')
-                                            }`}>
-                                              {task}
-                                            </span>
-                                          </label>
-                                        );
-                                      })}
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          );
-
-                        })()}
-
-                        {analyticsSubTab === 'pytCoverage' && (
-                          <motion.div
-                            initial={{ opacity: 0, y: 12 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                            className="flex flex-col gap-6 w-full text-left"
-                          >
-                            {/* Top row: Detail Analysis */}
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                              {/* Subject selector & Gauge */}
-                              <div className={`p-6 rounded-3xl space-y-4 flex flex-col justify-between ${isDark ? 'neu-card-dark' : 'neu-card-light'}`}>
-                                <div className="space-y-4">
-                                  <h3 className={`text-sm font-black uppercase tracking-wider ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>PYT Coverage Analytics</h3>
-                                  <div>
-                                    <label className={`block text-xs font-black uppercase mb-2 ${isDark ? 'text-gray-400 font-mono' : 'text-gray-700 font-mono'}`}>Select Subject</label>
-                                    <NeumorphicSelect
-                                      value={selectedAnalyticsPytSubject}
-                                      onChange={(val) => setSelectedAnalyticsPytSubject(val)}
-                                      isDark={isDark}
-                                      options={["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"]}
-                                    />
-                                  </div>
-                                </div>
-
-                                {/* Circular Progress Gauge */}
-                                <div className="py-4">
-                                  {(() => {
-                                    const activeStat = pytCoverageStats.activeStat;
-                                    const pct = activeStat.coveragePercent;
-                                    const radius = 55;
-                                    const circumference = 2 * Math.PI * radius;
-                                    const strokeDashoffset = circumference - (pct / 100) * circumference;
-                                    return (
-                                      <div className="flex flex-col items-center justify-center relative w-40 h-40 mx-auto">
-                                        <svg className="w-full h-full transform -rotate-90">
-                                          <circle
-                                            cx="80"
-                                            cy="80"
-                                            r={radius}
-                                            className={isDark ? 'stroke-gray-800' : 'stroke-gray-200'}
-                                            strokeWidth="10"
-                                            fill="transparent"
-                                          />
-                                          <circle
-                                            cx="80"
-                                            cy="80"
-                                            r={radius}
-                                            className="stroke-emerald-500 transition-all duration-1000 ease-out"
-                                            strokeWidth="10"
-                                            fill="transparent"
-                                            strokeDasharray={circumference}
-                                            strokeDashoffset={strokeDashoffset}
-                                            strokeLinecap="round"
-                                          />
-                                        </svg>
-                                        <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                                          <span className={`text-3xl font-black tracking-tight ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>{pct}%</span>
-                                          <span className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Coverage</span>
-                                        </div>
-                                      </div>
-                                    );
-                                  })()}
-                                </div>
-
-                                <div className={`text-center border-t pt-3 ${isDark ? 'border-gray-800/80' : 'border-gray-200'}`}>
-                                  <span className={`text-xs font-bold ${isDark ? 'text-gray-400' : 'text-gray-700'}`}>
-                                    {pytCoverageStats.activeStat.revisedAtLeastOnce} of {pytCoverageStats.activeStat.totalTopics} topics revised &ge; 1 time
-                                  </span>
-                                </div>
-                              </div>
-
-                              {/* Depth Distribution Chart */}
-                              <div className={`p-6 rounded-3xl lg:col-span-2 flex flex-col justify-between ${isDark ? 'neu-card-dark' : 'neu-card-light'}`}>
-                                <div className="mb-4">
-                                  <h3 className={`text-sm font-black uppercase tracking-wider ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>Revision Depth Distribution</h3>
-                                  <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Percentage of topics revised by frequency</p>
-                                </div>
-                                <div className="w-full h-[350px] min-h-[350px]">
-                                  {(() => {
-                                    const activeStat = pytCoverageStats.activeStat;
-                                    const total = activeStat.totalTopics || 1;
-                                    const chartData = [
-                                      { name: '0 Revisions', count: activeStat.count0, percentage: Math.round((activeStat.count0 / total) * 100), fill: isDark ? '#64748b' : '#94a3b8' },
-                                      { name: '1 Revision', count: activeStat.count1, percentage: Math.round((activeStat.count1 / total) * 100), fill: '#f59e0b' },
-                                      { name: '2 Revisions', count: activeStat.count2, percentage: Math.round((activeStat.count2 / total) * 100), fill: '#3b82f6' },
-                                      { name: '3+ Revisions', count: activeStat.count3Plus, percentage: Math.round((activeStat.count3Plus / total) * 100), fill: '#10b981' }
-                                    ];
-                                    return (
-                                      <ResponsiveContainer width="100%" height={350} minWidth={0}>
-                                        <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
-                                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#334155' : '#f1f5f9'} />
-                                          <XAxis dataKey="name" stroke={isDark ? '#94a3b8' : '#64748b'} fontSize={11} tickLine={false} axisLine={false} />
-                                          <YAxis stroke={isDark ? '#94a3b8' : '#64748b'} fontSize={11} tickLine={false} axisLine={false} unit="%" />
-                                          <Tooltip
-                                            content={({ active, payload }) => {
-                                              if (active && payload && payload.length) {
-                                                const data = payload[0].payload;
-                                                return (
-                                                  <div className={`p-3 rounded-2xl shadow-xl text-xs font-bold ${
-                                                    isDark ? 'neu-card-dark border border-gray-800 text-gray-100' : 'bg-white border border-gray-200 text-gray-900 shadow-md'
-                                                  }`}>
-                                                    <p className={isDark ? 'text-gray-100 font-extrabold mb-1' : 'text-gray-900 font-extrabold mb-1'}>{data.name}</p>
-                                                    <p className="text-blue-500 font-mono">{data.percentage}% ({data.count} topics)</p>
-                                                  </div>
-                                                );
-                                              }
-                                              return null;
-                                            }}
-                                          />
-                                          <Bar dataKey="percentage" radius={[8, 8, 0, 0]} maxBarSize={60}>
-                                            {chartData.map((entry, index) => (
-                                              <Cell key={`cell-${index}`} fill={entry.fill} />
-                                            ))}
-                                          </Bar>
-                                        </BarChart>
-                                      </ResponsiveContainer>
-                                    );
-                                  })()}
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Subjects Grid (19 subjects) */}
-                            <div className={`p-6 rounded-3xl space-y-4 ${isDark ? 'neu-card-dark' : 'neu-card-light'}`}>
-                              <div className={`flex justify-between items-center border-b pb-3 ${isDark ? 'border-gray-800/80' : 'border-gray-200'}`}>
-                                <div>
-                                  <h3 className={`text-sm font-black uppercase tracking-wider ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>All Subjects Overview</h3>
-                                  <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Click a card to load detailed analytics</p>
-                                </div>
-                                <div className="text-right">
-                                  <span className={`text-xs font-black px-3 py-1 rounded-full border ${
-                                    isDark ? 'neu-pressed-dark text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                  }`}>
-                                    Overall Avg Coverage: {pytCoverageStats.overallAverageCoverage}%
-                                  </span>
-                                </div>
-                              </div>
-
-                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                                {pytCoverageStats.allStats.map(stat => {
-                                  const isSelected = stat.subject.toLowerCase() === selectedAnalyticsPytSubject.toLowerCase();
-                                  return (
-                                    <button
-                                      key={stat.subject}
-                                      onClick={() => setSelectedAnalyticsPytSubject(stat.subject)}
-                                      className={`w-full text-left p-4 rounded-2xl border transition-all ${
-                                        isSelected 
-                                          ? (isDark ? 'neu-pressed-dark border border-blue-500/40 scale-[1.01]' : 'neu-pressed-light border border-blue-400 scale-[1.01]') 
-                                          : (isDark ? 'neu-card-dark border border-gray-800/80 hover:border-gray-700' : 'neu-card-light hover:border-gray-300')
-                                      }`}
-                                    >
-                                      <div className="flex justify-between items-start mb-2">
-                                        <span className={`text-xs font-black truncate max-w-[140px] ${isDark ? 'text-gray-100' : 'text-gray-900'}`} title={stat.subject}>
-                                          {stat.subject}
-                                        </span>
-                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                                          isDark ? 'neu-pressed-dark text-gray-300' : 'neu-pressed-light text-gray-700'
-                                        }`}>
-                                          {stat.revisedAtLeastOnce}/{stat.totalTopics}
-                                        </span>
-                                      </div>
-                                      <div className="space-y-1">
-                                        <div className={`flex items-center justify-between text-[10px] font-black ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                                          <span>Coverage</span>
-                                          <span>{stat.coveragePercent}%</span>
-                                        </div>
-                                        <div className={`w-full h-2 rounded-full overflow-hidden ${isDark ? 'bg-gray-800' : 'bg-gray-200'}`}>
-                                          <div
-                                            className="h-full bg-emerald-500 rounded-full transition-all duration-500"
-                                            style={{ width: `${stat.coveragePercent}%` }}
-                                          />
-                                        </div>
-                                      </div>
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          </motion.div>
-                        )}
-
-                        {analyticsSubTab === 'subjectCoverage' && (
-                          renderSubjectCoverageDashboard(true)
-                        )}
-
-                        {analyticsSubTab === 'adherence' && (
-                          <div className="flex flex-col gap-6 w-full text-left">
-                            {/* KPI Metrics Row */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                              <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex items-center justify-between transition hover:shadow-md">
-                                <div>
-                                  <span className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Planned Topics</span>
-                                  <h3 className="text-2xl font-black text-gray-800 mt-1 font-mono">{adherenceStats.totalTasks}</h3>
-                                  <p className="text-[10px] text-gray-400 font-bold mt-1">Total targets set in calendar</p>
-                                </div>
-                                <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center shadow-inner">
-                                  <Calendar className="w-6 h-6" />
-                                </div>
-                              </div>
-
-                              <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex items-center justify-between transition hover:shadow-md">
-                                <div>
-                                  <span className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Completed Topics</span>
-                                  <h3 className="text-2xl font-black text-gray-800 mt-1 font-mono">{adherenceStats.completedTasks}</h3>
-                                  <p className="text-[10px] text-gray-400 font-bold mt-1">Revision sessions finished</p>
-                                </div>
-                                <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center shadow-inner">
-                                  <Check className="w-6 h-6" />
-                                </div>
-                              </div>
-
-                              <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex items-center justify-between transition hover:shadow-md">
-                                <div>
-                                  <span className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Adherence Rate</span>
-                                  <h3 className={`text-2xl font-black mt-1 font-mono ${adherenceStats.rate >= 80 ? 'text-emerald-600' : adherenceStats.rate >= 50 ? 'text-orange-600' : 'text-red-600'
-                                    }`}>{adherenceStats.rate}%</h3>
-                                  <p className="text-[10px] text-gray-400 font-bold mt-1">Target adherence rating</p>
-                                </div>
-                                <div className="relative shrink-0 flex items-center justify-center">
-                                  <svg className="w-16 h-16 transform -rotate-90">
-                                    <circle cx="32" cy="32" r="26" stroke="#f3f4f6" strokeWidth="5" fill="transparent" />
-                                    <circle cx="32" cy="32" r="26" stroke={adherenceStats.rate >= 80 ? '#10b981' : adherenceStats.rate >= 50 ? '#f59e0b' : '#ef4444'} strokeWidth="5" fill="transparent"
-                                      strokeDasharray={2 * Math.PI * 26}
-                                      strokeDashoffset={2 * Math.PI * 26 * (1 - adherenceStats.rate / 100)}
-                                      strokeLinecap="round"
-                                      className="transition-all duration-1000"
-                                    />
-                                  </svg>
-                                  <span className={`absolute text-[10px] font-black ${adherenceStats.rate >= 80 ? 'text-emerald-600' : adherenceStats.rate >= 50 ? 'text-orange-600' : 'text-red-600'
-                                    }`}>{adherenceStats.rate}%</span>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Chart & Detailed Breakdown Grid */}
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                              {/* Left Column: 7-Day Adherence Chart */}
-                              <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex flex-col justify-between hover:shadow transition">
-                                <div className="mb-4">
-                                  <h3 className="text-sm font-black text-gray-800 uppercase tracking-wider">7-Day Study Adherence History</h3>
-                                  <p className="text-xs text-gray-400">Daily completion percentage over last 7 calendar days</p>
-                                </div>
-                                <div className="w-full h-[350px] min-h-[350px]">
-                                  <ResponsiveContainer width="100%" height={350} minWidth={0}>
-                                    <BarChart data={adherenceStats.last7Days} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
-                                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                      <XAxis dataKey="dateLabel" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
-                                      <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} unit="%" />
-                                      <Tooltip
-                                        content={({ active, payload }) => {
-                                          if (active && payload && payload.length) {
-                                            const data = payload[0].payload;
-                                            return (
-                                              <div className="bg-white p-3 border border-gray-150 rounded-2xl shadow-xl text-xs font-bold">
-                                                <p className="text-gray-900 font-extrabold mb-1">{data.dateLabel}</p>
-                                                <p className="text-blue-600">{data.rate}% ({data.completed} of {data.total} tasks completed)</p>
-                                              </div>
-                                            );
-                                          }
-                                          return null;
-                                        }}
-                                      />
-                                      <Bar dataKey="rate" radius={[8, 8, 0, 0]} maxBarSize={50}>
-                                        {adherenceStats.last7Days.map((entry, index) => (
-                                          <Cell
-                                            key={`cell-${index}`}
-                                            fill={entry.rate >= 80 ? '#10b981' : entry.rate >= 50 ? '#f59e0b' : entry.total === 0 ? '#cbd5e1' : '#ef4444'}
-                                          />
+                                    <div className="flex flex-col gap-1.5">
+                                      <label className={`text-[9px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-gray-400' : 'text-gray-700'}`}>Select Dream Specialty</label>
+                                      <select
+                                        value={currentDreamBranch}
+                                        onChange={e => setDreamBranch(e.target.value)}
+                                        className={`w-full text-xs font-bold px-3 py-2 rounded-xl focus:outline-none transition cursor-pointer ${isDark ? 'neu-pressed-dark text-gray-100 border border-indigo-500/30' : 'neu-pressed-light text-gray-900 border border-white/80'
+                                          }`}
+                                      >
+                                        {specialtyList.map(spec => (
+                                          <option key={spec} value={spec} className={isDark ? 'bg-[#222730] text-gray-100' : 'bg-white text-gray-900'}>{spec}</option>
                                         ))}
-                                      </Bar>
-                                    </BarChart>
-                                  </ResponsiveContainer>
+                                      </select>
+                                    </div>
+                                  </div>
+
+                                  {/* Dream College Rank metrics */}
+                                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
+                                    <div className={`p-4 rounded-2xl flex flex-col justify-between shadow-sm transition ${isDark ? 'neu-pressed-dark border border-indigo-500/20' : 'neu-pressed-light border border-indigo-100/60'
+                                      }`}>
+                                      <span className={`text-[9px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-indigo-300/70' : 'text-indigo-950 font-extrabold'}`}>Target AIR Cutoff</span>
+                                      <span className={`text-lg font-black mt-1 font-mono ${isDark ? 'text-indigo-100' : 'text-indigo-950'}`}>AIR ~{targetCutoff.toLocaleString()}</span>
+                                      <span className={`text-[8px] font-bold mt-1 ${isDark ? 'text-indigo-400' : 'text-indigo-700'}`}>PrepLadder calibrated historical threshold</span>
+                                    </div>
+
+                                    <div className={`p-4 rounded-2xl flex flex-col justify-between shadow-sm transition ${isDark ? 'neu-pressed-dark border border-indigo-500/20' : 'neu-pressed-light border border-indigo-100/60'
+                                      }`}>
+                                      <span className={`text-[9px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-indigo-300/70' : 'text-indigo-950 font-extrabold'}`}>Current Standing</span>
+                                      <span className={`text-lg font-black mt-1 font-mono ${isDark ? 'text-indigo-100' : 'text-indigo-950'}`}>AIR ~{effectiveCategoryRank.toLocaleString()}</span>
+                                      <span className={`text-[8px] font-bold mt-1 ${isDark ? 'text-indigo-400' : 'text-indigo-700'}`}>Based on active simulated score ({activeGt.score} Qs)</span>
+                                    </div>
+
+                                    <div className={`p-4 rounded-2xl flex flex-col justify-between shadow-sm transition ${isDark ? 'neu-pressed-dark border border-indigo-500/20' : 'neu-pressed-light border border-indigo-100/60'
+                                      }`}>
+                                      <span className={`text-[9px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-indigo-300/70' : 'text-indigo-950 font-extrabold'}`}>Cushion / Deficit Buffer</span>
+                                      <span className={`text-lg font-black mt-1 font-mono ${rankDeficit > 0 ? 'text-amber-500' : 'text-emerald-500'}`}>
+                                        {rankDeficit > 0 ? `-${rankDeficit.toLocaleString()} ranks` : `+${Math.abs(rankDeficit).toLocaleString()} cushion`}
+                                      </span>
+                                      <span className={`text-[8px] font-bold mt-1 font-mono ${isDark ? 'text-indigo-400' : 'text-indigo-700'}`}>
+                                        {rankDeficit > 0 ? `Needs +${scoreDeficitCorrects} correct answers` : 'Safely in target zone'}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* Mentor AI output paragraph */}
+                                  <div className={`p-4 rounded-2xl text-left relative overflow-hidden space-y-2 ${isDark ? 'neu-pressed-dark text-gray-200 border border-indigo-500/20' : 'neu-pressed-light text-gray-900 border border-indigo-100/60'
+                                    }`}>
+                                    <div className={`absolute top-0 left-0 bottom-0 w-1 ${isDark ? 'bg-indigo-400' : 'bg-indigo-500'}`} />
+                                    <h5 className={`text-[9px] font-black uppercase tracking-wider font-mono flex items-center gap-1.5 ${isDark ? 'text-indigo-400' : 'text-indigo-700'}`}>
+                                      <Sparkles className="w-3.5 h-3.5 animate-spin" /> AI Mentor Review & Strategic Advice
+                                    </h5>
+                                    <p className={`text-[10.5px] leading-relaxed font-semibold ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
+                                      {rankDeficit > 0 ? (
+                                        `To bridge your clinical deficit of ${rankDeficit.toLocaleString()} ranks for securing ${currentDreamBranch} at ${currentDreamCollege}, you must raise your score by approximately ${scoreDeficitCorrects} correct answers in future attempts. Focus intensely on target active reviews and key high-volume systems outlined below.`
+                                      ) : (
+                                        `Outstanding! Your category-adjusted rank of ${effectiveCategoryRank.toLocaleString()} exceeds the historical cutoff of ${targetCutoff.toLocaleString()} by a cushion of ${Math.abs(rankDeficit).toLocaleString()} ranks. Keep up the consistent Anki recall cycles to cement your secure placement.`
+                                      )}
+                                    </p>
+                                  </div>
+
+                                  {/* Action Plan & Top 3 weakest subjects */}
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* Weakest subjects action list */}
+                                    <div className={`p-4 rounded-2xl space-y-3.5 text-left ${isDark ? 'neu-pressed-dark border border-indigo-500/20' : 'neu-pressed-light border border-indigo-100/60'
+                                      }`}>
+                                      <h5 className={`text-[9px] font-black uppercase tracking-wider font-mono flex items-center gap-1 ${isDark ? 'text-indigo-400' : 'text-indigo-700'}`}>
+                                        <span>🩺</span> Weak Subject Diagnostic Review
+                                      </h5>
+                                      <div className="space-y-3.5">
+                                        {topThreeWeak.map((sub, idx) => (
+                                          <div key={idx} className={`space-y-1 p-3 rounded-xl ${isDark ? 'neu-card-dark border border-gray-800' : 'neu-card-light border border-gray-200'}`}>
+                                            <div className="flex items-center justify-between text-[10px] font-black">
+                                              <span className={`font-bold ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>{sub.name}</span>
+                                              <span className="text-red-500 font-mono">{sub.accuracy}% Accuracy</span>
+                                            </div>
+                                            <p className={`text-[9.5px] leading-relaxed font-semibold ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                                              {subjectMasteryAdvice[sub.name] || 'Drill high-yield questions and review standard mechanisms using active-recall cards.'}
+                                            </p>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+
+                                    {/* Custom checkboxes action plan */}
+                                    <div className={`p-4 rounded-2xl space-y-3 text-left ${isDark ? 'neu-pressed-dark border border-indigo-500/20' : 'neu-pressed-light border border-indigo-100/60'
+                                      }`}>
+                                      <h5 className={`text-[9px] font-black uppercase tracking-wider font-mono flex items-center gap-1 ${isDark ? 'text-indigo-400' : 'text-indigo-700'}`}>
+                                        <span>🎯</span> Recommended Prep Checklist
+                                      </h5>
+                                      <div className="space-y-3">
+                                        {aiMentorChecklist.map((task, idx) => {
+                                          const isChecked = mentorTasksChecked[idx] || false;
+                                          return (
+                                            <label key={idx} className="flex items-start gap-2.5 cursor-pointer group">
+                                              <input
+                                                type="checkbox"
+                                                checked={isChecked}
+                                                onChange={e => {
+                                                  const updated = [...mentorTasksChecked];
+                                                  updated[idx] = e.target.checked;
+                                                  setMentorTasksChecked(updated);
+                                                }}
+                                                className="rounded text-indigo-600 focus:ring-indigo-500 border-indigo-200 mt-0.5 cursor-pointer w-3.5 h-3.5 shrink-0"
+                                              />
+                                              <span className={`text-[10px] leading-relaxed transition-all ${isChecked
+                                                  ? (isDark ? 'text-gray-500 line-through font-semibold' : 'text-gray-400 line-through font-semibold')
+                                                  : (isDark ? 'text-gray-200 group-hover:text-indigo-300 font-bold' : 'text-gray-800 group-hover:text-indigo-950 font-extrabold')
+                                                }`}>
+                                                {task}
+                                              </span>
+                                            </label>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+
+                          })()}
+
+                          {analyticsSubTab === 'pytCoverage' && (
+                            <motion.div
+                              initial={{ opacity: 0, y: 12 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                              className="flex flex-col gap-6 w-full text-left"
+                            >
+                              {/* Top row: Detail Analysis */}
+                              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                {/* Subject selector & Gauge */}
+                                <div className={`p-6 rounded-3xl space-y-4 flex flex-col justify-between ${isDark ? 'neu-card-dark' : 'neu-card-light'}`}>
+                                  <div className="space-y-4">
+                                    <h3 className={`text-sm font-black uppercase tracking-wider ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>PYT Coverage Analytics</h3>
+                                    <div>
+                                      <label className={`block text-xs font-black uppercase mb-2 ${isDark ? 'text-gray-400 font-mono' : 'text-gray-700 font-mono'}`}>Select Subject</label>
+                                      <NeumorphicSelect
+                                        value={selectedAnalyticsPytSubject}
+                                        onChange={(val) => setSelectedAnalyticsPytSubject(val)}
+                                        isDark={isDark}
+                                        options={["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"]}
+                                      />
+                                    </div>
+                                  </div>
+
+                                  {/* Circular Progress Gauge */}
+                                  <div className="py-4">
+                                    {(() => {
+                                      const activeStat = pytCoverageStats.activeStat;
+                                      const pct = activeStat.coveragePercent;
+                                      const radius = 55;
+                                      const circumference = 2 * Math.PI * radius;
+                                      const strokeDashoffset = circumference - (pct / 100) * circumference;
+                                      return (
+                                        <div className="flex flex-col items-center justify-center relative w-40 h-40 mx-auto">
+                                          <svg className="w-full h-full transform -rotate-90">
+                                            <circle
+                                              cx="80"
+                                              cy="80"
+                                              r={radius}
+                                              className={isDark ? 'stroke-gray-800' : 'stroke-gray-200'}
+                                              strokeWidth="10"
+                                              fill="transparent"
+                                            />
+                                            <circle
+                                              cx="80"
+                                              cy="80"
+                                              r={radius}
+                                              className="stroke-emerald-500 transition-all duration-1000 ease-out"
+                                              strokeWidth="10"
+                                              fill="transparent"
+                                              strokeDasharray={circumference}
+                                              strokeDashoffset={strokeDashoffset}
+                                              strokeLinecap="round"
+                                            />
+                                          </svg>
+                                          <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                                            <span className={`text-3xl font-black tracking-tight ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>{pct}%</span>
+                                            <span className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Coverage</span>
+                                          </div>
+                                        </div>
+                                      );
+                                    })()}
+                                  </div>
+
+                                  <div className={`text-center border-t pt-3 ${isDark ? 'border-gray-800/80' : 'border-gray-200'}`}>
+                                    <span className={`text-xs font-bold ${isDark ? 'text-gray-400' : 'text-gray-700'}`}>
+                                      {pytCoverageStats.activeStat.revisedAtLeastOnce} of {pytCoverageStats.activeStat.totalTopics} topics revised &ge; 1 time
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Depth Distribution Chart */}
+                                <div className={`p-6 rounded-3xl lg:col-span-2 flex flex-col justify-between ${isDark ? 'neu-card-dark' : 'neu-card-light'}`}>
+                                  <div className="mb-4">
+                                    <h3 className={`text-sm font-black uppercase tracking-wider ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>Revision Depth Distribution</h3>
+                                    <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Percentage of topics revised by frequency</p>
+                                  </div>
+                                  <div className="w-full h-[350px] min-h-[350px]">
+                                    {(() => {
+                                      const activeStat = pytCoverageStats.activeStat;
+                                      const total = activeStat.totalTopics || 1;
+                                      const chartData = [
+                                        { name: '0 Revisions', count: activeStat.count0, percentage: Math.round((activeStat.count0 / total) * 100), fill: isDark ? '#64748b' : '#94a3b8' },
+                                        { name: '1 Revision', count: activeStat.count1, percentage: Math.round((activeStat.count1 / total) * 100), fill: '#f59e0b' },
+                                        { name: '2 Revisions', count: activeStat.count2, percentage: Math.round((activeStat.count2 / total) * 100), fill: '#3b82f6' },
+                                        { name: '3+ Revisions', count: activeStat.count3Plus, percentage: Math.round((activeStat.count3Plus / total) * 100), fill: '#10b981' }
+                                      ];
+                                      return (
+                                        <ResponsiveContainer width="100%" height={350} minWidth={0}>
+                                          <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#334155' : '#f1f5f9'} />
+                                            <XAxis dataKey="name" stroke={isDark ? '#94a3b8' : '#64748b'} fontSize={11} tickLine={false} axisLine={false} />
+                                            <YAxis stroke={isDark ? '#94a3b8' : '#64748b'} fontSize={11} tickLine={false} axisLine={false} unit="%" />
+                                            <Tooltip
+                                              content={({ active, payload }) => {
+                                                if (active && payload && payload.length) {
+                                                  const data = payload[0].payload;
+                                                  return (
+                                                    <div className={`p-3 rounded-2xl shadow-xl text-xs font-bold ${isDark ? 'neu-card-dark border border-gray-800 text-gray-100' : 'bg-white border border-gray-200 text-gray-900 shadow-md'
+                                                      }`}>
+                                                      <p className={isDark ? 'text-gray-100 font-extrabold mb-1' : 'text-gray-900 font-extrabold mb-1'}>{data.name}</p>
+                                                      <p className="text-blue-500 font-mono">{data.percentage}% ({data.count} topics)</p>
+                                                    </div>
+                                                  );
+                                                }
+                                                return null;
+                                              }}
+                                            />
+                                            <Bar dataKey="percentage" radius={[8, 8, 0, 0]} maxBarSize={60}>
+                                              {chartData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.fill} />
+                                              ))}
+                                            </Bar>
+                                          </BarChart>
+                                        </ResponsiveContainer>
+                                      );
+                                    })()}
+                                  </div>
                                 </div>
                               </div>
 
-                              {/* Right Column: Detailed Schedule History List */}
-                              <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex flex-col hover:shadow transition">
-                                <div className="mb-4">
-                                  <h3 className="text-sm font-black text-gray-800 uppercase tracking-wider">Detailed Schedule Log</h3>
-                                  <p className="text-xs text-gray-400">Chronological history of planned topics, status, and notes</p>
+                              {/* Subjects Grid (19 subjects) */}
+                              <div className={`p-6 rounded-3xl space-y-4 ${isDark ? 'neu-card-dark' : 'neu-card-light'}`}>
+                                <div className={`flex justify-between items-center border-b pb-3 ${isDark ? 'border-gray-800/80' : 'border-gray-200'}`}>
+                                  <div>
+                                    <h3 className={`text-sm font-black uppercase tracking-wider ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>All Subjects Overview</h3>
+                                    <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Click a card to load detailed analytics</p>
+                                  </div>
+                                  <div className="text-right">
+                                    <span className={`text-xs font-black px-3 py-1 rounded-full border ${isDark ? 'neu-pressed-dark text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                      }`}>
+                                      Overall Avg Coverage: {pytCoverageStats.overallAverageCoverage}%
+                                    </span>
+                                  </div>
                                 </div>
-                                <div className="flex-grow overflow-y-auto max-h-[300px] space-y-3 pr-2 custom-scrollbar">
-                                  {adherenceStats.breakdownList.length === 0 ? (
-                                    <div className="h-full flex flex-col items-center justify-center text-gray-400 py-12">
-                                      <Calendar className="w-10 h-10 mb-2 opacity-25" />
-                                      <p className="text-xs font-bold">No revision logs found</p>
-                                    </div>
-                                  ) : (
-                                    adherenceStats.breakdownList.map(item => (
-                                      <div key={item.dateStr} className="p-4 border border-gray-150 rounded-2xl bg-gray-50/40 flex flex-col gap-2 text-left hover:border-gray-300 transition">
-                                        <div className="flex justify-between items-center">
-                                          <span className="text-xs font-black text-gray-800 font-mono">{formatAppDate(item.dateStr)}</span>
-                                          <span className={`text-[10px] font-black px-2.5 py-1 rounded-full ${item.total === 0
-                                            ? 'bg-gray-100 text-gray-500'
-                                            : (item.completed / item.total) >= 0.8
-                                              ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                                              : (item.completed / item.total) >= 0.5
-                                                ? 'bg-orange-50 text-orange-600 border border-orange-100'
-                                                : 'bg-red-50 text-red-600 border border-red-100'
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                  {pytCoverageStats.allStats.map(stat => {
+                                    const isSelected = stat.subject.toLowerCase() === selectedAnalyticsPytSubject.toLowerCase();
+                                    return (
+                                      <button
+                                        key={stat.subject}
+                                        onClick={() => setSelectedAnalyticsPytSubject(stat.subject)}
+                                        className={`w-full text-left p-4 rounded-2xl border transition-all ${isSelected
+                                            ? (isDark ? 'neu-pressed-dark border border-blue-500/40 scale-[1.01]' : 'neu-pressed-light border border-blue-400 scale-[1.01]')
+                                            : (isDark ? 'neu-card-dark border border-gray-800/80 hover:border-gray-700' : 'neu-card-light hover:border-gray-300')
+                                          }`}
+                                      >
+                                        <div className="flex justify-between items-start mb-2">
+                                          <span className={`text-xs font-black truncate max-w-[140px] ${isDark ? 'text-gray-100' : 'text-gray-900'}`} title={stat.subject}>
+                                            {stat.subject}
+                                          </span>
+                                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${isDark ? 'neu-pressed-dark text-gray-300' : 'neu-pressed-light text-gray-700'
                                             }`}>
-                                            {item.completed} / {item.total} Topics Done
+                                            {stat.revisedAtLeastOnce}/{stat.totalTopics}
                                           </span>
                                         </div>
-                                        {item.notes.trim() && (
-                                          <p className="text-[10px] text-gray-500 italic mt-0.5 leading-relaxed bg-white border border-gray-100 px-3 py-1.5 rounded-lg">
-                                            <strong>Notes:</strong> {item.notes}
-                                          </p>
-                                        )}
-                                        {item.tasks.length > 0 && (
-                                          <div className="flex flex-wrap gap-1.5 mt-1">
-                                            {item.tasks.map(t => (
-                                              <span
-                                                key={t.id}
-                                                className={`text-[9px] font-bold px-2 py-0.5 rounded-md ${t.completed
-                                                  ? 'bg-emerald-100/60 text-emerald-800 border border-emerald-200/50'
-                                                  : 'bg-white border border-gray-200 text-gray-600'
-                                                  }`}
-                                              >
-                                                {t.completed ? '✓ ' : '• '}{t.topic}
-                                              </span>
-                                            ))}
+                                        <div className="space-y-1">
+                                          <div className={`flex items-center justify-between text-[10px] font-black ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                                            <span>Coverage</span>
+                                            <span>{stat.coveragePercent}%</span>
                                           </div>
-                                        )}
+                                          <div className={`w-full h-2 rounded-full overflow-hidden ${isDark ? 'bg-gray-800' : 'bg-gray-200'}`}>
+                                            <div
+                                              className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                                              style={{ width: `${stat.coveragePercent}%` }}
+                                            />
+                                          </div>
+                                        </div>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
+
+                          {analyticsSubTab === 'subjectCoverage' && (
+                            renderSubjectCoverageDashboard(true)
+                          )}
+
+                          {analyticsSubTab === 'adherence' && (
+                            <div className="flex flex-col gap-6 w-full text-left">
+                              {/* KPI Metrics Row */}
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex items-center justify-between transition hover:shadow-md">
+                                  <div>
+                                    <span className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Planned Topics</span>
+                                    <h3 className="text-2xl font-black text-gray-800 mt-1 font-mono">{adherenceStats.totalTasks}</h3>
+                                    <p className="text-[10px] text-gray-400 font-bold mt-1">Total targets set in calendar</p>
+                                  </div>
+                                  <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center shadow-inner">
+                                    <Calendar className="w-6 h-6" />
+                                  </div>
+                                </div>
+
+                                <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex items-center justify-between transition hover:shadow-md">
+                                  <div>
+                                    <span className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Completed Topics</span>
+                                    <h3 className="text-2xl font-black text-gray-800 mt-1 font-mono">{adherenceStats.completedTasks}</h3>
+                                    <p className="text-[10px] text-gray-400 font-bold mt-1">Revision sessions finished</p>
+                                  </div>
+                                  <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center shadow-inner">
+                                    <Check className="w-6 h-6" />
+                                  </div>
+                                </div>
+
+                                <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex items-center justify-between transition hover:shadow-md">
+                                  <div>
+                                    <span className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Adherence Rate</span>
+                                    <h3 className={`text-2xl font-black mt-1 font-mono ${adherenceStats.rate >= 80 ? 'text-emerald-600' : adherenceStats.rate >= 50 ? 'text-orange-600' : 'text-red-600'
+                                      }`}>{adherenceStats.rate}%</h3>
+                                    <p className="text-[10px] text-gray-400 font-bold mt-1">Target adherence rating</p>
+                                  </div>
+                                  <div className="relative shrink-0 flex items-center justify-center">
+                                    <svg className="w-16 h-16 transform -rotate-90">
+                                      <circle cx="32" cy="32" r="26" stroke="#f3f4f6" strokeWidth="5" fill="transparent" />
+                                      <circle cx="32" cy="32" r="26" stroke={adherenceStats.rate >= 80 ? '#10b981' : adherenceStats.rate >= 50 ? '#f59e0b' : '#ef4444'} strokeWidth="5" fill="transparent"
+                                        strokeDasharray={2 * Math.PI * 26}
+                                        strokeDashoffset={2 * Math.PI * 26 * (1 - adherenceStats.rate / 100)}
+                                        strokeLinecap="round"
+                                        className="transition-all duration-1000"
+                                      />
+                                    </svg>
+                                    <span className={`absolute text-[10px] font-black ${adherenceStats.rate >= 80 ? 'text-emerald-600' : adherenceStats.rate >= 50 ? 'text-orange-600' : 'text-red-600'
+                                      }`}>{adherenceStats.rate}%</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Chart & Detailed Breakdown Grid */}
+                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                {/* Left Column: 7-Day Adherence Chart */}
+                                <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex flex-col justify-between hover:shadow transition">
+                                  <div className="mb-4">
+                                    <h3 className="text-sm font-black text-gray-800 uppercase tracking-wider">7-Day Study Adherence History</h3>
+                                    <p className="text-xs text-gray-400">Daily completion percentage over last 7 calendar days</p>
+                                  </div>
+                                  <div className="w-full h-[350px] min-h-[350px]">
+                                    <ResponsiveContainer width="100%" height={350} minWidth={0}>
+                                      <BarChart data={adherenceStats.last7Days} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                        <XAxis dataKey="dateLabel" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
+                                        <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} unit="%" />
+                                        <Tooltip
+                                          content={({ active, payload }) => {
+                                            if (active && payload && payload.length) {
+                                              const data = payload[0].payload;
+                                              return (
+                                                <div className="bg-white p-3 border border-gray-150 rounded-2xl shadow-xl text-xs font-bold">
+                                                  <p className="text-gray-900 font-extrabold mb-1">{data.dateLabel}</p>
+                                                  <p className="text-blue-600">{data.rate}% ({data.completed} of {data.total} tasks completed)</p>
+                                                </div>
+                                              );
+                                            }
+                                            return null;
+                                          }}
+                                        />
+                                        <Bar dataKey="rate" radius={[8, 8, 0, 0]} maxBarSize={50}>
+                                          {adherenceStats.last7Days.map((entry, index) => (
+                                            <Cell
+                                              key={`cell-${index}`}
+                                              fill={entry.rate >= 80 ? '#10b981' : entry.rate >= 50 ? '#f59e0b' : entry.total === 0 ? '#cbd5e1' : '#ef4444'}
+                                            />
+                                          ))}
+                                        </Bar>
+                                      </BarChart>
+                                    </ResponsiveContainer>
+                                  </div>
+                                </div>
+
+                                {/* Right Column: Detailed Schedule History List */}
+                                <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex flex-col hover:shadow transition">
+                                  <div className="mb-4">
+                                    <h3 className="text-sm font-black text-gray-800 uppercase tracking-wider">Detailed Schedule Log</h3>
+                                    <p className="text-xs text-gray-400">Chronological history of planned topics, status, and notes</p>
+                                  </div>
+                                  <div className="flex-grow overflow-y-auto max-h-[300px] space-y-3 pr-2 custom-scrollbar">
+                                    {adherenceStats.breakdownList.length === 0 ? (
+                                      <div className="h-full flex flex-col items-center justify-center text-gray-400 py-12">
+                                        <Calendar className="w-10 h-10 mb-2 opacity-25" />
+                                        <p className="text-xs font-bold">No revision logs found</p>
                                       </div>
-                                    ))
-                                  )}
+                                    ) : (
+                                      adherenceStats.breakdownList.map(item => (
+                                        <div key={item.dateStr} className="p-4 border border-gray-150 rounded-2xl bg-gray-50/40 flex flex-col gap-2 text-left hover:border-gray-300 transition">
+                                          <div className="flex justify-between items-center">
+                                            <span className="text-xs font-black text-gray-800 font-mono">{formatAppDate(item.dateStr)}</span>
+                                            <span className={`text-[10px] font-black px-2.5 py-1 rounded-full ${item.total === 0
+                                              ? 'bg-gray-100 text-gray-500'
+                                              : (item.completed / item.total) >= 0.8
+                                                ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                                                : (item.completed / item.total) >= 0.5
+                                                  ? 'bg-orange-50 text-orange-600 border border-orange-100'
+                                                  : 'bg-red-50 text-red-600 border border-red-100'
+                                              }`}>
+                                              {item.completed} / {item.total} Topics Done
+                                            </span>
+                                          </div>
+                                          {item.notes.trim() && (
+                                            <p className="text-[10px] text-gray-500 italic mt-0.5 leading-relaxed bg-white border border-gray-100 px-3 py-1.5 rounded-lg">
+                                              <strong>Notes:</strong> {item.notes}
+                                            </p>
+                                          )}
+                                          {item.tasks.length > 0 && (
+                                            <div className="flex flex-wrap gap-1.5 mt-1">
+                                              {item.tasks.map(t => (
+                                                <span
+                                                  key={t.id}
+                                                  className={`text-[9px] font-bold px-2 py-0.5 rounded-md ${t.completed
+                                                    ? 'bg-emerald-100/60 text-emerald-800 border border-emerald-200/50'
+                                                    : 'bg-white border border-gray-200 text-gray-600'
+                                                    }`}
+                                                >
+                                                  {t.completed ? '✓ ' : '• '}{t.topic}
+                                                </span>
+                                              ))}
+                                            </div>
+                                          )}
+                                        </div>
+                                      ))
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             </div>
-                          </div>
-                        )}
+                          )}
 
-                      </div>
-                    );
-                  })()}
+                        </div>
+                      );
+                    })()}
 
                     {/* EXPORTER HUB VIEW - DESKTOP */}
                     {currentTab === 'export' && (
@@ -33922,15 +33756,14 @@ Return your response strictly as a JSON object matching this schema:
                               <div>
                                 <label className={`block text-[10px] font-black uppercase tracking-wider mb-3 ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-400'}`}>2. Select Target Format</label>
                                 <div className="grid grid-cols-2 gap-3">
-                                  {[{id:'apkg',icon:<Layers className="w-5 h-5 text-purple-400 animate-pulse"/>,label:'Anki Package (.apkg)',sub:'Highly recommended (WASM SQLite Zip)'},{id:'anki',icon:<FileText className="w-5 h-5 text-orange-400"/>,label:'Anki TSV',sub:'Simple tab-separated format'},{id:'notion',icon:<Grid className="w-5 h-5 text-blue-400"/>,label:'Notion CSV',sub:'Database layout backup'},{id:'pdf',icon:<Layers className="w-5 h-5 text-emerald-400"/>,label:'PDF Sheet',sub:'Printable study-sheets'}].map(fmt => (
+                                  {[{ id: 'apkg', icon: <Layers className="w-5 h-5 text-purple-400 animate-pulse" />, label: 'Anki Package (.apkg)', sub: 'Highly recommended (WASM SQLite Zip)' }, { id: 'anki', icon: <FileText className="w-5 h-5 text-orange-400" />, label: 'Anki TSV', sub: 'Simple tab-separated format' }, { id: 'notion', icon: <Grid className="w-5 h-5 text-blue-400" />, label: 'Notion CSV', sub: 'Database layout backup' }, { id: 'pdf', icon: <Layers className="w-5 h-5 text-emerald-400" />, label: 'PDF Sheet', sub: 'Printable study-sheets' }].map(fmt => (
                                     <button
                                       key={fmt.id}
                                       onClick={() => setExportFormat(fmt.id)}
-                                      className={`p-4 rounded-2xl flex flex-col justify-between h-28 text-left transition-all active:scale-95 ${
-                                        exportFormat === fmt.id
+                                      className={`p-4 rounded-2xl flex flex-col justify-between h-28 text-left transition-all active:scale-95 ${exportFormat === fmt.id
                                           ? 'bg-gradient-to-br from-blue-500/20 to-blue-600/10 border-2 border-blue-500 shadow-lg shadow-blue-500/10'
                                           : settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'
-                                      }`}
+                                        }`}
                                     >
                                       {fmt.icon}
                                       <div>
@@ -33946,15 +33779,14 @@ Return your response strictly as a JSON object matching this schema:
                               <div>
                                 <label className={`block text-[10px] font-black uppercase tracking-wider mb-2 ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-400'}`}>3. Filter Export Scope</label>
                                 <div className="grid grid-cols-3 gap-2">
-                                  {[{val:'all',label:`All (${totalInExport})`},{val:'unexported',label:`New (${unexportedInExport})`},{val:'exported',label:`Done (${exportedInExport})`}].map(s => (
+                                  {[{ val: 'all', label: `All (${totalInExport})` }, { val: 'unexported', label: `New (${unexportedInExport})` }, { val: 'exported', label: `Done (${exportedInExport})` }].map(s => (
                                     <button
                                       key={s.val}
                                       onClick={() => setExportScope(s.val)}
-                                      className={`py-2.5 px-3 rounded-xl text-xs font-black transition active:scale-95 ${
-                                        exportScope === s.val
+                                      className={`py-2.5 px-3 rounded-xl text-xs font-black transition active:scale-95 ${exportScope === s.val
                                           ? 'bg-gradient-to-br from-blue-500/20 to-blue-600/10 border-2 border-blue-500 text-blue-500 shadow-md shadow-blue-500/10'
                                           : settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-500'
-                                      }`}
+                                        }`}
                                     >
                                       {s.label}
                                     </button>
@@ -34047,11 +33879,10 @@ Return your response strictly as a JSON object matching this schema:
                         </div> {/* End of Scrollable Settings Panel */}
 
                         {/* Sticky Prominent Action Bar at the Bottom */}
-                        <div className={`sticky bottom-0 left-0 right-0 backdrop-blur-md border-t px-6 lg:px-12 py-5 z-40 flex flex-col md:flex-row items-center justify-between gap-4 shrink-0 max-w-[1400px] mx-auto w-full rounded-t-[2.5rem] border-x ${
-                          settingsThemeMode === 'dark'
+                        <div className={`sticky bottom-0 left-0 right-0 backdrop-blur-md border-t px-6 lg:px-12 py-5 z-40 flex flex-col md:flex-row items-center justify-between gap-4 shrink-0 max-w-[1400px] mx-auto w-full rounded-t-[2.5rem] border-x ${settingsThemeMode === 'dark'
                             ? 'bg-[#222730]/95 border-slate-600/40 shadow-[0_-10px_30px_rgba(0,0,0,0.25)]'
                             : 'bg-[#e6ecf5]/95 border-slate-200/80 shadow-[0_-10px_30px_rgba(0,0,0,0.04)]'
-                        }`}>
+                          }`}>
                           <div>
                             <h3 className={`text-sm font-black tracking-tight flex items-center gap-2 ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-800'}`}>
                               <Layers className="w-4 h-4 text-blue-500 animate-pulse" /> Ready for Compilation
@@ -34063,11 +33894,10 @@ Return your response strictly as a JSON object matching this schema:
                           <button
                             onClick={() => exportDeck(exportFormat)}
                             disabled={exportCount === 0}
-                            className={`w-full md:w-auto px-8 py-3.5 text-xs font-black rounded-2xl transition flex items-center justify-center gap-2.5 active:scale-95 duration-200 ${
-                              exportCount === 0
+                            className={`w-full md:w-auto px-8 py-3.5 text-xs font-black rounded-2xl transition flex items-center justify-center gap-2.5 active:scale-95 duration-200 ${exportCount === 0
                                 ? settingsThemeMode === 'dark' ? 'bg-slate-700 text-slate-500' : 'bg-slate-200 text-slate-400'
                                 : 'bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-xl shadow-blue-500/30 hover:from-blue-600 hover:to-blue-800'
-                            }`}
+                              }`}
                           >
                             <Download className="w-4 h-4" /> Compile & Download Package ({exportCount} cards)
                           </button>
@@ -34075,9 +33905,8 @@ Return your response strictly as a JSON object matching this schema:
 
                         {/* Progress compiling layer overlay */}
                         {isExporting && (
-                          <div className={`absolute inset-0 backdrop-blur-sm z-[200] flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-200 ${
-                            settingsThemeMode === 'dark' ? 'bg-[#222730]/95' : 'bg-[#e6ecf5]/95'
-                          }`}>
+                          <div className={`absolute inset-0 backdrop-blur-sm z-[200] flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-200 ${settingsThemeMode === 'dark' ? 'bg-[#222730]/95' : 'bg-[#e6ecf5]/95'
+                            }`}>
                             <div className="relative mb-6">
                               <div className={`w-20 h-20 rounded-full border-4 border-t-blue-500 animate-spin ${settingsThemeMode === 'dark' ? 'border-slate-600' : 'border-blue-100'}`}></div>
                               <Download className="w-8 h-8 text-blue-500 absolute inset-0 m-auto animate-pulse" />
@@ -34118,22 +33947,20 @@ Return your response strictly as a JSON object matching this schema:
                               <button
                                 type="button"
                                 onClick={() => { setPromptCategoryTab('image'); setSelectedPromptId('default'); }}
-                                className={`py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition ${
-                                  promptCategoryTab === 'image'
+                                className={`py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition ${promptCategoryTab === 'image'
                                     ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400 border border-blue-500/30' : 'neu-btn-light text-blue-600 border border-blue-200')
                                     : (settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500')
-                                }`}
+                                  }`}
                               >
                                 <span>🖼️</span> Image Extraction Prompts
                               </button>
                               <button
                                 type="button"
                                 onClick={() => { setPromptCategoryTab('text'); setSelectedPromptId('text_default'); }}
-                                className={`py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition ${
-                                  promptCategoryTab === 'text'
+                                className={`py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition ${promptCategoryTab === 'text'
                                     ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-purple-400 border border-purple-500/30' : 'neu-btn-light text-purple-600 border border-purple-200')
                                     : (settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500')
-                                }`}
+                                  }`}
                               >
                                 <span>📝</span> Text Extraction Prompts
                               </button>
@@ -34302,15 +34129,15 @@ Return your response strictly as a JSON object matching this schema:
                                 <Info className="w-5 h-5 shrink-0 mt-0.5" />
                                 <div className="text-xs">
                                   <p className="font-bold">
-                                    {selectedPromptId === 'default' 
-                                      ? 'System Default Prompt (Read-only)' 
+                                    {selectedPromptId === 'default'
+                                      ? 'System Default Prompt (Read-only)'
                                       : selectedPromptId === 'pyt_generator'
-                                      ? 'High-Yield PYT Generator Prompt (Read-only)'
-                                      : selectedPromptId === 'qbank_engine'
-                                      ? 'Q-Bank engine/ error log (Read-only)'
-                                      : selectedPromptId === 'text_default'
-                                      ? 'Default Text Extractor (Read-only)'
-                                      : 'Strict 1:1 Verbatim Extractor (Read-only)'}
+                                        ? 'High-Yield PYT Generator Prompt (Read-only)'
+                                        : selectedPromptId === 'qbank_engine'
+                                          ? 'Q-Bank engine/ error log (Read-only)'
+                                          : selectedPromptId === 'text_default'
+                                            ? 'Default Text Extractor (Read-only)'
+                                            : 'Strict 1:1 Verbatim Extractor (Read-only)'}
                                   </p>
                                   <p className="mt-1 opacity-90">To modify these instructions, click the **Duplicate** button below to create an editable custom copy.</p>
                                 </div>
@@ -35240,9 +35067,8 @@ Return your response strictly as a JSON object matching this schema:
                             initial={{ opacity: 0, x: -12 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ duration: 0.4, delay: 0.05 }}
-                            className={`w-1/3 rounded-3xl p-6 flex flex-col h-full overflow-y-auto custom-scrollbar transition-all ${
-                              isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
-                            }`}
+                            className={`w-1/3 rounded-3xl p-6 flex flex-col h-full overflow-y-auto custom-scrollbar transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                              }`}
                           >
                             <div className="mb-6 shrink-0">
                               <h3 className="text-base font-black tracking-tight flex items-center gap-2">
@@ -35268,26 +35094,24 @@ Return your response strictly as a JSON object matching this schema:
                                     whileHover={{ scale: 1.01 }}
                                     whileTap={{ scale: 0.98 }}
                                     onClick={() => setSelectedTrackerSubject(sub)}
-                                    className={`w-full text-left p-3.5 rounded-2xl border transition-all duration-200 flex flex-col gap-1 ${
-                                      isSelected
+                                    className={`w-full text-left p-3.5 rounded-2xl border transition-all duration-200 flex flex-col gap-1 ${isSelected
                                         ? isDark
                                           ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white neu-pressed-dark border-blue-500/50 shadow-lg shadow-blue-950/60'
                                           : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-600/20 border-blue-600'
                                         : isDark
                                           ? 'neu-card-dark text-slate-200 border-slate-800 hover:border-slate-700'
                                           : 'neu-card-light text-slate-700 border-slate-200 hover:bg-slate-50'
-                                    }`}
+                                      }`}
                                   >
                                     <span className="text-xs font-black tracking-tight">{sub}</span>
                                     <div className="flex justify-between items-center w-full mt-1">
                                       <span className={`text-[9px] truncate max-w-[70%] font-medium ${isSelected ? 'text-blue-100' : isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                         {primarySource ? `📖 ${primarySource}` : "No source set"}
                                       </span>
-                                      <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${
-                                        isSelected
+                                      <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${isSelected
                                           ? 'text-white bg-blue-700/50'
                                           : isDark ? 'text-slate-300 bg-slate-800/80' : 'text-slate-600 bg-slate-100'
-                                      }`}>
+                                        }`}>
                                         {topicsCount} {topicsCount === 1 ? 'topic' : 'topics'}
                                       </span>
                                     </div>
@@ -35302,9 +35126,8 @@ Return your response strictly as a JSON object matching this schema:
                             initial={{ opacity: 0, x: 12 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ duration: 0.4, delay: 0.1 }}
-                            className={`w-2/3 rounded-3xl p-6 flex flex-col h-full overflow-hidden relative transition-all ${
-                              isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
-                            }`}
+                            className={`w-2/3 rounded-3xl p-6 flex flex-col h-full overflow-hidden relative transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                              }`}
                           >
                             <div className={`flex justify-between items-center border-b pb-4 mb-6 shrink-0 ${isDark ? 'border-slate-750' : 'border-slate-200/80'}`}>
                               <div>
@@ -35314,9 +35137,8 @@ Return your response strictly as a JSON object matching this schema:
                                 </h2>
                               </div>
                               {/* Subtab Switcher Pill */}
-                              <div className={`relative flex items-center p-1 rounded-2xl shrink-0 ${
-                                isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'
-                              }`}>
+                              <div className={`relative flex items-center p-1 rounded-2xl shrink-0 ${isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'
+                                }`}>
                                 <div
                                   className="absolute top-1 bottom-1 rounded-xl bg-blue-600 shadow-md transition-all"
                                   style={{
@@ -35327,18 +35149,16 @@ Return your response strictly as a JSON object matching this schema:
                                 />
                                 <button
                                   onClick={() => setSubjectTrackerSubTab('manager')}
-                                  className={`relative z-10 px-4 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center gap-1.5 ${
-                                    subjectTrackerSubTab === 'manager' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
-                                  }`}
+                                  className={`relative z-10 px-4 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center gap-1.5 ${subjectTrackerSubTab === 'manager' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
+                                    }`}
                                 >
                                   <ListChecks className="w-3.5 h-3.5" />
                                   Manager
                                 </button>
                                 <button
                                   onClick={() => setSubjectTrackerSubTab('coverage')}
-                                  className={`relative z-10 px-4 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center gap-1.5 ${
-                                    subjectTrackerSubTab === 'coverage' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
-                                  }`}
+                                  className={`relative z-10 px-4 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center gap-1.5 ${subjectTrackerSubTab === 'coverage' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
+                                    }`}
                                 >
                                   <Layers className="w-3.5 h-3.5" />
                                   Coverage
@@ -35349,16 +35169,14 @@ Return your response strictly as a JSON object matching this schema:
                             {subjectTrackerSubTab === 'manager' ? (
                               <div className="flex-grow flex gap-6 min-h-0 p-3.5">
                                 {/* Left Side: Topic Checklist & Actions */}
-                                <div className={`w-7/12 flex flex-col h-full min-h-0 rounded-2xl p-5 space-y-4 ${
-                                  isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-800 border-slate-200'
-                                }`}>
+                                <div className={`w-7/12 flex flex-col h-full min-h-0 rounded-2xl p-5 space-y-4 ${isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-800 border-slate-200'
+                                  }`}>
                                   <div className="flex justify-between items-center shrink-0">
                                     <label className={`text-[10px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Tracked Topics Checklist</label>
 
                                     {/* Sort Toggle Pill */}
-                                    <div className={`relative grid grid-cols-3 p-1 rounded-xl text-[9px] font-black uppercase tracking-wider w-[220px] ${
-                                      isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'
-                                    }`}>
+                                    <div className={`relative grid grid-cols-3 p-1 rounded-xl text-[9px] font-black uppercase tracking-wider w-[220px] ${isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'
+                                      }`}>
                                       <div
                                         className="absolute top-1 bottom-1 rounded-lg bg-blue-600 shadow-sm transition-all"
                                         style={{
@@ -35370,84 +35188,83 @@ Return your response strictly as a JSON object matching this schema:
                                       <button
                                         type="button"
                                         onClick={() => setTrackerSortBy('page')}
-                                        className={`relative z-10 py-1 text-center truncate transition-colors duration-200 ${
-                                          trackerSortBy === 'page' ? 'text-white font-black' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
-                                        }`}
+                                        className={`relative z-10 py-1 text-center truncate transition-colors duration-200 ${trackerSortBy === 'page' ? 'text-white font-black' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
+                                          }`}
                                       >
                                         Page #
                                       </button>
                                       <button
                                         type="button"
                                         onClick={() => setTrackerSortBy('uncompleted')}
-                                        className={`relative z-10 py-1 text-center truncate transition-colors duration-200 ${
-                                          trackerSortBy === 'uncompleted' ? 'text-white font-black' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
-                                        }`}
+                                        className={`relative z-10 py-1 text-center truncate transition-colors duration-200 ${trackerSortBy === 'uncompleted' ? 'text-white font-black' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
+                                          }`}
                                       >
                                         Pending
                                       </button>
                                       <button
                                         type="button"
                                         onClick={() => setTrackerSortBy('completed')}
-                                        className={`relative z-10 py-1 text-center truncate transition-colors duration-200 ${
-                                          trackerSortBy === 'completed' ? 'text-white font-black' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
-                                        }`}
+                                        className={`relative z-10 py-1 text-center truncate transition-colors duration-200 ${trackerSortBy === 'completed' ? 'text-white font-black' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
+                                          }`}
                                       >
                                         Done
                                       </button>
                                     </div>
                                   </div>
 
-                                  {/* Add Topic Form */}
-                                  <form
-                                    onSubmit={(e) => {
-                                      e.preventDefault();
-                                      const name = trackerNewTopicInput.trim();
-                                      if (!name) return;
-                                      handleAddTrackerTopic(selectedTrackerSubject, name, trackerNewTopicPage.trim(), trackerNewTopicEndPage.trim());
-                                      setTrackerNewTopicInput("");
-                                      setTrackerNewTopicPage("");
-                                      setTrackerNewTopicEndPage("");
-                                    }}
-                                    className="flex gap-2 shrink-0"
-                                  >
-                                    <input
-                                      type="text"
-                                      placeholder="Add topic (e.g. Cranial Nerves)..."
-                                      value={trackerNewTopicInput}
-                                      onChange={(e) => setTrackerNewTopicInput(e.target.value)}
-                                      className={`flex-grow p-2.5 rounded-xl text-xs font-bold outline-none transition ${
-                                        isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'
-                                      }`}
-                                    />
-                                    <input
-                                      type="number"
-                                      placeholder="Start"
-                                      value={trackerNewTopicPage}
-                                      onChange={(e) => setTrackerNewTopicPage(e.target.value)}
-                                      className={`w-16 p-2.5 rounded-xl text-xs font-bold outline-none transition text-center ${
-                                        isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'
-                                      }`}
-                                    />
-                                    <input
-                                      type="number"
-                                      placeholder="End"
-                                      value={trackerNewTopicEndPage}
-                                      onChange={(e) => setTrackerNewTopicEndPage(e.target.value)}
-                                      className={`w-16 p-2.5 rounded-xl text-xs font-bold outline-none transition text-center ${
-                                        isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'
-                                      }`}
-                                    />
-                                    <motion.button
-                                      whileHover={{ scale: 1.02 }}
-                                      whileTap={{ scale: 0.95 }}
-                                      type="submit"
-                                      className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition shrink-0 flex items-center gap-1 ${
-                                        isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300' : 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                                      }`}
+                                  {/* Add Topic Form Box */}
+                                  <div className={`p-3 rounded-2xl border transition-all ${isDark ? 'bg-slate-900/40 border-slate-800 neu-pressed-dark' : 'bg-slate-50/70 border-slate-200/80 neu-pressed-light'
+                                    } shrink-0`}>
+                                    <form
+                                      onSubmit={(e) => {
+                                        e.preventDefault();
+                                        const name = trackerNewTopicInput.trim();
+                                        if (!name) return;
+                                        handleAddTrackerTopic(selectedTrackerSubject, name, trackerNewTopicPage.trim(), trackerNewTopicEndPage.trim());
+                                        setTrackerNewTopicInput("");
+                                        setTrackerNewTopicPage("");
+                                        setTrackerNewTopicEndPage("");
+                                      }}
+                                      className="flex items-center gap-2 w-full"
                                     >
-                                      <Plus className="w-3.5 h-3.5" /> Add
-                                    </motion.button>
-                                  </form>
+                                      <input
+                                        type="text"
+                                        placeholder="Add topic (e.g. Cranial Nerves)..."
+                                        value={trackerNewTopicInput}
+                                        onChange={(e) => setTrackerNewTopicInput(e.target.value)}
+                                        className={`flex-grow min-w-0 px-3.5 py-2.5 rounded-xl text-xs font-bold outline-none transition ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'bg-white border border-slate-200 text-slate-800 placeholder-slate-400 shadow-inner'
+                                          }`}
+                                      />
+                                      <div className="flex items-center gap-1.5 shrink-0">
+                                        <input
+                                          type="number"
+                                          placeholder="Start"
+                                          value={trackerNewTopicPage}
+                                          onChange={(e) => setTrackerNewTopicPage(e.target.value)}
+                                          className={`w-20 px-2.5 py-2.5 rounded-xl text-xs font-bold outline-none transition text-center ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'bg-white border border-slate-200 text-slate-800 placeholder-slate-400 shadow-inner'
+                                            }`}
+                                        />
+                                        <span className={`text-xs font-bold ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>-</span>
+                                        <input
+                                          type="number"
+                                          placeholder="End"
+                                          value={trackerNewTopicEndPage}
+                                          onChange={(e) => setTrackerNewTopicEndPage(e.target.value)}
+                                          className={`w-20 px-2.5 py-2.5 rounded-xl text-xs font-bold outline-none transition text-center ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'bg-white border border-slate-200 text-slate-800 placeholder-slate-400 shadow-inner'
+                                            }`}
+                                        />
+                                      </div>
+                                      <motion.button
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        type="submit"
+                                        className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition shrink-0 flex items-center gap-1.5 ${isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-500/20'
+                                          }`}
+                                      >
+                                        <Plus className="w-3.5 h-3.5" /> Add
+                                      </motion.button>
+                                    </form>
+                                  </div>
 
                                   {/* List Scroll Area */}
                                   <div className="flex-grow overflow-y-auto p-3.5 custom-scrollbar space-y-3.5 min-h-0">
@@ -35480,11 +35297,10 @@ Return your response strictly as a JSON object matching this schema:
                                                 animate={{ opacity: 1, y: 0, scale: 1 }}
                                                 exit={{ opacity: 0, scale: 0.96 }}
                                                 transition={{ duration: 0.25, delay: Math.min(tIdx * 0.02, 0.2) }}
-                                                className={`rounded-2xl transition-all border ${
-                                                  isDark
+                                                className={`rounded-2xl transition-all border ${isDark
                                                     ? 'neu-card-dark text-white border-slate-800/80 hover:border-slate-750'
                                                     : 'neu-card-light text-slate-800 border-slate-200/80 hover:border-slate-300'
-                                                }`}
+                                                  }`}
                                               >
                                                 {/* Main Header Bar (Thin & Scan-friendly) */}
                                                 <div className="p-3.5 flex items-center justify-between gap-3 text-left">
@@ -35497,11 +35313,10 @@ Return your response strictly as a JSON object matching this schema:
                                                           [topicItem.name]: !prev[topicItem.name]
                                                         }));
                                                       }}
-                                                      className={`p-1.5 rounded-xl transition shrink-0 ${
-                                                        hasRevisions
+                                                      className={`p-1.5 rounded-xl transition shrink-0 ${hasRevisions
                                                           ? isDark ? 'neu-pressed-dark text-emerald-400' : 'bg-emerald-100 text-emerald-600'
                                                           : isDark ? 'neu-pressed-dark text-slate-500 hover:text-slate-300' : 'bg-slate-100 text-slate-400 hover:text-slate-600'
-                                                      }`}
+                                                        }`}
                                                     >
                                                       <CheckCircle2 className="w-4 h-4" />
                                                     </button>
@@ -35510,11 +35325,10 @@ Return your response strictly as a JSON object matching this schema:
                                                         <h4 className="text-xs font-black tracking-tight leading-snug truncate max-w-[280px]">
                                                           {topicItem.name}
                                                         </h4>
-                                                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg border ${
-                                                          topicItem.endPage
+                                                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg border ${topicItem.endPage
                                                             ? isDark ? 'text-emerald-400 bg-emerald-950/40 border-emerald-800/60' : 'text-emerald-700 bg-emerald-50 border-emerald-100'
                                                             : isDark ? 'text-amber-400 bg-amber-950/40 border-amber-800/60' : 'text-amber-700 bg-amber-50 border-amber-100'
-                                                        }`}>
+                                                          }`}>
                                                           {topicItem.page ? `p. ${topicItem.page}${topicItem.endPage ? `–${topicItem.endPage}` : ''}` : 'No pgs'} ({getTopicWeight(topicItem, topicsList)} pgs)
                                                         </span>
                                                       </div>
@@ -35531,11 +35345,10 @@ Return your response strictly as a JSON object matching this schema:
                                                           [topicItem.name]: !prev[topicItem.name]
                                                         }));
                                                       }}
-                                                      className={`px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-wider transition flex items-center gap-1.5 ${
-                                                        hasRevisions
+                                                      className={`px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-wider transition flex items-center gap-1.5 ${hasRevisions
                                                           ? isDark ? 'neu-pressed-dark text-blue-400 border border-blue-900/50' : 'bg-blue-50 text-blue-600 border border-blue-100'
                                                           : isDark ? 'neu-pressed-dark text-slate-400' : 'bg-slate-100 text-slate-500'
-                                                      }`}
+                                                        }`}
                                                     >
                                                       <Flame className={`w-3 h-3 ${hasRevisions ? 'text-amber-500' : ''}`} />
                                                       {dates.length} {dates.length === 1 ? 'rev' : 'revs'}
@@ -35547,9 +35360,8 @@ Return your response strictly as a JSON object matching this schema:
                                                       whileTap={{ scale: 0.92 }}
                                                       title="Log today's revision"
                                                       onClick={() => handleLogTrackerStudyDate(selectedTrackerSubject, topicItem.name, todayStr)}
-                                                      className={`p-1.5 rounded-xl transition ${
-                                                        isDark ? 'neu-btn-dark text-emerald-400 hover:text-emerald-300' : 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'
-                                                      }`}
+                                                      className={`p-1.5 rounded-xl transition ${isDark ? 'neu-btn-dark text-emerald-400 hover:text-emerald-300' : 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'
+                                                        }`}
                                                     >
                                                       <Plus className="w-3.5 h-3.5" />
                                                     </motion.button>
@@ -35612,9 +35424,8 @@ Return your response strictly as a JSON object matching this schema:
                                                       animate={{ height: 'auto', opacity: 1 }}
                                                       exit={{ height: 0, opacity: 0 }}
                                                       transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                                                      className={`overflow-hidden border-t px-4 py-3 space-y-3 ${
-                                                        isDark ? 'border-slate-800 bg-slate-900/60' : 'border-slate-100 bg-slate-50/70'
-                                                      }`}
+                                                      className={`overflow-hidden border-t px-4 py-3 space-y-3 ${isDark ? 'border-slate-800 bg-slate-900/60' : 'border-slate-100 bg-slate-50/70'
+                                                        }`}
                                                     >
                                                       {/* Page Range Settings */}
                                                       <div className="flex items-center gap-3 flex-wrap text-xs font-bold">
@@ -35625,9 +35436,8 @@ Return your response strictly as a JSON object matching this schema:
                                                             type="number"
                                                             value={topicItem.page || ""}
                                                             onChange={(e) => handleUpdateTrackerTopicPages(selectedTrackerSubject, topicItem.name, e.target.value, topicItem.endPage || "")}
-                                                            className={`w-20 p-1.5 rounded-xl text-center text-xs font-bold outline-none ${
-                                                              isDark ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'
-                                                            }`}
+                                                            className={`w-20 p-1.5 rounded-xl text-center text-xs font-bold outline-none ${isDark ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'
+                                                              }`}
                                                             placeholder="Start"
                                                           />
                                                         </div>
@@ -35637,9 +35447,8 @@ Return your response strictly as a JSON object matching this schema:
                                                             type="number"
                                                             value={topicItem.endPage || ""}
                                                             onChange={(e) => handleUpdateTrackerTopicPages(selectedTrackerSubject, topicItem.name, topicItem.page || "", e.target.value)}
-                                                            className={`w-20 p-1.5 rounded-xl text-center text-xs font-bold outline-none ${
-                                                              isDark ? 'neu-pressed-dark text-indigo-400' : 'neu-pressed-light text-indigo-600'
-                                                            }`}
+                                                            className={`w-20 p-1.5 rounded-xl text-center text-xs font-bold outline-none ${isDark ? 'neu-pressed-dark text-indigo-400' : 'neu-pressed-light text-indigo-600'
+                                                              }`}
                                                             placeholder={getTopicEndPagePlaceholder(topicItem, topicsList)}
                                                           />
                                                         </div>
@@ -35653,9 +35462,8 @@ Return your response strictly as a JSON object matching this schema:
                                                             {dates.map((dateVal, dIdx) => (
                                                               <span
                                                                 key={dIdx}
-                                                                className={`rounded-lg px-2 py-0.5 text-[9px] font-black flex items-center gap-1.5 border ${
-                                                                  isDark ? 'bg-emerald-950/40 text-emerald-300 border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                                                                }`}
+                                                                className={`rounded-lg px-2 py-0.5 text-[9px] font-black flex items-center gap-1.5 border ${isDark ? 'bg-emerald-950/40 text-emerald-300 border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                                                  }`}
                                                               >
                                                                 📅 {formatAppDate(dateVal)}
                                                                 <button
@@ -35674,24 +35482,22 @@ Return your response strictly as a JSON object matching this schema:
                                                       <div className="flex items-center gap-2 pt-1">
                                                         <input
                                                           type="date"
-                                                          value={trackerLogDateInputs[`${selectedTrackerSubject}_${topicItem.name}`] || new Date().toISOString().split('T')[0]}
+                                                          value={selectedDate}
                                                           onChange={(e) => {
-                                                            setTrackerLogDateInputs({ ...trackerLogDateInputs, [`${selectedTrackerSubject}_${topicItem.name}`]: e.target.value });
+                                                            trackerLogDateInputs[topicItem.name] = e.target.value;
+                                                            setTrackerLogDateInputs({ ...trackerLogDateInputs });
                                                           }}
-                                                          className={`p-1.5 rounded-xl text-[10px] font-bold outline-none flex-grow ${
-                                                            isDark ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-slate-800'
-                                                          }`}
+                                                          className={`p-1.5 rounded-xl text-[10px] font-bold outline-none flex-grow ${isDark ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-slate-800'
+                                                            }`}
                                                         />
                                                         <motion.button
                                                           whileHover={{ scale: 1.02 }}
                                                           whileTap={{ scale: 0.95 }}
                                                           onClick={() => {
-                                                            const selDate = trackerLogDateInputs[`${selectedTrackerSubject}_${topicItem.name}`] || new Date().toISOString().split('T')[0];
-                                                            handleLogTrackerStudyDate(selectedTrackerSubject, topicItem.name, selDate);
+                                                            handleLogTrackerStudyDate(selectedTrackerSubject, topicItem.name, selectedDate);
                                                           }}
-                                                          className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition flex items-center gap-1 shrink-0 ${
-                                                            isDark ? 'neu-btn-dark text-emerald-400' : 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'
-                                                          }`}
+                                                          className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition flex items-center gap-1 shrink-0 ${isDark ? 'neu-btn-dark text-emerald-400' : 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'
+                                                            }`}
                                                         >
                                                           <Plus className="w-3 h-3" /> Log Session
                                                         </motion.button>
@@ -35711,11 +35517,10 @@ Return your response strictly as a JSON object matching this schema:
                                 {/* Right Side: Source material & Gemini extractor */}
                                 <div className="w-5/12 flex flex-col gap-5 overflow-y-auto p-3.5 custom-scrollbar shrink-0">
                                   {/* Primary Source configuration card */}
-                                  <div className={`p-5 rounded-2xl space-y-3 transition-all ${
-                                    isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-800 border-slate-200'
-                                  }`}>
+                                  <div className={`p-5 rounded-2xl space-y-3 transition-all ${isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-800 border-slate-200'
+                                    }`}>
                                     <label className={`text-[10px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Primary Source Material / Textbooks</label>
-                                    <div className="grid grid-cols-12 gap-2 items-center w-full">
+                                    <div className="flex gap-2 items-center w-full">
                                       <input
                                         type="text"
                                         placeholder="e.g. Marrow Video Lectures + First Aid USMLE"
@@ -35736,9 +35541,8 @@ Return your response strictly as a JSON object matching this schema:
                                             : (subjectTrackerData.find(p => p.id === selectedTrackerSubject.trim().toLowerCase())?.primarySource || "");
                                           handleSavePrimarySource(selectedTrackerSubject, sourceVal);
                                         }}
-                                        className={`col-span-9 min-w-0 p-2.5 rounded-xl text-xs font-bold outline-none transition truncate ${
-                                          isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'
-                                        }`}
+                                        className={`w-0 min-w-0 flex-grow p-3 rounded-xl text-xs font-bold outline-none transition ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'
+                                          }`}
                                       />
                                       <motion.button
                                         whileHover={{ scale: 1.02 }}
@@ -35750,9 +35554,8 @@ Return your response strictly as a JSON object matching this schema:
                                           handleSavePrimarySource(selectedTrackerSubject, sourceVal);
                                           alert("Primary source saved successfully!");
                                         }}
-                                        className={`px-3.5 py-3 rounded-xl text-xs font-black uppercase tracking-wider transition shrink-0 flex items-center gap-1.5 ${
-                                          isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300' : 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                                        }`}
+                                        className={`px-3.5 py-3 rounded-xl text-xs font-black uppercase tracking-wider transition shrink-0 flex items-center gap-1.5 ${isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300' : 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                                          }`}
                                       >
                                         <Save className="w-3.5 h-3.5" /> Save
                                       </motion.button>
@@ -35782,11 +35585,10 @@ Return your response strictly as a JSON object matching this schema:
                                         processIndexFiles(e.clipboardData.files, selectedTrackerSubject);
                                       }
                                     }}
-                                    className={`flex flex-col gap-4 rounded-3xl p-5 outline-none transition-all duration-300 ${
-                                      isDark
+                                    className={`flex flex-col gap-4 rounded-3xl p-5 outline-none transition-all duration-300 ${isDark
                                         ? 'neu-card-dark bg-gradient-to-br from-slate-900 via-indigo-950/40 to-slate-900 border border-indigo-900/40 text-white'
                                         : 'neu-card-light bg-gradient-to-br from-violet-50/70 via-white to-indigo-50/70 border border-indigo-100 text-slate-800'
-                                    } ${isTrackerDragOver ? (isDark ? 'border-violet-500/80 bg-violet-950/40 scale-[1.02]' : 'border-violet-400 bg-violet-100/50 scale-[1.02]') : ''}`}
+                                      } ${isTrackerDragOver ? (isDark ? 'border-violet-500/80 bg-violet-950/40 scale-[1.02]' : 'border-violet-400 bg-violet-100/50 scale-[1.02]') : ''}`}
                                   >
                                     <div className="text-left">
                                       <h4 className={`text-xs font-black flex items-center gap-1.5 ${isDark ? 'text-indigo-300' : 'text-indigo-950'}`}>
