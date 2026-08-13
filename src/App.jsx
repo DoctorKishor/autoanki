@@ -10473,7 +10473,6 @@ JSON Format:
       const updates = { timerType: type };
       setTimerState(updates);
       await saveLocalTimerState(updates);
-      playStateChangeSound('reset');
 
       if (user && db) {
         const timerDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'timerState');
@@ -10912,35 +10911,52 @@ JSON Format:
         </div>
 
         {/* Tab Selector */}
-        <div className={`grid grid-cols-3 gap-1.5 p-1.5 rounded-2xl mb-6 ${
+        <div className={`relative flex items-center p-1.5 rounded-2xl mb-6 select-none ${
           isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'
         }`}>
+          {/* Single Sliding Pill Indicator */}
+          <div
+            className={`absolute top-1.5 bottom-1.5 w-[calc((100%-0.75rem)/3)] rounded-xl shadow-md ${
+              isDark ? 'neu-btn-dark border border-white/10' : 'neu-btn-light border border-white/80'
+            }`}
+            style={{
+              left: `calc(0.375rem + ${activeType === 'pomodoro' ? 0 : activeType === 'timer' ? 1 : 2} * ((100% - 0.75rem) / 3))`,
+              transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+            }}
+          />
+
           <button
+            type="button"
             onClick={() => handleSwitchTimerType('pomodoro')}
-            className={`py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition flex items-center justify-center gap-1.5 ${activeType === 'pomodoro'
-              ? isDark ? 'neu-btn-dark text-orange-400 border border-orange-500/30 shadow-md' : 'neu-btn-light text-orange-600 border border-orange-200 shadow-sm'
-              : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
-              }`}
+            className={`relative flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer flex items-center justify-center gap-1.5 z-10 transition-colors duration-300 ${
+              activeType === 'pomodoro'
+                ? (isDark ? 'text-orange-400 font-extrabold' : 'text-orange-600 font-extrabold')
+                : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800')
+            }`}
           >
             <Clock className="w-3.5 h-3.5" />
             Pomodoro
           </button>
           <button
+            type="button"
             onClick={() => handleSwitchTimerType('timer')}
-            className={`py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition flex items-center justify-center gap-1.5 ${activeType === 'timer'
-              ? isDark ? 'neu-btn-dark text-indigo-400 border border-indigo-500/30 shadow-md' : 'neu-btn-light text-indigo-600 border border-indigo-200 shadow-sm'
-              : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
-              }`}
+            className={`relative flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer flex items-center justify-center gap-1.5 z-10 transition-colors duration-300 ${
+              activeType === 'timer'
+                ? (isDark ? 'text-indigo-400 font-extrabold' : 'text-indigo-600 font-extrabold')
+                : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800')
+            }`}
           >
             <Hourglass className="w-3.5 h-3.5" />
             Timer
           </button>
           <button
+            type="button"
             onClick={() => handleSwitchTimerType('stopwatch')}
-            className={`py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition flex items-center justify-center gap-1.5 ${activeType === 'stopwatch'
-              ? isDark ? 'neu-btn-dark text-emerald-400 border border-emerald-500/30 shadow-md' : 'neu-btn-light text-emerald-600 border border-emerald-200 shadow-sm'
-              : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
-              }`}
+            className={`relative flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer flex items-center justify-center gap-1.5 z-10 transition-colors duration-300 ${
+              activeType === 'stopwatch'
+                ? (isDark ? 'text-emerald-400 font-extrabold' : 'text-emerald-600 font-extrabold')
+                : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800')
+            }`}
           >
             <Timer className="w-3.5 h-3.5" />
             Stopwatch
@@ -28181,17 +28197,25 @@ Return your response strictly as a JSON object matching this schema:
                         </div>
 
                         {/* Dual Tab Selector */}
-                        <div className={`p-1 rounded-2xl grid grid-cols-2 gap-1 max-w-[280px] w-full self-start transition-colors duration-300 ${
+                        <div className={`relative flex items-center p-1 rounded-2xl max-w-[280px] w-full self-start select-none transition-colors duration-300 ${
                           isDark ? 'neu-pressed-dark border border-white/5 bg-[#181c22]' : 'neu-pressed-light border border-white/70 bg-slate-200/60 shadow-inner'
                         }`}>
+                          {/* Single Sliding Pill Indicator */}
+                          <div
+                            className="absolute top-1 bottom-1 w-[calc(50%-0.25rem)] rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 shadow-md shadow-orange-500/20"
+                            style={{
+                              left: studyActiveTab === 'record' ? '0.25rem' : 'calc(50% + 0.125rem)',
+                              transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                            }}
+                          />
+
                           <button
                             type="button"
                             onClick={() => setStudyActiveTab('record')}
-                            style={{ transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)' }}
-                            className={`py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 active:scale-95 ${
+                            className={`relative flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 z-10 transition-colors duration-300 ${
                               studyActiveTab === 'record'
-                                ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/10 font-black'
-                                : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
+                                ? 'text-white font-black'
+                                : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
                             }`}
                           >
                             <Activity className="w-3.5 h-3.5" />
@@ -28200,11 +28224,10 @@ Return your response strictly as a JSON object matching this schema:
                           <button
                             type="button"
                             onClick={() => setStudyActiveTab('manual')}
-                            style={{ transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)' }}
-                            className={`py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 active:scale-95 ${
+                            className={`relative flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 z-10 transition-colors duration-300 ${
                               studyActiveTab === 'manual'
-                                ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/10 font-black'
-                                : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
+                                ? 'text-white font-black'
+                                : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
                             }`}
                           >
                             <Edit3 className="w-3.5 h-3.5" />
