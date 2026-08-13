@@ -98,25 +98,23 @@ export default function SmartReviewHub({
             leeches.push(topicObj);
           }
 
-          const hasBeenReviewed = !!(
-            topic.lastReviewed ||
-            topic.lastReviewDate ||
-            (topic.repetitionCount && topic.repetitionCount > 0) ||
-            (topic.reviewCount && topic.reviewCount > 0) ||
-            (topic.studyDates && topic.studyDates.length > 0)
-          );
+          const isNewItem = (!topic.reviewCount || topic.reviewCount === 0) && !topic.lastReviewDate && (!topic.studyDates || topic.studyDates.length === 0);
 
-          if (!hasBeenReviewed && !topic.nextReviewDue) {
+          if (isNewItem) {
             newItems.push(topicObj);
             newPages += topicWeight;
           } else if (topic.nextReviewDue) {
             if (topic.nextReviewDue < todayStr) {
               overdue.push(topicObj);
               reviewPages += topicWeight;
-            } else if (topic.nextReviewDue === todayStr) {
+            } else {
               dueToday.push(topicObj);
               reviewPages += topicWeight;
             }
+          } else {
+            // Fallback: If topic is not new and has no future nextReviewDue date, include in Due Today so it NEVER goes invisible!
+            dueToday.push(topicObj);
+            reviewPages += topicWeight;
           }
         });
       }

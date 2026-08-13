@@ -366,6 +366,7 @@ export const recalculateTopicFSRSFromLogs = (topic, topicLogs, fsrsConfig, subje
     cleaned.reviewCount = 0;
     cleaned.lapses = 0;
     cleaned.isLeech = false;
+    cleaned.studyDates = [];
     return cleaned;
   }
 
@@ -383,10 +384,15 @@ export const recalculateTopicFSRSFromLogs = (topic, topicLogs, fsrsConfig, subje
   const weights = fsrsConfig?.weights || DEFAULT_FSRS6_WEIGHTS;
 
   let currentFsrsState = null;
+  const uniqueStudyDates = [];
 
   sortedLogs.forEach(log => {
     const rating = typeof log.rating === 'number' ? log.rating : 3;
     const dateStr = log.dateStr || (log.timestamp ? log.timestamp.split('T')[0] : new Date().toISOString().split('T')[0]);
+
+    if (dateStr && !uniqueStudyDates.includes(dateStr)) {
+      uniqueStudyDates.push(dateStr);
+    }
 
     currentFsrsState = calculateNextFSRSState(
       currentFsrsState,
@@ -404,6 +410,7 @@ export const recalculateTopicFSRSFromLogs = (topic, topicLogs, fsrsConfig, subje
 
   return {
     ...topic,
-    ...currentFsrsState
+    ...currentFsrsState,
+    studyDates: uniqueStudyDates.sort()
   };
 };
