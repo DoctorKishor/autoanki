@@ -128,7 +128,8 @@ const MANUAL_CONTENTS = {
   }
 };
 
-export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveConfig }) {
+export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveConfig, themeMode = 'dark' }) {
+  const isDark = themeMode === 'dark';
   const [activeCategory, setActiveCategory] = useState('dailyLimits');
   const [activeScopeTab, setActiveScopeTab] = useState('preset');
   const [activeManualSection, setActiveManualSection] = useState(null);
@@ -149,36 +150,38 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
   };
 
   const getWorkloadLevel = (dr) => {
-    if (dr < 0.78) return { label: '🟢 Light Workload', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/30' };
-    if (dr <= 0.88) return { label: '🔵 Moderate Workload', color: 'text-sky-400', bg: 'bg-sky-500/10 border-sky-500/30' };
-    if (dr <= 0.93) return { label: '🟠 Heavy Workload', color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/30' };
-    return { label: '🔴 Extreme / Burnout Risk', color: 'text-rose-400', bg: 'bg-rose-500/10 border-rose-500/30' };
+    if (dr < 0.78) return { label: '🟢 Light Workload', color: 'text-emerald-500', bg: isDark ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-emerald-50 border-emerald-200' };
+    if (dr <= 0.88) return { label: '🔵 Moderate Workload', color: 'text-sky-500', bg: isDark ? 'bg-sky-500/10 border-sky-500/30' : 'bg-sky-50 border-sky-200' };
+    if (dr <= 0.93) return { label: '🟠 Heavy Workload', color: 'text-amber-500', bg: isDark ? 'bg-amber-500/10 border-amber-500/30' : 'bg-amber-50 border-amber-200' };
+    return { label: '🔴 Extreme / Burnout Risk', color: 'text-rose-500', bg: isDark ? 'bg-rose-500/10 border-rose-500/30' : 'bg-rose-50 border-rose-200' };
   };
 
   const currentWorkload = getWorkloadLevel(tempConfig.globalDesiredRetention || 0.90);
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+      <div className={`fixed inset-0 z-[9999] flex items-center justify-center p-4 backdrop-blur-md ${isDark ? 'bg-slate-950/80' : 'bg-slate-900/40'}`}>
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 16 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 16 }}
           transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-          className="relative w-full max-w-4xl h-[85vh] flex flex-col bg-[#222730] border border-slate-700/60 rounded-2xl shadow-2xl overflow-hidden text-slate-200"
+          className={`relative w-full max-w-4xl h-[85vh] flex flex-col rounded-2xl shadow-2xl overflow-hidden border ${
+            isDark ? 'bg-[#222730] border-slate-700/60 text-slate-200 neu-card-dark' : 'bg-[#e6ecf5] border-slate-200/80 text-slate-800 neu-card-light'
+          }`}
         >
           {/* Header Bar */}
-          <div className="px-6 py-4 border-b border-slate-700/60 flex items-center justify-between bg-slate-900/50">
+          <div className={`px-6 py-4 border-b flex items-center justify-between ${isDark ? 'border-slate-700/60 bg-slate-900/50' : 'border-slate-200 bg-white/60'}`}>
             <div className="flex items-center gap-3">
               <span className="text-2xl">⚙️</span>
               <div>
-                <h2 className="text-xl font-bold text-white tracking-wide">FSRS Spaced Repetition Settings</h2>
-                <p className="text-xs text-slate-400">Configure engine rules, page limits, retention targets & load balancing</p>
+                <h2 className={`text-xl font-bold tracking-wide ${isDark ? 'text-white' : 'text-slate-900'}`}>FSRS Spaced Repetition Settings</h2>
+                <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Configure engine rules, page limits, retention targets & load balancing</p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              className={`p-2 rounded-lg transition-colors ${isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200'}`}
             >
               ✕
             </button>
@@ -187,7 +190,9 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
           {/* Body Container */}
           <div className="flex flex-1 min-h-0 overflow-hidden">
             {/* Left Sidebar Category Tabs */}
-            <div className="w-56 border-r border-slate-700/60 bg-slate-900/30 p-3 space-y-1 overflow-y-auto no-scrollbar">
+            <div className={`w-56 border-r p-3 space-y-1 overflow-y-auto no-scrollbar ${
+              isDark ? 'border-slate-700/60 bg-slate-900/30' : 'border-slate-200 bg-slate-100/60'
+            }`}>
               {CATEGORIES.map(cat => {
                 const isActive = activeCategory === cat.id;
                 return (
@@ -196,8 +201,8 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
                     onClick={() => setActiveCategory(cat.id)}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all text-left relative ${
                       isActive
-                        ? 'text-white bg-indigo-600/30 border border-indigo-500/40 shadow-sm font-semibold'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 border border-transparent'
+                        ? isDark ? 'text-white bg-indigo-600/30 border border-indigo-500/40 shadow-sm font-semibold' : 'text-indigo-900 bg-indigo-100 border border-indigo-300 shadow-sm font-semibold'
+                        : isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 border border-transparent' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 border border-transparent'
                     }`}
                   >
                     <span>{cat.icon}</span>
@@ -205,7 +210,7 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
                     {isActive && (
                       <motion.div
                         layoutId="activeCategoryPill"
-                        className="absolute inset-0 bg-indigo-500/10 rounded-xl border border-indigo-400/30"
+                        className={`absolute inset-0 rounded-xl border ${isDark ? 'bg-indigo-500/10 border-indigo-400/30' : 'bg-indigo-500/10 border-indigo-300'}`}
                         transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                       />
                     )}
@@ -215,11 +220,11 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
             </div>
 
             {/* Right Main Settings Panel */}
-            <div className="flex-1 p-6 overflow-y-auto no-scrollbar space-y-6 bg-[#222730]">
+            <div className={`flex-1 p-6 overflow-y-auto no-scrollbar space-y-6 ${isDark ? 'bg-[#222730]' : 'bg-[#e6ecf5]'}`}>
               {/* Category Header with Question Mark ? Manual Button */}
-              <div className="flex items-center justify-between pb-3 border-b border-slate-700/40">
+              <div className={`flex items-center justify-between pb-3 border-b ${isDark ? 'border-slate-700/40' : 'border-slate-300/60'}`}>
                 <div className="flex items-center gap-2">
-                  <span className="text-lg font-bold text-white">
+                  <span className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
                     {CATEGORIES.find(c => c.id === activeCategory)?.icon}{' '}
                     {CATEGORIES.find(c => c.id === activeCategory)?.label}
                   </span>
@@ -227,7 +232,9 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
                 <button
                   onClick={() => setActiveManualSection(activeCategory)}
                   title="Open In-App User Manual"
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/40 text-indigo-300 text-xs font-medium transition-all"
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
+                    isDark ? 'bg-indigo-500/20 hover:bg-indigo-500/30 border-indigo-500/40 text-indigo-300' : 'bg-indigo-50 hover:bg-indigo-100 border-indigo-200 text-indigo-700'
+                  }`}
                 >
                   <span className="font-bold">?</span>
                   <span>User Manual</span>

@@ -17,6 +17,7 @@ export function getTopicPageInfo(topic) {
 }
 
 export default function SmartReviewHub({
+  themeMode = 'dark',
   subjectTrackerData = [],
   studyLogs = [],
   fsrsConfig = {},
@@ -31,6 +32,7 @@ export default function SmartReviewHub({
   studySchedule = [],
   onUpdateSubjectDoc
 }) {
+  const isDark = themeMode === 'dark';
   const [subTab, setSubTab] = useState('queue'); // 'queue', 'analytics', 'leeches'
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [mnemonicNotes, setMnemonicNotes] = useState({});
@@ -171,7 +173,7 @@ export default function SmartReviewHub({
   const isNewOverCap = !isNewUnlimited && totalNewPagesToday > (dailyLimits.newPagesPerDay || 10);
 
   return (
-    <div className="w-full space-y-6 text-slate-200 relative">
+    <div className={`w-full space-y-6 relative ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
       {/* Interactive Visual Toast Notification */}
       <AnimatePresence>
         {toastMessage && (
@@ -180,7 +182,9 @@ export default function SmartReviewHub({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
             transition={{ duration: 0.25 }}
-            className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl bg-[#222730] text-white text-xs font-black shadow-2xl backdrop-blur-md border border-slate-700/80 flex items-center gap-3 neu-card-dark"
+            className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl text-xs font-black shadow-2xl backdrop-blur-md border flex items-center gap-3 ${
+              isDark ? 'bg-[#222730] text-white border-slate-700/80 neu-card-dark' : 'bg-white text-slate-800 border-slate-200/80 neu-card-light'
+            }`}
           >
             <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
             <span className="truncate max-w-xs">{toastMessage}</span>
@@ -190,7 +194,7 @@ export default function SmartReviewHub({
                   if (typeof onUndoRating === 'function') onUndoRating();
                   setToastMessage('');
                 }}
-                className="ml-2 px-2.5 py-1 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[10px] uppercase font-black tracking-wider transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
+                className="ml-2 px-2.5 py-1 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-500 border border-amber-500/40 text-[10px] uppercase font-black tracking-wider transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
               >
                 <RotateCcw className="w-3 h-3" />
                 Undo
@@ -206,6 +210,7 @@ export default function SmartReviewHub({
         onClose={() => setIsSettingsOpen(false)}
         fsrsConfig={fsrsConfig}
         onSaveConfig={onSaveConfig}
+        themeMode={themeMode}
       />
 
       {/* Header & Controls Bar */}
@@ -213,14 +218,16 @@ export default function SmartReviewHub({
         initial={{ opacity: 0, y: -12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, ease: 'easeOut' }}
-        className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-[#222730] p-5 rounded-3xl border border-slate-700/60 shadow-lg neu-card-dark shrink-0"
+        className={`flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-5 rounded-3xl border shadow-lg shrink-0 ${
+          isDark ? 'bg-[#222730] border-slate-700/60 neu-card-dark' : 'neu-card-light border-slate-200/80 bg-[#e6ecf5]'
+        }`}
       >
         <div>
-          <h2 className="text-xl font-black text-white tracking-tight flex items-center gap-2.5">
-            <Brain className="w-6 h-6 text-indigo-400 animate-pulse" />
+          <h2 className={`text-xl font-black tracking-tight flex items-center gap-2.5 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            <Brain className="w-6 h-6 text-indigo-500 animate-pulse" />
             <span>Smart Repetition Hub</span>
           </h2>
-          <p className="text-xs text-slate-400 font-medium mt-0.5">
+          <p className={`text-xs font-medium mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
             FSRS-6 Memory Engine • Load-Balanced Queue • Chapter Revision
           </p>
         </div>
@@ -234,8 +241,12 @@ export default function SmartReviewHub({
             title="Undo last rating"
             className={`px-3.5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-1.5 ${
               canUndo
-                ? 'bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/40 shadow-md active:scale-95 cursor-pointer'
-                : 'bg-slate-900/60 text-slate-600 border border-slate-800 cursor-not-allowed'
+                ? isDark
+                  ? 'neu-btn-dark text-amber-300 border border-amber-500/40 shadow-md active:scale-95 cursor-pointer'
+                  : 'neu-btn-light text-amber-600 border border-amber-400/50 shadow-md active:scale-95 cursor-pointer'
+                : isDark
+                  ? 'bg-slate-900/60 text-slate-600 border border-slate-800 cursor-not-allowed'
+                  : 'bg-slate-200/60 text-slate-400 border border-slate-300 cursor-not-allowed'
             }`}
           >
             <RotateCcw className="w-3.5 h-3.5" />
@@ -249,8 +260,12 @@ export default function SmartReviewHub({
             title="Redo rating"
             className={`px-3.5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-1.5 ${
               canRedo
-                ? 'bg-slate-800 hover:bg-slate-700 text-sky-300 border border-sky-500/40 shadow-md active:scale-95 cursor-pointer'
-                : 'bg-slate-900/60 text-slate-600 border border-slate-800 cursor-not-allowed'
+                ? isDark
+                  ? 'neu-btn-dark text-sky-300 border border-sky-500/40 shadow-md active:scale-95 cursor-pointer'
+                  : 'neu-btn-light text-sky-600 border border-sky-400/50 shadow-md active:scale-95 cursor-pointer'
+                : isDark
+                  ? 'bg-slate-900/60 text-slate-600 border border-slate-800 cursor-not-allowed'
+                  : 'bg-slate-200/60 text-slate-400 border border-slate-300 cursor-not-allowed'
             }`}
           >
             <RotateCw className="w-3.5 h-3.5" />
@@ -258,15 +273,19 @@ export default function SmartReviewHub({
           </button>
 
           {/* Auto-Sync Badge */}
-          <div className="px-3.5 py-2.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-sm">
-            <Zap className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+          <div className={`px-3.5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-sm border ${
+            isDark ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+          }`}>
+            <Zap className="w-3.5 h-3.5 text-emerald-500 animate-pulse" />
             <span>Auto-Synced</span>
           </div>
 
           {/* FSRS Settings Button */}
           <button
             onClick={() => setIsSettingsOpen(true)}
-            className="px-4 py-2.5 rounded-2xl text-xs font-bold uppercase tracking-wider bg-slate-800 hover:bg-slate-700 text-white shadow-sm transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer border border-slate-700 active:scale-95"
+            className={`px-4 py-2.5 rounded-2xl text-xs font-bold uppercase tracking-wider shadow-sm transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer border active:scale-95 ${
+              isDark ? 'neu-btn-dark text-white border-slate-700' : 'neu-btn-light text-slate-800 border-slate-300'
+            }`}
           >
             <span>⚙️</span>
             <span>Settings</span>
@@ -279,7 +298,9 @@ export default function SmartReviewHub({
         initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.3, delay: 0.08 }}
-        className="relative flex bg-slate-900/90 p-1.5 rounded-2xl border border-slate-700/60 shadow-inner w-full md:w-auto self-start overflow-x-auto no-scrollbar"
+        className={`relative flex p-1.5 rounded-2xl border w-full md:w-auto self-start overflow-x-auto no-scrollbar ${
+          isDark ? 'bg-slate-900/90 border-slate-700/60 shadow-inner' : 'neu-pressed-light border-slate-200/80'
+        }`}
       >
         <div
           className="absolute top-1.5 bottom-1.5 bg-indigo-600 rounded-xl shadow-md"
@@ -294,7 +315,7 @@ export default function SmartReviewHub({
           type="button"
           onClick={() => setSubTab('queue')}
           className={`relative z-10 flex-1 px-4 sm:px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-colors duration-200 whitespace-nowrap ${
-            subTab === 'queue' ? 'text-white' : 'text-slate-400 hover:text-slate-200'
+            subTab === 'queue' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-900'
           }`}
         >
           ⚡ Daily Study Hub ({overdueTopics.length + dueTodayTopics.length})
@@ -304,7 +325,7 @@ export default function SmartReviewHub({
           type="button"
           onClick={() => setSubTab('analytics')}
           className={`relative z-10 flex-1 px-4 sm:px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-colors duration-200 whitespace-nowrap ${
-            subTab === 'analytics' ? 'text-white' : 'text-slate-400 hover:text-slate-200'
+            subTab === 'analytics' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-900'
           }`}
         >
           📊 Analytics & Forecast
@@ -314,7 +335,7 @@ export default function SmartReviewHub({
           type="button"
           onClick={() => setSubTab('leeches')}
           className={`relative z-10 flex-1 px-4 sm:px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-colors duration-200 whitespace-nowrap ${
-            subTab === 'leeches' ? 'text-white' : 'text-slate-400 hover:text-slate-200'
+            subTab === 'leeches' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-900'
           }`}
         >
           ⚠️ Leech Revision ({leechTopics.length})
@@ -336,24 +357,26 @@ export default function SmartReviewHub({
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.05 }}
-              className="p-5 rounded-2xl bg-[#222730] border border-slate-700/60 shadow-md neu-card-dark space-y-3"
+              className={`p-5 rounded-2xl border shadow-md space-y-3 ${
+                isDark ? 'bg-[#222730] border-slate-700/60 neu-card-dark' : 'bg-white border-slate-200/80 neu-card-light'
+              }`}
             >
-              <div className="flex justify-between items-center text-xs font-black uppercase tracking-wider text-slate-300">
+              <div className={`flex justify-between items-center text-xs font-black uppercase tracking-wider ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                 <span className="flex items-center gap-2">
-                  <BookOpen className="w-4 h-4 text-indigo-400" /> Review Pages Load
+                  <BookOpen className="w-4 h-4 text-indigo-500" /> Review Pages Load
                 </span>
                 <div className="flex items-center gap-2">
                   {isReviewOverCap && (
-                    <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 text-[10px] font-black uppercase border border-amber-500/40 animate-pulse">
+                    <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-600 text-[10px] font-black uppercase border border-amber-500/40 animate-pulse">
                       ⚠️ Over Cap by {totalReviewPagesToday - dailyLimits.maxReviewPagesPerDay} pgs
                     </span>
                   )}
-                  <span className="text-indigo-400">
+                  <span className="text-indigo-500 font-bold">
                     {isReviewUnlimited ? `${totalReviewPagesToday} pages (Unlimited)` : `${totalReviewPagesToday} / ${dailyLimits.maxReviewPagesPerDay} pages`}
                   </span>
                 </div>
               </div>
-              <div className="w-full bg-slate-900 h-2.5 rounded-full overflow-hidden border border-slate-800">
+              <div className={`w-full h-2.5 rounded-full overflow-hidden border ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-slate-200 border-slate-300/60'}`}>
                 <div
                   className={`h-full rounded-full transition-all duration-500 ${isReviewOverCap ? 'bg-amber-500' : 'bg-indigo-500'}`}
                   style={{ width: `${isReviewUnlimited ? 100 : Math.min(100, Math.round((totalReviewPagesToday / (dailyLimits.maxReviewPagesPerDay || 1)) * 100))}%` }}
@@ -366,24 +389,26 @@ export default function SmartReviewHub({
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="p-5 rounded-2xl bg-[#222730] border border-slate-700/60 shadow-md neu-card-dark space-y-3"
+              className={`p-5 rounded-2xl border shadow-md space-y-3 ${
+                isDark ? 'bg-[#222730] border-slate-700/60 neu-card-dark' : 'bg-white border-slate-200/80 neu-card-light'
+              }`}
             >
-              <div className="flex justify-between items-center text-xs font-black uppercase tracking-wider text-slate-300">
+              <div className={`flex justify-between items-center text-xs font-black uppercase tracking-wider ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                 <span className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-emerald-400" /> New Topic Pages
+                  <Sparkles className="w-4 h-4 text-emerald-500" /> New Topic Pages
                 </span>
                 <div className="flex items-center gap-2">
                   {isNewOverCap && (
-                    <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 text-[10px] font-black uppercase border border-amber-500/40 animate-pulse">
+                    <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-600 text-[10px] font-black uppercase border border-amber-500/40 animate-pulse">
                       ⚠️ Over Cap by {totalNewPagesToday - dailyLimits.newPagesPerDay} pgs
                     </span>
                   )}
-                  <span className="text-emerald-400">
+                  <span className="text-emerald-500 font-bold">
                     {isNewUnlimited ? `${totalNewPagesToday} pages (Unlimited)` : `${totalNewPagesToday} / ${dailyLimits.newPagesPerDay} pages`}
                   </span>
                 </div>
               </div>
-              <div className="w-full bg-slate-900 h-2.5 rounded-full overflow-hidden border border-slate-800">
+              <div className={`w-full h-2.5 rounded-full overflow-hidden border ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-slate-200 border-slate-300/60'}`}>
                 <div
                   className={`h-full rounded-full transition-all duration-500 ${isNewOverCap ? 'bg-amber-500' : 'bg-emerald-500'}`}
                   style={{ width: `${isNewUnlimited ? 100 : Math.min(100, Math.round((totalNewPagesToday / (dailyLimits.newPagesPerDay || 1)) * 100))}%` }}
@@ -398,16 +423,20 @@ export default function SmartReviewHub({
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.15 }}
-              className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-slate-900 to-amber-500/10 border border-amber-500/30 flex items-center justify-between shadow-sm"
+              className={`p-4 rounded-2xl border flex items-center justify-between shadow-sm ${
+                isDark
+                  ? 'bg-gradient-to-r from-amber-500/10 via-slate-900 to-amber-500/10 border-amber-500/30'
+                  : 'bg-gradient-to-r from-amber-500/10 via-amber-100/50 to-amber-500/10 border-amber-300'
+              }`}
             >
               <div className="flex items-center gap-3">
-                <Calendar className="w-5 h-5 text-amber-400" />
+                <Calendar className="w-5 h-5 text-amber-500" />
                 <div>
-                  <div className="text-xs font-black text-amber-300 uppercase tracking-wider">Upcoming Exam Target</div>
-                  <div className="text-sm font-bold text-white">{nextExam.subject || nextExam.title || 'CAMP Exam Target'}</div>
+                  <div className="text-xs font-black text-amber-600 uppercase tracking-wider">Upcoming Exam Target</div>
+                  <div className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{nextExam.subject || nextExam.title || 'CAMP Exam Target'}</div>
                 </div>
               </div>
-              <span className="px-3 py-1 rounded-xl bg-amber-500/20 text-amber-300 text-xs font-black">
+              <span className="px-3 py-1 rounded-xl bg-amber-500/20 text-amber-600 text-xs font-black">
                 {nextExam.date || 'Scheduled'}
               </span>
             </motion.div>
@@ -418,13 +447,13 @@ export default function SmartReviewHub({
             {/* Overdue Queue */}
             {overdueTopics.length > 0 && (
               <div className="space-y-3">
-                <h4 className="text-xs font-black uppercase tracking-wider text-rose-400 flex items-center gap-2">
+                <h4 className="text-xs font-black uppercase tracking-wider text-rose-500 flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4" /> Overdue Topics ({overdueTopics.length})
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <AnimatePresence mode="popLayout">
                     {overdueTopics.map((topic, idx) => (
-                      <TopicCard key={topic.id || (topic.subject + '_' + topic.name)} topic={topic} onRate={onRateTopic} isOverdue index={idx} />
+                      <TopicCard key={topic.id || (topic.subject + '_' + topic.name)} topic={topic} onRate={onRateTopic} isOverdue index={idx} isDark={isDark} />
                     ))}
                   </AnimatePresence>
                 </div>
@@ -433,19 +462,21 @@ export default function SmartReviewHub({
 
             {/* Due Today Queue */}
             <div className="space-y-3">
-              <h4 className="text-xs font-black uppercase tracking-wider text-indigo-400 flex items-center gap-2">
+              <h4 className="text-xs font-black uppercase tracking-wider text-indigo-500 flex items-center gap-2">
                 <Clock className="w-4 h-4" /> Due Today ({dueTodayTopics.length})
               </h4>
               {dueTodayTopics.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <AnimatePresence mode="popLayout">
                     {dueTodayTopics.map((topic, idx) => (
-                      <TopicCard key={topic.id || (topic.subject + '_' + topic.name)} topic={topic} onRate={onRateTopic} index={idx} />
+                      <TopicCard key={topic.id || (topic.subject + '_' + topic.name)} topic={topic} onRate={onRateTopic} index={idx} isDark={isDark} />
                     ))}
                   </AnimatePresence>
                 </div>
               ) : (
-                <div className="p-5 rounded-2xl bg-slate-900/50 border border-slate-700/40 text-xs text-slate-400 text-center font-semibold">
+                <div className={`p-5 rounded-2xl border text-xs text-center font-semibold ${
+                  isDark ? 'bg-slate-900/50 border-slate-700/40 text-slate-400' : 'bg-white/80 border-slate-200/80 text-slate-600 neu-pressed-light'
+                }`}>
                   🎉 All reviews for today are completed! Check out New Topics below or review your analytics.
                 </div>
               )}
@@ -454,13 +485,13 @@ export default function SmartReviewHub({
             {/* New Topics Queue */}
             {newTopics.length > 0 && (
               <div className="space-y-3">
-                <h4 className="text-xs font-black uppercase tracking-wider text-emerald-400 flex items-center gap-2">
+                <h4 className="text-xs font-black uppercase tracking-wider text-emerald-500 flex items-center gap-2">
                   <Sparkles className="w-4 h-4" /> New Topics Available ({newTopics.length})
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <AnimatePresence mode="popLayout">
                     {newTopics.slice(0, 6).map((topic, idx) => (
-                      <TopicCard key={topic.id || (topic.subject + '_' + topic.name)} topic={topic} onRate={onRateTopic} isNew index={idx} />
+                      <TopicCard key={topic.id || (topic.subject + '_' + topic.name)} topic={topic} onRate={onRateTopic} isNew index={idx} isDark={isDark} />
                     ))}
                   </AnimatePresence>
                 </div>
@@ -476,6 +507,7 @@ export default function SmartReviewHub({
           subjectTrackerData={subjectTrackerData}
           studyLogs={studyLogs}
           fsrsConfig={fsrsConfig}
+          themeMode={themeMode}
         />
       )}
 
@@ -487,12 +519,14 @@ export default function SmartReviewHub({
           transition={{ duration: 0.3 }}
           className="space-y-4"
         >
-          <div className="p-4 rounded-2xl bg-[#222730] border border-slate-700/60 flex items-center justify-between shadow-md">
+          <div className={`p-4 rounded-2xl border flex items-center justify-between shadow-md ${
+            isDark ? 'bg-[#222730] border-slate-700/60 neu-card-dark' : 'bg-white border-slate-200/80 neu-card-light'
+          }`}>
             <div>
-              <h3 className="text-sm font-black text-white flex items-center gap-2">
+              <h3 className={`text-sm font-black flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
                 <span>⚠️</span> Leech Topics Focus Workspace ({leechTopics.length})
               </h3>
-              <p className="text-xs text-slate-400">Topics with high lapse counts needing mnemonic notes or focused review</p>
+              <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Topics with high lapse counts needing mnemonic notes or focused review</p>
             </div>
           </div>
 
@@ -504,37 +538,43 @@ export default function SmartReviewHub({
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.25, delay: idx * 0.04 }}
-                  className="p-5 rounded-2xl bg-[#222730] border border-amber-500/40 shadow-md neu-card-dark space-y-3"
+                  className={`p-5 rounded-2xl border shadow-md space-y-3 ${
+                    isDark ? 'bg-[#222730] border-amber-500/40 neu-card-dark' : 'bg-white border-amber-300 neu-card-light'
+                  }`}
                 >
                   <div className="flex justify-between items-start">
                     <div>
-                      <div className="text-sm font-black text-amber-300">{item.name}</div>
-                      <div className="text-xs text-slate-400">{item.subject} • <span className="font-mono text-amber-400 font-bold">{getTopicPageInfo(item).pageLabel}</span></div>
+                      <div className="text-sm font-black text-amber-600">{item.name}</div>
+                      <div className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{item.subject} • <span className="font-mono text-amber-500 font-bold">{getTopicPageInfo(item).pageLabel}</span></div>
                     </div>
-                    <span className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-400 text-xs font-black uppercase">
+                    <span className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-600 text-xs font-black uppercase">
                       {item.lapses || item.lapsesCount || 0} Lapses
                     </span>
                   </div>
 
                   {/* Mnemonic Note Input */}
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Mnemonic Note / Revision Memory Cue</label>
+                    <label className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Mnemonic Note / Revision Memory Cue</label>
                     <textarea
                       value={mnemonicNotes[item.id || item.name] !== undefined ? mnemonicNotes[item.id || item.name] : (item.mnemonicNote || '')}
                       onChange={(e) => handleMnemonicChange(item, e.target.value)}
                       onBlur={(e) => handleMnemonicChange(item, e.target.value)}
                       placeholder="Write a mnemonic or key memory clue..."
-                      className="w-full p-2.5 rounded-xl bg-slate-900/80 border border-slate-700 text-xs text-slate-200 focus:outline-none focus:border-amber-500/60 resize-none h-16 no-scrollbar"
+                      className={`w-full p-2.5 rounded-xl text-xs focus:outline-none focus:border-amber-500/60 resize-none h-16 no-scrollbar ${
+                        isDark ? 'bg-slate-900/80 border border-slate-700 text-slate-200' : 'bg-slate-50 border border-slate-300 text-slate-800 neu-pressed-light'
+                      }`}
                     />
                   </div>
                 </motion.div>
               ))}
             </div>
           ) : (
-            <div className="p-8 rounded-2xl bg-slate-900/40 border border-slate-700/40 text-center space-y-2">
-              <CheckCircle className="w-8 h-8 text-emerald-400 mx-auto" />
-              <div className="text-sm font-black text-white">No Problematic Leech Topics Detected</div>
-              <p className="text-xs text-slate-400">All textbook chapter topics are within acceptable lapse thresholds!</p>
+            <div className={`p-8 rounded-2xl border text-center space-y-2 ${
+              isDark ? 'bg-slate-900/40 border-slate-700/40' : 'bg-white/80 border-slate-200/80 neu-pressed-light'
+            }`}>
+              <CheckCircle className="w-8 h-8 text-emerald-500 mx-auto" />
+              <div className={`text-sm font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>No Problematic Leech Topics Detected</div>
+              <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>All textbook chapter topics are within acceptable lapse thresholds!</p>
             </div>
           )}
         </motion.div>
@@ -544,7 +584,7 @@ export default function SmartReviewHub({
 }
 
 // Sub-component: Individual Topic Queue Card
-function TopicCard({ topic, onRate, isOverdue = false, isNew = false, index = 0 }) {
+function TopicCard({ topic, onRate, isOverdue = false, isNew = false, index = 0, isDark = true }) {
   const { pageLabel, pageCount } = getTopicPageInfo(topic);
 
   return (
@@ -554,24 +594,28 @@ function TopicCard({ topic, onRate, isOverdue = false, isNew = false, index = 0 
       exit={{ opacity: 0, scale: 0.9, y: 12, transition: { duration: 0.2 } }}
       transition={{ duration: 0.25, delay: index * 0.04 }}
       whileHover={{ y: -2 }}
-      className={`p-4 rounded-2xl bg-[#222730] border shadow-md neu-card-dark space-y-3 transition-transform ${
-        isOverdue ? 'border-rose-500/40' : isNew ? 'border-emerald-500/40' : 'border-slate-700/60'
+      className={`p-4 rounded-2xl border shadow-md space-y-3 transition-transform ${
+        isDark ? 'bg-[#222730] neu-card-dark' : 'bg-white neu-card-light'
+      } ${
+        isOverdue ? 'border-rose-500/40' : isNew ? 'border-emerald-500/40' : isDark ? 'border-slate-700/60' : 'border-slate-200/80'
       }`}
     >
       <div className="flex justify-between items-start gap-2">
         <div>
-          <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-800 text-indigo-300 border border-slate-700">
+          <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border ${
+            isDark ? 'bg-slate-800 text-indigo-300 border-slate-700' : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+          }`}>
             {topic.subject}
           </span>
-          <h5 className="text-sm font-bold text-white mt-1.5">{topic.name}</h5>
-          <p className="text-[11px] text-slate-400 font-medium mt-0.5">
-            <span className="font-mono text-indigo-300 font-bold">{pageLabel}</span> • {pageCount} {pageCount === 1 ? 'page' : 'pages'}
+          <h5 className={`text-sm font-bold mt-1.5 ${isDark ? 'text-white' : 'text-slate-900'}`}>{topic.name}</h5>
+          <p className={`text-[11px] font-medium mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            <span className={`font-mono font-bold ${isDark ? 'text-indigo-300' : 'text-indigo-600'}`}>{pageLabel}</span> • {pageCount} {pageCount === 1 ? 'page' : 'pages'}
           </p>
         </div>
 
         <div className="text-right">
-          <div className="text-[11px] font-mono text-slate-400">S: <span className="text-sky-400 font-bold">{topic.stability != null ? topic.stability.toFixed(1) : 'New'}d</span></div>
-          <div className="text-[11px] font-mono text-slate-400">D: <span className="text-amber-400 font-bold">{topic.difficulty != null ? topic.difficulty.toFixed(1) : '5.0'}</span></div>
+          <div className={`text-[11px] font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>S: <span className="text-sky-500 font-bold">{topic.stability != null ? topic.stability.toFixed(1) : 'New'}d</span></div>
+          <div className={`text-[11px] font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>D: <span className="text-amber-500 font-bold">{topic.difficulty != null ? topic.difficulty.toFixed(1) : '5.0'}</span></div>
         </div>
       </div>
 
@@ -579,25 +623,25 @@ function TopicCard({ topic, onRate, isOverdue = false, isNew = false, index = 0 
       <div className="grid grid-cols-4 gap-1.5 pt-1">
         <button
           onClick={() => onRate && onRate(topic, 1)}
-          className="py-1.5 rounded-xl text-[10px] font-black bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 active:scale-95 transition-all cursor-pointer"
+          className="py-1.5 rounded-xl text-[10px] font-black bg-rose-500/20 hover:bg-rose-500/30 text-rose-500 border border-rose-500/30 active:scale-95 transition-all cursor-pointer"
         >
           Again (1)
         </button>
         <button
           onClick={() => onRate && onRate(topic, 2)}
-          className="py-1.5 rounded-xl text-[10px] font-black bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 active:scale-95 transition-all cursor-pointer"
+          className="py-1.5 rounded-xl text-[10px] font-black bg-amber-500/20 hover:bg-amber-500/30 text-amber-600 border border-amber-500/30 active:scale-95 transition-all cursor-pointer"
         >
           Hard (2)
         </button>
         <button
           onClick={() => onRate && onRate(topic, 3)}
-          className="py-1.5 rounded-xl text-[10px] font-black bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 active:scale-95 transition-all cursor-pointer"
+          className="py-1.5 rounded-xl text-[10px] font-black bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-600 border border-indigo-500/30 active:scale-95 transition-all cursor-pointer"
         >
           Good (3)
         </button>
         <button
           onClick={() => onRate && onRate(topic, 4)}
-          className="py-1.5 rounded-xl text-[10px] font-black bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 active:scale-95 transition-all cursor-pointer"
+          className="py-1.5 rounded-xl text-[10px] font-black bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-600 border border-emerald-500/30 active:scale-95 transition-all cursor-pointer"
         >
           Easy (4)
         </button>

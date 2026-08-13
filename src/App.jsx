@@ -12717,6 +12717,7 @@ JSON Format:
   const renderSmartReviewTab = (isMobileView = false) => {
     return (
       <SmartReviewHub
+        themeMode={settingsThemeMode}
         subjectTrackerData={subjectTrackerData}
         studyLogs={studyLogs}
         fsrsConfig={fsrsConfig}

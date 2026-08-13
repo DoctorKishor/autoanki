@@ -3,7 +3,8 @@ import { motion } from 'framer-motion';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, PieChart, Pie } from 'recharts';
 import { getTopicPageWeight } from '../utils/pageUtils';
 
-export default function FsrsStatsTab({ subjectTrackerData = [], studyLogs = [], fsrsConfig = {} }) {
+export default function FsrsStatsTab({ subjectTrackerData = [], studyLogs = [], fsrsConfig = {}, themeMode = 'dark' }) {
+  const isDark = themeMode === 'dark';
   const [timeRange, setTimeRange] = useState('1M'); // '1M', '3M', '1Y', 'ALL'
 
   // Filter study logs based on selected time range
@@ -135,7 +136,7 @@ export default function FsrsStatsTab({ subjectTrackerData = [], studyLogs = [], 
       title: 'True Retention',
       icon: '🎯',
       value: `${retentionRate}%`,
-      valueColor: 'text-emerald-400',
+      valueColor: isDark ? 'text-emerald-400' : 'text-emerald-600',
       subtext: `Target: ${Math.round((fsrsConfig.globalDesiredRetention || 0.9) * 100)}%`,
       delay: 0.05
     },
@@ -143,7 +144,7 @@ export default function FsrsStatsTab({ subjectTrackerData = [], studyLogs = [], 
       title: 'Reviews Completed',
       icon: '📈',
       value: totalReviews,
-      valueColor: 'text-indigo-400',
+      valueColor: isDark ? 'text-indigo-400' : 'text-indigo-600',
       subtext: `${topicStats.totalTopicsCount} active textbook topics`,
       delay: 0.1
     },
@@ -151,7 +152,7 @@ export default function FsrsStatsTab({ subjectTrackerData = [], studyLogs = [], 
       title: 'Avg Stability (S)',
       icon: '🧠',
       value: `${topicStats.avgStability} days`,
-      valueColor: 'text-sky-400',
+      valueColor: isDark ? 'text-sky-400' : 'text-sky-600',
       subtext: 'Recall threshold retention duration',
       delay: 0.15
     },
@@ -159,7 +160,7 @@ export default function FsrsStatsTab({ subjectTrackerData = [], studyLogs = [], 
       title: 'Avg Difficulty (D)',
       icon: '⚖️',
       value: `${topicStats.avgDifficulty} / 10`,
-      valueColor: 'text-amber-400',
+      valueColor: isDark ? 'text-amber-400' : 'text-amber-600',
       subtext: 'Topic complexity weight score',
       delay: 0.2
     }
@@ -170,30 +171,34 @@ export default function FsrsStatsTab({ subjectTrackerData = [], studyLogs = [], 
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: 'easeOut' }}
-      className="space-y-5 sm:space-y-6 w-full text-slate-200"
+      className={`space-y-5 sm:space-y-6 w-full ${isDark ? 'text-slate-200' : 'text-slate-800'}`}
     >
       {/* Header Bar - Staggered Motion */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#222730] p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-700/60 shadow-lg neu-card-dark"
+        className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border shadow-lg ${
+          isDark ? 'bg-[#222730] border-slate-700/60 neu-card-dark' : 'bg-white border-slate-200/80 neu-card-light'
+        }`}
       >
         <div>
-          <h3 className="text-base sm:text-lg font-black text-white tracking-tight flex items-center gap-2">
+          <h3 className={`text-base sm:text-lg font-black tracking-tight flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
             <span>📊</span> FSRS Analytics & Memory Forecast
           </h3>
-          <p className="text-[11px] text-slate-400 font-medium">Track recall performance, memory stability, and projected study load</p>
+          <p className={`text-[11px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Track recall performance, memory stability, and projected study load</p>
         </div>
 
         {/* Sliding Pill Switcher for Time Range */}
-        <div className="relative flex bg-slate-900/90 p-1 rounded-xl sm:rounded-2xl border border-slate-700/60 w-full sm:w-auto shadow-inner">
+        <div className={`relative flex p-1 rounded-xl sm:rounded-2xl border w-full sm:w-auto ${
+          isDark ? 'bg-slate-900/90 border-slate-700/60 shadow-inner' : 'neu-pressed-light border-slate-200/80'
+        }`}>
           {['1M', '3M', '1Y', 'ALL'].map((range, idx) => (
             <button
               key={range}
               onClick={() => setTimeRange(range)}
               className={`flex-1 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs font-black uppercase tracking-wider transition-all relative z-10 ${
-                timeRange === range ? 'text-white' : 'text-slate-400 hover:text-slate-200'
+                timeRange === range ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-900'
               }`}
             >
               {range === '1M' ? '1 Month' : range === '3M' ? '3 Months' : range === '1Y' ? '1 Year' : 'All Time'}
@@ -219,14 +224,16 @@ export default function FsrsStatsTab({ subjectTrackerData = [], studyLogs = [], 
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 0.35, delay: card.delay, ease: 'easeOut' }}
             whileHover={{ y: -3, scale: 1.01 }}
-            className="p-4 sm:p-5 rounded-2xl bg-[#222730] border border-slate-700/60 shadow-md neu-card-dark space-y-2 relative overflow-hidden active:scale-98 transition-transform"
+            className={`p-4 sm:p-5 rounded-2xl border shadow-md space-y-2 relative overflow-hidden active:scale-98 transition-transform ${
+              isDark ? 'bg-[#222730] border-slate-700/60 neu-card-dark' : 'bg-white border-slate-200/80 neu-card-light'
+            }`}
           >
             <div className="flex items-center justify-between">
-              <span className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-wider">{card.title}</span>
+              <span className={`text-[10px] sm:text-xs font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{card.title}</span>
               <span className="text-xl">{card.icon}</span>
             </div>
             <div className={`text-2xl sm:text-3xl font-black ${card.valueColor}`}>{card.value}</div>
-            <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium">{card.subtext}</p>
+            <p className={`text-[10px] sm:text-[11px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{card.subtext}</p>
           </motion.div>
         ))}
       </div>
@@ -238,22 +245,31 @@ export default function FsrsStatsTab({ subjectTrackerData = [], studyLogs = [], 
           initial={{ opacity: 0, y: 16, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.4, delay: 0.25 }}
-          className="lg:col-span-2 p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-[#222730] border border-slate-700/60 shadow-lg neu-card-dark space-y-4"
+          className={`lg:col-span-2 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border shadow-lg space-y-4 ${
+            isDark ? 'bg-[#222730] border-slate-700/60 neu-card-dark' : 'bg-white border-slate-200/80 neu-card-light'
+          }`}
         >
           <div className="flex items-center justify-between">
-            <h4 className="text-xs sm:text-sm font-black text-white tracking-wide flex items-center gap-2 uppercase">
+            <h4 className={`text-xs sm:text-sm font-black tracking-wide flex items-center gap-2 uppercase ${isDark ? 'text-white' : 'text-slate-900'}`}>
               <span>📅</span> 30-Day Upcoming Review Forecast
             </h4>
-            <span className="text-[10px] sm:text-xs text-slate-400 font-bold">Pages per day</span>
+            <span className={`text-[10px] sm:text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Pages per day</span>
           </div>
 
           <div className="h-56 sm:h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={forecastData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <XAxis dataKey="label" stroke="#64748b" fontSize={10} tickLine={false} />
-                <YAxis stroke="#64748b" fontSize={10} tickLine={false} />
+                <XAxis dataKey="label" stroke={isDark ? "#64748b" : "#94a3b8"} fontSize={10} tickLine={false} />
+                <YAxis stroke={isDark ? "#64748b" : "#94a3b8"} fontSize={10} tickLine={false} />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '0.75rem', color: '#f8fafc', fontSize: '12px' }}
+                  contentStyle={{
+                    backgroundColor: isDark ? '#0f172a' : '#ffffff',
+                    borderColor: isDark ? '#334155' : '#cbd5e1',
+                    borderRadius: '0.75rem',
+                    color: isDark ? '#f8fafc' : '#0f172a',
+                    fontSize: '12px',
+                    boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'
+                  }}
                   formatter={(val) => [`${val} pages`, 'Review Load']}
                 />
                 <Bar dataKey="pages" fill="#6366f1" radius={[4, 4, 0, 0]}>
@@ -274,9 +290,11 @@ export default function FsrsStatsTab({ subjectTrackerData = [], studyLogs = [], 
           initial={{ opacity: 0, y: 16, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.4, delay: 0.3 }}
-          className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-[#222730] border border-slate-700/60 shadow-lg neu-card-dark space-y-4"
+          className={`p-4 sm:p-6 rounded-2xl sm:rounded-3xl border shadow-lg space-y-4 ${
+            isDark ? 'bg-[#222730] border-slate-700/60 neu-card-dark' : 'bg-white border-slate-200/80 neu-card-light'
+          }`}
         >
-          <h4 className="text-xs sm:text-sm font-black text-white tracking-wide flex items-center gap-2 uppercase">
+          <h4 className={`text-xs sm:text-sm font-black tracking-wide flex items-center gap-2 uppercase ${isDark ? 'text-white' : 'text-slate-900'}`}>
             <span>🍕</span> Rating Breakdown
           </h4>
 
@@ -298,13 +316,20 @@ export default function FsrsStatsTab({ subjectTrackerData = [], studyLogs = [], 
                     ))}
                   </Pie>
                   <Tooltip
-                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '0.75rem', color: '#f8fafc', fontSize: '12px' }}
+                    contentStyle={{
+                      backgroundColor: isDark ? '#0f172a' : '#ffffff',
+                      borderColor: isDark ? '#334155' : '#cbd5e1',
+                      borderRadius: '0.75rem',
+                      color: isDark ? '#f8fafc' : '#0f172a',
+                      fontSize: '12px',
+                      boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'
+                    }}
                   />
                 </PieChart>
               </ResponsiveContainer>
             </div>
           ) : (
-            <div className="h-56 sm:h-64 flex items-center justify-center text-xs text-slate-500 font-semibold">
+            <div className={`h-56 sm:h-64 flex items-center justify-center text-xs font-semibold ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
               No study logs recorded yet.
             </div>
           )}
@@ -316,13 +341,15 @@ export default function FsrsStatsTab({ subjectTrackerData = [], studyLogs = [], 
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.35 }}
-        className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-[#222730] border border-slate-700/60 shadow-lg neu-card-dark space-y-4"
+        className={`p-4 sm:p-6 rounded-2xl sm:rounded-3xl border shadow-lg space-y-4 ${
+          isDark ? 'bg-[#222730] border-slate-700/60 neu-card-dark' : 'bg-white border-slate-200/80 neu-card-light'
+        }`}
       >
         <div className="flex items-center justify-between">
-          <h4 className="text-xs sm:text-sm font-black text-white tracking-wide flex items-center gap-2 uppercase">
+          <h4 className={`text-xs sm:text-sm font-black tracking-wide flex items-center gap-2 uppercase ${isDark ? 'text-white' : 'text-slate-900'}`}>
             <span>⚠️</span> Problematic Topics & Leeches ({topicStats.leechList.length})
           </h4>
-          <span className="text-[10px] sm:text-xs text-slate-400 font-semibold">Topics needing extra revision</span>
+          <span className={`text-[10px] sm:text-xs font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Topics needing extra revision</span>
         </div>
 
         {topicStats.leechList.length > 0 ? (
@@ -333,20 +360,24 @@ export default function FsrsStatsTab({ subjectTrackerData = [], studyLogs = [], 
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.25, delay: 0.04 * idx }}
-                className="p-3.5 rounded-xl bg-slate-900/60 border border-amber-500/30 flex items-start justify-between shadow-sm active:scale-98 transition-transform"
+                className={`p-3.5 rounded-xl border flex items-start justify-between shadow-sm active:scale-98 transition-transform ${
+                  isDark ? 'bg-slate-900/60 border-amber-500/30' : 'bg-amber-50/50 border-amber-200'
+                }`}
               >
                 <div>
-                  <div className="text-xs font-black text-amber-300">{item.name}</div>
-                  <div className="text-[10px] text-slate-400 font-medium">{item.subject} • Page {item.page || '?'}</div>
+                  <div className="text-xs font-black text-amber-600">{item.name}</div>
+                  <div className={`text-[10px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{item.subject} • Page {item.page || '?'}</div>
                 </div>
-                <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-400 text-[10px] font-black uppercase">
+                <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-600 text-[10px] font-black uppercase">
                   {item.lapses} lapses
                 </span>
               </motion.div>
             ))}
           </div>
         ) : (
-          <div className="p-4 rounded-xl bg-slate-900/40 border border-slate-700/40 text-xs text-slate-400 font-semibold text-center">
+          <div className={`p-4 rounded-xl border text-xs font-semibold text-center ${
+            isDark ? 'bg-slate-900/40 border-slate-700/40 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600 neu-pressed-light'
+          }`}>
             🎉 Great job! No problematic leech topics detected in your study queue.
           </div>
         )}
