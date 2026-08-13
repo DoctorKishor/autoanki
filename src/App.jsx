@@ -8133,7 +8133,7 @@ export default function App() {
     if (['dashboard', 'cards', 'library', 'studyRoom', 'analytics', 'export', 'prompt', 'obsOverlay'].includes(currentTab)) {
       loadAllCards();
     }
-    if (['dashboard', 'studyRoom', 'analytics', 'correlation', 'obsOverlay'].includes(currentTab)) {
+    if (['dashboard', 'studyRoom', 'analytics', 'correlation', 'obsOverlay', 'smartRepetition'].includes(currentTab)) {
       loadStudyLogs();
     }
   }, [currentTab, loadAllCards, loadPages, loadStudyLogs]);

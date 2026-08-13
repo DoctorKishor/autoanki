@@ -7,7 +7,21 @@ export default function FsrsStatsTab({ subjectTrackerData = [], studyLogs = [], 
 
   // Filter study logs based on selected time range
   const filteredLogs = useMemo(() => {
-    if (!studyLogs || studyLogs.length === 0) return [];
+    let logsArray = [];
+    if (Array.isArray(studyLogs)) {
+      logsArray = studyLogs;
+    } else if (studyLogs && typeof studyLogs === 'object') {
+      const vals = Object.values(studyLogs);
+      vals.forEach(val => {
+        if (Array.isArray(val)) {
+          logsArray.push(...val);
+        } else if (val && typeof val === 'object') {
+          logsArray.push(val);
+        }
+      });
+    }
+
+    if (logsArray.length === 0) return [];
     const now = new Date();
     let cutoff = new Date();
 
@@ -16,8 +30,9 @@ export default function FsrsStatsTab({ subjectTrackerData = [], studyLogs = [], 
     else if (timeRange === '1Y') cutoff.setDate(now.getDate() - 365);
     else cutoff = new Date(0); // All time
 
-    return studyLogs.filter(log => {
-      const logDate = new Date(log.timestamp || log.date);
+    return logsArray.filter(log => {
+      if (!log) return false;
+      const logDate = new Date(log.timestamp || log.date || log.createdAt || 0);
       return logDate >= cutoff;
     });
   }, [studyLogs, timeRange]);
