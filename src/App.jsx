@@ -12459,6 +12459,29 @@ JSON Format:
 
 
   const renderSmartReviewTab = (isMobileView = false) => {
+    return (
+      <SmartReviewHub
+        subjectTrackerData={subjectTrackerData}
+        studyLogs={studyLogs}
+        fsrsConfig={fsrsConfig}
+        onSaveConfig={updateFsrsConfig}
+        batchedReviews={batchedReviews}
+        onSyncBatchedReviews={handleSyncBatchedReviews}
+        isSaving={isSaving}
+        onRateTopic={(topic, rating) => {
+          const todayStr = new Date().toISOString().split('T')[0];
+          const newReview = {
+            id: 'review_' + Math.random().toString(36).substring(2, 9),
+            subject: topic.subject,
+            topicName: topic.name,
+            dateStr: todayStr,
+            rating
+          };
+          setBatchedReviews(prev => [...prev, newReview]);
+        }}
+        studySchedule={studySchedule}
+      />
+    );
     const todayStrLocal = new Date().toISOString().split('T')[0];
 
     const sortedExams = [...examProfiles].sort((a, b) => a.date.localeCompare(b.date));
