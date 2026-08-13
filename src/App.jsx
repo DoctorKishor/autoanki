@@ -10448,13 +10448,18 @@ JSON Format:
 
   // Switch Active Timer Type (Pomodoro / Timer / Stopwatch)
   const handleSwitchTimerType = async (type) => {
-    if (!user || !db) return;
     try {
-      const timerDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'timerState');
-      await setDoc(timerDocRef, {
-        timerType: type
-      }, { merge: true });
+      const updates = { timerType: type };
+      setTimerState(updates);
+      await saveLocalTimerState(updates);
       playStateChangeSound('reset');
+
+      if (user && db) {
+        const timerDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'timerState');
+        await setDoc(timerDocRef, updates, { merge: true }).catch(err => {
+          console.error("Cloud timer sync error:", err);
+        });
+      }
     } catch (err) {
       console.error("Error switching timer type:", err);
     }
@@ -10463,18 +10468,25 @@ JSON Format:
   // Fallbacks mapped to keep header controls and other places working seamlessly
   const handleStartTimer = async (durationVal = null, modeVal = 'study') => {
     if (durationVal !== null) {
-      if (!user || !db) return;
       try {
-        const timerDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'timerState');
-        await setDoc(timerDocRef, {
+        const updates = {
           timerType: 'pomodoro',
-          status: 'running',
-          duration: durationVal,
-          timeLeft: durationVal,
-          timeLeftAtStart: durationVal,
-          startedAt: Date.now(),
-          mode: modeVal
-        }, { merge: true });
+          pomodoroStatus: 'running',
+          pomodoroDuration: durationVal,
+          pomodoroTimeLeft: durationVal,
+          pomodoroTimeLeftAtStart: durationVal,
+          pomodoroStartedAt: Date.now(),
+          pomodoroMode: modeVal
+        };
+        setTimerState(updates);
+        await saveLocalTimerState(updates);
+
+        if (user && db) {
+          const timerDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'timerState');
+          await setDoc(timerDocRef, updates, { merge: true }).catch(err => {
+            console.error("Cloud timer sync error:", err);
+          });
+        }
       } catch (err) {
         console.error("Error starting synchronized timer fallback:", err);
       }
