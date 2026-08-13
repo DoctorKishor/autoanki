@@ -132,7 +132,8 @@ export default function FsrsStatsTab({ subjectTrackerData = [], studyLogs = [], 
       if (subDoc.topics) {
         const topicsList = Object.values(subDoc.topics);
         topicsList.forEach(topic => {
-          if (topic.nextReviewDue && daysMap[topic.nextReviewDue]) {
+          // Only forecast upcoming reviews for topics that have completed at least one review session
+          if (topic.nextReviewDue && (topic.reviewCount || 0) > 0 && topic.lastReviewDate && daysMap[topic.nextReviewDue]) {
             daysMap[topic.nextReviewDue].count += 1;
             const pageLen = getTopicPageWeight(topic, topicsList);
             daysMap[topic.nextReviewDue].pages += pageLen;
