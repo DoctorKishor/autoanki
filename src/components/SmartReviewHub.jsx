@@ -209,6 +209,28 @@ export default function SmartReviewHub({
     }
   };
 
+  const handleRemoveNewTopic = (topicToRemove) => {
+    if (!topicToRemove) return;
+    const todayStr = getLocalDateStr();
+    const cleanName = topicToRemove.name ? topicToRemove.name.trim().toLowerCase() : '';
+    const topicId = topicToRemove.id || `${topicToRemove.subject}_${topicToRemove.name}`;
+    const subName = topicToRemove.subject || '';
+
+    setActiveNewTopicIds(prev => {
+      const next = new Set(prev);
+      next.delete(topicId);
+      next.delete(cleanName);
+      next.delete(`${subName}_${topicToRemove.name}`);
+      next.delete(`${subName.toLowerCase()}_${cleanName}`);
+
+      saveActiveNewTopicIds(todayStr, Array.from(next)).catch(err => console.error("Failed to update active new topics in IndexedDB:", err));
+      return next;
+    });
+
+    setToastMessage(`Removed "${topicToRemove.name}" from today's study list`);
+    setTimeout(() => setToastMessage(''), 2500);
+  };
+
   const isReviewUnlimited = (dailyLimits.maxReviewPagesPerDay || 30) >= 9999;
   const isNewUnlimited = (dailyLimits.newPagesPerDay || 10) >= 9999;
   const isReviewOverCap = !isReviewUnlimited && totalReviewPagesToday > (dailyLimits.maxReviewPagesPerDay || 30);
@@ -554,7 +576,15 @@ export default function SmartReviewHub({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <AnimatePresence mode="popLayout">
                     {newTopics.slice(0, 6).map((topic, idx) => (
-                      <TopicCard key={topic.id || (topic.subject + '_' + topic.name)} topic={topic} onRate={onRateTopic} isNew index={idx} isDark={isDark} />
+                      <TopicCard
+                        key={topic.id || (topic.subject + '_' + topic.name)}
+                        topic={topic}
+                        onRate={onRateTopic}
+                        onRemove={handleRemoveNewTopic}
+                        isNew
+                        index={idx}
+                        isDark={isDark}
+                      />
                     ))}
                   </AnimatePresence>
                 </div>
@@ -685,7 +715,7 @@ export default function SmartReviewHub({
 }
 
 // Sub-component: Individual Topic Queue Card
-function TopicCard({ topic, onRate, isOverdue = false, isNew = false, index = 0, isDark = true }) {
+function TopicCard({ topic, onRate, onRemove, isOverdue = false, isNew = false, index = 0, isDark = true }) {
   const { pageLabel, pageCount } = getTopicPageInfo(topic);
 
   // A topic is truly reviewed only if reviewCount > 0 AND it has a lastReviewDate AND is not in New queue
@@ -717,13 +747,34 @@ function TopicCard({ topic, onRate, isOverdue = false, isNew = false, index = 0,
           </p>
         </div>
 
-        <div className="text-right">
-          <div className={`text-[11px] font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-            S: <span className="text-sky-500 font-bold">{isReviewed && topic.stability != null ? `${topic.stability.toFixed(1)}d` : 'New'}</span>
+        <div className="flex items-center gap-2">
+          <div className="text-right">
+            <div className={`text-[11px] font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              S: <span className="text-sky-500 font-bold">{isReviewed && topic.stability != null ? `${topic.stability.toFixed(1)}d` : 'New'}</span>
+            </div>
+            <div className={`text-[11px] font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              D: <span className="text-amber-500 font-bold">{isReviewed && topic.difficulty != null ? topic.difficulty.toFixed(1) : 'Unstudied'}</span>
+            </div>
           </div>
-          <div className={`text-[11px] font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-            D: <span className="text-amber-500 font-bold">{isReviewed && topic.difficulty != null ? topic.difficulty.toFixed(1) : 'Unstudied'}</span>
-          </div>
+
+          {/* Remove button for New Topics */}
+          {isNew && onRemove && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemove(topic);
+              }}
+              title="Remove from Today's Queue"
+              className={`p-1 rounded-xl border transition-all cursor-pointer ${
+                isDark
+                  ? 'bg-slate-800/80 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border-slate-700 hover:border-rose-500/40'
+                  : 'bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-600 border-slate-200 hover:border-rose-300'
+              }`}
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
 
