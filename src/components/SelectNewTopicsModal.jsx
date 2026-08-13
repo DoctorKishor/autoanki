@@ -650,15 +650,15 @@ Format response strictly as JSON with this schema:
                     </button>
 
                     <button
-                      onClick={() => setAiStrategyMode('exam_sprint')}
+                      onClick={() => setAiStrategyMode('pyq_weightage')}
                       className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                        aiStrategyMode === 'exam_sprint'
+                        aiStrategyMode === 'pyq_weightage'
                           ? 'bg-amber-500/20 border-amber-500/60 text-amber-400'
                           : isDark ? 'bg-slate-800/60 border-slate-700 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-600'
                       }`}
                     >
-                      <div className="text-xs font-bold">🎯 Exam Target Sprint</div>
-                      <div className="text-[10px] opacity-80 mt-0.5">Prioritizes upcoming exam targets</div>
+                      <div className="text-xs font-bold">🏆 High-Yield PYQ Weightage</div>
+                      <div className="text-[10px] opacity-80 mt-0.5">Prioritizes NEET-PG / INI-CET high-yield topics</div>
                     </button>
                   </div>
                 </div>
@@ -911,16 +911,16 @@ Format response strictly as JSON with this schema:
                 }`}>
                   <div className="flex items-center gap-2">
                     <span className="px-2.5 py-0.5 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-black">
-                      🎯 Mode 3
+                      🏆 Mode 3
                     </span>
                     <h4 className={`text-xs font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                      Exam Target Sprint
+                      High-Yield PYQ Weightage Optimizer
                     </h4>
                   </div>
-                  <p className="text-[11px] font-semibold text-amber-500">What it means: <span className={isDark ? 'text-slate-300 font-normal' : 'text-slate-700 font-normal'}>Prioritizes new topics relevant to your upcoming scheduled exam target.</span></p>
-                  <p className="text-[11px] font-semibold text-amber-500">How it works: <span className={isDark ? 'text-slate-300 font-normal' : 'text-slate-700 font-normal'}>The AI inspects your upcoming target exam schedule (from studySchedule) and picks high-yield unstudied topics required for that specific target.</span></p>
-                  <p className="text-[11px] font-semibold text-amber-500">Example: <span className={isDark ? 'text-indigo-300 font-normal italic' : 'text-indigo-700 font-normal italic'}>If your Orthopedics exam is in 10 days, the AI prioritizes unstudied Orthopedics chapters within your daily page limit.</span></p>
-                  <p className="text-[11px] font-semibold text-amber-500">Best used for: <span className={isDark ? 'text-emerald-400 font-normal' : 'text-emerald-700 font-normal'}>Fast exam preparation and target deadline sprints.</span></p>
+                  <p className="text-[11px] font-semibold text-amber-500">What it means: <span className={isDark ? 'text-slate-300 font-normal' : 'text-slate-700 font-normal'}>Prioritizes unstudied topics based on historical NEET-PG & INI-CET Previous Year Question (PYQ) weightage and high-yield blueprints.</span></p>
+                  <p className="text-[11px] font-semibold text-amber-500">How it works: <span className={isDark ? 'text-slate-300 font-normal' : 'text-slate-700 font-normal'}>The AI evaluates your unstudied topics catalog and selects chapters from high-weightage subjects (Pathology, Pharmacology, PSM, OBG, Surgery, Medicine, Microbiology) and core high-frequency exam topics.</span></p>
+                  <p className="text-[11px] font-semibold text-amber-500">Example: <span className={isDark ? 'text-indigo-300 font-normal italic' : 'text-indigo-700 font-normal italic'}>If you have unstudied topics across multiple subjects, the AI prioritizes Pharmacology: Autonomic Nervous System or Pathology: Renal Disorders over low-yield topics.</span></p>
+                  <p className="text-[11px] font-semibold text-amber-500">Best used for: <span className={isDark ? 'text-emerald-400 font-normal' : 'text-emerald-700 font-normal'}>Maximizing mark yield per hour studied for NEET-PG and INI-CET.</span></p>
                 </div>
               </div>
 
