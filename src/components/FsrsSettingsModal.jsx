@@ -245,7 +245,9 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
               {activeCategory === 'dailyLimits' && (
                 <div className="space-y-6">
                   {/* Scope Selector Pills */}
-                  <div className="flex p-1 bg-slate-900/60 rounded-xl border border-slate-700/50 w-fit">
+                  <div className={`flex p-1 rounded-xl border w-fit ${
+                    isDark ? 'bg-slate-900/60 border-slate-700/50' : 'neu-pressed-light border-slate-200/80'
+                  }`}>
                     {['preset', 'subject', 'today'].map(scope => (
                       <button
                         key={scope}
@@ -253,7 +255,7 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
                         className={`px-4 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all ${
                           activeScopeTab === scope
                             ? 'bg-indigo-600 text-white shadow-md'
-                            : 'text-slate-400 hover:text-white'
+                            : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
                         }`}
                       >
                         {scope === 'preset' ? 'Preset (Global)' : scope === 'subject' ? 'This Subject' : 'Today Only'}
@@ -262,8 +264,10 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-4 rounded-xl bg-slate-900/40 border border-slate-700/40 space-y-2">
-                      <label className="text-xs font-semibold text-slate-300">New Topic Pages / Day</label>
+                    <div className={`p-4 rounded-xl border space-y-2 ${
+                      isDark ? 'bg-slate-900/40 border-slate-700/40' : 'bg-white border-slate-200/80 neu-card-light'
+                    }`}>
+                      <label className={`text-xs font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>New Topic Pages / Day</label>
                       <input
                         type="number"
                         min="1"
@@ -273,14 +277,18 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
                           ...tempConfig,
                           dailyLimits: { ...tempConfig.dailyLimits, newPagesPerDay: parseInt(e.target.value, 10) || 1 }
                         })}
-                        className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-sm font-semibold focus:outline-none focus:border-indigo-500"
+                        className={`w-full px-3 py-2 rounded-lg text-sm font-semibold focus:outline-none focus:border-indigo-500 border ${
+                          isDark ? 'bg-slate-950 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-800 neu-pressed-light'
+                        }`}
                       />
-                      <p className="text-[11px] text-slate-400">Max new chapter pages introduced daily.</p>
-                      <p className="text-[10px] text-indigo-300 font-semibold mt-1">💡 Set to 9999 to remove the cap (unlimited)</p>
+                      <p className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Max new chapter pages introduced daily.</p>
+                      <p className={`text-[10px] font-semibold mt-1 ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>💡 Set to 9999 to remove the cap (unlimited)</p>
                     </div>
 
-                    <div className="p-4 rounded-xl bg-slate-900/40 border border-slate-700/40 space-y-2">
-                      <label className="text-xs font-semibold text-slate-300">Maximum Review Pages / Day</label>
+                    <div className={`p-4 rounded-xl border space-y-2 ${
+                      isDark ? 'bg-slate-900/40 border-slate-700/40' : 'bg-white border-slate-200/80 neu-card-light'
+                    }`}>
+                      <label className={`text-xs font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Maximum Review Pages / Day</label>
                       <input
                         type="number"
                         min="1"
@@ -290,18 +298,22 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
                           ...tempConfig,
                           dailyLimits: { ...tempConfig.dailyLimits, maxReviewPagesPerDay: parseInt(e.target.value, 10) || 1 }
                         })}
-                        className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-sm font-semibold focus:outline-none focus:border-indigo-500"
+                        className={`w-full px-3 py-2 rounded-lg text-sm font-semibold focus:outline-none focus:border-indigo-500 border ${
+                          isDark ? 'bg-slate-950 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-800 neu-pressed-light'
+                        }`}
                       />
-                      <p className="text-[11px] text-slate-400">Max review page load cap daily.</p>
-                      <p className="text-[10px] text-indigo-300 font-semibold mt-1">💡 Set to 9999 to remove the cap (unlimited)</p>
+                      <p className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Max review page load cap daily.</p>
+                      <p className={`text-[10px] font-semibold mt-1 ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>💡 Set to 9999 to remove the cap (unlimited)</p>
                     </div>
                   </div>
 
                   <div className="space-y-3 pt-2">
-                    <label className="flex items-center justify-between p-3 rounded-xl bg-slate-900/40 border border-slate-700/40 cursor-pointer">
+                    <label className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer ${
+                      isDark ? 'bg-slate-900/40 border-slate-700/40' : 'bg-white border-slate-200/80 neu-card-light'
+                    }`}>
                       <div>
-                        <div className="text-xs font-semibold text-slate-200">New topics ignore review limit</div>
-                        <div className="text-[11px] text-slate-400">Show new topics even when daily review page limit is reached</div>
+                        <div className={`text-xs font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>New topics ignore review limit</div>
+                        <div className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Show new topics even when daily review page limit is reached</div>
                       </div>
                       <input
                         type="checkbox"
@@ -310,14 +322,16 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
                           ...tempConfig,
                           dailyLimits: { ...tempConfig.dailyLimits, newIgnoreReviewLimit: e.target.checked }
                         })}
-                        className="w-4 h-4 rounded text-indigo-600 border-slate-700 focus:ring-indigo-500"
+                        className="w-4 h-4 rounded text-indigo-600 border-slate-400 focus:ring-indigo-500"
                       />
                     </label>
 
-                    <label className="flex items-center justify-between p-3 rounded-xl bg-slate-900/40 border border-slate-700/40 cursor-pointer">
+                    <label className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer ${
+                      isDark ? 'bg-slate-900/40 border-slate-700/40' : 'bg-white border-slate-200/80 neu-card-light'
+                    }`}>
                       <div>
-                        <div className="text-xs font-semibold text-slate-200">Limits start from top</div>
-                        <div className="text-[11px] text-slate-400">Enforce top-level subject page caps when studying sub-topics</div>
+                        <div className={`text-xs font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>Limits start from top</div>
+                        <div className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Enforce top-level subject page caps when studying sub-topics</div>
                       </div>
                       <input
                         type="checkbox"
@@ -326,7 +340,7 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
                           ...tempConfig,
                           dailyLimits: { ...tempConfig.dailyLimits, limitsStartFromTop: e.target.checked }
                         })}
-                        className="w-4 h-4 rounded text-indigo-600 border-slate-700 focus:ring-indigo-500"
+                        className="w-4 h-4 rounded text-indigo-600 border-slate-400 focus:ring-indigo-500"
                       />
                     </label>
                   </div>
@@ -336,8 +350,10 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
               {/* ──────────────── CATEGORY 2: NEW TOPICS ──────────────── */}
               {activeCategory === 'newTopics' && (
                 <div className="space-y-4">
-                  <div className="p-4 rounded-xl bg-slate-900/40 border border-slate-700/40 space-y-2">
-                    <label className="text-xs font-semibold text-slate-300">Learning steps (Topic Chapter Delays)</label>
+                  <div className={`p-4 rounded-xl border space-y-2 ${
+                    isDark ? 'bg-slate-900/40 border-slate-700/40' : 'bg-white border-slate-200/80 neu-card-light'
+                  }`}>
+                    <label className={`text-xs font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Learning steps (Topic Chapter Delays)</label>
                     <input
                       type="text"
                       value={tempConfig.newTopics?.learningSteps ?? '1d'}
@@ -346,25 +362,31 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
                         newTopics: { ...tempConfig.newTopics, learningSteps: e.target.value }
                       })}
                       placeholder="e.g. 1d or 2h 1d"
-                      className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-sm font-semibold focus:outline-none focus:border-indigo-500"
+                      className={`w-full px-3 py-2 rounded-lg text-sm font-semibold focus:outline-none focus:border-indigo-500 border ${
+                        isDark ? 'bg-slate-950 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-800 neu-pressed-light'
+                      }`}
                     />
-                    <p className="text-[11px] text-slate-400">Initial delays for new textbook chapters (e.g. 1d = 1 day).</p>
+                    <p className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Initial delays for new textbook chapters (e.g. 1d = 1 day).</p>
                   </div>
 
-                  <div className="p-4 rounded-xl bg-slate-900/40 border border-slate-700/40 space-y-2">
-                    <label className="text-xs font-semibold text-slate-300">Insertion Order</label>
+                  <div className={`p-4 rounded-xl border space-y-2 ${
+                    isDark ? 'bg-slate-900/40 border-slate-700/40' : 'bg-white border-slate-200/80 neu-card-light'
+                  }`}>
+                    <label className={`text-xs font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Insertion Order</label>
                     <select
                       value={tempConfig.newTopics?.insertionOrder ?? 'sequential'}
                       onChange={e => setTempConfig({
                         ...tempConfig,
                         newTopics: { ...tempConfig.newTopics, insertionOrder: e.target.value }
                       })}
-                      className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-sm font-semibold focus:outline-none focus:border-indigo-500"
+                      className={`w-full px-3 py-2 rounded-lg text-sm font-semibold focus:outline-none focus:border-indigo-500 border ${
+                        isDark ? 'bg-slate-950 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-800 neu-pressed-light'
+                      }`}
                     >
                       <option value="sequential">Sequential (Book / Page Order)</option>
                       <option value="random">Random Order</option>
                     </select>
-                    <p className="text-[11px] text-slate-400">Order new topics are introduced from textbook index.</p>
+                    <p className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Order new topics are introduced from textbook index.</p>
                   </div>
                 </div>
               )}
@@ -372,8 +394,10 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
               {/* ──────────────── CATEGORY 3: LAPSES / LEECHES ──────────────── */}
               {activeCategory === 'lapses' && (
                 <div className="space-y-4">
-                  <div className="p-4 rounded-xl bg-slate-900/40 border border-slate-700/40 space-y-2">
-                    <label className="text-xs font-semibold text-slate-300">Relearning steps</label>
+                  <div className={`p-4 rounded-xl border space-y-2 ${
+                    isDark ? 'bg-slate-900/40 border-slate-700/40' : 'bg-white border-slate-200/80 neu-card-light'
+                  }`}>
+                    <label className={`text-xs font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Relearning steps</label>
                     <input
                       type="text"
                       value={tempConfig.lapses?.relearningSteps ?? '1d'}
@@ -382,14 +406,18 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
                         lapses: { ...tempConfig.lapses, relearningSteps: e.target.value }
                       })}
                       placeholder="e.g. 1d"
-                      className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-sm font-semibold focus:outline-none focus:border-indigo-500"
+                      className={`w-full px-3 py-2 rounded-lg text-sm font-semibold focus:outline-none focus:border-indigo-500 border ${
+                        isDark ? 'bg-slate-950 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-800 neu-pressed-light'
+                      }`}
                     />
-                    <p className="text-[11px] text-slate-400">Relearning delay when pressing Again on a review topic.</p>
+                    <p className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Relearning delay when pressing Again on a review topic.</p>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-4 rounded-xl bg-slate-900/40 border border-slate-700/40 space-y-2">
-                      <label className="text-xs font-semibold text-slate-300">Leech Threshold</label>
+                    <div className={`p-4 rounded-xl border space-y-2 ${
+                      isDark ? 'bg-slate-900/40 border-slate-700/40' : 'bg-white border-slate-200/80 neu-card-light'
+                    }`}>
+                      <label className={`text-xs font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Leech Threshold</label>
                       <input
                         type="number"
                         min="1"
@@ -399,25 +427,31 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
                           ...tempConfig,
                           lapses: { ...tempConfig.lapses, leechThreshold: parseInt(e.target.value, 10) || 1 }
                         })}
-                        className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-sm font-semibold focus:outline-none focus:border-indigo-500"
+                        className={`w-full px-3 py-2 rounded-lg text-sm font-semibold focus:outline-none focus:border-indigo-500 border ${
+                          isDark ? 'bg-slate-950 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-800 neu-pressed-light'
+                        }`}
                       />
-                      <p className="text-[11px] text-slate-400">Number of lapses before flagging as a Leech topic.</p>
+                      <p className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Number of lapses before flagging as a Leech topic.</p>
                     </div>
 
-                    <div className="p-4 rounded-xl bg-slate-900/40 border border-slate-700/40 space-y-2">
-                      <label className="text-xs font-semibold text-slate-300">Leech Action</label>
+                    <div className={`p-4 rounded-xl border space-y-2 ${
+                      isDark ? 'bg-slate-900/40 border-slate-700/40' : 'bg-white border-slate-200/80 neu-card-light'
+                    }`}>
+                      <label className={`text-xs font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Leech Action</label>
                       <select
                         value={tempConfig.lapses?.leechAction ?? 'tag'}
                         onChange={e => setTempConfig({
                           ...tempConfig,
                           lapses: { ...tempConfig.lapses, leechAction: e.target.value }
                         })}
-                        className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-sm font-semibold focus:outline-none focus:border-indigo-500"
+                        className={`w-full px-3 py-2 rounded-lg text-sm font-semibold focus:outline-none focus:border-indigo-500 border ${
+                          isDark ? 'bg-slate-950 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-800 neu-pressed-light'
+                        }`}
                       >
                         <option value="tag">Tag Only (🏷️ Leech Tag)</option>
                         <option value="suspend">Suspend Topic (Hide from queue)</option>
                       </select>
-                      <p className="text-[11px] text-slate-400">Action taken when a topic reaches leech threshold.</p>
+                      <p className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Action taken when a topic reaches leech threshold.</p>
                     </div>
                   </div>
                 </div>
@@ -426,15 +460,19 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
               {/* ──────────────── CATEGORY 4: DISPLAY ORDER ──────────────── */}
               {activeCategory === 'displayOrder' && (
                 <div className="space-y-4">
-                  <div className="p-4 rounded-xl bg-slate-900/40 border border-slate-700/40 space-y-2">
-                    <label className="text-xs font-semibold text-slate-300">New Topic Gather Order</label>
+                  <div className={`p-4 rounded-xl border space-y-2 ${
+                    isDark ? 'bg-slate-900/40 border-slate-700/40' : 'bg-white border-slate-200/80 neu-card-light'
+                  }`}>
+                    <label className={`text-xs font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>New Topic Gather Order</label>
                     <select
                       value={tempConfig.displayOrder?.gatherOrder ?? 'curriculum'}
                       onChange={e => setTempConfig({
                         ...tempConfig,
                         displayOrder: { ...tempConfig.displayOrder, gatherOrder: e.target.value }
                       })}
-                      className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-sm font-semibold focus:outline-none focus:border-indigo-500"
+                      className={`w-full px-3 py-2 rounded-lg text-sm font-semibold focus:outline-none focus:border-indigo-500 border ${
+                        isDark ? 'bg-slate-950 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-800 neu-pressed-light'
+                      }`}
                     >
                       <option value="curriculum">Subject Curriculum Order</option>
                       <option value="ascendingPage">Ascending Page Position</option>
@@ -443,15 +481,19 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
                     </select>
                   </div>
 
-                  <div className="p-4 rounded-xl bg-slate-900/40 border border-slate-700/40 space-y-2">
-                    <label className="text-xs font-semibold text-slate-300">New / Review Queue Sequence</label>
+                  <div className={`p-4 rounded-xl border space-y-2 ${
+                    isDark ? 'bg-slate-900/40 border-slate-700/40' : 'bg-white border-slate-200/80 neu-card-light'
+                  }`}>
+                    <label className={`text-xs font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>New / Review Queue Sequence</label>
                     <select
                       value={tempConfig.displayOrder?.newReviewOrder ?? 'reviewsFirst'}
                       onChange={e => setTempConfig({
                         ...tempConfig,
                         displayOrder: { ...tempConfig.displayOrder, newReviewOrder: e.target.value }
                       })}
-                      className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-sm font-semibold focus:outline-none focus:border-indigo-500"
+                      className={`w-full px-3 py-2 rounded-lg text-sm font-semibold focus:outline-none focus:border-indigo-500 border ${
+                        isDark ? 'bg-slate-950 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-800 neu-pressed-light'
+                      }`}
                     >
                       <option value="reviewsFirst">Show after reviews (Recommended)</option>
                       <option value="newFirst">Show before reviews</option>
@@ -459,15 +501,19 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
                     </select>
                   </div>
 
-                  <div className="p-4 rounded-xl bg-slate-900/40 border border-slate-700/40 space-y-2">
-                    <label className="text-xs font-semibold text-slate-300">Review Sort Order</label>
+                  <div className={`p-4 rounded-xl border space-y-2 ${
+                    isDark ? 'bg-slate-900/40 border-slate-700/40' : 'bg-white border-slate-200/80 neu-card-light'
+                  }`}>
+                    <label className={`text-xs font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Review Sort Order</label>
                     <select
                       value={tempConfig.displayOrder?.reviewSortOrder ?? 'urgency'}
                       onChange={e => setTempConfig({
                         ...tempConfig,
                         displayOrder: { ...tempConfig.displayOrder, reviewSortOrder: e.target.value }
                       })}
-                      className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-sm font-semibold focus:outline-none focus:border-indigo-500"
+                      className={`w-full px-3 py-2 rounded-lg text-sm font-semibold focus:outline-none focus:border-indigo-500 border ${
+                        isDark ? 'bg-slate-950 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-800 neu-pressed-light'
+                      }`}
                     >
                       <option value="urgency">Due date then random (FSRS Urgency)</option>
                       <option value="overdueness">Relative Overdueness</option>
@@ -481,28 +527,36 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
               {activeCategory === 'fsrsCore' && (
                 <div className="space-y-6">
                   {/* Master Switch */}
-                  <label className="flex items-center justify-between p-4 rounded-xl bg-slate-900/60 border border-slate-700/60 cursor-pointer">
+                  <label className={`flex items-center justify-between p-4 rounded-xl border cursor-pointer ${
+                    isDark ? 'bg-slate-900/60 border-slate-700/60' : 'bg-white border-slate-200/80 neu-card-light'
+                  }`}>
                     <div>
-                      <div className="text-sm font-bold text-white">Enable FSRS-6 Algorithm</div>
-                      <div className="text-xs text-slate-400">Uses FSRS-6 mathematical model for optimal memory scheduling</div>
+                      <div className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Enable FSRS-6 Algorithm</div>
+                      <div className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Uses FSRS-6 mathematical model for optimal memory scheduling</div>
                     </div>
                     <input
                       type="checkbox"
                       checked={tempConfig.enabled ?? true}
                       onChange={e => setTempConfig({ ...tempConfig, enabled: e.target.checked })}
-                      className="w-5 h-5 rounded text-indigo-600 border-slate-700 focus:ring-indigo-500"
+                      className="w-5 h-5 rounded text-indigo-600 border-slate-400 focus:ring-indigo-500"
                     />
                   </label>
 
                   {/* Desired Retention Mode & Slider */}
-                  <div className="p-4 rounded-xl bg-slate-900/40 border border-slate-700/40 space-y-4">
+                  <div className={`p-4 rounded-xl border space-y-4 ${
+                    isDark ? 'bg-slate-900/40 border-slate-700/40' : 'bg-white border-slate-200/80 neu-card-light'
+                  }`}>
                     <div className="flex items-center justify-between">
-                      <label className="text-xs font-semibold text-slate-300">Retention Mode</label>
-                      <div className="flex p-0.5 bg-slate-950 rounded-lg border border-slate-700">
+                      <label className={`text-xs font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Retention Mode</label>
+                      <div className={`flex p-0.5 rounded-lg border ${
+                        isDark ? 'bg-slate-950 border-slate-700' : 'neu-pressed-light border-slate-200/80'
+                      }`}>
                         <button
                           onClick={() => setTempConfig({ ...tempConfig, retentionMode: 'global' })}
                           className={`px-3 py-1 rounded-md text-xs font-semibold transition-all ${
-                            tempConfig.retentionMode !== 'perSubject' ? 'bg-indigo-600 text-white' : 'text-slate-400'
+                            tempConfig.retentionMode !== 'perSubject'
+                              ? 'bg-indigo-600 text-white shadow-sm'
+                              : isDark ? 'text-slate-400' : 'text-slate-600'
                           }`}
                         >
                           Global
@@ -510,7 +564,9 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
                         <button
                           onClick={() => setTempConfig({ ...tempConfig, retentionMode: 'perSubject' })}
                           className={`px-3 py-1 rounded-md text-xs font-semibold transition-all ${
-                            tempConfig.retentionMode === 'perSubject' ? 'bg-indigo-600 text-white' : 'text-slate-400'
+                            tempConfig.retentionMode === 'perSubject'
+                              ? 'bg-indigo-600 text-white shadow-sm'
+                              : isDark ? 'text-slate-400' : 'text-slate-600'
                           }`}
                         >
                           Per-Subject
@@ -521,8 +577,8 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
                     {tempConfig.retentionMode !== 'perSubject' ? (
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-medium text-slate-400">Desired Retention (DR)</span>
-                          <span className="text-sm font-bold text-indigo-400">
+                          <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Desired Retention (DR)</span>
+                          <span className={`text-sm font-bold ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>
                             {Math.round((tempConfig.globalDesiredRetention || 0.90) * 100)}%
                           </span>
                         </div>
@@ -533,7 +589,7 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
                           step="0.01"
                           value={tempConfig.globalDesiredRetention || 0.90}
                           onChange={e => setTempConfig({ ...tempConfig, globalDesiredRetention: parseFloat(e.target.value) })}
-                          className="w-full accent-indigo-500"
+                          className="w-full accent-indigo-600 cursor-pointer"
                         />
                         <div className={`p-2.5 rounded-lg border text-xs font-semibold flex items-center justify-between ${currentWorkload.bg}`}>
                           <span>Workload Impact:</span>
@@ -541,19 +597,23 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
                         </div>
                       </div>
                     ) : (
-                      <div className="text-xs text-indigo-300 bg-indigo-500/10 p-3 rounded-lg border border-indigo-500/20">
+                      <div className={`text-xs p-3 rounded-lg border ${
+                        isDark ? 'text-indigo-300 bg-indigo-500/10 border-indigo-500/20' : 'text-indigo-700 bg-indigo-50 border-indigo-200'
+                      }`}>
                         Per-Subject Retention Mode active: Each medical subject uses its configured retention target.
                       </div>
                     )}
                   </div>
 
                   {/* 21 Parameters Editor */}
-                  <div className="p-4 rounded-xl bg-slate-900/40 border border-slate-700/40 space-y-3">
+                  <div className={`p-4 rounded-xl border space-y-3 ${
+                    isDark ? 'bg-slate-900/40 border-slate-700/40' : 'bg-white border-slate-200/80 neu-card-light'
+                  }`}>
                     <div className="flex items-center justify-between">
-                      <label className="text-xs font-semibold text-slate-300">FSRS-6 Parameters (w0..w20)</label>
+                      <label className={`text-xs font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>FSRS-6 Parameters (w0..w20)</label>
                       <button
                         onClick={() => setTempConfig({ ...tempConfig, weights: [...DEFAULT_FSRS6_WEIGHTS] })}
-                        className="text-[11px] text-indigo-400 hover:underline"
+                        className={`text-[11px] font-bold hover:underline ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}
                       >
                         Reset to Defaults
                       </button>
@@ -567,9 +627,11 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
                           setTempConfig({ ...tempConfig, weights: parsed });
                         }
                       }}
-                      className="w-full p-2.5 rounded-lg bg-slate-950 border border-slate-700 text-xs font-mono text-slate-300 focus:outline-none focus:border-indigo-500"
+                      className={`w-full p-2.5 rounded-lg text-xs font-mono focus:outline-none focus:border-indigo-500 border ${
+                        isDark ? 'bg-slate-950 border-slate-700 text-slate-300' : 'bg-slate-50 border-slate-300 text-slate-800 neu-pressed-light'
+                      }`}
                     />
-                    <p className="text-[11px] text-slate-400">Comma-separated 21 parameter vector ($w_0 \dots w_{20}$).</p>
+                    <p className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Comma-separated 21 parameter vector ($w_0 \dots w_{20}$).</p>
                   </div>
                 </div>
               )}
@@ -577,18 +639,22 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
               {/* ──────────────── CATEGORY 6: EASY DAYS ──────────────── */}
               {activeCategory === 'easyDays' && (
                 <div className="space-y-4">
-                  <p className="text-xs text-slate-400">Adjust target review workload for each day of the week:</p>
+                  <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Adjust target review workload for each day of the week:</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map(day => (
-                      <div key={day} className="p-3 rounded-xl bg-slate-900/40 border border-slate-700/40 flex items-center justify-between">
-                        <span className="text-xs font-bold uppercase text-slate-200">{day}</span>
+                      <div key={day} className={`p-3 rounded-xl border flex items-center justify-between ${
+                        isDark ? 'bg-slate-900/40 border-slate-700/40' : 'bg-white border-slate-200/80 neu-card-light'
+                      }`}>
+                        <span className={`text-xs font-bold uppercase ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>{day}</span>
                         <select
                           value={tempConfig.easyDays?.[day] || 'normal'}
                           onChange={e => setTempConfig({
                             ...tempConfig,
                             easyDays: { ...(tempConfig.easyDays || {}), [day]: e.target.value }
                           })}
-                          className="px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-700 text-xs font-semibold text-white focus:outline-none"
+                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold focus:outline-none border ${
+                            isDark ? 'bg-slate-950 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-800 neu-pressed-light'
+                          }`}
                         >
                           <option value="minimum">Minimum (Lightest)</option>
                           <option value="reduced">Reduced</option>
@@ -603,8 +669,10 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
               {/* ──────────────── CATEGORY 7: ADVANCED ──────────────── */}
               {activeCategory === 'advanced' && (
                 <div className="space-y-4">
-                  <div className="p-4 rounded-xl bg-slate-900/40 border border-slate-700/40 space-y-2">
-                    <label className="text-xs font-semibold text-slate-300">Maximum Interval (Days)</label>
+                  <div className={`p-4 rounded-xl border space-y-2 ${
+                    isDark ? 'bg-slate-900/40 border-slate-700/40' : 'bg-white border-slate-200/80 neu-card-light'
+                  }`}>
+                    <label className={`text-xs font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Maximum Interval (Days)</label>
                     <input
                       type="number"
                       min="30"
@@ -614,9 +682,11 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
                         ...tempConfig,
                         advancedRules: { ...tempConfig.advancedRules, maxInterval: parseInt(e.target.value, 10) || 30 }
                       })}
-                      className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-sm font-semibold focus:outline-none focus:border-indigo-500"
+                      className={`w-full px-3 py-2 rounded-lg text-sm font-semibold focus:outline-none focus:border-indigo-500 border ${
+                        isDark ? 'bg-slate-950 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-800 neu-pressed-light'
+                      }`}
                     />
-                    <p className="text-[11px] text-slate-400">Maximum days a review topic can be spaced out (Default: 365 days).</p>
+                    <p className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Maximum days a review topic can be spaced out (Default: 365 days).</p>
                   </div>
                 </div>
               )}
@@ -624,16 +694,20 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
           </div>
 
           {/* Footer Action Bar */}
-          <div className="px-6 py-4 border-t border-slate-700/60 flex items-center justify-end gap-3 bg-slate-900/50">
+          <div className={`px-6 py-4 border-t flex items-center justify-end gap-3 ${
+            isDark ? 'border-slate-700/60 bg-slate-900/50' : 'border-slate-200 bg-white/60'
+          }`}>
             <button
               onClick={onClose}
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${
+                isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+              }`}
             >
               Cancel
             </button>
             <button
               onClick={handleSave}
-              className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-600/20 transition-all"
+              className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-600/20 transition-all cursor-pointer"
             >
               Save FSRS Settings
             </button>
@@ -643,36 +717,40 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
         {/* In-App Interactive User Manual Modal */}
         <AnimatePresence>
           {activeManualSection && MANUAL_CONTENTS[activeManualSection] && (
-            <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+            <div className={`fixed inset-0 z-[10000] flex items-center justify-center p-4 backdrop-blur-md ${isDark ? 'bg-slate-950/80' : 'bg-slate-900/40'}`}>
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="relative w-full max-w-lg bg-[#222730] border border-indigo-500/40 rounded-2xl shadow-2xl p-6 space-y-4 text-slate-200 max-h-[80vh] overflow-y-auto no-scrollbar"
+                className={`relative w-full max-w-lg rounded-2xl shadow-2xl p-6 space-y-4 max-h-[80vh] overflow-y-auto no-scrollbar border ${
+                  isDark ? 'bg-[#222730] border-indigo-500/40 text-slate-200 neu-card-dark' : 'bg-[#e6ecf5] border-indigo-300 text-slate-800 neu-card-light'
+                }`}
               >
-                <div className="flex items-center justify-between border-b border-slate-700/60 pb-3">
-                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <div className={`flex items-center justify-between pb-3 border-b ${isDark ? 'border-slate-700/60' : 'border-slate-300/60'}`}>
+                  <h3 className={`text-base font-bold flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
                     <span>❓</span> {MANUAL_CONTENTS[activeManualSection].title}
                   </h3>
                   <button
                     onClick={() => setActiveManualSection(null)}
-                    className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+                    className={`p-1 rounded-lg transition ${isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200'}`}
                   >
                     ✕
                   </button>
                 </div>
                 <div className="space-y-4">
                   {MANUAL_CONTENTS[activeManualSection].sections.map((sec, idx) => (
-                    <div key={idx} className="space-y-1 bg-slate-900/40 p-3 rounded-xl border border-slate-700/40">
-                      <h4 className="text-xs font-bold text-indigo-300">{sec.heading}</h4>
-                      <p className="text-xs text-slate-300 whitespace-pre-line leading-relaxed">{sec.content}</p>
+                    <div key={idx} className={`space-y-1 p-3 rounded-xl border ${
+                      isDark ? 'bg-slate-900/40 border-slate-700/40' : 'bg-white border-slate-200/80 neu-card-light'
+                    }`}>
+                      <h4 className={`text-xs font-bold ${isDark ? 'text-indigo-300' : 'text-indigo-600'}`}>{sec.heading}</h4>
+                      <p className={`text-xs whitespace-pre-line leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{sec.content}</p>
                     </div>
                   ))}
                 </div>
                 <div className="pt-2 flex justify-end">
                   <button
                     onClick={() => setActiveManualSection(null)}
-                    className="px-4 py-1.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500"
+                    className="px-4 py-1.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md"
                   >
                     Got It
                   </button>
