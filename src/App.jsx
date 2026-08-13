@@ -3689,38 +3689,61 @@ export default function App() {
 
   const computeTimelineLayouts = (tasks) => {
     if (!tasks || tasks.length === 0) return {};
-    const sorted = [...tasks].map(t => ({
-      ...t,
-      start: parseTimeToMinutes(t.startTime) || 0,
-      end: parseTimeToMinutes(t.endTime || formatMinutesToTime((parseTimeToMinutes(t.startTime) || 0) + 60))
-    })).sort((a, b) => a.start - b.start);
+    const sorted = [...tasks].map(t => {
+      const s = parseTimeToMinutes(t.startTime) || 0;
+      const e = parseTimeToMinutes(t.endTime || formatMinutesToTime(s + 60)) || (s + 60);
+      return { ...t, start: s, end: Math.max(e, s + 30) };
+    }).sort((a, b) => a.start - b.start || a.end - b.end);
 
-    const columns = [];
+    const clusters = [];
+    let currentCluster = [];
+    let clusterMaxEnd = -1;
+
     sorted.forEach(task => {
-      let placed = false;
-      for (let i = 0; i < columns.length; i++) {
-        const col = columns[i];
-        const lastTask = col[col.length - 1];
-        if (task.start >= lastTask.end) {
-          col.push(task);
-          placed = true;
-          break;
-        }
-      }
-      if (!placed) {
-        columns.push([task]);
+      if (currentCluster.length === 0) {
+        currentCluster.push(task);
+        clusterMaxEnd = task.end;
+      } else if (task.start < clusterMaxEnd) {
+        currentCluster.push(task);
+        if (task.end > clusterMaxEnd) clusterMaxEnd = task.end;
+      } else {
+        clusters.push(currentCluster);
+        currentCluster = [task];
+        clusterMaxEnd = task.end;
       }
     });
+    if (currentCluster.length > 0) clusters.push(currentCluster);
 
     const taskStyles = {};
-    columns.forEach((col, colIdx) => {
-      col.forEach(task => {
-        taskStyles[task.id] = {
-          left: `${(colIdx / columns.length) * 100}%`,
-          width: `${(1 / columns.length) * 100}%`
-        };
+    clusters.forEach(cluster => {
+      const columns = [];
+      cluster.forEach(task => {
+        let placed = false;
+        for (let i = 0; i < columns.length; i++) {
+          const col = columns[i];
+          const lastTask = col[col.length - 1];
+          if (task.start >= lastTask.end) {
+            col.push(task);
+            placed = true;
+            break;
+          }
+        }
+        if (!placed) {
+          columns.push([task]);
+        }
+      });
+
+      const totalCols = columns.length;
+      columns.forEach((col, colIdx) => {
+        col.forEach(task => {
+          taskStyles[task.id] = {
+            left: `${(colIdx / totalCols) * 100}%`,
+            width: `${(1 / totalCols) * 100}%`
+          };
+        });
       });
     });
+
     return taskStyles;
   };
 
@@ -9075,12 +9098,26 @@ JSON Format:
     if (!topicObj) return;
 
     const updatedDates = (topicObj.studyDates || []).filter((_, idx) => idx !== dateIndex);
+    const isNowEmpty = updatedDates.length === 0;
+
+    const updatedTopicObj = {
+      ...topicObj,
+      studyDates: updatedDates,
+      ...(isNowEmpty ? {
+        stability: null,
+        difficulty: null,
+        reviewCount: 0,
+        lapses: 0,
+        lastReviewDate: null,
+        nextReviewDue: null,
+        interval: null,
+        retrievability: null
+      } : {})
+    };
+
     const updatedTopics = {
       ...currentTopics,
-      [topicName]: {
-        ...topicObj,
-        studyDates: updatedDates
-      }
+      [topicName]: updatedTopicObj
     };
 
     setSubjectTrackerData(prev => {
@@ -16062,11 +16099,13 @@ const renderTimerHub = (isMobile = false) => {
           if (!entry || !entry.tasks) return;
 
           entry.tasks.forEach(task => {
-            if (!task.startTime || task.completed) return;
-
-            const [hours, minutes] = task.startTime.split(':').map(Number);
+            if (!task.startTime || typeof task.startTime !== 'string' || !task.startTime.includes(':') || task.completed) return;
+            const parts = task.startTime.split(':').map(Number);
+            if (parts.length < 2 || isNaN(parts[0]) || isNaN(parts[1])) return;
+            const [hours, minutes] = parts;
             const taskDate = new Date(dateStr);
             taskDate.setHours(hours, minutes, 0, 0);
+            if (isNaN(taskDate.getTime())) return;
 
             const triggerTime = taskDate.getTime();
             // Schedule future tasks for the next 7 days
@@ -16259,7 +16298,7 @@ const renderTimerHub = (isMobile = false) => {
       const mergedTasks = [...existingTasks, ...newTasks];
       const payload = {
         date: schedulerManualDate,
-        notes: schedulerManualNotes.trim(),
+        notes: schedulerManualNotes.trim() ? schedulerManualNotes.trim() : (existingEntry.notes || ''),
         tasks: mergedTasks
       };
       const updatedSchedule = await saveLocalScheduleEntry(schedulerManualDate, payload);
@@ -16449,10 +16488,15 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
 
   const handleSchedulerDeleteTask = async (dateStr, taskId) => {
     const entry = studySchedule[dateStr];
-    if (!entry) return;
+    if (!entry || !entry.tasks) return;
+    const taskToDelete = entry.tasks.find(t => t.id === taskId);
     const updatedTasks = entry.tasks.filter(t => t.id !== taskId);
     const updatedSchedule = await saveLocalScheduleEntry(dateStr, { tasks: updatedTasks });
     setStudySchedule(updatedSchedule);
+
+    if (taskToDelete && taskToDelete.completed && taskToDelete.topic) {
+      await syncSchedulerTaskToSubjectTracker(taskToDelete.topic, dateStr, false);
+    }
   };
 
   const handleSchedulerUpdateTask = async (dateStr, taskId, newTopic, startTime, endTime, color, completed, notes) => {
@@ -16502,8 +16546,13 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     setStudySchedule(updatedSchedule);
     setSchedulerEditingTask(null);
 
-    // Feature 3: Auto-sync to Subject Tracker when completion state changes
-    if (newTopic && newCompleted !== prevCompleted) {
+    // Auto-sync to Subject Tracker when topic or completion state changes
+    if (prevTask && prevTask.completed && prevTask.topic && prevTask.topic !== newTopic) {
+      await syncSchedulerTaskToSubjectTracker(prevTask.topic, dateStr, false);
+      if (newCompleted && newTopic) {
+        await syncSchedulerTaskToSubjectTracker(newTopic, dateStr, true);
+      }
+    } else if (newTopic && newCompleted !== prevCompleted) {
       await syncSchedulerTaskToSubjectTracker(newTopic, dateStr, newCompleted);
     }
   };
