@@ -12879,6 +12879,7 @@ JSON Format:
         onUpdateSubjectDoc={handleUpdateSubjectTrackerDoc}
         geminiApiKey={geminiApiKey}
         aiFeatureModels={aiFeatureModels}
+        onOpenNotesModal={(topic) => setNotesModalTopic(topic)}
       />
     );
   };

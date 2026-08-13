@@ -719,6 +719,14 @@ export default function SmartReviewHub({
 // Sub-component: Individual Topic Queue Card
 function TopicCard({ topic, onRate, onRemove, onOpenNotes, isOverdue = false, isNew = false, index = 0, isDark = true }) {
   const { pageLabel, pageCount } = getTopicPageInfo(topic);
+  const [isNotesExpanded, setIsNotesExpanded] = useState(!!topic.notes);
+
+  // Sync state if topic.notes becomes available
+  useEffect(() => {
+    if (topic.notes) {
+      setIsNotesExpanded(true);
+    }
+  }, [topic.notes]);
 
   // A topic is truly reviewed only if reviewCount > 0 AND it has a lastReviewDate AND is not in New queue
   const isReviewed = !isNew && (topic.reviewCount || 0) > 0 && !!topic.lastReviewDate;
@@ -759,25 +767,25 @@ function TopicCard({ topic, onRate, onRemove, onOpenNotes, isOverdue = false, is
             </div>
           </div>
 
-          {/* Rich Text Topic Notes Button */}
+          {/* Toggle Collapsible Topic Notes Button */}
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              onOpenNotes && onOpenNotes(topic);
+              setIsNotesExpanded(prev => !prev);
             }}
-            title={topic.notes ? "View/Edit Rich Topic Notes" : "Add Rich Topic Notes"}
+            title={isNotesExpanded ? "Collapse Topic Notes" : topic.notes ? "Expand Topic Notes" : "Add/Expand Topic Notes"}
             className={`p-1.5 rounded-xl border transition-all cursor-pointer ${
-              topic.notes
+              isNotesExpanded || topic.notes
                 ? isDark
-                  ? 'bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20'
-                  : 'bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100'
+                  ? 'bg-amber-500/20 text-amber-400 border-amber-500/40 hover:bg-amber-500/30 ring-1 ring-amber-500/20'
+                  : 'bg-amber-100 text-amber-700 border-amber-300 hover:bg-amber-200 ring-1 ring-amber-400/30'
                 : isDark
                   ? 'bg-slate-800 text-slate-400 hover:text-white border-slate-700'
                   : 'bg-slate-100 text-slate-500 hover:text-slate-900 border-slate-200'
             }`}
           >
-            <FileText className="w-3.5 h-3.5" />
+            <FileText className="w-4 h-4" />
           </button>
 
           {/* Remove button for New Topics */}
@@ -801,36 +809,67 @@ function TopicCard({ topic, onRate, onRemove, onOpenNotes, isOverdue = false, is
         </div>
       </div>
 
-      {/* Rich Text Notes Box on TopicCard in Smart Review Hub */}
-      {topic.notes ? (
-        <div className="space-y-1 pt-2 border-t border-slate-700/40 dark:border-slate-800/60">
-          <div className="flex items-center justify-between">
-            <span className={`text-[9px] font-black uppercase tracking-wider flex items-center gap-1 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
-              <FileText className="w-3 h-3" /> High-Yield Notes
-            </span>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenNotes && onOpenNotes(topic);
-              }}
-              className={`text-[9px] font-bold underline transition ${isDark ? 'text-slate-400 hover:text-amber-300' : 'text-slate-500 hover:text-amber-700'}`}
-            >
-              Edit Notes
-            </button>
-          </div>
-          <div
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenNotes && onOpenNotes(topic);
-            }}
-            className={`p-2.5 rounded-xl text-xs leading-relaxed max-h-32 overflow-y-auto cursor-pointer transition border ${
-              isDark ? 'neu-pressed-dark text-slate-200 border-slate-800 hover:border-amber-500/40' : 'neu-pressed-light text-slate-800 border-slate-200 hover:border-amber-400'
-            }`}
-            dangerouslySetInnerHTML={{ __html: topic.notes }}
-          />
-        </div>
-      ) : null}
+      {/* Collapsible Rich Text Notes Section */}
+      <AnimatePresence>
+        {isNotesExpanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+            className="overflow-hidden space-y-1.5 pt-2 border-t border-slate-700/40 dark:border-slate-800/60"
+          >
+            <div className="flex items-center justify-between">
+              <span className={`text-[9px] font-black uppercase tracking-wider flex items-center gap-1 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
+                <FileText className="w-3 h-3" /> High-Yield Notes
+              </span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (typeof onOpenNotes === 'function') {
+                    onOpenNotes(topic);
+                  }
+                }}
+                className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-lg border transition ${
+                  isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300 border-slate-700' : 'neu-btn-light text-blue-600 border-slate-300'
+                }`}
+              >
+                ✏️ Edit Notes
+              </button>
+            </div>
+
+            {topic.notes ? (
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (typeof onOpenNotes === 'function') {
+                    onOpenNotes(topic);
+                  }
+                }}
+                className={`p-3 rounded-xl text-xs leading-relaxed max-h-36 overflow-y-auto cursor-pointer transition border rich-text-notes ${
+                  isDark ? 'neu-pressed-dark text-slate-200 border-slate-800 hover:border-amber-500/40' : 'neu-pressed-light text-slate-800 border-slate-200 hover:border-amber-400'
+                }`}
+                dangerouslySetInnerHTML={{ __html: topic.notes }}
+              />
+            ) : (
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (typeof onOpenNotes === 'function') {
+                    onOpenNotes(topic);
+                  }
+                }}
+                className={`p-3 rounded-xl text-[11px] italic border border-dashed cursor-pointer transition ${
+                  isDark ? 'text-slate-500 border-slate-800 hover:text-slate-300 hover:border-slate-700' : 'text-slate-400 border-slate-200 hover:text-slate-600 hover:border-slate-300'
+                }`}
+              >
+                No rich notes added yet. Click here to open editor window and add mnemonics, clinical pearls, or bullet lists...
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* 4 Rating Buttons */}
       <div className="grid grid-cols-4 gap-1.5 pt-1">
