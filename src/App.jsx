@@ -10889,49 +10889,49 @@ JSON Format:
                           <div className="lg:col-span-5 flex flex-col gap-6 w-full">
                             {studyActiveTab === 'record' ? (
                               <>
-                                {/* Streaks Counters summary cards */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                                  <div className={`p-5 rounded-3xl flex flex-col justify-between transition-colors duration-300 ${
+                                {/* Streaks Counters summary cards (2-column side-by-side on mobile) */}
+                                <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                                  <div className={`p-4 sm:p-5 rounded-2xl sm:rounded-3xl flex flex-col justify-between transition-colors duration-300 ${
                                     isDark
                                       ? 'neu-card-dark bg-gradient-to-br from-[#27201c] to-[#222730] border border-orange-500/20 shadow-xl'
                                       : 'neu-card-light bg-gradient-to-br from-orange-50 to-amber-50/40 border border-orange-200/60 shadow-md'
                                   }`}>
                                     <div>
-                                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center mb-3 ${
+                                      <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center mb-2.5 ${
                                         isDark ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-orange-100 text-orange-600'
                                       }`}>
-                                        <Flame className="w-4 h-4 fill-current" />
+                                        <Flame className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" />
                                       </div>
-                                      <span className="text-[9px] font-black text-orange-500 uppercase tracking-widest">Current Streak</span>
-                                      <h4 className={`text-xl font-black mt-1 leading-none ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+                                      <span className="text-[8px] sm:text-[9px] font-black text-orange-500 uppercase tracking-widest">Current Streak</span>
+                                      <h4 className={`text-lg sm:text-xl font-black mt-0.5 leading-none ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
                                         {streakStats.currentStreak} {streakStats.currentStreak === 1 ? 'day' : 'days'}
                                       </h4>
                                     </div>
-                                    <p className={`text-[8px] font-bold mt-3 ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>Keep logging to stay hot!</p>
+                                    <p className={`text-[8px] font-bold mt-2 sm:mt-3 ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>Keep logging to stay hot!</p>
                                   </div>
 
-                                  <div className={`p-5 rounded-3xl flex flex-col justify-between transition-colors duration-300 ${
+                                  <div className={`p-4 sm:p-5 rounded-2xl sm:rounded-3xl flex flex-col justify-between transition-colors duration-300 ${
                                     isDark
                                       ? 'neu-card-dark bg-gradient-to-br from-[#27241c] to-[#222730] border border-amber-500/20 shadow-xl'
                                       : 'neu-card-light bg-gradient-to-br from-amber-50 to-yellow-50/40 border border-amber-200/60 shadow-md'
                                   }`}>
                                     <div>
-                                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center mb-3 ${
+                                      <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center mb-2.5 ${
                                         isDark ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-amber-100 text-amber-600'
                                       }`}>
-                                        <Trophy className="w-4 h-4" />
+                                        <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                       </div>
-                                      <span className="text-[9px] font-black text-amber-500 uppercase tracking-widest">Longest Streak</span>
-                                      <h4 className={`text-xl font-black mt-1 leading-none ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+                                      <span className="text-[8px] sm:text-[9px] font-black text-amber-500 uppercase tracking-widest">Longest Streak</span>
+                                      <h4 className={`text-lg sm:text-xl font-black mt-0.5 leading-none ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
                                         {streakStats.longestStreak} {streakStats.longestStreak === 1 ? 'day' : 'days'}
                                       </h4>
                                     </div>
-                                    <p className={`text-[8px] font-bold mt-3 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>Your absolute personal best</p>
+                                    <p className={`text-[8px] font-bold mt-2 sm:mt-3 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>Your absolute personal best</p>
                                   </div>
                                 </div>
 
                                 {/* Desk Timer & Focus Hub */}
-                                {renderTimerHub(false)}
+                                {renderTimerHub(isMobile)}
                               </>
                             ) : (
                               <>
