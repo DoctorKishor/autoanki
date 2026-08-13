@@ -40,7 +40,7 @@ import SmartReviewHub from './components/SmartReviewHub';
 import TopicNotesModal from './components/TopicNotesModal';
 import { cropAndMaskDiagram } from './utils/imageCropper';
 import { getTopicPageWeight, parsePageNumbers } from './utils/pageUtils';
-import { getLocalSetting, saveLocalSetting, getLocalCards, saveLocalCards, replaceAllLocalCards, saveLocalCard, deleteLocalCard, getLocalPages, saveLocalPages, replaceAllLocalPages, saveLocalPage, deleteLocalPage, getLocalKV, setLocalKV, getLocalPrompts, saveLocalPrompt, deleteLocalPrompt, getAllLocalPytTopics, saveLocalPytTopic, getAllLocalPytProgress, saveLocalPytProgressDoc, getLocalTextbooksMetadata, saveLocalTextbooksMetadata, getLocalStudyLogs, saveLocalStudyLog, replaceAllLocalStudyLogs, getLocalSubjectTrackerData, saveLocalSubjectTrackerDoc, replaceAllLocalSubjectTrackerData, getLocalStudySchedule, saveLocalScheduleEntry, replaceAllLocalStudySchedule, getFSRSConfig, saveFSRSConfig, DEFAULT_FSRS_CONFIG, getLocalTimerState, saveLocalTimerState } from './services/localDb';
+import { getLocalSetting, saveLocalSetting, getLocalCards, saveLocalCards, replaceAllLocalCards, saveLocalCard, deleteLocalCard, getLocalPages, saveLocalPages, replaceAllLocalPages, saveLocalPage, deleteLocalPage, getLocalKV, setLocalKV, getLocalPrompts, saveLocalPrompt, deleteLocalPrompt, getAllLocalPytTopics, saveLocalPytTopic, getAllLocalPytProgress, saveLocalPytProgressDoc, getLocalTextbooksMetadata, saveLocalTextbooksMetadata, getLocalStudyLogs, saveLocalStudyLog, replaceAllLocalStudyLogs, getLocalSubjectTrackerData, saveLocalSubjectTrackerDoc, replaceAllLocalSubjectTrackerData, getLocalStudySchedule, saveLocalScheduleEntry, replaceAllLocalStudySchedule, getLocalScheduleTemplates, saveLocalScheduleTemplate, deleteLocalScheduleTemplate, replaceAllLocalScheduleTemplates, getFSRSConfig, saveFSRSConfig, DEFAULT_FSRS_CONFIG, getLocalTimerState, saveLocalTimerState } from './services/localDb';
 import { calculateNextFSRSState, calculateInitialState, DEFAULT_FSRS6_WEIGHTS, getTopicPageLength, recalculateTopicFSRSFromLogs } from './services/fsrsEngine';
 import { motion, AnimatePresence } from 'framer-motion';
 import UiverseButton from './components/UiverseButton';
@@ -15578,38 +15578,23 @@ const renderTimerHub = (isMobile = false) => {
     return () => { isMounted = false; };
   }, []);
 
-  // Establish listener on study_schedule subcollection
+  // Load study_schedule from LocalDB (Offline-First)
   useEffect(() => {
-    if (!db || !targetUid) {
-      setStudySchedule({});
-      return;
-    }
-    const scheduleColRef = collection(db, 'artifacts', appId, 'users', targetUid, 'study_schedule');
-    const unsubscribe = onSnapshot(scheduleColRef, (snapshot) => {
-      const map = {};
-      snapshot.docs.forEach(d => { map[d.id] = d.data(); });
-      setStudySchedule(map);
-      fbTracker.read(snapshot.docs.length);
-      setFbUsage(fbTracker.getUsage());
-    }, err => console.error('Error listening to study_schedule:', err));
-    return () => unsubscribe();
-  }, [db, targetUid]);
+    let isMounted = true;
+    getLocalStudySchedule().then(scheduleMap => {
+      if (isMounted) setStudySchedule(scheduleMap || {});
+    }).catch(err => console.error('[LocalDB] Error loading study schedule:', err));
+    return () => { isMounted = false; };
+  }, []);
 
-  // Establish listener on schedule_templates subcollection
+  // Load schedule_templates from LocalDB (Offline-First)
   useEffect(() => {
-    if (!db || !targetUid) {
-      setScheduleTemplates([]);
-      return;
-    }
-    const templatesColRef = collection(db, 'artifacts', appId, 'users', targetUid, 'schedule_templates');
-    const unsubscribe = onSnapshot(templatesColRef, (snapshot) => {
-      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setScheduleTemplates(list);
-      fbTracker.read(snapshot.docs.length);
-      setFbUsage(fbTracker.getUsage());
-    }, err => console.error('Error listening to schedule_templates:', err));
-    return () => unsubscribe();
-  }, [db, targetUid]);
+    let isMounted = true;
+    getLocalScheduleTemplates().then(list => {
+      if (isMounted) setScheduleTemplates(list || []);
+    }).catch(err => console.error('[LocalDB] Error loading schedule templates:', err));
+    return () => { isMounted = false; };
+  }, []);
 
   // Listen to paired_devices subcollection to manage linked devices in settings
   useEffect(() => {
@@ -16173,7 +16158,7 @@ const renderTimerHub = (isMobile = false) => {
 
   const handleSchedulerTaskToggle = async (dateStr, taskId) => {
     const entry = studySchedule[dateStr];
-    if (!entry || !db || !targetUid) return;
+    if (!entry) return;
 
     let completedState = false;
     let targetTopic = "";
@@ -16187,14 +16172,8 @@ const renderTimerHub = (isMobile = false) => {
       return t;
     });
 
-    setStudySchedule(prev => ({
-      ...prev,
-      [dateStr]: { ...prev[dateStr], tasks: updatedTasks }
-    }));
-    const ref = doc(db, 'artifacts', appId, 'users', targetUid, 'study_schedule', dateStr);
-    await setDoc(ref, { tasks: updatedTasks }, { merge: true });
-    fbTracker.write(1);
-    setFbUsage(fbTracker.getUsage());
+    const updatedSchedule = await saveLocalScheduleEntry(dateStr, { tasks: updatedTasks });
+    setStudySchedule(updatedSchedule);
 
     if (targetTopic) {
       await syncSchedulerTaskToSubjectTracker(targetTopic, dateStr, completedState);
@@ -16219,7 +16198,7 @@ const renderTimerHub = (isMobile = false) => {
   };
 
   const handleSchedulerSaveManual = async () => {
-    if (!db || !targetUid || !schedulerManualDate) return;
+    if (!schedulerManualDate) return;
     setIsSchedulerSaving(true);
     try {
       let topicLines = [];
@@ -16283,10 +16262,8 @@ const renderTimerHub = (isMobile = false) => {
         notes: schedulerManualNotes.trim(),
         tasks: mergedTasks
       };
-      const ref = doc(db, 'artifacts', appId, 'users', targetUid, 'study_schedule', schedulerManualDate);
-      await setDoc(ref, payload, { merge: true });
-      fbTracker.write(1);
-      setFbUsage(fbTracker.getUsage());
+      const updatedSchedule = await saveLocalScheduleEntry(schedulerManualDate, payload);
+      setStudySchedule(updatedSchedule);
 
       setSchedulerManualTopics('');
       setSchedulerSelTopics([]);
@@ -16428,11 +16405,11 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
   };
 
   const handleSchedulerAiInject = async () => {
-    if (!db || !targetUid) return;
     setIsSchedulerAiInjecting(true);
     try {
+      let latestSchedule = studySchedule;
       for (const entry of schedulerAiEditableEntries) {
-        const preExisting = studySchedule[entry.date] || { tasks: [], notes: '' };
+        const preExisting = latestSchedule[entry.date] || { tasks: [], notes: '' };
         const preExistingTasks = preExisting.tasks || [];
 
         const newTasks = (entry.tasks || []).map(t => {
@@ -16453,11 +16430,9 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
         const mergedTasks = [...preExistingTasks, ...newTasks];
         const mergedNotes = entry.notes.trim() || preExisting.notes || '';
 
-        const ref = doc(db, 'artifacts', appId, 'users', targetUid, 'study_schedule', entry.date);
-        await setDoc(ref, { date: entry.date, notes: mergedNotes, tasks: mergedTasks }, { merge: true });
-        fbTracker.write(1);
+        latestSchedule = await saveLocalScheduleEntry(entry.date, { date: entry.date, notes: mergedNotes, tasks: mergedTasks });
       }
-      setFbUsage(fbTracker.getUsage());
+      setStudySchedule(latestSchedule);
 
       setIsSchedulerModalOpen(false);
       setSchedulerAiParsed(null);
@@ -16474,20 +16449,13 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
 
   const handleSchedulerDeleteTask = async (dateStr, taskId) => {
     const entry = studySchedule[dateStr];
-    if (!entry || !db || !targetUid) return;
+    if (!entry) return;
     const updatedTasks = entry.tasks.filter(t => t.id !== taskId);
-    setStudySchedule(prev => ({
-      ...prev,
-      [dateStr]: { ...prev[dateStr], tasks: updatedTasks }
-    }));
-    const ref = doc(db, 'artifacts', appId, 'users', targetUid, 'study_schedule', dateStr);
-    await setDoc(ref, { tasks: updatedTasks }, { merge: true });
-    fbTracker.write(1);
-    setFbUsage(fbTracker.getUsage());
+    const updatedSchedule = await saveLocalScheduleEntry(dateStr, { tasks: updatedTasks });
+    setStudySchedule(updatedSchedule);
   };
 
   const handleSchedulerUpdateTask = async (dateStr, taskId, newTopic, startTime, endTime, color, completed, notes) => {
-    if (!db || !targetUid) return;
     const entry = studySchedule[dateStr] || { date: dateStr, notes: "", tasks: [] };
     const tasks = entry.tasks || [];
 
@@ -16530,15 +16498,8 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       updatedTasks = [...tasks, newTask];
     }
 
-    setStudySchedule(prev => ({
-      ...prev,
-      [dateStr]: { ...prev[dateStr], date: dateStr, notes: prev[dateStr]?.notes || "", tasks: updatedTasks }
-    }));
-
-    const ref = doc(db, 'artifacts', appId, 'users', targetUid, 'study_schedule', dateStr);
-    await setDoc(ref, { date: dateStr, tasks: updatedTasks }, { merge: true });
-    fbTracker.write(1);
-    setFbUsage(fbTracker.getUsage());
+    const updatedSchedule = await saveLocalScheduleEntry(dateStr, { date: dateStr, tasks: updatedTasks });
+    setStudySchedule(updatedSchedule);
     setSchedulerEditingTask(null);
 
     // Feature 3: Auto-sync to Subject Tracker when completion state changes
@@ -16548,7 +16509,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
   };
 
   const handleSchedulerSaveTemplate = async (templateName) => {
-    if (!db || !targetUid || !schedulerSelectedDate || !templateName.trim()) return;
+    if (!schedulerSelectedDate || !templateName.trim()) return;
     const entry = studySchedule[schedulerSelectedDate];
     const tasksToSave = entry?.tasks || [];
 
@@ -16565,14 +16526,12 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       }))
     };
 
-    const ref = doc(db, 'artifacts', appId, 'users', targetUid, 'schedule_templates', newTemplateId);
-    await setDoc(ref, templatePayload);
-    fbTracker.write(1);
-    setFbUsage(fbTracker.getUsage());
+    const updatedTemplates = await saveLocalScheduleTemplate(templatePayload);
+    setScheduleTemplates(updatedTemplates);
   };
 
   const handleSchedulerApplyTemplate = async (templateId) => {
-    if (!db || !targetUid || !schedulerSelectedDate) return;
+    if (!schedulerSelectedDate) return;
     const template = scheduleTemplates.find(t => t.id === templateId);
     if (!template) return;
 
@@ -16590,21 +16549,16 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       };
     });
 
-    const ref = doc(db, 'artifacts', appId, 'users', targetUid, 'study_schedule', schedulerSelectedDate);
-    await setDoc(ref, {
+    const updatedSchedule = await saveLocalScheduleEntry(schedulerSelectedDate, {
       date: schedulerSelectedDate,
       tasks: newTasks
-    }, { merge: true });
-    fbTracker.write(1);
-    setFbUsage(fbTracker.getUsage());
+    });
+    setStudySchedule(updatedSchedule);
   };
 
   const handleSchedulerDeleteTemplate = async (templateId) => {
-    if (!db || !targetUid) return;
-    const ref = doc(db, 'artifacts', appId, 'users', targetUid, 'schedule_templates', templateId);
-    await deleteDoc(ref);
-    fbTracker.delete(1);
-    setFbUsage(fbTracker.getUsage());
+    const updatedTemplates = await deleteLocalScheduleTemplate(templateId);
+    setScheduleTemplates(updatedTemplates);
   };
 
   const handleRequestNotificationPermission = async () => {
@@ -26011,10 +25965,8 @@ Return your response strictly as a JSON object matching this schema:
                           }}
                           onBlur={async () => {
                             const entry = studySchedule[schedulerSelectedDate] || { date: schedulerSelectedDate, tasks: [] };
-                            const ref = doc(db, 'artifacts', appId, 'users', targetUid, 'study_schedule', schedulerSelectedDate);
-                            await setDoc(ref, { date: schedulerSelectedDate, notes: entry.notes || '', tasks: entry.tasks || [] }, { merge: true });
-                            fbTracker.write(1);
-                            setFbUsage(fbTracker.getUsage());
+                            const updatedSchedule = await saveLocalScheduleEntry(schedulerSelectedDate, { date: schedulerSelectedDate, notes: entry.notes || '', tasks: entry.tasks || [] });
+                            setStudySchedule(updatedSchedule);
                           }}
                           placeholder="Tap to add notes, targets, or Grand Test topics..."
                           className="w-full h-16 p-2.5 border border-gray-200 rounded-xl text-xs focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none resize-none bg-gray-50/50 text-gray-800"
@@ -33139,10 +33091,8 @@ Return your response strictly as a JSON object matching this schema:
                                 }}
                                 onBlur={async () => {
                                   const entry = studySchedule[schedulerSelectedDate] || { date: schedulerSelectedDate, tasks: [] };
-                                  const ref = doc(db, 'artifacts', appId, 'users', targetUid, 'study_schedule', schedulerSelectedDate);
-                                  await setDoc(ref, { date: schedulerSelectedDate, notes: entry.notes || '', tasks: entry.tasks || [] }, { merge: true });
-                                  fbTracker.write(1);
-                                  setFbUsage(fbTracker.getUsage());
+                                  const updatedSchedule = await saveLocalScheduleEntry(schedulerSelectedDate, { date: schedulerSelectedDate, notes: entry.notes || '', tasks: entry.tasks || [] });
+                                  setStudySchedule(updatedSchedule);
                                 }}
                                 placeholder="Type any reference notes, focus areas, or reminders for this day..."
                                 className="w-full h-16 p-3 border border-gray-200 rounded-2xl text-xs focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none resize-none bg-gray-50/40 text-gray-800 leading-relaxed"

@@ -503,6 +503,40 @@ export async function replaceAllLocalStudySchedule(scheduleObj) {
   return scheduleObj || {};
 }
 
+// --- SCHEDULE TEMPLATE HELPERS ---
+export async function getLocalScheduleTemplates() {
+  const list = await getLocalKV('schedule_templates');
+  return Array.isArray(list) ? list : [];
+}
+
+export async function saveLocalScheduleTemplate(templateObj) {
+  if (!templateObj || !templateObj.id) return await getLocalScheduleTemplates();
+  const current = await getLocalScheduleTemplates();
+  const index = current.findIndex(t => t.id === templateObj.id);
+  let updated;
+  if (index >= 0) {
+    updated = [...current];
+    updated[index] = { ...updated[index], ...templateObj };
+  } else {
+    updated = [...current, templateObj];
+  }
+  await setLocalKV('schedule_templates', updated);
+  return updated;
+}
+
+export async function deleteLocalScheduleTemplate(templateId) {
+  const current = await getLocalScheduleTemplates();
+  const updated = current.filter(t => t.id !== templateId);
+  await setLocalKV('schedule_templates', updated);
+  return updated;
+}
+
+export async function replaceAllLocalScheduleTemplates(templatesArray) {
+  const finalArray = Array.isArray(templatesArray) ? templatesArray : [];
+  await setLocalKV('schedule_templates', finalArray);
+  return finalArray;
+}
+
 export const DEFAULT_FSRS_CONFIG = {
   enabled: true,
   weights: [
