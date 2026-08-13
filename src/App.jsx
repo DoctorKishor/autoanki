@@ -26302,7 +26302,7 @@ Return your response strictly as a JSON object matching this schema:
                         initial={{ opacity: 0, y: 16 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-                        className="space-y-4 text-left pb-24"
+                        className="space-y-4 text-left pb-24 p-3.5"
                       >
                         {/* Mobile Header / Selector info */}
                         <motion.div
@@ -26604,7 +26604,7 @@ Return your response strictly as a JSON object matching this schema:
                             </motion.div>
 
                             {/* Tracked Topics Checklist Grid */}
-                            <div className="space-y-3 mt-2">
+                            <div className="space-y-3.5 mt-2 p-2.5">
                               {(() => {
                                 const docId = selectedTrackerSubject.trim().toLowerCase();
                                 const trackerDoc = subjectTrackerData.find(p => p.id === docId);
@@ -35347,9 +35347,9 @@ Return your response strictly as a JSON object matching this schema:
                             </div>
 
                             {subjectTrackerSubTab === 'manager' ? (
-                              <div className="flex-grow flex gap-6 overflow-hidden min-h-0">
+                              <div className="flex-grow flex gap-6 min-h-0 p-3.5">
                                 {/* Left Side: Topic Checklist & Actions */}
-                                <div className={`w-7/12 flex flex-col h-full overflow-hidden min-h-0 rounded-2xl p-5 space-y-4 ${
+                                <div className={`w-7/12 flex flex-col h-full min-h-0 rounded-2xl p-5 space-y-4 ${
                                   isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-800 border-slate-200'
                                 }`}>
                                   <div className="flex justify-between items-center shrink-0">
@@ -35450,7 +35450,7 @@ Return your response strictly as a JSON object matching this schema:
                                   </form>
 
                                   {/* List Scroll Area */}
-                                  <div className="flex-grow overflow-y-auto pr-1 custom-scrollbar space-y-3 min-h-0">
+                                  <div className="flex-grow overflow-y-auto p-3.5 custom-scrollbar space-y-3.5 min-h-0">
                                     {(() => {
                                       const docId = selectedTrackerSubject.trim().toLowerCase();
                                       const trackerDoc = subjectTrackerData.find(p => p.id === docId);
@@ -35709,7 +35709,7 @@ Return your response strictly as a JSON object matching this schema:
                                 </div>
 
                                 {/* Right Side: Source material & Gemini extractor */}
-                                <div className="w-5/12 flex flex-col gap-5 overflow-y-auto pr-1 custom-scrollbar shrink-0">
+                                <div className="w-5/12 flex flex-col gap-5 overflow-y-auto p-3.5 custom-scrollbar shrink-0">
                                   {/* Primary Source configuration card */}
                                   <div className={`p-5 rounded-2xl space-y-3 transition-all ${
                                     isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-800 border-slate-200'
