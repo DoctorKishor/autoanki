@@ -314,20 +314,23 @@ export default function SmartReviewHub({
         </div>
       </motion.div>
 
-      {/* Subtab Switcher - Dynamic Single Sliding Pill */}
+      {/* Subtab Switcher - Non-Scrollable Single Sliding Pill for Mobile & Desktop */}
       <motion.div
         initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.3, delay: 0.08 }}
-        className={`relative flex p-1.5 rounded-2xl border w-full md:w-auto self-start overflow-x-auto no-scrollbar ${
-          isDark ? 'bg-slate-900/90 border-slate-700/60 shadow-inner' : 'neu-pressed-light border-slate-200/80'
+        className={`relative grid grid-cols-3 p-1.5 rounded-2xl border w-full max-w-2xl shrink-0 select-none overflow-hidden ${
+          isDark ? 'neu-pressed-dark border border-slate-700/60' : 'neu-pressed-light border border-slate-200/80'
         }`}
       >
+        {/* Single Sliding Pill Indicator */}
         <div
-          className="absolute top-1.5 bottom-1.5 bg-indigo-600 rounded-xl shadow-md"
+          className={`absolute top-1.5 bottom-1.5 rounded-xl shadow-md ${
+            isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+          }`}
           style={{
-            left: subTab === 'queue' ? '6px' : subTab === 'analytics' ? 'calc(33.33% + 2px)' : 'calc(66.66% + 2px)',
-            width: 'calc(33.33% - 8px)',
+            left: `calc(0.375rem + ${['queue', 'analytics', 'leeches'].indexOf(subTab)} * ((100% - 0.75rem) / 3))`,
+            width: `calc((100% - 0.75rem) / 3)`,
             transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
           }}
         />
@@ -335,31 +338,34 @@ export default function SmartReviewHub({
         <button
           type="button"
           onClick={() => setSubTab('queue')}
-          className={`relative z-10 flex-1 px-4 sm:px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-colors duration-200 whitespace-nowrap ${
-            subTab === 'queue' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-900'
+          className={`relative z-10 py-2.5 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center transition-colors duration-300 px-1 text-center truncate ${
+            subTab === 'queue' ? 'text-white font-extrabold' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          ⚡ Daily Study Hub ({overdueTopics.length + dueTodayTopics.length})
+          <span className="hidden sm:inline">⚡ Daily Study Hub ({overdueTopics.length + dueTodayTopics.length})</span>
+          <span className="sm:hidden">⚡ Hub ({overdueTopics.length + dueTodayTopics.length})</span>
         </button>
 
         <button
           type="button"
           onClick={() => setSubTab('analytics')}
-          className={`relative z-10 flex-1 px-4 sm:px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-colors duration-200 whitespace-nowrap ${
-            subTab === 'analytics' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-900'
+          className={`relative z-10 py-2.5 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center transition-colors duration-300 px-1 text-center truncate ${
+            subTab === 'analytics' ? 'text-white font-extrabold' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          📊 Analytics & Forecast
+          <span className="hidden sm:inline">📊 Analytics & Forecast</span>
+          <span className="sm:hidden">📊 Analytics</span>
         </button>
 
         <button
           type="button"
           onClick={() => setSubTab('leeches')}
-          className={`relative z-10 flex-1 px-4 sm:px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-colors duration-200 whitespace-nowrap ${
-            subTab === 'leeches' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-900'
+          className={`relative z-10 py-2.5 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center transition-colors duration-300 px-1 text-center truncate ${
+            subTab === 'leeches' ? 'text-white font-extrabold' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          ⚠️ Leech Revision ({leechTopics.length})
+          <span className="hidden sm:inline">⚠️ Leech Revision ({leechTopics.length})</span>
+          <span className="sm:hidden">⚠️ Leeches ({leechTopics.length})</span>
         </button>
       </motion.div>
 
