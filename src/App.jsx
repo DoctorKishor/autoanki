@@ -9029,9 +9029,14 @@ JSON Format:
       nextReviewDue: fsrsResult.nextReviewDue,
       timestamp: new Date().toISOString()
     };
-    saveLocalStudyLog(logEntry).catch(err => {
-      console.error("[LocalDB] Error saving study log:", err);
-    });
+    if (dateStr) {
+      const currentDayLog = studyLogs[dateStr] || {};
+      const existingFsrsLogs = currentDayLog.fsrsLogs || [];
+      const updatedDayLog = { ...currentDayLog, fsrsLogs: [...existingFsrsLogs, logEntry] };
+      saveLocalStudyLog(dateStr, updatedDayLog).catch(err => {
+        console.error("[LocalDB] Error saving study log:", err);
+      });
+    }
   };
 
   const handleDeleteTrackerStudyDate = async (subject, topicName, dateIndex) => {
@@ -9177,7 +9182,7 @@ JSON Format:
         tempStreak = 1;
       } else {
         const diffTime = Math.abs(cur - prevDate);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
         if (diffDays === 1) {
           tempStreak++;
         } else if (diffDays > 1) {
@@ -9195,6 +9200,26 @@ JSON Format:
   // --- STUDY LOGGER ACTIONS ---
   const handleDeleteGt = (index) => {
     setLoggerGtsList(prev => prev.filter((_, idx) => idx !== index));
+  };
+
+  const handleDeleteTimelineGt = async (dateStr, gtIndex) => {
+    if (!dateStr) return;
+    try {
+      const currentDayLog = studyLogs[dateStr] || {};
+      const currentGts = currentDayLog.gts || [];
+      const updatedGts = currentGts.filter((_, idx) => idx !== gtIndex);
+
+      const updatedDayLog = { ...currentDayLog, gts: updatedGts };
+      await saveLocalStudyLog(dateStr, updatedDayLog);
+
+      setStudyLogs(prev => ({
+        ...prev,
+        [dateStr]: updatedDayLog
+      }));
+    } catch (err) {
+      console.error("[LocalDB] Error deleting GT from timeline:", err);
+      alert("Failed to delete mock test: " + err.message);
+    }
   };
 
   const handleAddGt = () => {
@@ -11319,7 +11344,6 @@ JSON Format:
   };
 
   const handleLogMobileSession = async () => {
-    if (!user || !db) return;
     if (!mobileSessionHours.trim() && !mobileSessionQuestions.trim() && !mobileSessionCards.trim() && !mobileSessionPages.trim()) {
       alert("Please enter at least one study metric to log.");
       return;
@@ -11332,10 +11356,10 @@ JSON Format:
 
       const todayLog = studyLogs[localToday] || { questions: 0, cards: 0, hours: 0, pages: 0, gts: [], sessions: [] };
 
-      const hoursVal = Number(mobileSessionHours) || 0;
-      const questionsVal = Number(mobileSessionQuestions) || 0;
-      const cardsVal = Number(mobileSessionCards) || 0;
-      const pagesVal = Number(mobileSessionPages) || 0;
+      const hoursVal = Math.max(0, Number(mobileSessionHours) || 0);
+      const questionsVal = Math.max(0, Number(mobileSessionQuestions) || 0);
+      const cardsVal = Math.max(0, Number(mobileSessionCards) || 0);
+      const pagesVal = Math.max(0, Number(mobileSessionPages) || 0);
 
       const newHours = (todayLog.hours || 0) + hoursVal;
       const newQuestions = (todayLog.questions || 0) + questionsVal;
@@ -12325,7 +12349,12 @@ JSON Format:
             nextReviewDue: fsrsResult.nextReviewDue,
             timestamp: new Date().toISOString()
           };
-          saveLocalStudyLog(logEntry).catch(err => console.error("[LocalDB] Error saving study log:", err));
+          if (logEntry.dateStr) {
+            const currentDayLog = studyLogs[logEntry.dateStr] || {};
+            const existingFsrsLogs = currentDayLog.fsrsLogs || [];
+            const updatedDayLog = { ...currentDayLog, fsrsLogs: [...existingFsrsLogs, logEntry] };
+            saveLocalStudyLog(logEntry.dateStr, updatedDayLog).catch(err => console.error("[LocalDB] Error saving study log:", err));
+          }
         });
 
         await saveLocalSubjectTrackerDoc(docId, {
