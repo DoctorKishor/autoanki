@@ -35425,8 +35425,10 @@ Return your response strictly as a JSON object matching this schema:
                                                   }`}
                                               >
                                                 {/* Main Topic Header */}
-                                                <div className="p-4 flex items-center justify-between gap-3.5 text-left">
-                                                  <div className="flex items-center gap-3.5 min-w-0 flex-grow">
+                                                <div className="px-4 pt-4 pb-3 flex flex-col gap-2 text-left">
+
+                                                  {/* Row 1: Check circle + Topic name (full width, no truncation) */}
+                                                  <div className="flex items-start gap-3 min-w-0">
                                                     <button
                                                       onClick={() => {
                                                         setExpandedTrackerTopics(prev => ({
@@ -35434,101 +35436,98 @@ Return your response strictly as a JSON object matching this schema:
                                                           [topicItem.name]: !prev[topicItem.name]
                                                         }));
                                                       }}
-                                                      className={`p-2 rounded-xl transition shrink-0 ${hasRevisions
+                                                      title={hasRevisions ? 'Has revisions' : 'No revisions yet'}
+                                                      className={`mt-0.5 p-1.5 rounded-xl transition shrink-0 ${hasRevisions
                                                         ? isDark ? 'neu-pressed-dark text-emerald-400' : 'bg-emerald-100 text-emerald-600'
                                                         : isDark ? 'neu-pressed-dark text-slate-500 hover:text-slate-300' : 'bg-slate-100 text-slate-400 hover:text-slate-600'
                                                         }`}
                                                     >
-                                                      <CheckCircle2 className="w-4.5 h-4.5" />
+                                                      <CheckCircle2 className="w-4 h-4" />
                                                     </button>
-                                                    <div className="min-w-0 flex-grow">
-                                                      <h4 className="text-xs sm:text-sm font-black tracking-tight leading-snug truncate w-full">
+                                                    <div className="min-w-0 flex-1">
+                                                      <p className={`text-xs sm:text-sm font-black tracking-tight leading-snug break-words ${isDark ? 'text-white' : 'text-slate-800'}`}>
                                                         {topicItem.name}
-                                                      </h4>
-                                                      <div className="flex items-center gap-2 mt-1">
-                                                        <span className={`text-[9px] sm:text-[10px] font-black px-2.5 py-0.5 rounded-lg border whitespace-nowrap shrink-0 ${topicItem.endPage
-                                                          ? isDark ? 'text-emerald-400 bg-emerald-950/40 border-emerald-800/60' : 'text-emerald-700 bg-emerald-50 border-emerald-100'
-                                                          : isDark ? 'text-amber-400 bg-amber-950/40 border-amber-800/60' : 'text-amber-700 bg-amber-50 border-amber-100'
-                                                          }`}>
-                                                          {topicItem.page ? `p. ${topicItem.page}${topicItem.endPage ? `–${topicItem.endPage}` : ''}` : 'No pgs'} ({getTopicWeight(topicItem, topicsList)} pgs)
-                                                        </span>
-                                                      </div>
+                                                      </p>
+                                                      <span className={`inline-block mt-1 text-[9px] sm:text-[10px] font-black px-2 py-0.5 rounded-lg border ${topicItem.endPage
+                                                        ? isDark ? 'text-emerald-400 bg-emerald-950/40 border-emerald-800/60' : 'text-emerald-700 bg-emerald-50 border-emerald-100'
+                                                        : isDark ? 'text-amber-400 bg-amber-950/40 border-amber-800/60' : 'text-amber-700 bg-amber-50 border-amber-100'
+                                                        }`}>
+                                                        {topicItem.page ? `p. ${topicItem.page}${topicItem.endPage ? `–${topicItem.endPage}` : ''}` : 'No pgs'} ({getTopicWeight(topicItem, topicsList)} pgs)
+                                                      </span>
                                                     </div>
                                                   </div>
 
-                                                  {/* Right: Revision badge & Action buttons */}
-                                                  <div className="flex items-center gap-2 shrink-0">
-                                                    <button
-                                                      onClick={() => {
-                                                        setExpandedTrackerTopics(prev => ({
-                                                          ...prev,
-                                                          [topicItem.name]: !prev[topicItem.name]
-                                                        }));
-                                                      }}
-                                                      className={`px-3 py-1.5 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-wider transition flex items-center gap-1.5 ${hasRevisions
-                                                        ? isDark ? 'neu-pressed-dark text-blue-400 border border-blue-900/50' : 'bg-blue-50 text-blue-600 border border-blue-100'
-                                                        : isDark ? 'neu-pressed-dark text-slate-400' : 'bg-slate-100 text-slate-500'
-                                                        }`}
-                                                    >
-                                                      <Flame className={`w-3.5 h-3.5 ${hasRevisions ? 'text-amber-500' : ''}`} />
+                                                  {/* Row 2: Action bar — revs badge + icon buttons */}
+                                                  <div className="flex items-center justify-between gap-2 mt-0.5">
+                                                    {/* Revisions badge */}
+                                                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-wider ${hasRevisions
+                                                      ? isDark ? 'neu-pressed-dark text-blue-400 border border-blue-900/50' : 'bg-blue-50 text-blue-600 border border-blue-100'
+                                                      : isDark ? 'neu-pressed-dark text-slate-400' : 'bg-slate-100 text-slate-500'
+                                                      }`}>
+                                                      <Flame className={`w-3 h-3 ${hasRevisions ? 'text-amber-500' : ''}`} />
                                                       {dates.length} {dates.length === 1 ? 'rev' : 'revs'}
-                                                    </button>
+                                                    </span>
 
-                                                    <motion.button
-                                                      whileHover={{ scale: 1.05 }}
-                                                      whileTap={{ scale: 0.92 }}
-                                                      title="Log today's revision"
-                                                      onClick={() => handleLogTrackerStudyDate(selectedTrackerSubject, topicItem.name, todayStr)}
-                                                      className={`p-2 rounded-xl transition ${isDark ? 'neu-btn-dark text-emerald-400 hover:text-emerald-300' : 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'}`}
-                                                    >
-                                                      <Plus className="w-4 h-4" />
-                                                    </motion.button>
+                                                    {/* Right icon buttons */}
+                                                    <div className="flex items-center gap-1">
+                                                      <motion.button
+                                                        whileHover={{ scale: 1.08 }}
+                                                        whileTap={{ scale: 0.92 }}
+                                                        title="Log today's revision"
+                                                        onClick={() => handleLogTrackerStudyDate(selectedTrackerSubject, topicItem.name, todayStr)}
+                                                        className={`p-2 rounded-xl transition ${isDark ? 'neu-btn-dark text-emerald-400 hover:text-emerald-300' : 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'}`}
+                                                      >
+                                                        <Plus className="w-3.5 h-3.5" />
+                                                      </motion.button>
 
-                                                    <button
-                                                      title="Schedule review session"
-                                                      onClick={() => {
-                                                        const topicLabel = `${selectedTrackerSubject}: ${topicItem.name}`;
-                                                        setSchedulerEditingTask({
-                                                          date: schedulerSelectedDate || todayStr,
-                                                          id: null,
-                                                          topic: topicLabel,
-                                                          startTime: '09:00',
-                                                          endTime: '10:00',
-                                                          color: 'blue',
-                                                          completed: false,
-                                                          notes: ""
-                                                        });
-                                                        setCurrentTab('studyScheduler');
-                                                      }}
-                                                      className={`p-2 rounded-xl transition ${isDark ? 'text-blue-400 hover:text-blue-300 hover:bg-slate-800' : 'text-blue-500 hover:text-blue-700 hover:bg-slate-100'}`}
-                                                    >
-                                                      <Calendar className="w-4 h-4" />
-                                                    </button>
+                                                      <button
+                                                        title="Schedule review session"
+                                                        onClick={() => {
+                                                          const topicLabel = `${selectedTrackerSubject}: ${topicItem.name}`;
+                                                          setSchedulerEditingTask({
+                                                            date: schedulerSelectedDate || todayStr,
+                                                            id: null,
+                                                            topic: topicLabel,
+                                                            startTime: '09:00',
+                                                            endTime: '10:00',
+                                                            color: 'blue',
+                                                            completed: false,
+                                                            notes: ""
+                                                          });
+                                                          setCurrentTab('studyScheduler');
+                                                        }}
+                                                        className={`p-2 rounded-xl transition ${isDark ? 'text-blue-400 hover:text-blue-300 hover:bg-slate-800' : 'text-blue-500 hover:text-blue-700 hover:bg-slate-100'}`}
+                                                      >
+                                                        <Calendar className="w-3.5 h-3.5" />
+                                                      </button>
 
-                                                    <button
-                                                      onClick={() => {
-                                                        setExpandedTrackerTopics(prev => ({
-                                                          ...prev,
-                                                          [topicItem.name]: !prev[topicItem.name]
-                                                        }));
-                                                      }}
-                                                      className={`p-2 rounded-xl transition ${isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-400 hover:text-slate-800 hover:bg-slate-100'}`}
-                                                    >
-                                                      <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isExpanded ? 'rotate-180 text-blue-500' : ''}`} />
-                                                    </button>
+                                                      <button
+                                                        title={isExpanded ? 'Collapse' : 'Expand'}
+                                                        onClick={() => {
+                                                          setExpandedTrackerTopics(prev => ({
+                                                            ...prev,
+                                                            [topicItem.name]: !prev[topicItem.name]
+                                                          }));
+                                                        }}
+                                                        className={`p-2 rounded-xl transition ${isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-400 hover:text-slate-800 hover:bg-slate-100'}`}
+                                                      >
+                                                        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${isExpanded ? 'rotate-180 text-blue-500' : ''}`} />
+                                                      </button>
 
-                                                    <button
-                                                      title="Delete topic"
-                                                      onClick={() => {
-                                                        if (window.confirm(`Delete topic "${topicItem.name}"?`)) {
-                                                          handleDeleteTrackerTopic(selectedTrackerSubject, topicItem.name);
-                                                        }
-                                                      }}
-                                                      className={`p-2 rounded-xl transition ${isDark ? 'text-slate-500 hover:text-rose-400 hover:bg-slate-800' : 'text-slate-400 hover:text-rose-600 hover:bg-slate-100'}`}
-                                                    >
-                                                      <Trash2 className="w-4 h-4" />
-                                                    </button>
+                                                      <button
+                                                        title="Delete topic"
+                                                        onClick={() => {
+                                                          if (window.confirm(`Delete topic "${topicItem.name}"?`)) {
+                                                            handleDeleteTrackerTopic(selectedTrackerSubject, topicItem.name);
+                                                          }
+                                                        }}
+                                                        className={`p-2 rounded-xl transition ${isDark ? 'text-slate-500 hover:text-rose-400 hover:bg-slate-800' : 'text-slate-400 hover:text-rose-600 hover:bg-slate-100'}`}
+                                                      >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                      </button>
+                                                    </div>
                                                   </div>
+
                                                 </div>
 
                                                 {/* Expanded Topic Drawer */}
