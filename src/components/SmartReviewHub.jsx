@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { UploadCloud, Brain, Calendar, AlertTriangle, CheckCircle, Clock, BookOpen, ChevronRight, Layers, Sparkles } from 'lucide-react';
+import { Brain, Calendar, AlertTriangle, CheckCircle, Clock, BookOpen, Layers, Sparkles, RotateCcw, RotateCw, Zap, Undo2 } from 'lucide-react';
 import FsrsStatsTab from './FsrsStatsTab';
 import FsrsSettingsModal from './FsrsSettingsModal';
 import { saveLocalSubjectTrackerDoc } from '../services/localDb';
@@ -74,10 +74,13 @@ export default function SmartReviewHub({
   studyLogs = [],
   fsrsConfig = {},
   onSaveConfig,
-  batchedReviews = [],
-  onSyncBatchedReviews,
-  isSaving = false,
   onRateTopic,
+  onUndoRating,
+  onRedoRating,
+  canUndo = false,
+  canRedo = false,
+  lastRatedToast = null,
+  onClearToast,
   studySchedule = [],
   onUpdateSubjectDoc
 }) {
@@ -85,6 +88,17 @@ export default function SmartReviewHub({
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [mnemonicNotes, setMnemonicNotes] = useState({});
   const [toastMessage, setToastMessage] = useState('');
+
+  useEffect(() => {
+    if (lastRatedToast && lastRatedToast.message) {
+      setToastMessage(lastRatedToast.message);
+      const timer = setTimeout(() => {
+        setToastMessage('');
+        if (typeof onClearToast === 'function') onClearToast();
+      }, 4500);
+      return () => clearTimeout(timer);
+    }
+  }, [lastRatedToast, onClearToast]);
 
   // 1. Calculate Daily Limits & Page Counts from subjectTrackerData
   const dailyLimits = fsrsConfig.dailyLimits || { newPagesPerDay: 10, maxReviewPagesPerDay: 30 };
@@ -204,7 +218,7 @@ export default function SmartReviewHub({
 
   return (
     <div className="w-full space-y-6 text-slate-200 relative">
-      {/* Subtle Visual Toast Notification */}
+      {/* Interactive Visual Toast Notification */}
       <AnimatePresence>
         {toastMessage && (
           <motion.div
@@ -212,13 +226,26 @@ export default function SmartReviewHub({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
             transition={{ duration: 0.25 }}
-            className="fixed bottom-6 right-6 z-50 px-4 py-2.5 rounded-2xl bg-emerald-600/95 text-white text-xs font-black shadow-xl backdrop-blur-md border border-emerald-400/40 flex items-center gap-2"
+            className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl bg-[#222730] text-white text-xs font-black shadow-2xl backdrop-blur-md border border-slate-700/80 flex items-center gap-3 neu-card-dark"
           >
-            <CheckCircle className="w-4 h-4 text-emerald-200" />
-            <span>{toastMessage}</span>
+            <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span className="truncate max-w-xs">{toastMessage}</span>
+            {canUndo && (
+              <button
+                onClick={() => {
+                  if (typeof onUndoRating === 'function') onUndoRating();
+                  setToastMessage('');
+                }}
+                className="ml-2 px-2.5 py-1 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[10px] uppercase font-black tracking-wider transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
+              >
+                <RotateCcw className="w-3 h-3" />
+                Undo
+              </button>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
+
       {/* Settings Modal */}
       <FsrsSettingsModal
         isOpen={isSettingsOpen}
@@ -244,27 +271,51 @@ export default function SmartReviewHub({
           </p>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center gap-3 w-full md:w-auto">
+        {/* Action Buttons Toolbar */}
+        <div className="flex items-center gap-2.5 w-full md:w-auto flex-wrap">
+          {/* Permanent Undo Button */}
           <button
-            onClick={() => setIsSettingsOpen(true)}
-            className="flex-1 md:flex-initial px-4 py-2.5 rounded-2xl text-xs font-bold uppercase tracking-wider bg-slate-800 hover:bg-slate-700 text-white shadow-sm transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer border border-slate-700 active:scale-95"
-          >
-            <span>⚙️</span>
-            <span>FSRS Settings</span>
-          </button>
-
-          <button
-            onClick={onSyncBatchedReviews}
-            disabled={!batchedReviews || batchedReviews.length === 0 || isSaving}
-            className={`flex-1 md:flex-initial px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-2 ${
-              batchedReviews && batchedReviews.length > 0
-                ? 'bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white shadow-lg shadow-indigo-600/25 active:scale-95 cursor-pointer'
-                : 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed'
+            onClick={onUndoRating}
+            disabled={!canUndo}
+            title="Undo last rating"
+            className={`px-3.5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-1.5 ${
+              canUndo
+                ? 'bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/40 shadow-md active:scale-95 cursor-pointer'
+                : 'bg-slate-900/60 text-slate-600 border border-slate-800 cursor-not-allowed'
             }`}
           >
-            <UploadCloud className="w-4 h-4" />
-            {isSaving ? 'Syncing...' : `Save & Sync (${batchedReviews ? batchedReviews.length : 0})`}
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Undo</span>
+          </button>
+
+          {/* Permanent Redo Button */}
+          <button
+            onClick={onRedoRating}
+            disabled={!canRedo}
+            title="Redo rating"
+            className={`px-3.5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-1.5 ${
+              canRedo
+                ? 'bg-slate-800 hover:bg-slate-700 text-sky-300 border border-sky-500/40 shadow-md active:scale-95 cursor-pointer'
+                : 'bg-slate-900/60 text-slate-600 border border-slate-800 cursor-not-allowed'
+            }`}
+          >
+            <RotateCw className="w-3.5 h-3.5" />
+            <span>Redo</span>
+          </button>
+
+          {/* Auto-Sync Badge */}
+          <div className="px-3.5 py-2.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-sm">
+            <Zap className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+            <span>Auto-Synced</span>
+          </div>
+
+          {/* FSRS Settings Button */}
+          <button
+            onClick={() => setIsSettingsOpen(true)}
+            className="px-4 py-2.5 rounded-2xl text-xs font-bold uppercase tracking-wider bg-slate-800 hover:bg-slate-700 text-white shadow-sm transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer border border-slate-700 active:scale-95"
+          >
+            <span>⚙️</span>
+            <span>Settings</span>
           </button>
         </div>
       </motion.div>
@@ -390,7 +441,7 @@ export default function SmartReviewHub({
             </motion.div>
           )}
 
-            {/* Topic Queue Lists */}
+          {/* Topic Queue Lists */}
           <div className="space-y-6">
             {/* Overdue Queue */}
             {overdueTopics.length > 0 && (
@@ -399,9 +450,11 @@ export default function SmartReviewHub({
                   <AlertTriangle className="w-4 h-4" /> Overdue Topics ({overdueTopics.length})
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {overdueTopics.map((topic, idx) => (
-                    <TopicCard key={idx} topic={topic} onRate={onRateTopic} isOverdue index={idx} />
-                  ))}
+                  <AnimatePresence mode="popLayout">
+                    {overdueTopics.map((topic, idx) => (
+                      <TopicCard key={topic.id || (topic.subject + '_' + topic.name)} topic={topic} onRate={onRateTopic} isOverdue index={idx} />
+                    ))}
+                  </AnimatePresence>
                 </div>
               </div>
             )}
@@ -413,9 +466,11 @@ export default function SmartReviewHub({
               </h4>
               {dueTodayTopics.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {dueTodayTopics.map((topic, idx) => (
-                    <TopicCard key={idx} topic={topic} onRate={onRateTopic} index={idx} />
-                  ))}
+                  <AnimatePresence mode="popLayout">
+                    {dueTodayTopics.map((topic, idx) => (
+                      <TopicCard key={topic.id || (topic.subject + '_' + topic.name)} topic={topic} onRate={onRateTopic} index={idx} />
+                    ))}
+                  </AnimatePresence>
                 </div>
               ) : (
                 <div className="p-5 rounded-2xl bg-slate-900/50 border border-slate-700/40 text-xs text-slate-400 text-center font-semibold">
@@ -431,9 +486,11 @@ export default function SmartReviewHub({
                   <Sparkles className="w-4 h-4" /> New Topics Available ({newTopics.length})
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {newTopics.slice(0, 6).map((topic, idx) => (
-                    <TopicCard key={idx} topic={topic} onRate={onRateTopic} isNew index={idx} />
-                  ))}
+                  <AnimatePresence mode="popLayout">
+                    {newTopics.slice(0, 6).map((topic, idx) => (
+                      <TopicCard key={topic.id || (topic.subject + '_' + topic.name)} topic={topic} onRate={onRateTopic} isNew index={idx} />
+                    ))}
+                  </AnimatePresence>
                 </div>
               </div>
             )}
@@ -522,6 +579,7 @@ function TopicCard({ topic, onRate, isOverdue = false, isNew = false, index = 0 
     <motion.div
       initial={{ opacity: 0, y: 12, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.9, y: 12, transition: { duration: 0.2 } }}
       transition={{ duration: 0.25, delay: index * 0.04 }}
       whileHover={{ y: -2 }}
       className={`p-4 rounded-2xl bg-[#222730] border shadow-md neu-card-dark space-y-3 transition-transform ${
@@ -549,29 +607,32 @@ function TopicCard({ topic, onRate, isOverdue = false, isNew = false, index = 0 
       <div className="grid grid-cols-4 gap-1.5 pt-1">
         <button
           onClick={() => onRate && onRate(topic, 1)}
-          className="py-1.5 rounded-xl text-[10px] font-black bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 active:scale-95 transition-all"
+          className="py-1.5 rounded-xl text-[10px] font-black bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 active:scale-95 transition-all cursor-pointer"
         >
           Again (1)
         </button>
         <button
           onClick={() => onRate && onRate(topic, 2)}
-          className="py-1.5 rounded-xl text-[10px] font-black bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 active:scale-95 transition-all"
+          className="py-1.5 rounded-xl text-[10px] font-black bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 active:scale-95 transition-all cursor-pointer"
         >
           Hard (2)
         </button>
         <button
           onClick={() => onRate && onRate(topic, 3)}
-          className="py-1.5 rounded-xl text-[10px] font-black bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 active:scale-95 transition-all"
+          className="py-1.5 rounded-xl text-[10px] font-black bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 active:scale-95 transition-all cursor-pointer"
         >
           Good (3)
         </button>
         <button
           onClick={() => onRate && onRate(topic, 4)}
-          className="py-1.5 rounded-xl text-[10px] font-black bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 active:scale-95 transition-all"
+          className="py-1.5 rounded-xl text-[10px] font-black bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 active:scale-95 transition-all cursor-pointer"
         >
           Easy (4)
         </button>
       </div>
+    </motion.div>
+  );
+}   </div>
     </motion.div>
   );
 }

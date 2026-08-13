@@ -7026,6 +7026,9 @@ export default function App() {
 
   // Overall Topics/Subject Tracker States
   const [subjectTrackerData, setSubjectTrackerData] = useState([]);
+  const [reviewUndoStack, setReviewUndoStack] = useState([]);
+  const [reviewRedoStack, setReviewRedoStack] = useState([]);
+  const [lastRatedToast, setLastRatedToast] = useState(null);
   const [examProfiles, setExamProfiles] = useState([]);
   const isExamProfilesLoaded = useRef(false);
 
@@ -12480,6 +12483,189 @@ JSON Format:
     }
   };
 
+  const handleInstantRateTopic = (topic, rating) => {
+    if (!topic || !topic.name || !topic.subject) return;
+    const cleanTopicName = topic.name.trim();
+    const docId = topic.subject.trim().toLowerCase();
+    const subjectName = topic.subject.trim();
+    const todayStr = new Date().toLocaleDateString('en-CA');
+
+    const existingDoc = subjectTrackerData.find(p => p.id === docId);
+    const previousDocSnapshot = existingDoc ? JSON.parse(JSON.stringify(existingDoc)) : { id: docId, subject: subjectName, topics: {} };
+    const topicsMap = existingDoc && existingDoc.topics ? JSON.parse(JSON.stringify(existingDoc.topics)) : {};
+
+    if (!topicsMap[cleanTopicName]) {
+      topicsMap[cleanTopicName] = {
+        name: cleanTopicName,
+        page: topic.page || "",
+        studyDates: []
+      };
+    }
+
+    const currentFsrsState = {
+      difficulty: topicsMap[cleanTopicName].difficulty,
+      stability: topicsMap[cleanTopicName].stability,
+      lastReviewDate: topicsMap[cleanTopicName].lastReviewDate,
+      reviewCount: topicsMap[cleanTopicName].reviewCount,
+    };
+
+    const activeDR = fsrsConfig.retentionMode === 'perSubject'
+      ? (fsrsConfig.perSubjectRetention?.[subjectName] || fsrsConfig.globalDesiredRetention || 0.90)
+      : (fsrsConfig.globalDesiredRetention || 0.90);
+
+    const fsrsInput = currentFsrsState.stability != null ? currentFsrsState : null;
+    const fsrsResult = calculateNextFSRSState(
+      fsrsInput,
+      rating,
+      todayStr,
+      fsrsConfig.weights || DEFAULT_FSRS6_WEIGHTS,
+      activeDR,
+      {
+        subjectTrackerData,
+        easyDays: fsrsConfig.easyDays || {},
+        enableLoadBalancing: true
+      }
+    );
+
+    topicsMap[cleanTopicName].difficulty = fsrsResult.difficulty;
+    topicsMap[cleanTopicName].stability = fsrsResult.stability;
+    topicsMap[cleanTopicName].retrievability = fsrsResult.retrievability;
+    topicsMap[cleanTopicName].interval = fsrsResult.interval;
+    topicsMap[cleanTopicName].nextReviewDue = fsrsResult.nextReviewDue;
+    topicsMap[cleanTopicName].lastReviewDate = fsrsResult.lastReviewDate;
+    topicsMap[cleanTopicName].reviewCount = fsrsResult.reviewCount;
+    topicsMap[cleanTopicName].lapses = fsrsResult.lapses != null ? fsrsResult.lapses : (topicsMap[cleanTopicName].lapses || 0) + (rating === 1 ? 1 : 0);
+
+    if (!Array.isArray(topicsMap[cleanTopicName].studyDates)) {
+      topicsMap[cleanTopicName].studyDates = [];
+    }
+    if (!topicsMap[cleanTopicName].studyDates.includes(todayStr)) {
+      topicsMap[cleanTopicName].studyDates.push(todayStr);
+      topicsMap[cleanTopicName].studyDates.sort((a, b) => a.localeCompare(b));
+    }
+
+    const updatedDoc = {
+      ...existingDoc,
+      id: docId,
+      subject: subjectName,
+      topics: topicsMap,
+      updatedAt: new Date().toISOString()
+    };
+
+    const ratingLabels = { 1: 'Again (1)', 2: 'Hard (2)', 3: 'Good (3)', 4: 'Easy (4)' };
+    const undoItem = {
+      docId,
+      previousDoc: previousDocSnapshot,
+      updatedDoc,
+      topicName: cleanTopicName,
+      ratingLabel: ratingLabels[rating] || `Rating ${rating}`,
+      timestamp: Date.now()
+    };
+
+    setReviewUndoStack(prev => [...prev, undoItem]);
+    setReviewRedoStack([]); // Clear redo stack on new rating
+
+    // 1. Instant Optimistic React State Update
+    setSubjectTrackerData(prev => {
+      const list = Array.isArray(prev) ? prev : [];
+      const idx = list.findIndex(d => d.id === docId);
+      if (idx >= 0) {
+        return list.map(d => d.id === docId ? updatedDoc : d);
+      }
+      return [...list, updatedDoc];
+    });
+
+    // 2. Auto-Persist to LocalDB immediately
+    saveLocalSubjectTrackerDoc(docId, updatedDoc).catch(err => {
+      console.error("[LocalDB] Error saving subject doc:", err);
+    });
+
+    const logEntry = {
+      id: 'log_' + Math.random().toString(36).substring(2, 9),
+      subject: subjectName,
+      topicName: cleanTopicName,
+      dateStr: todayStr,
+      rating,
+      stability: fsrsResult.stability,
+      difficulty: fsrsResult.difficulty,
+      nextReviewDue: fsrsResult.nextReviewDue,
+      timestamp: new Date().toISOString()
+    };
+    saveLocalStudyLog(logEntry).catch(err => {
+      console.error("[LocalDB] Error saving study log:", err);
+    });
+
+    // 3. Set Toast Feedback
+    setLastRatedToast({
+      message: `Rated "${cleanTopicName}" as ${ratingLabels[rating]}`,
+      topicName: cleanTopicName,
+      ratingLabel: ratingLabels[rating],
+      timestamp: Date.now()
+    });
+  };
+
+  const handleUndoReviewRating = async () => {
+    if (reviewUndoStack.length === 0) return;
+    const lastItem = reviewUndoStack[reviewUndoStack.length - 1];
+    setReviewUndoStack(prev => prev.slice(0, prev.length - 1));
+    setReviewRedoStack(prev => [...prev, lastItem]);
+
+    const { docId, previousDoc, topicName } = lastItem;
+
+    // Optimistically revert state
+    setSubjectTrackerData(prev => {
+      const list = Array.isArray(prev) ? prev : [];
+      const idx = list.findIndex(d => d.id === docId);
+      if (idx >= 0) {
+        return list.map(d => d.id === docId ? previousDoc : d);
+      }
+      return [...list, previousDoc];
+    });
+
+    // Save reverted doc to LocalDB
+    await saveLocalSubjectTrackerDoc(docId, previousDoc).catch(err => {
+      console.error("[LocalDB] Error reverting document:", err);
+    });
+
+    setLastRatedToast({
+      message: `Undid review for "${topicName}"`,
+      topicName,
+      isUndo: true,
+      timestamp: Date.now()
+    });
+  };
+
+  const handleRedoReviewRating = async () => {
+    if (reviewRedoStack.length === 0) return;
+    const lastItem = reviewRedoStack[reviewRedoStack.length - 1];
+    setReviewRedoStack(prev => prev.slice(0, prev.length - 1));
+    setReviewUndoStack(prev => [...prev, lastItem]);
+
+    const { docId, updatedDoc, topicName } = lastItem;
+
+    // Optimistically re-apply state
+    setSubjectTrackerData(prev => {
+      const list = Array.isArray(prev) ? prev : [];
+      const idx = list.findIndex(d => d.id === docId);
+      if (idx >= 0) {
+        return list.map(d => d.id === docId ? updatedDoc : d);
+      }
+      return [...list, updatedDoc];
+    });
+
+    // Save updated doc to LocalDB
+    await saveLocalSubjectTrackerDoc(docId, updatedDoc).catch(err => {
+      console.error("[LocalDB] Error re-applying document:", err);
+    });
+
+    setLastRatedToast({
+      message: `Redid review for "${topicName}"`,
+      topicName,
+      isRedo: true,
+      timestamp: Date.now()
+    });
+  };
+
   const handleUpdateSubjectTrackerDoc = (updatedDoc) => {
     if (!updatedDoc || !updatedDoc.id) return;
     setSubjectTrackerData(prev => {
@@ -12499,22 +12685,13 @@ JSON Format:
         studyLogs={studyLogs}
         fsrsConfig={fsrsConfig}
         onSaveConfig={updateFsrsConfig}
-        batchedReviews={batchedReviews}
-        onSyncBatchedReviews={handleSyncBatchedReviews}
-        isSaving={isSaving}
-        onRateTopic={(topic, rating) => {
-          const todayStr = new Date().toLocaleDateString('en-CA');
-          const newReview = {
-            id: 'review_' + Math.random().toString(36).substring(2, 9),
-            subject: topic.subject,
-            topicName: topic.name,
-            dateStr: todayStr,
-            rating
-          };
-          if (typeof setBatchedReviews === 'function') {
-            setBatchedReviews(prev => [...(prev || []), newReview]);
-          }
-        }}
+        onRateTopic={handleInstantRateTopic}
+        onUndoRating={handleUndoReviewRating}
+        onRedoRating={handleRedoReviewRating}
+        canUndo={reviewUndoStack.length > 0}
+        canRedo={reviewRedoStack.length > 0}
+        lastRatedToast={lastRatedToast}
+        onClearToast={() => setLastRatedToast(null)}
         studySchedule={studySchedule}
         onUpdateSubjectDoc={handleUpdateSubjectTrackerDoc}
       />
