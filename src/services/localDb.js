@@ -600,6 +600,23 @@ export async function saveAiTopicRecommendations(dateStr, recommendations) {
   return await setLocalKV(`ai_recommendations_${dateStr}`, recommendations);
 }
 
+/**
+ * Retrieves active user-picked new topic IDs for a given date string (YYYY-MM-DD).
+ */
+export async function getActiveNewTopicIds(dateStr) {
+  if (!dateStr) return [];
+  const list = await getLocalKV(`active_new_topics_${dateStr}`);
+  return Array.isArray(list) ? list : [];
+}
+
+/**
+ * Saves active user-picked new topic IDs for a given date string (YYYY-MM-DD).
+ */
+export async function saveActiveNewTopicIds(dateStr, topicIds) {
+  if (!dateStr) return;
+  return await setLocalKV(`active_new_topics_${dateStr}`, Array.isArray(topicIds) ? topicIds : []);
+}
+
 export default {
   initDB,
   STORES,
@@ -650,8 +667,9 @@ export default {
   replaceAllLocalStudySchedule,
   DEFAULT_FSRS_CONFIG,
   getFSRSConfig,
-  saveFSRSConfig,
   getAiTopicRecommendations,
-  saveAiTopicRecommendations
+  saveAiTopicRecommendations,
+  getActiveNewTopicIds,
+  saveActiveNewTopicIds
 };
 

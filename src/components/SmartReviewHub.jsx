@@ -4,7 +4,7 @@ import { Brain, Calendar, AlertTriangle, CheckCircle, Clock, BookOpen, Layers, S
 import FsrsStatsTab from './FsrsStatsTab';
 import FsrsSettingsModal from './FsrsSettingsModal';
 import SelectNewTopicsModal from './SelectNewTopicsModal';
-import { saveLocalSubjectTrackerDoc } from '../services/localDb';
+import { saveLocalSubjectTrackerDoc, getActiveNewTopicIds, saveActiveNewTopicIds } from '../services/localDb';
 import { parsePageNumbers, getTopicPageWeight } from '../utils/pageUtils';
 
 export function getLocalDateStr(d = new Date()) {
@@ -39,8 +39,18 @@ export default function SmartReviewHub({
   const [subTab, setSubTab] = useState('queue'); // 'queue', 'analytics', 'leeches'
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isPickModalOpen, setIsPickModalOpen] = useState(false);
+  const [activeNewTopicIds, setActiveNewTopicIds] = useState(new Set());
   const [mnemonicNotes, setMnemonicNotes] = useState({});
   const [toastMessage, setToastMessage] = useState('');
+
+  useEffect(() => {
+    const todayStr = getLocalDateStr();
+    getActiveNewTopicIds(todayStr).then(ids => {
+      if (Array.isArray(ids)) {
+        setActiveNewTopicIds(new Set(ids));
+      }
+    }).catch(err => console.error("Error loading active new topic IDs:", err));
+  }, []);
 
   useEffect(() => {
     if (lastRatedToast && lastRatedToast.message) {
@@ -96,16 +106,18 @@ export default function SmartReviewHub({
           const { pageLabel, startPage, endPage } = parsePageNumbers(topic);
           const topicWeight = getTopicPageWeight(topic, topicsList);
           const lapses = topic.lapses || topic.lapsesCount || 0;
-          const topicObj = { ...topic, subject: subName, pageCount: topicWeight, pageLabel, startPage, endPage };
+          const topicId = topic.id || `${subName}_${topic.name}`;
+          const topicObj = { ...topic, id: topicId, subject: subName, pageCount: topicWeight, pageLabel, startPage, endPage };
 
           if (lapses >= (fsrsConfig.lapses?.leechThreshold ?? 8) || topic.isLeech) {
             leeches.push(topicObj);
           }
 
           // A topic is NEW if it has 0 reviewCount and no lastReviewDate (has never completed a review session)
-          const isNewItem = (!topic.reviewCount || topic.reviewCount === 0) && !topic.lastReviewDate;
+          const isUnstudied = (!topic.reviewCount || topic.reviewCount === 0) && !topic.lastReviewDate;
+          const isPickedForToday = activeNewTopicIds.has(topicId) || topic.isPickedForToday || topic.activatedDate === todayStr;
 
-          if (isNewItem) {
+          if (isUnstudied && isPickedForToday) {
             newItems.push(topicObj);
             newPages += topicWeight;
           } else if (topic.nextReviewDue) {
@@ -117,7 +129,7 @@ export default function SmartReviewHub({
               reviewPages += topicWeight;
             }
             // If topic.nextReviewDue > todayStr, it is scheduled for a future date and moves OUT of today's review list.
-          } else {
+          } else if (!isUnstudied) {
             // Fallback: If topic has review history but no nextReviewDue set, keep in Due Today
             dueToday.push(topicObj);
             reviewPages += topicWeight;
@@ -514,25 +526,25 @@ export default function SmartReviewHub({
             </div>
 
             {/* New Topics Queue */}
-            {newTopics.length > 0 && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <h4 className="text-xs font-black uppercase tracking-wider text-emerald-500 flex items-center gap-2">
-                    <Sparkles className="w-4 h-4" /> New Topics Available ({newTopics.length})
-                  </h4>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <h4 className="text-xs font-black uppercase tracking-wider text-emerald-500 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4" /> New Topics Available ({newTopics.length})
+                </h4>
 
-                  <button
-                    onClick={() => setIsPickModalOpen(true)}
-                    className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95 border ${
-                      isDark
-                        ? 'neu-btn-dark text-emerald-400 border-emerald-500/40'
-                        : 'neu-btn-light text-emerald-700 border-emerald-300'
-                    }`}
-                  >
-                    <span>➕ Pick Today's New Topics</span>
-                  </button>
-                </div>
+                <button
+                  onClick={() => setIsPickModalOpen(true)}
+                  className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95 border ${
+                    isDark
+                      ? 'neu-btn-dark text-emerald-400 border-emerald-500/40'
+                      : 'neu-btn-light text-emerald-700 border-emerald-300'
+                  }`}
+                >
+                  <span>➕ Pick Today's New Topics</span>
+                </button>
+              </div>
 
+              {newTopics.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <AnimatePresence mode="popLayout">
                     {newTopics.slice(0, 6).map((topic, idx) => (
@@ -540,8 +552,15 @@ export default function SmartReviewHub({
                     ))}
                   </AnimatePresence>
                 </div>
-              </div>
-            )}
+              ) : (
+                <div className={`p-6 rounded-2xl border text-center space-y-2 ${
+                  isDark ? 'bg-slate-900/40 border-slate-700/40 text-slate-400' : 'bg-white/80 border-slate-200/80 text-slate-600 neu-pressed-light'
+                }`}>
+                  <div className="text-xs font-bold text-slate-300">No new topics selected for today yet</div>
+                  <p className="text-[11px] text-slate-400">Click <strong className="text-emerald-400">"➕ Pick Today's New Topics"</strong> above to manually choose or get AI-recommended topics for today's study session.</p>
+                </div>
+              )}
+            </div>
           </div>
         </motion.div>
       )}
@@ -558,7 +577,15 @@ export default function SmartReviewHub({
         aiFeatureModels={aiFeatureModels}
         themeMode={themeMode}
         onActivateTopics={(selectedTopics) => {
-          setToastMessage(`Activated ${selectedTopics.length} new topics for today!`);
+          const todayStr = getLocalDateStr();
+          const activatedIds = selectedTopics.map(t => t.id || `${t.subject}_${t.name}`);
+          setActiveNewTopicIds(prev => {
+            const next = new Set(prev);
+            activatedIds.forEach(id => next.add(id));
+            saveActiveNewTopicIds(todayStr, Array.from(next)).catch(err => console.error("Failed to save active new topic IDs to IndexedDB:", err));
+            return next;
+          });
+          setToastMessage(`Activated ${selectedTopics.length} new topics for today's study session!`);
           setTimeout(() => setToastMessage(''), 3000);
         }}
       />
