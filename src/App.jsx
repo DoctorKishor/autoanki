@@ -35213,7 +35213,7 @@ Return your response strictly as a JSON object matching this schema:
                                   </div>
 
                                   {/* Add Topic Form Box */}
-                                  <div className={`p-3 rounded-2xl border transition-all ${isDark ? 'bg-slate-900/40 border-slate-800 neu-pressed-dark' : 'bg-slate-50/70 border-slate-200/80 neu-pressed-light'
+                                  <div className={`p-2.5 rounded-2xl border transition-all ${isDark ? 'bg-slate-900/40 border-slate-800 neu-pressed-dark' : 'bg-slate-50/70 border-slate-200/80 neu-pressed-light'
                                     } shrink-0`}>
                                     <form
                                       onSubmit={(e) => {
@@ -35232,16 +35232,16 @@ Return your response strictly as a JSON object matching this schema:
                                         placeholder="Add topic (e.g. Cranial Nerves)..."
                                         value={trackerNewTopicInput}
                                         onChange={(e) => setTrackerNewTopicInput(e.target.value)}
-                                        className={`flex-grow min-w-0 px-3.5 py-2.5 rounded-xl text-xs font-bold outline-none transition ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'bg-white border border-slate-200 text-slate-800 placeholder-slate-400 shadow-inner'
+                                        className={`flex-grow min-w-0 px-3.5 py-2 rounded-xl text-xs font-bold outline-none transition ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'bg-white border border-slate-200 text-slate-800 placeholder-slate-400 shadow-inner'
                                           }`}
                                       />
-                                      <div className="flex items-center gap-1.5 shrink-0">
+                                      <div className="flex items-center gap-1 shrink-0">
                                         <input
                                           type="number"
                                           placeholder="Start"
                                           value={trackerNewTopicPage}
                                           onChange={(e) => setTrackerNewTopicPage(e.target.value)}
-                                          className={`w-20 px-2.5 py-2.5 rounded-xl text-xs font-bold outline-none transition text-center ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'bg-white border border-slate-200 text-slate-800 placeholder-slate-400 shadow-inner'
+                                          className={`w-13 px-1.5 py-2 rounded-xl text-xs font-bold outline-none transition text-center ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'bg-white border border-slate-200 text-slate-800 placeholder-slate-400 shadow-inner'
                                             }`}
                                         />
                                         <span className={`text-xs font-bold ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>-</span>
@@ -35250,7 +35250,7 @@ Return your response strictly as a JSON object matching this schema:
                                           placeholder="End"
                                           value={trackerNewTopicEndPage}
                                           onChange={(e) => setTrackerNewTopicEndPage(e.target.value)}
-                                          className={`w-20 px-2.5 py-2.5 rounded-xl text-xs font-bold outline-none transition text-center ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'bg-white border border-slate-200 text-slate-800 placeholder-slate-400 shadow-inner'
+                                          className={`w-13 px-1.5 py-2 rounded-xl text-xs font-bold outline-none transition text-center ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'bg-white border border-slate-200 text-slate-800 placeholder-slate-400 shadow-inner'
                                             }`}
                                         />
                                       </div>
@@ -35258,7 +35258,7 @@ Return your response strictly as a JSON object matching this schema:
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.95 }}
                                         type="submit"
-                                        className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition shrink-0 flex items-center gap-1.5 ${isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-500/20'
+                                        className={`px-3.5 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition shrink-0 flex items-center gap-1 ${isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-500/20'
                                           }`}
                                       >
                                         <Plus className="w-3.5 h-3.5" /> Add
