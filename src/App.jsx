@@ -35,6 +35,7 @@ import ManualCardModal from './components/ManualCardModal';
 import RichInputField from './components/RichInputField';
 import ConflictInspectorModal from './components/ConflictInspectorModal';
 import FsrsSettingsModal from './components/FsrsSettingsModal';
+import FsrsStatsTab from './components/FsrsStatsTab';
 import { cropAndMaskDiagram } from './utils/imageCropper';
 import { getLocalSetting, saveLocalSetting, getLocalCards, saveLocalCards, replaceAllLocalCards, saveLocalCard, deleteLocalCard, getLocalPages, saveLocalPages, replaceAllLocalPages, saveLocalPage, deleteLocalPage, getLocalKV, setLocalKV, getLocalPrompts, saveLocalPrompt, deleteLocalPrompt, getAllLocalPytTopics, saveLocalPytTopic, getAllLocalPytProgress, saveLocalPytProgressDoc, getLocalTextbooksMetadata, saveLocalTextbooksMetadata, getLocalStudyLogs, saveLocalStudyLog, replaceAllLocalStudyLogs, getLocalSubjectTrackerData, saveLocalSubjectTrackerDoc, replaceAllLocalSubjectTrackerData, getLocalStudySchedule, saveLocalScheduleEntry, replaceAllLocalStudySchedule, getFSRSConfig, saveFSRSConfig, DEFAULT_FSRS_CONFIG } from './services/localDb';
 import { calculateNextFSRSState, calculateInitialState, DEFAULT_FSRS6_WEIGHTS, getTopicPageLength } from './services/fsrsEngine';
@@ -12784,20 +12785,20 @@ JSON Format:
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.3, delay: 0.08 }}
-          className="relative flex bg-slate-100 p-1 rounded-2xl self-start border border-slate-200 shadow-sm shrink-0"
+          className="relative flex bg-slate-100 p-1 rounded-2xl self-start border border-slate-200 shadow-sm shrink-0 w-full sm:w-auto overflow-x-auto no-scrollbar"
         >
           <div
             className="absolute top-1 bottom-1 bg-white rounded-xl shadow-sm transition-all"
             style={{
-              left: smartReviewSubTab === 'logger' ? '4px' : smartReviewSubTab === 'visualizer' ? 'calc(33.33% + 2px)' : 'calc(66.66% + 2px)',
-              width: 'calc(33.33% - 4px)',
+              left: smartReviewSubTab === 'logger' ? '4px' : smartReviewSubTab === 'visualizer' ? 'calc(25% + 1px)' : smartReviewSubTab === 'strength' ? 'calc(50% + 1px)' : 'calc(75% + 1px)',
+              width: 'calc(25% - 4px)',
               transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
             }}
           />
           <button
             type="button"
             onClick={() => setSmartReviewSubTab('logger')}
-            className={`relative z-10 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-colors duration-200 active:scale-95 ${smartReviewSubTab === 'logger'
+            className={`relative z-10 px-3 sm:px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-colors duration-200 active:scale-95 whitespace-nowrap ${smartReviewSubTab === 'logger'
               ? 'text-indigo-755'
               : 'text-gray-400 hover:text-gray-700'
               }`}
@@ -12807,7 +12808,7 @@ JSON Format:
           <button
             type="button"
             onClick={() => setSmartReviewSubTab('visualizer')}
-            className={`relative z-10 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-colors duration-200 active:scale-95 ${smartReviewSubTab === 'visualizer'
+            className={`relative z-10 px-3 sm:px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-colors duration-200 active:scale-95 whitespace-nowrap ${smartReviewSubTab === 'visualizer'
               ? 'text-indigo-755'
               : 'text-gray-400 hover:text-gray-700'
               }`}
@@ -12817,16 +12818,34 @@ JSON Format:
           <button
             type="button"
             onClick={() => setSmartReviewSubTab('strength')}
-            className={`relative z-10 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-colors duration-200 active:scale-95 ${smartReviewSubTab === 'strength'
+            className={`relative z-10 px-3 sm:px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-colors duration-200 active:scale-95 whitespace-nowrap ${smartReviewSubTab === 'strength'
               ? 'text-indigo-755'
               : 'text-gray-400 hover:text-gray-700'
               }`}
           >
             Subject Strength
           </button>
+          <button
+            type="button"
+            onClick={() => setSmartReviewSubTab('stats')}
+            className={`relative z-10 px-3 sm:px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-colors duration-200 active:scale-95 whitespace-nowrap ${smartReviewSubTab === 'stats'
+              ? 'text-indigo-755'
+              : 'text-gray-400 hover:text-gray-700'
+              }`}
+          >
+            FSRS Stats & Forecast
+          </button>
         </motion.div>
 
         {/* Content columns */}
+        {smartReviewSubTab === 'stats' && (
+          <FsrsStatsTab
+            subjectTrackerData={subjectTrackerData}
+            studyLogs={studyLogs}
+            fsrsConfig={fsrsConfig}
+          />
+        )}
+
         {smartReviewSubTab === 'logger' && (() => {
           const todayStrForCompare = (() => {
             const todayObj = new Date();
