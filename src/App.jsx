@@ -12247,6 +12247,7 @@ JSON Format:
           topics[cleanTopicName].nextReviewDue = fsrsResult.nextReviewDue;
           topics[cleanTopicName].lastReviewDate = fsrsResult.lastReviewDate;
           topics[cleanTopicName].reviewCount = fsrsResult.reviewCount;
+          topics[cleanTopicName].lapses = fsrsResult.lapses != null ? fsrsResult.lapses : (topics[cleanTopicName].lapses || 0) + (review.rating === 1 ? 1 : 0);
 
           if (!topics[cleanTopicName].studyDates.includes(review.dateStr)) {
             topics[cleanTopicName].studyDates.push(review.dateStr);

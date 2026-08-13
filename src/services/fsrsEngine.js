@@ -247,6 +247,7 @@ export const calculateInitialState = (
     nextReviewDue: optimalNextReviewDue,
     lastReviewDate: formatDateStr(reviewDate),
     reviewCount: 1,
+    lapses: r === 1 ? 1 : 0,
     isNew: true,
     engineVersion: 'FSRS-6',
   };
@@ -330,6 +331,9 @@ export const calculateNextFSRSState = (
     return `${y}-${m}-${day}`;
   };
 
+  const currentLapses = priorState?.lapses || 0;
+  const nextLapses = r === 1 ? currentLapses + 1 : currentLapses;
+
   return {
     difficulty: parseFloat(newD.toFixed(4)),
     stability: parseFloat(newS.toFixed(4)),
@@ -338,6 +342,7 @@ export const calculateNextFSRSState = (
     nextReviewDue: optimalNextReviewDue,
     lastReviewDate: formatDateStr(reviewDate),
     reviewCount: (priorState.reviewCount || 0) + 1,
+    lapses: nextLapses,
     isNew: false,
     engineVersion: 'FSRS-6',
   };
