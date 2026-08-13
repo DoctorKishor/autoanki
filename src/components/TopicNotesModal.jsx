@@ -20,7 +20,7 @@ export default function TopicNotesModal({
   const [activeStates, setActiveStates] = useState({});
   const [isHighlighterActive, setIsHighlighterActive] = useState(false);
 
-  const highlightColor = isDark ? 'rgba(59, 130, 246, 0.35)' : 'rgba(254, 240, 138, 0.95)';
+  const highlightColor = isDark ? '#b45309' : '#fef08a';
 
   // Check active formatting states at cursor position
   const checkActiveStates = useCallback(() => {

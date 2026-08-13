@@ -57,6 +57,33 @@ body,
   margin-bottom: 0.125rem !important;
 }
 
+/* ==========================================================
+   HIGH-YIELD HIGHLIGHT LEGIBILITY STYLING (Light & Dark Modes)
+   ========================================================== */
+.rich-text-notes span[style*="background-color"],
+[contenteditable] span[style*="background-color"],
+.rich-text-notes mark,
+[contenteditable] mark {
+  padding: 1px 5px !important;
+  border-radius: 4px !important;
+  background-color: #fef08a !important;
+  color: #0f172a !important;
+  font-weight: 700 !important;
+}
+
+.dark .rich-text-notes span[style*="background-color"],
+.dark [contenteditable] span[style*="background-color"],
+.dark .rich-text-notes mark,
+.dark [contenteditable] mark {
+  padding: 1px 5px !important;
+  border-radius: 4px !important;
+  background-color: rgba(180, 83, 9, 0.5) !important;
+  color: #fef08a !important;
+  font-weight: 700 !important;
+  border: 1px solid rgba(245, 158, 11, 0.4) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8) !important;
+}
+
 @keyframes gradientBG {
   0% {
     background-position: 0% 50%;
