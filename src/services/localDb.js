@@ -482,6 +482,100 @@ export async function replaceAllLocalStudySchedule(scheduleObj) {
   return scheduleObj || {};
 }
 
+export const DEFAULT_FSRS_CONFIG = {
+  enabled: true,
+  weights: [
+    0.4072, 1.1829, 3.1262, 15.4722, 7.2102, 0.5316, 1.0651, 0.0589, 1.5330,
+    0.1544, 1.0071, 1.9395, 0.1100, 0.2900, 2.2700, 0.1500, 2.9898, 0.5100,
+    0.3400, 0.0000, 0.2345
+  ],
+  retentionMode: 'global',
+  globalDesiredRetention: 0.90,
+  perSubjectRetention: {
+    Anatomy: 0.90,
+    Physiology: 0.90,
+    Biochemistry: 0.90,
+    Pathology: 0.90,
+    Microbiology: 0.90,
+    Pharmacology: 0.90,
+    "Forensic Medicine": 0.90,
+    "Social and Preventive Medicine": 0.90,
+    Ophthalmology: 0.90,
+    ENT: 0.90,
+    "General Medicine": 0.90,
+    "General Surgery": 0.90,
+    "Obstetrics and Gynecology": 0.90,
+    Pediatrics: 0.90,
+    Psychiatry: 0.90,
+    Dermatology: 0.90,
+    Anesthesia: 0.90,
+    Radiology: 0.90,
+    Orthopedics: 0.90
+  },
+  dailyLimits: {
+    newPagesPerDay: 15,
+    maxReviewPagesPerDay: 30,
+    newIgnoreReviewLimit: false,
+    limitsStartFromTop: false
+  },
+  newTopics: {
+    learningSteps: '1d',
+    insertionOrder: 'sequential'
+  },
+  lapses: {
+    relearningSteps: '1d',
+    leechThreshold: 8,
+    leechAction: 'tag'
+  },
+  displayOrder: {
+    gatherOrder: 'curriculum',
+    sortOrder: 'subject',
+    newReviewOrder: 'reviewsFirst',
+    interdayOrder: 'mix',
+    reviewSortOrder: 'urgency'
+  },
+  easyDays: {
+    mon: 'normal',
+    tue: 'normal',
+    wed: 'normal',
+    thu: 'normal',
+    fri: 'normal',
+    sat: 'normal',
+    sun: 'normal'
+  },
+  advancedRules: {
+    maxInterval: 365,
+    historicalRetention: 0.90,
+    ignoreReviewsBefore: null,
+    customRules: ''
+  }
+};
+
+export async function getFSRSConfig() {
+  const saved = await getLocalSetting('fsrs_config');
+  if (!saved || typeof saved !== 'object') {
+    return DEFAULT_FSRS_CONFIG;
+  }
+  return {
+    ...DEFAULT_FSRS_CONFIG,
+    ...saved,
+    dailyLimits: { ...DEFAULT_FSRS_CONFIG.dailyLimits, ...(saved.dailyLimits || {}) },
+    newTopics: { ...DEFAULT_FSRS_CONFIG.newTopics, ...(saved.newTopics || {}) },
+    lapses: { ...DEFAULT_FSRS_CONFIG.lapses, ...(saved.lapses || {}) },
+    displayOrder: { ...DEFAULT_FSRS_CONFIG.displayOrder, ...(saved.displayOrder || {}) },
+    easyDays: { ...DEFAULT_FSRS_CONFIG.easyDays, ...(saved.easyDays || {}) },
+    advancedRules: { ...DEFAULT_FSRS_CONFIG.advancedRules, ...(saved.advancedRules || {}) },
+    perSubjectRetention: { ...DEFAULT_FSRS_CONFIG.perSubjectRetention, ...(saved.perSubjectRetention || {}) }
+  };
+}
+
+export async function saveFSRSConfig(config) {
+  const existing = await getFSRSConfig();
+  const merged = { ...existing, ...config };
+  await saveLocalSetting('fsrs_config', merged);
+  return merged;
+}
+
 export default {
   initDB,
   STORES,
@@ -534,6 +628,9 @@ export default {
   replaceAllLocalSubjectTrackerData,
   getLocalStudySchedule,
   saveLocalScheduleEntry,
-  replaceAllLocalStudySchedule
+  replaceAllLocalStudySchedule,
+  DEFAULT_FSRS_CONFIG,
+  getFSRSConfig,
+  saveFSRSConfig
 };
 
