@@ -26378,7 +26378,7 @@ Return your response strictly as a JSON object matching this schema:
                               }`}
                             >
                               <label className={`block text-[9px] font-black uppercase tracking-widest mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Primary Source Material</label>
-                              <div className="flex gap-2">
+                              <div className="flex gap-2 items-center w-full">
                                 <input
                                   type="text"
                                   placeholder="e.g. Marrow + First Aid"
@@ -26399,7 +26399,7 @@ Return your response strictly as a JSON object matching this schema:
                                       : (subjectTrackerData.find(p => p.id === selectedTrackerSubject.trim().toLowerCase())?.primarySource || "");
                                     handleSavePrimarySource(selectedTrackerSubject, sourceVal);
                                   }}
-                                  className={`flex-grow p-2.5 rounded-xl text-xs font-bold outline-none transition ${
+                                  className={`w-0 min-w-0 flex-grow p-2.5 rounded-xl text-xs font-bold outline-none transition ${
                                     isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'
                                   }`}
                                 />
@@ -26413,7 +26413,7 @@ Return your response strictly as a JSON object matching this schema:
                                     handleSavePrimarySource(selectedTrackerSubject, sourceVal);
                                     alert("Primary source saved!");
                                   }}
-                                  className={`px-3.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition ${
+                                  className={`px-3.5 py-2.5 shrink-0 rounded-xl text-[10px] font-black uppercase tracking-wider transition ${
                                     isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300' : 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
                                   }`}
                                 >
@@ -26562,43 +26562,43 @@ Return your response strictly as a JSON object matching this schema:
                               <label className={`text-[10px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Tracked Topics</label>
 
                               {/* Sort Toggle Pill */}
-                              <div className={`relative flex items-center p-1 rounded-xl text-[9px] font-black uppercase tracking-wider scale-90 origin-right ${
+                              <div className={`relative grid grid-cols-3 p-1 rounded-xl text-[9px] font-black uppercase tracking-wider w-[220px] ${
                                 isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'
                               }`}>
                                 <div
                                   className="absolute top-1 bottom-1 rounded-lg bg-blue-600 shadow-sm transition-all"
                                   style={{
-                                    width: 'calc(33.33% - 2.6px)',
-                                    left: trackerSortBy === 'page' ? '4px' : trackerSortBy === 'uncompleted' ? 'calc(33.33% + 1.3px)' : 'calc(66.66% - 1.3px)',
+                                    width: 'calc(33.333% - 2.6px)',
+                                    left: trackerSortBy === 'page' ? '4px' : trackerSortBy === 'uncompleted' ? 'calc(33.333% + 1.3px)' : 'calc(66.666% - 1.3px)',
                                     transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
                                   }}
                                 />
                                 <button
                                   type="button"
                                   onClick={() => setTrackerSortBy('page')}
-                                  className={`relative z-10 px-2.5 py-1 rounded-lg transition-colors duration-200 ${
-                                    trackerSortBy === 'page' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
+                                  className={`relative z-10 py-1 text-center truncate transition-colors duration-200 ${
+                                    trackerSortBy === 'page' ? 'text-white font-black' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
                                   }`}
                                 >
-                                  Page
+                                  Page #
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => setTrackerSortBy('uncompleted')}
-                                  className={`relative z-10 px-2.5 py-1 rounded-lg transition-colors duration-200 ${
-                                    trackerSortBy === 'uncompleted' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
+                                  className={`relative z-10 py-1 text-center truncate transition-colors duration-200 ${
+                                    trackerSortBy === 'uncompleted' ? 'text-white font-black' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
                                   }`}
                                 >
-                                  Uncompleted
+                                  Pending
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => setTrackerSortBy('completed')}
-                                  className={`relative z-10 px-2.5 py-1 rounded-lg transition-colors duration-200 ${
-                                    trackerSortBy === 'completed' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
+                                  className={`relative z-10 py-1 text-center truncate transition-colors duration-200 ${
+                                    trackerSortBy === 'completed' ? 'text-white font-black' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
                                   }`}
                                 >
-                                  Completed
+                                  Done
                                 </button>
                               </div>
                             </motion.div>
@@ -35356,22 +35356,22 @@ Return your response strictly as a JSON object matching this schema:
                                     <label className={`text-[10px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Tracked Topics Checklist</label>
 
                                     {/* Sort Toggle Pill */}
-                                    <div className={`relative flex items-center p-1 rounded-xl text-[9px] font-black uppercase tracking-wider ${
+                                    <div className={`relative grid grid-cols-3 p-1 rounded-xl text-[9px] font-black uppercase tracking-wider w-[220px] ${
                                       isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'
                                     }`}>
                                       <div
                                         className="absolute top-1 bottom-1 rounded-lg bg-blue-600 shadow-sm transition-all"
                                         style={{
-                                          width: 'calc(33.33% - 2.6px)',
-                                          left: trackerSortBy === 'page' ? '4px' : trackerSortBy === 'uncompleted' ? 'calc(33.33% + 1.3px)' : 'calc(66.66% - 1.3px)',
+                                          width: 'calc(33.333% - 2.6px)',
+                                          left: trackerSortBy === 'page' ? '4px' : trackerSortBy === 'uncompleted' ? 'calc(33.333% + 1.3px)' : 'calc(66.666% - 1.3px)',
                                           transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
                                         }}
                                       />
                                       <button
                                         type="button"
                                         onClick={() => setTrackerSortBy('page')}
-                                        className={`relative z-10 px-2.5 py-0.5 rounded-lg transition-colors duration-200 ${
-                                          trackerSortBy === 'page' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
+                                        className={`relative z-10 py-1 text-center truncate transition-colors duration-200 ${
+                                          trackerSortBy === 'page' ? 'text-white font-black' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
                                         }`}
                                       >
                                         Page #
@@ -35379,20 +35379,20 @@ Return your response strictly as a JSON object matching this schema:
                                       <button
                                         type="button"
                                         onClick={() => setTrackerSortBy('uncompleted')}
-                                        className={`relative z-10 px-2.5 py-0.5 rounded-lg transition-colors duration-200 ${
-                                          trackerSortBy === 'uncompleted' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
+                                        className={`relative z-10 py-1 text-center truncate transition-colors duration-200 ${
+                                          trackerSortBy === 'uncompleted' ? 'text-white font-black' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
                                         }`}
                                       >
-                                        Uncompleted
+                                        Pending
                                       </button>
                                       <button
                                         type="button"
                                         onClick={() => setTrackerSortBy('completed')}
-                                        className={`relative z-10 px-2.5 py-0.5 rounded-lg transition-colors duration-200 ${
-                                          trackerSortBy === 'completed' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
+                                        className={`relative z-10 py-1 text-center truncate transition-colors duration-200 ${
+                                          trackerSortBy === 'completed' ? 'text-white font-black' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
                                         }`}
                                       >
-                                        Completed
+                                        Done
                                       </button>
                                     </div>
                                   </div>
@@ -35715,7 +35715,7 @@ Return your response strictly as a JSON object matching this schema:
                                     isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-800 border-slate-200'
                                   }`}>
                                     <label className={`text-[10px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Primary Source Material / Textbooks</label>
-                                    <div className="flex gap-2">
+                                    <div className="flex gap-2 items-center w-full">
                                       <input
                                         type="text"
                                         placeholder="e.g. Marrow Video Lectures + First Aid USMLE"
@@ -35736,7 +35736,7 @@ Return your response strictly as a JSON object matching this schema:
                                             : (subjectTrackerData.find(p => p.id === selectedTrackerSubject.trim().toLowerCase())?.primarySource || "");
                                           handleSavePrimarySource(selectedTrackerSubject, sourceVal);
                                         }}
-                                        className={`flex-grow p-3 rounded-xl text-xs font-bold outline-none transition ${
+                                        className={`w-0 min-w-0 flex-grow p-3 rounded-xl text-xs font-bold outline-none transition ${
                                           isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'
                                         }`}
                                       />
@@ -35750,7 +35750,7 @@ Return your response strictly as a JSON object matching this schema:
                                           handleSavePrimarySource(selectedTrackerSubject, sourceVal);
                                           alert("Primary source saved successfully!");
                                         }}
-                                        className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition shrink-0 flex items-center gap-1.5 ${
+                                        className={`px-3.5 py-3 rounded-xl text-xs font-black uppercase tracking-wider transition shrink-0 flex items-center gap-1.5 ${
                                           isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300' : 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
                                         }`}
                                       >
