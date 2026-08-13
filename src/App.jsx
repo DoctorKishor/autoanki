@@ -5858,6 +5858,7 @@ export default function App() {
   const [loggerGtName, setLoggerGtName] = useState('');
   const [loggerGtPlatform, setLoggerGtPlatform] = useState('');
   const [loggerGtType, setLoggerGtType] = useState('NEETPG'); // NEETPG | INICET
+  const [loggerNeetPattern, setLoggerNeetPattern] = useState('200'); // '200' (Old 200 Qs/800 M) | '180' (New 180 Qs/720 M)
   const [loggerGtCorrect, setLoggerGtCorrect] = useState('');
   const [loggerGtIncorrect, setLoggerGtIncorrect] = useState('');
   const [loggerGtRank, setLoggerGtRank] = useState('');
@@ -6612,6 +6613,7 @@ export default function App() {
   const [editGtName, setEditGtName] = useState('');
   const [editGtPlatform, setEditGtPlatform] = useState('');
   const [editGtType, setEditGtType] = useState('NEETPG');
+  const [editNeetPattern, setEditNeetPattern] = useState('200'); // '200' | '180'
   const [editGtCorrect, setEditGtCorrect] = useState('');
   const [editGtIncorrect, setEditGtIncorrect] = useState('');
   const [editGtRank, setEditGtRank] = useState('');
@@ -9251,13 +9253,15 @@ JSON Format:
     const correct = Number(loggerGtCorrect) || 0;
     const incorrect = Number(loggerGtIncorrect) || 0;
     const attended = correct + incorrect;
-    if (attended > 200) {
-      alert("Total correct and incorrect questions cannot exceed 200 questions.");
+    const totalQs = loggerGtType === 'NEETPG' ? (loggerNeetPattern === '180' ? 180 : 200) : 200;
+    const maxMarks = loggerGtType === 'NEETPG' ? (loggerNeetPattern === '180' ? 720 : 800) : 200;
+
+    if (attended > totalQs) {
+      alert(`Total correct and incorrect questions cannot exceed ${totalQs} questions.`);
       return;
     }
-    const unattempted = 200 - attended;
+    const unattempted = Math.max(0, totalQs - attended);
     let score = 0;
-    const maxMarks = loggerGtType === 'NEETPG' ? 800 : 200;
     if (loggerGtType === 'NEETPG') {
       score = correct * 4 - incorrect * 1;
     } else {
@@ -9287,13 +9291,13 @@ JSON Format:
         alert(`Subject-wise Incorrect sum (${sumIncorrect}) must match the overall Incorrect questions entered (${incorrect}).`);
         return;
       }
-      if (sumTotal !== 200) {
-        alert(`Subject-wise Total sum (${sumTotal}) must match the overall Mock test size of 200 questions.`);
+      if (sumTotal !== totalQs) {
+        alert(`Subject-wise Total sum (${sumTotal}) must match the overall Mock test size of ${totalQs} questions.`);
         return;
       }
     }
 
-    // Format score display e.g. "405/800" or "125.67/200"
+    // Format score display e.g. "405/800", "405/720", or "125.67/200"
     const scoreStr = `${score}/${maxMarks}`;
 
     // Clean up subject-wise entries (removing any empty strings/blanks)
@@ -9313,6 +9317,8 @@ JSON Format:
       name: loggerGtName.trim(),
       platform: loggerGtPlatform.trim(),
       type: loggerGtType,
+      neetPattern: loggerGtType === 'NEETPG' ? loggerNeetPattern : null,
+      totalQs,
       correct,
       incorrect,
       attended,
@@ -9337,6 +9343,7 @@ JSON Format:
     setLoggerGtName('');
     setLoggerGtPlatform('');
     setLoggerGtType('NEETPG');
+    setLoggerNeetPattern('200');
     setLoggerGtCorrect('');
     setLoggerGtIncorrect('');
     setLoggerGtRank('');
@@ -9899,13 +9906,15 @@ JSON Format:
       const correct = Number(loggerGtCorrect) || 0;
       const incorrect = Number(loggerGtIncorrect) || 0;
       const attended = correct + incorrect;
-      if (attended > 200) {
-        alert("Total correct and incorrect questions cannot exceed 200 questions.");
+      const totalQs = loggerGtType === 'NEETPG' ? (loggerNeetPattern === '180' ? 180 : 200) : 200;
+      const maxMarks = loggerGtType === 'NEETPG' ? (loggerNeetPattern === '180' ? 720 : 800) : 200;
+
+      if (attended > totalQs) {
+        alert(`Total correct and incorrect questions cannot exceed ${totalQs} questions.`);
         return;
       }
-      const unattempted = 200 - attended;
+      const unattempted = Math.max(0, totalQs - attended);
       let score = 0;
-      const maxMarks = loggerGtType === 'NEETPG' ? 800 : 200;
       if (loggerGtType === 'NEETPG') {
         score = correct * 4 - incorrect * 1;
       } else {
@@ -9920,6 +9929,8 @@ JSON Format:
         name: loggerGtName.trim(),
         platform: loggerGtPlatform.trim(),
         type: loggerGtType,
+        neetPattern: loggerGtType === 'NEETPG' ? loggerNeetPattern : null,
+        totalQs,
         correct,
         incorrect,
         attended,
@@ -9959,6 +9970,7 @@ JSON Format:
     setLoggerGtName('');
     setLoggerGtPlatform('');
     setLoggerGtType('NEETPG');
+    setLoggerNeetPattern('200');
     setLoggerGtCorrect('');
     setLoggerGtIncorrect('');
     setLoggerGtRank('');
@@ -11618,13 +11630,15 @@ JSON Format:
     const correct = Number(loggerGtCorrect) || 0;
     const incorrect = Number(loggerGtIncorrect) || 0;
     const attended = correct + incorrect;
-    if (attended > 200) {
-      alert("Total correct and incorrect questions cannot exceed 200 questions.");
+    const totalQs = loggerGtType === 'NEETPG' ? (loggerNeetPattern === '180' ? 180 : 200) : 200;
+    const maxMarks = loggerGtType === 'NEETPG' ? (loggerNeetPattern === '180' ? 720 : 800) : 200;
+
+    if (attended > totalQs) {
+      alert(`Total correct and incorrect questions cannot exceed ${totalQs} questions.`);
       return;
     }
-    const unattempted = 200 - attended;
+    const unattempted = Math.max(0, totalQs - attended);
     let score = 0;
-    const maxMarks = loggerGtType === 'NEETPG' ? 800 : 200;
     if (loggerGtType === 'NEETPG') {
       score = correct * 4 - incorrect * 1;
     } else {
@@ -11654,8 +11668,8 @@ JSON Format:
         alert(`Subject-wise Incorrect sum (${sumIncorrect}) must match overall Incorrect (${incorrect}).`);
         return;
       }
-      if (sumTotal !== 200) {
-        alert(`Subject-wise Total sum (${sumTotal}) must match 200.`);
+      if (sumTotal !== totalQs) {
+        alert(`Subject-wise Total sum (${sumTotal}) must match ${totalQs}.`);
         return;
       }
     }
@@ -11678,6 +11692,8 @@ JSON Format:
       name: loggerGtName.trim(),
       platform: loggerGtPlatform.trim(),
       type: loggerGtType,
+      neetPattern: loggerGtType === 'NEETPG' ? loggerNeetPattern : null,
+      totalQs,
       correct,
       incorrect,
       attended,
@@ -11712,6 +11728,7 @@ JSON Format:
       setLoggerGtName('');
       setLoggerGtPlatform('');
       setLoggerGtType('NEETPG');
+      setLoggerNeetPattern('200');
       setLoggerGtCorrect('');
       setLoggerGtIncorrect('');
       setLoggerGtRank('');
@@ -11738,6 +11755,7 @@ JSON Format:
     setEditGtName(gt.name || '');
     setEditGtPlatform(gt.platform || '');
     setEditGtType(gt.type || 'NEETPG');
+    setEditNeetPattern(gt.neetPattern || (gt.maxMarks === 720 || gt.totalQs === 180 ? '180' : '200'));
     setEditGtCorrect(gt.correct !== undefined && gt.correct !== null ? String(gt.correct) : String(gt.score || 0));
     setEditGtIncorrect(gt.incorrect !== undefined && gt.incorrect !== null ? String(gt.incorrect) : '0');
     setEditGtRank(gt.rank !== undefined && gt.rank !== null ? String(gt.rank) : '');
@@ -11769,9 +11787,10 @@ JSON Format:
     const correct = Number(editGtCorrect) || 0;
     const incorrect = Number(editGtIncorrect) || 0;
     const attended = correct + incorrect;
+    const totalQs = editGtType === 'NEETPG' ? (editNeetPattern === '180' ? 180 : 200) : 200;
+    const maxMarks = editGtType === 'NEETPG' ? (editNeetPattern === '180' ? 720 : 800) : 200;
 
     // Scoring logic
-    const maxMarks = editGtType === 'NEETPG' ? 800 : 200;
     let score = 0;
     if (editGtType === 'NEETPG') {
       score = (correct * 4) - incorrect;
@@ -11799,10 +11818,12 @@ JSON Format:
       name: editGtName.trim() || `Mock Test ${editGtTargetIndex + 1}`,
       platform: editGtPlatform.trim(),
       type: editGtType,
+      neetPattern: editGtType === 'NEETPG' ? editNeetPattern : null,
+      totalQs,
       correct,
       incorrect,
       attended,
-      unattempted: Math.max(0, 200 - attended),
+      unattempted: Math.max(0, totalQs - attended),
       score,
       maxMarks,
       scoreStr,
@@ -29062,7 +29083,7 @@ Return your response strictly as a JSON object matching this schema:
                                         </div>
 
                                         {/* GT Type Selector Pills */}
-                                        <div className="col-span-2">
+                                        <div className="col-span-2 space-y-2">
                                           <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>GT Scoring Model</label>
                                           <div className="flex gap-2">
                                             <button
@@ -29088,6 +29109,33 @@ Return your response strictly as a JSON object matching this schema:
                                               INI CET (+1, -1/3)
                                             </button>
                                           </div>
+
+                                          {loggerGtType === 'NEETPG' && (
+                                            <div className="flex gap-2 p-1 rounded-xl bg-orange-500/5 border border-orange-500/20">
+                                              <button
+                                                type="button"
+                                                onClick={() => setLoggerNeetPattern('200')}
+                                                className={`flex-1 py-1 text-[10px] font-extrabold rounded-lg transition ${
+                                                  loggerNeetPattern === '200'
+                                                    ? 'bg-orange-500 text-white shadow-sm'
+                                                    : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
+                                                }`}
+                                              >
+                                                200 Qs / 800 Marks (Pre-2025)
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={() => setLoggerNeetPattern('180')}
+                                                className={`flex-1 py-1 text-[10px] font-extrabold rounded-lg transition ${
+                                                  loggerNeetPattern === '180'
+                                                    ? 'bg-orange-500 text-white shadow-sm'
+                                                    : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
+                                                }`}
+                                              >
+                                                180 Qs / 720 Marks (2025+)
+                                              </button>
+                                            </div>
+                                          )}
                                         </div>
 
                                         {/* Questions Correct & Incorrect */}
@@ -29103,7 +29151,6 @@ Return your response strictly as a JSON object matching this schema:
                                             }`}
                                           />
                                         </div>
-
                                         <div>
                                           <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Incorrect Qs</label>
                                           <input
@@ -29121,14 +29168,14 @@ Return your response strictly as a JSON object matching this schema:
                                         <div className={`p-3 rounded-2xl border flex items-center justify-between text-[10px] col-span-2 ${
                                           isDark ? 'bg-orange-500/10 border-orange-500/20 text-slate-300' : 'bg-orange-50/50 border-orange-100/50 text-gray-500'
                                         }`}>
-                                          <span className="font-bold">Attended: <strong className="text-orange-500 font-black">{(Number(loggerGtCorrect) || 0) + (Number(loggerGtIncorrect) || 0)} / 200</strong></span>
-                                          <span className="font-bold">Unattempted: <strong className={`font-black ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>{Math.max(0, 200 - ((Number(loggerGtCorrect) || 0) + (Number(loggerGtIncorrect) || 0)))}</strong></span>
-                                          <span className="font-bold">Score Preview: <strong className="text-orange-500 font-black">
-                                            {loggerGtType === 'NEETPG'
-                                              ? `${(Number(loggerGtCorrect) || 0) * 4 - (Number(loggerGtIncorrect) || 0) * 1} / 800`
-                                              : `${((Number(loggerGtCorrect) || 0) * 1 - (Number(loggerGtIncorrect) || 0) * (1 / 3)).toFixed(2)} / 200`
-                                            }
-                                          </strong></span>
+                                           <span className="font-bold">Attended: <strong className="text-orange-500 font-black">{(Number(loggerGtCorrect) || 0) + (Number(loggerGtIncorrect) || 0)} / {loggerGtType === 'NEETPG' ? (loggerNeetPattern === '180' ? 180 : 200) : 200}</strong></span>
+                                           <span className="font-bold">Unattempted: <strong className={`font-black ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>{Math.max(0, (loggerGtType === 'NEETPG' ? (loggerNeetPattern === '180' ? 180 : 200) : 200) - ((Number(loggerGtCorrect) || 0) + (Number(loggerGtIncorrect) || 0)))}</strong></span>
+                                           <span className="font-bold">Score Preview: <strong className="text-orange-500 font-black">
+                                             {loggerGtType === 'NEETPG'
+                                               ? `${(Number(loggerGtCorrect) || 0) * 4 - (Number(loggerGtIncorrect) || 0) * 1} / ${loggerNeetPattern === '180' ? 720 : 800}`
+                                               : `${((Number(loggerGtCorrect) || 0) * 1 - (Number(loggerGtIncorrect) || 0) * (1 / 3)).toFixed(2)} / 200`
+                                             }
+                                           </strong></span>
                                         </div>
 
                                         {/* Percentile, Rank and Rank Total */}
@@ -29437,7 +29484,7 @@ Return your response strictly as a JSON object matching this schema:
                                       </div>
                                     </div>
 
-                                    <div>
+                                    <div className="space-y-2">
                                       <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>GT Scoring Model</label>
                                       <div className="flex gap-2">
                                         <button
@@ -29463,6 +29510,33 @@ Return your response strictly as a JSON object matching this schema:
                                           INI CET (+1, -1/3)
                                         </button>
                                       </div>
+
+                                      {editGtType === 'NEETPG' && (
+                                        <div className="flex gap-2 p-1 rounded-xl bg-orange-500/5 border border-orange-500/20">
+                                          <button
+                                            type="button"
+                                            onClick={() => setEditNeetPattern('200')}
+                                            className={`flex-1 py-1 text-[10px] font-extrabold rounded-lg transition ${
+                                              editNeetPattern === '200'
+                                                ? 'bg-orange-500 text-white shadow-sm'
+                                                : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
+                                            }`}
+                                          >
+                                            200 Qs / 800 Marks (Pre-2025)
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => setEditNeetPattern('180')}
+                                            className={`flex-1 py-1 text-[10px] font-extrabold rounded-lg transition ${
+                                              editNeetPattern === '180'
+                                                ? 'bg-orange-500 text-white shadow-sm'
+                                                : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
+                                            }`}
+                                          >
+                                            180 Qs / 720 Marks (2025+)
+                                          </button>
+                                        </div>
+                                      )}
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-4">
@@ -29498,7 +29572,8 @@ Return your response strictly as a JSON object matching this schema:
                                       const correct = Number(editGtCorrect) || 0;
                                       const incorrect = Number(editGtIncorrect) || 0;
                                       const attended = correct + incorrect;
-                                      const maxMarks = editGtType === 'NEETPG' ? 800 : 200;
+                                      const totalQs = editGtType === 'NEETPG' ? (editNeetPattern === '180' ? 180 : 200) : 200;
+                                      const maxMarks = editGtType === 'NEETPG' ? (editNeetPattern === '180' ? 720 : 800) : 200;
                                       let score = 0;
                                       if (editGtType === 'NEETPG') {
                                         score = (correct * 4) - incorrect;
@@ -29512,11 +29587,11 @@ Return your response strictly as a JSON object matching this schema:
                                           isDark ? 'bg-orange-500/10 border-orange-500/20 text-slate-300' : 'bg-orange-50/60 border-orange-200/60 text-slate-700'
                                         }`}>
                                           <div className="flex items-center justify-between">
-                                            <span>Attended: <strong className="text-orange-500 font-mono">{attended} / 200</strong></span>
-                                            <span>Unattempted: <strong className={`font-mono ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{Math.max(0, 200 - attended)}</strong></span>
+                                            <span>Attended: <strong className="text-orange-500 font-mono">{attended} / {totalQs}</strong></span>
+                                            <span>Unattempted: <strong className={`font-mono ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{Math.max(0, totalQs - attended)}</strong></span>
                                           </div>
                                           <div className={`h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-white/10' : 'bg-slate-200'}`}>
-                                            <div className="h-full bg-orange-500 transition-all duration-300" style={{ width: `${Math.min(100, (attended / 200) * 100)}%` }} />
+                                            <div className="h-full bg-orange-500 transition-all duration-300" style={{ width: `${Math.min(100, (attended / totalQs) * 100)}%` }} />
                                           </div>
                                           <div className="flex items-center justify-between pt-1 font-bold">
                                             <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>Calculated Score:</span>
