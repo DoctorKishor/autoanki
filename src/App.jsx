@@ -19540,7 +19540,7 @@ Return your response strictly as a JSON object matching this schema:
             <CtrlBtn panelId="stats" activePanel={activeFullscreenPanel} icon={BarChartIcon} label="Stats" onToggle={togglePanel} />
             <CtrlBtn panelId="timerSettings" activePanel={activeFullscreenPanel} icon={Settings} label="Timer" onToggle={togglePanel} />
             <CtrlBtn panelId="widgets" activePanel={activeFullscreenPanel} icon={Layout} label="Widgets" onToggle={togglePanel} />
-            <button onClick={handleSaveStudyRoomLayout} title="Save Layout to Cloud"
+            <button onClick={handleSaveStudyRoomLayout} title="Save Layout to Local DB"
               className="px-3 h-10 flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/40 transition-all active:scale-95 text-xs font-black uppercase tracking-wider">
               <Save style={{ width: 16, height: 16 }} />
               <span className="hidden sm:inline">Save Layout</span>
