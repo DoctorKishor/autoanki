@@ -7022,21 +7022,37 @@ export default function App() {
 
   // Overall Topics/Subject Tracker States
   const [subjectTrackerData, setSubjectTrackerData] = useState([]);
-  const [examProfiles, setExamProfiles] = useState(() => {
-    try {
-      const saved = localStorage.getItem('auto_anki_exam_profiles');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [examProfiles, setExamProfiles] = useState([]);
+  const isExamProfilesLoaded = useRef(false);
 
   useEffect(() => {
-    try {
-      localStorage.setItem('auto_anki_exam_profiles', JSON.stringify(examProfiles));
-    } catch (e) {
-      console.warn("Failed to save exam profiles to localStorage", e);
-    }
+    let isMounted = true;
+    getLocalSetting('exam_profiles').then(saved => {
+      if (!isMounted) return;
+      if (saved && Array.isArray(saved)) {
+        setExamProfiles(saved);
+      } else {
+        try {
+          const localSaved = localStorage.getItem('auto_anki_exam_profiles');
+          if (localSaved) {
+            const parsed = JSON.parse(localSaved);
+            setExamProfiles(parsed);
+            saveLocalSetting('exam_profiles', parsed);
+          }
+        } catch (e) {
+          console.warn("Error loading legacy exam profiles:", e);
+        }
+      }
+      isExamProfilesLoaded.current = true;
+    }).catch(err => console.warn('[LocalDB] Error reading exam profiles:', err));
+    return () => { isMounted = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!isExamProfilesLoaded.current) return;
+    saveLocalSetting('exam_profiles', examProfiles).catch(err => {
+      console.warn("Failed saving exam profiles to LocalDB:", err);
+    });
   }, [examProfiles]);
 
   const [batchedReviews, setBatchedReviews] = useState([]);
@@ -7067,6 +7083,7 @@ export default function App() {
         updates.originalCap = newOrig;
       }
       await updateHierarchySetting(updates);
+      await saveLocalSetting('max_daily_review_cap', newCap);
     } catch (err) {
       console.error("Error saving cap locally:", err);
     }
@@ -12127,13 +12144,10 @@ JSON Format:
   };
 
   const handleSyncBatchedReviews = async () => {
-    const uid = targetUid || user?.uid;
-    if (!db || !uid || batchedReviews.length === 0) return;
+    if (batchedReviews.length === 0) return;
 
     setIsSaving(true);
     try {
-      const batch = writeBatch(db);
-
       // Group by subject docId
       const reviewsBySubject = {};
       batchedReviews.forEach(r => {
@@ -12194,6 +12208,11 @@ JSON Format:
           subject: subjectName.trim(),
           topics
         });
+      }
+
+      const refreshedData = await getLocalSubjectTrackerData();
+      if (refreshedData && Array.isArray(refreshedData)) {
+        setSubjectTrackerData(refreshedData);
       }
 
       setBatchedReviews([]);
@@ -12670,12 +12689,17 @@ JSON Format:
     return (
       <div className="flex flex-col gap-6 w-full text-left h-full overflow-y-auto pb-10 custom-scrollbar pr-1">
         {/* Header Sync Panel */}
-        <div className="flex justify-between items-center bg-white/60 backdrop-blur-md p-5 rounded-3xl border border-gray-200/80 shadow-sm shrink-0">
+        <motion.div
+          initial={{ opacity: 0, y: -12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: 'easeOut' }}
+          className="flex justify-between items-center bg-white/60 backdrop-blur-md p-5 rounded-3xl border border-gray-200/80 shadow-sm shrink-0"
+        >
           <div>
             <h3 className="text-lg font-black text-gray-900 tracking-tight flex items-center gap-2">
               <Brain className="w-6 h-6 text-indigo-600 animate-pulse" /> Smart Repetition Hub
             </h3>
-            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">FSRS Engine ┬╖ Exam Tracker ┬╖ Analytics Dashboard</p>
+            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">FSRS Engine • Exam Tracker • Analytics Dashboard</p>
           </div>
           <button
             onClick={handleSyncBatchedReviews}
@@ -12686,17 +12710,30 @@ JSON Format:
               }`}
           >
             <UploadCloud className="w-4 h-4" />
-            {isSaving ? 'Syncing...' : `Save & Sync to Cloud (${batchedReviews.length} pending)`}
+            {isSaving ? 'Syncing...' : `Save & Sync to Local DB (${batchedReviews.length} pending)`}
           </button>
-        </div>
+        </motion.div>
 
-        {/* Dynamic Button Toggle Pill for smartReviewSubTab */}
-        <div className="flex bg-slate-100 p-1 rounded-2xl self-start border border-slate-200 shadow-sm shrink-0">
+        {/* Dynamic Single Sliding Pill Switcher for smartReviewSubTab */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3, delay: 0.08 }}
+          className="relative flex bg-slate-100 p-1 rounded-2xl self-start border border-slate-200 shadow-sm shrink-0"
+        >
+          <div
+            className="absolute top-1 bottom-1 bg-white rounded-xl shadow-sm transition-all"
+            style={{
+              left: smartReviewSubTab === 'logger' ? '4px' : smartReviewSubTab === 'visualizer' ? 'calc(33.33% + 2px)' : 'calc(66.66% + 2px)',
+              width: 'calc(33.33% - 4px)',
+              transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+            }}
+          />
           <button
             type="button"
             onClick={() => setSmartReviewSubTab('logger')}
-            className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-200 active:scale-95 ${smartReviewSubTab === 'logger'
-              ? 'bg-white text-indigo-755 shadow-sm'
+            className={`relative z-10 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-colors duration-200 active:scale-95 ${smartReviewSubTab === 'logger'
+              ? 'text-indigo-755'
               : 'text-gray-400 hover:text-gray-700'
               }`}
           >
@@ -12705,8 +12742,8 @@ JSON Format:
           <button
             type="button"
             onClick={() => setSmartReviewSubTab('visualizer')}
-            className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-200 active:scale-95 ${smartReviewSubTab === 'visualizer'
-              ? 'bg-white text-indigo-755 shadow-sm'
+            className={`relative z-10 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-colors duration-200 active:scale-95 ${smartReviewSubTab === 'visualizer'
+              ? 'text-indigo-755'
               : 'text-gray-400 hover:text-gray-700'
               }`}
           >
@@ -12715,14 +12752,14 @@ JSON Format:
           <button
             type="button"
             onClick={() => setSmartReviewSubTab('strength')}
-            className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-200 active:scale-95 ${smartReviewSubTab === 'strength'
-              ? 'bg-white text-indigo-755 shadow-sm'
+            className={`relative z-10 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-colors duration-200 active:scale-95 ${smartReviewSubTab === 'strength'
+              ? 'text-indigo-755'
               : 'text-gray-400 hover:text-gray-700'
               }`}
           >
             Subject Strength
           </button>
-        </div>
+        </motion.div>
 
         {/* Content columns */}
         {smartReviewSubTab === 'logger' && (() => {
@@ -12846,7 +12883,7 @@ JSON Format:
           }
 
           return (
-            <div className="space-y-6 flex-grow">
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="space-y-6 flex-grow">
               {/* Countdown visualizer - Nearest Target Exam Card */}
               {nearestExam ? (() => {
                 const days = getDaysRemaining(nearestExam.date);
@@ -13442,7 +13479,7 @@ JSON Format:
                   })}
                 </div>
               </div>
-            </div>
+            </motion.div>
           );
         })()}
         {/* Subject Strength sub-tab */}
@@ -13450,7 +13487,7 @@ JSON Format:
           const subjectsList = ["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"];
 
           return (
-            <div className="bg-white p-6 rounded-3xl border border-gray-250 shadow-sm space-y-6 text-left">
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="bg-white p-6 rounded-3xl border border-gray-250 shadow-sm space-y-6 text-left">
               <div>
                 <h3 className="text-lg font-black text-gray-800 tracking-tight flex items-center gap-2">
                   <TrendingUp className="w-5 h-5 text-indigo-600" /> Subject Memory Strength
@@ -13599,7 +13636,7 @@ JSON Format:
                   );
                 })}
               </div>
-            </div>
+            </motion.div>
           );
         })()}      {/* ═══════════════════════════════════════════════════════════
            STAGE 3: FSRS ANALYTICS DASHBOARD
@@ -13710,7 +13747,7 @@ JSON Format:
           const sortedTopics = [...allTopicObjects].sort((a, b) => (a.page || 0) - (b.page || 0));
 
           return (
-            <div className="space-y-6 mt-6 min-h-[600px]">
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="space-y-6 mt-6 min-h-[600px]">
               {/* Subject Selector & Title */}
               <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
@@ -14031,7 +14068,7 @@ JSON Format:
                 )}
               </div>
 
-            </div>
+            </motion.div>
           );
         })()}
       </div>
