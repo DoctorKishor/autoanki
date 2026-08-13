@@ -4,6 +4,48 @@ import { UploadCloud, Brain, Calendar, AlertTriangle, CheckCircle, Clock, BookOp
 import FsrsStatsTab from './FsrsStatsTab';
 import FsrsSettingsModal from './FsrsSettingsModal';
 
+export function getTopicPageInfo(topic) {
+  if (!topic) return { startPage: null, endPage: null, pageCount: 1, pageLabel: 'No pgs' };
+
+  let startPg = (topic.page !== undefined && topic.page !== null && topic.page !== '')
+    ? parseInt(topic.page, 10)
+    : (topic.startPage !== undefined && topic.startPage !== null && topic.startPage !== '')
+      ? parseInt(topic.startPage, 10)
+      : (topic.pageStart !== undefined && topic.pageStart !== null && topic.pageStart !== '')
+        ? parseInt(topic.pageStart, 10)
+        : null;
+  if (isNaN(startPg)) startPg = null;
+
+  let endPg = (topic.endPage !== undefined && topic.endPage !== null && topic.endPage !== '')
+    ? parseInt(topic.endPage, 10)
+    : (topic.pageEnd !== undefined && topic.pageEnd !== null && topic.pageEnd !== '')
+      ? parseInt(topic.pageEnd, 10)
+      : null;
+  if (isNaN(endPg)) endPg = null;
+
+  let pageCount = 1;
+  if (startPg !== null && endPg !== null && endPg >= startPg) {
+    pageCount = (endPg - startPg) + 1;
+  } else if (topic.pageCount !== undefined && topic.pageCount !== null && !isNaN(parseInt(topic.pageCount, 10))) {
+    pageCount = parseInt(topic.pageCount, 10);
+  } else if (topic.pages !== undefined && topic.pages !== null && !isNaN(parseInt(topic.pages, 10))) {
+    pageCount = parseInt(topic.pages, 10);
+  }
+
+  let pageLabel = 'No pgs';
+  if (startPg !== null && endPg !== null) {
+    pageLabel = `p. ${startPg}–${endPg}`;
+  } else if (startPg !== null) {
+    pageLabel = `p. ${startPg}`;
+  } else if (topic.pages) {
+    pageLabel = `p. ${topic.pages}`;
+  } else if (topic.pageLabel) {
+    pageLabel = topic.pageLabel;
+  }
+
+  return { startPage: startPg, endPage: endPg, pageCount, pageLabel };
+}
+
 export default function SmartReviewHub({
   subjectTrackerData = [],
   studyLogs = [],
@@ -38,9 +80,9 @@ export default function SmartReviewHub({
         Object.values(subDoc.topics).forEach(topic => {
           if (!topic || !topic.name || topic.name.trim().length === 0) return;
 
-          const pageCount = parseInt(topic.pageCount, 10) || 1;
+          const { pageCount, pageLabel, startPage, endPage } = getTopicPageInfo(topic);
           const lapses = topic.lapses || topic.lapsesCount || 0;
-          const topicObj = { ...topic, subject: subName, pageCount };
+          const topicObj = { ...topic, subject: subName, pageCount, pageLabel, startPage, endPage };
 
           if (lapses >= (fsrsConfig.lapses?.leechThreshold ?? 8) || topic.isLeech) {
             leeches.push(topicObj);
@@ -352,7 +394,7 @@ export default function SmartReviewHub({
                   <div className="flex justify-between items-start">
                     <div>
                       <div className="text-sm font-black text-amber-300">{item.name}</div>
-                      <div className="text-xs text-slate-400">{item.subject} • Page {item.page || '?'}</div>
+                      <div className="text-xs text-slate-400">{item.subject} • <span className="font-mono text-amber-400 font-bold">{getTopicPageInfo(item).pageLabel}</span></div>
                     </div>
                     <span className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-400 text-xs font-black uppercase">
                       {item.lapses || item.lapsesCount || 0} Lapses
@@ -387,6 +429,8 @@ export default function SmartReviewHub({
 
 // Sub-component: Individual Topic Queue Card
 function TopicCard({ topic, onRate, isOverdue = false, isNew = false }) {
+  const { pageLabel, pageCount } = getTopicPageInfo(topic);
+
   return (
     <motion.div
       whileHover={{ y: -2 }}
@@ -400,8 +444,8 @@ function TopicCard({ topic, onRate, isOverdue = false, isNew = false }) {
             {topic.subject}
           </span>
           <h5 className="text-sm font-bold text-white mt-1.5">{topic.name}</h5>
-          <p className="text-[11px] text-slate-400 font-medium">
-            Page {topic.page || topic.pageStart || 1} • {topic.pageCount || 1} pages
+          <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+            <span className="font-mono text-indigo-300 font-bold">{pageLabel}</span> • {pageCount} {pageCount === 1 ? 'page' : 'pages'}
           </p>
         </div>
 
