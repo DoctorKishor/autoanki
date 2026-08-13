@@ -2,6 +2,47 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DEFAULT_FSRS6_WEIGHTS } from '../services/fsrsEngine';
 
+export const DEFAULT_FSRS_CONFIG = {
+  enabled: true,
+  retentionMode: 'global',
+  globalDesiredRetention: 0.90,
+  weights: [...DEFAULT_FSRS6_WEIGHTS],
+  dailyLimits: {
+    newPagesPerDay: 15,
+    maxReviewPagesPerDay: 30,
+    newIgnoreReviewLimit: false,
+    limitsStartFromTop: false,
+    subjectOverrides: {},
+    todayOverride: { enabled: false, date: '', newPagesPerDay: 15, maxReviewPagesPerDay: 30 }
+  },
+  newTopics: {
+    learningSteps: '1d',
+    insertionOrder: 'sequential'
+  },
+  lapses: {
+    relearningSteps: '1d',
+    leechThreshold: 8,
+    leechAction: 'tag'
+  },
+  displayOrder: {
+    gatherOrder: 'curriculum',
+    newReviewOrder: 'reviewsFirst',
+    reviewSortOrder: 'urgency'
+  },
+  easyDays: {
+    mon: 'normal',
+    tue: 'normal',
+    wed: 'normal',
+    thu: 'normal',
+    fri: 'normal',
+    sat: 'normal',
+    sun: 'normal'
+  },
+  advancedRules: {
+    maxInterval: 365
+  }
+};
+
 // Category Definitions
 const CATEGORIES = [
   { id: 'dailyLimits', label: 'Daily Limits', icon: '📊' },
@@ -277,22 +318,32 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
               {activeCategory === 'dailyLimits' && (
                 <div className="space-y-6">
                   {/* Scope Selector Pills */}
-                  <div className={`flex p-1 rounded-2xl border w-fit ${
+                  <div className={`relative flex p-1 rounded-2xl border w-fit ${
                     isDark ? 'neu-pressed-dark border-slate-700/60' : 'neu-pressed-light border-slate-200/80'
                   }`}>
-                    {['preset', 'subject', 'today'].map(scope => (
-                      <button
-                        key={scope}
-                        onClick={() => setActiveScopeTab(scope)}
-                        className={`px-4 py-1.5 rounded-xl text-xs font-black capitalize transition-all ${
-                          activeScopeTab === scope
-                            ? isDark ? 'neu-btn-accent-dark text-white' : 'neu-btn-accent-light text-white'
-                            : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
-                        }`}
-                      >
-                        {scope === 'preset' ? 'Preset (Global)' : scope === 'subject' ? 'This Subject' : 'Today Only'}
-                      </button>
-                    ))}
+                    {['preset', 'subject', 'today'].map(scope => {
+                      const isActive = activeScopeTab === scope;
+                      return (
+                        <button
+                          key={scope}
+                          onClick={() => setActiveScopeTab(scope)}
+                          className={`relative z-10 px-4 py-1.5 rounded-xl text-xs font-black capitalize transition-colors duration-300 ${
+                            isActive
+                              ? 'text-white'
+                              : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          {scope === 'preset' ? 'Preset (Global)' : scope === 'subject' ? 'This Subject' : 'Today Only'}
+                          {isActive && (
+                            <motion.div
+                              layoutId="activeDailyLimitsScopePill"
+                              className={`absolute inset-0 rounded-xl ${isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'}`}
+                              transition={{ duration: 0.6, ease: [0, 0, 0, 1] }}
+                            />
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
 
                   {/* SCOPE 1: GLOBAL PRESET */}
@@ -992,25 +1043,40 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
           </div>
 
           {/* Footer Action Bar */}
-          <div className={`px-6 py-4 border-t flex items-center justify-end gap-3 ${
+          <div className={`px-6 py-4 border-t flex items-center justify-between gap-3 ${
             isDark ? 'border-slate-700/60 bg-[#222730]' : 'border-slate-200 bg-[#e6ecf5]'
           }`}>
             <button
-              onClick={onClose}
-              className={`px-4.5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all ${
-                isDark ? 'neu-btn-dark text-slate-300 hover:text-white' : 'neu-btn-light text-slate-600 hover:text-slate-900'
+              onClick={() => {
+                if (window.confirm("Reset all FSRS Spaced Repetition settings to factory defaults?")) {
+                  setTempConfig(JSON.parse(JSON.stringify(DEFAULT_FSRS_CONFIG)));
+                }
+              }}
+              className={`px-4 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer border ${
+                isDark ? 'neu-btn-dark text-amber-400 border-amber-500/30 hover:text-amber-300' : 'neu-btn-light text-amber-700 border-amber-300 hover:text-amber-800'
               }`}
             >
-              Cancel
+              ↺ Reset Defaults
             </button>
-            <button
-              onClick={handleSave}
-              className={`px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
-                isDark ? 'neu-btn-accent-dark text-white' : 'neu-btn-accent-light text-white'
-              }`}
-            >
-              Save FSRS Settings
-            </button>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={onClose}
+                className={`px-4.5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all ${
+                  isDark ? 'neu-btn-dark text-slate-300 hover:text-white' : 'neu-btn-light text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                className={`px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                  isDark ? 'neu-btn-accent-dark text-white' : 'neu-btn-accent-light text-white'
+                }`}
+              >
+                Save FSRS Settings
+              </button>
+            </div>
           </div>
         </motion.div>
 
