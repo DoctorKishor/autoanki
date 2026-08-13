@@ -26244,73 +26244,73 @@ Return your response strictly as a JSON object matching this schema:
                         initial={{ opacity: 0, y: 16 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-                        className="space-y-4 text-left pb-24 p-3"
+                        className="space-y-5 text-left pb-28 p-4 sm:p-5"
                       >
                         {/* Mobile Top Workspace Header */}
                         <motion.div
                           initial={{ opacity: 0, y: 12 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.4, delay: 0.05 }}
-                          className={`p-4 rounded-3xl transition-all space-y-3.5 ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'}`}
+                          className={`p-5 sm:p-6 rounded-3xl transition-all space-y-4 ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'}`}
                         >
-                          <div className={`flex items-center justify-between pb-2.5 border-b ${isDark ? 'border-slate-750' : 'border-slate-200/80'}`}>
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <div className={`p-2 rounded-xl shrink-0 ${isDark ? 'neu-pressed-dark text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
+                          <div className={`flex items-center justify-between pb-3 border-b ${isDark ? 'border-slate-750' : 'border-slate-200/80'}`}>
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className={`p-2.5 rounded-xl shrink-0 ${isDark ? 'neu-pressed-dark text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
                                 <ListChecks className="w-5 h-5" />
                               </div>
                               <div className="min-w-0">
-                                <h2 className="text-sm font-black tracking-tight truncate">{selectedTrackerSubject}</h2>
-                                <p className={`text-[9px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Subject Tracker</p>
+                                <h2 className="text-sm sm:text-base font-black tracking-tight truncate">{selectedTrackerSubject}</h2>
+                                <p className={`text-[9px] sm:text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Subject Tracker</p>
                               </div>
                             </div>
 
                             {/* Subtab Switcher Pill */}
-                            <div className={`relative flex items-center p-1 rounded-2xl shrink-0 ${isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'}`}>
+                            <div className={`relative flex items-center p-1.5 rounded-2xl shrink-0 ${isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'}`}>
                               <div
-                                className="absolute top-1 bottom-1 rounded-xl bg-blue-600 shadow-md transition-all"
+                                className="absolute top-1.5 bottom-1.5 rounded-xl bg-blue-600 shadow-md transition-all"
                                 style={{
-                                  width: 'calc(50% - 4px)',
-                                  left: subjectTrackerSubTab === 'manager' ? '4px' : 'calc(50%)',
+                                  width: 'calc(50% - 6px)',
+                                  left: subjectTrackerSubTab === 'manager' ? '6px' : 'calc(50%)',
                                   transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
                                 }}
                               />
                               <button
                                 onClick={() => setSubjectTrackerSubTab('manager')}
-                                className={`relative z-10 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center gap-1 ${subjectTrackerSubTab === 'manager' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'}`}
+                                className={`relative z-10 px-3.5 py-1.5 text-[9px] sm:text-[10px] font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center gap-1.5 ${subjectTrackerSubTab === 'manager' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'}`}
                               >
-                                <ListChecks className="w-3 h-3" />
+                                <ListChecks className="w-3.5 h-3.5" />
                                 Manager
                               </button>
                               <button
                                 onClick={() => setSubjectTrackerSubTab('coverage')}
-                                className={`relative z-10 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center gap-1 ${subjectTrackerSubTab === 'coverage' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'}`}
+                                className={`relative z-10 px-3.5 py-1.5 text-[9px] sm:text-[10px] font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center gap-1.5 ${subjectTrackerSubTab === 'coverage' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'}`}
                               >
-                                <Layers className="w-3 h-3" />
+                                <Layers className="w-3.5 h-3.5" />
                                 Coverage
                               </button>
                             </div>
                           </div>
 
                           {/* Quick Metrics Bar */}
-                          <div className="grid grid-cols-3 gap-2">
-                            <div className={`p-2 rounded-2xl text-center border ${isDark ? 'neu-pressed-dark border-slate-800' : 'neu-pressed-light border-slate-200/80'}`}>
-                              <span className={`block text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Topics</span>
-                              <span className="text-xs font-black text-blue-500">{revisedTopicsCount}/{totalTopicsCount}</span>
+                          <div className="grid grid-cols-3 gap-2.5">
+                            <div className={`p-3 rounded-2xl text-center border ${isDark ? 'neu-pressed-dark border-slate-800' : 'neu-pressed-light border-slate-200/80'}`}>
+                              <span className={`block text-[8px] sm:text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Topics</span>
+                              <span className="text-xs sm:text-sm font-black text-blue-500">{revisedTopicsCount}/{totalTopicsCount}</span>
                             </div>
-                            <div className={`p-2 rounded-2xl text-center border ${isDark ? 'neu-pressed-dark border-slate-800' : 'neu-pressed-light border-slate-200/80'}`}>
-                              <span className={`block text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Revisions</span>
-                              <span className="text-xs font-black text-amber-500">🔥 {totalRevsCount}</span>
+                            <div className={`p-3 rounded-2xl text-center border ${isDark ? 'neu-pressed-dark border-slate-800' : 'neu-pressed-light border-slate-200/80'}`}>
+                              <span className={`block text-[8px] sm:text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Revisions</span>
+                              <span className="text-xs sm:text-sm font-black text-amber-500">🔥 {totalRevsCount}</span>
                             </div>
-                            <div className={`p-2 rounded-2xl text-center border ${isDark ? 'neu-pressed-dark border-slate-800' : 'neu-pressed-light border-slate-200/80'}`}>
-                              <span className={`block text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Coverage</span>
-                              <span className="text-xs font-black text-emerald-500">{coveragePercent}%</span>
+                            <div className={`p-3 rounded-2xl text-center border ${isDark ? 'neu-pressed-dark border-slate-800' : 'neu-pressed-light border-slate-200/80'}`}>
+                              <span className={`block text-[8px] sm:text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Coverage</span>
+                              <span className="text-xs sm:text-sm font-black text-emerald-500">{coveragePercent}%</span>
                             </div>
                           </div>
 
                           {/* Horizontal Subject Carousel Strip */}
-                          <div className="space-y-1.5 pt-1">
-                            <span className={`block text-[9px] font-black uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Select Subject</span>
-                            <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar no-scrollbar">
+                          <div className="space-y-2 pt-1">
+                            <span className={`block text-[9px] sm:text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Select Subject</span>
+                            <div className="flex gap-2.5 overflow-x-auto py-1 pb-2 custom-scrollbar no-scrollbar px-1">
                               {allSubjectsList.map(sub => {
                                 const docId = sub.trim().toLowerCase();
                                 const trackerDoc = subjectTrackerData.find(p => p.id === docId);
@@ -26321,7 +26321,7 @@ Return your response strictly as a JSON object matching this schema:
                                   <button
                                     key={sub}
                                     onClick={() => setSelectedTrackerSubject(sub)}
-                                    className={`px-3 py-2 rounded-2xl text-xs font-black whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0 border ${isSelected
+                                    className={`px-3.5 py-2.5 rounded-2xl text-xs font-black whitespace-nowrap transition-all flex items-center gap-2 shrink-0 border ${isSelected
                                       ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-blue-500 shadow-md scale-[1.02]'
                                       : isDark
                                         ? 'neu-card-dark text-slate-300 border-slate-800'
@@ -26329,7 +26329,7 @@ Return your response strictly as a JSON object matching this schema:
                                     }`}
                                   >
                                     <span>{sub}</span>
-                                    <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md ${isSelected ? 'bg-blue-700/60 text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>
+                                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-md ${isSelected ? 'bg-blue-700/60 text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>
                                       {count}
                                     </span>
                                   </button>
@@ -26342,27 +26342,27 @@ Return your response strictly as a JSON object matching this schema:
                         {subjectTrackerSubTab === 'manager' ? (
                           <>
                             {/* Mobile View Mode Segmented Switcher (Topics vs Source & AI Tools) */}
-                            <div className={`relative grid grid-cols-2 p-1 rounded-2xl ${isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'}`}>
+                            <div className={`relative grid grid-cols-2 p-1.5 rounded-2xl ${isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'}`}>
                               <div
-                                className="absolute top-1 bottom-1 rounded-xl bg-blue-600 shadow-md transition-all"
+                                className="absolute top-1.5 bottom-1.5 rounded-xl bg-blue-600 shadow-md transition-all"
                                 style={{
-                                  width: 'calc(50% - 4px)',
-                                  left: mobileSubjectViewMode === 'topics' ? '4px' : 'calc(50%)',
+                                  width: 'calc(50% - 6px)',
+                                  left: mobileSubjectViewMode === 'topics' ? '6px' : 'calc(50%)',
                                   transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
                                 }}
                               />
                               <button
                                 onClick={() => setMobileSubjectViewMode('topics')}
-                                className={`relative z-10 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center justify-center gap-1.5 ${mobileSubjectViewMode === 'topics' ? 'text-white' : isDark ? 'text-slate-400' : 'text-slate-500'}`}
+                                className={`relative z-10 py-2.5 text-[10px] sm:text-[11px] font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center justify-center gap-2 ${mobileSubjectViewMode === 'topics' ? 'text-white' : isDark ? 'text-slate-400' : 'text-slate-500'}`}
                               >
-                                <ListChecks className="w-3.5 h-3.5" />
+                                <ListChecks className="w-4 h-4" />
                                 Topics Checklist
                               </button>
                               <button
                                 onClick={() => setMobileSubjectViewMode('tools')}
-                                className={`relative z-10 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center justify-center gap-1.5 ${mobileSubjectViewMode === 'tools' ? 'text-white' : isDark ? 'text-slate-400' : 'text-slate-500'}`}
+                                className={`relative z-10 py-2.5 text-[10px] sm:text-[11px] font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center justify-center gap-2 ${mobileSubjectViewMode === 'tools' ? 'text-white' : isDark ? 'text-slate-400' : 'text-slate-500'}`}
                               >
-                                <Sparkles className="w-3.5 h-3.5" />
+                                <Sparkles className="w-4 h-4" />
                                 Source & AI Tools
                               </button>
                             </div>
@@ -26374,7 +26374,7 @@ Return your response strictly as a JSON object matching this schema:
                                   initial={{ opacity: 0, y: 12 }}
                                   animate={{ opacity: 1, y: 0 }}
                                   transition={{ duration: 0.4 }}
-                                  className={`p-3.5 rounded-3xl transition-all space-y-2 border ${isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-800 border-slate-200'}`}
+                                  className={`p-4 sm:p-5 rounded-3xl transition-all space-y-3 border ${isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-800 border-slate-200'}`}
                                 >
                                   <form
                                     onSubmit={(e) => {
@@ -26386,46 +26386,46 @@ Return your response strictly as a JSON object matching this schema:
                                       setTrackerNewTopicPage("");
                                       setTrackerNewTopicEndPage("");
                                     }}
-                                    className="flex flex-col gap-2"
+                                    className="flex flex-col gap-2.5"
                                   >
                                     <input
                                       type="text"
                                       placeholder="Topic title (e.g. Cranial Nerves)..."
                                       value={trackerNewTopicInput}
                                       onChange={(e) => setTrackerNewTopicInput(e.target.value)}
-                                      className={`w-full p-2.5 rounded-xl text-xs font-bold outline-none transition ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'}`}
+                                      className={`w-full p-3 px-4 rounded-xl text-xs font-bold outline-none transition ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'}`}
                                     />
-                                    <div className="flex gap-2 items-center">
+                                    <div className="flex gap-2.5 items-center">
                                       <input
                                         type="number"
                                         placeholder="Start Pg"
                                         value={trackerNewTopicPage}
                                         onChange={(e) => setTrackerNewTopicPage(e.target.value)}
-                                        className={`w-20 p-2.5 rounded-xl text-xs font-bold outline-none text-center shrink-0 ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'}`}
+                                        className={`w-20 p-3 rounded-xl text-xs font-bold outline-none text-center shrink-0 ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'}`}
                                       />
                                       <input
                                         type="number"
                                         placeholder="End Pg"
                                         value={trackerNewTopicEndPage}
                                         onChange={(e) => setTrackerNewTopicEndPage(e.target.value)}
-                                        className={`w-20 p-2.5 rounded-xl text-xs font-bold outline-none text-center shrink-0 ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'}`}
+                                        className={`w-20 p-3 rounded-xl text-xs font-bold outline-none text-center shrink-0 ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'}`}
                                       />
                                       <motion.button
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.95 }}
                                         type="submit"
-                                        className={`flex-grow h-[38px] rounded-xl text-[10px] font-black uppercase tracking-wider transition flex items-center justify-center gap-1.5 ${isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300' : 'bg-blue-600 text-white shadow-md shadow-blue-500/20'}`}
+                                        className={`flex-grow h-[42px] rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition flex items-center justify-center gap-1.5 ${isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300' : 'bg-blue-600 text-white shadow-md shadow-blue-500/20'}`}
                                       >
-                                        <Plus className="w-3.5 h-3.5" /> Add Topic
+                                        <Plus className="w-4 h-4" /> Add Topic
                                       </motion.button>
                                     </div>
                                   </form>
                                 </motion.div>
 
                                 {/* Sort Bar */}
-                                <div className="flex justify-between items-center px-1">
+                                <div className="flex justify-between items-center px-1.5 py-1">
                                   <span className={`text-[10px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Topics Checklist</span>
-                                  <div className={`relative grid grid-cols-3 p-1 rounded-xl text-[9px] font-black uppercase tracking-wider w-[200px] ${isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'}`}>
+                                  <div className={`relative grid grid-cols-3 p-1 rounded-xl text-[9px] font-black uppercase tracking-wider w-[210px] ${isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'}`}>
                                     <div
                                       className="absolute top-1 bottom-1 rounded-lg bg-blue-600 shadow-sm transition-all"
                                       style={{
@@ -26437,21 +26437,21 @@ Return your response strictly as a JSON object matching this schema:
                                     <button
                                       type="button"
                                       onClick={() => setTrackerSortBy('page')}
-                                      className={`relative z-10 py-1 text-center truncate transition-colors duration-200 ${trackerSortBy === 'page' ? 'text-white font-black' : isDark ? 'text-slate-400' : 'text-slate-500'}`}
+                                      className={`relative z-10 py-1.5 text-center truncate transition-colors duration-200 ${trackerSortBy === 'page' ? 'text-white font-black' : isDark ? 'text-slate-400' : 'text-slate-500'}`}
                                     >
                                       Page #
                                     </button>
                                     <button
                                       type="button"
                                       onClick={() => setTrackerSortBy('uncompleted')}
-                                      className={`relative z-10 py-1 text-center truncate transition-colors duration-200 ${trackerSortBy === 'uncompleted' ? 'text-white font-black' : isDark ? 'text-slate-400' : 'text-slate-500'}`}
+                                      className={`relative z-10 py-1.5 text-center truncate transition-colors duration-200 ${trackerSortBy === 'uncompleted' ? 'text-white font-black' : isDark ? 'text-slate-400' : 'text-slate-500'}`}
                                     >
                                       Pending
                                     </button>
                                     <button
                                       type="button"
                                       onClick={() => setTrackerSortBy('completed')}
-                                      className={`relative z-10 py-1 text-center truncate transition-colors duration-200 ${trackerSortBy === 'completed' ? 'text-white font-black' : isDark ? 'text-slate-400' : 'text-slate-500'}`}
+                                      className={`relative z-10 py-1.5 text-center truncate transition-colors duration-200 ${trackerSortBy === 'completed' ? 'text-white font-black' : isDark ? 'text-slate-400' : 'text-slate-500'}`}
                                     >
                                       Done
                                     </button>
@@ -26459,7 +26459,7 @@ Return your response strictly as a JSON object matching this schema:
                                 </div>
 
                                 {/* Tracked Topics List */}
-                                <div className="space-y-3">
+                                <div className="space-y-3.5">
                                   {(() => {
                                     const docId = selectedTrackerSubject.trim().toLowerCase();
                                     const trackerDoc = subjectTrackerData.find(p => p.id === docId);
@@ -26468,7 +26468,7 @@ Return your response strictly as a JSON object matching this schema:
 
                                     if (topicsList.length === 0) {
                                       return (
-                                        <div className={`p-6 rounded-3xl text-center border transition-all ${isDark ? 'neu-card-dark text-slate-400 border-slate-800' : 'neu-card-light text-slate-500 border-slate-200'}`}>
+                                        <div className={`p-8 rounded-3xl text-center border transition-all ${isDark ? 'neu-card-dark text-slate-400 border-slate-800' : 'neu-card-light text-slate-500 border-slate-200'}`}>
                                           <p className="text-xs font-bold">No tracked topics found for {selectedTrackerSubject}.</p>
                                         </div>
                                       );
@@ -26483,7 +26483,6 @@ Return your response strictly as a JSON object matching this schema:
                                           const revCount = dates.length;
                                           const hasRevisions = revCount > 0;
 
-                                          // Color-coded left accent border by revision count
                                           const statusBorderClass = revCount >= 3
                                             ? 'border-l-4 border-l-emerald-500'
                                             : revCount >= 1
@@ -26499,8 +26498,8 @@ Return your response strictly as a JSON object matching this schema:
                                               transition={{ duration: 0.25, delay: Math.min(tIdx * 0.02, 0.2) }}
                                               className={`rounded-2xl transition-all border ${statusBorderClass} ${isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-800 border-slate-200'}`}
                                             >
-                                              <div className="p-3 flex items-center justify-between gap-2 text-left">
-                                                <div className="flex items-center gap-2.5 min-w-0 flex-grow">
+                                              <div className="p-3.5 sm:p-4 flex items-center justify-between gap-3 text-left">
+                                                <div className="flex items-center gap-3 min-w-0 flex-grow">
                                                   <button
                                                     onClick={() => {
                                                       setExpandedTrackerTopics(prev => ({
@@ -26515,11 +26514,11 @@ Return your response strictly as a JSON object matching this schema:
                                                     <CheckCircle2 className="w-4 h-4" />
                                                   </button>
                                                   <div className="min-w-0">
-                                                    <h4 className="text-xs font-black tracking-tight leading-snug truncate max-w-[160px]">
+                                                    <h4 className="text-xs sm:text-sm font-black tracking-tight leading-snug truncate max-w-[170px] sm:max-w-[220px]">
                                                       {topicItem.name}
                                                     </h4>
-                                                    <div className="flex items-center gap-1 mt-0.5">
-                                                      <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md border ${topicItem.endPage
+                                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                                      <span className={`text-[9px] font-black px-2 py-0.5 rounded-md border ${topicItem.endPage
                                                         ? isDark ? 'text-emerald-400 bg-emerald-950/40 border-emerald-800/60' : 'text-emerald-700 bg-emerald-50 border-emerald-100'
                                                         : isDark ? 'text-amber-400 bg-amber-950/40 border-amber-800/60' : 'text-amber-700 bg-amber-50 border-amber-100'}`}>
                                                         {topicItem.page ? `p. ${topicItem.page}${topicItem.endPage ? `–${topicItem.endPage}` : ''}` : 'No pgs'}
@@ -26536,7 +26535,7 @@ Return your response strictly as a JSON object matching this schema:
                                                         [topicItem.name]: !prev[topicItem.name]
                                                       }));
                                                     }}
-                                                    className={`px-2 py-1.5 rounded-xl text-[9px] font-black transition flex items-center gap-1 ${hasRevisions
+                                                    className={`px-2.5 py-1.5 rounded-xl text-[9px] sm:text-[10px] font-black transition flex items-center gap-1 ${hasRevisions
                                                       ? isDark ? 'neu-pressed-dark text-blue-400 border border-blue-900/50' : 'bg-blue-50 text-blue-600 border border-blue-100'
                                                       : isDark ? 'neu-pressed-dark text-slate-400' : 'bg-slate-100 text-slate-500'}`}
                                                   >
@@ -26576,17 +26575,17 @@ Return your response strictly as a JSON object matching this schema:
                                                     animate={{ height: 'auto', opacity: 1 }}
                                                     exit={{ height: 0, opacity: 0 }}
                                                     transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                                                    className={`overflow-hidden border-t px-3.5 py-3 space-y-3 ${isDark ? 'border-slate-800 bg-slate-900/60' : 'border-slate-100 bg-slate-50/70'}`}
+                                                    className={`overflow-hidden border-t p-4 space-y-3.5 ${isDark ? 'border-slate-800 bg-slate-900/60' : 'border-slate-100 bg-slate-50/70'}`}
                                                   >
                                                     {/* Page Range Inputs */}
-                                                    <div className="flex items-center gap-2 text-xs font-bold flex-wrap">
+                                                    <div className="flex items-center gap-2.5 text-xs font-bold flex-wrap">
                                                       <span className={`text-[9px] font-black uppercase font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Pages:</span>
-                                                      <div className="flex items-center gap-1.5">
+                                                      <div className="flex items-center gap-2">
                                                         <input
                                                           type="number"
                                                           value={topicItem.page || ""}
                                                           onChange={(e) => handleUpdateTrackerTopicPages(selectedTrackerSubject, topicItem.name, e.target.value, topicItem.endPage || "")}
-                                                          className={`w-16 p-1.5 rounded-xl text-center text-xs font-bold outline-none ${isDark ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'}`}
+                                                          className={`w-18 p-2 rounded-xl text-center text-xs font-bold outline-none ${isDark ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'}`}
                                                           placeholder="Start"
                                                         />
                                                         <span className="text-slate-400">-</span>
@@ -26594,7 +26593,7 @@ Return your response strictly as a JSON object matching this schema:
                                                           type="number"
                                                           value={topicItem.endPage || ""}
                                                           onChange={(e) => handleUpdateTrackerTopicPages(selectedTrackerSubject, topicItem.name, topicItem.page || "", e.target.value)}
-                                                          className={`w-16 p-1.5 rounded-xl text-center text-xs font-bold outline-none ${isDark ? 'neu-pressed-dark text-indigo-400' : 'neu-pressed-light text-indigo-600'}`}
+                                                          className={`w-18 p-2 rounded-xl text-center text-xs font-bold outline-none ${isDark ? 'neu-pressed-dark text-indigo-400' : 'neu-pressed-light text-indigo-600'}`}
                                                           placeholder="End"
                                                         />
                                                       </div>
@@ -26602,13 +26601,13 @@ Return your response strictly as a JSON object matching this schema:
 
                                                     {/* Logged Revision Date Chips Ribbon */}
                                                     {dates.length > 0 && (
-                                                      <div className="space-y-1.5">
-                                                        <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Logged Revisions ({dates.length}):</span>
-                                                        <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                                                      <div className="space-y-2">
+                                                        <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Logged Revisions ({dates.length}):</span>
+                                                        <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar no-scrollbar">
                                                           {dates.map((dateVal, dIdx) => (
                                                             <span
                                                               key={dIdx}
-                                                              className={`rounded-lg px-2 py-0.5 text-[9px] font-black flex items-center gap-1 shrink-0 border ${isDark ? 'bg-emerald-950/40 text-emerald-300 border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border-emerald-100'}`}
+                                                              className={`rounded-lg px-2.5 py-1 text-[9px] font-black flex items-center gap-1.5 shrink-0 border ${isDark ? 'bg-emerald-950/40 text-emerald-300 border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border-emerald-100'}`}
                                                             >
                                                               📅 {formatAppDate(dateVal)}
                                                               <button
@@ -26624,7 +26623,7 @@ Return your response strictly as a JSON object matching this schema:
                                                     )}
 
                                                     {/* Session Logger & Secondary Action Row */}
-                                                    <div className="flex items-center gap-2 pt-1">
+                                                    <div className="flex items-center gap-2.5 pt-1">
                                                       <input
                                                         type="date"
                                                         value={selectedDate}
@@ -26632,13 +26631,13 @@ Return your response strictly as a JSON object matching this schema:
                                                           trackerLogDateInputs[topicItem.name] = e.target.value;
                                                           setTrackerLogDateInputs({ ...trackerLogDateInputs });
                                                         }}
-                                                        className={`p-1.5 rounded-xl text-[10px] font-bold outline-none flex-grow ${isDark ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-slate-800'}`}
+                                                        className={`p-2 px-3 rounded-xl text-[10px] font-bold outline-none flex-grow ${isDark ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-slate-800'}`}
                                                       />
                                                       <motion.button
                                                         whileHover={{ scale: 1.02 }}
                                                         whileTap={{ scale: 0.95 }}
                                                         onClick={() => handleLogTrackerStudyDate(selectedTrackerSubject, topicItem.name, selectedDate)}
-                                                        className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition shrink-0 ${isDark ? 'neu-btn-dark text-emerald-400' : 'bg-emerald-600 text-white shadow-sm'}`}
+                                                        className={`px-3.5 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition shrink-0 ${isDark ? 'neu-btn-dark text-emerald-400' : 'bg-emerald-600 text-white shadow-sm'}`}
                                                       >
                                                         Log Date
                                                       </motion.button>
@@ -26658,9 +26657,9 @@ Return your response strictly as a JSON object matching this schema:
                                                           });
                                                           setCurrentTab('studyScheduler');
                                                         }}
-                                                        className={`p-2 rounded-xl transition ${isDark ? 'text-blue-400 neu-pressed-dark' : 'text-blue-600 bg-blue-50'}`}
+                                                        className={`p-2.5 rounded-xl transition ${isDark ? 'text-blue-400 neu-pressed-dark' : 'text-blue-600 bg-blue-50'}`}
                                                       >
-                                                        <Calendar className="w-3.5 h-3.5" />
+                                                        <Calendar className="w-4 h-4" />
                                                       </button>
                                                       <button
                                                         title="Delete topic"
@@ -26669,9 +26668,9 @@ Return your response strictly as a JSON object matching this schema:
                                                             handleDeleteTrackerTopic(selectedTrackerSubject, topicItem.name);
                                                           }
                                                         }}
-                                                        className={`p-2 rounded-xl transition ${isDark ? 'text-rose-400 neu-pressed-dark' : 'text-rose-600 bg-rose-50'}`}
+                                                        className={`p-2.5 rounded-xl transition ${isDark ? 'text-rose-400 neu-pressed-dark' : 'text-rose-600 bg-rose-50'}`}
                                                       >
-                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                        <Trash2 className="w-4 h-4" />
                                                       </button>
                                                     </div>
                                                   </motion.div>
@@ -26687,11 +26686,11 @@ Return your response strictly as a JSON object matching this schema:
                               </>
                             ) : (
                               /* Mobile Source & AI Tools Tab */
-                              <div className="space-y-4">
+                              <div className="space-y-5">
                                 {/* Primary Source Card */}
-                                <div className={`p-4 rounded-3xl space-y-3 transition-all ${isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-800 border-slate-200'}`}>
-                                  <label className={`block text-[9px] font-black uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Primary Source Material</label>
-                                  <div className="flex gap-2 items-center w-full">
+                                <div className={`p-5 rounded-3xl space-y-3.5 transition-all ${isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-800 border-slate-200'}`}>
+                                  <label className={`block text-[9px] sm:text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Primary Source Material</label>
+                                  <div className="flex gap-2.5 items-center w-full">
                                     <input
                                       type="text"
                                       placeholder="e.g. Marrow + First Aid"
@@ -26712,7 +26711,7 @@ Return your response strictly as a JSON object matching this schema:
                                           : (subjectTrackerData.find(p => p.id === selectedTrackerSubject.trim().toLowerCase())?.primarySource || "");
                                         handleSavePrimarySource(selectedTrackerSubject, sourceVal);
                                       }}
-                                      className={`w-0 min-w-0 flex-grow p-2.5 rounded-xl text-xs font-bold outline-none transition ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'}`}
+                                      className={`w-0 min-w-0 flex-grow p-3 px-4 rounded-xl text-xs font-bold outline-none transition ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'}`}
                                     />
                                     <motion.button
                                       whileHover={{ scale: 1.02 }}
@@ -26724,7 +26723,7 @@ Return your response strictly as a JSON object matching this schema:
                                         handleSavePrimarySource(selectedTrackerSubject, sourceVal);
                                         alert("Primary source saved!");
                                       }}
-                                      className={`px-3.5 py-2.5 shrink-0 rounded-xl text-[10px] font-black uppercase tracking-wider transition ${isDark ? 'neu-btn-dark text-blue-400' : 'bg-blue-600 text-white shadow-md'}`}
+                                      className={`px-4 py-3 shrink-0 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition ${isDark ? 'neu-btn-dark text-blue-400' : 'bg-blue-600 text-white shadow-md'}`}
                                     >
                                       Save
                                     </motion.button>
@@ -26752,28 +26751,28 @@ Return your response strictly as a JSON object matching this schema:
                                       processIndexFiles(e.clipboardData.files, selectedTrackerSubject);
                                     }
                                   }}
-                                  className={`flex flex-col gap-3 rounded-3xl p-5 outline-none transition-all duration-300 ${isDark
+                                  className={`flex flex-col gap-4 rounded-3xl p-5 sm:p-6 outline-none transition-all duration-300 ${isDark
                                     ? 'neu-card-dark bg-gradient-to-br from-slate-900 via-indigo-950/40 to-slate-900 border border-indigo-900/40 text-white'
                                     : 'neu-card-light bg-gradient-to-br from-violet-50/70 via-white to-indigo-50/70 border border-indigo-100 text-slate-800'
                                   }`}
                                 >
                                   <div className="text-left">
-                                    <h4 className={`text-xs font-black flex items-center gap-1.5 ${isDark ? 'text-indigo-300' : 'text-indigo-950'}`}>
+                                    <h4 className={`text-xs sm:text-sm font-black flex items-center gap-2 ${isDark ? 'text-indigo-300' : 'text-indigo-950'}`}>
                                       <Sparkles className="w-4 h-4 text-violet-500 animate-pulse" /> AI Book Index Extractor
                                     </h4>
-                                    <p className={`text-[10px] font-bold mt-1 leading-relaxed ${isDark ? 'text-indigo-300/80' : 'text-indigo-600/80'}`}>
+                                    <p className={`text-[10px] sm:text-xs font-bold mt-1.5 leading-relaxed ${isDark ? 'text-indigo-300/80' : 'text-indigo-600/80'}`}>
                                       Upload textbook index images or PDFs to auto-extract topics.
                                     </p>
                                   </div>
-                                  <label className={`w-full py-3 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer shadow-md active:scale-95 transition-all flex items-center justify-center gap-1.5 ${isTrackerAiExtracting ? 'opacity-50 pointer-events-none' : ''}`}>
+                                  <label className={`w-full py-3.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 ${isTrackerAiExtracting ? 'opacity-50 pointer-events-none' : ''}`}>
                                     {isTrackerAiExtracting ? (
                                       <>
-                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                        <Loader2 className="w-4 h-4 animate-spin" />
                                         Extracting Topics...
                                       </>
                                     ) : (
                                       <>
-                                        <Upload className="w-3.5 h-3.5" />
+                                        <Upload className="w-4 h-4" />
                                         Upload Index Image / PDF
                                       </>
                                     )}
@@ -35119,7 +35118,7 @@ Return your response strictly as a JSON object matching this schema:
                             whileHover={{ scale: 1.01 }}
                             whileTap={{ scale: 0.98 }}
                             onClick={() => setSelectedTrackerSubject(sub)}
-                            className={`w-full text-left p-3.5 rounded-2xl transition-all duration-200 flex flex-col gap-1.5 border ${isSelected
+                            className={`w-full text-left p-4 rounded-2xl transition-all duration-200 flex flex-col gap-2 border ${isSelected
                               ? isDark
                                 ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white neu-pressed-dark border-l-4 border-l-blue-400 shadow-lg shadow-blue-950/60'
                                 : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-l-4 border-l-blue-400 shadow-lg shadow-blue-600/20'
@@ -35129,8 +35128,8 @@ Return your response strictly as a JSON object matching this schema:
                               }`}
                           >
                             <div className="flex justify-between items-center w-full">
-                              <span className="text-xs font-black tracking-tight">{sub}</span>
-                              <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${isSelected
+                              <span className="text-xs sm:text-sm font-black tracking-tight">{sub}</span>
+                              <span className={`text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-md ${isSelected
                                 ? 'text-white bg-blue-700/50'
                                 : isDark ? 'text-slate-300 bg-slate-800/80' : 'text-slate-600 bg-slate-100'
                                 }`}>
@@ -35138,13 +35137,13 @@ Return your response strictly as a JSON object matching this schema:
                               </span>
                             </div>
 
-                            <span className={`text-[9px] truncate max-w-full font-medium ${isSelected ? 'text-blue-100' : isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                            <span className={`text-[9px] sm:text-[10px] truncate max-w-full font-medium ${isSelected ? 'text-blue-100' : isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                               {primarySource ? `📖 ${primarySource}` : "No source set"}
                             </span>
 
                             {/* Visual Progress Bar */}
-                            <div className="w-full space-y-0.5 pt-0.5">
-                              <div className="flex justify-between text-[8px] font-black uppercase tracking-wider">
+                            <div className="w-full space-y-1 pt-0.5">
+                              <div className="flex justify-between text-[8px] sm:text-[9px] font-black uppercase tracking-wider">
                                 <span className={isSelected ? 'text-blue-200' : isDark ? 'text-slate-400' : 'text-slate-500'}>
                                   {revisedCount}/{topicsCount} revised
                                 </span>
@@ -35168,19 +35167,19 @@ Return your response strictly as a JSON object matching this schema:
                           initial={{ opacity: 0, y: 16 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-                          className="flex-grow p-4 lg:p-6 flex gap-6 max-w-[1250px] mx-auto w-full h-full overflow-hidden text-left"
+                          className="flex-grow p-6 lg:p-7 flex gap-6 max-w-[1300px] mx-auto w-full h-full overflow-hidden text-left"
                         >
                           {/* Left Column: Subjects Sidebar */}
                           <motion.div
                             initial={{ opacity: 0, x: -12 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ duration: 0.4, delay: 0.05 }}
-                            className={`w-1/3 rounded-3xl p-5 flex flex-col h-full overflow-y-auto custom-scrollbar transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'}`}
+                            className={`w-1/3 rounded-3xl p-6 flex flex-col h-full overflow-y-auto custom-scrollbar transition-all space-y-4 ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'}`}
                           >
-                            <div className="mb-4 shrink-0 space-y-3">
+                            <div className="shrink-0 space-y-3.5">
                               <div className="flex items-center justify-between">
-                                <h3 className="text-base font-black tracking-tight flex items-center gap-2">
-                                  <div className={`p-2 rounded-xl ${isDark ? 'neu-pressed-dark text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
+                                <h3 className="text-base sm:text-lg font-black tracking-tight flex items-center gap-2.5">
+                                  <div className={`p-2.5 rounded-xl ${isDark ? 'neu-pressed-dark text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
                                     <ListChecks className="w-5 h-5" />
                                   </div>
                                   Subject Tracker
@@ -35189,18 +35188,18 @@ Return your response strictly as a JSON object matching this schema:
 
                               {/* Search Subjects Input */}
                               <div className="relative w-full">
-                                <Search className={`w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+                                <Search className={`w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
                                 <input
                                   type="text"
                                   placeholder="Filter subjects..."
                                   value={subjectSearchQuery}
                                   onChange={(e) => setSubjectSearchQuery(e.target.value)}
-                                  className={`w-full pl-8 pr-7 py-2 rounded-xl text-xs font-bold outline-none transition ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'}`}
+                                  className={`w-full pl-10 pr-8 py-2.5 rounded-xl text-xs font-bold outline-none transition ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'}`}
                                 />
                                 {subjectSearchQuery && (
                                   <button
                                     onClick={() => setSubjectSearchQuery('')}
-                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 text-xs font-bold"
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 text-xs font-bold"
                                   >
                                     ✕
                                   </button>
@@ -35211,22 +35210,22 @@ Return your response strictly as a JSON object matching this schema:
                             {/* Subject List Area */}
                             <div className="space-y-4 flex-grow custom-scrollbar">
                               {filteredSubjects ? (
-                                <div className="space-y-2">
+                                <div className="space-y-2.5">
                                   {filteredSubjects.length > 0 ? (
                                     filteredSubjects.map(sub => renderSubjectCard(sub))
                                   ) : (
-                                    <p className={`text-xs font-bold text-center py-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                    <p className={`text-xs font-bold text-center py-6 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                       No subjects found for "{subjectSearchQuery}"
                                     </p>
                                   )}
                                 </div>
                               ) : (
                                 subjectCategories.map(cat => (
-                                  <div key={cat.name} className="space-y-2">
-                                    <div className={`text-[9px] font-black uppercase tracking-widest px-1 font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                  <div key={cat.name} className="space-y-2.5">
+                                    <div className={`text-[9px] sm:text-[10px] font-black uppercase tracking-widest px-1 py-0.5 font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                       {cat.name}
                                     </div>
-                                    <div className="space-y-2">
+                                    <div className="space-y-2.5">
                                       {cat.subjects.map(sub => renderSubjectCard(sub))}
                                     </div>
                                   </div>
@@ -35240,52 +35239,52 @@ Return your response strictly as a JSON object matching this schema:
                             initial={{ opacity: 0, x: 12 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ duration: 0.4, delay: 0.1 }}
-                            className={`w-2/3 rounded-3xl p-6 flex flex-col h-full overflow-hidden relative transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'}`}
+                            className={`w-2/3 rounded-3xl p-6 lg:p-7 flex flex-col h-full overflow-hidden relative transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'}`}
                           >
                             {/* Sticky Header Bar with Title & Stats Summary */}
-                            <div className={`flex justify-between items-center border-b pb-4 mb-5 shrink-0 ${isDark ? 'border-slate-750' : 'border-slate-200/80'}`}>
+                            <div className={`flex justify-between items-center border-b pb-5 mb-6 shrink-0 ${isDark ? 'border-slate-750' : 'border-slate-200/80'}`}>
                               <div>
-                                <span className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>Active Workspace</span>
-                                <h2 className="text-xl font-black tracking-tight mt-0.5 flex items-center gap-3">
+                                <span className={`text-[9px] sm:text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>Active Workspace</span>
+                                <h2 className="text-xl sm:text-2xl font-black tracking-tight mt-0.5 flex items-center gap-3">
                                   <span>{selectedTrackerSubject} Tracking</span>
                                 </h2>
 
                                 {/* Quick Stats Summary Pills */}
-                                <div className="flex items-center gap-2 mt-2 flex-wrap">
-                                  <span className={`text-[9px] font-black px-2.5 py-1 rounded-xl border flex items-center gap-1 ${isDark ? 'neu-pressed-dark text-blue-300 border-slate-800' : 'neu-pressed-light text-blue-700 border-slate-200'}`}>
+                                <div className="flex items-center gap-2.5 mt-2.5 flex-wrap">
+                                  <span className={`text-[9px] sm:text-[10px] font-black px-3 py-1 rounded-xl border flex items-center gap-1.5 ${isDark ? 'neu-pressed-dark text-blue-300 border-slate-800' : 'neu-pressed-light text-blue-700 border-slate-200'}`}>
                                     📌 {revisedTopicsCount}/{totalTopicsCount} Topics
                                   </span>
-                                  <span className={`text-[9px] font-black px-2.5 py-1 rounded-xl border flex items-center gap-1 ${isDark ? 'neu-pressed-dark text-amber-400 border-slate-800' : 'neu-pressed-light text-amber-700 border-slate-200'}`}>
+                                  <span className={`text-[9px] sm:text-[10px] font-black px-3 py-1 rounded-xl border flex items-center gap-1.5 ${isDark ? 'neu-pressed-dark text-amber-400 border-slate-800' : 'neu-pressed-light text-amber-700 border-slate-200'}`}>
                                     🔥 {totalRevsCount} Revs
                                   </span>
-                                  <span className={`text-[9px] font-black px-2.5 py-1 rounded-xl border flex items-center gap-1 ${isDark ? 'neu-pressed-dark text-emerald-400 border-slate-800' : 'neu-pressed-light text-emerald-700 border-slate-200'}`}>
+                                  <span className={`text-[9px] sm:text-[10px] font-black px-3 py-1 rounded-xl border flex items-center gap-1.5 ${isDark ? 'neu-pressed-dark text-emerald-400 border-slate-800' : 'neu-pressed-light text-emerald-700 border-slate-200'}`}>
                                     📈 {coveragePercent}% Coverage
                                   </span>
                                 </div>
                               </div>
 
                               {/* Subtab Switcher Pill */}
-                              <div className={`relative flex items-center p-1 rounded-2xl shrink-0 ${isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'}`}>
+                              <div className={`relative flex items-center p-1.5 rounded-2xl shrink-0 ${isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'}`}>
                                 <div
-                                  className="absolute top-1 bottom-1 rounded-xl bg-blue-600 shadow-md transition-all"
+                                  className="absolute top-1.5 bottom-1.5 rounded-xl bg-blue-600 shadow-md transition-all"
                                   style={{
-                                    width: 'calc(50% - 4px)',
-                                    left: subjectTrackerSubTab === 'manager' ? '4px' : 'calc(50%)',
+                                    width: 'calc(50% - 6px)',
+                                    left: subjectTrackerSubTab === 'manager' ? '6px' : 'calc(50%)',
                                     transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
                                   }}
                                 />
                                 <button
                                   onClick={() => setSubjectTrackerSubTab('manager')}
-                                  className={`relative z-10 px-4 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center gap-1.5 ${subjectTrackerSubTab === 'manager' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'}`}
+                                  className={`relative z-10 px-4 py-2 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center gap-2 ${subjectTrackerSubTab === 'manager' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'}`}
                                 >
-                                  <ListChecks className="w-3.5 h-3.5" />
+                                  <ListChecks className="w-4 h-4" />
                                   Manager
                                 </button>
                                 <button
                                   onClick={() => setSubjectTrackerSubTab('coverage')}
-                                  className={`relative z-10 px-4 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center gap-1.5 ${subjectTrackerSubTab === 'coverage' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'}`}
+                                  className={`relative z-10 px-4 py-2 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center gap-2 ${subjectTrackerSubTab === 'coverage' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'}`}
                                 >
-                                  <Layers className="w-3.5 h-3.5" />
+                                  <Layers className="w-4 h-4" />
                                   Coverage
                                 </button>
                               </div>
@@ -35294,17 +35293,17 @@ Return your response strictly as a JSON object matching this schema:
                             {subjectTrackerSubTab === 'manager' ? (
                               <div className="flex-grow flex gap-6 min-h-0 p-1">
                                 {/* Left Side: Topic Checklist & Actions */}
-                                <div className={`w-7/12 flex flex-col h-full min-h-0 rounded-2xl p-5 space-y-4 ${isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-800 border-slate-200'}`}>
+                                <div className={`w-7/12 flex flex-col h-full min-h-0 rounded-2xl p-5 lg:p-6 space-y-4.5 ${isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-800 border-slate-200'}`}>
                                   <div className="flex justify-between items-center shrink-0">
                                     <label className={`text-[10px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Tracked Topics Checklist</label>
 
                                     {/* Sort Toggle Pill */}
-                                    <div className={`relative grid grid-cols-3 p-1 rounded-xl text-[9px] font-black uppercase tracking-wider w-[220px] ${isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'}`}>
+                                    <div className={`relative grid grid-cols-3 p-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider w-[220px] ${isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'}`}>
                                       <div
-                                        className="absolute top-1 bottom-1 rounded-lg bg-blue-600 shadow-sm transition-all"
+                                        className="absolute top-1.5 bottom-1.5 rounded-lg bg-blue-600 shadow-sm transition-all"
                                         style={{
-                                          width: 'calc(33.333% - 2.6px)',
-                                          left: trackerSortBy === 'page' ? '4px' : trackerSortBy === 'uncompleted' ? 'calc(33.333% + 1.3px)' : 'calc(66.666% - 1.3px)',
+                                          width: 'calc(33.333% - 4px)',
+                                          left: trackerSortBy === 'page' ? '6px' : trackerSortBy === 'uncompleted' ? 'calc(33.333% + 2px)' : 'calc(66.666% - 2px)',
                                           transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
                                         }}
                                       />
@@ -35333,7 +35332,7 @@ Return your response strictly as a JSON object matching this schema:
                                   </div>
 
                                   {/* Add Topic Form Box */}
-                                  <div className={`p-3 rounded-2xl border transition-all ${isDark ? 'bg-slate-900/40 border-slate-800 neu-pressed-dark' : 'bg-slate-50/70 border-slate-200/80 neu-pressed-light'} shrink-0`}>
+                                  <div className={`p-4 rounded-2xl border transition-all ${isDark ? 'bg-slate-900/40 border-slate-800 neu-pressed-dark' : 'bg-slate-50/70 border-slate-200/80 neu-pressed-light'} shrink-0`}>
                                     <form
                                       onSubmit={(e) => {
                                         e.preventDefault();
@@ -35344,22 +35343,22 @@ Return your response strictly as a JSON object matching this schema:
                                         setTrackerNewTopicPage("");
                                         setTrackerNewTopicEndPage("");
                                       }}
-                                      className="flex items-center gap-2 w-full"
+                                      className="flex items-center gap-2.5 w-full"
                                     >
                                       <input
                                         type="text"
                                         placeholder="Add topic (e.g. Cranial Nerves)..."
                                         value={trackerNewTopicInput}
                                         onChange={(e) => setTrackerNewTopicInput(e.target.value)}
-                                        className={`flex-grow min-w-0 px-3.5 py-2.5 rounded-xl text-xs font-bold outline-none transition ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'bg-white border border-slate-200 text-slate-800 placeholder-slate-400 shadow-inner'}`}
+                                        className={`flex-grow min-w-0 px-4 py-3 rounded-xl text-xs font-bold outline-none transition ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'bg-white border border-slate-200 text-slate-800 placeholder-slate-400 shadow-inner'}`}
                                       />
-                                      <div className="flex items-center gap-1.5 shrink-0">
+                                      <div className="flex items-center gap-2 shrink-0">
                                         <input
                                           type="number"
                                           placeholder="Start"
                                           value={trackerNewTopicPage}
                                           onChange={(e) => setTrackerNewTopicPage(e.target.value)}
-                                          className={`w-20 px-2.5 py-2.5 rounded-xl text-xs font-bold outline-none transition text-center ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'bg-white border border-slate-200 text-slate-800 placeholder-slate-400 shadow-inner'}`}
+                                          className={`w-20 px-3 py-3 rounded-xl text-xs font-bold outline-none transition text-center ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'bg-white border border-slate-200 text-slate-800 placeholder-slate-400 shadow-inner'}`}
                                         />
                                         <span className={`text-xs font-bold ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>-</span>
                                         <input
@@ -35367,7 +35366,7 @@ Return your response strictly as a JSON object matching this schema:
                                           placeholder="End"
                                           value={trackerNewTopicEndPage}
                                           onChange={(e) => setTrackerNewTopicEndPage(e.target.value)}
-                                          className={`w-20 px-2.5 py-2.5 rounded-xl text-xs font-bold outline-none transition text-center ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'bg-white border border-slate-200 text-slate-800 placeholder-slate-400 shadow-inner'}`}
+                                          className={`w-20 px-3 py-3 rounded-xl text-xs font-bold outline-none transition text-center ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'bg-white border border-slate-200 text-slate-800 placeholder-slate-400 shadow-inner'}`}
                                         />
                                       </div>
                                       <motion.button
@@ -35375,15 +35374,15 @@ Return your response strictly as a JSON object matching this schema:
                                         whileTap={{ scale: 0.95 }}
                                         type="submit"
                                         title="Press Enter to Add"
-                                        className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition shrink-0 flex items-center gap-1.5 ${isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-500/20'}`}
+                                        className={`px-4.5 py-3 rounded-xl text-xs font-black uppercase tracking-wider transition shrink-0 flex items-center gap-2 ${isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-500/20'}`}
                                       >
-                                        <Plus className="w-3.5 h-3.5" /> Add
+                                        <Plus className="w-4 h-4" /> Add
                                       </motion.button>
                                     </form>
                                   </div>
 
                                   {/* List Scroll Area */}
-                                  <div className="flex-grow overflow-y-auto p-2 custom-scrollbar space-y-3 min-h-0">
+                                  <div className="flex-grow overflow-y-auto p-2 custom-scrollbar space-y-3.5 min-h-0">
                                     {(() => {
                                       const docId = selectedTrackerSubject.trim().toLowerCase();
                                       const trackerDoc = subjectTrackerData.find(p => p.id === docId);
@@ -35392,7 +35391,7 @@ Return your response strictly as a JSON object matching this schema:
 
                                       if (topicsList.length === 0) {
                                         return (
-                                          <div className="flex flex-col items-center justify-center h-full text-center p-4">
+                                          <div className="flex flex-col items-center justify-center h-full text-center p-6">
                                             <p className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>No tracked topics found for {selectedTrackerSubject}.</p>
                                           </div>
                                         );
@@ -35427,8 +35426,8 @@ Return your response strictly as a JSON object matching this schema:
                                                   }`}
                                               >
                                                 {/* Main Topic Header */}
-                                                <div className="p-3.5 flex items-center justify-between gap-3 text-left">
-                                                  <div className="flex items-center gap-3 min-w-0 flex-grow">
+                                                <div className="p-4 flex items-center justify-between gap-3.5 text-left">
+                                                  <div className="flex items-center gap-3.5 min-w-0 flex-grow">
                                                     <button
                                                       onClick={() => {
                                                         setExpandedTrackerTopics(prev => ({
@@ -35436,19 +35435,19 @@ Return your response strictly as a JSON object matching this schema:
                                                           [topicItem.name]: !prev[topicItem.name]
                                                         }));
                                                       }}
-                                                      className={`p-1.5 rounded-xl transition shrink-0 ${hasRevisions
+                                                      className={`p-2 rounded-xl transition shrink-0 ${hasRevisions
                                                         ? isDark ? 'neu-pressed-dark text-emerald-400' : 'bg-emerald-100 text-emerald-600'
                                                         : isDark ? 'neu-pressed-dark text-slate-500 hover:text-slate-300' : 'bg-slate-100 text-slate-400 hover:text-slate-600'
                                                         }`}
                                                     >
-                                                      <CheckCircle2 className="w-4 h-4" />
+                                                      <CheckCircle2 className="w-4.5 h-4.5" />
                                                     </button>
                                                     <div className="min-w-0">
                                                       <div className="flex items-center gap-2 flex-wrap">
-                                                        <h4 className="text-xs font-black tracking-tight leading-snug truncate max-w-[260px]">
+                                                        <h4 className="text-xs sm:text-sm font-black tracking-tight leading-snug truncate max-w-[260px]">
                                                           {topicItem.name}
                                                         </h4>
-                                                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg border ${topicItem.endPage
+                                                        <span className={`text-[9px] sm:text-[10px] font-black px-2.5 py-0.5 rounded-lg border ${topicItem.endPage
                                                           ? isDark ? 'text-emerald-400 bg-emerald-950/40 border-emerald-800/60' : 'text-emerald-700 bg-emerald-50 border-emerald-100'
                                                           : isDark ? 'text-amber-400 bg-amber-950/40 border-amber-800/60' : 'text-amber-700 bg-amber-50 border-amber-100'
                                                           }`}>
@@ -35459,7 +35458,7 @@ Return your response strictly as a JSON object matching this schema:
                                                   </div>
 
                                                   {/* Right: Revision badge & Action buttons */}
-                                                  <div className="flex items-center gap-1.5 shrink-0">
+                                                  <div className="flex items-center gap-2 shrink-0">
                                                     <button
                                                       onClick={() => {
                                                         setExpandedTrackerTopics(prev => ({
@@ -35467,12 +35466,12 @@ Return your response strictly as a JSON object matching this schema:
                                                           [topicItem.name]: !prev[topicItem.name]
                                                         }));
                                                       }}
-                                                      className={`px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-wider transition flex items-center gap-1.5 ${hasRevisions
+                                                      className={`px-3 py-1.5 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-wider transition flex items-center gap-1.5 ${hasRevisions
                                                         ? isDark ? 'neu-pressed-dark text-blue-400 border border-blue-900/50' : 'bg-blue-50 text-blue-600 border border-blue-100'
                                                         : isDark ? 'neu-pressed-dark text-slate-400' : 'bg-slate-100 text-slate-500'
                                                         }`}
                                                     >
-                                                      <Flame className={`w-3 h-3 ${hasRevisions ? 'text-amber-500' : ''}`} />
+                                                      <Flame className={`w-3.5 h-3.5 ${hasRevisions ? 'text-amber-500' : ''}`} />
                                                       {dates.length} {dates.length === 1 ? 'rev' : 'revs'}
                                                     </button>
 
@@ -35481,9 +35480,9 @@ Return your response strictly as a JSON object matching this schema:
                                                       whileTap={{ scale: 0.92 }}
                                                       title="Log today's revision"
                                                       onClick={() => handleLogTrackerStudyDate(selectedTrackerSubject, topicItem.name, todayStr)}
-                                                      className={`p-1.5 rounded-xl transition ${isDark ? 'neu-btn-dark text-emerald-400 hover:text-emerald-300' : 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'}`}
+                                                      className={`p-2 rounded-xl transition ${isDark ? 'neu-btn-dark text-emerald-400 hover:text-emerald-300' : 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'}`}
                                                     >
-                                                      <Plus className="w-3.5 h-3.5" />
+                                                      <Plus className="w-4 h-4" />
                                                     </motion.button>
 
                                                     <button
@@ -35502,9 +35501,9 @@ Return your response strictly as a JSON object matching this schema:
                                                         });
                                                         setCurrentTab('studyScheduler');
                                                       }}
-                                                      className={`p-1.5 rounded-xl transition ${isDark ? 'text-blue-400 hover:text-blue-300 hover:bg-slate-800' : 'text-blue-500 hover:text-blue-700 hover:bg-slate-100'}`}
+                                                      className={`p-2 rounded-xl transition ${isDark ? 'text-blue-400 hover:text-blue-300 hover:bg-slate-800' : 'text-blue-500 hover:text-blue-700 hover:bg-slate-100'}`}
                                                     >
-                                                      <Calendar className="w-3.5 h-3.5" />
+                                                      <Calendar className="w-4 h-4" />
                                                     </button>
 
                                                     <button
@@ -35514,9 +35513,9 @@ Return your response strictly as a JSON object matching this schema:
                                                           [topicItem.name]: !prev[topicItem.name]
                                                         }));
                                                       }}
-                                                      className={`p-1.5 rounded-xl transition ${isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-400 hover:text-slate-800 hover:bg-slate-100'}`}
+                                                      className={`p-2 rounded-xl transition ${isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-400 hover:text-slate-800 hover:bg-slate-100'}`}
                                                     >
-                                                      <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${isExpanded ? 'rotate-180 text-blue-500' : ''}`} />
+                                                      <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isExpanded ? 'rotate-180 text-blue-500' : ''}`} />
                                                     </button>
 
                                                     <button
@@ -35526,9 +35525,9 @@ Return your response strictly as a JSON object matching this schema:
                                                           handleDeleteTrackerTopic(selectedTrackerSubject, topicItem.name);
                                                         }
                                                       }}
-                                                      className={`p-1.5 rounded-xl transition ${isDark ? 'text-slate-500 hover:text-rose-400 hover:bg-slate-800' : 'text-slate-400 hover:text-rose-600 hover:bg-slate-100'}`}
+                                                      className={`p-2 rounded-xl transition ${isDark ? 'text-slate-500 hover:text-rose-400 hover:bg-slate-800' : 'text-slate-400 hover:text-rose-600 hover:bg-slate-100'}`}
                                                     >
-                                                      <Trash2 className="w-3.5 h-3.5" />
+                                                      <Trash2 className="w-4 h-4" />
                                                     </button>
                                                   </div>
                                                 </div>
@@ -35541,28 +35540,28 @@ Return your response strictly as a JSON object matching this schema:
                                                       animate={{ height: 'auto', opacity: 1 }}
                                                       exit={{ height: 0, opacity: 0 }}
                                                       transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                                                      className={`overflow-hidden border-t px-4 py-3 space-y-3 ${isDark ? 'border-slate-800 bg-slate-900/60' : 'border-slate-100 bg-slate-50/70'}`}
+                                                      className={`overflow-hidden border-t px-4.5 py-4 space-y-3.5 ${isDark ? 'border-slate-800 bg-slate-900/60' : 'border-slate-100 bg-slate-50/70'}`}
                                                     >
                                                       {/* Page Config */}
-                                                      <div className="flex items-center gap-3 flex-wrap text-xs font-bold">
+                                                      <div className="flex items-center gap-3.5 flex-wrap text-xs font-bold">
                                                         <span className={`text-[9px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Pages Config:</span>
-                                                        <div className="flex items-center gap-1.5">
+                                                        <div className="flex items-center gap-2">
                                                           <span className={`text-[9px] uppercase font-black ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Start:</span>
                                                           <input
                                                             type="number"
                                                             value={topicItem.page || ""}
                                                             onChange={(e) => handleUpdateTrackerTopicPages(selectedTrackerSubject, topicItem.name, e.target.value, topicItem.endPage || "")}
-                                                            className={`w-20 p-1.5 rounded-xl text-center text-xs font-bold outline-none ${isDark ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'}`}
+                                                            className={`w-20 p-2 rounded-xl text-center text-xs font-bold outline-none ${isDark ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'}`}
                                                             placeholder="Start"
                                                           />
                                                         </div>
-                                                        <div className="flex items-center gap-1.5">
+                                                        <div className="flex items-center gap-2">
                                                           <span className={`text-[9px] uppercase font-black ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>End:</span>
                                                           <input
                                                             type="number"
                                                             value={topicItem.endPage || ""}
                                                             onChange={(e) => handleUpdateTrackerTopicPages(selectedTrackerSubject, topicItem.name, topicItem.page || "", e.target.value)}
-                                                            className={`w-20 p-1.5 rounded-xl text-center text-xs font-bold outline-none ${isDark ? 'neu-pressed-dark text-indigo-400' : 'neu-pressed-light text-indigo-600'}`}
+                                                            className={`w-20 p-2 rounded-xl text-center text-xs font-bold outline-none ${isDark ? 'neu-pressed-dark text-indigo-400' : 'neu-pressed-light text-indigo-600'}`}
                                                             placeholder={getTopicEndPagePlaceholder(topicItem, topicsList)}
                                                           />
                                                         </div>
@@ -35570,13 +35569,13 @@ Return your response strictly as a JSON object matching this schema:
 
                                                       {/* Logged Revision Dates Horizontal Ribbon */}
                                                       {dates.length > 0 && (
-                                                        <div className="space-y-1.5">
-                                                          <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Logged Revision Dates ({dates.length}):</span>
-                                                          <div className="flex gap-1.5 items-center overflow-x-auto pb-1 custom-scrollbar">
+                                                        <div className="space-y-2">
+                                                          <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Logged Revision Dates ({dates.length}):</span>
+                                                          <div className="flex gap-2 items-center overflow-x-auto pb-1.5 custom-scrollbar">
                                                             {dates.map((dateVal, dIdx) => (
                                                               <span
                                                                 key={dIdx}
-                                                                className={`rounded-lg px-2 py-0.5 text-[9px] font-black flex items-center gap-1.5 shrink-0 border ${isDark ? 'bg-emerald-950/40 text-emerald-300 border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border-emerald-100'}`}
+                                                                className={`rounded-lg px-2.5 py-1 text-[9px] font-black flex items-center gap-1.5 shrink-0 border ${isDark ? 'bg-emerald-950/40 text-emerald-300 border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border-emerald-100'}`}
                                                               >
                                                                 📅 {formatAppDate(dateVal)}
                                                                 <button
@@ -35592,7 +35591,7 @@ Return your response strictly as a JSON object matching this schema:
                                                       )}
 
                                                       {/* Date Logger Form */}
-                                                      <div className="flex items-center gap-2 pt-1">
+                                                      <div className="flex items-center gap-2.5 pt-1">
                                                         <input
                                                           type="date"
                                                           value={selectedDate}
@@ -35600,7 +35599,7 @@ Return your response strictly as a JSON object matching this schema:
                                                             trackerLogDateInputs[topicItem.name] = e.target.value;
                                                             setTrackerLogDateInputs({ ...trackerLogDateInputs });
                                                           }}
-                                                          className={`p-1.5 rounded-xl text-[10px] font-bold outline-none flex-grow ${isDark ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-slate-800'}`}
+                                                          className={`p-2 px-3 rounded-xl text-[10px] sm:text-xs font-bold outline-none flex-grow ${isDark ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-slate-800'}`}
                                                         />
                                                         <motion.button
                                                           whileHover={{ scale: 1.02 }}
@@ -35608,9 +35607,9 @@ Return your response strictly as a JSON object matching this schema:
                                                           onClick={() => {
                                                             handleLogTrackerStudyDate(selectedTrackerSubject, topicItem.name, selectedDate);
                                                           }}
-                                                          className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition flex items-center gap-1 shrink-0 ${isDark ? 'neu-btn-dark text-emerald-400' : 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'}`}
+                                                          className={`px-4 py-2 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-wider transition flex items-center gap-1.5 shrink-0 ${isDark ? 'neu-btn-dark text-emerald-400' : 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'}`}
                                                         >
-                                                          <Plus className="w-3 h-3" /> Log Session
+                                                          <Plus className="w-3.5 h-3.5" /> Log Session
                                                         </motion.button>
                                                       </div>
                                                     </motion.div>
@@ -35626,11 +35625,11 @@ Return your response strictly as a JSON object matching this schema:
                                 </div>
 
                                 {/* Right Side: Primary Source & AI Extractor */}
-                                <div className="w-5/12 flex flex-col gap-4 overflow-y-auto p-1 custom-scrollbar shrink-0">
+                                <div className="w-5/12 flex flex-col gap-5 overflow-y-auto p-1 custom-scrollbar shrink-0">
                                   {/* Primary Source Card */}
-                                  <div className={`p-4 rounded-2xl space-y-2.5 transition-all ${isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-800 border-slate-200'}`}>
+                                  <div className={`p-5 rounded-2xl space-y-3.5 transition-all ${isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-800 border-slate-200'}`}>
                                     <label className={`text-[10px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Primary Source Material / Textbooks</label>
-                                    <div className="flex gap-2 items-center w-full">
+                                    <div className="flex gap-2.5 items-center w-full">
                                       <input
                                         type="text"
                                         placeholder="e.g. Marrow + First Aid"
@@ -35651,7 +35650,7 @@ Return your response strictly as a JSON object matching this schema:
                                             : (subjectTrackerData.find(p => p.id === selectedTrackerSubject.trim().toLowerCase())?.primarySource || "");
                                           handleSavePrimarySource(selectedTrackerSubject, sourceVal);
                                         }}
-                                        className={`w-0 min-w-0 flex-grow p-2.5 rounded-xl text-xs font-bold outline-none transition ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'}`}
+                                        className={`w-0 min-w-0 flex-grow p-3 rounded-xl text-xs font-bold outline-none transition ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'}`}
                                       />
                                       <motion.button
                                         whileHover={{ scale: 1.02 }}
@@ -35663,9 +35662,9 @@ Return your response strictly as a JSON object matching this schema:
                                           handleSavePrimarySource(selectedTrackerSubject, sourceVal);
                                           alert("Primary source saved successfully!");
                                         }}
-                                        className={`px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition shrink-0 flex items-center gap-1 ${isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300' : 'bg-blue-600 text-white shadow-md shadow-blue-500/20'}`}
+                                        className={`px-4 py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition shrink-0 flex items-center gap-1.5 ${isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300' : 'bg-blue-600 text-white shadow-md shadow-blue-500/20'}`}
                                       >
-                                        <Save className="w-3.5 h-3.5" /> Save
+                                        <Save className="w-4 h-4" /> Save
                                       </motion.button>
                                     </div>
                                   </div>
@@ -35691,18 +35690,18 @@ Return your response strictly as a JSON object matching this schema:
                                         processIndexFiles(e.clipboardData.files, selectedTrackerSubject);
                                       }
                                     }}
-                                    className={`flex flex-col gap-3 rounded-2xl p-4 outline-none transition-all duration-300 ${isDark
+                                    className={`flex flex-col gap-4 rounded-3xl p-5 sm:p-6 outline-none transition-all duration-300 ${isDark
                                       ? 'neu-card-dark bg-gradient-to-br from-slate-900 via-indigo-950/40 to-slate-900 border border-indigo-900/40 text-white'
                                       : 'neu-card-light bg-gradient-to-br from-violet-50/70 via-white to-indigo-50/70 border border-indigo-100 text-slate-800'
                                       } ${isTrackerDragOver ? (isDark ? 'border-violet-500/80 bg-violet-950/40 scale-[1.01]' : 'border-violet-400 bg-violet-100/50 scale-[1.01]') : ''}`}
                                   >
                                     <div className="flex justify-between items-center text-left">
-                                      <h4 className={`text-xs font-black flex items-center gap-1.5 ${isDark ? 'text-indigo-300' : 'text-indigo-950'}`}>
-                                        <Sparkles className="w-4 h-4 text-violet-500 animate-pulse" /> AI Index Extractor
+                                      <h4 className={`text-xs sm:text-sm font-black flex items-center gap-2 ${isDark ? 'text-indigo-300' : 'text-indigo-950'}`}>
+                                        <Sparkles className="w-4.5 h-4.5 text-violet-500 animate-pulse" /> AI Index Extractor
                                       </h4>
                                       <button
                                         onClick={() => setIsAiExtractorCollapsed(!isAiExtractorCollapsed)}
-                                        className={`p-1 rounded-lg transition ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-400 hover:text-slate-800'}`}
+                                        className={`p-1.5 rounded-lg transition ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-400 hover:text-slate-800'}`}
                                       >
                                         {isAiExtractorCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
                                       </button>
@@ -35710,18 +35709,18 @@ Return your response strictly as a JSON object matching this schema:
 
                                     {!isAiExtractorCollapsed && (
                                       <>
-                                        <p className={`text-[10px] font-bold leading-relaxed ${isDark ? 'text-indigo-300/80' : 'text-indigo-600/80'}`}>
+                                        <p className={`text-[10px] sm:text-xs font-bold leading-relaxed ${isDark ? 'text-indigo-300/80' : 'text-indigo-600/80'}`}>
                                           Drag & drop index pages, paste screenshots, or upload files to auto-extract topics.
                                         </p>
-                                        <label className={`w-full py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer shadow-md active:scale-95 transition-all flex items-center justify-center gap-1.5 ${isTrackerAiExtracting ? 'opacity-50 pointer-events-none' : ''}`}>
+                                        <label className={`w-full py-3 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 ${isTrackerAiExtracting ? 'opacity-50 pointer-events-none' : ''}`}>
                                           {isTrackerAiExtracting ? (
                                             <>
-                                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                              <Loader2 className="w-4 h-4 animate-spin" />
                                               Extracting topics...
                                             </>
                                           ) : (
                                             <>
-                                              <Upload className="w-3.5 h-3.5" />
+                                              <Upload className="w-4 h-4" />
                                               Upload Index Page
                                             </>
                                           )}
