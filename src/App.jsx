@@ -34,6 +34,7 @@ import ExportImageVerificationModal from './components/ExportImageVerificationMo
 import ManualCardModal from './components/ManualCardModal';
 import RichInputField from './components/RichInputField';
 import ConflictInspectorModal from './components/ConflictInspectorModal';
+import FsrsSettingsModal from './components/FsrsSettingsModal';
 import { cropAndMaskDiagram } from './utils/imageCropper';
 import { getLocalSetting, saveLocalSetting, getLocalCards, saveLocalCards, replaceAllLocalCards, saveLocalCard, deleteLocalCard, getLocalPages, saveLocalPages, replaceAllLocalPages, saveLocalPage, deleteLocalPage, getLocalKV, setLocalKV, getLocalPrompts, saveLocalPrompt, deleteLocalPrompt, getAllLocalPytTopics, saveLocalPytTopic, getAllLocalPytProgress, saveLocalPytProgressDoc, getLocalTextbooksMetadata, saveLocalTextbooksMetadata, getLocalStudyLogs, saveLocalStudyLog, replaceAllLocalStudyLogs, getLocalSubjectTrackerData, saveLocalSubjectTrackerDoc, replaceAllLocalSubjectTrackerData, getLocalStudySchedule, saveLocalScheduleEntry, replaceAllLocalStudySchedule, getFSRSConfig, saveFSRSConfig, DEFAULT_FSRS_CONFIG } from './services/localDb';
 import { calculateNextFSRSState, calculateInitialState, DEFAULT_FSRS6_WEIGHTS, getTopicPageLength } from './services/fsrsEngine';
@@ -7057,6 +7058,7 @@ export default function App() {
   }, [examProfiles]);
 
   const [fsrsConfig, setFsrsConfig] = useState(DEFAULT_FSRS_CONFIG);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const isFsrsConfigLoaded = useRef(false);
 
   useEffect(() => {
@@ -12747,18 +12749,35 @@ JSON Format:
             </h3>
             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">FSRS Engine • Exam Tracker • Analytics Dashboard</p>
           </div>
-          <button
-            onClick={handleSyncBatchedReviews}
-            disabled={batchedReviews.length === 0 || isSaving}
-            className={`px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all duration-200 flex items-center gap-2 ${batchedReviews.length > 0
-              ? 'bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white shadow-lg shadow-indigo-600/25 active:scale-95 cursor-pointer'
-              : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
-              }`}
-          >
-            <UploadCloud className="w-4 h-4" />
-            {isSaving ? 'Syncing...' : `Save & Sync to Local DB (${batchedReviews.length} pending)`}
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsSettingsModalOpen(true)}
+              className="px-4 py-2.5 rounded-2xl text-xs font-bold uppercase tracking-wider bg-slate-800 hover:bg-slate-700 text-white shadow-sm transition-all duration-200 flex items-center gap-2 cursor-pointer border border-slate-700"
+            >
+              <span>⚙️</span>
+              <span>FSRS Settings</span>
+            </button>
+            <button
+              onClick={handleSyncBatchedReviews}
+              disabled={batchedReviews.length === 0 || isSaving}
+              className={`px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all duration-200 flex items-center gap-2 ${batchedReviews.length > 0
+                ? 'bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white shadow-lg shadow-indigo-600/25 active:scale-95 cursor-pointer'
+                : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
+                }`}
+            >
+              <UploadCloud className="w-4 h-4" />
+              {isSaving ? 'Syncing...' : `Save & Sync to Local DB (${batchedReviews.length} pending)`}
+            </button>
+          </div>
         </motion.div>
+
+        {/* FSRS Advanced 7-Category Settings Suite Modal */}
+        <FsrsSettingsModal
+          isOpen={isSettingsModalOpen}
+          onClose={() => setIsSettingsModalOpen(false)}
+          fsrsConfig={fsrsConfig}
+          onSaveConfig={updateFsrsConfig}
+        />
 
         {/* Dynamic Single Sliding Pill Switcher for smartReviewSubTab */}
         <motion.div
