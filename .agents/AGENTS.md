@@ -51,3 +51,20 @@ All UI components, buttons, color schemes, theme modes (Light: `#e6ecf5`, Dark: 
 - Run `npm run build` after making changes to verify zero compilation errors.
 - Once the build succeeds cleanly, make a Git commit to the `local-db-transition` branch with a simple, clear message describing what was changed.
 - Explain what was transitioned in simple, non-technical terms, and wait for the user's next explicit command before touching anything else.
+
+---
+
+### 4.5 Thorough Auditing, Radical Transparency & Non-Sugarcoating Policy
+- **Exhaustive Dependency Auditing**: When transitioning any UI function, page, or menu to LocalDB, perform a complete, exhaustive codebase audit for **ALL** primary handlers, secondary options, modals, background syncs, exports, auto-taggers, and bulk actions linked to that feature. Do **NOT** leave any secondary or hidden Firebase calls behind.
+- **Zero Sugarcoating or False Claims**: Never claim that a page or feature is "completely cleared of Firebase" unless every single read, write, batch update, document reference, and listener across the entire subsystem has been individually inspected, verified, and refactored to IndexedDB (`localDb.js`).
+- **Full Transparency on Uncertainty**: If any ambiguity exists, or if any secondary action connected to the feature still relies on Firebase, state it explicitly and honestly to the user immediately. Do not hide, gloss over, or sugarcoat remaining dependencies.
+
+---
+
+### 4.6 Proactive Loophole Auditing & Zero-Desync Enforcement (Mandatory Rule)
+- **Zero-Tolerance for User-Discovered Loopholes**: The agent **MUST** proactively audit, trace, and eliminate all edge-case desynchronizations (Undo, Redo, Log Deletion, Manual Log Edits, Empty Logs, Queue Categorization) **BEFORE** declaring work complete. The user must **NEVER** have to manually discover or point out broken edge cases.
+- **Mandatory 360-Degree State & Queue Integrity Rules**:
+  - **Queue Preservation on Undo/Redo**: Undoing or redoing an action **MUST** return the item to its exact queue position with 100% visibility. Items must **NEVER** disappear, go invisible, or fall into an unassigned state.
+  - **Zero-Log FSRS Reset Standard**: When all logs for a topic or session are deleted/undone, FSRS parameters ($S, D, I, R, \text{due date}, \text{lapses}, \text{isLeech}$) **MUST** reset to unstudied baseline (`S: New`, `D: Unstudied`, `0.0 days`, `0.0 / 10`). No residual values may persist.
+  - **Log Structure Unpacking**: All stats components (`FsrsStatsTab`, Analytics, Day Summaries) **MUST** correctly unpack nested log arrays (`dayLog.fsrsLogs`) across all timeframes (`1M`, `3M`, `1Y`, `ALL`).
+- **Pre-Response Audit Checklist**: Before presenting any feature or fix to the user, proactively test and verify every secondary state mutation (Undo, Redo, Delete, Clear All, Unstudied Card Render, Empty Log Array, Filtering Cutoff) to guarantee zero desynchronizations across all components.
