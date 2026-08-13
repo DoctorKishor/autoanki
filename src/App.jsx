@@ -12292,12 +12292,20 @@ JSON Format:
 
   const getTopicWeight = (topic, topicsList) => {
     const list = Array.isArray(topicsList) ? topicsList : Object.values(topicsList || {});
-    const start = parseInt(topic.page, 10) || 0;
-    if (topic.endPage) {
-      const end = parseInt(topic.endPage, 10) || 0;
-      if (end >= start) {
-        return end - start + 1;
+    let start = parseInt(topic.page, 10) || 0;
+    let end = topic.endPage ? (parseInt(topic.endPage, 10) || 0) : 0;
+
+    const rawPageVal = String(topic.page || '').trim();
+    if (rawPageVal && (rawPageVal.includes('-') || rawPageVal.includes('–'))) {
+      const parts = rawPageVal.split(/[-–]/).map(p => parseInt(p.trim(), 10));
+      if (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1]) && parts[1] >= parts[0]) {
+        start = parts[0];
+        end = parts[1];
       }
+    }
+
+    if (end >= start && end > 0) {
+      return end - start + 1;
     }
     // Dynamic calculation: find the next topic by start page
     const sorted = [...list].sort((a, b) => {

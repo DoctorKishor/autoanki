@@ -14,21 +14,37 @@ export function getLocalDateStr(d = new Date()) {
 export function getTopicPageInfo(topic) {
   if (!topic) return { startPage: null, endPage: null, pageCount: 1, pageLabel: 'No pgs' };
 
-  let startPg = (topic.page !== undefined && topic.page !== null && topic.page !== '')
-    ? parseInt(topic.page, 10)
-    : (topic.startPage !== undefined && topic.startPage !== null && topic.startPage !== '')
-      ? parseInt(topic.startPage, 10)
-      : (topic.pageStart !== undefined && topic.pageStart !== null && topic.pageStart !== '')
-        ? parseInt(topic.pageStart, 10)
-        : null;
-  if (isNaN(startPg)) startPg = null;
+  let startPg = null;
+  let endPg = null;
 
-  let endPg = (topic.endPage !== undefined && topic.endPage !== null && topic.endPage !== '')
-    ? parseInt(topic.endPage, 10)
-    : (topic.pageEnd !== undefined && topic.pageEnd !== null && topic.pageEnd !== '')
-      ? parseInt(topic.pageEnd, 10)
-      : null;
-  if (isNaN(endPg)) endPg = null;
+  const rawPageVal = String(topic.page || topic.pages || '').trim();
+  if (rawPageVal && (rawPageVal.includes('-') || rawPageVal.includes('–'))) {
+    const parts = rawPageVal.split(/[-–]/).map(p => parseInt(p.trim(), 10));
+    if (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1]) && parts[1] >= parts[0]) {
+      startPg = parts[0];
+      endPg = parts[1];
+    }
+  }
+
+  if (startPg === null) {
+    startPg = (topic.page !== undefined && topic.page !== null && topic.page !== '')
+      ? parseInt(topic.page, 10)
+      : (topic.startPage !== undefined && topic.startPage !== null && topic.startPage !== '')
+        ? parseInt(topic.startPage, 10)
+        : (topic.pageStart !== undefined && topic.pageStart !== null && topic.pageStart !== '')
+          ? parseInt(topic.pageStart, 10)
+          : null;
+    if (isNaN(startPg)) startPg = null;
+  }
+
+  if (endPg === null) {
+    endPg = (topic.endPage !== undefined && topic.endPage !== null && topic.endPage !== '')
+      ? parseInt(topic.endPage, 10)
+      : (topic.pageEnd !== undefined && topic.pageEnd !== null && topic.pageEnd !== '')
+        ? parseInt(topic.pageEnd, 10)
+        : null;
+    if (isNaN(endPg)) endPg = null;
+  }
 
   let pageCount = 1;
   if (startPg !== null && endPg !== null && endPg >= startPg) {
