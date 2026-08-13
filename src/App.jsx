@@ -25250,6 +25250,18 @@ Return your response strictly as a JSON object matching this schema:
                                                   </motion.button>
 
                                                   <button
+                                                    title="Delete topic"
+                                                    onClick={() => {
+                                                      if (window.confirm(`Delete topic "${topicItem.name}"?`)) {
+                                                        handleDeleteTrackerTopic(selectedTrackerSubject, topicItem.name);
+                                                      }
+                                                    }}
+                                                    className={`p-2 rounded-xl transition ${isDark ? 'text-slate-500 hover:text-rose-400 hover:bg-slate-800' : 'text-slate-400 hover:text-rose-600 hover:bg-slate-100'}`}
+                                                  >
+                                                    <Trash2 className="w-4 h-4" />
+                                                  </button>
+
+                                                  <button
                                                     onClick={() => {
                                                       setExpandedTrackerTopics(prev => ({
                                                         ...prev,
@@ -25271,39 +25283,45 @@ Return your response strictly as a JSON object matching this schema:
                                                     animate={{ height: 'auto', opacity: 1 }}
                                                     exit={{ height: 0, opacity: 0 }}
                                                     transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                                                    className={`overflow-hidden border-t p-4 space-y-3.5 ${isDark ? 'border-slate-800 bg-slate-900/60' : 'border-slate-100 bg-slate-50/70'}`}
+                                                    className={`overflow-hidden border-t px-4 py-4 space-y-3.5 rounded-b-2xl sm:rounded-b-3xl ${isDark ? 'border-slate-800/80 neu-pressed-dark' : 'border-slate-200/60 neu-pressed-light'}`}
                                                   >
-                                                    {/* Page Range Inputs */}
-                                                    <div className="flex items-center gap-2.5 text-xs font-bold flex-wrap">
-                                                      <span className={`text-[9px] font-black uppercase font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Pages:</span>
+                                                    {/* Page Range Config Header & Inputs */}
+                                                    <div className="flex items-center justify-between flex-wrap gap-2">
+                                                      <span className={`text-[9px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Page Range Config</span>
                                                       <div className="flex items-center gap-2">
-                                                        <input
-                                                          type="number"
-                                                          value={topicItem.page || ""}
-                                                          onChange={(e) => handleUpdateTrackerTopicPages(selectedTrackerSubject, topicItem.name, e.target.value, topicItem.endPage || "")}
-                                                          className={`w-18 p-2 rounded-xl text-center text-xs font-bold outline-none ${isDark ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'}`}
-                                                          placeholder="Start"
-                                                        />
-                                                        <span className="text-slate-400">-</span>
-                                                        <input
-                                                          type="number"
-                                                          value={topicItem.endPage || ""}
-                                                          onChange={(e) => handleUpdateTrackerTopicPages(selectedTrackerSubject, topicItem.name, topicItem.page || "", e.target.value)}
-                                                          className={`w-18 p-2 rounded-xl text-center text-xs font-bold outline-none ${isDark ? 'neu-pressed-dark text-indigo-400' : 'neu-pressed-light text-indigo-600'}`}
-                                                          placeholder="End"
-                                                        />
+                                                        <div className="flex items-center gap-1.5">
+                                                          <span className={`text-[9px] font-bold uppercase ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Start:</span>
+                                                          <input
+                                                            type="number"
+                                                            value={topicItem.page || ""}
+                                                            onChange={(e) => handleUpdateTrackerTopicPages(selectedTrackerSubject, topicItem.name, e.target.value, topicItem.endPage || "")}
+                                                            className={`w-16 h-8 text-center text-xs font-black rounded-lg outline-none transition ${isDark ? 'bg-slate-800 text-blue-400 border border-slate-700' : 'bg-white text-blue-600 border border-slate-200 shadow-inner'}`}
+                                                            placeholder="Start"
+                                                          />
+                                                        </div>
+                                                        <span className="text-slate-400 font-bold">-</span>
+                                                        <div className="flex items-center gap-1.5">
+                                                          <span className={`text-[9px] font-bold uppercase ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>End:</span>
+                                                          <input
+                                                            type="number"
+                                                            value={topicItem.endPage || ""}
+                                                            onChange={(e) => handleUpdateTrackerTopicPages(selectedTrackerSubject, topicItem.name, topicItem.page || "", e.target.value)}
+                                                            className={`w-16 h-8 text-center text-xs font-black rounded-lg outline-none transition ${isDark ? 'bg-slate-800 text-indigo-400 border border-slate-700' : 'bg-white text-indigo-600 border border-slate-200 shadow-inner'}`}
+                                                            placeholder="End"
+                                                          />
+                                                        </div>
                                                       </div>
                                                     </div>
 
                                                     {/* Logged Revision Date Chips Ribbon */}
                                                     {dates.length > 0 && (
-                                                      <div className="space-y-2">
+                                                      <div className="space-y-1.5">
                                                         <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Logged Revisions ({dates.length}):</span>
-                                                        <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar no-scrollbar">
+                                                        <div className="flex gap-1.5 overflow-x-auto pb-1 custom-scrollbar no-scrollbar">
                                                           {dates.map((dateVal, dIdx) => (
                                                             <span
                                                               key={dIdx}
-                                                              className={`rounded-lg px-2.5 py-1 text-[9px] font-black flex items-center gap-1.5 shrink-0 border ${isDark ? 'bg-emerald-950/40 text-emerald-300 border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border-emerald-100'}`}
+                                                              className={`rounded-lg px-2 py-0.5 text-[9px] font-black flex items-center gap-1.5 shrink-0 border ${isDark ? 'bg-emerald-950/40 text-emerald-300 border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border-emerald-100'}`}
                                                             >
                                                               📅 {formatAppDate(dateVal)}
                                                               <button
@@ -25318,56 +25336,48 @@ Return your response strictly as a JSON object matching this schema:
                                                       </div>
                                                     )}
 
-                                                    {/* Session Logger & Secondary Action Row */}
-                                                    <div className="flex items-center gap-2.5 pt-1">
-                                                      <input
-                                                        type="date"
-                                                        value={selectedDate}
-                                                        onChange={(e) => {
-                                                          trackerLogDateInputs[topicItem.name] = e.target.value;
-                                                          setTrackerLogDateInputs({ ...trackerLogDateInputs });
-                                                        }}
-                                                        className={`p-2 px-3 rounded-xl text-[10px] font-bold outline-none flex-grow ${isDark ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-slate-800'}`}
-                                                      />
-                                                      <motion.button
-                                                        whileHover={{ scale: 1.02 }}
-                                                        whileTap={{ scale: 0.95 }}
-                                                        onClick={() => setRatingPopoverTopic({ subject: selectedTrackerSubject, topicName: topicItem.name, dateStr: selectedDate || todayStr })}
-                                                        className={`px-3.5 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition shrink-0 ${isDark ? 'neu-btn-dark text-emerald-400' : 'bg-emerald-600 text-white shadow-sm'}`}
-                                                      >
-                                                        Log Date
-                                                      </motion.button>
-                                                      <button
-                                                        title="Schedule review"
-                                                        onClick={() => {
-                                                          const topicLabel = `${selectedTrackerSubject}: ${topicItem.name}`;
-                                                          setSchedulerEditingTask({
-                                                            date: todayStr,
-                                                            id: null,
-                                                            topic: topicLabel,
-                                                            startTime: '09:00',
-                                                            endTime: '10:00',
-                                                            color: 'blue',
-                                                            completed: false,
-                                                            notes: ""
-                                                          });
-                                                          setCurrentTab('studyScheduler');
-                                                        }}
-                                                        className={`p-2.5 rounded-xl transition ${isDark ? 'text-blue-400 neu-pressed-dark' : 'text-blue-600 bg-blue-50'}`}
-                                                      >
-                                                        <Calendar className="w-4 h-4" />
-                                                      </button>
-                                                      <button
-                                                        title="Delete topic"
-                                                        onClick={() => {
-                                                          if (window.confirm(`Delete topic "${topicItem.name}"?`)) {
-                                                            handleDeleteTrackerTopic(selectedTrackerSubject, topicItem.name);
-                                                          }
-                                                        }}
-                                                        className={`p-2.5 rounded-xl transition ${isDark ? 'text-rose-400 neu-pressed-dark' : 'text-rose-600 bg-rose-50'}`}
-                                                      >
-                                                        <Trash2 className="w-4 h-4" />
-                                                      </button>
+                                                    {/* Session Logger & Action Bar */}
+                                                    <div className="pt-2 border-t space-y-2 border-slate-200/40 dark:border-slate-800/60">
+                                                      <span className={`text-[9px] font-black uppercase tracking-wider block ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Custom Session Logger</span>
+                                                      <div className="flex items-center gap-2">
+                                                        <input
+                                                          type="date"
+                                                          value={selectedDate}
+                                                          onChange={(e) => {
+                                                            trackerLogDateInputs[topicItem.name] = e.target.value;
+                                                            setTrackerLogDateInputs({ ...trackerLogDateInputs });
+                                                          }}
+                                                          className={`h-9 px-3 rounded-xl text-xs font-bold outline-none flex-grow ${isDark ? 'bg-slate-800 text-white border border-slate-700' : 'bg-white text-slate-800 border border-slate-200 shadow-inner'}`}
+                                                        />
+                                                        <motion.button
+                                                          whileHover={{ scale: 1.02 }}
+                                                          whileTap={{ scale: 0.95 }}
+                                                          onClick={() => setRatingPopoverTopic({ subject: selectedTrackerSubject, topicName: topicItem.name, dateStr: selectedDate || todayStr })}
+                                                          className={`h-9 px-3.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition flex items-center gap-1 shrink-0 ${isDark ? 'neu-btn-dark text-emerald-400' : 'bg-emerald-600 text-white shadow-md shadow-emerald-500/20'}`}
+                                                        >
+                                                          <Plus className="w-3.5 h-3.5" /> Log Session
+                                                        </motion.button>
+                                                        <button
+                                                          title="Schedule review"
+                                                          onClick={() => {
+                                                            const topicLabel = `${selectedTrackerSubject}: ${topicItem.name}`;
+                                                            setSchedulerEditingTask({
+                                                              date: todayStr,
+                                                              id: null,
+                                                              topic: topicLabel,
+                                                              startTime: '09:00',
+                                                              endTime: '10:00',
+                                                              color: 'blue',
+                                                              completed: false,
+                                                              notes: ""
+                                                            });
+                                                            setCurrentTab('studyScheduler');
+                                                          }}
+                                                          className={`h-9 w-9 flex items-center justify-center rounded-xl transition shrink-0 ${isDark ? 'text-blue-400 neu-pressed-dark' : 'text-blue-600 bg-white border border-slate-200 shadow-sm'}`}
+                                                        >
+                                                          <Calendar className="w-4 h-4" />
+                                                        </button>
+                                                      </div>
                                                     </div>
                                                   </motion.div>
                                                 )}
@@ -34234,42 +34244,45 @@ Return your response strictly as a JSON object matching this schema:
                                                       animate={{ height: 'auto', opacity: 1 }}
                                                       exit={{ height: 0, opacity: 0 }}
                                                       transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                                                      className={`overflow-hidden border-t px-4.5 py-4 space-y-3.5 ${isDark ? 'border-slate-800 bg-slate-900/60' : 'border-slate-100 bg-slate-50/70'}`}
+                                                      className={`overflow-hidden border-t px-4 py-4 space-y-3.5 rounded-b-2xl sm:rounded-b-3xl ${isDark ? 'border-slate-800/80 neu-pressed-dark' : 'border-slate-200/60 neu-pressed-light'}`}
                                                     >
-                                                      {/* Page Config */}
-                                                      <div className="flex items-center gap-3.5 flex-wrap text-xs font-bold">
-                                                        <span className={`text-[9px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Pages Config:</span>
+                                                      {/* Page Range Config Header & Inputs */}
+                                                      <div className="flex items-center justify-between flex-wrap gap-2">
+                                                        <span className={`text-[9px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Page Range Config</span>
                                                         <div className="flex items-center gap-2">
-                                                          <span className={`text-[9px] uppercase font-black ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Start:</span>
-                                                          <input
-                                                            type="number"
-                                                            value={topicItem.page || ""}
-                                                            onChange={(e) => handleUpdateTrackerTopicPages(selectedTrackerSubject, topicItem.name, e.target.value, topicItem.endPage || "")}
-                                                            className={`w-20 p-2 rounded-xl text-center text-xs font-bold outline-none ${isDark ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'}`}
-                                                            placeholder="Start"
-                                                          />
-                                                        </div>
-                                                        <div className="flex items-center gap-2">
-                                                          <span className={`text-[9px] uppercase font-black ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>End:</span>
-                                                          <input
-                                                            type="number"
-                                                            value={topicItem.endPage || ""}
-                                                            onChange={(e) => handleUpdateTrackerTopicPages(selectedTrackerSubject, topicItem.name, topicItem.page || "", e.target.value)}
-                                                            className={`w-20 p-2 rounded-xl text-center text-xs font-bold outline-none ${isDark ? 'neu-pressed-dark text-indigo-400' : 'neu-pressed-light text-indigo-600'}`}
-                                                            placeholder={getTopicEndPagePlaceholder(topicItem, topicsList)}
-                                                          />
+                                                          <div className="flex items-center gap-1.5">
+                                                            <span className={`text-[9px] font-bold uppercase ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Start:</span>
+                                                            <input
+                                                              type="number"
+                                                              value={topicItem.page || ""}
+                                                              onChange={(e) => handleUpdateTrackerTopicPages(selectedTrackerSubject, topicItem.name, e.target.value, topicItem.endPage || "")}
+                                                              className={`w-16 h-8 text-center text-xs font-black rounded-lg outline-none transition ${isDark ? 'bg-slate-800 text-blue-400 border border-slate-700' : 'bg-white text-blue-600 border border-slate-200 shadow-inner'}`}
+                                                              placeholder="Start"
+                                                            />
+                                                          </div>
+                                                          <span className="text-slate-400 font-bold">-</span>
+                                                          <div className="flex items-center gap-1.5">
+                                                            <span className={`text-[9px] font-bold uppercase ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>End:</span>
+                                                            <input
+                                                              type="number"
+                                                              value={topicItem.endPage || ""}
+                                                              onChange={(e) => handleUpdateTrackerTopicPages(selectedTrackerSubject, topicItem.name, topicItem.page || "", e.target.value)}
+                                                              className={`w-16 h-8 text-center text-xs font-black rounded-lg outline-none transition ${isDark ? 'bg-slate-800 text-indigo-400 border border-slate-700' : 'bg-white text-indigo-600 border border-slate-200 shadow-inner'}`}
+                                                              placeholder={getTopicEndPagePlaceholder(topicItem, topicsList)}
+                                                            />
+                                                          </div>
                                                         </div>
                                                       </div>
 
                                                       {/* Logged Revision Dates Horizontal Ribbon */}
                                                       {dates.length > 0 && (
-                                                        <div className="space-y-2">
-                                                          <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Logged Revision Dates ({dates.length}):</span>
-                                                          <div className="flex gap-2 items-center overflow-x-auto pb-1.5 custom-scrollbar">
+                                                        <div className="space-y-1.5">
+                                                          <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Logged Revisions ({dates.length}):</span>
+                                                          <div className="flex gap-1.5 items-center overflow-x-auto pb-1 custom-scrollbar no-scrollbar">
                                                             {dates.map((dateVal, dIdx) => (
                                                               <span
                                                                 key={dIdx}
-                                                                className={`rounded-lg px-2.5 py-1 text-[9px] font-black flex items-center gap-1.5 shrink-0 border ${isDark ? 'bg-emerald-950/40 text-emerald-300 border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border-emerald-100'}`}
+                                                                className={`rounded-lg px-2 py-0.5 text-[9px] font-black flex items-center gap-1.5 shrink-0 border ${isDark ? 'bg-emerald-950/40 text-emerald-300 border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border-emerald-100'}`}
                                                               >
                                                                 📅 {formatAppDate(dateVal)}
                                                                 <button
@@ -34285,26 +34298,29 @@ Return your response strictly as a JSON object matching this schema:
                                                       )}
 
                                                       {/* Date Logger Form */}
-                                                      <div className="flex items-center gap-2.5 pt-1">
-                                                        <input
-                                                          type="date"
-                                                          value={selectedDate}
-                                                          onChange={(e) => {
-                                                            trackerLogDateInputs[topicItem.name] = e.target.value;
-                                                            setTrackerLogDateInputs({ ...trackerLogDateInputs });
-                                                          }}
-                                                          className={`p-2 px-3 rounded-xl text-[10px] sm:text-xs font-bold outline-none flex-grow ${isDark ? 'neu-pressed-dark text-white' : 'neu-pressed-light text-slate-800'}`}
-                                                        />
-                                                        <motion.button
-                                                          whileHover={{ scale: 1.02 }}
-                                                          whileTap={{ scale: 0.95 }}
-                                                          onClick={() => {
-                                                            setRatingPopoverTopic({ subject: selectedTrackerSubject, topicName: topicItem.name, dateStr: selectedDate || todayStr });
-                                                          }}
-                                                          className={`px-4 py-2 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-wider transition flex items-center gap-1.5 shrink-0 ${isDark ? 'neu-btn-dark text-emerald-400' : 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'}`}
-                                                        >
-                                                          <Plus className="w-3.5 h-3.5" /> Log Session
-                                                        </motion.button>
+                                                      <div className="pt-2 border-t space-y-2 border-slate-200/40 dark:border-slate-800/60">
+                                                        <span className={`text-[9px] font-black uppercase tracking-wider block ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Custom Session Logger</span>
+                                                        <div className="flex items-center gap-2">
+                                                          <input
+                                                            type="date"
+                                                            value={selectedDate}
+                                                            onChange={(e) => {
+                                                              trackerLogDateInputs[topicItem.name] = e.target.value;
+                                                              setTrackerLogDateInputs({ ...trackerLogDateInputs });
+                                                            }}
+                                                            className={`h-9 px-3 rounded-xl text-xs font-bold outline-none flex-grow ${isDark ? 'bg-slate-800 text-white border border-slate-700' : 'bg-white text-slate-800 border border-slate-200 shadow-inner'}`}
+                                                          />
+                                                          <motion.button
+                                                            whileHover={{ scale: 1.02 }}
+                                                            whileTap={{ scale: 0.95 }}
+                                                            onClick={() => {
+                                                              setRatingPopoverTopic({ subject: selectedTrackerSubject, topicName: topicItem.name, dateStr: selectedDate || todayStr });
+                                                            }}
+                                                            className={`h-9 px-4 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-wider transition flex items-center gap-1.5 shrink-0 ${isDark ? 'neu-btn-dark text-emerald-400' : 'bg-emerald-600 text-white shadow-md shadow-emerald-500/20'}`}
+                                                          >
+                                                            <Plus className="w-3.5 h-3.5" /> Log Session
+                                                          </motion.button>
+                                                        </div>
                                                       </div>
                                                     </motion.div>
                                                   )}
