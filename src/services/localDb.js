@@ -448,11 +448,19 @@ export async function getLocalSubjectTrackerData() {
 
 export async function saveLocalSubjectTrackerDoc(docId, docData) {
   if (!docId) return await getLocalSubjectTrackerData();
+  let normalizedDocId = docId;
+  let normalizedDocData = docData;
+  if (typeof docId === 'object' && docId !== null) {
+    normalizedDocId = docId.id || (docId.subject ? docId.subject.trim().toLowerCase() : null);
+    normalizedDocData = docId;
+  }
+  if (!normalizedDocId) return await getLocalSubjectTrackerData();
+
   const current = await getLocalSubjectTrackerData();
-  const idx = current.findIndex(d => d.id === docId);
+  const idx = current.findIndex(d => d.id === normalizedDocId);
   const updated = idx >= 0
-    ? current.map(d => d.id === docId ? { ...d, ...docData, id: docId } : d)
-    : [...current, { id: docId, ...docData }];
+    ? current.map(d => d.id === normalizedDocId ? { ...d, ...normalizedDocData, id: normalizedDocId } : d)
+    : [...current, { id: normalizedDocId, ...normalizedDocData }];
   await setLocalKV('subject_tracker_data', updated);
   return updated;
 }

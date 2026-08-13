@@ -12480,6 +12480,18 @@ JSON Format:
     }
   };
 
+  const handleUpdateSubjectTrackerDoc = (updatedDoc) => {
+    if (!updatedDoc || !updatedDoc.id) return;
+    setSubjectTrackerData(prev => {
+      const list = Array.isArray(prev) ? prev : [];
+      const idx = list.findIndex(d => d.id === updatedDoc.id);
+      if (idx >= 0) {
+        return list.map(d => d.id === updatedDoc.id ? { ...d, ...updatedDoc } : d);
+      }
+      return [...list, updatedDoc];
+    });
+  };
+
   const renderSmartReviewTab = (isMobileView = false) => {
     return (
       <SmartReviewHub
@@ -12504,6 +12516,7 @@ JSON Format:
           }
         }}
         studySchedule={studySchedule}
+        onUpdateSubjectDoc={handleUpdateSubjectTrackerDoc}
       />
     );
   };

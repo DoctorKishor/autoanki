@@ -78,11 +78,13 @@ export default function SmartReviewHub({
   onSyncBatchedReviews,
   isSaving = false,
   onRateTopic,
-  studySchedule = []
+  studySchedule = [],
+  onUpdateSubjectDoc
 }) {
   const [subTab, setSubTab] = useState('queue'); // 'queue', 'analytics', 'leeches'
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [mnemonicNotes, setMnemonicNotes] = useState({});
+  const [toastMessage, setToastMessage] = useState('');
 
   // 1. Calculate Daily Limits & Page Counts from subjectTrackerData
   const dailyLimits = fsrsConfig.dailyLimits || { newPagesPerDay: 10, maxReviewPagesPerDay: 30 };
@@ -180,12 +182,20 @@ export default function SmartReviewHub({
           ...clonedTopics[topicEntryKey],
           mnemonicNote: text
         };
+        const targetDocId = subDoc.id || subDoc.subject.trim().toLowerCase();
         const updatedDoc = {
           ...subDoc,
+          id: targetDocId,
           topics: clonedTopics,
           updatedAt: new Date().toISOString()
         };
-        saveLocalSubjectTrackerDoc(updatedDoc).catch(err => {
+        saveLocalSubjectTrackerDoc(targetDocId, updatedDoc).then(() => {
+          if (typeof onUpdateSubjectDoc === 'function') {
+            onUpdateSubjectDoc(updatedDoc);
+          }
+          setToastMessage('Note saved successfully');
+          setTimeout(() => setToastMessage(''), 2500);
+        }).catch(err => {
           console.error("Failed to save mnemonic note to IndexedDB:", err);
         });
       }
@@ -193,7 +203,22 @@ export default function SmartReviewHub({
   };
 
   return (
-    <div className="w-full space-y-6 text-slate-200">
+    <div className="w-full space-y-6 text-slate-200 relative">
+      {/* Subtle Visual Toast Notification */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+            transition={{ duration: 0.25 }}
+            className="fixed bottom-6 right-6 z-50 px-4 py-2.5 rounded-2xl bg-emerald-600/95 text-white text-xs font-black shadow-xl backdrop-blur-md border border-emerald-400/40 flex items-center gap-2"
+          >
+            <CheckCircle className="w-4 h-4 text-emerald-200" />
+            <span>{toastMessage}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* Settings Modal */}
       <FsrsSettingsModal
         isOpen={isSettingsOpen}
