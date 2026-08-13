@@ -12827,6 +12827,8 @@ JSON Format:
         onClearToast={() => setLastRatedToast(null)}
         studySchedule={studySchedule}
         onUpdateSubjectDoc={handleUpdateSubjectTrackerDoc}
+        geminiApiKey={geminiApiKey}
+        aiFeatureModels={aiFeatureModels}
       />
     );
   };

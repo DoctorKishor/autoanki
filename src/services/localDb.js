@@ -584,6 +584,22 @@ export async function saveFSRSConfig(config) {
   return merged;
 }
 
+/**
+ * Retrieves cached AI topic recommendations for a given date string (YYYY-MM-DD).
+ */
+export async function getAiTopicRecommendations(dateStr) {
+  if (!dateStr) return null;
+  return await getLocalKV(`ai_recommendations_${dateStr}`);
+}
+
+/**
+ * Saves AI topic recommendations for a given date string (YYYY-MM-DD).
+ */
+export async function saveAiTopicRecommendations(dateStr, recommendations) {
+  if (!dateStr) return;
+  return await setLocalKV(`ai_recommendations_${dateStr}`, recommendations);
+}
+
 export default {
   initDB,
   STORES,
@@ -592,11 +608,6 @@ export default {
   deleteLocalItem,
   getAllLocalItems,
   clearLocalStore,
-  saveLocalTopic,
-  getLocalTopic,
-  getAllLocalTopics,
-  deleteLocalTopic,
-  saveAllLocalTopics,
   saveLocalSetting,
   getLocalSetting,
   getAllLocalSettings,
@@ -639,6 +650,8 @@ export default {
   replaceAllLocalStudySchedule,
   DEFAULT_FSRS_CONFIG,
   getFSRSConfig,
-  saveFSRSConfig
+  saveFSRSConfig,
+  getAiTopicRecommendations,
+  saveAiTopicRecommendations
 };
 

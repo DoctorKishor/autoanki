@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Brain, Calendar, AlertTriangle, CheckCircle, Clock, BookOpen, Layers, Sparkles, RotateCcw, RotateCw, Zap, Undo2 } from 'lucide-react';
 import FsrsStatsTab from './FsrsStatsTab';
 import FsrsSettingsModal from './FsrsSettingsModal';
+import SelectNewTopicsModal from './SelectNewTopicsModal';
 import { saveLocalSubjectTrackerDoc } from '../services/localDb';
 import { parsePageNumbers, getTopicPageWeight } from '../utils/pageUtils';
 
@@ -30,11 +31,14 @@ export default function SmartReviewHub({
   lastRatedToast = null,
   onClearToast,
   studySchedule = [],
-  onUpdateSubjectDoc
+  onUpdateSubjectDoc,
+  geminiApiKey = '',
+  aiFeatureModels = {}
 }) {
   const isDark = themeMode === 'dark';
   const [subTab, setSubTab] = useState('queue'); // 'queue', 'analytics', 'leeches'
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isPickModalOpen, setIsPickModalOpen] = useState(false);
   const [mnemonicNotes, setMnemonicNotes] = useState({});
   const [toastMessage, setToastMessage] = useState('');
 
@@ -512,9 +516,23 @@ export default function SmartReviewHub({
             {/* New Topics Queue */}
             {newTopics.length > 0 && (
               <div className="space-y-3">
-                <h4 className="text-xs font-black uppercase tracking-wider text-emerald-500 flex items-center gap-2">
-                  <Sparkles className="w-4 h-4" /> New Topics Available ({newTopics.length})
-                </h4>
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-emerald-500 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4" /> New Topics Available ({newTopics.length})
+                  </h4>
+
+                  <button
+                    onClick={() => setIsPickModalOpen(true)}
+                    className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95 border ${
+                      isDark
+                        ? 'neu-btn-dark text-emerald-400 border-emerald-500/40'
+                        : 'neu-btn-light text-emerald-700 border-emerald-300'
+                    }`}
+                  >
+                    <span>➕ Pick Today's New Topics</span>
+                  </button>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <AnimatePresence mode="popLayout">
                     {newTopics.slice(0, 6).map((topic, idx) => (
@@ -527,6 +545,23 @@ export default function SmartReviewHub({
           </div>
         </motion.div>
       )}
+
+      {/* Select New Topics Modal */}
+      <SelectNewTopicsModal
+        isOpen={isPickModalOpen}
+        onClose={() => setIsPickModalOpen(false)}
+        subjectTrackerData={subjectTrackerData}
+        studyLogs={studyLogs}
+        studySchedule={studySchedule}
+        dailyLimits={dailyLimits}
+        geminiApiKey={geminiApiKey}
+        aiFeatureModels={aiFeatureModels}
+        themeMode={themeMode}
+        onActivateTopics={(selectedTopics) => {
+          setToastMessage(`Activated ${selectedTopics.length} new topics for today!`);
+          setTimeout(() => setToastMessage(''), 3000);
+        }}
+      />
 
       {/* Subtab 2: Analytics & Forecast */}
       {subTab === 'analytics' && (
