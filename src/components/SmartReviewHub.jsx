@@ -5,6 +5,12 @@ import FsrsStatsTab from './FsrsStatsTab';
 import FsrsSettingsModal from './FsrsSettingsModal';
 import { saveLocalSubjectTrackerDoc } from '../services/localDb';
 
+export function getLocalDateStr(d = new Date()) {
+  const dateObj = typeof d === 'string' ? new Date(d) : d;
+  if (!dateObj || isNaN(dateObj.getTime())) return new Date().toLocaleDateString('en-CA');
+  return dateObj.toLocaleDateString('en-CA');
+}
+
 export function getTopicPageInfo(topic) {
   if (!topic) return { startPage: null, endPage: null, pageCount: 1, pageLabel: 'No pgs' };
 
@@ -73,7 +79,7 @@ export default function SmartReviewHub({
     let reviewPages = 0;
     let newPages = 0;
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getLocalDateStr();
 
     subjectTrackerData.forEach(subDoc => {
       const subName = subDoc.subject;

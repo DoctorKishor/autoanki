@@ -12483,7 +12483,7 @@ JSON Format:
         onSyncBatchedReviews={handleSyncBatchedReviews}
         isSaving={isSaving}
         onRateTopic={(topic, rating) => {
-          const todayStr = new Date().toISOString().split('T')[0];
+          const todayStr = new Date().toLocaleDateString('en-CA');
           const newReview = {
             id: 'review_' + Math.random().toString(36).substring(2, 9),
             subject: topic.subject,
