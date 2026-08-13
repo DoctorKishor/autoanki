@@ -29121,7 +29121,7 @@ Return your response strictly as a JSON object matching this schema:
                                                     : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
                                                 }`}
                                               >
-                                                200 Qs / 800 Marks (Pre-2025)
+                                                200 Qs / 800 Marks (Old Pattern)
                                               </button>
                                               <button
                                                 type="button"
@@ -29132,7 +29132,7 @@ Return your response strictly as a JSON object matching this schema:
                                                     : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
                                                 }`}
                                               >
-                                                180 Qs / 720 Marks (2025+)
+                                                180 Qs / 720 Marks (New Pattern)
                                               </button>
                                             </div>
                                           )}
