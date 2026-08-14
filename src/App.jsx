@@ -4837,7 +4837,7 @@ export default function App() {
     }
     sidebarCollapseTimerRef.current = setTimeout(() => {
       setIsSidebarExpanded(false);
-    }, 3000);
+    }, 1000);
   };
 
   useEffect(() => {
@@ -5450,26 +5450,22 @@ export default function App() {
   const [draftNavIds, setDraftNavIds] = useState(DEFAULT_NAV_IDS);
   const [navSaveToast, setNavSaveToast] = useState(false);
   const [navTabsOpen, setNavTabsOpen] = useState(false);
-  const [openNavCategories, setOpenNavCategories] = useState(() => {
+  const [expandedNavCategory, setExpandedNavCategory] = useState(() => {
     try {
-      const saved = localStorage.getItem('auto_anki_open_nav_categories');
-      if (saved) return new Set(JSON.parse(saved));
-      return new Set(['focus', 'knowledge', 'analytics', 'system']);
+      const saved = localStorage.getItem('auto_anki_expanded_nav_category');
+      if (saved) return saved;
+      return 'focus';
     } catch {
-      return new Set(['focus', 'knowledge', 'analytics', 'system']);
+      return 'focus';
     }
   });
 
   const toggleNavCategory = (catId) => {
-    setOpenNavCategories(prev => {
-      const next = new Set(prev);
-      if (next.has(catId)) {
-        next.delete(catId);
-      } else {
-        next.add(catId);
-      }
+    setExpandedNavCategory(prev => {
+      const next = prev === catId ? null : catId;
       try {
-        localStorage.setItem('auto_anki_open_nav_categories', JSON.stringify(Array.from(next)));
+        if (next) localStorage.setItem('auto_anki_expanded_nav_category', next);
+        else localStorage.removeItem('auto_anki_expanded_nav_category');
       } catch (_) {}
       return next;
     });
@@ -27678,7 +27674,7 @@ Return your response strictly as a JSON object matching this schema:
                     ].map((cat, catIdx) => {
                       const CatIcon = cat.icon;
                       const hasActiveItem = cat.items.some(item => item.id === currentTab);
-                      const isExpanded = openNavCategories.has(cat.id);
+                      const isExpanded = expandedNavCategory === cat.id;
 
                       return (
                         <div
