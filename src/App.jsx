@@ -26906,182 +26906,224 @@ Return your response strictly as a JSON object matching this schema:
                   )}
 
                   {/* STUDY SCHEDULER VIEW (Mobile) */}
-                  {currentTab === 'studyScheduler' && (
-                    <div className="space-y-4 text-left pb-32 animate-in fade-in duration-200">
-                      {/* Calendar week selector widget */}
-                      <div className="bg-white/80 backdrop-blur-xl p-4 rounded-3xl shadow-xl border border-white/40 space-y-3">
-                        <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
-                          <div className="bg-blue-100 p-2 rounded-xl text-blue-600">
-                            <Calendar className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <h2 className="text-sm font-black text-gray-900 tracking-tight">Study Scheduler</h2>
-                            <p className="text-[10px] text-gray-500">Plan and track your daily revision targets</p>
-                          </div>
-                        </div>
-
-                        {/* 7-Day Week Strip */}
-                        <div className="flex justify-between gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-                          {weekDays.map(d => {
-                            const isSelected = d.dateStr === schedulerSelectedDate;
-                            return (
+                  {currentTab === 'studyScheduler' && (() => {
+                    const isDark = settingsThemeMode === 'dark';
+                    return (
+                      <motion.div
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                        className="space-y-4 text-left pb-32 p-4 sm:p-5"
+                      >
+                        {/* 1. Header & 7-Day Week Strip Card */}
+                        <motion.div
+                          initial={{ opacity: 0, y: 12 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.4, delay: 0.05 }}
+                          className={`p-4 sm:p-5 rounded-3xl space-y-3.5 transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'}`}
+                        >
+                          <div className={`flex items-center justify-between pb-3 border-b flex-wrap gap-2 ${isDark ? 'border-slate-750' : 'border-slate-200/80'}`}>
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className={`p-2.5 rounded-xl shrink-0 ${isDark ? 'neu-pressed-dark text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
+                                <Calendar className="w-5 h-5" />
+                              </div>
+                              <div className="min-w-0">
+                                <h2 className="text-sm sm:text-base font-black tracking-tight truncate">Study Scheduler</h2>
+                                <p className={`text-[9px] sm:text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Plan & track daily targets</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
                               <button
-                                key={d.dateStr}
-                                onClick={() => setSchedulerSelectedDate(d.dateStr)}
-                                className={`flex-1 min-w-[42px] py-2.5 rounded-2xl flex flex-col items-center gap-1 transition-all active:scale-95 border ${isSelected
-                                  ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/20 font-bold'
-                                  : d.isToday
-                                    ? 'bg-blue-50 border-blue-100 text-blue-700 font-bold'
-                                    : 'bg-gray-50/50 text-gray-600 border-gray-100 hover:bg-gray-50'
-                                  }`}
+                                onClick={() => setIsTemplateModalOpen(true)}
+                                className={`px-3 py-1.5 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-wider border transition-all flex items-center gap-1.5 shrink-0 ${
+                                  isDark ? 'neu-btn-dark text-slate-300 border-slate-700' : 'neu-btn-light text-slate-700 border-slate-200'
+                                }`}
+                                title="Study Routines"
                               >
-                                <span className={`text-[9px] font-bold uppercase ${isSelected ? 'text-blue-100' : 'text-gray-400'}`}>
-                                  {d.dayName}
-                                </span>
-                                <span className="text-xs font-black">
-                                  {d.dayNum}
-                                </span>
-                                {d.hasTasks && (
-                                  <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-blue-600 animate-pulse'}`} />
-                                )}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Daily Notes (Mobile) */}
-                      <div className="bg-white/80 backdrop-blur-xl p-4 rounded-3xl shadow-xl border border-white/40 space-y-2">
-                        <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider">Notes for {formatAppDate(schedulerSelectedDate)}</span>
-                        <textarea
-                          value={studySchedule[schedulerSelectedDate]?.notes || ''}
-                          onChange={(e) => {
-                            const newNotes = e.target.value;
-                            setStudySchedule(prev => ({
-                              ...prev,
-                              [schedulerSelectedDate]: {
-                                ...(prev[schedulerSelectedDate] || { date: schedulerSelectedDate, tasks: [] }),
-                                notes: newNotes
-                              }
-                            }));
-                          }}
-                          onBlur={async () => {
-                            const entry = studySchedule[schedulerSelectedDate] || { date: schedulerSelectedDate, tasks: [] };
-                            const updatedSchedule = await saveLocalScheduleEntry(schedulerSelectedDate, { date: schedulerSelectedDate, notes: entry.notes || '', tasks: entry.tasks || [] });
-                            setStudySchedule(updatedSchedule);
-                          }}
-                          placeholder="Tap to add notes, targets, or Grand Test topics..."
-                          className="w-full h-16 p-2.5 border border-gray-200 rounded-xl text-xs focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none resize-none bg-gray-50/50 text-gray-800"
-                        />
-                      </div>
-
-                      {/* Daily Agenda Tasks */}
-                      <div className="space-y-2">
-                        <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider px-1">Scheduled Topics Checklist</span>
-                        <div className="space-y-2">
-                          {((studySchedule[schedulerSelectedDate]?.tasks || []).length === 0) ? (
-                            <div className="bg-white/80 p-8 rounded-3xl border border-gray-100 text-center space-y-2">
-                              <p className="text-xs font-bold text-gray-500">No topics scheduled for today.</p>
-                              <button
-                                onClick={() => {
-                                  setSchedulerManualDate(schedulerSelectedDate);
-                                  setIsSchedulerModalOpen(true);
-                                }}
-                                className="text-[10px] text-blue-600 font-bold underline"
-                              >
-                                Schedule a Topic
+                                <Bookmark className="w-3.5 h-3.5 text-blue-500" /> Routines
                               </button>
                             </div>
-                          ) : (
-                            (studySchedule[schedulerSelectedDate]?.tasks || []).map(task => {
-                              const color = task.color || 'blue';
-                              const borderClass =
-                                task.completed ? 'border-emerald-250 bg-emerald-50/15' :
-                                  color === 'blue' ? 'border-blue-200 bg-blue-50/10' :
-                                    color === 'purple' ? 'border-purple-200 bg-purple-50/10' :
-                                      color === 'emerald' ? 'border-emerald-200 bg-emerald-50/10' :
-                                        color === 'amber' ? 'border-amber-200 bg-amber-50/10' :
-                                          color === 'rose' ? 'border-rose-200 bg-rose-50/10' :
-                                            'border-violet-200 bg-violet-50/10';
+                          </div>
 
+                          {/* 7-Day Week Strip */}
+                          <div className="flex justify-between gap-1.5 overflow-x-auto pb-1 custom-scrollbar scrollbar-none">
+                            {weekDays.map(d => {
+                              const isSelected = d.dateStr === schedulerSelectedDate;
                               return (
-                                <div
-                                  key={task.id}
-                                  className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all ${borderClass}`}
+                                <button
+                                  key={d.dateStr}
+                                  onClick={() => setSchedulerSelectedDate(d.dateStr)}
+                                  className={`flex-1 min-w-[42px] py-2.5 rounded-2xl flex flex-col items-center gap-1 transition-all active:scale-95 border ${isSelected
+                                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-blue-500 shadow-md shadow-blue-900/30 font-bold scale-[1.02]'
+                                    : d.isToday
+                                      ? isDark ? 'bg-blue-950/60 border-blue-800 text-blue-400 font-bold' : 'bg-blue-50 border-blue-200 text-blue-700 font-bold'
+                                      : isDark ? 'neu-pressed-dark text-slate-300 border-slate-800 hover:text-white' : 'neu-pressed-light text-slate-600 border-slate-200 hover:bg-slate-50'
+                                    }`}
                                 >
-                                  <div className="flex flex-col min-w-0 pr-3 select-none flex-grow">
-                                    <label className="flex items-center gap-3 cursor-pointer min-w-0">
-                                      <input
-                                        type="checkbox"
-                                        checked={task.completed}
-                                        onChange={() => handleSchedulerTaskToggle(schedulerSelectedDate, task.id)}
-                                        className="w-4.5 h-4.5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 shrink-0"
-                                      />
-                                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${task.color === 'blue' ? 'bg-blue-500' :
-                                        task.color === 'purple' ? 'bg-purple-500' :
-                                          task.color === 'emerald' ? 'bg-emerald-500' :
-                                            task.color === 'amber' ? 'bg-amber-500' :
-                                              task.color === 'rose' ? 'bg-rose-500' :
-                                                task.color === 'violet' ? 'bg-violet-500' :
-                                                  'bg-blue-500'
-                                        }`} />
-                                      <span className={`text-xs font-bold truncate ${task.completed ? 'line-through text-gray-400 font-medium' : 'text-gray-800'}`}>
-                                        {task.topic}
-                                      </span>
-                                    </label>
-                                    {task.startTime && (
-                                      <span className="text-[10px] text-gray-500 font-bold ml-7.5 flex items-center gap-1 mt-0.5 font-mono">
-                                        ⏱️ {formatTime12(task.startTime)} {task.endTime ? ` - ${formatTime12(task.endTime)}` : ''}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className="flex items-center gap-1 shrink-0">
-                                    <button
-                                      onClick={() => setSchedulerEditingTask({
-                                        date: schedulerSelectedDate,
-                                        id: task.id,
-                                        topic: task.topic,
-                                        startTime: task.startTime || "09:00",
-                                        endTime: task.endTime || "10:00",
-                                        color: task.color || "blue",
-                                        completed: task.completed || false,
-                                        notes: task.notes || ""
-                                      })}
-                                      className="p-1.5 rounded-lg text-gray-400 hover:text-blue-500 hover:bg-blue-50 transition active:scale-90"
-                                      title="Edit topic/time"
-                                    >
-                                      <Edit3 className="w-3.5 h-3.5" />
-                                    </button>
-                                    <button
-                                      onClick={() => handleSchedulerDeleteTask(schedulerSelectedDate, task.id)}
-                                      className="p-1 rounded-lg text-gray-400 hover:text-red-500 transition active:scale-90"
-                                      title="Remove topic"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                  </div>
-                                </div>
+                                  <span className={`text-[9px] font-bold uppercase ${isSelected ? 'text-blue-100' : isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                    {d.dayName}
+                                  </span>
+                                  <span className="text-xs font-black">
+                                    {d.dayNum}
+                                  </span>
+                                  {d.hasTasks && (
+                                    <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-blue-500 animate-pulse'}`} />
+                                  )}
+                                </button>
                               );
-                            })
-                          )}
-                        </div>
-                      </div>
+                            })}
+                          </div>
+                        </motion.div>
 
-                      {/* FAB for Mobile add schedule */}
-                      <div className="fixed bottom-24 right-6 z-30">
-                        <button
-                          onClick={() => {
-                            setSchedulerManualDate(schedulerSelectedDate);
-                            setIsSchedulerModalOpen(true);
-                          }}
-                          className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg shadow-blue-600/30 hover:bg-blue-700 transition-all active:scale-95"
+                        {/* 2. Daily Notes Card (Mobile) */}
+                        <motion.div
+                          initial={{ opacity: 0, y: 12 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.4, delay: 0.1 }}
+                          className={`p-4 sm:p-5 rounded-3xl space-y-2 transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'}`}
                         >
-                          <Plus className="w-6 h-6" />
-                        </button>
-                      </div>
+                          <span className={`text-[9px] font-black uppercase tracking-wider block ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                            Notes for {formatAppDate(schedulerSelectedDate)}
+                          </span>
+                          <textarea
+                            value={studySchedule[schedulerSelectedDate]?.notes || ''}
+                            onChange={(e) => {
+                              const newNotes = e.target.value;
+                              setStudySchedule(prev => ({
+                                ...prev,
+                                [schedulerSelectedDate]: {
+                                  ...(prev[schedulerSelectedDate] || { date: schedulerSelectedDate, tasks: [] }),
+                                  notes: newNotes
+                                }
+                              }));
+                            }}
+                            onBlur={async () => {
+                              const entry = studySchedule[schedulerSelectedDate] || { date: schedulerSelectedDate, tasks: [] };
+                              const updatedSchedule = await saveLocalScheduleEntry(schedulerSelectedDate, { date: schedulerSelectedDate, notes: entry.notes || '', tasks: entry.tasks || [] });
+                              setStudySchedule(updatedSchedule);
+                            }}
+                            placeholder="Tap to add notes, targets, or Grand Test topics..."
+                            className={`w-full h-16 p-3 rounded-xl text-xs outline-none resize-none font-medium transition ${
+                              isDark ? 'neu-pressed-dark text-slate-100 placeholder-slate-500 border border-slate-800' : 'neu-pressed-light text-slate-800 placeholder-slate-400 border border-slate-200'
+                            }`}
+                          />
+                        </motion.div>
 
-                    </div>
-                  )}
+                        {/* 3. Daily Agenda Tasks Card (Mobile) */}
+                        <motion.div
+                          initial={{ opacity: 0, y: 12 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.4, delay: 0.15 }}
+                          className="space-y-2.5"
+                        >
+                          <span className={`text-[9px] font-black uppercase tracking-wider px-1 block ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                            Scheduled Topics Checklist
+                          </span>
+                          <div className="space-y-2">
+                            {((studySchedule[schedulerSelectedDate]?.tasks || []).length === 0) ? (
+                              <div className={`p-8 rounded-3xl border text-center space-y-2 ${
+                                isDark ? 'neu-pressed-dark border-slate-800 text-slate-400' : 'neu-pressed-light border-slate-200 text-slate-500'
+                              }`}>
+                                <p className="text-xs font-bold">No topics scheduled for today.</p>
+                                <button
+                                  onClick={() => {
+                                    setSchedulerManualDate(schedulerSelectedDate);
+                                    setIsSchedulerModalOpen(true);
+                                  }}
+                                  className="text-[10px] text-blue-500 font-bold underline"
+                                >
+                                  Schedule a Topic
+                                </button>
+                              </div>
+                            ) : (
+                              (studySchedule[schedulerSelectedDate]?.tasks || []).map(task => {
+                                const color = task.color || 'blue';
+                                return (
+                                  <div
+                                    key={task.id}
+                                    className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all ${
+                                      task.completed
+                                        ? isDark ? 'neu-pressed-dark border-emerald-900/40 bg-emerald-950/20' : 'border-emerald-200 bg-emerald-50/40'
+                                        : isDark ? 'neu-card-dark border-slate-800 hover:border-slate-700' : 'neu-card-light border-slate-200 hover:border-slate-300'
+                                    }`}
+                                  >
+                                    <div className="flex flex-col min-w-0 pr-3 select-none flex-grow">
+                                      <label className="flex items-center gap-3 cursor-pointer min-w-0">
+                                        <input
+                                          type="checkbox"
+                                          checked={task.completed}
+                                          onChange={() => handleSchedulerTaskToggle(schedulerSelectedDate, task.id)}
+                                          className="w-4.5 h-4.5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 shrink-0"
+                                        />
+                                        <span className={`w-2 h-2 rounded-full shrink-0 ${
+                                          task.color === 'blue' ? 'bg-blue-500' :
+                                          task.color === 'purple' ? 'bg-purple-500' :
+                                          task.color === 'emerald' ? 'bg-emerald-500' :
+                                          task.color === 'amber' ? 'bg-amber-500' :
+                                          task.color === 'rose' ? 'bg-rose-500' :
+                                          task.color === 'violet' ? 'bg-violet-500' : 'bg-blue-500'
+                                        }`} />
+                                        <span className={`text-xs font-bold truncate ${task.completed ? 'line-through opacity-50 font-medium' : isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+                                          {task.topic}
+                                        </span>
+                                      </label>
+                                      {task.startTime && (
+                                        <span className={`text-[10px] font-bold ml-7.5 flex items-center gap-1 mt-0.5 font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                          ⏱️ {formatTime12(task.startTime)} {task.endTime ? ` - ${formatTime12(task.endTime)}` : ''}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      <button
+                                        onClick={() => setSchedulerEditingTask({
+                                          date: schedulerSelectedDate,
+                                          id: task.id,
+                                          topic: task.topic,
+                                          startTime: task.startTime || "09:00",
+                                          endTime: task.endTime || "10:00",
+                                          color: task.color || "blue",
+                                          completed: task.completed || false,
+                                          notes: task.notes || ""
+                                        })}
+                                        className={`p-2 rounded-xl transition active:scale-90 ${isDark ? 'neu-btn-dark text-slate-400 hover:text-blue-400' : 'neu-btn-light text-slate-500 hover:text-blue-600'}`}
+                                        title="Edit topic/time"
+                                      >
+                                        <Edit3 className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button
+                                        onClick={() => handleSchedulerDeleteTask(schedulerSelectedDate, task.id)}
+                                        className={`p-2 rounded-xl transition active:scale-90 ${isDark ? 'neu-btn-dark text-slate-400 hover:text-red-400' : 'neu-btn-light text-slate-500 hover:text-red-600'}`}
+                                        title="Remove topic"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+                        </motion.div>
+
+                        {/* FAB for Mobile add schedule */}
+                        <div className="fixed bottom-24 right-6 z-30">
+                          <button
+                            onClick={() => {
+                              setSchedulerManualDate(schedulerSelectedDate);
+                              setIsSchedulerModalOpen(true);
+                            }}
+                            className={`w-13 h-13 rounded-full flex items-center justify-center shadow-xl transition-all active:scale-95 ${
+                              isDark ? 'neu-btn-accent-dark text-white' : 'neu-btn-accent-light text-white'
+                            }`}
+                            style={{ width: '52px', height: '52px' }}
+                          >
+                            <Plus className="w-6 h-6" />
+                          </button>
+                        </div>
+
+                      </motion.div>
+                    );
+                  })()}
 
                   {currentTab === 'subjectTracker' && (() => {
                     const isDark = settingsThemeMode === 'dark';
@@ -34250,528 +34292,480 @@ Return your response strictly as a JSON object matching this schema:
                     )}
 
                     {/* STUDY SCHEDULER VIEW (Desktop) */}
-                    {currentTab === 'studyScheduler' && (
-                      <div className="flex-grow p-6 flex gap-6 max-w-[1600px] mx-auto w-full h-full overflow-hidden bg-gray-50/50">
-                        {/* Left Column: Month Calendar */}
-                        <div className="w-5/12 bg-white rounded-3xl border border-gray-200 shadow-sm p-6 flex flex-col h-full overflow-hidden">
-                          <div className="flex justify-between items-center mb-6 shrink-0">
-                            <div className="text-left">
-                              <h3 className="text-base font-black text-gray-900 tracking-tight">Interactive Calendar</h3>
-                              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">Select a date to plan and revise</p>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <button
-                                onClick={() => {
-                                  if (schedulerCalMonth === 0) {
-                                    setSchedulerCalMonth(11);
-                                    setSchedulerCalYear(prev => prev - 1);
-                                  } else {
-                                    setSchedulerCalMonth(prev => prev - 1);
-                                  }
-                                }}
-                                className="p-2 border border-gray-200 rounded-xl hover:bg-gray-50 active:scale-95 transition"
-                              >
-                                <ChevronLeft className="w-4 h-4 text-gray-600" />
-                              </button>
-                              <span className="text-xs font-black text-gray-800 uppercase tracking-widest min-w-[100px] text-center">
-                                {new Date(schedulerCalYear, schedulerCalMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-                              </span>
-                              <button
-                                onClick={() => {
-                                  if (schedulerCalMonth === 11) {
-                                    setSchedulerCalMonth(0);
-                                    setSchedulerCalYear(prev => prev + 1);
-                                  } else {
-                                    setSchedulerCalMonth(prev => prev + 1);
-                                  }
-                                }}
-                                className="p-2 border border-gray-200 rounded-xl hover:bg-gray-50 active:scale-95 transition"
-                              >
-                                <ChevronRight className="w-4 h-4 text-gray-600" />
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Week Headers */}
-                          <div className="grid grid-cols-7 gap-2 mb-2 text-center text-[10px] font-black text-gray-400 uppercase tracking-wider shrink-0">
-                            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-                              <div key={d} className="py-1">{d}</div>
-                            ))}
-                          </div>
-
-                          {/* Calendar Grid */}
-                          <div className="grid grid-cols-7 gap-2 flex-grow overflow-y-auto pr-1 select-none custom-scrollbar">
-                            {(() => {
-                              const days = getDaysInMonth(schedulerCalMonth, schedulerCalYear);
-                              return days.map((day, idx) => {
-                                if (!day) return <div key={`empty-${idx}`} className="aspect-square" />;
-                                const dateStr = day.toLocaleDateString('en-CA');
-                                const isSelected = dateStr === schedulerSelectedDate;
-                                const isToday = dateStr === todayStr;
-                                const hasTasks = (studySchedule[dateStr]?.tasks?.length || 0) > 0;
-
-                                return (
-                                  <button
-                                    key={dateStr}
-                                    onClick={() => setSchedulerSelectedDate(dateStr)}
-                                    className={`aspect-square rounded-2xl flex flex-col items-center justify-between p-2.5 transition relative active:scale-95 border ${isSelected
-                                      ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-600/20'
-                                      : isToday
-                                        ? 'bg-blue-50 border-blue-200 text-blue-700 font-black'
-                                        : 'bg-gray-50/50 border-gray-150 text-gray-700 hover:bg-gray-100 hover:border-gray-300'
-                                      }`}
-                                  >
-                                    <span className="text-xs font-black">{day.getDate()}</span>
-                                    {hasTasks && (
-                                      <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-blue-600'} shrink-0`} />
-                                    )}
-                                  </button>
-                                );
-                              });
-                            })()}
-                          </div>
-                        </div>
-
-                        {/* Right Column: Day Detail Panel */}
-                        <div className="w-7/12 bg-white rounded-3xl border border-gray-250 shadow-sm p-6 flex flex-col h-full overflow-hidden text-left relative">
-                          <div className="flex justify-between items-center border-b border-gray-150 pb-4 mb-6 shrink-0">
-                            <div>
-                              <span className="text-[9px] font-black uppercase text-blue-600 tracking-wider">Plan for Selected Date</span>
-                              <h2 className="text-xl font-black text-gray-900 tracking-tight mt-0.5 font-mono">
-                                {formatAppDate(schedulerSelectedDate)}
-                              </h2>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {/* Notification Alerts Toggle */}
-                              {typeof window !== 'undefined' && window.Notification && (
+                    {currentTab === 'studyScheduler' && (() => {
+                      const isDark = settingsThemeMode === 'dark';
+                      return (
+                        <motion.div
+                          initial={{ opacity: 0, y: 16 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                          className="flex-grow p-6 lg:p-7 flex gap-6 max-w-[1600px] mx-auto w-full h-full overflow-hidden text-left"
+                        >
+                          {/* Left Column: Month Calendar */}
+                          <motion.div
+                            initial={{ opacity: 0, x: -12 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.4, delay: 0.05 }}
+                            className={`w-5/12 rounded-3xl p-6 flex flex-col h-full overflow-hidden transition-all ${
+                              isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                            }`}
+                          >
+                            <div className="flex justify-between items-center mb-6 shrink-0">
+                              <div className="text-left">
+                                <h3 className="text-base font-black tracking-tight">Interactive Calendar</h3>
+                                <p className={`text-[10px] font-bold uppercase tracking-wider mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                  Select a date to plan and revise
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2.5">
                                 <button
-                                  onClick={handleRequestNotificationPermission}
-                                  className={`p-2 rounded-xl border flex items-center gap-1.5 transition text-[10px] font-black uppercase tracking-wider ${notificationPermissionStatus === 'granted'
-                                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                                    : 'border-amber-200 bg-amber-50 text-amber-700 animate-pulse'
-                                    }`}
-                                  title="Study Shift Alerts"
-                                >
-                                  <Bell className="w-4 h-4 shrink-0" />
-                                  {notificationPermissionStatus === 'granted' ? 'Alerts On' : 'Enable Alerts'}
-                                </button>
-                              )}
-
-                              {/* Templates Routine Button */}
-                              <button
-                                onClick={() => setIsTemplateModalOpen(true)}
-                                className="px-3 py-2 border border-gray-200 hover:bg-gray-50 rounded-xl text-gray-700 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition active:scale-95"
-                              >
-                                <Bookmark className="w-4 h-4 text-gray-500" /> Routines
-                              </button>
-
-                              <button
-                                onClick={() => {
-                                  setSchedulerManualDate(schedulerSelectedDate);
-                                  setIsSchedulerModalOpen(true);
-                                }}
-                                className="px-4 py-2.5 bg-blue-600 text-white text-xs font-black uppercase tracking-wider rounded-xl shadow-md shadow-blue-600/10 hover:bg-blue-700 active:scale-95 transition flex items-center gap-2"
-                              >
-                                <Plus className="w-4 h-4" /> Add Topics
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Checklist and Notes */}
-                          <div className="flex-grow flex flex-col gap-6 overflow-y-auto pr-1 custom-scrollbar min-h-0">
-                            {/* Notes Section */}
-                            <div className="space-y-2 shrink-0">
-                              <label className="text-[10px] font-black uppercase tracking-wider text-gray-400 block">Daily Notes</label>
-                              <textarea
-                                value={studySchedule[schedulerSelectedDate]?.notes || ''}
-                                onChange={(e) => {
-                                  const newNotes = e.target.value;
-                                  setStudySchedule(prev => ({
-                                    ...prev,
-                                    [schedulerSelectedDate]: {
-                                      ...(prev[schedulerSelectedDate] || { date: schedulerSelectedDate, tasks: [] }),
-                                      notes: newNotes
+                                  onClick={() => {
+                                    if (schedulerCalMonth === 0) {
+                                      setSchedulerCalMonth(11);
+                                      setSchedulerCalYear(prev => prev - 1);
+                                    } else {
+                                      setSchedulerCalMonth(prev => prev - 1);
                                     }
-                                  }));
-                                }}
-                                onBlur={async () => {
-                                  const entry = studySchedule[schedulerSelectedDate] || { date: schedulerSelectedDate, tasks: [] };
-                                  const updatedSchedule = await saveLocalScheduleEntry(schedulerSelectedDate, { date: schedulerSelectedDate, notes: entry.notes || '', tasks: entry.tasks || [] });
-                                  setStudySchedule(updatedSchedule);
-                                }}
-                                placeholder="Type any reference notes, focus areas, or reminders for this day..."
-                                className="w-full h-16 p-3 border border-gray-200 rounded-2xl text-xs focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none resize-none bg-gray-50/40 text-gray-800 leading-relaxed"
-                              />
+                                  }}
+                                  className={`p-2 rounded-xl transition active:scale-95 border ${
+                                    isDark ? 'neu-btn-dark text-slate-300 border-slate-700' : 'neu-btn-light text-slate-700 border-slate-200'
+                                  }`}
+                                >
+                                  <ChevronLeft className="w-4 h-4" />
+                                </button>
+                                <span className={`text-xs font-black uppercase tracking-widest min-w-[110px] text-center ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                                  {new Date(schedulerCalYear, schedulerCalMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                                </span>
+                                <button
+                                  onClick={() => {
+                                    if (schedulerCalMonth === 11) {
+                                      setSchedulerCalMonth(0);
+                                      setSchedulerCalYear(prev => prev + 1);
+                                    } else {
+                                      setSchedulerCalMonth(prev => prev + 1);
+                                    }
+                                  }}
+                                  className={`p-2 rounded-xl transition active:scale-95 border ${
+                                    isDark ? 'neu-btn-dark text-slate-300 border-slate-700' : 'neu-btn-light text-slate-700 border-slate-200'
+                                  }`}
+                                >
+                                  <ChevronRight className="w-4 h-4" />
+                                </button>
+                              </div>
                             </div>
 
-                            {/* Tasks Section */}
-                            <div className="space-y-3 flex-grow flex flex-col min-h-0">
-                              {/* View Mode Toggle: Timeline vs List */}
-                              <div className="flex justify-between items-center shrink-0">
-                                <label className="text-[10px] font-black uppercase tracking-wider text-gray-400">Topics Checklist</label>
-                                <div className="flex bg-gray-150 p-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider">
+                            {/* Week Headers */}
+                            <div className={`grid grid-cols-7 gap-2 mb-2 text-center text-[10px] font-black uppercase tracking-wider shrink-0 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+                                <div key={d} className="py-1">{d}</div>
+                              ))}
+                            </div>
+
+                            {/* Calendar Grid */}
+                            <div className="grid grid-cols-7 gap-2 flex-grow overflow-y-auto pr-1 select-none custom-scrollbar">
+                              {(() => {
+                                const days = getDaysInMonth(schedulerCalMonth, schedulerCalYear);
+                                return days.map((day, idx) => {
+                                  if (!day) return <div key={`empty-${idx}`} className="aspect-square" />;
+                                  const dateStr = day.toLocaleDateString('en-CA');
+                                  const isSelected = dateStr === schedulerSelectedDate;
+                                  const isToday = dateStr === todayStr;
+                                  const hasTasks = (studySchedule[dateStr]?.tasks?.length || 0) > 0;
+
+                                  return (
+                                    <button
+                                      key={dateStr}
+                                      onClick={() => setSchedulerSelectedDate(dateStr)}
+                                      className={`aspect-square rounded-2xl flex flex-col items-center justify-between p-2.5 transition-all relative active:scale-95 border ${isSelected
+                                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-blue-500 shadow-lg shadow-blue-900/40 font-black scale-[1.02]'
+                                        : isToday
+                                          ? isDark ? 'bg-blue-950/60 border-blue-800 text-blue-400 font-black' : 'bg-blue-50 border-blue-200 text-blue-700 font-black'
+                                          : isDark ? 'neu-pressed-dark text-slate-300 border-slate-800/80 hover:text-white' : 'neu-pressed-light text-slate-700 border-slate-200 hover:text-slate-900'
+                                        }`}
+                                    >
+                                      <span className="text-xs font-black">{day.getDate()}</span>
+                                      {hasTasks && (
+                                        <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-blue-500'} shrink-0`} />
+                                      )}
+                                    </button>
+                                  );
+                                });
+                              })()}
+                            </div>
+                          </motion.div>
+
+                          {/* Right Column: Day Detail Panel */}
+                          <motion.div
+                            initial={{ opacity: 0, x: 12 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.4, delay: 0.1 }}
+                            className={`w-7/12 rounded-3xl p-6 flex flex-col h-full overflow-hidden text-left relative transition-all ${
+                              isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                            }`}
+                          >
+                            <div className={`flex justify-between items-center border-b pb-4 mb-6 shrink-0 ${isDark ? 'border-slate-750' : 'border-slate-200/80'}`}>
+                              <div>
+                                <span className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>Plan for Selected Date</span>
+                                <h2 className={`text-xl font-black tracking-tight mt-0.5 font-mono ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                                  {formatAppDate(schedulerSelectedDate)}
+                                </h2>
+                              </div>
+                              <div className="flex items-center gap-2.5">
+                                {/* Notification Alerts Toggle */}
+                                {typeof window !== 'undefined' && window.Notification && (
                                   <button
-                                    onClick={() => setTimelineViewMode('timeline')}
-                                    className={`px-2.5 py-1 rounded-md transition ${timelineViewMode === 'timeline' ? 'bg-white shadow-sm text-blue-600 font-extrabold' : 'text-gray-500 hover:text-gray-700'}`}
+                                    onClick={handleRequestNotificationPermission}
+                                    className={`px-3 py-2 rounded-xl border flex items-center gap-1.5 transition text-[10px] font-black uppercase tracking-wider ${notificationPermissionStatus === 'granted'
+                                      ? isDark ? 'neu-pressed-dark border-emerald-800 text-emerald-400' : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                                      : isDark ? 'neu-pressed-dark border-amber-800 text-amber-400 animate-pulse' : 'border-amber-200 bg-amber-50 text-amber-700 animate-pulse'
+                                      }`}
+                                    title="Study Shift Alerts"
                                   >
-                                    Timeline View
+                                    <Bell className="w-4 h-4 shrink-0" />
+                                    {notificationPermissionStatus === 'granted' ? 'Alerts On' : 'Enable Alerts'}
                                   </button>
-                                  <button
-                                    onClick={() => setTimelineViewMode('list')}
-                                    className={`px-2.5 py-1 rounded-md transition ${timelineViewMode === 'list' ? 'bg-white shadow-sm text-blue-600 font-extrabold' : 'text-gray-500 hover:text-gray-700'}`}
-                                  >
-                                    List Agenda
-                                  </button>
-                                </div>
+                                )}
+
+                                {/* Templates Routine Button */}
+                                <button
+                                  onClick={() => setIsTemplateModalOpen(true)}
+                                  className={`px-3.5 py-2 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition active:scale-95 border ${
+                                    isDark ? 'neu-btn-dark text-slate-300 border-slate-700' : 'neu-btn-light text-slate-700 border-slate-200'
+                                  }`}
+                                >
+                                  <Bookmark className="w-4 h-4 text-blue-500" /> Routines
+                                </button>
+
+                                <button
+                                  onClick={() => {
+                                    setSchedulerManualDate(schedulerSelectedDate);
+                                    setIsSchedulerModalOpen(true);
+                                  }}
+                                  className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition active:scale-95 flex items-center gap-2 text-white shadow-md ${
+                                    isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+                                  }`}
+                                >
+                                  <Plus className="w-4 h-4" /> Add Topics
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Checklist and Notes */}
+                            <div className="flex-grow flex flex-col gap-5 overflow-y-auto pr-1 custom-scrollbar min-h-0">
+                              {/* Notes Section */}
+                              <div className="space-y-2 shrink-0">
+                                <label className={`text-[10px] font-black uppercase tracking-wider block ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Daily Notes</label>
+                                <textarea
+                                  value={studySchedule[schedulerSelectedDate]?.notes || ''}
+                                  onChange={(e) => {
+                                    const newNotes = e.target.value;
+                                    setStudySchedule(prev => ({
+                                      ...prev,
+                                      [schedulerSelectedDate]: {
+                                        ...(prev[schedulerSelectedDate] || { date: schedulerSelectedDate, tasks: [] }),
+                                        notes: newNotes
+                                      }
+                                    }));
+                                  }}
+                                  onBlur={async () => {
+                                    const entry = studySchedule[schedulerSelectedDate] || { date: schedulerSelectedDate, tasks: [] };
+                                    const updatedSchedule = await saveLocalScheduleEntry(schedulerSelectedDate, { date: schedulerSelectedDate, notes: entry.notes || '', tasks: entry.tasks || [] });
+                                    setStudySchedule(updatedSchedule);
+                                  }}
+                                  placeholder="Type any reference notes, focus areas, or reminders for this day..."
+                                  className={`w-full h-16 p-3 rounded-2xl text-xs outline-none resize-none leading-relaxed transition ${
+                                    isDark ? 'neu-pressed-dark text-slate-100 placeholder-slate-500 border border-slate-800' : 'neu-pressed-light text-slate-800 placeholder-slate-400 border border-slate-200'
+                                  }`}
+                                />
                               </div>
 
-                              {timelineViewMode === 'timeline' ? (
-                                <div className="flex-grow flex flex-col min-h-[300px] border border-gray-150 rounded-2xl overflow-hidden bg-white relative">
-                                  {/* Timeline Hour Grid */}
-                                  <div className="flex-grow overflow-y-auto pr-1 custom-scrollbar relative h-full">
-                                    <div className="relative w-full h-[1440px]">
-                                      {/* 24 Hour Rows */}
-                                      {Array.from({ length: 24 }).map((_, hour) => {
-                                        const label = hour === 0 ? "12 AM" : hour === 12 ? "12 PM" : hour > 12 ? `${hour - 12} PM` : `${hour} AM`;
-                                        return (
-                                          <div
-                                            key={hour}
-                                            style={{
-                                              position: 'absolute',
-                                              top: `${hour * 60}px`,
-                                              height: '60px',
-                                              left: 0,
-                                              right: 0
-                                            }}
-                                            className="flex items-start border-t border-gray-100/70 select-none group cursor-pointer hover:bg-gray-50/40"
-                                            onClick={() => {
-                                              const hh = String(hour).padStart(2, '0');
-                                              const hhEnd = String((hour + 1) % 24).padStart(2, '0');
-                                              setSchedulerEditingTask({
-                                                date: schedulerSelectedDate,
-                                                id: null,
-                                                topic: "",
-                                                startTime: `${hh}:00`,
-                                                endTime: `${hhEnd}:00`,
-                                                color: "blue",
-                                                completed: false,
-                                                notes: ""
-                                              });
-                                            }}
-                                          >
-                                            <span className="w-12 text-[9px] font-bold text-gray-400 font-mono text-right pr-2 select-none -mt-2">
-                                              {label}
-                                            </span>
-                                            <div className="flex-grow h-full relative border-l border-gray-100">
-                                              <span className="absolute left-2.5 top-1.5 opacity-0 group-hover:opacity-100 text-[9px] text-blue-500 font-black tracking-wider uppercase transition">
-                                                + Add Study Slot
-                                              </span>
-                                            </div>
-                                          </div>
-                                        );
-                                      })}
+                              {/* Tasks Section */}
+                              <div className="space-y-3 flex-grow flex flex-col min-h-0">
+                                {/* View Mode Toggle: Timeline vs List */}
+                                <div className="flex justify-between items-center shrink-0">
+                                  <label className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Topics Checklist</label>
+                                  {/* Sliding Pill Indicator Switcher */}
+                                  <div className={`relative flex items-center p-1 rounded-2xl gap-1 shrink-0 select-none ${
+                                    isDark ? 'neu-pressed-dark border border-slate-800' : 'neu-pressed-light border border-slate-200'
+                                  }`}>
+                                    <div
+                                      className={`absolute top-1 bottom-1 w-28 rounded-xl shadow-md ${
+                                        isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+                                      }`}
+                                      style={{
+                                        left: timelineViewMode === 'timeline' ? '0.25rem' : 'calc(0.25rem + 7rem + 0.25rem)',
+                                        transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                                      }}
+                                    />
+                                    <button
+                                      onClick={() => setTimelineViewMode('timeline')}
+                                      className={`relative w-28 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${
+                                        timelineViewMode === 'timeline'
+                                          ? 'text-white font-extrabold'
+                                          : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                                      }`}
+                                    >
+                                      Timeline View
+                                    </button>
+                                    <button
+                                      onClick={() => setTimelineViewMode('list')}
+                                      className={`relative w-28 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${
+                                        timelineViewMode === 'list'
+                                          ? 'text-white font-extrabold'
+                                          : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                                      }`}
+                                    >
+                                      List Agenda
+                                    </button>
+                                  </div>
+                                </div>
 
-                                      {/* Absolute task cards */}
-                                      {(() => {
-                                        const tasks = (studySchedule[schedulerSelectedDate]?.tasks || []).filter(t => t.startTime);
-                                        const styles = computeTimelineLayouts(tasks);
-                                        return tasks.map(task => {
-                                          const startMin = parseTimeToMinutes(task.startTime);
-                                          const endMin = parseTimeToMinutes(task.endTime || formatMinutesToTime(startMin + 60));
-                                          const duration = Math.max(endMin - startMin, 30);
-
-                                          const color = task.color || 'blue';
-                                          const colorClasses =
-                                            color === 'blue' ? 'bg-blue-50/95 border-blue-200 text-blue-700 hover:bg-blue-100/95 shadow-blue-500/5' :
-                                              color === 'purple' ? 'bg-purple-50/95 border-purple-200 text-purple-700 hover:bg-purple-100/95 shadow-purple-500/5' :
-                                                color === 'emerald' ? 'bg-emerald-50/95 border-emerald-200 text-emerald-700 hover:bg-emerald-100/95 shadow-emerald-500/5' :
-                                                  color === 'amber' ? 'bg-amber-50/95 border-amber-200 text-amber-700 hover:bg-amber-100/95 shadow-amber-500/5' :
-                                                    color === 'rose' ? 'bg-rose-50/95 border-rose-200 text-rose-700 hover:bg-rose-100/95 shadow-rose-500/5' :
-                                                      'bg-violet-50/95 border-violet-200 text-violet-700 hover:bg-violet-100/95 shadow-violet-500/5';
-
-                                          const layout = styles[task.id] || { left: '0%', width: '100%' };
-
+                                {timelineViewMode === 'timeline' ? (
+                                  <div className={`flex-grow flex flex-col min-h-[300px] rounded-2xl overflow-hidden relative border ${
+                                    isDark ? 'neu-pressed-dark border-slate-800' : 'neu-pressed-light border-slate-200'
+                                  }`}>
+                                    {/* Timeline Hour Grid */}
+                                    <div className="flex-grow overflow-y-auto pr-1 custom-scrollbar relative h-full">
+                                      <div className="relative w-full h-[1440px]">
+                                        {/* 24 Hour Rows */}
+                                        {Array.from({ length: 24 }).map((_, hour) => {
+                                          const label = hour === 0 ? "12 AM" : hour === 12 ? "12 PM" : hour > 12 ? `${hour - 12} PM` : `${hour} AM`;
                                           return (
                                             <div
-                                              key={task.id}
+                                              key={hour}
                                               style={{
                                                 position: 'absolute',
-                                                top: `${startMin}px`,
-                                                height: `${duration}px`,
-                                                left: `calc(48px + ${layout.left})`,
-                                                width: `calc(${layout.width} - 54px)`
+                                                top: `${hour * 60}px`,
+                                                height: '60px',
+                                                left: 0,
+                                                right: 0
                                               }}
-                                              className={`rounded-xl border p-2 flex flex-col justify-between overflow-hidden transition-all hover:scale-[1.01] hover:shadow-lg active:scale-95 cursor-pointer shadow-sm ${colorClasses} ${task.completed ? 'opacity-65' : ''}`}
-                                              onClick={(e) => {
-                                                e.stopPropagation();
+                                              className={`flex items-start border-t select-none group cursor-pointer transition ${
+                                                isDark ? 'border-slate-800/60 hover:bg-slate-800/30' : 'border-slate-200/60 hover:bg-slate-100/50'
+                                              }`}
+                                              onClick={() => {
+                                                const hh = String(hour).padStart(2, '0');
+                                                const hhEnd = String((hour + 1) % 24).padStart(2, '0');
                                                 setSchedulerEditingTask({
                                                   date: schedulerSelectedDate,
-                                                  id: task.id,
-                                                  topic: task.topic,
-                                                  startTime: task.startTime,
-                                                  endTime: task.endTime || formatMinutesToTime(startMin + 60),
-                                                  color: task.color || "blue",
-                                                  completed: task.completed || false,
-                                                  notes: task.notes || ""
+                                                  id: null,
+                                                  topic: "",
+                                                  startTime: `${hh}:00`,
+                                                  endTime: `${hhEnd}:00`,
+                                                  color: "blue",
+                                                  completed: false,
+                                                  notes: ""
                                                 });
                                               }}
                                             >
-                                              <div className="flex items-start gap-1.5 min-w-0 h-full">
-                                                <input
-                                                  type="checkbox"
-                                                  checked={task.completed || false}
-                                                  onChange={(e) => {
-                                                    e.stopPropagation();
-                                                    handleSchedulerTaskToggle(schedulerSelectedDate, task.id);
-                                                  }}
-                                                  className="w-3.5 h-3.5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer shrink-0 mt-0.5"
-                                                />
-                                                <div className="flex flex-col min-w-0 h-full justify-between">
-                                                  <div>
-                                                    <span className={`text-[11px] font-bold leading-tight truncate block ${task.completed ? 'line-through opacity-70 font-medium' : ''}`}>
-                                                      {task.topic}
-                                                    </span>
-                                                    {task.notes && duration >= 60 && (
-                                                      <span className="text-[9px] opacity-75 truncate block mt-0.5 leading-snug">
-                                                        📝 {task.notes}
-                                                      </span>
-                                                    )}
-                                                  </div>
-                                                  <span className="text-[8px] font-bold opacity-80 mt-0.5 font-mono select-none">
-                                                    ⏱️ {formatTime12(task.startTime)} - {formatTime12(task.endTime || formatMinutesToTime(startMin + 60))}
-                                                  </span>
-                                                </div>
+                                              <span className={`w-12 text-[9px] font-bold font-mono text-right pr-2 select-none -mt-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                {label}
+                                              </span>
+                                              <div className={`flex-grow h-full relative border-l ${isDark ? 'border-slate-800/60' : 'border-slate-200/60'}`}>
+                                                <span className="absolute left-2.5 top-1.5 opacity-0 group-hover:opacity-100 text-[9px] text-blue-500 font-black tracking-wider uppercase transition">
+                                                  + Add Study Slot
+                                                </span>
                                               </div>
                                             </div>
                                           );
-                                        });
-                                      })()}
+                                        })}
 
-                                      {/* Red Current Time Line */}
-                                      {schedulerSelectedDate === todayStr && (() => {
-                                        const now = new Date();
-                                        const currentMin = now.getHours() * 60 + now.getMinutes();
-                                        return (
-                                          <div
-                                            style={{
-                                              position: 'absolute',
-                                              top: `${currentMin}px`,
-                                              left: '48px',
-                                              right: '6px',
-                                              height: '2px',
-                                              backgroundColor: 'rgb(239, 68, 68)',
-                                              zIndex: 10,
-                                              pointerEvents: 'none'
-                                            }}
-                                          >
-                                            <div className="w-2.5 h-2.5 rounded-full bg-red-500 -ml-1.5 -mt-1 shadow" />
-                                          </div>
-                                        );
-                                      })()}
+                                        {/* Absolute task cards */}
+                                        {(() => {
+                                          const tasks = (studySchedule[schedulerSelectedDate]?.tasks || []).filter(t => t.startTime);
+                                          const styles = computeTimelineLayouts(tasks);
+                                          return tasks.map(task => {
+                                            const startMin = parseTimeToMinutes(task.startTime);
+                                            const endMin = parseTimeToMinutes(task.endTime || formatMinutesToTime(startMin + 60));
+                                            const duration = Math.max(endMin - startMin, 30);
+
+                                            const color = task.color || 'blue';
+                                            const colorClasses = isDark
+                                              ? (color === 'blue' ? 'bg-blue-950/80 border-blue-700/70 text-blue-200 hover:bg-blue-900/80 shadow-blue-950/40' :
+                                                 color === 'purple' ? 'bg-purple-950/80 border-purple-700/70 text-purple-200 hover:bg-purple-900/80 shadow-purple-950/40' :
+                                                 color === 'emerald' ? 'bg-emerald-950/80 border-emerald-700/70 text-emerald-200 hover:bg-emerald-900/80 shadow-emerald-950/40' :
+                                                 color === 'amber' ? 'bg-amber-950/80 border-amber-700/70 text-amber-200 hover:bg-amber-900/80 shadow-amber-950/40' :
+                                                 color === 'rose' ? 'bg-rose-950/80 border-rose-700/70 text-rose-200 hover:bg-rose-900/80 shadow-rose-950/40' :
+                                                 'bg-violet-950/80 border-violet-700/70 text-violet-200 hover:bg-violet-900/80 shadow-violet-950/40')
+                                              : (color === 'blue' ? 'bg-blue-50/95 border-blue-200 text-blue-800 hover:bg-blue-100/95 shadow-blue-500/5' :
+                                                 color === 'purple' ? 'bg-purple-50/95 border-purple-200 text-purple-800 hover:bg-purple-100/95 shadow-purple-500/5' :
+                                                 color === 'emerald' ? 'bg-emerald-50/95 border-emerald-200 text-emerald-800 hover:bg-emerald-100/95 shadow-emerald-500/5' :
+                                                 color === 'amber' ? 'bg-amber-50/95 border-amber-200 text-amber-800 hover:bg-amber-100/95 shadow-amber-500/5' :
+                                                 color === 'rose' ? 'bg-rose-50/95 border-rose-200 text-rose-800 hover:bg-rose-100/95 shadow-rose-500/5' :
+                                                 'bg-violet-50/95 border-violet-200 text-violet-800 hover:bg-violet-100/95 shadow-violet-500/5');
+
+                                            const layout = styles[task.id] || { left: '0%', width: '100%' };
+
+                                            return (
+                                              <div
+                                                key={task.id}
+                                                style={{
+                                                  position: 'absolute',
+                                                  top: `${startMin}px`,
+                                                  height: `${duration}px`,
+                                                  left: `calc(48px + ${layout.left})`,
+                                                  width: `calc(${layout.width} - 54px)`
+                                                }}
+                                                className={`rounded-xl border p-2 flex flex-col justify-between overflow-hidden transition-all hover:scale-[1.01] hover:shadow-lg active:scale-95 cursor-pointer shadow-sm ${colorClasses} ${task.completed ? 'opacity-60' : ''}`}
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setSchedulerEditingTask({
+                                                    date: schedulerSelectedDate,
+                                                    id: task.id,
+                                                    topic: task.topic,
+                                                    startTime: task.startTime,
+                                                    endTime: task.endTime || formatMinutesToTime(startMin + 60),
+                                                    color: task.color || "blue",
+                                                    completed: task.completed || false,
+                                                    notes: task.notes || ""
+                                                  });
+                                                }}
+                                              >
+                                                <div className="flex items-start gap-1.5 min-w-0 h-full">
+                                                  <input
+                                                    type="checkbox"
+                                                    checked={task.completed || false}
+                                                    onChange={(e) => {
+                                                      e.stopPropagation();
+                                                      handleSchedulerTaskToggle(schedulerSelectedDate, task.id);
+                                                    }}
+                                                    className="w-3.5 h-3.5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer shrink-0 mt-0.5"
+                                                  />
+                                                  <div className="flex flex-col min-w-0 h-full justify-between">
+                                                    <div>
+                                                      <span className={`text-[11px] font-bold leading-tight truncate block ${task.completed ? 'line-through opacity-70 font-medium' : ''}`}>
+                                                        {task.topic}
+                                                      </span>
+                                                      {task.notes && duration >= 60 && (
+                                                        <span className="text-[9px] opacity-75 truncate block mt-0.5 leading-snug">
+                                                          📝 {task.notes}
+                                                        </span>
+                                                      )}
+                                                    </div>
+                                                    <span className="text-[8px] font-bold opacity-80 mt-0.5 font-mono select-none">
+                                                      ⏱️ {formatTime12(task.startTime)} - {formatTime12(task.endTime || formatMinutesToTime(startMin + 60))}
+                                                    </span>
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            );
+                                          });
+                                        })()}
+
+                                        {/* Red Current Time Line */}
+                                        {schedulerSelectedDate === todayStr && (() => {
+                                          const now = new Date();
+                                          const currentMin = now.getHours() * 60 + now.getMinutes();
+                                          return (
+                                            <div
+                                              style={{
+                                                position: 'absolute',
+                                                top: `${currentMin}px`,
+                                                left: '48px',
+                                                right: '6px',
+                                                height: '2px',
+                                                backgroundColor: 'rgb(239, 68, 68)',
+                                                zIndex: 10,
+                                                pointerEvents: 'none'
+                                              }}
+                                            >
+                                              <div className="w-2.5 h-2.5 rounded-full bg-red-500 -ml-1.5 -mt-1 shadow" />
+                                            </div>
+                                          );
+                                        })()}
+                                      </div>
                                     </div>
                                   </div>
-                                </div>
-                              ) : (
-                                <div className="flex-grow space-y-2 overflow-y-auto pr-1 custom-scrollbar min-h-[300px]">
-                                  {((studySchedule[schedulerSelectedDate]?.tasks || []).length === 0) ? (
-                                    <div className="h-full flex flex-col items-center justify-center p-8 text-center bg-gray-50/50 border border-dashed border-gray-250/70 rounded-2xl py-12">
-                                      <Calendar className="w-8 h-8 text-gray-400/50 mb-3" />
-                                      <p className="text-xs font-bold text-gray-500">No scheduled topics for this date.</p>
-                                      <p className="text-[10px] text-gray-400 mt-1">Click the "Add Topics" button to schedule your revision plan.</p>
-                                    </div>
-                                  ) : (
-                                    (studySchedule[schedulerSelectedDate]?.tasks || []).map(task => {
-                                      const color = task.color || 'blue';
-                                      const borderClass =
-                                        task.completed ? 'border-emerald-250 bg-emerald-50/15' :
-                                          color === 'blue' ? 'border-blue-200 bg-blue-50/10 hover:border-blue-300' :
-                                            color === 'purple' ? 'border-purple-200 bg-purple-50/10 hover:border-purple-300' :
-                                              color === 'emerald' ? 'border-emerald-200 bg-emerald-50/10 hover:border-emerald-300' :
-                                                color === 'amber' ? 'border-amber-200 bg-amber-50/10 hover:border-amber-300' :
-                                                  color === 'rose' ? 'border-rose-200 bg-rose-50/10 hover:border-rose-300' :
-                                                    'border-violet-200 bg-violet-50/10 hover:border-violet-300';
-
-                                      return (
-                                        <div
-                                          key={task.id}
-                                          className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${borderClass}`}
-                                        >
-                                          <div className="flex flex-col min-w-0 pr-4 select-none flex-grow">
-                                            <label className="flex items-center gap-3.5 cursor-pointer min-w-0">
-                                              <input
-                                                type="checkbox"
-                                                checked={task.completed}
-                                                onChange={() => handleSchedulerTaskToggle(schedulerSelectedDate, task.id)}
-                                                className="w-4.5 h-4.5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer shrink-0"
-                                              />
-                                              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${task.color === 'blue' ? 'bg-blue-500' :
-                                                task.color === 'purple' ? 'bg-purple-500' :
+                                ) : (
+                                  <div className="flex-grow space-y-2 overflow-y-auto pr-1 custom-scrollbar min-h-[300px]">
+                                    {((studySchedule[schedulerSelectedDate]?.tasks || []).length === 0) ? (
+                                      <div className={`h-full flex flex-col items-center justify-center p-8 text-center rounded-2xl py-12 border ${
+                                        isDark ? 'neu-pressed-dark border-slate-800 text-slate-400' : 'neu-pressed-light border-slate-200 text-slate-500'
+                                      }`}>
+                                        <Calendar className="w-8 h-8 opacity-40 mb-3" />
+                                        <p className="text-xs font-bold">No scheduled topics for this date.</p>
+                                        <p className="text-[10px] opacity-75 mt-1">Click the "Add Topics" button to schedule your revision plan.</p>
+                                      </div>
+                                    ) : (
+                                      (studySchedule[schedulerSelectedDate]?.tasks || []).map(task => {
+                                        return (
+                                          <div
+                                            key={task.id}
+                                            className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${
+                                              task.completed
+                                                ? isDark ? 'neu-pressed-dark border-emerald-900/40 bg-emerald-950/20' : 'border-emerald-200 bg-emerald-50/40'
+                                                : isDark ? 'neu-card-dark border-slate-800 hover:border-slate-700' : 'neu-card-light border-slate-200 hover:border-slate-300'
+                                            }`}
+                                          >
+                                            <div className="flex flex-col min-w-0 pr-4 select-none flex-grow">
+                                              <label className="flex items-center gap-3.5 cursor-pointer min-w-0">
+                                                <input
+                                                  type="checkbox"
+                                                  checked={task.completed}
+                                                  onChange={() => handleSchedulerTaskToggle(schedulerSelectedDate, task.id)}
+                                                  className="w-4.5 h-4.5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer shrink-0"
+                                                />
+                                                <span className={`w-2 h-2 rounded-full shrink-0 ${
+                                                  task.color === 'blue' ? 'bg-blue-500' :
+                                                  task.color === 'purple' ? 'bg-purple-500' :
                                                   task.color === 'emerald' ? 'bg-emerald-500' :
-                                                    task.color === 'amber' ? 'bg-amber-500' :
-                                                      task.color === 'rose' ? 'bg-rose-500' :
-                                                        task.color === 'violet' ? 'bg-violet-500' :
-                                                          'bg-blue-500'
+                                                  task.color === 'amber' ? 'bg-amber-500' :
+                                                  task.color === 'rose' ? 'bg-rose-500' :
+                                                  task.color === 'violet' ? 'bg-violet-500' : 'bg-blue-500'
                                                 }`} />
-                                              <span className={`text-xs font-black truncate ${task.completed ? 'line-through text-gray-400 font-medium' : 'text-gray-800'}`}>
-                                                {task.topic}
-                                              </span>
-                                            </label>
-                                            {task.startTime && (
-                                              <span className="text-[10px] text-gray-500 font-bold ml-8 flex items-center gap-1 mt-0.5 font-mono">
-                                                ⏱️ {formatTime12(task.startTime)} {task.endTime ? ` - ${formatTime12(task.endTime)}` : ''}
-                                              </span>
-                                            )}
-                                            {task.notes && (
-                                              <p className="text-[10px] text-gray-400 font-medium ml-8 mt-1 line-clamp-2 max-w-lg leading-relaxed whitespace-pre-wrap">
-                                                📝 {task.notes}
-                                              </p>
-                                            )}
+                                                <span className={`text-xs font-black truncate ${task.completed ? 'line-through opacity-50 font-medium' : isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+                                                  {task.topic}
+                                                </span>
+                                              </label>
+                                              {task.startTime && (
+                                                <span className={`text-[10px] font-bold ml-8 flex items-center gap-1 mt-0.5 font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                  ⏱️ {formatTime12(task.startTime)} {task.endTime ? ` - ${formatTime12(task.endTime)}` : ''}
+                                                </span>
+                                              )}
+                                              {task.notes && (
+                                                <p className={`text-[10px] font-medium ml-8 mt-1 line-clamp-2 max-w-lg leading-relaxed whitespace-pre-wrap ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                  📝 {task.notes}
+                                                </p>
+                                              )}
+                                            </div>
+                                            <div className="flex items-center gap-1.5 shrink-0">
+                                              <button
+                                                onClick={() => setSchedulerEditingTask({
+                                                  date: schedulerSelectedDate,
+                                                  id: task.id,
+                                                  topic: task.topic,
+                                                  startTime: task.startTime || "09:00",
+                                                  endTime: task.endTime || "10:00",
+                                                  color: task.color || "blue",
+                                                  completed: task.completed || false,
+                                                  notes: task.notes || ""
+                                                })}
+                                                className={`p-2 rounded-xl transition active:scale-90 ${isDark ? 'neu-btn-dark text-slate-400 hover:text-blue-400' : 'neu-btn-light text-slate-500 hover:text-blue-600'}`}
+                                                title="Edit topic/time"
+                                              >
+                                                <Edit3 className="w-4 h-4" />
+                                              </button>
+                                              <button
+                                                onClick={() => handleSchedulerDeleteTask(schedulerSelectedDate, task.id)}
+                                                className={`p-2 rounded-xl transition active:scale-90 ${isDark ? 'neu-btn-dark text-slate-400 hover:text-red-400' : 'neu-btn-light text-slate-500 hover:text-red-600'}`}
+                                                title="Remove topic"
+                                              >
+                                                <Trash2 className="w-4 h-4" />
+                                              </button>
+                                            </div>
                                           </div>
-                                          <div className="flex items-center gap-1 shrink-0">
-                                            <button
-                                              onClick={() => setSchedulerEditingTask({
-                                                date: schedulerSelectedDate,
-                                                id: task.id,
-                                                topic: task.topic,
-                                                startTime: task.startTime || "09:00",
-                                                endTime: task.endTime || "10:00",
-                                                color: task.color || "blue",
-                                                completed: task.completed || false,
-                                                notes: task.notes || ""
-                                              })}
-                                              className="p-1.5 rounded-lg text-gray-400 hover:text-blue-500 hover:bg-blue-50 transition active:scale-90"
-                                              title="Edit topic/time"
-                                            >
-                                              <Edit3 className="w-4 h-4" />
-                                            </button>
-                                            <button
-                                              onClick={() => handleSchedulerDeleteTask(schedulerSelectedDate, task.id)}
-                                              className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition active:scale-90"
-                                              title="Remove topic"
-                                            >
-                                              <Trash2 className="w-4.5 h-4.5" />
-                                            </button>
-                                          </div>
-                                        </div>
-                                      );
-                                    })
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Schedule Templates Modal */}
-                        {isTemplateModalOpen && (
-                          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                            <div className="bg-white rounded-3xl p-6 w-full max-w-md border border-gray-150 shadow-2xl text-left">
-                              <div className="flex justify-between items-center mb-4 pb-2 border-b border-gray-100">
-                                <h3 className="text-base font-black text-gray-900 tracking-tight flex items-center gap-2">
-                                  <Bookmark className="w-5 h-5 text-blue-600" /> Study Routines & Templates
-                                </h3>
-                                <button onClick={() => setIsTemplateModalOpen(false)} className="p-1 rounded-lg hover:bg-gray-100 transition">
-                                  <X className="w-5 h-5 text-gray-500" />
-                                </button>
-                              </div>
-
-                              <div className="space-y-4">
-                                {/* Create Template from Current Day */}
-                                <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100 space-y-2">
-                                  <h4 className="text-xs font-black text-blue-800 uppercase tracking-wider">Save Current Day as Template</h4>
-                                  <p className="text-[10px] text-blue-600 font-bold">
-                                    This will save the schedule ({studySchedule[schedulerSelectedDate]?.tasks?.length || 0} tasks) of the selected date ({formatAppDate(schedulerSelectedDate)}) as a reusable template.
-                                  </p>
-                                  <form
-                                    onSubmit={async (e) => {
-                                      e.preventDefault();
-                                      const input = e.target.elements.templateName.value.trim();
-                                      if (!input) return;
-                                      await handleSchedulerSaveTemplate(input);
-                                      e.target.reset();
-                                      alert("Template saved successfully!");
-                                    }}
-                                    className="flex gap-2 mt-2"
-                                  >
-                                    <input
-                                      name="templateName"
-                                      type="text"
-                                      placeholder="e.g. Weekday Revision Routine"
-                                      required
-                                      className="flex-grow p-2 border border-gray-200 rounded-xl text-xs font-bold bg-white text-gray-800 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500"
-                                    />
-                                    <button
-                                      type="submit"
-                                      className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition active:scale-95 shrink-0"
-                                    >
-                                      Save
-                                    </button>
-                                  </form>
-                                </div>
-
-                                {/* Templates List */}
-                                <div className="space-y-2">
-                                  <h4 className="text-xs font-black text-gray-400 uppercase tracking-wider block mb-1">Your Saved Templates</h4>
-                                  {scheduleTemplates.length === 0 ? (
-                                    <p className="text-xs text-gray-400 font-bold text-center py-4 border border-dashed border-gray-200 rounded-2xl">
-                                      No templates saved yet. Create one above!
-                                    </p>
-                                  ) : (
-                                    <div className="max-h-48 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-                                      {scheduleTemplates.map(tpl => (
-                                        <div key={tpl.id} className="flex items-center justify-between p-3 border border-gray-150 rounded-xl bg-gray-50 hover:bg-gray-100/50 transition">
-                                          <div className="min-w-0 pr-3">
-                                            <span className="text-xs font-bold text-gray-800 block truncate">{tpl.name}</span>
-                                            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">
-                                              {tpl.tasks?.length || 0} study slots
-                                            </span>
-                                          </div>
-                                          <div className="flex items-center gap-2 shrink-0">
-                                            <button
-                                              onClick={async () => {
-                                                if (confirm(`Apply routine "${tpl.name}" to ${formatAppDate(schedulerSelectedDate)}? This will overwrite existing slots for this date.`)) {
-                                                  await handleSchedulerApplyTemplate(tpl.id);
-                                                  setIsTemplateModalOpen(false);
-                                                  alert("Routine applied successfully!");
-                                                }
-                                              }}
-                                              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[9px] font-black uppercase tracking-wider transition active:scale-95"
-                                            >
-                                              Apply
-                                            </button>
-                                            <button
-                                              onClick={async () => {
-                                                if (confirm(`Delete template "${tpl.name}"?`)) {
-                                                  await handleSchedulerDeleteTemplate(tpl.id);
-                                                }
-                                              }}
-                                              className="p-1.5 border border-gray-200 hover:border-rose-200 hover:bg-rose-50 text-gray-400 hover:text-rose-500 rounded-lg transition active:scale-95"
-                                              title="Delete Template"
-                                            >
-                                              <Trash2 className="w-3.5 h-3.5" />
-                                            </button>
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-
-                              <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-gray-100">
-                                <button
-                                  onClick={() => setIsTemplateModalOpen(false)}
-                                  className="px-4 py-2 border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-xl transition text-xs font-black uppercase tracking-wider"
-                                >
-                                  Close
-                                </button>
+                                        );
+                                      })
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             </div>
-                          </div>
-                        )}
+                          </motion.div>
 
-                      </div>
-                    )}
+                        </motion.div>
+                      );
+                    })()}
 
                     {/* SUBJECT TRACKER VIEW (Desktop) */}
                     {currentTab === 'subjectTracker' && (() => {
@@ -36272,187 +36266,361 @@ Return your response strictly as a JSON object matching this schema:
 
               {/* GLOBAL MODALS */}
               {isTimerFullscreen && renderTimerFullscreenView()}
-              {schedulerEditingTask && (
-                <div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                  <div className="bg-white rounded-3xl p-6 w-full max-w-sm border border-gray-150 shadow-2xl text-left transform scale-100 transition-all">
-                    <div className="flex justify-between items-center mb-4 pb-2 border-b border-gray-100">
-                      <h3 className="text-base font-black text-gray-900 tracking-tight">
-                        {schedulerEditingTask.id ? 'Edit Study Slot' : 'Add Study Slot'}
-                      </h3>
-                      <button onClick={() => setSchedulerEditingTask(null)} className="p-1 rounded-lg hover:bg-gray-100 transition">
-                        <X className="w-5 h-5 text-gray-500" />
-                      </button>
-                    </div>
-
-                    <div className="space-y-4">
-                      {/* Topic Input with Autocomplete */}
-                      <div className="relative">
-                        <label className="text-[10px] font-black uppercase text-gray-400 tracking-wider block mb-1">Topic Name</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. Anatomy: Cardiovascular System"
-                          value={schedulerEditingTask.topic}
-                          onChange={(e) => {
-                            setSchedulerEditingTask(prev => ({ ...prev, topic: e.target.value }));
-                            setSchedulerAutocompleteOpen(true);
-                          }}
-                          onFocus={() => setSchedulerAutocompleteOpen(true)}
-                          onBlur={() => setTimeout(() => setSchedulerAutocompleteOpen(false), 150)}
-                          className="w-full p-3 border border-gray-200 rounded-xl text-xs font-bold outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 bg-gray-50/50 text-gray-800"
-                        />
-                        {/* Autocomplete dropdown */}
-                        {schedulerAutocompleteOpen && schedulerEditingTask.topic.trim().length >= 1 && (() => {
-                          const q = schedulerEditingTask.topic.toLowerCase();
-                          const matches = autocompleteSuggestions.filter(s =>
-                            s.display.toLowerCase().includes(q) ||
-                            s.topic.toLowerCase().includes(q) ||
-                            s.subject.toLowerCase().includes(q)
-                          ).slice(0, 8);
-                          return matches.length > 0 ? (
-                            <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-gray-200 rounded-xl shadow-2xl overflow-hidden">
-                              <div className="p-1.5 max-h-52 overflow-y-auto">
-                                {matches.map((s, idx) => (
-                                  <button
-                                    key={idx}
-                                    type="button"
-                                    onMouseDown={() => {
-                                      setSchedulerEditingTask(prev => ({ ...prev, topic: s.display }));
-                                      setSchedulerAutocompleteOpen(false);
-                                    }}
-                                    className="w-full text-left px-3 py-2 rounded-lg hover:bg-blue-50 transition flex items-center gap-2 group"
-                                  >
-                                    <span className="text-[9px] font-black uppercase tracking-wider text-blue-500 bg-blue-50 group-hover:bg-white px-1.5 py-0.5 rounded-md shrink-0">{s.subject.slice(0, 4).toUpperCase()}</span>
-                                    <span className="text-xs font-bold text-gray-800 truncate">{s.topic}</span>
-                                    {s.page && <span className="ml-auto text-[9px] font-mono text-gray-400 shrink-0">p.{s.page}</span>}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          ) : null;
-                        })()}
-                      </div>
-
-                      {/* Start / End Time Inputs */}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="text-[10px] font-black uppercase text-gray-400 tracking-wider block mb-1">Start Time</label>
-                          <input
-                            type="time"
-                            value={schedulerEditingTask.startTime}
-                            onChange={(e) => setSchedulerEditingTask(prev => ({ ...prev, startTime: e.target.value }))}
-                            className="w-full p-3 border border-gray-200 rounded-xl text-xs font-bold outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 bg-gray-50/50 text-gray-800"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] font-black uppercase text-gray-400 tracking-wider block mb-1">End Time</label>
-                          <input
-                            type="time"
-                            value={schedulerEditingTask.endTime}
-                            onChange={(e) => setSchedulerEditingTask(prev => ({ ...prev, endTime: e.target.value }))}
-                            className="w-full p-3 border border-gray-200 rounded-xl text-xs font-bold outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 bg-gray-50/50 text-gray-800"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Color Palette Choice */}
-                      <div>
-                        <label className="text-[10px] font-black uppercase text-gray-400 tracking-wider block mb-1.5">Color Tag</label>
-                        <div className="flex gap-2.5">
-                          {['blue', 'purple', 'emerald', 'amber', 'rose', 'violet'].map(color => {
-                            const bgClass = color === 'blue' ? 'bg-blue-500' :
-                              color === 'purple' ? 'bg-purple-500' :
-                                color === 'emerald' ? 'bg-emerald-500' :
-                                  color === 'amber' ? 'bg-amber-500' :
-                                    color === 'rose' ? 'bg-rose-500' : 'bg-violet-500';
-                            const isSelected = schedulerEditingTask.color === color;
-                            return (
-                              <button
-                                key={color}
-                                type="button"
-                                onClick={() => setSchedulerEditingTask(prev => ({ ...prev, color }))}
-                                className={`w-6 h-6 rounded-full ${bgClass} transition flex items-center justify-center relative active:scale-90`}
-                                title={color}
-                              >
-                                {isSelected && (
-                                  <span className="w-2 h-2 rounded-full bg-white shadow-sm" />
-                                )}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Notes / Description */}
-                      <div>
-                        <label className="text-[10px] font-black uppercase text-gray-400 tracking-wider block mb-1">Notes / Description</label>
-                        <textarea
-                          placeholder="Add topic goals, links, checklists or details..."
-                          value={schedulerEditingTask.notes || ""}
-                          onChange={(e) => setSchedulerEditingTask(prev => ({ ...prev, notes: e.target.value }))}
-                          rows={3}
-                          className="w-full p-3 border border-gray-200 rounded-xl text-xs font-medium outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 bg-gray-50/50 text-gray-800 resize-none font-sans"
-                        />
-                      </div>
-
-                      {/* Completion checkbox inside modal */}
-                      {schedulerEditingTask.id && (
-                        <label className="flex items-center gap-2 cursor-pointer select-none py-1">
-                          <input
-                            type="checkbox"
-                            checked={schedulerEditingTask.completed || false}
-                            onChange={(e) => setSchedulerEditingTask(prev => ({ ...prev, completed: e.target.checked }))}
-                            className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                          />
-                          <span className="text-xs font-bold text-gray-700">Mark Completed</span>
-                        </label>
-                      )}
-                    </div>
-
-                    <div className="flex justify-between items-center mt-6 pt-4 border-t border-gray-100">
-                      <div>
-                        {schedulerEditingTask.id && (
-                          <button
-                            onClick={async () => {
-                              if (confirm('Delete this study slot?')) {
-                                await handleSchedulerDeleteTask(schedulerEditingTask.date, schedulerEditingTask.id);
-                                setSchedulerEditingTask(null);
-                              }
-                            }}
-                            className="px-4 py-2 border border-rose-200 text-rose-500 hover:bg-rose-50 rounded-xl transition text-xs font-black uppercase tracking-wider"
-                          >
-                            Delete
-                          </button>
-                        )}
-                      </div>
-                      <div className="flex gap-2">
+              {schedulerEditingTask && (() => {
+                const isDark = settingsThemeMode === 'dark';
+                return (
+                  <div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className={`rounded-3xl p-6 w-full max-w-sm border shadow-2xl text-left transform scale-100 transition-all ${
+                      isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-900 border-slate-200'
+                    }`}>
+                      <div className={`flex justify-between items-center mb-4 pb-2 border-b ${isDark ? 'border-slate-750' : 'border-slate-200/80'}`}>
+                        <h3 className="text-base font-black tracking-tight">
+                          {schedulerEditingTask.id ? 'Edit Study Slot' : 'Add Study Slot'}
+                        </h3>
                         <button
                           onClick={() => setSchedulerEditingTask(null)}
-                          className="px-4 py-2 border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-xl transition text-xs font-black uppercase tracking-wider"
+                          className={`p-1.5 rounded-xl transition ${isDark ? 'neu-btn-dark text-slate-400 hover:text-white' : 'neu-btn-light text-slate-500 hover:text-slate-800'}`}
                         >
-                          Cancel
+                          <X className="w-4 h-4" />
                         </button>
+                      </div>
+
+                      <div className="space-y-4">
+                        {/* Topic Input with Autocomplete */}
+                        <div className="relative">
+                          <label className={`text-[10px] font-black uppercase tracking-wider block mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                            Topic Name
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Anatomy: Cardiovascular System"
+                            value={schedulerEditingTask.topic}
+                            onChange={(e) => {
+                              setSchedulerEditingTask(prev => ({ ...prev, topic: e.target.value }));
+                              setSchedulerAutocompleteOpen(true);
+                            }}
+                            onFocus={() => setSchedulerAutocompleteOpen(true)}
+                            onBlur={() => setTimeout(() => setSchedulerAutocompleteOpen(false), 150)}
+                            className={`w-full p-3 rounded-xl text-xs font-bold outline-none transition ${
+                              isDark ? 'neu-pressed-dark text-slate-100 placeholder-slate-500 border border-slate-800' : 'neu-pressed-light text-slate-800 placeholder-slate-400 border border-slate-200'
+                            }`}
+                          />
+                          {/* Autocomplete dropdown */}
+                          {schedulerAutocompleteOpen && schedulerEditingTask.topic.trim().length >= 1 && (() => {
+                            const q = schedulerEditingTask.topic.toLowerCase();
+                            const matches = autocompleteSuggestions.filter(s =>
+                              s.display.toLowerCase().includes(q) ||
+                              s.topic.toLowerCase().includes(q) ||
+                              s.subject.toLowerCase().includes(q)
+                            ).slice(0, 8);
+                            return matches.length > 0 ? (
+                              <div className={`absolute top-full left-0 right-0 z-50 mt-1.5 rounded-2xl shadow-2xl overflow-hidden border ${
+                                isDark ? 'neu-card-dark border-slate-800 text-slate-200' : 'neu-card-light border-slate-200 text-slate-800'
+                              }`}>
+                                <div className="p-1.5 max-h-52 overflow-y-auto custom-scrollbar">
+                                  {matches.map((s, idx) => (
+                                    <button
+                                      key={idx}
+                                      type="button"
+                                      onMouseDown={() => {
+                                        setSchedulerEditingTask(prev => ({ ...prev, topic: s.display }));
+                                        setSchedulerAutocompleteOpen(false);
+                                      }}
+                                      className={`w-full text-left px-3 py-2 rounded-xl transition flex items-center gap-2 group ${
+                                        isDark ? 'hover:bg-slate-800/80 text-slate-200' : 'hover:bg-blue-50 text-slate-800'
+                                      }`}
+                                    >
+                                      <span className="text-[9px] font-black uppercase tracking-wider text-blue-500 bg-blue-500/10 px-1.5 py-0.5 rounded-md shrink-0">
+                                        {s.subject.slice(0, 4).toUpperCase()}
+                                      </span>
+                                      <span className="text-xs font-bold truncate">{s.topic}</span>
+                                      {s.page && <span className="ml-auto text-[9px] font-mono opacity-50 shrink-0">p.{s.page}</span>}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : null;
+                          })()}
+                        </div>
+
+                        {/* Start / End Time Inputs */}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className={`text-[10px] font-black uppercase tracking-wider block mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                              Start Time
+                            </label>
+                            <input
+                              type="time"
+                              value={schedulerEditingTask.startTime}
+                              onChange={(e) => setSchedulerEditingTask(prev => ({ ...prev, startTime: e.target.value }))}
+                              className={`w-full p-2.5 rounded-xl text-xs font-bold outline-none transition ${
+                                isDark ? 'neu-pressed-dark text-slate-100 border border-slate-800' : 'neu-pressed-light text-slate-800 border border-slate-200'
+                              }`}
+                            />
+                          </div>
+                          <div>
+                            <label className={`text-[10px] font-black uppercase tracking-wider block mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                              End Time
+                            </label>
+                            <input
+                              type="time"
+                              value={schedulerEditingTask.endTime}
+                              onChange={(e) => setSchedulerEditingTask(prev => ({ ...prev, endTime: e.target.value }))}
+                              className={`w-full p-2.5 rounded-xl text-xs font-bold outline-none transition ${
+                                isDark ? 'neu-pressed-dark text-slate-100 border border-slate-800' : 'neu-pressed-light text-slate-800 border border-slate-200'
+                              }`}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Color Palette Choice */}
+                        <div>
+                          <label className={`text-[10px] font-black uppercase tracking-wider block mb-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                            Color Tag
+                          </label>
+                          <div className="flex gap-2.5">
+                            {['blue', 'purple', 'emerald', 'amber', 'rose', 'violet'].map(color => {
+                              const bgClass = color === 'blue' ? 'bg-blue-500' :
+                                color === 'purple' ? 'bg-purple-500' :
+                                  color === 'emerald' ? 'bg-emerald-500' :
+                                    color === 'amber' ? 'bg-amber-500' :
+                                      color === 'rose' ? 'bg-rose-500' : 'bg-violet-500';
+                              const isSelected = schedulerEditingTask.color === color;
+                              return (
+                                <button
+                                  key={color}
+                                  type="button"
+                                  onClick={() => setSchedulerEditingTask(prev => ({ ...prev, color }))}
+                                  className={`w-6 h-6 rounded-full ${bgClass} transition flex items-center justify-center relative active:scale-90 ${
+                                    isSelected ? 'ring-2 ring-offset-2 ring-blue-500 scale-110' : 'opacity-80 hover:opacity-100'
+                                  }`}
+                                  title={color}
+                                >
+                                  {isSelected && (
+                                    <span className="w-2 h-2 rounded-full bg-white shadow-sm" />
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Notes / Description */}
+                        <div>
+                          <label className={`text-[10px] font-black uppercase tracking-wider block mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                            Notes / Description
+                          </label>
+                          <textarea
+                            placeholder="Add topic goals, links, checklists or details..."
+                            value={schedulerEditingTask.notes || ""}
+                            onChange={(e) => setSchedulerEditingTask(prev => ({ ...prev, notes: e.target.value }))}
+                            rows={3}
+                            className={`w-full p-3 rounded-xl text-xs font-medium outline-none resize-none font-sans transition ${
+                              isDark ? 'neu-pressed-dark text-slate-100 placeholder-slate-500 border border-slate-800' : 'neu-pressed-light text-slate-800 placeholder-slate-400 border border-slate-200'
+                            }`}
+                          />
+                        </div>
+
+                        {/* Completion checkbox inside modal */}
+                        {schedulerEditingTask.id && (
+                          <label className="flex items-center gap-2.5 cursor-pointer select-none py-1">
+                            <input
+                              type="checkbox"
+                              checked={schedulerEditingTask.completed || false}
+                              onChange={(e) => setSchedulerEditingTask(prev => ({ ...prev, completed: e.target.checked }))}
+                              className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                            />
+                            <span className={`text-xs font-bold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Mark Completed</span>
+                          </label>
+                        )}
+                      </div>
+
+                      <div className={`flex justify-between items-center mt-6 pt-4 border-t ${isDark ? 'border-slate-750' : 'border-slate-200/80'}`}>
+                        <div>
+                          {schedulerEditingTask.id && (
+                            <button
+                              onClick={async () => {
+                                if (confirm('Delete this study slot?')) {
+                                  await handleSchedulerDeleteTask(schedulerEditingTask.date, schedulerEditingTask.id);
+                                  setSchedulerEditingTask(null);
+                                }
+                              }}
+                              className={`px-4 py-2 rounded-xl transition text-xs font-black uppercase tracking-wider border ${
+                                isDark ? 'neu-btn-dark text-rose-400 hover:text-rose-300 border-rose-900/40' : 'neu-btn-light text-rose-600 border-rose-200'
+                              }`}
+                            >
+                              Delete
+                            </button>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setSchedulerEditingTask(null)}
+                            className={`px-4 py-2 rounded-xl transition text-xs font-black uppercase tracking-wider border ${
+                              isDark ? 'neu-btn-dark text-slate-300 border-slate-700' : 'neu-btn-light text-slate-700 border-slate-200'
+                            }`}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={async () => {
+                              await handleSchedulerUpdateTask(
+                                schedulerEditingTask.date,
+                                schedulerEditingTask.id,
+                                schedulerEditingTask.topic,
+                                schedulerEditingTask.startTime,
+                                schedulerEditingTask.endTime,
+                                schedulerEditingTask.color,
+                                schedulerEditingTask.completed,
+                                schedulerEditingTask.notes
+                              );
+                            }}
+                            className={`px-5 py-2 rounded-xl transition text-xs font-black uppercase tracking-wider text-white shadow-md ${
+                              isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+                            }`}
+                          >
+                            Save
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Schedule Templates Modal (Global scope for Desktop and Mobile) */}
+              {isTemplateModalOpen && (() => {
+                const isDark = settingsThemeMode === 'dark';
+                return (
+                  <div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className={`rounded-3xl p-6 w-full max-w-md border shadow-2xl text-left ${
+                      isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-900 border-slate-200'
+                    }`}>
+                      <div className={`flex justify-between items-center mb-4 pb-2 border-b ${isDark ? 'border-slate-750' : 'border-slate-200/80'}`}>
+                        <h3 className="text-base font-black tracking-tight flex items-center gap-2">
+                          <Bookmark className="w-5 h-5 text-blue-500" /> Study Routines & Templates
+                        </h3>
                         <button
-                          onClick={async () => {
-                            await handleSchedulerUpdateTask(
-                              schedulerEditingTask.date,
-                              schedulerEditingTask.id,
-                              schedulerEditingTask.topic,
-                              schedulerEditingTask.startTime,
-                              schedulerEditingTask.endTime,
-                              schedulerEditingTask.color,
-                              schedulerEditingTask.completed,
-                              schedulerEditingTask.notes
-                            );
-                          }}
-                          className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-xl transition text-xs font-black uppercase tracking-wider shadow-md shadow-blue-600/10"
+                          onClick={() => setIsTemplateModalOpen(false)}
+                          className={`p-1.5 rounded-xl transition ${isDark ? 'neu-btn-dark text-slate-400 hover:text-white' : 'neu-btn-light text-slate-500 hover:text-slate-800'}`}
                         >
-                          Save
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div className="space-y-4">
+                        {/* Create Template from Current Day */}
+                        <div className={`p-4 rounded-2xl border space-y-2 ${
+                          isDark ? 'neu-pressed-dark border-slate-800' : 'neu-pressed-light border-slate-200'
+                        }`}>
+                          <h4 className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
+                            Save Current Day as Template
+                          </h4>
+                          <p className={`text-[10px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                            This will save the schedule ({studySchedule[schedulerSelectedDate]?.tasks?.length || 0} tasks) of the selected date ({formatAppDate(schedulerSelectedDate)}) as a reusable template.
+                          </p>
+                          <form
+                            onSubmit={async (e) => {
+                              e.preventDefault();
+                              const input = e.target.elements.templateName.value.trim();
+                              if (!input) return;
+                              await handleSchedulerSaveTemplate(input);
+                              e.target.reset();
+                              alert("Template saved successfully!");
+                            }}
+                            className="flex gap-2 mt-2"
+                          >
+                            <input
+                              name="templateName"
+                              type="text"
+                              placeholder="e.g. Weekday Revision Routine"
+                              required
+                              className={`flex-grow p-2.5 rounded-xl text-xs font-bold outline-none transition ${
+                                isDark ? 'neu-pressed-dark text-slate-100 placeholder-slate-500 border border-slate-800' : 'neu-pressed-light text-slate-800 placeholder-slate-400 border border-slate-200'
+                              }`}
+                            />
+                            <button
+                              type="submit"
+                              className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider text-white transition active:scale-95 shrink-0 shadow-md ${
+                                isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+                              }`}
+                            >
+                              Save
+                            </button>
+                          </form>
+                        </div>
+
+                        {/* Templates List */}
+                        <div className="space-y-2">
+                          <h4 className={`text-xs font-black uppercase tracking-wider block mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                            Your Saved Templates
+                          </h4>
+                          {scheduleTemplates.length === 0 ? (
+                            <p className={`text-xs font-bold text-center py-4 border border-dashed rounded-2xl ${
+                              isDark ? 'neu-pressed-dark border-slate-800 text-slate-400' : 'neu-pressed-light border-slate-200 text-slate-500'
+                            }`}>
+                              No templates saved yet. Create one above!
+                            </p>
+                          ) : (
+                            <div className="max-h-48 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                              {scheduleTemplates.map(tpl => (
+                                <div key={tpl.id} className={`flex items-center justify-between p-3.5 rounded-xl border transition ${
+                                  isDark ? 'neu-card-dark border-slate-800 text-slate-200' : 'neu-card-light border-slate-200 text-slate-800'
+                                }`}>
+                                  <div className="min-w-0 pr-3">
+                                    <span className="text-xs font-bold block truncate">{tpl.name}</span>
+                                    <span className={`text-[9px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                      {tpl.tasks?.length || 0} study slots
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <button
+                                      onClick={async () => {
+                                        if (confirm(`Apply routine "${tpl.name}" to ${formatAppDate(schedulerSelectedDate)}? This will overwrite existing slots for this date.`)) {
+                                          await handleSchedulerApplyTemplate(tpl.id);
+                                          setIsTemplateModalOpen(false);
+                                          alert("Routine applied successfully!");
+                                        }
+                                      }}
+                                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[9px] font-black uppercase tracking-wider transition active:scale-95 shadow-sm"
+                                    >
+                                      Apply
+                                    </button>
+                                    <button
+                                      onClick={async () => {
+                                        if (confirm(`Delete template "${tpl.name}"?`)) {
+                                          await handleSchedulerDeleteTemplate(tpl.id);
+                                        }
+                                      }}
+                                      className={`p-1.5 rounded-xl border transition active:scale-95 ${
+                                        isDark ? 'neu-btn-dark text-slate-400 hover:text-rose-400 border-slate-700' : 'neu-btn-light text-slate-400 hover:text-rose-600 border-slate-200'
+                                      }`}
+                                      title="Delete Template"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className={`flex justify-end gap-2 mt-6 pt-4 border-t ${isDark ? 'border-slate-750' : 'border-slate-200/80'}`}>
+                        <button
+                          onClick={() => setIsTemplateModalOpen(false)}
+                          className={`px-4 py-2 rounded-xl transition text-xs font-black uppercase tracking-wider border ${
+                            isDark ? 'neu-btn-dark text-slate-300 border-slate-700' : 'neu-btn-light text-slate-700 border-slate-200'
+                          }`}
+                        >
+                          Close
                         </button>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
               {newFolderDialog.isOpen && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
                   <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-white border border-gray-800' : 'neu-card-light text-gray-900 border border-white'} rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col animate-in zoom-in duration-200`}>
@@ -38260,395 +38428,489 @@ Return your response strictly as a JSON object matching this schema:
               )}
 
               {/* STUDY SCHEDULER CREATION MODAL */}
-              {isSchedulerModalOpen && (
-                <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-gray-950/60 backdrop-blur-md animate-in fade-in duration-305 text-left">
-                  <div className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl border border-gray-150 overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200 relative">
+              {isSchedulerModalOpen && (() => {
+                const isDark = settingsThemeMode === 'dark';
+                return (
+                  <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300 text-left">
+                    <div className={`w-full max-w-2xl rounded-[2.5rem] shadow-2xl border overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200 relative ${
+                      isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-900 border-slate-200'
+                    }`}>
 
-                    {/* Header */}
-                    <div className="p-6 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center">
-                          <Calendar className="w-5 h-5" />
+                      {/* Header */}
+                      <div className={`p-6 border-b flex items-center justify-between shrink-0 ${isDark ? 'border-slate-750' : 'border-slate-200/80'}`}>
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDark ? 'neu-pressed-dark text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
+                            <Calendar className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <h3 className="text-base font-black tracking-tight">Create Study Schedule</h3>
+                            <p className={`text-[10px] font-bold uppercase tracking-wider mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                              Plan manually or extract with AI
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <h3 className="text-base font-black text-gray-900 tracking-tight">Create Study Schedule</h3>
-                          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">Plan manually or extract with AI</p>
+                        <button
+                          onClick={() => {
+                            setIsSchedulerModalOpen(false);
+                            setSchedulerAiParsed(null);
+                            setSchedulerAiEditableEntries([]);
+                            setSchedulerAiFile(null);
+                            setSchedulerAiBase64(null);
+                          }}
+                          className={`p-1.5 rounded-xl transition ${isDark ? 'neu-btn-dark text-slate-400 hover:text-white' : 'neu-btn-light text-slate-500 hover:text-slate-800'}`}
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
+
+                      {/* Sliding Pill Tab Switcher */}
+                      <div className={`flex border-b p-3 shrink-0 ${isDark ? 'border-slate-750' : 'border-slate-200/80'}`}>
+                        <div className={`relative flex items-center p-1 rounded-2xl gap-1 w-full select-none ${
+                          isDark ? 'neu-pressed-dark border border-slate-800' : 'neu-pressed-light border border-slate-200'
+                        }`}>
+                          <div
+                            className={`absolute top-1 bottom-1 rounded-xl shadow-md ${
+                              isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+                            }`}
+                            style={{
+                              width: 'calc(50% - 6px)',
+                              left: schedulerModalTab === 'manual' ? '4px' : 'calc(50% + 2px)',
+                              transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                            }}
+                          />
+                          <button
+                            onClick={() => setSchedulerModalTab('manual')}
+                            className={`relative flex-1 py-2 text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${
+                              schedulerModalTab === 'manual'
+                                ? 'text-white font-extrabold'
+                                : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                            }`}
+                          >
+                            Manual Entry
+                          </button>
+                          <button
+                            onClick={() => setSchedulerModalTab('ai')}
+                            className={`relative flex-1 py-2 text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${
+                              schedulerModalTab === 'ai'
+                                ? 'text-white font-extrabold'
+                                : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                            }`}
+                          >
+                            AI Schedule Extractor
+                          </button>
                         </div>
                       </div>
-                      <button
-                        onClick={() => {
-                          setIsSchedulerModalOpen(false);
-                          setSchedulerAiParsed(null);
-                          setSchedulerAiEditableEntries([]);
-                          setSchedulerAiFile(null);
-                          setSchedulerAiBase64(null);
-                        }}
-                        className="text-gray-400 hover:text-gray-600 transition"
-                      >
-                        <X className="w-6 h-6" />
-                      </button>
-                    </div>
 
-                    {/* Tabs */}
-                    <div className="flex border-b border-gray-100 bg-gray-50/50 shrink-0 p-1.5 gap-1">
-                      <button
-                        onClick={() => setSchedulerModalTab('manual')}
-                        className={`flex-1 py-2 text-xs font-black uppercase tracking-wider rounded-xl transition ${schedulerModalTab === 'manual'
-                          ? 'bg-white text-blue-600 shadow-sm'
-                          : 'text-gray-500 hover:text-gray-800'
-                          }`}
-                      >
-                        Manual Entry
-                      </button>
-                      <button
-                        onClick={() => setSchedulerModalTab('ai')}
-                        className={`flex-1 py-2 text-xs font-black uppercase tracking-wider rounded-xl transition ${schedulerModalTab === 'ai'
-                          ? 'bg-white text-blue-600 shadow-sm'
-                          : 'text-gray-500 hover:text-gray-800'
-                          }`}
-                      >
-                        AI Schedule Extractor
-                      </button>
-                    </div>
-
-                    {/* Content */}
-                    <div className="flex-grow overflow-y-auto p-6">
-                      {schedulerModalTab === 'manual' ? (
-                        <div className="space-y-4">
-                          <div>
-                            <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1.5">Schedule Date</label>
-                            <input
-                              type="date"
-                              value={schedulerManualDate}
-                              onChange={(e) => setSchedulerManualDate(e.target.value)}
-                              className="w-full p-3 border border-gray-250/70 rounded-2xl text-xs outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 bg-gray-50 font-bold text-gray-800"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400 mb-2">Task Source</label>
-                            <div className="grid grid-cols-2 gap-2 bg-gray-100 p-1 rounded-2xl border border-gray-200 shadow-inner">
-                              <button
-                                type="button"
-                                onClick={() => setSchedulerTaskSource('custom')}
-                                className={`py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition ${schedulerTaskSource === 'custom'
-                                  ? 'bg-white text-blue-600 shadow-sm'
-                                  : 'text-gray-500 hover:text-gray-800'
-                                  }`}
-                              >
-                                Custom Text Input
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setSchedulerTaskSource('tracker')}
-                                className={`py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition ${schedulerTaskSource === 'tracker'
-                                  ? 'bg-white text-blue-600 shadow-sm'
-                                  : 'text-gray-500 hover:text-gray-800'
-                                  }`}
-                              >
-                                Integrated Subject Tracker
-                              </button>
-                            </div>
-                          </div>
-
-                          {schedulerTaskSource === 'custom' ? (
+                      {/* Content */}
+                      <div className="flex-grow overflow-y-auto p-6 custom-scrollbar">
+                        {schedulerModalTab === 'manual' ? (
+                          <div className="space-y-4">
                             <div>
-                              <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1.5">Topics (One topic per line)</label>
-                              <textarea
-                                value={schedulerManualTopics}
-                                onChange={(e) => setSchedulerManualTopics(e.target.value)}
-                                placeholder="e.g. Pathology: Amyloidosis&#10;Pharmacology: Beta Blockers&#10;Anatomy: Brachial Plexus"
-                                className="w-full h-32 p-4 border border-gray-250/70 rounded-2xl text-xs outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 bg-gray-50/50 leading-relaxed font-bold placeholder-gray-400 resize-none text-gray-800"
+                              <label className={`block text-[10px] font-black uppercase tracking-wider mb-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                Schedule Date
+                              </label>
+                              <input
+                                type="date"
+                                value={schedulerManualDate}
+                                onChange={(e) => setSchedulerManualDate(e.target.value)}
+                                className={`w-full p-3 rounded-2xl text-xs outline-none font-bold transition ${
+                                  isDark ? 'neu-pressed-dark text-slate-100 border border-slate-800' : 'neu-pressed-light text-slate-800 border border-slate-200'
+                                }`}
                               />
                             </div>
-                          ) : (
-                            <div className="space-y-4 bg-gray-50 border border-gray-150 rounded-2xl p-5">
-                              <div>
-                                <label className="block text-[10px] font-black uppercase tracking-wider text-gray-405 mb-1.5 font-mono">Select Subject</label>
-                                <select
-                                  value={schedulerSelSubject}
-                                  onChange={(e) => {
-                                    setSchedulerSelSubject(e.target.value);
-                                    setSchedulerSelTopics([]);
+
+                            <div>
+                              <label className={`block text-[10px] font-black uppercase tracking-wider mb-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                Task Source
+                              </label>
+                              {/* Task Source Pill Switcher */}
+                              <div className={`relative flex items-center p-1 rounded-2xl gap-1 select-none ${
+                                isDark ? 'neu-pressed-dark border border-slate-800' : 'neu-pressed-light border border-slate-200'
+                              }`}>
+                                <div
+                                  className={`absolute top-1 bottom-1 rounded-xl shadow-md ${
+                                    isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+                                  }`}
+                                  style={{
+                                    width: 'calc(50% - 6px)',
+                                    left: schedulerTaskSource === 'custom' ? '4px' : 'calc(50% + 2px)',
+                                    transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
                                   }}
-                                  className="w-full bg-white border border-gray-200 p-3 rounded-2xl text-xs font-bold outline-none text-gray-800 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-550"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setSchedulerTaskSource('custom')}
+                                  className={`relative flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${
+                                    schedulerTaskSource === 'custom'
+                                      ? 'text-white font-extrabold'
+                                      : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                                  }`}
                                 >
-                                  {["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"].map(sub => (
-                                    <option key={sub} value={sub}>{sub}</option>
-                                  ))}
-                                </select>
-                              </div>
-
-                              <div>
-                                <label className="block text-[10px] font-black uppercase tracking-wider text-gray-405 mb-2 font-mono">Check Topics to Schedule (Auto-spaced 1-hour slots)</label>
-                                {(() => {
-                                  const docId = schedulerSelSubject.trim().toLowerCase();
-                                  const trackerDoc = subjectTrackerData.find(p => p.id === docId);
-                                  const topicsMap = trackerDoc?.topics || {};
-                                  const topicsList = Object.values(topicsMap);
-
-                                  if (topicsList.length === 0) {
-                                    return (
-                                      <p className="text-[10px] font-bold text-gray-450 py-2">No topics found in Subject Tracker for {schedulerSelSubject}. Add topics in Subject Tracker tab first.</p>
-                                    );
-                                  }
-
-                                  return (
-                                    <div className="max-h-40 overflow-y-auto border border-gray-200 rounded-2xl bg-white p-3.5 space-y-2 custom-scrollbar">
-                                      {topicsList.map(topicItem => {
-                                        const isChecked = schedulerSelTopics.includes(topicItem.name);
-                                        return (
-                                          <label key={topicItem.name} className="flex items-center gap-2.5 text-xs font-black text-gray-700 cursor-pointer hover:bg-gray-50 p-2 rounded-xl transition-all">
-                                            <input
-                                              type="checkbox"
-                                              checked={isChecked}
-                                              onChange={(e) => {
-                                                if (e.target.checked) {
-                                                  setSchedulerSelTopics(prev => [...prev, topicItem.name]);
-                                                } else {
-                                                  setSchedulerSelTopics(prev => prev.filter(t => t !== topicItem.name));
-                                                }
-                                              }}
-                                              className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500/20"
-                                            />
-                                            <span className="flex-grow font-semibold text-gray-800">{topicItem.name}</span>
-                                            {topicItem.page && (
-                                              <span className="text-[9px] font-mono text-gray-400 bg-gray-100 px-2 py-0.5 rounded font-black select-none">p. {topicItem.page}</span>
-                                            )}
-                                          </label>
-                                        );
-                                      })}
-                                    </div>
-                                  );
-                                })()}
+                                  Custom Text Input
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setSchedulerTaskSource('tracker')}
+                                  className={`relative flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${
+                                    schedulerTaskSource === 'tracker'
+                                      ? 'text-white font-extrabold'
+                                      : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                                  }`}
+                                >
+                                  Integrated Subject Tracker
+                                </button>
                               </div>
                             </div>
-                          )}
 
-                          <div>
-                            <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1.5">Daily Notes (Optional)</label>
-                            <input
-                              type="text"
-                              value={schedulerManualNotes}
-                              onChange={(e) => setSchedulerManualNotes(e.target.value)}
-                              placeholder="e.g. Focus on clinical MCQs, revise previous day cards"
-                              className="w-full p-3 border border-gray-250/70 rounded-2xl text-xs outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 bg-gray-50 font-bold placeholder-gray-400 text-gray-800"
-                            />
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="space-y-4">
-                          {!schedulerAiParsed ? (
-                            <div className="space-y-4">
-                              <div className="border-2 border-dashed border-gray-200 hover:border-blue-400 rounded-3xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition bg-gray-50/40 relative">
-                                <input
-                                  type="file"
-                                  accept="image/*,application/pdf"
-                                  onChange={handleSchedulerFileSelect}
-                                  className="absolute inset-0 opacity-0 cursor-pointer"
+                            {schedulerTaskSource === 'custom' ? (
+                              <div>
+                                <label className={`block text-[10px] font-black uppercase tracking-wider mb-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                  Topics (One topic per line)
+                                </label>
+                                <textarea
+                                  value={schedulerManualTopics}
+                                  onChange={(e) => setSchedulerManualTopics(e.target.value)}
+                                  placeholder="e.g. Pathology: Amyloidosis&#10;Pharmacology: Beta Blockers&#10;Anatomy: Brachial Plexus"
+                                  className={`w-full h-32 p-4 rounded-2xl text-xs outline-none leading-relaxed font-bold resize-none transition ${
+                                    isDark ? 'neu-pressed-dark text-slate-100 placeholder-slate-500 border border-slate-800' : 'neu-pressed-light text-slate-800 placeholder-slate-400 border border-slate-200'
+                                  }`}
                                 />
-                                <UploadCloud className="w-10 h-10 text-gray-400 mb-3 animate-bounce" />
-                                <p className="text-xs font-black text-gray-700">Upload Schedule Image or PDF</p>
-                                <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider mt-1">
-                                  {schedulerAiFile ? schedulerAiFile.name : 'PNG, JPG, or PDF up to 10MB'}
-                                </p>
                               </div>
+                            ) : (
+                              <div className={`space-y-4 rounded-2xl p-5 border ${
+                                isDark ? 'neu-pressed-dark border-slate-800' : 'neu-pressed-light border-slate-200'
+                              }`}>
+                                <div>
+                                  <label className={`block text-[10px] font-black uppercase tracking-wider mb-1.5 font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                    Select Subject
+                                  </label>
+                                  <select
+                                    value={schedulerSelSubject}
+                                    onChange={(e) => {
+                                      setSchedulerSelSubject(e.target.value);
+                                      setSchedulerSelTopics([]);
+                                    }}
+                                    className={`w-full p-3 rounded-2xl text-xs font-bold outline-none transition ${
+                                      isDark ? 'neu-card-dark text-slate-100 border border-slate-800' : 'bg-white border border-slate-200 text-slate-800'
+                                    }`}
+                                  >
+                                    {["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"].map(sub => (
+                                      <option key={sub} value={sub}>{sub}</option>
+                                    ))}
+                                  </select>
+                                </div>
 
-                              {schedulerAiFile && (
+                                <div>
+                                  <label className={`block text-[10px] font-black uppercase tracking-wider mb-2 font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                    Check Topics to Schedule (Auto-spaced 1-hour slots)
+                                  </label>
+                                  {(() => {
+                                    const docId = schedulerSelSubject.trim().toLowerCase();
+                                    const trackerDoc = subjectTrackerData.find(p => p.id === docId);
+                                    const topicsMap = trackerDoc?.topics || {};
+                                    const topicsList = Object.values(topicsMap);
+
+                                    if (topicsList.length === 0) {
+                                      return (
+                                        <p className={`text-[10px] font-bold py-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                          No topics found in Subject Tracker for {schedulerSelSubject}. Add topics in Subject Tracker tab first.
+                                        </p>
+                                      );
+                                    }
+
+                                    return (
+                                      <div className={`max-h-40 overflow-y-auto rounded-2xl p-3.5 space-y-2 custom-scrollbar border ${
+                                        isDark ? 'neu-card-dark border-slate-800' : 'bg-white border-slate-200'
+                                      }`}>
+                                        {topicsList.map(topicItem => {
+                                          const isChecked = schedulerSelTopics.includes(topicItem.name);
+                                          return (
+                                            <label key={topicItem.name} className={`flex items-center gap-2.5 text-xs font-black cursor-pointer p-2 rounded-xl transition-all ${
+                                              isDark ? 'hover:bg-slate-800/80 text-slate-200' : 'hover:bg-slate-50 text-slate-800'
+                                            }`}>
+                                              <input
+                                                type="checkbox"
+                                                checked={isChecked}
+                                                onChange={(e) => {
+                                                  if (e.target.checked) {
+                                                    setSchedulerSelTopics(prev => [...prev, topicItem.name]);
+                                                  } else {
+                                                    setSchedulerSelTopics(prev => prev.filter(t => t !== topicItem.name));
+                                                  }
+                                                }}
+                                                className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500/20"
+                                              />
+                                              <span className="flex-grow font-semibold">{topicItem.name}</span>
+                                              {topicItem.page && (
+                                                <span className={`text-[9px] font-mono px-2 py-0.5 rounded font-black select-none ${
+                                                  isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600'
+                                                }`}>
+                                                  p. {topicItem.page}
+                                                </span>
+                                              )}
+                                            </label>
+                                          );
+                                        })}
+                                      </div>
+                                    );
+                                  })()}
+                                </div>
+                              </div>
+                            )}
+
+                            <div>
+                              <label className={`block text-[10px] font-black uppercase tracking-wider mb-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                Daily Notes (Optional)
+                              </label>
+                              <input
+                                type="text"
+                                value={schedulerManualNotes}
+                                onChange={(e) => setSchedulerManualNotes(e.target.value)}
+                                placeholder="e.g. Focus on clinical MCQs, revise previous day cards"
+                                className={`w-full p-3 rounded-2xl text-xs outline-none font-bold transition ${
+                                  isDark ? 'neu-pressed-dark text-slate-100 placeholder-slate-500 border border-slate-800' : 'neu-pressed-light text-slate-800 placeholder-slate-400 border border-slate-200'
+                                }`}
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            {!schedulerAiParsed ? (
+                              <div className="space-y-4">
+                                <div className={`border-2 border-dashed rounded-3xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition relative ${
+                                  isDark ? 'neu-pressed-dark border-slate-700 hover:border-blue-500' : 'neu-pressed-light border-slate-300 hover:border-blue-500'
+                                }`}>
+                                  <input
+                                    type="file"
+                                    accept="image/*,application/pdf"
+                                    onChange={handleSchedulerFileSelect}
+                                    className="absolute inset-0 opacity-0 cursor-pointer"
+                                  />
+                                  <UploadCloud className="w-10 h-10 text-blue-500 mb-3 animate-bounce" />
+                                  <p className={`text-xs font-black ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                                    Upload Schedule Image or PDF
+                                  </p>
+                                  <p className={`text-[9px] font-bold uppercase tracking-wider mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                    {schedulerAiFile ? schedulerAiFile.name : 'PNG, JPG, or PDF up to 10MB'}
+                                  </p>
+                                </div>
+
+                                {schedulerAiFile && (
+                                  <button
+                                    onClick={handleSchedulerAiExtract}
+                                    disabled={isSchedulerAiExtracting || !geminiApiKey}
+                                    className={`w-full py-3.5 rounded-2xl text-xs font-black uppercase tracking-wider shadow-lg transition flex items-center justify-center gap-2 active:scale-95 duration-150 text-white ${
+                                      isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+                                    }`}
+                                  >
+                                    {isSchedulerAiExtracting ? (
+                                      <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        Extracting Schedule...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Sparkles className="w-4 h-4" />
+                                        Extract with AI
+                                      </>
+                                    )}
+                                  </button>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="space-y-4">
+                                <div className={`flex justify-between items-center p-4 rounded-2xl border ${
+                                  isDark ? 'neu-pressed-dark border-blue-900/50 text-blue-300' : 'bg-blue-50 border border-blue-200 text-blue-800'
+                                }`}>
+                                  <div className="text-[10px] font-bold">
+                                    ✨ AI extracted {schedulerAiEditableEntries.length} schedule dates. Review and edit before injecting.
+                                  </div>
+                                  <button
+                                    onClick={() => {
+                                      setSchedulerAiParsed(null);
+                                      setSchedulerAiEditableEntries([]);
+                                    }}
+                                    className="text-[10px] font-black uppercase text-blue-500 hover:underline"
+                                  >
+                                    Clear Results
+                                  </button>
+                                </div>
+
+                                <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-1 custom-scrollbar">
+                                  {schedulerAiEditableEntries.map((entry, idx) => (
+                                    <div key={entry._id} className={`p-4 rounded-2xl border flex flex-col gap-3 relative text-left ${
+                                      isDark ? 'neu-card-dark border-slate-800' : 'neu-card-light border-slate-200'
+                                    }`}>
+                                      <button
+                                        onClick={() => setSchedulerAiEditableEntries(prev => prev.filter(e => e._id !== entry._id))}
+                                        className="absolute top-3 right-3 text-slate-400 hover:text-red-500 transition"
+                                      >
+                                        <X className="w-4 h-4" />
+                                      </button>
+                                      <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                          <label className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Date</label>
+                                          <input
+                                            type="date"
+                                            value={entry.date}
+                                            onChange={(e) => {
+                                              const newDate = e.target.value;
+                                              setSchedulerAiEditableEntries(prev => prev.map(item => item._id === entry._id ? { ...item, date: newDate } : item));
+                                            }}
+                                            className={`w-full p-2 rounded-xl text-xs font-bold transition ${
+                                              isDark ? 'neu-pressed-dark text-slate-100 border border-slate-800' : 'neu-pressed-light text-slate-800 border border-slate-200'
+                                            }`}
+                                          />
+                                        </div>
+                                        <div>
+                                          <label className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Notes</label>
+                                          <input
+                                            type="text"
+                                            value={entry.notes}
+                                            onChange={(e) => {
+                                              const newNotes = e.target.value;
+                                              setSchedulerAiEditableEntries(prev => prev.map(item => item._id === entry._id ? { ...item, notes: newNotes } : item));
+                                            }}
+                                            className={`w-full p-2 rounded-xl text-xs font-medium transition ${
+                                              isDark ? 'neu-pressed-dark text-slate-100 border border-slate-800' : 'neu-pressed-light text-slate-800 border border-slate-200'
+                                            }`}
+                                          />
+                                        </div>
+                                      </div>
+                                      <div>
+                                        <div className="flex justify-between items-center mb-1.5">
+                                          <label className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Time-wise Study Slots</label>
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              const newTask = { topic: '', time: '09:00 AM - 12:00 PM' };
+                                              setSchedulerAiEditableEntries(prev => prev.map(item =>
+                                                item._id === entry._id
+                                                  ? { ...item, tasks: [...(item.tasks || []), newTask] }
+                                                  : item
+                                              ));
+                                            }}
+                                            className="text-[9px] font-black text-blue-500 hover:underline flex items-center gap-0.5"
+                                          >
+                                            + Add Slot
+                                          </button>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                          {(entry.tasks || []).map((t, tIdx) => (
+                                            <div key={tIdx} className="flex gap-2 items-center">
+                                              <input
+                                                type="text"
+                                                value={t.time}
+                                                onChange={(e) => {
+                                                  const newTime = e.target.value;
+                                                  setSchedulerAiEditableEntries(prev => prev.map(item => {
+                                                    if (item._id === entry._id) {
+                                                      const updatedTasks = [...item.tasks];
+                                                      updatedTasks[tIdx] = { ...updatedTasks[tIdx], time: newTime };
+                                                      return { ...item, tasks: updatedTasks };
+                                                    }
+                                                    return item;
+                                                  }));
+                                                }}
+                                                placeholder="Time (e.g. 09:00 AM)"
+                                                className={`w-1/3 p-2 rounded-xl text-[10px] font-mono font-bold outline-none transition ${
+                                                  isDark ? 'neu-pressed-dark text-slate-100 border border-slate-800' : 'neu-pressed-light text-slate-800 border border-slate-200'
+                                                }`}
+                                              />
+                                              <input
+                                                type="text"
+                                                value={t.topic}
+                                                onChange={(e) => {
+                                                  const newTopic = e.target.value;
+                                                  setSchedulerAiEditableEntries(prev => prev.map(item => {
+                                                    if (item._id === entry._id) {
+                                                      const updatedTasks = [...item.tasks];
+                                                      updatedTasks[tIdx] = { ...updatedTasks[tIdx], topic: newTopic };
+                                                      return { ...item, tasks: updatedTasks };
+                                                    }
+                                                    return item;
+                                                  }));
+                                                }}
+                                                placeholder="Topic Name"
+                                                className={`flex-1 p-2 rounded-xl text-[10px] font-bold outline-none transition ${
+                                                  isDark ? 'neu-pressed-dark text-slate-100 border border-slate-800' : 'neu-pressed-light text-slate-800 border border-slate-200'
+                                                }`}
+                                              />
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  setSchedulerAiEditableEntries(prev => prev.map(item => {
+                                                    if (item._id === entry._id) {
+                                                      return { ...item, tasks: item.tasks.filter((_, idx) => idx !== tIdx) };
+                                                    }
+                                                    return item;
+                                                  }));
+                                                }}
+                                                className="text-slate-400 hover:text-red-500 transition p-1"
+                                              >
+                                                <Trash2 className="w-4 h-4" />
+                                              </button>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+
                                 <button
-                                  onClick={handleSchedulerAiExtract}
-                                  disabled={isSchedulerAiExtracting || !geminiApiKey}
-                                  className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 text-white rounded-2xl text-xs font-black uppercase tracking-wider shadow-lg shadow-blue-600/10 transition flex items-center justify-center gap-2 active:scale-95 duration-150"
+                                  onClick={handleSchedulerAiInject}
+                                  disabled={isSchedulerAiInjecting}
+                                  className={`w-full py-3.5 rounded-2xl text-xs font-black uppercase tracking-wider shadow-lg transition flex items-center justify-center gap-2 active:scale-95 duration-155 text-white ${
+                                    isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+                                  }`}
                                 >
-                                  {isSchedulerAiExtracting ? (
+                                  {isSchedulerAiInjecting ? (
                                     <>
                                       <Loader2 className="w-4 h-4 animate-spin" />
-                                      Extracting Schedule...
+                                      Injecting Schedules...
                                     </>
                                   ) : (
                                     <>
-                                      <Sparkles className="w-4 h-4" />
-                                      Extract with AI
+                                      <Check className="w-4 h-4" />
+                                      Confirm and Save to Calendar
                                     </>
                                   )}
                                 </button>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="space-y-4">
-                              <div className="flex justify-between items-center bg-blue-50/50 border border-blue-100 p-4 rounded-2xl">
-                                <div className="text-[10px] text-blue-800 font-bold">
-                                  ✨ AI extracted {schedulerAiEditableEntries.length} schedule dates. Review and edit before injecting.
-                                </div>
-                                <button
-                                  onClick={() => {
-                                    setSchedulerAiParsed(null);
-                                    setSchedulerAiEditableEntries([]);
-                                  }}
-                                  className="text-[10px] font-black uppercase text-blue-600 hover:underline"
-                                >
-                                  Clear Results
-                                </button>
                               </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
 
-                              <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-1 custom-scrollbar">
-                                {schedulerAiEditableEntries.map((entry, idx) => (
-                                  <div key={entry._id} className="p-4 border border-gray-150 rounded-2xl bg-gray-50/40 flex flex-col gap-3 relative text-left">
-                                    <button
-                                      onClick={() => setSchedulerAiEditableEntries(prev => prev.filter(e => e._id !== entry._id))}
-                                      className="absolute top-3 right-3 text-gray-400 hover:text-red-500 transition"
-                                    >
-                                      <X className="w-4 h-4" />
-                                    </button>
-                                    <div className="grid grid-cols-2 gap-3">
-                                      <div>
-                                        <label className="text-[8px] font-black uppercase text-gray-400 tracking-wider">Date</label>
-                                        <input
-                                          type="date"
-                                          value={entry.date}
-                                          onChange={(e) => {
-                                            const newDate = e.target.value;
-                                            setSchedulerAiEditableEntries(prev => prev.map(item => item._id === entry._id ? { ...item, date: newDate } : item));
-                                          }}
-                                          className="w-full p-2 border border-gray-200 rounded-xl text-xs font-bold bg-white text-gray-800"
-                                        />
-                                      </div>
-                                      <div>
-                                        <label className="text-[8px] font-black uppercase text-gray-400 tracking-wider">Notes</label>
-                                        <input
-                                          type="text"
-                                          value={entry.notes}
-                                          onChange={(e) => {
-                                            const newNotes = e.target.value;
-                                            setSchedulerAiEditableEntries(prev => prev.map(item => item._id === entry._id ? { ...item, notes: newNotes } : item));
-                                          }}
-                                          className="w-full p-2 border border-gray-200 rounded-xl text-xs font-medium bg-white text-gray-800"
-                                        />
-                                      </div>
-                                    </div>
-                                    <div>
-                                      <div className="flex justify-between items-center mb-1.5">
-                                        <label className="text-[8px] font-black uppercase text-gray-400 tracking-wider">Time-wise Study Slots</label>
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            const newTask = { topic: '', time: '09:00 AM - 12:00 PM' };
-                                            setSchedulerAiEditableEntries(prev => prev.map(item =>
-                                              item._id === entry._id
-                                                ? { ...item, tasks: [...(item.tasks || []), newTask] }
-                                                : item
-                                            ));
-                                          }}
-                                          className="text-[9px] font-black text-blue-600 hover:underline flex items-center gap-0.5"
-                                        >
-                                          + Add Slot
-                                        </button>
-                                      </div>
-
-                                      <div className="space-y-2">
-                                        {(entry.tasks || []).map((t, tIdx) => (
-                                          <div key={tIdx} className="flex gap-2 items-center">
-                                            <input
-                                              type="text"
-                                              value={t.time}
-                                              onChange={(e) => {
-                                                const newTime = e.target.value;
-                                                setSchedulerAiEditableEntries(prev => prev.map(item => {
-                                                  if (item._id === entry._id) {
-                                                    const updatedTasks = [...item.tasks];
-                                                    updatedTasks[tIdx] = { ...updatedTasks[tIdx], time: newTime };
-                                                    return { ...item, tasks: updatedTasks };
-                                                  }
-                                                  return item;
-                                                }));
-                                              }}
-                                              placeholder="Time (e.g. 09:00 AM)"
-                                              className="w-1/3 p-2 border border-gray-250/70 rounded-xl text-[10px] font-mono font-bold bg-white text-gray-800 outline-none focus:border-blue-500"
-                                            />
-                                            <input
-                                              type="text"
-                                              value={t.topic}
-                                              onChange={(e) => {
-                                                const newTopic = e.target.value;
-                                                setSchedulerAiEditableEntries(prev => prev.map(item => {
-                                                  if (item._id === entry._id) {
-                                                    const updatedTasks = [...item.tasks];
-                                                    updatedTasks[tIdx] = { ...updatedTasks[tIdx], topic: newTopic };
-                                                    return { ...item, tasks: updatedTasks };
-                                                  }
-                                                  return item;
-                                                }));
-                                              }}
-                                              placeholder="Topic Name"
-                                              className="flex-1 p-2 border border-gray-250/70 rounded-xl text-[10px] font-bold bg-white text-gray-800 outline-none focus:border-blue-500"
-                                            />
-                                            <button
-                                              type="button"
-                                              onClick={() => {
-                                                setSchedulerAiEditableEntries(prev => prev.map(item => {
-                                                  if (item._id === entry._id) {
-                                                    return { ...item, tasks: item.tasks.filter((_, idx) => idx !== tIdx) };
-                                                  }
-                                                  return item;
-                                                }));
-                                              }}
-                                              className="text-gray-400 hover:text-red-500 transition p-1"
-                                            >
-                                              <Trash2 className="w-4 h-4" />
-                                            </button>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-
-                              <button
-                                onClick={handleSchedulerAiInject}
-                                disabled={isSchedulerAiInjecting}
-                                className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 text-white rounded-2xl text-xs font-black uppercase tracking-wider shadow-lg shadow-blue-600/10 transition flex items-center justify-center gap-2 active:scale-95 duration-155"
-                              >
-                                {isSchedulerAiInjecting ? (
-                                  <>
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                    Injecting Schedules...
-                                  </>
-                                ) : (
-                                  <>
-                                    <Check className="w-4 h-4" />
-                                    Confirm and Save to Calendar
-                                  </>
-                                )}
-                              </button>
-                            </div>
-                          )}
+                      {/* Footer */}
+                      {schedulerModalTab === 'manual' && (
+                        <div className={`p-6 border-t flex justify-end gap-3 shrink-0 ${isDark ? 'border-slate-750' : 'border-slate-200/80'}`}>
+                          <button
+                            onClick={() => setIsSchedulerModalOpen(false)}
+                            className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-wider transition border ${
+                              isDark ? 'neu-btn-dark text-slate-300 border-slate-700' : 'neu-btn-light text-slate-700 border-slate-200'
+                            }`}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={handleSchedulerSaveManual}
+                            disabled={isSchedulerSaving || (schedulerTaskSource === 'custom' ? !schedulerManualTopics.trim() : schedulerSelTopics.length === 0)}
+                            className={`px-8 py-3 rounded-xl text-xs font-black uppercase tracking-wider shadow-md transition disabled:opacity-50 text-white ${
+                              isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+                            }`}
+                          >
+                            {isSchedulerSaving ? 'Saving...' : 'Save Schedule'}
+                          </button>
                         </div>
                       )}
+
                     </div>
-
-                    {/* Footer */}
-                    {schedulerModalTab === 'manual' && (
-                      <div className="p-6 border-t border-gray-100 bg-white flex justify-end gap-3 shrink-0">
-                        <button
-                          onClick={() => setIsSchedulerModalOpen(false)}
-                          className="px-6 py-3 bg-gray-50 border border-gray-250/50 hover:bg-gray-100 text-gray-500 rounded-xl text-xs font-black uppercase tracking-wider transition"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={handleSchedulerSaveManual}
-                          disabled={isSchedulerSaving || (schedulerTaskSource === 'custom' ? !schedulerManualTopics.trim() : schedulerSelTopics.length === 0)}
-                          className="px-8 py-3 bg-blue-600 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-md shadow-blue-600/15 hover:bg-blue-700 active:scale-95 transition disabled:opacity-50"
-                        >
-                          {isSchedulerSaving ? 'Saving...' : 'Save Schedule'}
-                        </button>
-                      </div>
-                    )}
-
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* CAMP TIMER LOGGER MODAL */}
               {showCampLoggerModal && (
