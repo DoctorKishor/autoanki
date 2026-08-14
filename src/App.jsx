@@ -7094,13 +7094,6 @@ export default function App() {
     return () => { isMounted = false; };
   }, []);
 
-  useEffect(() => {
-    if (isSubjectPdfModalOpen) {
-      const activeSubName = selectedTrackerSubject || selectedSubjectTrackerSubject;
-      const meta = textbooksMetadata.find(tb => (tb.subject || '').toLowerCase() === (activeSubName || '').toLowerCase());
-      setSubjectPdfOffsetInput(meta?.pageOffset ?? 0);
-    }
-  }, [isSubjectPdfModalOpen, selectedTrackerSubject, selectedSubjectTrackerSubject, textbooksMetadata]);
 
   // Overall Topics/Subject Tracker States
   const [subjectTrackerData, setSubjectTrackerData] = useState([]);
@@ -7209,6 +7202,14 @@ export default function App() {
 
 
   const [selectedSubjectTrackerSubject, setSelectedSubjectTrackerSubject] = useState('Anatomy');
+
+  useEffect(() => {
+    if (isSubjectPdfModalOpen) {
+      const activeSubName = selectedTrackerSubject || selectedSubjectTrackerSubject;
+      const meta = textbooksMetadata.find(tb => (tb.subject || '').toLowerCase() === (activeSubName || '').toLowerCase());
+      setSubjectPdfOffsetInput(meta?.pageOffset ?? 0);
+    }
+  }, [isSubjectPdfModalOpen, selectedTrackerSubject, selectedSubjectTrackerSubject, textbooksMetadata]);
   const [newSubjectTrackerTopicName, setNewSubjectTrackerTopicName] = useState('');
   const [subjectTrackerFilter, setSubjectTrackerFilter] = useState('all'); // 'all' | 'studied' | 'remaining'
   const [schedulerTaskSource, setSchedulerTaskSource] = useState('custom'); // 'custom' | 'tracker'
