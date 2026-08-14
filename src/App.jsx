@@ -4819,8 +4819,35 @@ export default function App() {
       return 0;
     });
   };
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [sidebarTooltip, setSidebarTooltip] = useState(null); // { label: string, top: number }
+  const sidebarCollapseTimerRef = useRef(null);
+
+  const handleSidebarMouseEnter = () => {
+    if (sidebarCollapseTimerRef.current) {
+      clearTimeout(sidebarCollapseTimerRef.current);
+      sidebarCollapseTimerRef.current = null;
+    }
+    setIsSidebarExpanded(true);
+  };
+
+  const handleSidebarMouseLeave = () => {
+    if (sidebarCollapseTimerRef.current) {
+      clearTimeout(sidebarCollapseTimerRef.current);
+    }
+    sidebarCollapseTimerRef.current = setTimeout(() => {
+      setIsSidebarExpanded(false);
+      setHoveredNavCategory(null);
+    }, 3000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (sidebarCollapseTimerRef.current) {
+        clearTimeout(sidebarCollapseTimerRef.current);
+      }
+    };
+  }, []);
   const [isUploading, setIsUploading] = useState(false);
   const [isFolderPickerOpen, setIsFolderPickerOpen] = useState(false);
   const [movingNode, setMovingNode] = useState(null); // For touch-based moving
@@ -27567,7 +27594,11 @@ Return your response strictly as a JSON object matching this schema:
               <div className={`h-screen w-screen font-sans flex overflow-hidden transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'}`}>
 
                 {/* SIDEBAR NAVIGATION (Hidden on Mobile) */}
-                <aside className={`flex ${isSidebarExpanded ? 'w-64' : 'w-20'} ${settingsThemeMode === 'dark' ? 'neu-card-dark border-r border-gray-800/80 text-slate-100' : 'neu-card-light border-r border-gray-200/80 text-slate-800'} flex flex-col py-6 shrink-0 transition-all duration-300 shadow-xl z-20 neu-action-sidebar`}>
+                <aside
+                  onMouseEnter={handleSidebarMouseEnter}
+                  onMouseLeave={handleSidebarMouseLeave}
+                  className={`flex ${isSidebarExpanded ? 'w-64' : 'w-20'} ${settingsThemeMode === 'dark' ? 'neu-card-dark border-r border-gray-800/80 text-slate-100' : 'neu-card-light border-r border-gray-200/80 text-slate-800'} flex flex-col py-6 shrink-0 transition-all duration-300 shadow-xl z-20 neu-action-sidebar`}
+                >
 
                   <div className="px-5 mb-8 flex items-center justify-between z-10">
                     <div className="flex items-center gap-3">
@@ -27575,7 +27606,13 @@ Return your response strictly as a JSON object matching this schema:
                       {isSidebarExpanded && <span className={`font-black tracking-tight text-xl truncate ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>AutoAnki</span>}
                     </div>
                     <button
-                      onClick={() => setIsSidebarExpanded(!isSidebarExpanded)}
+                      onClick={() => {
+                        if (sidebarCollapseTimerRef.current) {
+                          clearTimeout(sidebarCollapseTimerRef.current);
+                          sidebarCollapseTimerRef.current = null;
+                        }
+                        setIsSidebarExpanded(prev => !prev);
+                      }}
                       className={`p-1.5 rounded-xl transition-all cursor-pointer active:scale-95 ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-gray-400 hover:text-blue-400' : 'neu-btn-light text-gray-600 hover:text-blue-600'}`}
                     >
                       {isSidebarExpanded ? <ChevronLeft className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
