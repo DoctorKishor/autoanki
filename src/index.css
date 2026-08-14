@@ -1050,6 +1050,153 @@ body,
 }
 
 /* ==========================================================
+   NEUMORPHIC NAVIGATION CATEGORY ACCORDION
+   ========================================================== */
+
+.neu-cat-card {
+  border-radius: 1rem;
+  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  padding: 0.25rem;
+}
+
+.neu-cat-card.light-theme {
+  border: 1px solid rgba(255, 255, 255, 0.7);
+}
+
+.neu-cat-card.dark-theme {
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.neu-cat-card.is-expanded.light-theme {
+  background: rgba(224, 229, 236, 0.45);
+  box-shadow: inset 2px 2px 6px rgba(184, 194, 208, 0.5), inset -2px -2px 6px rgba(255, 255, 255, 0.9);
+  border-color: rgba(37, 99, 235, 0.2);
+}
+
+.neu-cat-card.is-expanded.dark-theme {
+  background: rgba(20, 23, 29, 0.45);
+  box-shadow: inset 2px 2px 6px #121419, inset -2px -2px 6px #282f3a;
+  border-color: rgba(56, 189, 248, 0.15);
+}
+
+/* Category Header Button */
+.neu-cat-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  border-radius: 0.85rem;
+  border: none;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.neu-cat-header.light-theme {
+  background: #e0e5ec;
+  color: #475569;
+  box-shadow: 2.5px 2.5px 6px #c2c8d4, -2.5px -2.5px 6px #ffffff;
+}
+
+.neu-cat-header.light-theme:hover {
+  box-shadow: 3.5px 3.5px 8px #b8b9be, -3.5px -3.5px 8px #ffffff;
+  color: #1e293b;
+}
+
+.neu-cat-header.light-theme.is-expanded {
+  background: #e0e5ec;
+  color: #2563eb;
+  box-shadow: inset 2px 2px 4.5px #b8b9be, inset -2px -2px 4.5px #ffffff;
+}
+
+.neu-cat-header.dark-theme {
+  background: #1e222a;
+  color: #94a3b8;
+  box-shadow: 2.5px 2.5px 6px #14171d, -2.5px -2.5px 6px #2a303d;
+}
+
+.neu-cat-header.dark-theme:hover {
+  box-shadow: 3.5px 3.5px 8px #101216, -3.5px -3.5px 8px #2f3644;
+  color: #f1f5f9;
+}
+
+.neu-cat-header.dark-theme.is-expanded {
+  background: #181b22;
+  color: #38bdf8;
+  box-shadow: inset 2px 2px 4.5px #101216, inset -2px -2px 4.5px #262c38;
+}
+
+/* Category Icon Badge */
+.neu-cat-icon-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 0.5rem;
+  transition: all 0.25s ease;
+  flex-shrink: 0;
+}
+
+.neu-cat-header.light-theme .neu-cat-icon-badge {
+  background: #e6ebf2;
+  box-shadow: 1.5px 1.5px 3px #c2c8d4, -1.5px -1.5px 3px #ffffff;
+  color: #64748b;
+}
+
+.neu-cat-header.light-theme.is-expanded .neu-cat-icon-badge,
+.neu-cat-header.light-theme.has-active .neu-cat-icon-badge {
+  background: #e0e5ec;
+  color: #2563eb;
+  box-shadow: inset 1.5px 1.5px 3px #b8b9be, inset -1.5px -1.5px 3px #ffffff, 0 0 8px rgba(37, 99, 235, 0.25);
+}
+
+.neu-cat-header.dark-theme .neu-cat-icon-badge {
+  background: #181b22;
+  box-shadow: 1.5px 1.5px 3px #121419, -1.5px -1.5px 3px #262c38;
+  color: #94a3b8;
+}
+
+.neu-cat-header.dark-theme.is-expanded .neu-cat-icon-badge,
+.neu-cat-header.dark-theme.has-active .neu-cat-icon-badge {
+  background: #14171d;
+  color: #38bdf8;
+  box-shadow: inset 1.5px 1.5px 3px #0f1115, inset -1.5px -1.5px 3px #222732, 0 0 8px rgba(56, 189, 248, 0.25);
+}
+
+/* Category Chevron Badge */
+.neu-cat-chevron-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 0.4rem;
+  transition: all 0.25s ease;
+  flex-shrink: 0;
+}
+
+.neu-cat-header.light-theme .neu-cat-chevron-badge {
+  background: #e6ebf2;
+  box-shadow: 1px 1px 2px #c2c8d4, -1px -1px 2px #ffffff;
+}
+
+.neu-cat-header.light-theme.is-expanded .neu-cat-chevron-badge {
+  box-shadow: inset 1px 1px 2px #b8b9be, inset -1px -1px 2px #ffffff;
+}
+
+.neu-cat-header.dark-theme .neu-cat-chevron-badge {
+  background: #181b22;
+  box-shadow: 1px 1px 2px #121419, -1px -1px 2px #262c38;
+}
+
+.neu-cat-header.dark-theme.is-expanded .neu-cat-chevron-badge {
+  box-shadow: inset 1px 1px 2px #0f1115, inset -1px -1px 2px #222732;
+}
+
+/* ==========================================================
    NEUMORPHIC GENERATED CARDS DISPLAY & SIBLING BLUR SYSTEM
    ========================================================== */
 

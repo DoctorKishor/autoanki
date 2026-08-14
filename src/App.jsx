@@ -27679,41 +27679,41 @@ Return your response strictly as a JSON object matching this schema:
                       return (
                         <div
                           key={cat.id}
-                          className="space-y-1 transition-all rounded-2xl p-0.5"
+                          className={`neu-cat-card ${settingsThemeMode === 'dark' ? 'dark-theme' : 'light-theme'} ${
+                            isExpanded ? 'is-expanded' : ''
+                          } space-y-1`}
                         >
                           {isSidebarExpanded ? (
                             <button
                               type="button"
                               onClick={() => toggleNavCategory(cat.id)}
-                              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-left transition-all cursor-pointer group select-none ${
-                                isExpanded
-                                  ? (settingsThemeMode === 'dark' ? 'bg-slate-800/60 shadow-sm' : 'bg-slate-200/70 shadow-sm')
-                                  : (settingsThemeMode === 'dark' ? 'hover:bg-slate-800/40' : 'hover:bg-slate-200/50')
-                              }`}
+                              className={`neu-cat-header ${settingsThemeMode === 'dark' ? 'dark-theme' : 'light-theme'} ${
+                                isExpanded ? 'is-expanded' : ''
+                              } ${hasActiveItem ? 'has-active' : ''} group select-none`}
                             >
                               <div className="flex items-center gap-2 min-w-0">
-                                <CatIcon className={`w-3.5 h-3.5 shrink-0 transition-colors ${
-                                  hasActiveItem
-                                    ? (settingsThemeMode === 'dark' ? 'text-blue-400' : 'text-blue-600')
-                                    : (settingsThemeMode === 'dark' ? 'text-slate-400 group-hover:text-slate-200' : 'text-slate-500 group-hover:text-slate-800')
-                                }`} />
+                                <div className="neu-cat-icon-badge">
+                                  <CatIcon className="w-3.5 h-3.5" />
+                                </div>
                                 <span className={`text-[10px] font-black uppercase tracking-wider truncate transition-colors ${
-                                  hasActiveItem
-                                    ? (settingsThemeMode === 'dark' ? 'text-blue-400' : 'text-blue-600')
+                                  isExpanded || hasActiveItem
+                                    ? (settingsThemeMode === 'dark' ? 'text-sky-400 font-extrabold' : 'text-blue-600 font-extrabold')
                                     : (settingsThemeMode === 'dark' ? 'text-slate-400 group-hover:text-slate-200' : 'text-slate-500 group-hover:text-slate-800')
                                 }`}>
                                   {cat.label}
                                 </span>
                               </div>
-                              <div className="flex items-center gap-1 shrink-0">
+                              <div className="flex items-center gap-1.5 shrink-0">
                                 {hasActiveItem && (
                                   <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.8)]" />
                                 )}
-                                <ChevronDown
-                                  className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                                    isExpanded ? 'rotate-0 text-slate-400' : '-rotate-90 text-slate-500'
-                                  }`}
-                                />
+                                <div className="neu-cat-chevron-badge">
+                                  <ChevronDown
+                                    className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                                      isExpanded ? 'rotate-0 text-sky-400' : '-rotate-90 text-slate-400'
+                                    }`}
+                                  />
+                                </div>
                               </div>
                             </button>
                           ) : catIdx > 0 ? (
@@ -27730,8 +27730,8 @@ Return your response strictly as a JSON object matching this schema:
                                   initial={{ height: 0, opacity: 0 }}
                                   animate={{ height: 'auto', opacity: 1 }}
                                   exit={{ height: 0, opacity: 0 }}
-                                  transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
-                                  className="space-y-1.5 overflow-hidden pt-0.5"
+                                  transition={{ duration: 0.22, ease: [0.25, 1, 0.5, 1] }}
+                                  className="space-y-1.5 overflow-hidden p-1"
                                 >
                                   {cat.items.map(item => {
                                     const IconComp = item.icon;
