@@ -59,7 +59,7 @@ export function parsePageNumbers(topic) {
 
   let pageLabel = 'No pgs';
   if (startPg !== null && endPg !== null) {
-    pageLabel = `p. ${startPg}–${endPg}`;
+    pageLabel = startPg === endPg ? `p. ${startPg}` : `p. ${startPg}–${endPg}`;
   } else if (startPg !== null) {
     pageLabel = `p. ${startPg}`;
   } else if (typeof topic === 'object' && topic?.pages) {

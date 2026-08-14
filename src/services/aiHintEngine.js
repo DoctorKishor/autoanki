@@ -19,7 +19,7 @@ async function callGeminiMultimodalFallback({ prompt, images = [], geminiApiKey,
 
   const fallbackChain = modelList.length > 0
     ? modelList
-    : ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.0-flash'];
+    : ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
 
   let lastError = null;
 
@@ -165,11 +165,13 @@ Your task is to generate a dynamic, ordered ladder of progressive memory clues (
 ${pdfSlice.extractedText || '(No raw text parsed; scanned textbook page images attached below.)'}
 `;
 
-  // 4. Send request through Fallback Chain
-  const modelList = aiFeatureModels?.activeRecallHints || ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.0-flash'];
+  // 4. Send request through Fallback Chain (Only attach heavy page images if scanned or text < 100 chars)
+  const modelList = aiFeatureModels?.activeRecallHints || ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+  const attachImages = pdfSlice.isScannedPdf || !pdfSlice.extractedText || pdfSlice.extractedText.length < 100;
+  
   const result = await callGeminiMultimodalFallback({
     prompt,
-    images: pdfSlice.pageImages,
+    images: attachImages ? pdfSlice.pageImages : [],
     geminiApiKey,
     modelList
   });
