@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Brain, Calendar, AlertTriangle, CheckCircle, Clock, BookOpen, Layers, Sparkles, RotateCcw, RotateCw, Zap, Undo2, X, FileText, Plus, Trash2, Edit3, Target } from 'lucide-react';
+import { Brain, Calendar, AlertTriangle, CheckCircle, Clock, BookOpen, Layers, Sparkles, RotateCcw, RotateCw, Zap, Undo2, X, FileText, Plus, Trash2, Edit3, Target, Search } from 'lucide-react';
 import FsrsStatsTab from './FsrsStatsTab';
 import FsrsSettingsModal from './FsrsSettingsModal';
 import SelectNewTopicsModal from './SelectNewTopicsModal';
@@ -44,6 +44,10 @@ export default function SmartReviewHub({
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isPickModalOpen, setIsPickModalOpen] = useState(false);
   const [isExamModalOpen, setIsExamModalOpen] = useState(false);
+  const [isAdHocModalOpen, setIsAdHocModalOpen] = useState(false);
+  const [adHocSearch, setAdHocSearch] = useState('');
+  const [adHocSelectedSubject, setAdHocSelectedSubject] = useState('all');
+  const [adHocActiveTopic, setAdHocActiveTopic] = useState(null);
   const [newExamTitle, setNewExamTitle] = useState('');
   const [newExamDate, setNewExamDate] = useState('');
   const [newExamTentative, setNewExamTentative] = useState(false);
@@ -451,8 +455,23 @@ export default function SmartReviewHub({
             <span>Auto-Synced</span>
           </div>
 
+          {/* Ad-Hoc / Early Review Button */}
+          <button
+            type="button"
+            onClick={() => setIsAdHocModalOpen(true)}
+            className={`px-4 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider shadow-sm transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer border active:scale-95 ${
+              isDark
+                ? 'neu-btn-dark text-amber-400 border-amber-500/40 hover:border-amber-500/80'
+                : 'neu-btn-light text-amber-700 border-amber-300 hover:border-amber-400'
+            }`}
+          >
+            <Zap className="w-3.5 h-3.5 text-amber-500" />
+            <span>Ad-hoc Review</span>
+          </button>
+
           {/* FSRS Settings Button */}
           <button
+            type="button"
             onClick={() => setIsSettingsOpen(true)}
             className={`px-4 py-2.5 rounded-2xl text-xs font-bold uppercase tracking-wider shadow-sm transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer border active:scale-95 ${
               isDark ? 'neu-btn-dark text-white border-slate-700' : 'neu-btn-light text-slate-800 border-slate-300'
@@ -999,6 +1018,186 @@ export default function SmartReviewHub({
                   Close
                 </button>
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* AD-HOC / EARLY REVIEW MODAL */}
+      <AnimatePresence>
+        {isAdHocModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className={`w-full max-w-2xl p-6 rounded-3xl border shadow-2xl space-y-5 max-h-[85vh] flex flex-col ${
+                isDark ? 'bg-[#222730] border-slate-700/80 text-white' : 'bg-[#e6ecf5] border-slate-300 text-slate-900'
+              }`}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between border-b pb-3 border-slate-700/40 shrink-0">
+                <div className="flex items-center gap-2.5">
+                  <Zap className="w-5 h-5 text-amber-500" />
+                  <div>
+                    <h3 className="text-base font-black tracking-wide">⚡ Ad-hoc / Early Review Workspace</h3>
+                    <p className="text-[11px] text-slate-400">Review any topic from your curriculum ahead of schedule. FSRS-6 will automatically update memory retention!</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAdHocModalOpen(false);
+                    setAdHocActiveTopic(null);
+                  }}
+                  className={`p-1.5 rounded-xl border transition-all ${
+                    isDark ? 'neu-btn-dark text-slate-400 hover:text-white' : 'neu-btn-light text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* If rating a topic inside modal */}
+              {adHocActiveTopic ? (
+                <div className="space-y-4 overflow-y-auto p-2">
+                  <div className="flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={() => setAdHocActiveTopic(null)}
+                      className="text-xs font-bold text-amber-500 hover:underline flex items-center gap-1"
+                    >
+                      ← Back to Search
+                    </button>
+                    <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 bg-amber-500/10 px-2.5 py-1 rounded-lg">
+                      Ad-hoc Review Mode
+                    </span>
+                  </div>
+
+                  <TopicCard
+                    topic={adHocActiveTopic}
+                    onRate={(topicToRate, rating) => {
+                      if (typeof onRateTopic === 'function') {
+                        onRateTopic(topicToRate, rating);
+                      }
+                      setAdHocActiveTopic(null);
+                      setToastMessage(`⚡ Ad-hoc review recorded for "${topicToRate.name}"!`);
+                      setTimeout(() => setToastMessage(''), 3500);
+                    }}
+                    onOpenNotes={onOpenNotesModal}
+                    fsrsConfig={fsrsConfig}
+                    isDark={isDark}
+                  />
+                </div>
+              ) : (
+                /* Search & Select Topic View */
+                <div className="space-y-4 overflow-hidden flex flex-col flex-1">
+                  {/* Search Bar & Subject Filter */}
+                  <div className="space-y-2 shrink-0">
+                    <div className="relative">
+                      <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                      <input
+                        type="text"
+                        placeholder="Search topic or chapter name (e.g., Brachial Plexus, Antihypertensives)..."
+                        value={adHocSearch}
+                        onChange={(e) => setAdHocSearch(e.target.value)}
+                        className={`w-full pl-10 pr-4 py-2.5 rounded-2xl text-xs font-semibold border outline-none ${
+                          isDark ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500' : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'
+                        }`}
+                      />
+                    </div>
+
+                    {/* Subject Filter Pills */}
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                      <button
+                        type="button"
+                        onClick={() => setAdHocSelectedSubject('all')}
+                        className={`px-3 py-1 rounded-xl text-[11px] font-bold border transition-all ${
+                          adHocSelectedSubject === 'all'
+                            ? 'bg-amber-500 text-slate-950 border-amber-400'
+                            : isDark ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-white border-slate-300 text-slate-700'
+                        }`}
+                      >
+                        All Subjects
+                      </button>
+                      {subjectTrackerData.map(subDoc => (
+                        <button
+                          key={subDoc.subject}
+                          type="button"
+                          onClick={() => setAdHocSelectedSubject(subDoc.subject)}
+                          className={`px-3 py-1 rounded-xl text-[11px] font-bold border transition-all ${
+                            adHocSelectedSubject === subDoc.subject
+                              ? 'bg-amber-500 text-slate-950 border-amber-400'
+                              : isDark ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-white border-slate-300 text-slate-700'
+                          }`}
+                        >
+                          {subDoc.subject}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Topics List */}
+                  <div className="space-y-2 overflow-y-auto pr-1 flex-1 min-h-[250px]">
+                    {(() => {
+                      const allTopics = [];
+                      subjectTrackerData.forEach(subDoc => {
+                        if (adHocSelectedSubject !== 'all' && subDoc.subject !== adHocSelectedSubject) return;
+                        if (subDoc.topics) {
+                          Object.values(subDoc.topics).forEach(t => {
+                            if (!t || !t.name) return;
+                            const matchesSearch = !adHocSearch.trim() ||
+                              t.name.toLowerCase().includes(adHocSearch.toLowerCase()) ||
+                              subDoc.subject.toLowerCase().includes(adHocSearch.toLowerCase());
+                            if (matchesSearch) {
+                              allTopics.push({ ...t, subject: subDoc.subject });
+                            }
+                          });
+                        }
+                      });
+
+                      if (allTopics.length === 0) {
+                        return (
+                          <div className="text-center py-10 text-xs font-semibold text-slate-400 italic">
+                            No matching topics found. Try typing a different keyword!
+                          </div>
+                        );
+                      }
+
+                      return allTopics.map((topic, idx) => (
+                        <div
+                          key={topic.id || idx}
+                          className={`p-3.5 rounded-2xl border flex items-center justify-between gap-3 transition-all ${
+                            isDark ? 'bg-slate-900/80 border-slate-800 hover:border-amber-500/40' : 'bg-white border-slate-200 hover:border-amber-400'
+                          }`}
+                        >
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-black uppercase tracking-wider text-amber-500 px-2 py-0.5 rounded-md bg-amber-500/10">
+                                {topic.subject}
+                              </span>
+                              <span className="text-xs font-bold">{topic.name}</span>
+                            </div>
+                            <div className="text-[10px] text-slate-400 flex items-center gap-3">
+                              <span>Due: {topic.nextReviewDue || 'Unscheduled'}</span>
+                              <span>Reviews: {topic.reviewCount || 0}</span>
+                              {topic.stability && <span>Stability: {topic.stability}d</span>}
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => setAdHocActiveTopic(topic)}
+                            className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-md transition-all active:scale-95 cursor-pointer shrink-0"
+                          >
+                            ⚡ Review Now
+                          </button>
+                        </div>
+                      ));
+                    })()}
+                  </div>
+                </div>
+              )}
             </motion.div>
           </div>
         )}
