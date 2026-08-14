@@ -1469,8 +1469,8 @@ export default function DashboardGrid({
       case 'grandTestsHistory':
         return (
           <div className="flex flex-col h-full justify-between gap-4">
-            <div className="h-[130px] w-full">
-              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+            <div className="h-[130px] w-full min-w-0">
+              <ResponsiveContainer width="100%" height={130} minWidth={0} minHeight={0}>
                 <AreaChart data={scoreTrendsData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
                   <defs>
                     <linearGradient id="scoreColor" x1="0" y1="0" x2="0" y2="1">
@@ -1653,9 +1653,9 @@ export default function DashboardGrid({
       case 'hierarchySunburst':
         return (
           <div className="flex flex-col h-full justify-between gap-4">
-            <div className="h-[120px] w-full flex items-center justify-center">
+            <div className="h-[120px] w-full flex items-center justify-center min-w-0">
               {subjectCardCounts.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                <ResponsiveContainer width="100%" height={120} minWidth={0} minHeight={0}>
                   <PieChart>
                     <Pie
                       data={subjectCardCounts.slice(0, 5)}
@@ -1694,8 +1694,8 @@ export default function DashboardGrid({
       case 'contributionActivity':
         return (
           <div className="flex flex-col h-full justify-between gap-4">
-            <div className="h-[120px] w-full">
-              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+            <div className="h-[120px] w-full min-w-0">
+              <ResponsiveContainer width="100%" height={120} minWidth={0} minHeight={0}>
                 <BarChart data={last7DaysLogs} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridStroke} />
                   <XAxis dataKey="dateLabel" stroke={axisStroke} fontSize={9} tickLine={false} />
@@ -1714,8 +1714,8 @@ export default function DashboardGrid({
       case 'libraryGrowthCurve':
         return (
           <div className="flex flex-col h-full justify-between gap-4">
-            <div className="h-[125px] w-full">
-              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+            <div className="h-[125px] w-full min-w-0">
+              <ResponsiveContainer width="100%" height={125} minWidth={0} minHeight={0}>
                 <LineChart data={last7DaysLogs} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridStroke} />
                   <XAxis dataKey="dateLabel" stroke={axisStroke} fontSize={9} tickLine={false} />
@@ -1878,8 +1878,8 @@ export default function DashboardGrid({
       case 'studyDurationAnalytics':
         return (
           <div className="flex flex-col h-full justify-between gap-4">
-            <div className="h-[120px] w-full">
-              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+            <div className="h-[120px] w-full min-w-0">
+              <ResponsiveContainer width="100%" height={120} minWidth={0} minHeight={0}>
                 <BarChart data={last7DaysLogs} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridStroke} />
                   <XAxis dataKey="dateLabel" stroke={axisStroke} fontSize={9} />
@@ -2166,8 +2166,8 @@ export default function DashboardGrid({
       case 'studyAdherenceHistory7Day':
         return (
           <div className="flex flex-col h-full justify-between gap-4">
-            <div className="h-[120px] w-full">
-              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+            <div className="h-[120px] w-full min-w-0">
+              <ResponsiveContainer width="100%" height={120} minWidth={0} minHeight={0}>
                 <BarChart data={last7DaysLogs} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridStroke} />
                   <XAxis dataKey="dateLabel" stroke={axisStroke} fontSize={9} />
