@@ -34938,7 +34938,7 @@ Return your response strictly as a JSON object matching this schema:
                                                       {/* Rich Text Topic Notes Section */}
                                                       <div className="pt-2 border-t space-y-2 border-slate-200/40 dark:border-slate-800/60">
                                                         <div className="flex items-center justify-between">
-                                                          <span className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>High-Yield Notes</span>
+                                                          <span className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Notes</span>
                                                           <button
                                                             onClick={() => setNotesModalTopic({ subject: selectedTrackerSubject, ...topicItem })}
                                                             className={`text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg border transition flex items-center gap-1 ${

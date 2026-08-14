@@ -1321,7 +1321,7 @@ function RecursiveBlueprintNode({ node, depth = 0, recalledMap, onToggleRecall, 
 // Sub-component: Individual Topic Queue Card
 function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue = false, isNew = false, index = 0, isDark = true, geminiApiKey = '', aiFeatureModels = {}, subjectTrackerData = [] }) {
   const { pageLabel, pageCount } = getTopicPageInfo(topic);
-  const [isNotesExpanded, setIsNotesExpanded] = useState(!!topic.notes);
+  const [isNotesExpanded, setIsNotesExpanded] = useState(false);
 
   // --- ACTIVE-RECALL HINT LADDER STATE ---
   const [topicHints, setTopicHints] = useState(null);
@@ -1820,7 +1820,7 @@ function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue
           >
             <div className="flex items-center justify-between">
               <span className={`text-[9px] font-black uppercase tracking-wider flex items-center gap-1 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
-                <FileText className="w-3 h-3" /> High-Yield Notes
+                <FileText className="w-3 h-3" /> Notes
               </span>
               <button
                 type="button"
