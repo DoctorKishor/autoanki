@@ -36,7 +36,7 @@ import RichInputField from './components/RichInputField';
 import ConflictInspectorModal from './components/ConflictInspectorModal';
 import FsrsSettingsModal from './components/FsrsSettingsModal';
 import FsrsStatsTab from './components/FsrsStatsTab';
-import SmartReviewHub from './components/SmartReviewHub';
+import SmartReviewHub, { getLocalDateStr } from './components/SmartReviewHub';
 import TopicNotesModal from './components/TopicNotesModal';
 import { cropAndMaskDiagram } from './utils/imageCropper';
 import { getTopicPageWeight, parsePageNumbers } from './utils/pageUtils';
