@@ -32,6 +32,7 @@ export default function SmartReviewHub({
   lastRatedToast = null,
   onClearToast,
   studySchedule = [],
+  examProfiles = [],
   onUpdateSubjectDoc,
   geminiApiKey = '',
   aiFeatureModels = {},
