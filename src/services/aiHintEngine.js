@@ -68,7 +68,7 @@ async function callGeminiMultimodalFallback({ prompt, images = [], geminiApiKey,
         continue;
       }
 
-      // Parse JSON array of hints
+      // Parse JSON
       let parsedJson;
       try {
         parsedJson = JSON.parse(rawText);
@@ -78,17 +78,27 @@ async function callGeminiMultimodalFallback({ prompt, images = [], geminiApiKey,
         parsedJson = JSON.parse(clean);
       }
 
-      const hintsArray = Array.isArray(parsedJson)
-        ? parsedJson
-        : (parsedJson.hints || parsedJson.clues || []);
+      let hintsArray = [];
+      let structure = null;
+      let chapterTitle = '';
 
-      if (hintsArray.length === 0) {
-        lastError = new Error(`Model ${modelName} returned 0 hints.`);
+      if (Array.isArray(parsedJson)) {
+        hintsArray = parsedJson;
+      } else if (parsedJson && typeof parsedJson === 'object') {
+        structure = parsedJson.structure || parsedJson.topics || null;
+        chapterTitle = parsedJson.chapterTitle || '';
+        hintsArray = parsedJson.hints || parsedJson.clues || [];
+      }
+
+      if (!structure && hintsArray.length === 0) {
+        lastError = new Error(`Model ${modelName} returned empty hint structure.`);
         continue;
       }
 
       return {
         hints: hintsArray,
+        structure,
+        chapterTitle,
         usedModel: modelName
       };
     } catch (err) {
@@ -114,7 +124,7 @@ async function callGeminiMultimodalFallback({ prompt, images = [], geminiApiKey,
  * @param {boolean} [params.isPreSplit=false] If true, ignores offset (Scenario 2)
  * @param {string} params.geminiApiKey User Gemini API key
  * @param {object} [params.aiFeatureModels] App feature models mapping
- * @returns {Promise<{ hints: string[], usedModel: string, generatedAt: string, isScannedPdf: boolean }>}
+ * @returns {Promise<{ hints: string[], structure: array, generatedAt: string, isScannedPdf: boolean }>}
  */
 export async function generateTopicActiveRecallHints({
   topicId,
@@ -148,18 +158,36 @@ export async function generateTopicActiveRecallHints({
     isPreSplit
   });
 
-  // 3. Construct Active-Recall Prompt
-  const prompt = `You are an expert medical study tutor and active-recall assistant.
-Your task is to generate a dynamic, ordered ladder of progressive memory clues (hints) for the medical topic: "${topicName}" (${subject || ''}).
+  // 3. Construct Hierarchical Active-Recall Blueprint Prompt
+  const prompt = `You are an expert medical professor and active-recall blueprint architect.
+Your task is to analyze the provided textbook pages for the topic: "${topicName}" (${subject || ''}) and build a COMPREHENSIVE HIERARCHICAL ACTIVE-RECALL BLUEPRINT covering the ENTIRE chapter/topic material from start to finish.
 
-### STRICT RULES & CONSTRAINTS:
-1. DO NOT summarize, define, explain, or reveal direct answers or final diagnoses.
-2. Generate a dynamic list of N progressive memory clues following the exact chronological flow of the textbook pages provided.
-3. Clues must prompt the student's brain to recall specific facts, diagnostic criteria, mechanisms, clinical signs, or treatment protocols from memory.
-4. Each clue must be a concise, guiding question or trigger phrase (1-2 sentences max).
-5. DO NOT restrict yourself to a fixed 3-hint template. Create as many distinct clues (e.g. 3 to 8 clues) as naturally covered in these textbook pages.
-6. Output ONLY a valid JSON array of string clues:
-["Clue 1...", "Clue 2...", "Clue 3..."]
+### CRITICAL INSTRUCTIONS & CONSTRAINTS:
+1. COVER THE ENTIRE CHAPTER: Do NOT skip any major sections, sub-headings, or key concepts from the textbook pages provided.
+2. HIERARCHICAL TREE STRUCTURE: Organize the output into a 3-level tree:
+   - Level 1: Main Topics (Major headings/sections in the chapter in chronological order)
+   - Level 2: Subtopics (Core sub-concepts, anatomical structures, pathophysiologies, clinical presentations, diagnostics, or treatments under each Main Topic)
+   - Level 3: Sub-subtopics / Recall Anchors (Concise active-recall triggers/prompts for specific points, criteria, mechanisms, or facts the student must recall from memory).
+3. ACTIVE-RECALL PROMPTS (NO ANSWERS/SPOILERS): Do NOT write out full definitions, long textbook summaries, or answer keys. Write recall anchors (e.g. "3 diagnostic criteria for X", "Anatomic boundary of Y", "First-line pharmacological treatment & mechanism").
+4. OUTPUT FORMAT: Output ONLY a valid JSON object matching this exact schema:
+
+{
+  "chapterTitle": "${topicName}",
+  "structure": [
+    {
+      "topic": "1. Main Topic Name",
+      "subtopics": [
+        {
+          "title": "Subtopic Title",
+          "points": [
+            "Specific Active-Recall Prompt 1",
+            "Specific Active-Recall Prompt 2"
+          ]
+        }
+      ]
+    }
+  ]
+}
 
 ### EXTRACTED TEXTBOOK CONTENT (Pages ${pdfSlice.effStart} to ${pdfSlice.effEnd}):
 ${pdfSlice.extractedText || '(No raw text parsed; scanned textbook page images attached below.)'}
@@ -182,7 +210,9 @@ ${pdfSlice.extractedText || '(No raw text parsed; scanned textbook page images a
   const generatedAt = new Date().toISOString();
   const hintPayload = {
     topicId,
-    hints: result.hints,
+    hints: result.hints || [],
+    structure: result.structure || null,
+    chapterTitle: result.chapterTitle || topicName,
     generatedAt,
     usedModel: result.usedModel,
     startPage: pdfSlice.effStart,

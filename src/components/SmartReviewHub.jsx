@@ -1223,6 +1223,32 @@ function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue
   const [isGeneratingHints, setIsGeneratingHints] = useState(false);
   const [revealedHintCount, setRevealedHintCount] = useState(1);
   const [hintError, setHintError] = useState(null);
+  const [recalledPointsMap, setRecalledPointsMap] = useState({});
+  const [expandedTopicsMap, setExpandedTopicsMap] = useState({ 0: true });
+
+  const blueprintMetrics = useMemo(() => {
+    if (!topicHints?.structure || !Array.isArray(topicHints.structure)) return null;
+    let totalTopics = topicHints.structure.length;
+    let totalSubtopics = 0;
+    let totalPoints = 0;
+    let recalledCount = 0;
+
+    topicHints.structure.forEach((topObj, tIdx) => {
+      const subList = topObj.subtopics || [];
+      totalSubtopics += subList.length;
+      subList.forEach((subObj, sIdx) => {
+        const pts = subObj.points || [];
+        totalPoints += pts.length;
+        pts.forEach((_, pIdx) => {
+          const key = `${tIdx}_${sIdx}_${pIdx}`;
+          if (recalledPointsMap[key]) recalledCount++;
+        });
+      });
+    });
+
+    const percent = totalPoints > 0 ? Math.round((recalledCount / totalPoints) * 100) : 0;
+    return { totalTopics, totalSubtopics, totalPoints, recalledCount, percent };
+  }, [topicHints, recalledPointsMap]);
 
   // Load cached hints on mount or when topic changes
   useEffect(() => {
@@ -1559,46 +1585,226 @@ function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue
                 </button>
               </div>
             ) : topicHints ? (
-              <div className="space-y-2">
-                {/* Revealed Hints Step by Step */}
-                <div className="space-y-1.5">
-                  {topicHints.hints.slice(0, revealedHintCount).map((hint, hIdx) => (
-                    <motion.div
-                      key={hIdx}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className={`p-2.5 rounded-xl text-xs font-medium border flex items-start gap-2 ${
-                        isDark ? 'neu-pressed-dark text-slate-200 border-slate-700/60' : 'neu-pressed-light text-slate-800 border-slate-200'
-                      }`}
-                    >
-                      <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 text-[9px] font-black font-mono shrink-0">
-                        #{hIdx + 1}
-                      </span>
-                      <p className="leading-snug">{hint}</p>
-                    </motion.div>
-                  ))}
-                </div>
+              <div className="space-y-3">
+                {topicHints.structure && Array.isArray(topicHints.structure) && topicHints.structure.length > 0 ? (
+                  /* HIERARCHICAL CHAPTER ACTIVE-RECALL BLUEPRINT TREE */
+                  <div className="space-y-3">
+                    {/* Header Metrics & Progress Bar */}
+                    <div className={`p-3 rounded-2xl border space-y-2.5 ${isDark ? 'neu-pressed-dark border-slate-800' : 'neu-pressed-light border-slate-200'}`}>
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div>
+                          <span className={`text-[10px] font-black uppercase tracking-wider block ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
+                            📚 {topicHints.chapterTitle || topic.name}
+                          </span>
+                          <span className="text-[9px] font-bold text-slate-400">
+                            {blueprintMetrics?.totalTopics} Topics • {blueprintMetrics?.totalSubtopics} Subtopics • {blueprintMetrics?.totalPoints} Recall Points
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const all = {};
+                              topicHints.structure.forEach((_, i) => { all[i] = true; });
+                              setExpandedTopicsMap(all);
+                            }}
+                            className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border transition ${isDark ? 'neu-btn-dark text-slate-300 border-slate-700' : 'neu-btn-light text-slate-600 border-slate-300'}`}
+                          >
+                            Expand All
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setExpandedTopicsMap({});
+                            }}
+                            className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border transition ${isDark ? 'neu-btn-dark text-slate-300 border-slate-700' : 'neu-btn-light text-slate-600 border-slate-300'}`}
+                          >
+                            Collapse All
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleGenerateHints}
+                            title="Regenerate Chapter Blueprint"
+                            className={`p-1.5 rounded-lg text-[9px] font-black border transition ${isDark ? 'neu-btn-dark text-amber-400 border-slate-700' : 'neu-btn-light text-amber-600 border-slate-300'}`}
+                          >
+                            <Sparkles className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
 
-                {/* Controls */}
-                <div className="flex items-center justify-between gap-2 pt-1">
-                  {revealedHintCount < topicHints.hints.length ? (
+                      {/* Recall Progress Bar */}
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-wider">
+                          <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>Chapter Recall Coverage</span>
+                          <span className="text-emerald-400">{blueprintMetrics?.recalledCount}/{blueprintMetrics?.totalPoints} ({blueprintMetrics?.percent}%)</span>
+                        </div>
+                        <div className={`w-full h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`}>
+                          <div
+                            className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-300"
+                            style={{ width: `${blueprintMetrics?.percent || 0}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Topic Accordion List */}
+                    <div className="space-y-2.5 max-h-[420px] overflow-y-auto pr-1 no-scrollbar custom-scrollbar">
+                      {topicHints.structure.map((topObj, tIdx) => {
+                        const isTopExpanded = expandedTopicsMap[tIdx] !== false; // default open
+                        const subtopics = topObj.subtopics || [];
+
+                        return (
+                          <div
+                            key={tIdx}
+                            className={`rounded-2xl border transition-all overflow-hidden ${isDark ? 'neu-card-dark border-slate-800' : 'neu-card-light border-slate-200'}`}
+                          >
+                            {/* Topic Header Bar */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setExpandedTopicsMap(prev => ({ ...prev, [tIdx]: !isTopExpanded }));
+                              }}
+                              className={`w-full p-3 flex items-center justify-between text-left transition ${isDark ? 'hover:bg-slate-800/50' : 'hover:bg-slate-50'}`}
+                            >
+                              <div className="flex items-center gap-2 min-w-0 pr-2">
+                                <span className="px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-400 text-[10px] font-black font-mono shrink-0">
+                                  T{tIdx + 1}
+                                </span>
+                                <h4 className={`text-xs font-black tracking-tight truncate ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                                  {topObj.topic}
+                                </h4>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-slate-700/40 text-slate-300">
+                                  {subtopics.length} Subtopics
+                                </span>
+                                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isTopExpanded ? 'rotate-180 text-amber-400' : 'text-slate-400'}`} />
+                              </div>
+                            </button>
+
+                            {/* Subtopics List */}
+                            <AnimatePresence>
+                              {isTopExpanded && (
+                                <motion.div
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: 'auto', opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  className="border-t border-slate-800/60 p-3 space-y-3 bg-slate-950/20"
+                                >
+                                  {subtopics.map((subObj, sIdx) => {
+                                    const points = subObj.points || [];
+
+                                    return (
+                                      <div key={sIdx} className="space-y-1.5">
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="text-amber-400 font-bold text-xs">🔹</span>
+                                          <h5 className={`text-[11px] font-bold tracking-wide ${isDark ? 'text-amber-200' : 'text-amber-800'}`}>
+                                            {subObj.title}
+                                          </h5>
+                                        </div>
+
+                                        {/* Recall Anchors / Points */}
+                                        <div className="pl-4 space-y-1 border-l-2 border-slate-800">
+                                          {points.map((pt, pIdx) => {
+                                            const ptKey = `${tIdx}_${sIdx}_${pIdx}`;
+                                            const isRecalled = !!recalledPointsMap[ptKey];
+
+                                            return (
+                                              <div
+                                                key={pIdx}
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setRecalledPointsMap(prev => ({ ...prev, [ptKey]: !prev[ptKey] }));
+                                                }}
+                                                className={`p-2 rounded-xl text-xs font-medium border flex items-start gap-2.5 transition-all cursor-pointer select-none active:scale-[0.99] ${
+                                                  isRecalled
+                                                    ? isDark
+                                                      ? 'bg-emerald-950/40 text-emerald-200 border-emerald-500/40'
+                                                      : 'bg-emerald-50 text-emerald-900 border-emerald-300'
+                                                    : isDark
+                                                      ? 'neu-pressed-dark text-slate-300 border-slate-800 hover:border-slate-700'
+                                                      : 'neu-pressed-light text-slate-700 border-slate-200 hover:border-slate-300'
+                                                }`}
+                                              >
+                                                <input
+                                                  type="checkbox"
+                                                  checked={isRecalled}
+                                                  onChange={() => {}} // Handled by parent div click
+                                                  className="mt-0.5 w-3.5 h-3.5 rounded accent-emerald-500 cursor-pointer shrink-0"
+                                                />
+                                                <span className={`leading-relaxed ${isRecalled ? 'line-through opacity-85' : ''}`}>
+                                                  {pt}
+                                                </span>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  /* LEGACY FALLBACK PROGRESSIVE HINT LADDER */
+                  <div className="space-y-2">
+                    <div className="space-y-1.5">
+                      {topicHints.hints.slice(0, revealedHintCount).map((hint, hIdx) => (
+                        <motion.div
+                          key={hIdx}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          className={`p-2.5 rounded-xl text-xs font-medium border flex items-start gap-2 ${
+                            isDark ? 'neu-pressed-dark text-slate-200 border-slate-700/60' : 'neu-pressed-light text-slate-800 border-slate-200'
+                          }`}
+                        >
+                          <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 text-[9px] font-black font-mono shrink-0">
+                            #{hIdx + 1}
+                          </span>
+                          <p className="leading-snug">{hint}</p>
+                        </motion.div>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 pt-1">
+                      {revealedHintCount < topicHints.hints.length ? (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setRevealedHintCount(prev => Math.min(prev + 1, topicHints.hints.length));
+                          }}
+                          className="w-full py-1.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-sm transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                          <span>Reveal Next Clue ({revealedHintCount + 1}/{topicHints.hints.length})</span>
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        </button>
+                      ) : (
+                        <div className="w-full text-center py-1 text-[10px] font-bold text-emerald-400 bg-emerald-500/10 rounded-lg border border-emerald-500/30">
+                          ✓ All {topicHints.hints.length} memory clues revealed!
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Upgrade to Blueprint Button */}
                     <button
                       type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setRevealedHintCount(prev => Math.min(prev + 1, topicHints.hints.length));
-                      }}
-                      className="w-full py-1.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-sm transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
+                      onClick={handleGenerateHints}
+                      className="w-full py-1.5 px-3 rounded-xl text-[10px] font-black uppercase tracking-wider bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 shadow-md hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5 mt-2"
                     >
-                      <span>Reveal Next Clue ({revealedHintCount + 1}/{topicHints.hints.length})</span>
-                      <ChevronDown className="w-3.5 h-3.5" />
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Upgrade to Hierarchical Chapter Blueprint</span>
                     </button>
-                  ) : (
-                    <div className="w-full text-center py-1 text-[10px] font-bold text-emerald-400 bg-emerald-500/10 rounded-lg border border-emerald-500/30">
-                      ✓ All {topicHints.hints.length} memory clues revealed! Practice your recall now.
-                    </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             ) : (
               <div className={`p-3.5 rounded-xl border text-center space-y-2 ${
