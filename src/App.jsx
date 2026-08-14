@@ -27684,108 +27684,103 @@ Return your response strictly as a JSON object matching this schema:
                               ? `neu-cat-card ${settingsThemeMode === 'dark' ? 'dark-theme' : 'light-theme'} ${
                                   isExpanded ? 'is-expanded' : ''
                                 } space-y-1`
-                              : 'w-full flex flex-col items-center space-y-1.5'
+                              : 'w-full flex justify-center'
                           }
                         >
                           {isSidebarExpanded ? (
-                            <button
-                              type="button"
-                              onClick={() => toggleNavCategory(cat.id)}
-                              className={`neu-cat-header ${settingsThemeMode === 'dark' ? 'dark-theme' : 'light-theme'} ${
-                                isExpanded ? 'is-expanded' : ''
-                              } ${hasActiveItem ? 'has-active' : ''} group select-none`}
-                            >
-                              <div className="flex items-center gap-2 min-w-0">
-                                <div className="neu-cat-icon-badge">
-                                  <CatIcon className="w-3.5 h-3.5" />
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => toggleNavCategory(cat.id)}
+                                className={`neu-cat-header ${settingsThemeMode === 'dark' ? 'dark-theme' : 'light-theme'} ${
+                                  isExpanded ? 'is-expanded' : ''
+                                } ${hasActiveItem ? 'has-active' : ''} group select-none`}
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <div className="neu-cat-icon-badge">
+                                    <CatIcon className="w-3.5 h-3.5" />
+                                  </div>
+                                  <span className={`text-[10px] font-black uppercase tracking-wider truncate transition-colors ${
+                                    isExpanded || hasActiveItem
+                                      ? (settingsThemeMode === 'dark' ? 'text-sky-400 font-extrabold' : 'text-blue-600 font-extrabold')
+                                      : (settingsThemeMode === 'dark' ? 'text-slate-400 group-hover:text-slate-200' : 'text-slate-500 group-hover:text-slate-800')
+                                  }`}>
+                                    {cat.label}
+                                  </span>
                                 </div>
-                                <span className={`text-[10px] font-black uppercase tracking-wider truncate transition-colors ${
-                                  isExpanded || hasActiveItem
-                                    ? (settingsThemeMode === 'dark' ? 'text-sky-400 font-extrabold' : 'text-blue-600 font-extrabold')
-                                    : (settingsThemeMode === 'dark' ? 'text-slate-400 group-hover:text-slate-200' : 'text-slate-500 group-hover:text-slate-800')
-                                }`}>
-                                  {cat.label}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-1.5 shrink-0">
-                                {hasActiveItem && (
-                                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.8)]" />
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  {hasActiveItem && (
+                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.8)]" />
+                                  )}
+                                  <div className="neu-cat-chevron-badge">
+                                    <ChevronDown
+                                      className={`w-3.5 h-3.5 transition-transform duration-300 ${
+                                        isExpanded ? 'rotate-0 text-sky-400' : '-rotate-90 text-slate-400'
+                                      }`}
+                                    />
+                                  </div>
+                                </div>
+                              </button>
+
+                              <AnimatePresence initial={false}>
+                                {isExpanded && (
+                                  <motion.div
+                                    key={`cat-items-${cat.id}`}
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
+                                    className="space-y-1.5 overflow-hidden p-1"
+                                  >
+                                    {cat.items.map(item => {
+                                      const IconComp = item.icon;
+                                      const isActive = currentTab === item.id;
+                                      return (
+                                        <button
+                                          key={item.id}
+                                          onClick={item.action}
+                                          onMouseEnter={(e) => {
+                                            const rect = e.currentTarget.getBoundingClientRect();
+                                            setSidebarTooltip({ label: item.label, top: rect.top + rect.height / 2 });
+                                          }}
+                                          onMouseLeave={() => setSidebarTooltip(null)}
+                                          className={`neu-action-item ${settingsThemeMode === 'dark' ? 'dark-theme' : 'light-theme'} ${isActive ? 'active' : ''} w-full flex items-center gap-3 px-2 py-1.5 rounded-2xl group relative`}
+                                        >
+                                          <div className="neu-action-icon-box">
+                                            <IconComp className="w-5 h-5 shrink-0" />
+                                          </div>
+                                          <span className={`text-xs font-black tracking-wide truncate transition-colors ${isActive ? (settingsThemeMode === 'dark' ? 'text-blue-400' : 'text-blue-600') : (settingsThemeMode === 'dark' ? 'text-gray-300 group-hover:text-white' : 'text-gray-700 group-hover:text-gray-900')}`}>
+                                            {item.label}
+                                          </span>
+                                        </button>
+                                      );
+                                    })}
+                                  </motion.div>
                                 )}
-                                <div className="neu-cat-chevron-badge">
-                                  <ChevronDown
-                                    className={`w-3.5 h-3.5 transition-transform duration-300 ${
-                                      isExpanded ? 'rotate-0 text-sky-400' : '-rotate-90 text-slate-400'
-                                    }`}
-                                  />
-                                </div>
+                              </AnimatePresence>
+                            </>
+                          ) : (
+                            <button
+                              key={cat.id}
+                              onClick={() => {
+                                if (sidebarCollapseTimerRef.current) {
+                                  clearTimeout(sidebarCollapseTimerRef.current);
+                                  sidebarCollapseTimerRef.current = null;
+                                }
+                                setIsSidebarExpanded(true);
+                                setExpandedNavCategory(cat.id);
+                              }}
+                              onMouseEnter={(e) => {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                setSidebarTooltip({ label: cat.label, top: rect.top + rect.height / 2 });
+                              }}
+                              onMouseLeave={() => setSidebarTooltip(null)}
+                              className={`neu-action-item ${settingsThemeMode === 'dark' ? 'dark-theme' : 'light-theme'} ${hasActiveItem ? 'active' : ''} flex items-center justify-center p-0 rounded-2xl group relative`}
+                            >
+                              <div className="neu-action-icon-box">
+                                <CatIcon className="w-5 h-5 shrink-0" />
                               </div>
                             </button>
-                          ) : catIdx > 0 ? (
-                            <div className="py-1 flex justify-center w-full">
-                              <div className={`w-8 h-[1px] ${settingsThemeMode === 'dark' ? 'bg-gray-800/80' : 'bg-gray-300/80'}`} />
-                            </div>
-                          ) : null}
-
-                          {isSidebarExpanded ? (
-                            <AnimatePresence initial={false}>
-                              {isExpanded && (
-                                <motion.div
-                                  key={`cat-items-${cat.id}`}
-                                  initial={{ height: 0, opacity: 0 }}
-                                  animate={{ height: 'auto', opacity: 1 }}
-                                  exit={{ height: 0, opacity: 0 }}
-                                  transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
-                                  className="space-y-1.5 overflow-hidden p-1"
-                                >
-                                  {cat.items.map(item => {
-                                    const IconComp = item.icon;
-                                    const isActive = currentTab === item.id;
-                                    return (
-                                      <button
-                                        key={item.id}
-                                        onClick={item.action}
-                                        onMouseEnter={(e) => {
-                                          const rect = e.currentTarget.getBoundingClientRect();
-                                          setSidebarTooltip({ label: item.label, top: rect.top + rect.height / 2 });
-                                        }}
-                                        onMouseLeave={() => setSidebarTooltip(null)}
-                                        className={`neu-action-item ${settingsThemeMode === 'dark' ? 'dark-theme' : 'light-theme'} ${isActive ? 'active' : ''} w-full flex items-center gap-3 px-2 py-1.5 rounded-2xl group relative`}
-                                      >
-                                        <div className="neu-action-icon-box">
-                                          <IconComp className="w-5 h-5 shrink-0" />
-                                        </div>
-                                        <span className={`text-xs font-black tracking-wide truncate transition-colors ${isActive ? (settingsThemeMode === 'dark' ? 'text-blue-400' : 'text-blue-600') : (settingsThemeMode === 'dark' ? 'text-gray-300 group-hover:text-white' : 'text-gray-700 group-hover:text-gray-900')}`}>
-                                          {item.label}
-                                        </span>
-                                      </button>
-                                    );
-                                  })}
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
-                          ) : (
-                            <div className="w-full flex flex-col items-center space-y-1.5">
-                              {cat.items.map(item => {
-                                const IconComp = item.icon;
-                                const isActive = currentTab === item.id;
-                                return (
-                                  <button
-                                    key={item.id}
-                                    onClick={item.action}
-                                    onMouseEnter={(e) => {
-                                      const rect = e.currentTarget.getBoundingClientRect();
-                                      setSidebarTooltip({ label: item.label, top: rect.top + rect.height / 2 });
-                                    }}
-                                    onMouseLeave={() => setSidebarTooltip(null)}
-                                    className={`neu-action-item ${settingsThemeMode === 'dark' ? 'dark-theme' : 'light-theme'} ${isActive ? 'active' : ''} w-full flex items-center justify-center p-0 rounded-2xl group relative`}
-                                  >
-                                    <div className="neu-action-icon-box">
-                                      <IconComp className="w-5 h-5 shrink-0" />
-                                    </div>
-                                  </button>
-                                );
-                              })}
-                            </div>
                           )}
                         </div>
                       );
