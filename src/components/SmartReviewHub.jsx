@@ -1453,7 +1453,7 @@ function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue
       // Extract page range from topic
       const pageInfo = parsePageNumbers(topic);
       const startPage = pageInfo.startPage || 1;
-      const endPage = pageInfo.endPage || startPage;
+      const endPage = isPreSplit ? pageInfo.endPage : (pageInfo.endPage || (startPage + 15));
 
       const topicId = topic.id || `${topic.subject}_${topic.name}`;
 

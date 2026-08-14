@@ -22,9 +22,25 @@ if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
  * @returns {{ effStart: number, effEnd: number }}
  */
 export function calculateEffectivePageRange(startPage, endPage, pageOffset = 0, totalPdfPages = 1000, isPreSplit = false) {
+  // Scenario 2: Pre-Split Topic PDF (Standalone file uploaded for this topic)
+  if (isPreSplit) {
+    const startNum = parseInt(startPage, 10) || 1;
+    const endNum = parseInt(endPage, 10);
+    
+    // If endPage is missing or equal to startPage (and totalPdfPages > 1), cover ALL pages in the pre-split PDF
+    if (isNaN(endNum) || (endNum <= startNum && totalPdfPages > 1)) {
+      return { effStart: 1, effEnd: totalPdfPages };
+    }
+    return {
+      effStart: Math.min(Math.max(1, startNum), totalPdfPages),
+      effEnd: Math.min(Math.max(startNum, endNum), totalPdfPages)
+    };
+  }
+
+  // Scenario 1: Master Subject PDF
   const startNum = parseInt(startPage, 10) || 1;
   const endNum = parseInt(endPage, 10) || startNum;
-  const offsetNum = isPreSplit ? 0 : (parseInt(pageOffset, 10) || 0);
+  const offsetNum = parseInt(pageOffset, 10) || 0;
 
   const rawStart = Math.max(1, startNum + offsetNum);
   const rawEnd = Math.max(rawStart, endNum + offsetNum);
