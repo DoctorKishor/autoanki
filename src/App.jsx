@@ -5424,26 +5424,17 @@ export default function App() {
   const [draftNavIds, setDraftNavIds] = useState(DEFAULT_NAV_IDS);
   const [navSaveToast, setNavSaveToast] = useState(false);
   const [navTabsOpen, setNavTabsOpen] = useState(false);
-  const [collapsedNavCategories, setCollapsedNavCategories] = useState(() => {
-    try {
-      const saved = localStorage.getItem('auto_anki_collapsed_nav_categories');
-      return saved ? new Set(JSON.parse(saved)) : new Set();
-    } catch {
-      return new Set();
-    }
-  });
+  const [hoveredNavCategory, setHoveredNavCategory] = useState(null);
+  const [pinnedNavCategories, setPinnedNavCategories] = useState(new Set());
 
-  const toggleNavCategory = (catId) => {
-    setCollapsedNavCategories(prev => {
+  const togglePinNavCategory = (catId) => {
+    setPinnedNavCategories(prev => {
       const next = new Set(prev);
       if (next.has(catId)) {
         next.delete(catId);
       } else {
         next.add(catId);
       }
-      try {
-        localStorage.setItem('auto_anki_collapsed_nav_categories', JSON.stringify(Array.from(next)));
-      } catch (_) {}
       return next;
     });
   };
@@ -27591,11 +27582,12 @@ Return your response strictly as a JSON object matching this schema:
                     </button>
                   </div>
 
-                  <nav className="flex-grow space-y-3 px-3 overflow-y-auto custom-scrollbar max-h-[calc(100vh-200px)] z-10">
+                  <nav className="flex-grow space-y-2.5 px-3 overflow-y-auto custom-scrollbar max-h-[calc(100vh-200px)] z-10">
                     {[
                       {
                         id: 'focus',
                         label: 'Focus & Review',
+                        icon: Flame,
                         items: [
                           { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, action: () => setCurrentTab('dashboard') },
                           { id: 'smartReview', label: 'Smart Review', icon: Brain, action: () => setCurrentTab('smartReview') },
@@ -27606,6 +27598,7 @@ Return your response strictly as a JSON object matching this schema:
                       {
                         id: 'knowledge',
                         label: 'Content & Knowledge',
+                        icon: BookOpen,
                         items: [
                           { id: 'library', label: 'Library', icon: Library, action: () => setCurrentTab('library') },
                           { id: 'cards', label: 'Card Generation', icon: Home, action: () => setCurrentTab('cards') },
@@ -27617,6 +27610,7 @@ Return your response strictly as a JSON object matching this schema:
                       {
                         id: 'analytics',
                         label: 'Progress & Metrics',
+                        icon: BarChart2,
                         items: [
                           { id: 'campTracker', label: 'CAMP Tracker', icon: Activity, action: () => setCurrentTab('campTracker') },
                           { id: 'analytics', label: 'Analysis', icon: BarChart2, action: () => setCurrentTab('analytics') },
@@ -27625,6 +27619,7 @@ Return your response strictly as a JSON object matching this schema:
                       {
                         id: 'system',
                         label: 'Tools & System',
+                        icon: Sliders,
                         items: [
                           { id: 'export', label: 'Exporter Hub', icon: Download, action: () => setCurrentTab('export') },
                           { id: 'prompt', label: 'AI Prompt', icon: MessageSquare, action: () => setCurrentTab('prompt') },
@@ -27635,29 +27630,51 @@ Return your response strictly as a JSON object matching this schema:
                         ]
                       }
                     ].map((cat, catIdx) => {
-                      const isCollapsed = collapsedNavCategories.has(cat.id);
+                      const CatIcon = cat.icon;
                       const hasActiveItem = cat.items.some(item => item.id === currentTab);
+                      const isExpanded = hoveredNavCategory === cat.id || pinnedNavCategories.has(cat.id);
 
                       return (
-                        <div key={cat.id} className="space-y-1">
+                        <div
+                          key={cat.id}
+                          onMouseEnter={() => setHoveredNavCategory(cat.id)}
+                          onMouseLeave={() => setHoveredNavCategory(null)}
+                          className="space-y-1 transition-all rounded-2xl p-0.5"
+                        >
                           {isSidebarExpanded ? (
                             <button
                               type="button"
-                              onClick={() => toggleNavCategory(cat.id)}
-                              className={`w-full flex items-center justify-between px-2.5 py-1 rounded-xl text-left transition-colors cursor-pointer group select-none ${
-                                settingsThemeMode === 'dark'
-                                  ? (hasActiveItem ? 'text-blue-400 font-black' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40')
-                                  : (hasActiveItem ? 'text-blue-600 font-black' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50')
+                              onClick={() => togglePinNavCategory(cat.id)}
+                              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-left transition-all cursor-pointer group select-none ${
+                                isExpanded
+                                  ? (settingsThemeMode === 'dark' ? 'bg-slate-800/60 shadow-sm' : 'bg-slate-200/70 shadow-sm')
+                                  : (settingsThemeMode === 'dark' ? 'hover:bg-slate-800/40' : 'hover:bg-slate-200/50')
                               }`}
                             >
-                              <span className="text-[10px] font-black uppercase tracking-wider truncate">
-                                {cat.label}
-                              </span>
-                              <ChevronDown
-                                className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                                  isCollapsed ? '-rotate-90 text-slate-500' : 'rotate-0 text-slate-400'
-                                }`}
-                              />
+                              <div className="flex items-center gap-2 min-w-0">
+                                <CatIcon className={`w-3.5 h-3.5 shrink-0 transition-colors ${
+                                  hasActiveItem
+                                    ? (settingsThemeMode === 'dark' ? 'text-blue-400' : 'text-blue-600')
+                                    : (settingsThemeMode === 'dark' ? 'text-slate-400 group-hover:text-slate-200' : 'text-slate-500 group-hover:text-slate-800')
+                                }`} />
+                                <span className={`text-[10px] font-black uppercase tracking-wider truncate transition-colors ${
+                                  hasActiveItem
+                                    ? (settingsThemeMode === 'dark' ? 'text-blue-400' : 'text-blue-600')
+                                    : (settingsThemeMode === 'dark' ? 'text-slate-400 group-hover:text-slate-200' : 'text-slate-500 group-hover:text-slate-800')
+                                }`}>
+                                  {cat.label}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1 shrink-0">
+                                {hasActiveItem && (
+                                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.8)]" />
+                                )}
+                                <ChevronDown
+                                  className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                                    isExpanded ? 'rotate-0 text-slate-400' : '-rotate-90 text-slate-500'
+                                  }`}
+                                />
+                              </div>
                             </button>
                           ) : catIdx > 0 ? (
                             <div className="py-1 flex justify-center">
@@ -27667,13 +27684,13 @@ Return your response strictly as a JSON object matching this schema:
 
                           {isSidebarExpanded ? (
                             <AnimatePresence initial={false}>
-                              {!isCollapsed && (
+                              {isExpanded && (
                                 <motion.div
                                   key={`cat-items-${cat.id}`}
                                   initial={{ height: 0, opacity: 0 }}
                                   animate={{ height: 'auto', opacity: 1 }}
                                   exit={{ height: 0, opacity: 0 }}
-                                  transition={{ duration: 0.22, ease: [0.25, 1, 0.5, 1] }}
+                                  transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
                                   className="space-y-1.5 overflow-hidden pt-0.5"
                                 >
                                   {cat.items.map(item => {
