@@ -8984,8 +8984,8 @@ JSON Format:
     }
   };
 
-  const handleLogTrackerStudyDate = async (subject, topicName, dateStr, rating = 3) => {
-    if (!subject || !topicName || !dateStr) return;
+  const handleLogTrackerStudyDate = async (subject, topicName, dateStr, rating = 3, schedulerContext = null) => {
+    if (!subject || !topicName || !dateStr) return null;
     const docId = subject.trim().toLowerCase();
     const subjectName = subject.trim();
     const cleanTopicName = topicName.trim();
@@ -9063,7 +9063,7 @@ JSON Format:
       console.error("[LocalDB] Error logging study date:", err);
     }
 
-    // 3. Save study log entry for analytics
+    // 3. Save study log entry for analytics & update studyLogs React state
     const logEntry = {
       id: 'log_' + Math.random().toString(36).substring(2, 9),
       subject: subjectName,
@@ -9075,35 +9075,106 @@ JSON Format:
       nextReviewDue: fsrsResult.nextReviewDue,
       timestamp: new Date().toISOString()
     };
-    if (dateStr) {
-      const currentDayLog = studyLogs[dateStr] || {};
+
+    setStudyLogs(prev => {
+      const currentDayLog = prev[dateStr] || {};
       const existingFsrsLogs = currentDayLog.fsrsLogs || [];
-      const updatedDayLog = { ...currentDayLog, fsrsLogs: [...existingFsrsLogs, logEntry] };
+      const updatedDayLog = {
+        ...currentDayLog,
+        cards: (currentDayLog.cards || 0) + 1,
+        fsrsLogs: [...existingFsrsLogs, logEntry]
+      };
       saveLocalStudyLog(dateStr, updatedDayLog).catch(err => {
         console.error("[LocalDB] Error saving study log:", err);
       });
-    }
+      return { ...prev, [dateStr]: updatedDayLog };
+    });
+
+    // 4. Push to reviewUndoStack for Cross-Tab Undo/Redo
+    const ratingLabels = { 1: 'Again', 2: 'Hard', 3: 'Good', 4: 'Easy' };
+    setReviewUndoStack(prev => [
+      ...prev,
+      {
+        docId,
+        subject: subjectName,
+        topicName: cleanTopicName,
+        logEntry,
+        dateStr,
+        previousDoc: existingDoc ? JSON.parse(JSON.stringify(existingDoc)) : null,
+        schedulerContext
+      }
+    ]);
+    setReviewRedoStack([]); // Clear redo stack on new action
+
+    setLastRatedToast({
+      message: `Rated "${cleanTopicName}" as ${ratingLabels[rating]}`,
+      topicName: cleanTopicName,
+      ratingLabel: ratingLabels[rating],
+      timestamp: Date.now()
+    });
+
+    return logEntry;
   };
 
-  const handleDeleteTrackerStudyDate = async (subject, topicName, dateIndex) => {
+  const handleDeleteTrackerStudyDate = async (subject, topicName, dateIndex = null, targetDateStr = null) => {
     if (!subject || !topicName) return;
     const docId = subject.trim().toLowerCase();
 
     const localData = await getLocalSubjectTrackerData();
-    const docExists = localData.find(p => p.id === docId);
+    const docExists = localData.find(p => p.id === docId) || subjectTrackerData.find(p => p.id === docId);
     if (!docExists) return;
 
     const currentTopics = docExists.topics || {};
     const topicObj = currentTopics[topicName];
     if (!topicObj) return;
 
-    const updatedDates = (topicObj.studyDates || []).filter((_, idx) => idx !== dateIndex);
-    const isNowEmpty = updatedDates.length === 0;
+    let dateStrToRemove = targetDateStr;
+    let updatedDates = [...(topicObj.studyDates || [])];
+    if (dateIndex != null && dateIndex >= 0 && dateIndex < updatedDates.length) {
+      dateStrToRemove = updatedDates[dateIndex];
+      updatedDates = updatedDates.filter((_, idx) => idx !== dateIndex);
+    } else if (targetDateStr) {
+      updatedDates = updatedDates.filter(d => d !== targetDateStr);
+    }
 
-    const updatedTopicObj = {
-      ...topicObj,
-      studyDates: updatedDates,
-      ...(isNowEmpty ? {
+    // 1. Remove log entry from studyLogs state and LocalDB
+    let nextStudyLogs = { ...studyLogs };
+    if (dateStrToRemove && nextStudyLogs[dateStrToRemove]) {
+      const currentDayLog = nextStudyLogs[dateStrToRemove];
+      if (currentDayLog && Array.isArray(currentDayLog.fsrsLogs)) {
+        const filteredLogs = currentDayLog.fsrsLogs.filter(l =>
+          !(l.subject?.toLowerCase() === subject.toLowerCase() && l.topicName?.toLowerCase() === topicName.toLowerCase())
+        );
+        const updatedDayLog = {
+          ...currentDayLog,
+          cards: Math.max(0, (currentDayLog.cards || 0) - 1),
+          fsrsLogs: filteredLogs
+        };
+        nextStudyLogs = { ...nextStudyLogs, [dateStrToRemove]: updatedDayLog };
+        saveLocalStudyLog(dateStrToRemove, updatedDayLog).catch(err => console.error("[LocalDB] Error deleting study log:", err));
+      }
+    }
+    setStudyLogs(nextStudyLogs);
+
+    // 2. Gather ALL remaining FSRS logs for topicName across all dates
+    const remainingLogs = [];
+    Object.entries(nextStudyLogs).forEach(([dStr, dayLog]) => {
+      if (dayLog && Array.isArray(dayLog.fsrsLogs)) {
+        dayLog.fsrsLogs.forEach(l => {
+          if (l && l.topicName && l.topicName.trim().toLowerCase() === topicName.trim().toLowerCase()) {
+            remainingLogs.push(l);
+          }
+        });
+      }
+    });
+
+    const isNowEmpty = updatedDates.length === 0 || remainingLogs.length === 0;
+
+    let updatedTopicObj;
+    if (isNowEmpty) {
+      updatedTopicObj = {
+        ...topicObj,
+        studyDates: [],
         stability: null,
         difficulty: null,
         reviewCount: 0,
@@ -9111,25 +9182,68 @@ JSON Format:
         lastReviewDate: null,
         nextReviewDue: null,
         interval: null,
-        retrievability: null
-      } : {})
-    };
+        retrievability: null,
+        isLeech: false
+      };
+    } else {
+      updatedTopicObj = recalculateTopicFSRSFromLogs(
+        { ...topicObj, studyDates: updatedDates },
+        remainingLogs,
+        fsrsConfig,
+        subjectTrackerData
+      );
+    }
 
     const updatedTopics = {
       ...currentTopics,
       [topicName]: updatedTopicObj
     };
 
+    const updatedDoc = {
+      ...docExists,
+      id: docId,
+      subject: subject.trim(),
+      topics: updatedTopics,
+      updatedAt: new Date().toISOString()
+    };
+
     setSubjectTrackerData(prev => {
-      return prev.map(p => p.id === docId ? { ...p, topics: updatedTopics } : p);
+      const list = Array.isArray(prev) ? prev : [];
+      const idx = list.findIndex(p => p.id === docId);
+      if (idx >= 0) {
+        return list.map(p => p.id === docId ? updatedDoc : p);
+      }
+      return [...list, updatedDoc];
     });
 
     try {
-      await saveLocalSubjectTrackerDoc(docId, {
-        topics: updatedTopics
-      });
+      await saveLocalSubjectTrackerDoc(docId, updatedDoc);
     } catch (err) {
       console.error("Error deleting study date locally:", err);
+    }
+
+    // 3. Uncheck matching task in Study Schedule if present
+    if (dateStrToRemove && studySchedule[dateStrToRemove]) {
+      const entry = studySchedule[dateStrToRemove];
+      if (entry && Array.isArray(entry.tasks)) {
+        let taskChanged = false;
+        const updatedTasks = entry.tasks.map(t => {
+          if (t.completed && (
+            (t.subject?.toLowerCase() === subject.toLowerCase() && t.topicName?.toLowerCase() === topicName.toLowerCase()) ||
+            t.topic.toLowerCase().includes(topicName.toLowerCase())
+          )) {
+            taskChanged = true;
+            return { ...t, completed: false, rating: undefined };
+          }
+          return t;
+        });
+
+        if (taskChanged) {
+          saveLocalScheduleEntry(dateStrToRemove, { ...entry, tasks: updatedTasks })
+            .then(updatedSchedule => setStudySchedule(updatedSchedule))
+            .catch(err => console.error("Error updating schedule on date delete:", err));
+        }
+      }
     }
   };
 
@@ -14547,7 +14661,7 @@ const renderTimerHub = (isMobile = false) => {
     setReviewUndoStack(prev => prev.slice(0, prev.length - 1));
     setReviewRedoStack(prev => [...prev, lastItem]);
 
-    const { docId, topicName, logEntry } = lastItem;
+    const { docId, subject, topicName, logEntry, schedulerContext } = lastItem;
 
     // 1. Synchronize studyLogs state: remove the logEntry on Undo
     let nextStudyLogs = { ...studyLogs };
@@ -14582,7 +14696,9 @@ const renderTimerHub = (isMobile = false) => {
     // 3. Recalculate topic FSRS state in subjectTrackerData from remainingLogs
     setSubjectTrackerData(prev => {
       const list = Array.isArray(prev) ? prev : [];
-      const idx = list.findIndex(d => d.id === docId);
+      const targetDocId = docId || (subject ? subject.trim().toLowerCase() : null);
+      if (!targetDocId) return list;
+      const idx = list.findIndex(d => d.id === targetDocId);
       if (idx < 0) return list;
 
       const existingDoc = list[idx];
@@ -14590,25 +14706,24 @@ const renderTimerHub = (isMobile = false) => {
       const currentTopic = topicsMap[topicName];
 
       if (currentTopic) {
-        if (remainingLogs.length === 0) {
-          // If 0 logs remain, restore previous doc snapshot or clear FSRS parameters & studyDates completely
-          let restoredTopic = (lastItem.previousDoc && lastItem.previousDoc.topics && lastItem.previousDoc.topics[topicName])
-            ? JSON.parse(JSON.stringify(lastItem.previousDoc.topics[topicName]))
-            : { ...currentTopic };
-
-          delete restoredTopic.difficulty;
-          delete restoredTopic.stability;
-          delete restoredTopic.retrievability;
-          delete restoredTopic.interval;
-          delete restoredTopic.nextReviewDue;
-          delete restoredTopic.lastReviewDate;
-          restoredTopic.reviewCount = 0;
-          restoredTopic.lapses = 0;
-          restoredTopic.isLeech = false;
-          restoredTopic.studyDates = [];
-          topicsMap[topicName] = restoredTopic;
+        const targetDate = logEntry?.dateStr;
+        const updatedDates = (currentTopic.studyDates || []).filter(d => d !== targetDate);
+        if (remainingLogs.length === 0 || updatedDates.length === 0) {
+          topicsMap[topicName] = {
+            ...currentTopic,
+            studyDates: [],
+            stability: null,
+            difficulty: null,
+            retrievability: null,
+            interval: null,
+            nextReviewDue: null,
+            lastReviewDate: null,
+            reviewCount: 0,
+            lapses: 0,
+            isLeech: false
+          };
         } else {
-          const recalculatedTopic = recalculateTopicFSRSFromLogs(currentTopic, remainingLogs, fsrsConfig, list);
+          const recalculatedTopic = recalculateTopicFSRSFromLogs({ ...currentTopic, studyDates: updatedDates }, remainingLogs, fsrsConfig, list);
           topicsMap[topicName] = recalculatedTopic;
         }
       }
@@ -14619,10 +14734,32 @@ const renderTimerHub = (isMobile = false) => {
         updatedAt: new Date().toISOString()
       };
 
-      saveLocalSubjectTrackerDoc(docId, updatedDoc).catch(err => console.error("[LocalDB] Error updating subject doc on undo:", err));
+      saveLocalSubjectTrackerDoc(targetDocId, updatedDoc).catch(err => console.error("[LocalDB] Error updating subject doc on undo:", err));
 
-      return list.map(d => d.id === docId ? updatedDoc : d);
+      return list.map(d => d.id === targetDocId ? updatedDoc : d);
     });
+
+    // 4. Synchronize Study Schedule tasks if schedulerContext or matching task on dateStr exists
+    const targetDate = logEntry?.dateStr || schedulerContext?.dateStr;
+    if (targetDate && studySchedule[targetDate]) {
+      const entry = studySchedule[targetDate];
+      if (entry && Array.isArray(entry.tasks)) {
+        let changed = false;
+        const updatedTasks = entry.tasks.map(t => {
+          if ((schedulerContext?.taskId && t.id === schedulerContext.taskId) ||
+              (t.completed && (t.topicName?.toLowerCase() === topicName.toLowerCase() || t.topic?.toLowerCase().includes(topicName.toLowerCase())))) {
+            changed = true;
+            return { ...t, completed: false, rating: undefined };
+          }
+          return t;
+        });
+        if (changed) {
+          saveLocalScheduleEntry(targetDate, { ...entry, tasks: updatedTasks })
+            .then(updatedSchedule => setStudySchedule(updatedSchedule))
+            .catch(err => console.error("[LocalDB] Error undoing schedule task:", err));
+        }
+      }
+    }
 
     setLastRatedToast({
       message: `Undid review for "${topicName}"`,
@@ -14638,7 +14775,7 @@ const renderTimerHub = (isMobile = false) => {
     setReviewRedoStack(prev => prev.slice(0, prev.length - 1));
     setReviewUndoStack(prev => [...prev, lastItem]);
 
-    const { docId, topicName, logEntry } = lastItem;
+    const { docId, subject, topicName, logEntry, schedulerContext } = lastItem;
 
     // 1. Synchronize studyLogs state: restore the logEntry on Redo
     let nextStudyLogs = { ...studyLogs };
@@ -14655,13 +14792,13 @@ const renderTimerHub = (isMobile = false) => {
     }
     setStudyLogs(nextStudyLogs);
 
-    // 2. Gather ALL FSRS logs for topicName
-    const topicLogs = [];
+    // 2. Gather ALL remaining FSRS logs for topicName including the restored one
+    const remainingLogs = [];
     Object.values(nextStudyLogs).forEach(dayLog => {
       if (dayLog && Array.isArray(dayLog.fsrsLogs)) {
         dayLog.fsrsLogs.forEach(l => {
           if (l && l.topicName && l.topicName.trim().toLowerCase() === topicName.trim().toLowerCase()) {
-            topicLogs.push(l);
+            remainingLogs.push(l);
           }
         });
       }
@@ -14670,17 +14807,19 @@ const renderTimerHub = (isMobile = false) => {
     // 3. Recalculate topic FSRS state in subjectTrackerData
     setSubjectTrackerData(prev => {
       const list = Array.isArray(prev) ? prev : [];
-      const idx = list.findIndex(d => d.id === docId);
+      const targetDocId = docId || (subject ? subject.trim().toLowerCase() : null);
+      if (!targetDocId) return list;
+      const idx = list.findIndex(d => d.id === targetDocId);
       if (idx < 0) return list;
 
       const existingDoc = list[idx];
       const topicsMap = JSON.parse(JSON.stringify(existingDoc.topics || {}));
-      const currentTopic = topicsMap[topicName];
+      const currentTopic = topicsMap[topicName] || { name: topicName, studyDates: [] };
 
-      if (currentTopic) {
-        const recalculatedTopic = recalculateTopicFSRSFromLogs(currentTopic, topicLogs, fsrsConfig, list);
-        topicsMap[topicName] = recalculatedTopic;
-      }
+      const targetDate = logEntry?.dateStr;
+      const studyDates = Array.from(new Set([...(currentTopic.studyDates || []), targetDate])).filter(Boolean).sort();
+      const recalculatedTopic = recalculateTopicFSRSFromLogs({ ...currentTopic, studyDates }, remainingLogs, fsrsConfig, list);
+      topicsMap[topicName] = recalculatedTopic;
 
       const updatedDoc = {
         ...existingDoc,
@@ -14688,15 +14827,36 @@ const renderTimerHub = (isMobile = false) => {
         updatedAt: new Date().toISOString()
       };
 
-      saveLocalSubjectTrackerDoc(docId, updatedDoc).catch(err => console.error("[LocalDB] Error updating subject doc on redo:", err));
+      saveLocalSubjectTrackerDoc(targetDocId, updatedDoc).catch(err => console.error("[LocalDB] Error updating subject doc on redo:", err));
 
-      return list.map(d => d.id === docId ? updatedDoc : d);
+      return list.map(d => d.id === targetDocId ? updatedDoc : d);
     });
+
+    // 4. Synchronize Study Schedule tasks if schedulerContext or matching task on dateStr exists
+    const targetDate = logEntry?.dateStr || schedulerContext?.dateStr;
+    if (targetDate && studySchedule[targetDate]) {
+      const entry = studySchedule[targetDate];
+      if (entry && Array.isArray(entry.tasks)) {
+        let changed = false;
+        const updatedTasks = entry.tasks.map(t => {
+          if ((schedulerContext?.taskId && t.id === schedulerContext.taskId) ||
+              (!t.completed && (t.topicName?.toLowerCase() === topicName.toLowerCase() || t.topic?.toLowerCase().includes(topicName.toLowerCase())))) {
+            changed = true;
+            return { ...t, completed: true, rating: logEntry?.rating };
+          }
+          return t;
+        });
+        if (changed) {
+          saveLocalScheduleEntry(targetDate, { ...entry, tasks: updatedTasks })
+            .then(updatedSchedule => setStudySchedule(updatedSchedule))
+            .catch(err => console.error("[LocalDB] Error redoing schedule task:", err));
+        }
+      }
+    }
 
     setLastRatedToast({
       message: `Redid review for "${topicName}"`,
       topicName,
-      isRedo: true,
       timestamp: Date.now()
     });
   };
@@ -16132,7 +16292,7 @@ const renderTimerHub = (isMobile = false) => {
   }, [studySchedule, notificationPermissionStatus]);
 
   // Study Scheduler Handlers
-  const syncSchedulerTaskToSubjectTracker = async (taskTopic, dateStr, completed) => {
+  const syncSchedulerTaskToSubjectTracker = async (taskTopic, dateStr, completed, rating = 3) => {
     let matchedSubject = null;
     let matchedTopicName = null;
 
@@ -16144,24 +16304,20 @@ const renderTimerHub = (isMobile = false) => {
       const sub = parts[0].trim();
       const top = parts.slice(1).join(':').trim();
       const trackerDoc = subjectTrackerData.find(p => p.subject.toLowerCase() === sub.toLowerCase());
-      if (trackerDoc && trackerDoc.topics) {
-        const matchingKey = Object.keys(trackerDoc.topics).find(k => k.toLowerCase() === top.toLowerCase());
-        if (matchingKey) {
-          matchedSubject = trackerDoc.subject;
-          matchedTopicName = matchingKey;
-        }
+      if (trackerDoc) {
+        matchedSubject = trackerDoc.subject;
+        const matchingKey = trackerDoc.topics ? Object.keys(trackerDoc.topics).find(k => k.toLowerCase() === top.toLowerCase()) : null;
+        matchedTopicName = matchingKey || top;
       }
     } else if (dashIdx !== -1) {
       const parts = taskTopic.split(' - ');
       const sub = parts[0].trim();
       const top = parts.slice(1).join(' - ').trim();
       const trackerDoc = subjectTrackerData.find(p => p.subject.toLowerCase() === sub.toLowerCase());
-      if (trackerDoc && trackerDoc.topics) {
-        const matchingKey = Object.keys(trackerDoc.topics).find(k => k.toLowerCase() === top.toLowerCase());
-        if (matchingKey) {
-          matchedSubject = trackerDoc.subject;
-          matchedTopicName = matchingKey;
-        }
+      if (trackerDoc) {
+        matchedSubject = trackerDoc.subject;
+        const matchingKey = trackerDoc.topics ? Object.keys(trackerDoc.topics).find(k => k.toLowerCase() === top.toLowerCase()) : null;
+        matchedTopicName = matchingKey || top;
       }
     }
 
@@ -16180,42 +16336,139 @@ const renderTimerHub = (isMobile = false) => {
 
     if (matchedSubject && matchedTopicName) {
       if (completed) {
-        await handleLogTrackerStudyDate(matchedSubject, matchedTopicName, dateStr);
+        await handleLogTrackerStudyDate(matchedSubject, matchedTopicName, dateStr, rating);
       } else {
-        const docId = matchedSubject.trim().toLowerCase();
-        const trackerDoc = subjectTrackerData.find(p => p.id === docId);
-        if (trackerDoc && trackerDoc.topics && trackerDoc.topics[matchedTopicName]) {
-          const dates = trackerDoc.topics[matchedTopicName].studyDates || [];
-          const idx = dates.indexOf(dateStr);
-          if (idx !== -1) {
-            await handleDeleteTrackerStudyDate(matchedSubject, matchedTopicName, idx);
-          }
-        }
+        await handleDeleteTrackerStudyDate(matchedSubject, matchedTopicName, null, dateStr);
       }
+    }
+  };
+
+  const handleConfirmRatingPopover = async (rating) => {
+    if (!ratingPopoverTopic) return;
+    const { subject, topicName, dateStr, schedulerContext } = ratingPopoverTopic;
+    setRatingPopoverTopic(null);
+
+    const logEntry = await handleLogTrackerStudyDate(subject, topicName, dateStr, rating, schedulerContext);
+
+    if (schedulerContext && schedulerContext.dateStr && schedulerContext.taskId) {
+      const sDate = schedulerContext.dateStr;
+      const entry = studySchedule[sDate] || {};
+      const updatedTasks = (entry.tasks || []).map(t => {
+        if (t.id === schedulerContext.taskId) {
+          return { ...t, completed: true, rating };
+        }
+        return t;
+      });
+      const updatedSchedule = await saveLocalScheduleEntry(sDate, { ...entry, tasks: updatedTasks });
+      setStudySchedule(updatedSchedule);
     }
   };
 
   const handleSchedulerTaskToggle = async (dateStr, taskId) => {
     const entry = studySchedule[dateStr];
-    if (!entry) return;
+    if (!entry || !Array.isArray(entry.tasks)) return;
 
-    let completedState = false;
-    let targetTopic = "";
+    const task = entry.tasks.find(t => t.id === taskId);
+    if (!task) return;
 
-    const updatedTasks = entry.tasks.map(t => {
-      if (t.id === taskId) {
-        completedState = !t.completed;
-        targetTopic = t.topic;
-        return { ...t, completed: completedState };
+    // 1. Custom text input tasks (isTrackerTask === false): simple toggle only, no FSRS/Tracker integration
+    if (task.isTrackerTask === false) {
+      const updatedTasks = entry.tasks.map(t => {
+        if (t.id === taskId) {
+          return { ...t, completed: !t.completed };
+        }
+        return t;
+      });
+      const updatedSchedule = await saveLocalScheduleEntry(dateStr, { ...entry, tasks: updatedTasks });
+      setStudySchedule(updatedSchedule);
+      return;
+    }
+
+    // 2. Resolve topic & subject for tracker-linked tasks
+    let matchedSubject = task.subject || null;
+    let matchedTopicName = task.topicName || null;
+    const taskTopic = task.topic || "";
+
+    if (!matchedSubject || !matchedTopicName) {
+      const colonIdx = taskTopic.indexOf(':');
+      const dashIdx = taskTopic.indexOf(' - ');
+
+      if (colonIdx !== -1) {
+        const parts = taskTopic.split(':');
+        const sub = parts[0].trim();
+        const top = parts.slice(1).join(':').trim();
+        const trackerDoc = subjectTrackerData.find(p => p.subject.toLowerCase() === sub.toLowerCase());
+        if (trackerDoc) {
+          matchedSubject = trackerDoc.subject;
+          const matchingKey = trackerDoc.topics ? Object.keys(trackerDoc.topics).find(k => k.toLowerCase() === top.toLowerCase()) : null;
+          matchedTopicName = matchingKey || top;
+        }
+      } else if (dashIdx !== -1) {
+        const parts = taskTopic.split(' - ');
+        const sub = parts[0].trim();
+        const top = parts.slice(1).join(' - ').trim();
+        const trackerDoc = subjectTrackerData.find(p => p.subject.toLowerCase() === sub.toLowerCase());
+        if (trackerDoc) {
+          matchedSubject = trackerDoc.subject;
+          const matchingKey = trackerDoc.topics ? Object.keys(trackerDoc.topics).find(k => k.toLowerCase() === top.toLowerCase()) : null;
+          matchedTopicName = matchingKey || top;
+        }
       }
-      return t;
-    });
 
-    const updatedSchedule = await saveLocalScheduleEntry(dateStr, { tasks: updatedTasks });
-    setStudySchedule(updatedSchedule);
+      if (!matchedSubject) {
+        for (const doc of subjectTrackerData) {
+          if (doc.topics) {
+            const matchingKey = Object.keys(doc.topics).find(k => k.toLowerCase() === taskTopic.trim().toLowerCase());
+            if (matchingKey) {
+              matchedSubject = doc.subject;
+              matchedTopicName = matchingKey;
+              break;
+            }
+          }
+        }
+      }
+    }
 
-    if (targetTopic) {
-      await syncSchedulerTaskToSubjectTracker(targetTopic, dateStr, completedState);
+    // If task was not explicitly flagged as tracker task and no matching Subject Tracker topic is found, treat as custom text task
+    if (!matchedSubject && task.isTrackerTask !== true) {
+      const updatedTasks = entry.tasks.map(t => {
+        if (t.id === taskId) {
+          return { ...t, completed: !t.completed };
+        }
+        return t;
+      });
+      const updatedSchedule = await saveLocalScheduleEntry(dateStr, { ...entry, tasks: updatedTasks });
+      setStudySchedule(updatedSchedule);
+      return;
+    }
+
+    if (!matchedSubject) {
+      matchedSubject = 'General';
+      matchedTopicName = taskTopic;
+    }
+
+    const willBeCompleted = !task.completed;
+
+    if (willBeCompleted) {
+      // Open Rating Popover Modal for user recall rating
+      setRatingPopoverTopic({
+        subject: matchedSubject,
+        topicName: matchedTopicName,
+        dateStr,
+        schedulerContext: { dateStr, taskId, topic: taskTopic }
+      });
+    } else {
+      // Unmarking: uncheck task in schedule & delete tracker study date/log
+      const updatedTasks = entry.tasks.map(t => {
+        if (t.id === taskId) {
+          return { ...t, completed: false, rating: undefined };
+        }
+        return t;
+      });
+      const updatedSchedule = await saveLocalScheduleEntry(dateStr, { ...entry, tasks: updatedTasks });
+      setStudySchedule(updatedSchedule);
+
+      await handleDeleteTrackerStudyDate(matchedSubject, matchedTopicName, null, dateStr);
     }
   };
 
@@ -16285,9 +16538,13 @@ const renderTimerHub = (isMobile = false) => {
 
         const timeRangeStr = time ? time : `${formatTime12(startTime)} - ${formatTime12(endTime)}`;
 
+        const isTracker = schedulerTaskSource === 'tracker';
         return {
           id: `task_${Date.now()}_${Math.random().toString(36).slice(2)}`,
           topic,
+          subject: isTracker ? schedulerSelSubject : undefined,
+          topicName: isTracker ? schedulerSelTopics[idx] : undefined,
+          isTrackerTask: isTracker,
           time: timeRangeStr,
           startTime,
           endTime,
@@ -35342,6 +35599,90 @@ Return your response strictly as a JSON object matching this schema:
                 setIgnoredConflicts={setIgnoredConflicts}
                 themeMode={settingsThemeMode}
               />
+
+              {/* Quick FSRS Recall Rating Popover Modal for Subject Tracker & Study Schedule */}
+              <AnimatePresence>
+                {ratingPopoverTopic && (
+                  <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.92, y: 20 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.92, y: 20 }}
+                      transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                      className={`relative w-full max-w-md rounded-3xl p-6 shadow-2xl border text-left space-y-5 ${
+                        settingsThemeMode === 'dark'
+                          ? 'neu-card-dark text-white border-slate-700/80 bg-[#222730]'
+                          : 'neu-card-light text-slate-800 border-slate-200 bg-white'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-lg border ${
+                            settingsThemeMode === 'dark'
+                              ? 'bg-slate-800/80 text-blue-400 border-blue-500/30'
+                              : 'bg-blue-50 text-blue-700 border-blue-200'
+                          }`}>
+                            {ratingPopoverTopic.subject}
+                          </span>
+                          <h4 className="text-base font-black tracking-tight mt-2 text-inherit">{ratingPopoverTopic.topicName}</h4>
+                          <p className={`text-xs font-semibold mt-1 ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
+                            Log session date: <span className="font-mono text-blue-500 font-bold">{ratingPopoverTopic.dateStr}</span>
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setRatingPopoverTopic(null)}
+                          className={`p-1.5 rounded-xl transition cursor-pointer ${
+                            settingsThemeMode === 'dark' ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-400 hover:text-slate-800 hover:bg-slate-100'
+                          }`}
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
+
+                      <div className="space-y-2.5">
+                        <label className={`text-[10px] font-black uppercase tracking-wider block ${
+                          settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'
+                        }`}>
+                          Rate FSRS Recall Quality
+                        </label>
+                        <div className="grid grid-cols-2 gap-2.5">
+                          <button
+                            onClick={() => handleConfirmRatingPopover(1)}
+                            className="p-3.5 rounded-2xl text-xs font-black bg-rose-500/15 hover:bg-rose-500/25 text-rose-500 border border-rose-500/30 active:scale-95 transition-all text-center cursor-pointer flex flex-col items-center justify-center gap-0.5"
+                          >
+                            <span>Again (1)</span>
+                            <span className="text-[9px] font-bold opacity-80">Forgotten / Fail</span>
+                          </button>
+
+                          <button
+                            onClick={() => handleConfirmRatingPopover(2)}
+                            className="p-3.5 rounded-2xl text-xs font-black bg-amber-500/15 hover:bg-amber-500/25 text-amber-500 border border-amber-500/30 active:scale-95 transition-all text-center cursor-pointer flex flex-col items-center justify-center gap-0.5"
+                          >
+                            <span>Hard (2)</span>
+                            <span className="text-[9px] font-bold opacity-80">High Effort</span>
+                          </button>
+
+                          <button
+                            onClick={() => handleConfirmRatingPopover(3)}
+                            className="p-3.5 rounded-2xl text-xs font-black bg-blue-500/15 hover:bg-blue-500/25 text-blue-500 border border-blue-500/30 active:scale-95 transition-all text-center cursor-pointer flex flex-col items-center justify-center gap-0.5"
+                          >
+                            <span>Good (3)</span>
+                            <span className="text-[9px] font-bold opacity-80">Standard Recall</span>
+                          </button>
+
+                          <button
+                            onClick={() => handleConfirmRatingPopover(4)}
+                            className="p-3.5 rounded-2xl text-xs font-black bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-500 border border-emerald-500/30 active:scale-95 transition-all text-center cursor-pointer flex flex-col items-center justify-center gap-0.5"
+                          >
+                            <span>Easy (4)</span>
+                            <span className="text-[9px] font-bold opacity-80">Instant / Perfect</span>
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  </div>
+                )}
+              </AnimatePresence>
 
               {exportSuccessGuide && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[220] animate-in fade-in duration-300">
