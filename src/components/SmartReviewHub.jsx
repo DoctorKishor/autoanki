@@ -1255,13 +1255,24 @@ function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue
     try {
       setIsGeneratingHints(true);
       const subjectName = topic.subject || '';
+      const topicName = topic.name || '';
 
-      // Fetch Subject Master PDF from IndexedDB
-      const pdfKey = `pyt_pdf_${subjectName.toLowerCase().replace(/\s+/g, '_')}`;
-      const pdfObj = await getLocalPytTopic(pdfKey);
+      // 1. Check if a pre-split topic PDF exists in IndexedDB (Scenario 2)
+      const topicPdfKey = `pyt_pdf_${subjectName.toLowerCase().replace(/\s+/g, '_')}_topic_${topicName.toLowerCase().replace(/\s+/g, '_')}`;
+      let pdfObj = await getLocalPytTopic(topicPdfKey);
+      let isPreSplit = false;
+
+      if (pdfObj && pdfObj.data) {
+        isPreSplit = true;
+        console.log(`[SmartReviewHub] Found Pre-Split Topic PDF for "${topicName}"!`);
+      } else {
+        // 2. Fall back to Master Subject PDF (Scenario 1)
+        const masterPdfKey = `pyt_pdf_${subjectName.toLowerCase().replace(/\s+/g, '_')}`;
+        pdfObj = await getLocalPytTopic(masterPdfKey);
+      }
 
       if (!pdfObj || !pdfObj.data) {
-        alert(`⚠️ No Master PDF attached for "${subjectName}".\nPlease upload a Subject PDF in the Subject Tracker tab ("📁 Manage Subject PDF & Offset") before generating hints.`);
+        alert(`⚠️ No PDF attached for "${topicName}" (${subjectName}).\nPlease upload a Master Subject PDF or Pre-Split Topic PDF in the Subject Tracker tab ("📁 Textbook Manager").`);
         setIsGeneratingHints(false);
         return;
       }
@@ -1286,6 +1297,7 @@ function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue
         startPage,
         endPage,
         pageOffset,
+        isPreSplit,
         geminiApiKey,
         aiFeatureModels
       });

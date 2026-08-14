@@ -7082,6 +7082,7 @@ export default function App() {
   const [isSubjectPdfModalOpen, setIsSubjectPdfModalOpen] = useState(false);
   const [subjectPdfOffsetInput, setSubjectPdfOffsetInput] = useState(0);
   const [subjectPdfUploading, setSubjectPdfUploading] = useState(false);
+  const [subjectPdfMode, setSubjectPdfMode] = useState('master'); // 'master' | 'topic'
 
   useEffect(() => {
     let isMounted = true;
@@ -34837,7 +34838,7 @@ Return your response strictly as a JSON object matching this schema:
                                   <h3 className="text-base font-black tracking-wide">
                                     {selectedSubjectTrackerSubject || selectedTrackerSubject} Textbook Manager
                                   </h3>
-                                  <p className="text-[11px] text-slate-400">Upload Master Subject PDF & calibrate Page Offset for AI hints</p>
+                                  <p className="text-[11px] text-slate-400">Upload Master Subject PDF or Pre-Split Topic PDFs for AI hints</p>
                                 </div>
                               </div>
                               <button
@@ -34851,148 +34852,246 @@ Return your response strictly as a JSON object matching this schema:
                               </button>
                             </div>
 
-                            {/* Current PDF Attachment Status Badge */}
-                            {(() => {
-                              const activeSubName = selectedSubjectTrackerSubject || selectedTrackerSubject;
-                              const meta = textbooksMetadata.find(tb => (tb.subject || '').toLowerCase() === activeSubName.toLowerCase());
-                              return (
-                                <div className={`p-3.5 rounded-2xl border text-xs flex items-center justify-between gap-3 ${
-                                  meta
-                                    ? isDark ? 'bg-emerald-950/20 border-emerald-500/30 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                                    : isDark ? 'bg-amber-950/20 border-amber-500/30 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'
-                                }`}>
-                                  <div className="flex items-center gap-2">
-                                    <span>{meta ? '✓' : '⚠️'}</span>
-                                    <div>
-                                      <p className="font-bold">{meta ? `PDF Attached: ${meta.pdfFileName || 'Master Textbook'}` : 'No Master Subject PDF attached yet'}</p>
-                                      <p className="text-[10px] opacity-80">{meta ? `Current Offset: +${meta.pageOffset || 0} front-matter pages` : 'Upload a PDF to enable automated active-recall AI hint slicing'}</p>
+                            {/* Mode Switcher Pill: Master PDF (Scenario 1) vs Pre-Split Topic PDFs (Scenario 2) */}
+                            <div className={`relative grid grid-cols-2 p-1.5 rounded-2xl text-xs font-black uppercase tracking-wider ${isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'}`}>
+                              <div
+                                className="absolute top-1.5 bottom-1.5 rounded-xl bg-blue-600 shadow-md transition-all duration-300"
+                                style={{
+                                  width: 'calc(50% - 6px)',
+                                  left: subjectPdfMode === 'master' ? '6px' : 'calc(50%)'
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setSubjectPdfMode('master')}
+                                className={`relative z-10 py-2 text-center rounded-xl transition-colors duration-200 ${subjectPdfMode === 'master' ? 'text-white font-black' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'}`}
+                              >
+                                📚 Master Subject PDF
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setSubjectPdfMode('topic')}
+                                className={`relative z-10 py-2 text-center rounded-xl transition-colors duration-200 ${subjectPdfMode === 'topic' ? 'text-white font-black' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'}`}
+                              >
+                                📄 Pre-Split Topic PDFs
+                              </button>
+                            </div>
+
+                            {subjectPdfMode === 'master' ? (
+                              <>
+                                {/* Current PDF Attachment Status Badge */}
+                                {(() => {
+                                  const activeSubName = selectedSubjectTrackerSubject || selectedTrackerSubject;
+                                  const meta = textbooksMetadata.find(tb => (tb.subject || '').toLowerCase() === activeSubName.toLowerCase());
+                                  return (
+                                    <div className={`p-3.5 rounded-2xl border text-xs flex items-center justify-between gap-3 ${
+                                      meta
+                                        ? isDark ? 'bg-emerald-950/20 border-emerald-500/30 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                                        : isDark ? 'bg-amber-950/20 border-amber-500/30 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'
+                                    }`}>
+                                      <div className="flex items-center gap-2">
+                                        <span>{meta ? '✓' : '⚠️'}</span>
+                                        <div>
+                                          <p className="font-bold">{meta ? `Master PDF: ${meta.pdfFileName || 'Attached'}` : 'No Master Subject PDF attached yet'}</p>
+                                          <p className="text-[10px] opacity-80">{meta ? `Current Offset: +${meta.pageOffset || 0} front-matter pages` : 'Upload a PDF to enable automated active-recall AI hint slicing'}</p>
+                                        </div>
+                                      </div>
                                     </div>
+                                  );
+                                })()}
+
+                                {/* Section 1: Upload Master Subject PDF */}
+                                <div className="space-y-2">
+                                  <label className="text-xs font-black uppercase tracking-wider text-slate-400">1. Master Subject PDF File</label>
+                                  <label className={`w-full p-4 rounded-2xl border border-dashed flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all ${
+                                    subjectPdfUploading
+                                      ? 'opacity-50 pointer-events-none'
+                                      : isDark
+                                        ? 'bg-slate-900/60 border-slate-700 hover:border-blue-400 text-slate-300'
+                                        : 'bg-white/80 border-slate-300 hover:border-blue-500 text-slate-700'
+                                  }`}>
+                                    <input
+                                      type="file"
+                                      accept="application/pdf"
+                                      className="hidden"
+                                      onChange={async (e) => {
+                                        const file = e.target.files?.[0];
+                                        if (!file) return;
+
+                                        try {
+                                          setSubjectPdfUploading(true);
+                                          const activeSubName = selectedSubjectTrackerSubject || selectedTrackerSubject;
+                                          const arrayBuffer = await file.arrayBuffer();
+                                          const pdfKey = `pyt_pdf_${activeSubName.toLowerCase().replace(/\s+/g, '_')}`;
+
+                                          await saveLocalPytTopic(pdfKey, {
+                                            subject: activeSubName,
+                                            pdfFileName: file.name,
+                                            fileSize: file.size,
+                                            uploadedAt: new Date().toISOString(),
+                                            data: arrayBuffer
+                                          });
+
+                                          const existing = (await getLocalTextbooksMetadata()) || [];
+                                          const filtered = existing.filter(tb => (tb.subject || '').toLowerCase() !== activeSubName.toLowerCase());
+                                          const currentOffset = parseInt(subjectPdfOffsetInput, 10) || 0;
+                                          const updatedList = [
+                                            ...filtered,
+                                            {
+                                              subject: activeSubName,
+                                              pdfFileName: file.name,
+                                              pageOffset: currentOffset,
+                                              updatedAt: new Date().toISOString()
+                                            }
+                                          ];
+
+                                          await saveLocalTextbooksMetadata(updatedList);
+                                          setTextbooksMetadata(updatedList);
+                                          alert(`✓ Master PDF "${file.name}" attached to ${activeSubName} successfully!`);
+                                        } catch (err) {
+                                          console.error("Error saving subject PDF:", err);
+                                          alert("Failed to save PDF to IndexedDB: " + err.message);
+                                        } finally {
+                                          setSubjectPdfUploading(false);
+                                        }
+                                      }}
+                                    />
+                                    <span className="text-2xl">📄</span>
+                                    <span className="text-xs font-bold">
+                                      {subjectPdfUploading ? 'Saving PDF Payload to LocalDB...' : 'Click to Select & Upload Master PDF'}
+                                    </span>
+                                    <span className="text-[10px] text-slate-500">Supports full textbook PDFs</span>
+                                  </label>
+                                </div>
+
+                                {/* Section 2: Page Offset Calibration (+N Pages) */}
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <label className="text-xs font-black uppercase tracking-wider text-slate-400">2. Page Offset Calibration (+N Pages)</label>
+                                    <span className="text-[10px] font-mono font-bold text-amber-400">Front Matter Adjustment</span>
+                                  </div>
+                                  <p className="text-[11px] text-slate-400 leading-tight">
+                                    Number of front-matter pages (cover, preface, TOC) before Page 1 of the textbook content begins.
+                                  </p>
+                                  <div className="flex items-center gap-3">
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      value={subjectPdfOffsetInput}
+                                      onChange={(e) => setSubjectPdfOffsetInput(e.target.value)}
+                                      className={`w-28 p-3 rounded-2xl text-sm font-mono font-bold outline-none border transition ${
+                                        isDark ? 'neu-pressed-dark text-white border-slate-700' : 'neu-pressed-light text-slate-900 border-slate-300'
+                                      }`}
+                                      placeholder="e.g. 15"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={async () => {
+                                        try {
+                                          const activeSubName = selectedSubjectTrackerSubject || selectedTrackerSubject;
+                                          const newOffset = parseInt(subjectPdfOffsetInput, 10) || 0;
+                                          const existing = (await getLocalTextbooksMetadata()) || [];
+                                          const found = existing.find(tb => (tb.subject || '').toLowerCase() === activeSubName.toLowerCase());
+
+                                          const updatedList = [
+                                            ...existing.filter(tb => (tb.subject || '').toLowerCase() !== activeSubName.toLowerCase()),
+                                            {
+                                              subject: activeSubName,
+                                              pdfFileName: found?.pdfFileName || 'Master Textbook',
+                                              pageOffset: newOffset,
+                                              updatedAt: new Date().toISOString()
+                                            }
+                                          ];
+
+                                          await saveLocalTextbooksMetadata(updatedList);
+                                          setTextbooksMetadata(updatedList);
+                                          alert(`✓ Page offset (+${newOffset}) saved for ${activeSubName}!`);
+                                        } catch (err) {
+                                          console.error("Error updating offset:", err);
+                                          alert("Failed to save offset: " + err.message);
+                                        }
+                                      }}
+                                      className={`px-4 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition ${
+                                        isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300 border-slate-700' : 'neu-btn-light text-blue-600 border-slate-300'
+                                      }`}
+                                    >
+                                      Save Offset
+                                    </button>
                                   </div>
                                 </div>
-                              );
-                            })()}
+                              </>
+                            ) : (
+                              /* Scenario 2: Pre-Split Topic PDF Uploads List */
+                              <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <label className="text-xs font-black uppercase tracking-wider text-slate-400">Upload Topic-Wise Split PDFs</label>
+                                  <span className="text-[10px] text-slate-400">Pre-split standalone PDFs</span>
+                                </div>
+                                <div className="max-h-64 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                                  {(() => {
+                                    const activeSubName = selectedSubjectTrackerSubject || selectedTrackerSubject;
+                                    const docId = activeSubName.trim().toLowerCase();
+                                    const trackerDoc = subjectTrackerData.find(p => p.id === docId);
+                                    const topicsMap = trackerDoc?.topics || {};
+                                    const topicsList = Object.values(topicsMap);
 
-                            {/* Section 1: Upload Master Subject PDF */}
-                            <div className="space-y-2">
-                              <label className="text-xs font-black uppercase tracking-wider text-slate-400">1. Master Subject PDF File</label>
-                              <label className={`w-full p-4 rounded-2xl border border-dashed flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all ${
-                                subjectPdfUploading
-                                  ? 'opacity-50 pointer-events-none'
-                                  : isDark
-                                    ? 'bg-slate-900/60 border-slate-700 hover:border-blue-400 text-slate-300'
-                                    : 'bg-white/80 border-slate-300 hover:border-blue-500 text-slate-700'
-                              }`}>
-                                <input
-                                  type="file"
-                                  accept="application/pdf"
-                                  className="hidden"
-                                  onChange={async (e) => {
-                                    const file = e.target.files?.[0];
-                                    if (!file) return;
-
-                                    try {
-                                      setSubjectPdfUploading(true);
-                                      const activeSubName = selectedSubjectTrackerSubject || selectedTrackerSubject;
-                                      const arrayBuffer = await file.arrayBuffer();
-                                      const pdfKey = `pyt_pdf_${activeSubName.toLowerCase().replace(/\s+/g, '_')}`;
-
-                                      // Save binary PDF ArrayBuffer payload to IndexedDB
-                                      await saveLocalPytTopic(pdfKey, {
-                                        subject: activeSubName,
-                                        pdfFileName: file.name,
-                                        fileSize: file.size,
-                                        uploadedAt: new Date().toISOString(),
-                                        data: arrayBuffer
-                                      });
-
-                                      // Update textbooks metadata in IndexedDB
-                                      const existing = (await getLocalTextbooksMetadata()) || [];
-                                      const filtered = existing.filter(tb => (tb.subject || '').toLowerCase() !== activeSubName.toLowerCase());
-                                      const currentOffset = parseInt(subjectPdfOffsetInput, 10) || 0;
-                                      const updatedList = [
-                                        ...filtered,
-                                        {
-                                          subject: activeSubName,
-                                          pdfFileName: file.name,
-                                          pageOffset: currentOffset,
-                                          updatedAt: new Date().toISOString()
-                                        }
-                                      ];
-
-                                      await saveLocalTextbooksMetadata(updatedList);
-                                      setTextbooksMetadata(updatedList);
-                                      alert(`✓ Master PDF "${file.name}" attached to ${activeSubName} successfully!`);
-                                    } catch (err) {
-                                      console.error("Error saving subject PDF:", err);
-                                      alert("Failed to save PDF to IndexedDB: " + err.message);
-                                    } finally {
-                                      setSubjectPdfUploading(false);
+                                    if (topicsList.length === 0) {
+                                      return (
+                                        <p className="text-xs text-slate-400 italic text-center py-4">No topics created in {activeSubName} yet.</p>
+                                      );
                                     }
-                                  }}
-                                />
-                                <span className="text-2xl">📄</span>
-                                <span className="text-xs font-bold">
-                                  {subjectPdfUploading ? 'Saving PDF Payload to LocalDB...' : 'Click to Select & Upload PDF'}
-                                </span>
-                                <span className="text-[10px] text-slate-500">Supports text & scanned textbook PDFs</span>
-                              </label>
-                            </div>
 
-                            {/* Section 2: Page Offset Calibration (+N Pages) */}
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between">
-                                <label className="text-xs font-black uppercase tracking-wider text-slate-400">2. Page Offset Calibration (+N Pages)</label>
-                                <span className="text-[10px] font-mono font-bold text-amber-400">Front Matter Adjustment</span>
+                                    return topicsList.map((tItem, tIdx) => (
+                                      <div
+                                        key={tIdx}
+                                        className={`p-3 rounded-2xl border flex items-center justify-between gap-3 ${
+                                          isDark ? 'neu-card-dark border-slate-800' : 'neu-card-light border-slate-200'
+                                        }`}
+                                      >
+                                        <div className="min-w-0 flex-1">
+                                          <p className="text-xs font-bold truncate">{tItem.name}</p>
+                                          <p className="text-[10px] text-slate-400 font-mono">
+                                            {tItem.page ? `Page ${tItem.page}${tItem.endPage ? `-${tItem.endPage}` : ''}` : 'No page range'}
+                                          </p>
+                                        </div>
+                                        <label className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider border cursor-pointer transition shrink-0 flex items-center gap-1 ${
+                                          isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300 border-slate-700' : 'neu-btn-light text-blue-600 border-slate-300'
+                                        }`}>
+                                          <input
+                                            type="file"
+                                            accept="application/pdf"
+                                            className="hidden"
+                                            onChange={async (e) => {
+                                              const file = e.target.files?.[0];
+                                              if (!file) return;
+                                              try {
+                                                const topicPdfKey = `pyt_pdf_${activeSubName.toLowerCase().replace(/\s+/g, '_')}_topic_${tItem.name.toLowerCase().replace(/\s+/g, '_')}`;
+                                                const arrayBuffer = await file.arrayBuffer();
+                                                await saveLocalPytTopic(topicPdfKey, {
+                                                  subject: activeSubName,
+                                                  topicName: tItem.name,
+                                                  pdfFileName: file.name,
+                                                  fileSize: file.size,
+                                                  uploadedAt: new Date().toISOString(),
+                                                  isPreSplit: true,
+                                                  data: arrayBuffer
+                                                });
+                                                alert(`✓ Pre-split topic PDF "${file.name}" uploaded for "${tItem.name}"!`);
+                                                setSubjectPdfUploading(prev => !prev);
+                                              } catch (err) {
+                                                console.error("Error uploading topic PDF:", err);
+                                                alert("Failed to save topic PDF: " + err.message);
+                                              }
+                                            }}
+                                          />
+                                          📄 Upload Topic PDF
+                                        </label>
+                                      </div>
+                                    ));
+                                  })()}
+                                </div>
                               </div>
-                              <p className="text-[11px] text-slate-400 leading-tight">
-                                Number of front-matter pages (cover, preface, TOC) before Page 1 of the textbook content begins.
-                              </p>
-                              <div className="flex items-center gap-3">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  value={subjectPdfOffsetInput}
-                                  onChange={(e) => setSubjectPdfOffsetInput(e.target.value)}
-                                  className={`w-28 p-3 rounded-2xl text-sm font-mono font-bold outline-none border transition ${
-                                    isDark ? 'neu-pressed-dark text-white border-slate-700' : 'neu-pressed-light text-slate-900 border-slate-300'
-                                  }`}
-                                  placeholder="e.g. 15"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={async () => {
-                                    try {
-                                      const activeSubName = selectedSubjectTrackerSubject || selectedTrackerSubject;
-                                      const newOffset = parseInt(subjectPdfOffsetInput, 10) || 0;
-                                      const existing = (await getLocalTextbooksMetadata()) || [];
-                                      const found = existing.find(tb => (tb.subject || '').toLowerCase() === activeSubName.toLowerCase());
-
-                                      const updatedList = [
-                                        ...existing.filter(tb => (tb.subject || '').toLowerCase() !== activeSubName.toLowerCase()),
-                                        {
-                                          subject: activeSubName,
-                                          pdfFileName: found?.pdfFileName || 'Master Textbook',
-                                          pageOffset: newOffset,
-                                          updatedAt: new Date().toISOString()
-                                        }
-                                      ];
-
-                                      await saveLocalTextbooksMetadata(updatedList);
-                                      setTextbooksMetadata(updatedList);
-                                      alert(`✓ Page offset (+${newOffset}) saved for ${activeSubName}!`);
-                                    } catch (err) {
-                                      console.error("Error updating offset:", err);
-                                      alert("Failed to save offset: " + err.message);
-                                    }
-                                  }}
-                                  className={`px-4 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition ${
-                                    isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300 border-slate-700' : 'neu-btn-light text-blue-600 border-slate-300'
-                                  }`}
-                                >
-                                  Save Offset
-                                </button>
-                              </div>
-                            </div>
+                            )}
 
                             {/* Modal Footer */}
                             <div className="flex justify-end pt-2 border-t border-slate-700/40">
