@@ -1258,20 +1258,25 @@ function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue
       const topicName = topic.name || '';
 
       // 1. Check if a pre-split topic PDF exists in IndexedDB (Scenario 2)
-      const topicPdfKey = `pyt_pdf_${subjectName.toLowerCase().replace(/\s+/g, '_')}_topic_${topicName.toLowerCase().replace(/\s+/g, '_')}`;
+      const cleanSub = subjectName.trim().toLowerCase().replace(/\s+/g, '_');
+      const cleanTop = topicName.trim().toLowerCase().replace(/\s+/g, '_');
+      const topicPdfKey = `pyt_pdf_${cleanSub}_topic_${cleanTop}`;
       let pdfObj = await getLocalPytTopic(topicPdfKey);
       let isPreSplit = false;
 
-      if (pdfObj && pdfObj.data) {
+      let pdfArrayBuffer = pdfObj?.data || (pdfObj?.topics && pdfObj.topics.data) || (pdfObj?.topics instanceof ArrayBuffer ? pdfObj.topics : null);
+
+      if (pdfObj && pdfArrayBuffer) {
         isPreSplit = true;
         console.log(`[SmartReviewHub] Found Pre-Split Topic PDF for "${topicName}"!`);
       } else {
         // 2. Fall back to Master Subject PDF (Scenario 1)
-        const masterPdfKey = `pyt_pdf_${subjectName.toLowerCase().replace(/\s+/g, '_')}`;
+        const masterPdfKey = `pyt_pdf_${cleanSub}`;
         pdfObj = await getLocalPytTopic(masterPdfKey);
+        pdfArrayBuffer = pdfObj?.data || (pdfObj?.topics && pdfObj.topics.data) || (pdfObj?.topics instanceof ArrayBuffer ? pdfObj.topics : null);
       }
 
-      if (!pdfObj || !pdfObj.data) {
+      if (!pdfObj || !pdfArrayBuffer) {
         alert(`⚠️ No PDF attached for "${topicName}" (${subjectName}).\nPlease upload a Master Subject PDF or Pre-Split Topic PDF in the Subject Tracker tab ("📁 Textbook Manager").`);
         setIsGeneratingHints(false);
         return;
@@ -1293,7 +1298,7 @@ function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue
         topicId,
         topicName: topic.name,
         subject: subjectName,
-        pdfArrayBuffer: pdfObj.data,
+        pdfArrayBuffer,
         startPage,
         endPage,
         pageOffset,

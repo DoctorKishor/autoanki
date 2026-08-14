@@ -376,9 +376,15 @@ export async function saveLocalPytTopic(subjectName, topicsText) {
     key,
     id: key,
     subject: subjectName.trim(),
-    topics: topicsText || '',
     updatedAt: new Date().toISOString()
   };
+
+  if (typeof topicsText === 'object' && topicsText !== null) {
+    Object.assign(item, topicsText);
+  } else {
+    item.topics = topicsText || '';
+  }
+
   return putLocalItem(STORES.PYT_DATA, item);
 }
 

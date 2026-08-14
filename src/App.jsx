@@ -7094,6 +7094,14 @@ export default function App() {
     return () => { isMounted = false; };
   }, []);
 
+  useEffect(() => {
+    if (isSubjectPdfModalOpen) {
+      const activeSubName = selectedTrackerSubject || selectedSubjectTrackerSubject;
+      const meta = textbooksMetadata.find(tb => (tb.subject || '').toLowerCase() === (activeSubName || '').toLowerCase());
+      setSubjectPdfOffsetInput(meta?.pageOffset ?? 0);
+    }
+  }, [isSubjectPdfModalOpen, selectedTrackerSubject, selectedSubjectTrackerSubject, textbooksMetadata]);
+
   // Overall Topics/Subject Tracker States
   const [subjectTrackerData, setSubjectTrackerData] = useState([]);
   const [reviewUndoStack, setReviewUndoStack] = useState([]);
@@ -27297,7 +27305,7 @@ Return your response strictly as a JSON object matching this schema:
                                     <span className="text-xl">📁</span>
                                     <div>
                                       <h3 className="text-base font-black tracking-wide">
-                                        {selectedSubjectTrackerSubject || selectedTrackerSubject} Textbook Manager
+                                        {selectedTrackerSubject || selectedSubjectTrackerSubject} Textbook Manager
                                       </h3>
                                       <p className="text-[11px] text-slate-400">Upload Master Subject PDF or Pre-Split Topic PDFs for AI hints</p>
                                     </div>
@@ -27342,7 +27350,7 @@ Return your response strictly as a JSON object matching this schema:
                                   <>
                                     {/* Current PDF Attachment Status Badge */}
                                     {(() => {
-                                      const activeSubName = selectedSubjectTrackerSubject || selectedTrackerSubject;
+                                      const activeSubName = selectedTrackerSubject || selectedSubjectTrackerSubject;
                                       const meta = textbooksMetadata.find(tb => (tb.subject || '').toLowerCase() === activeSubName.toLowerCase());
                                       return (
                                         <div className={`p-3.5 rounded-2xl border text-xs flex items-center justify-between gap-3 ${
@@ -27381,7 +27389,7 @@ Return your response strictly as a JSON object matching this schema:
 
                                             try {
                                               setSubjectPdfUploading(true);
-                                              const activeSubName = selectedSubjectTrackerSubject || selectedTrackerSubject;
+                                              const activeSubName = selectedTrackerSubject || selectedSubjectTrackerSubject;
                                               const arrayBuffer = await file.arrayBuffer();
                                               const pdfKey = `pyt_pdf_${activeSubName.toLowerCase().replace(/\s+/g, '_')}`;
 
@@ -27449,7 +27457,7 @@ Return your response strictly as a JSON object matching this schema:
                                           type="button"
                                           onClick={async () => {
                                             try {
-                                              const activeSubName = selectedSubjectTrackerSubject || selectedTrackerSubject;
+                                              const activeSubName = selectedTrackerSubject || selectedSubjectTrackerSubject;
                                               const newOffset = parseInt(subjectPdfOffsetInput, 10) || 0;
                                               const existing = (await getLocalTextbooksMetadata()) || [];
                                               const found = existing.find(tb => (tb.subject || '').toLowerCase() === activeSubName.toLowerCase());
@@ -27490,7 +27498,7 @@ Return your response strictly as a JSON object matching this schema:
                                     </div>
                                     <div className="max-h-64 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
                                       {(() => {
-                                        const activeSubName = selectedSubjectTrackerSubject || selectedTrackerSubject;
+                                        const activeSubName = selectedTrackerSubject || selectedSubjectTrackerSubject;
                                         const docId = activeSubName.trim().toLowerCase();
                                         const trackerDoc = subjectTrackerData.find(p => p.id === docId);
                                         const topicsMap = trackerDoc?.topics || {};
@@ -35136,7 +35144,7 @@ Return your response strictly as a JSON object matching this schema:
                                 <span className="text-xl">📁</span>
                                 <div>
                                   <h3 className="text-base font-black tracking-wide">
-                                    {selectedSubjectTrackerSubject || selectedTrackerSubject} Textbook Manager
+                                    {selectedTrackerSubject || selectedSubjectTrackerSubject} Textbook Manager
                                   </h3>
                                   <p className="text-[11px] text-slate-400">Upload Master Subject PDF or Pre-Split Topic PDFs for AI hints</p>
                                 </div>
@@ -35288,7 +35296,7 @@ Return your response strictly as a JSON object matching this schema:
                                       type="button"
                                       onClick={async () => {
                                         try {
-                                          const activeSubName = selectedSubjectTrackerSubject || selectedTrackerSubject;
+                                          const activeSubName = selectedTrackerSubject || selectedSubjectTrackerSubject;
                                           const newOffset = parseInt(subjectPdfOffsetInput, 10) || 0;
                                           const existing = (await getLocalTextbooksMetadata()) || [];
                                           const found = existing.find(tb => (tb.subject || '').toLowerCase() === activeSubName.toLowerCase());
@@ -35329,7 +35337,7 @@ Return your response strictly as a JSON object matching this schema:
                                 </div>
                                 <div className="max-h-64 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
                                   {(() => {
-                                    const activeSubName = selectedSubjectTrackerSubject || selectedTrackerSubject;
+                                    const activeSubName = selectedTrackerSubject || selectedSubjectTrackerSubject;
                                     const docId = activeSubName.trim().toLowerCase();
                                     const trackerDoc = subjectTrackerData.find(p => p.id === docId);
                                     const topicsMap = trackerDoc?.topics || {};
