@@ -711,8 +711,13 @@ export async function saveActiveNewTopicIds(dateStr, topicIds) {
 export async function saveTopicHintsLocal(topicId, payload) {
   if (!topicId) return null;
   const item = {
+    ...payload,
     topicId,
     hints: Array.isArray(payload?.hints) ? payload.hints : [],
+    tree: payload?.tree || null,
+    structure: payload?.structure || null,
+    chapterTitle: payload?.chapterTitle || '',
+    usedModel: payload?.usedModel || '',
     generatedAt: payload?.generatedAt || new Date().toISOString(),
     pdfFileName: payload?.pdfFileName || '',
     startPage: payload?.startPage || 1,
@@ -736,7 +741,7 @@ export async function getTopicHintsLocal(topicId) {
   if (!topicId) return null;
   try {
     const res = await executeTransaction(STORES.TOPIC_HINTS, 'readonly', store => store.get(topicId));
-    if (res && res.hints) return res;
+    if (res && (res.tree || res.structure || (Array.isArray(res.hints) && res.hints.length > 0))) return res;
   } catch (e) {
     // Fallback to KV store
   }
