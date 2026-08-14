@@ -42,6 +42,7 @@ export default function SmartReviewHub({
   onUpdateSubjectDoc,
   geminiApiKey = '',
   aiFeatureModels = {},
+  onPushUndoAction,
   onOpenNotesModal
 }) {
   const isDark = themeMode === 'dark';
@@ -90,6 +91,14 @@ export default function SmartReviewHub({
         setActiveNewTopicIds(new Set(ids));
       }
     }).catch(err => console.error("Error loading active new topic IDs:", err));
+
+    const handleTopicIdsChanged = (e) => {
+      if (e?.detail?.updatedList && Array.isArray(e.detail.updatedList)) {
+        setActiveNewTopicIds(new Set(e.detail.updatedList));
+      }
+    };
+    window.addEventListener('autoanki_topic_ids_changed', handleTopicIdsChanged);
+    return () => window.removeEventListener('autoanki_topic_ids_changed', handleTopicIdsChanged);
   }, []);
 
   useEffect(() => {
@@ -341,6 +350,17 @@ export default function SmartReviewHub({
       saveActiveNewTopicIds(todayStr, Array.from(next)).catch(err => console.error("Failed to update active new topics in IndexedDB:", err));
       return next;
     });
+
+    if (typeof onPushUndoAction === 'function') {
+      onPushUndoAction({
+        actionType: 'REMOVE_TODAYS_TOPIC',
+        topic: topicToRemove,
+        topicId,
+        cleanName,
+        subName,
+        timestamp: Date.now()
+      });
+    }
 
     setToastMessage(`Removed "${topicToRemove.name}" from today's study list`);
     setTimeout(() => setToastMessage(''), 2500);
@@ -685,7 +705,7 @@ export default function SmartReviewHub({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <AnimatePresence mode="popLayout">
                     {overdueTopics.map((topic, idx) => (
-                      <TopicCard key={topic.id || (topic.subject + '_' + topic.name)} topic={topic} onRate={onRateTopic} onOpenNotes={onOpenNotesModal} fsrsConfig={fsrsConfig} isOverdue index={idx} isDark={isDark} geminiApiKey={geminiApiKey} aiFeatureModels={aiFeatureModels} subjectTrackerData={subjectTrackerData} />
+                      <TopicCard key={topic.id || (topic.subject + '_' + topic.name)} topic={topic} onRate={onRateTopic} onOpenNotes={onOpenNotesModal} fsrsConfig={fsrsConfig} isOverdue index={idx} isDark={isDark} geminiApiKey={geminiApiKey} aiFeatureModels={aiFeatureModels} subjectTrackerData={subjectTrackerData} onPushUndoAction={onPushUndoAction} />
                     ))}
                   </AnimatePresence>
                 </div>
@@ -701,7 +721,7 @@ export default function SmartReviewHub({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <AnimatePresence mode="popLayout">
                     {dueTodayTopics.map((topic, idx) => (
-                      <TopicCard key={topic.id || (topic.subject + '_' + topic.name)} topic={topic} onRate={onRateTopic} onOpenNotes={onOpenNotesModal} fsrsConfig={fsrsConfig} index={idx} isDark={isDark} geminiApiKey={geminiApiKey} aiFeatureModels={aiFeatureModels} subjectTrackerData={subjectTrackerData} />
+                      <TopicCard key={topic.id || (topic.subject + '_' + topic.name)} topic={topic} onRate={onRateTopic} onOpenNotes={onOpenNotesModal} fsrsConfig={fsrsConfig} index={idx} isDark={isDark} geminiApiKey={geminiApiKey} aiFeatureModels={aiFeatureModels} subjectTrackerData={subjectTrackerData} onPushUndoAction={onPushUndoAction} />
                     ))}
                   </AnimatePresence>
                 </div>
@@ -750,6 +770,7 @@ export default function SmartReviewHub({
                         geminiApiKey={geminiApiKey}
                         aiFeatureModels={aiFeatureModels}
                         subjectTrackerData={subjectTrackerData}
+                        onPushUndoAction={onPushUndoAction}
                       />
                     ))}
                   </AnimatePresence>
@@ -1098,6 +1119,7 @@ export default function SmartReviewHub({
                     geminiApiKey={geminiApiKey}
                     aiFeatureModels={aiFeatureModels}
                     subjectTrackerData={subjectTrackerData}
+                    onPushUndoAction={onPushUndoAction}
                   />
                 </div>
               ) : (
@@ -1319,7 +1341,7 @@ function RecursiveBlueprintNode({ node, depth = 0, recalledMap, onToggleRecall, 
 }
 
 // Sub-component: Individual Topic Queue Card
-function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue = false, isNew = false, index = 0, isDark = true, geminiApiKey = '', aiFeatureModels = {}, subjectTrackerData = [] }) {
+function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue = false, isNew = false, index = 0, isDark = true, geminiApiKey = '', aiFeatureModels = {}, subjectTrackerData = [], onPushUndoAction }) {
   const { pageLabel, pageCount } = getTopicPageInfo(topic);
   const [isNotesExpanded, setIsNotesExpanded] = useState(false);
 
@@ -1446,9 +1468,22 @@ function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue
 
     try {
       const topicId = topic.id || `${topic.subject}_${topic.name}`;
+      const existingHints = topicHints || (await getTopicHintsLocal(topicId));
       await deleteTopicHintsLocal(topicId);
       setTopicHints(null);
       setRecalledPointsMap({});
+
+      if (typeof onPushUndoAction === 'function') {
+        onPushUndoAction({
+          actionType: 'DELETE_TOPIC_HINTS',
+          topicId,
+          topicName: topic.name,
+          hintPayload: existingHints,
+          timestamp: Date.now()
+        });
+      }
+
+      window.dispatchEvent(new CustomEvent('autoanki_hints_changed', { detail: { topicId, hintPayload: null } }));
     } catch (err) {
       console.error('Failed deleting hints:', err);
     }
@@ -1457,25 +1492,48 @@ function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue
   // Load cached hints on mount or when topic changes
   useEffect(() => {
     let isMounted = true;
+    const topicId = topic.id || `${topic.subject}_${topic.name}`;
+
     async function loadCachedHints() {
       try {
-        const topicId = topic.id || `${topic.subject}_${topic.name}`;
         const cached = await getTopicHintsLocal(topicId);
         const hasData = cached && (
           (Array.isArray(cached.tree) && cached.tree.length > 0) ||
           (Array.isArray(cached.structure) && cached.structure.length > 0) ||
           (Array.isArray(cached.hints) && cached.hints.length > 0)
         );
-        if (isMounted && hasData) {
-          setTopicHints(cached);
-          setRevealedHintCount(1);
+        if (isMounted) {
+          if (hasData) {
+            setTopicHints(cached);
+            setRevealedHintCount(1);
+          } else {
+            setTopicHints(null);
+          }
         }
       } catch (err) {
         console.warn('Failed loading cached topic hints:', err);
       }
     }
     loadCachedHints();
-    return () => { isMounted = false; };
+
+    const handleHintsChanged = (e) => {
+      if (e?.detail?.topicId === topicId) {
+        if (e.detail.hintPayload) {
+          setTopicHints(e.detail.hintPayload);
+          setRevealedHintCount(1);
+        } else {
+          setTopicHints(null);
+          setRecalledPointsMap({});
+        }
+      }
+    };
+
+    window.addEventListener('autoanki_hints_changed', handleHintsChanged);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener('autoanki_hints_changed', handleHintsChanged);
+    };
   }, [topic]);
 
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
