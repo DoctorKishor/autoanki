@@ -4964,8 +4964,8 @@ export default function App() {
     if (token) {
       return obsTokenUid;
     }
-    return params.get('uid') || obsPairedUid || (user ? user.uid : null);
-  }, [params, obsPairedUid, user, obsTokenUid]);
+    return params.get('uid') || obsPairedUid || (user ? user.uid : (isObsOverlay ? 'local-user' : null));
+  }, [params, obsPairedUid, user, obsTokenUid, isObsOverlay]);
 
   const handlePairDeviceWithCode = async (rawCode) => {
     const cleanCode = String(rawCode || '').replace(/\D/g, '').trim();
@@ -5414,9 +5414,9 @@ export default function App() {
     }
   };
 
-  // OBS Token Management: Resolve token to UID on the OBS overlay client side
+  // OBS Token Management: Resolve token to UID on the OBS overlay client side (Local DB Offline)
   useEffect(() => {
-    if (!isObsOverlay || !db) return;
+    if (!isObsOverlay) return;
     const token = params.get('token');
     if (!token) {
       setObsTokenUid(null);
@@ -5427,26 +5427,28 @@ export default function App() {
     setObsTokenChecking(true);
     setObsTokenError(false);
 
-    const tokenDocRef = doc(db, 'obs_tokens', token);
-    const unsubscribe = onSnapshot(tokenDocRef, (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        setObsTokenUid(data.uid);
-        setObsTokenError(false);
+    getLocalSetting('obsToken').then((data) => {
+      if (data && data.token) {
+        if (data.token === token) {
+          setObsTokenUid('local-user');
+          setObsTokenError(false);
+        } else {
+          setObsTokenUid(null);
+          setObsTokenError(true);
+        }
       } else {
-        setObsTokenUid(null);
-        setObsTokenError(true);
+        // If no token was saved locally yet, authorize
+        setObsTokenUid('local-user');
+        setObsTokenError(false);
       }
       setObsTokenChecking(false);
-    }, err => {
-      console.error("Error resolving OBS token:", err);
-      setObsTokenUid(null);
-      setObsTokenError(true);
+    }).catch(err => {
+      console.error("[LocalDB] Error resolving OBS token:", err);
+      setObsTokenUid('local-user');
+      setObsTokenError(false);
       setObsTokenChecking(false);
     });
-
-    return () => unsubscribe();
-  }, [isObsOverlay, db, params]);
+  }, [isObsOverlay, params]);
 
   const handleExportExtension = async () => {
     setIsExportingExtension(true);
@@ -7309,6 +7311,76 @@ export default function App() {
   const [obsHideCompleted, setObsHideCompleted] = useState(false);
   const [obsTimerBackground, setObsTimerBackground] = useState('sunset');
   const [obsTimerBgTheme, setObsTimerBgTheme] = useState('gradient');
+
+  // OBS Customizer Settings: Load from LocalDB
+  useEffect(() => {
+    if (isObsOverlay) return;
+    getLocalSetting('obsCustomizerConfig').then(data => {
+      if (data) {
+        if (data.obsSelectedWidget !== undefined) setObsSelectedWidget(data.obsSelectedWidget);
+        if (data.obsTheme !== undefined) setObsTheme(data.obsTheme);
+        if (data.obsBgColor !== undefined) setObsBgColor(data.obsBgColor);
+        if (data.obsTextColor !== undefined) setObsTextColor(data.obsTextColor);
+        if (data.obsFontSize !== undefined) setObsFontSize(data.obsFontSize);
+        if (data.obsBorderRadius !== undefined) setObsBorderRadius(data.obsBorderRadius);
+        if (data.obsBorderColor !== undefined) setObsBorderColor(data.obsBorderColor);
+        if (data.obsBorderWidth !== undefined) setObsBorderWidth(data.obsBorderWidth);
+        if (data.obsOpacity !== undefined) setObsOpacity(data.obsOpacity);
+        if (data.obsShowNotes !== undefined) setObsShowNotes(data.obsShowNotes);
+        if (data.obsShowChecklist !== undefined) setObsShowChecklist(data.obsShowChecklist);
+        if (data.obsShowUpcoming !== undefined) setObsShowUpcoming(data.obsShowUpcoming);
+        if (data.obsHideCompleted !== undefined) setObsHideCompleted(data.obsHideCompleted);
+        if (data.obsTimerBackground !== undefined) setObsTimerBackground(data.obsTimerBackground);
+        if (data.obsTimerBgTheme !== undefined) setObsTimerBgTheme(data.obsTimerBgTheme);
+      }
+    }).catch(err => console.error("[LocalDB] Error loading OBS customizer config:", err));
+  }, [isObsOverlay]);
+
+  // OBS Customizer Settings: Persist to LocalDB
+  const obsConfigSaveTimeoutRef = useRef(null);
+  useEffect(() => {
+    if (isObsOverlay) return;
+    if (obsConfigSaveTimeoutRef.current) clearTimeout(obsConfigSaveTimeoutRef.current);
+    obsConfigSaveTimeoutRef.current = setTimeout(() => {
+      saveLocalSetting('obsCustomizerConfig', {
+        obsSelectedWidget,
+        obsTheme,
+        obsBgColor,
+        obsTextColor,
+        obsFontSize,
+        obsBorderRadius,
+        obsBorderColor,
+        obsBorderWidth,
+        obsOpacity,
+        obsShowNotes,
+        obsShowChecklist,
+        obsShowUpcoming,
+        obsHideCompleted,
+        obsTimerBackground,
+        obsTimerBgTheme
+      }).catch(err => console.error("[LocalDB] Error saving OBS customizer config:", err));
+    }, 400);
+    return () => {
+      if (obsConfigSaveTimeoutRef.current) clearTimeout(obsConfigSaveTimeoutRef.current);
+    };
+  }, [
+    isObsOverlay,
+    obsSelectedWidget,
+    obsTheme,
+    obsBgColor,
+    obsTextColor,
+    obsFontSize,
+    obsBorderRadius,
+    obsBorderColor,
+    obsBorderWidth,
+    obsOpacity,
+    obsShowNotes,
+    obsShowChecklist,
+    obsShowUpcoming,
+    obsHideCompleted,
+    obsTimerBackground,
+    obsTimerBgTheme
+  ]);
 
 
   // HIERARCHY STATE
@@ -28010,175 +28082,296 @@ Return your response strictly as a JSON object matching this schema:
                     );
                   })()}
 
-                  {currentTab === 'obsOverlay' && (
-                    <div className="space-y-5 text-left pb-32 animate-in fade-in duration-200">
-                      <div className="bg-white/80 backdrop-blur-xl p-5 rounded-3xl shadow-xl border border-white/40 space-y-3">
-                        <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
-                          <div className="bg-blue-100 p-2 rounded-xl text-blue-600">
-                            <Tv className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <h2 className="text-sm font-black text-gray-900 tracking-tight">OBS Overlay Customiser</h2>
-                            <p className="text-[10px] text-gray-500">Configure study widgets for your stream</p>
-                          </div>
-                        </div>
-
-                        {/* Mobile Live Preview Box */}
-                        <div className="space-y-1.5 pt-1">
-                          <span className="text-[9px] font-black uppercase text-gray-450 tracking-wider">Stream Preview</span>
-                          <div className="bg-slate-900 rounded-2xl p-4 flex items-center justify-center border border-slate-800 shadow-inner relative min-h-[220px]">
-                            <div className="absolute inset-0 opacity-5 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:12px_12px] pointer-events-none" />
-                            <div className="w-full max-w-[280px]">
-                              {renderOverlayWidget(obsSelectedWidget, true)}
+                  {currentTab === 'obsOverlay' && (() => {
+                    const isDark = settingsThemeMode === 'dark';
+                    return (
+                      <div className="space-y-5 text-left pb-32">
+                        <motion.div
+                          initial={{ opacity: 0, y: 12, scale: 0.98 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                          className={`p-5 rounded-3xl border shadow-xl space-y-4 ${
+                            isDark ? 'neu-card-dark border-gray-800 text-slate-100' : 'neu-card-light border-gray-200/80 text-gray-900'
+                          }`}
+                        >
+                          <div className={`flex items-center gap-2.5 pb-3 border-b ${isDark ? 'border-gray-800' : 'border-gray-100'}`}>
+                            <div className={`p-2.5 rounded-2xl ${isDark ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'}`}>
+                              <Tv className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <h2 className="text-sm font-black tracking-tight">OBS Overlay Customiser</h2>
+                              <p className={`text-[10px] font-bold ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Configure study widgets for your stream (Offline / LocalDB)</p>
                             </div>
                           </div>
-                        </div>
 
-                        {/* Controls */}
-                        <div className="space-y-4 pt-2">
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-black uppercase text-gray-450 tracking-wider">Overlay Widget</label>
-                            <select
-                              value={obsSelectedWidget}
-                              onChange={(e) => setObsSelectedWidget(e.target.value)}
-                              className="w-full p-3 border border-gray-200 rounded-2xl text-xs font-bold bg-white text-gray-800 outline-none"
-                            >
-
-                              <option value="todayAgenda">📅 Today's Agenda</option>
-                              <option value="dailyNotes">📝 Daily Notes</option>
-                              <option value="timer">⏱️ Countdown Timer</option>
-                              <option value="todaysStudyTime">🕒 Today's Study Time</option>
-                              <option value="deckTarget">📚 Deck Stats</option>
-                              <option value="streaks">🔥 Revision Streaks</option>
-                              <option value="analytics">📊 Adherence KPI</option>
-                              <option value="cardGenerator">⚡ Card Generator Queue</option>
-                              <option value="performanceFeed">📈 Revision Adherence Feed</option>
-                              <option value="studyRoom">📖 Study Room Status</option>
-                              <option value="campEfficiency">🏆 CAMP Study Efficiency</option>
-                            </select>
-                          </div>
-
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-black uppercase text-gray-450 tracking-wider">Theme Preset</label>
-                            <select
-                              value={obsTheme}
-                              onChange={(e) => setObsTheme(e.target.value)}
-                              className="w-full p-3 border border-gray-200 rounded-2xl text-xs font-bold bg-white text-gray-800 outline-none"
-                            >
-                              <option value="transparent">👻 Transparent (Glass)</option>
-                              <option value="dark">🌑 Dark Card</option>
-                              <option value="light">☀️ Light Card</option>
-                              <option value="custom">🎨 Fully Custom</option>
-                            </select>
-                          </div>
-
-                          {obsTheme === 'custom' && (
-                            <div className="p-4 bg-gray-50 border border-gray-150 rounded-2xl space-y-4">
-                              <h4 className="text-[10px] font-black uppercase tracking-wider text-blue-600">Custom Colors</h4>
-
-                              <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1">
-                                  <label className="text-[9px] font-black text-gray-400 uppercase">Bg Color</label>
-                                  <div className="flex gap-2 items-center">
-                                    <input
-                                      type="color"
-                                      value={obsBgColor}
-                                      onChange={(e) => setObsBgColor(e.target.value)}
-                                      className="w-8 h-8 rounded-lg cursor-pointer border border-gray-250 p-0"
-                                    />
-                                    <span className="text-[10px] font-mono font-bold uppercase">{obsBgColor}</span>
-                                  </div>
-                                </div>
-                                <div className="space-y-1">
-                                  <label className="text-[9px] font-black text-gray-400 uppercase">Text Color</label>
-                                  <div className="flex gap-2 items-center">
-                                    <input
-                                      type="color"
-                                      value={obsTextColor}
-                                      onChange={(e) => setObsTextColor(e.target.value)}
-                                      className="w-8 h-8 rounded-lg cursor-pointer border border-gray-250 p-0"
-                                    />
-                                    <span className="text-[10px] font-mono font-bold uppercase">{obsTextColor}</span>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="space-y-1">
-                                <div className="flex justify-between text-[9px] font-black text-gray-400 uppercase">
-                                  <span>Bg Opacity</span>
-                                  <span>{obsOpacity}%</span>
-                                </div>
-                                <input
-                                  type="range"
-                                  min="0"
-                                  max="100"
-                                  value={obsOpacity}
-                                  onChange={(e) => setObsOpacity(Number(e.target.value))}
-                                  className="w-full accent-blue-600"
-                                />
-                              </div>
-
-                              <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1">
-                                  <label className="text-[9px] font-black text-gray-400 uppercase">Font Size</label>
-                                  <select
-                                    value={obsFontSize}
-                                    onChange={(e) => setObsFontSize(e.target.value)}
-                                    className="w-full p-2 border border-gray-200 rounded-xl text-[10px] font-bold bg-white"
-                                  >
-                                    <option value="small">Small</option>
-                                    <option value="medium">Medium</option>
-                                    <option value="large">Large</option>
-                                    <option value="xl">XL</option>
-                                  </select>
-                                </div>
-                                <div className="space-y-1">
-                                  <label className="text-[9px] font-black text-gray-400 uppercase">Radius</label>
-                                  <select
-                                    value={obsBorderRadius}
-                                    onChange={(e) => setObsBorderRadius(e.target.value)}
-                                    className="w-full p-2 border border-gray-200 rounded-xl text-[10px] font-bold bg-white"
-                                  >
-                                    <option value="none">None</option>
-                                    <option value="md">Medium</option>
-                                    <option value="lg">Large</option>
-                                    <option value="xl">XL</option>
-                                    <option value="full">Full</option>
-                                  </select>
-                                </div>
+                          {/* Mobile Live Preview Box */}
+                          <motion.div
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.08, duration: 0.3 }}
+                            className="space-y-1.5 pt-1"
+                          >
+                            <span className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-450'}`}>Stream Preview</span>
+                            <div className="bg-slate-950 rounded-2xl p-4 flex items-center justify-center border border-slate-800 shadow-inner relative min-h-[220px]">
+                              <div className="absolute inset-0 opacity-5 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:12px_12px] pointer-events-none" />
+                              <div className="w-full max-w-[280px]">
+                                {renderOverlayWidget(obsSelectedWidget, true)}
                               </div>
                             </div>
-                          )}
+                          </motion.div>
 
-                          {/* Copy URL section */}
-                          <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100 space-y-3">
-                            <div className="flex justify-between items-center">
-                              <span className="text-[10px] font-black uppercase text-blue-800 tracking-wider">Stream Link</span>
-                              {copiedLink && (
-                                <span className="text-[9px] font-black bg-blue-600 text-white px-2 py-0.5 rounded-full uppercase tracking-wider animate-in fade-in zoom-in-75">
-                                  Copied!
-                                </span>
+                          {/* Controls */}
+                          <motion.div
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.14, duration: 0.3 }}
+                            className="space-y-4 pt-1"
+                          >
+                            <div className="space-y-1.5">
+                              <label className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-450'}`}>Overlay Widget</label>
+                              <select
+                                value={obsSelectedWidget}
+                                onChange={(e) => setObsSelectedWidget(e.target.value)}
+                                className={`w-full p-3 rounded-2xl text-xs font-bold outline-none border transition-all ${
+                                  isDark ? 'neu-pressed-dark text-white border-gray-750 bg-[#1c2128]' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white'
+                                }`}
+                              >
+                                <option value="todayAgenda">📅 Today's Agenda</option>
+                                <option value="dailyNotes">📝 Daily Notes</option>
+                                <option value="timer">⏱️ Countdown Timer</option>
+                                <option value="todaysStudyTime">🕒 Today's Study Time</option>
+                                <option value="deckTarget">📚 Deck Stats</option>
+                                <option value="streaks">🔥 Revision Streaks</option>
+                                <option value="analytics">📊 Adherence KPI</option>
+                                <option value="cardGenerator">⚡ Card Generator Queue</option>
+                                <option value="performanceFeed">📈 Revision Adherence Feed</option>
+                                <option value="studyRoom">📖 Study Room Status</option>
+                                <option value="campEfficiency">🏆 CAMP Study Efficiency</option>
+                              </select>
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <label className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-450'}`}>Theme Preset</label>
+                              <select
+                                value={obsTheme}
+                                onChange={(e) => setObsTheme(e.target.value)}
+                                className={`w-full p-3 rounded-2xl text-xs font-bold outline-none border transition-all ${
+                                  isDark ? 'neu-pressed-dark text-white border-gray-750 bg-[#1c2128]' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white'
+                                }`}
+                              >
+                                <option value="transparent">👻 Transparent (Glass)</option>
+                                <option value="dark">🌑 Dark Card</option>
+                                <option value="light">☀️ Light Card</option>
+                                <option value="custom">🎨 Fully Custom</option>
+                              </select>
+                            </div>
+
+                            {obsTheme === 'custom' && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className={`p-4 rounded-2xl border space-y-4 ${
+                                  isDark ? 'neu-card-dark border-gray-750 bg-[#1c2128]/50' : 'neu-card-light border-gray-150 bg-gray-50'
+                                }`}
+                              >
+                                <h4 className="text-[10px] font-black uppercase tracking-wider text-blue-500">Custom Colors</h4>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className="space-y-1">
+                                    <label className={`text-[9px] font-black uppercase ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Bg Color</label>
+                                    <div className="flex gap-2 items-center">
+                                      <input
+                                        type="color"
+                                        value={obsBgColor}
+                                        onChange={(e) => setObsBgColor(e.target.value)}
+                                        className="w-8 h-8 rounded-lg cursor-pointer border border-gray-300 p-0"
+                                      />
+                                      <span className="text-[10px] font-mono font-bold uppercase">{obsBgColor}</span>
+                                    </div>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <label className={`text-[9px] font-black uppercase ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Text Color</label>
+                                    <div className="flex gap-2 items-center">
+                                      <input
+                                        type="color"
+                                        value={obsTextColor}
+                                        onChange={(e) => setObsTextColor(e.target.value)}
+                                        className="w-8 h-8 rounded-lg cursor-pointer border border-gray-300 p-0"
+                                      />
+                                      <span className="text-[10px] font-mono font-bold uppercase">{obsTextColor}</span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="space-y-1">
+                                  <div className={`flex justify-between text-[9px] font-black uppercase ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                    <span>Bg Opacity</span>
+                                    <span>{obsOpacity}%</span>
+                                  </div>
+                                  <input
+                                    type="range"
+                                    min="0"
+                                    max="100"
+                                    value={obsOpacity}
+                                    onChange={(e) => setObsOpacity(Number(e.target.value))}
+                                    className="w-full accent-blue-500 cursor-pointer"
+                                  />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className="space-y-1">
+                                    <label className={`text-[9px] font-black uppercase ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Font Size</label>
+                                    <select
+                                      value={obsFontSize}
+                                      onChange={(e) => setObsFontSize(e.target.value)}
+                                      className={`w-full p-2 rounded-xl text-[10px] font-bold outline-none border ${
+                                        isDark ? 'neu-pressed-dark text-white border-gray-750 bg-[#1c2128]' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white'
+                                      }`}
+                                    >
+                                      <option value="small">Small</option>
+                                      <option value="medium">Medium</option>
+                                      <option value="large">Large</option>
+                                      <option value="xl">XL</option>
+                                    </select>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <label className={`text-[9px] font-black uppercase ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Radius</label>
+                                    <select
+                                      value={obsBorderRadius}
+                                      onChange={(e) => setObsBorderRadius(e.target.value)}
+                                      className={`w-full p-2 rounded-xl text-[10px] font-bold outline-none border ${
+                                        isDark ? 'neu-pressed-dark text-white border-gray-750 bg-[#1c2128]' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white'
+                                      }`}
+                                    >
+                                      <option value="none">None</option>
+                                      <option value="md">Medium</option>
+                                      <option value="lg">Large</option>
+                                      <option value="xl">XL</option>
+                                      <option value="full">Full</option>
+                                    </select>
+                                  </div>
+                                </div>
+                              </motion.div>
+                            )}
+
+                            {/* Widget Specific Options */}
+                            <div className={`p-4 rounded-2xl border space-y-3 ${
+                              isDark ? 'neu-card-dark border-gray-750 bg-[#1c2128]/30' : 'neu-card-light border-gray-200 bg-gray-50/50'
+                            }`}>
+                              <h4 className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Widget Settings</h4>
+
+                              {obsSelectedWidget === 'todayAgenda' && (
+                                <div className="space-y-2 text-xs font-bold">
+                                  <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={obsHideCompleted}
+                                      onChange={(e) => setObsHideCompleted(e.target.checked)}
+                                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                                    />
+                                    <span className={isDark ? 'text-gray-300' : 'text-gray-700'}>Hide Completed Tasks</span>
+                                  </label>
+                                </div>
+                              )}
+
+                              {(obsSelectedWidget === 'timer' || obsSelectedWidget === 'todaysStudyTime') && (
+                                <div className="space-y-3">
+                                  <div className="space-y-1">
+                                    <label className={`text-[9px] font-black uppercase ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Background Style</label>
+                                    <select
+                                      value={obsTimerBgTheme}
+                                      onChange={(e) => setObsTimerBgTheme(e.target.value)}
+                                      className={`w-full p-2 rounded-xl text-xs font-bold outline-none border ${
+                                        isDark ? 'neu-pressed-dark text-white border-gray-750 bg-[#1c2128]' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white'
+                                      }`}
+                                    >
+                                      <option value="gradient">Linear Gradient</option>
+                                      <option value="animated">Animated Shifting</option>
+                                      <option value="solid">Solid Black</option>
+                                    </select>
+                                  </div>
+                                  {obsTimerBgTheme !== 'solid' && (
+                                    <div className="space-y-1">
+                                      <label className={`text-[9px] font-black uppercase ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Background Theme</label>
+                                      <select
+                                        value={obsTimerBackground}
+                                        onChange={(e) => setObsTimerBackground(e.target.value)}
+                                        className={`w-full p-2 rounded-xl text-xs font-bold outline-none border ${
+                                          isDark ? 'neu-pressed-dark text-white border-gray-750 bg-[#1c2128]' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white'
+                                        }`}
+                                      >
+                                        <option value="sunset">🌅 Sunset Glow</option>
+                                        <option value="cyberpunk">🌃 Cyberpunk</option>
+                                        <option value="aurora">🌌 Teal Aurora</option>
+                                        <option value="midnight">🌌 Midnight Blue</option>
+                                        <option value="shiftingCosmic">✨ Cosmic Shimmer</option>
+                                        <option value="solarFlare">🔥 Solar Flare</option>
+                                        <option value="glacierMint">❄️ Glacier Mint</option>
+                                        <option value="cyberLime">🟢 Cyber Lime</option>
+                                        <option value="royalAmethyst">💎 Royal Amethyst</option>
+                                      </select>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {obsSelectedWidget !== 'todayAgenda' && obsSelectedWidget !== 'timer' && obsSelectedWidget !== 'todaysStudyTime' && (
+                                <p className={`text-[10px] italic font-bold py-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>No additional settings for this widget.</p>
                               )}
                             </div>
-                            <div className="flex gap-2">
-                              <input
-                                type="text"
-                                readOnly
-                                value={generateObsOverlayUrl()}
-                                className="flex-grow p-2.5 border border-blue-200 rounded-xl text-[10px] font-mono bg-white text-gray-700 outline-none select-all"
-                              />
-                              <button
-                                onClick={handleCopyLink}
-                                className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition active:scale-95 shrink-0"
-                              >
-                                Copy
-                              </button>
-                            </div>
-                          </div>
-                        </div>
+
+                            {/* Copy URL section */}
+                            <motion.div
+                              initial={{ opacity: 0, y: 8 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: 0.2, duration: 0.3 }}
+                              className={`p-4 rounded-2xl border space-y-3 ${
+                                isDark ? 'neu-card-dark border-blue-900/40 bg-blue-950/20' : 'neu-card-light border-blue-100 bg-blue-50/50'
+                              }`}
+                            >
+                              <div className="flex justify-between items-center">
+                                <span className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>Stream Link</span>
+                                {copiedLink && (
+                                  <span className="text-[9px] font-black bg-blue-600 text-white px-2 py-0.5 rounded-full uppercase tracking-wider animate-in fade-in zoom-in-75">
+                                    Copied!
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex gap-2">
+                                <input
+                                  type="text"
+                                  readOnly
+                                  value={generateObsOverlayUrl()}
+                                  className={`flex-grow p-2.5 rounded-xl text-[10px] font-mono outline-none select-all border ${
+                                    isDark ? 'neu-pressed-dark text-gray-200 border-gray-750 bg-[#1c2128]' : 'neu-pressed-light text-gray-700 border-blue-200 bg-white'
+                                  }`}
+                                />
+                                <button
+                                  onClick={handleCopyLink}
+                                  className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition active:scale-95 shrink-0 shadow-md cursor-pointer"
+                                >
+                                  Copy
+                                </button>
+                              </div>
+                              {obsToken && (
+                                <div className={`flex justify-between items-center pt-2 border-t ${isDark ? 'border-gray-800' : 'border-blue-100/60'}`}>
+                                  <span className={`text-[10px] font-bold ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>Local Stream Key</span>
+                                  <button
+                                    onClick={handleRegenerateObsToken}
+                                    disabled={obsTokenLoading}
+                                    className="text-[10px] text-red-500 hover:text-red-400 font-black uppercase tracking-wider hover:underline transition disabled:opacity-50 flex items-center gap-1 cursor-pointer"
+                                  >
+                                    {obsTokenLoading ? 'Regenerating...' : '🔄 Reset Key'}
+                                  </button>
+                                </div>
+                              )}
+                            </motion.div>
+                          </motion.div>
+                        </motion.div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   {currentTab === 'smartReview' && (
                     <div className="space-y-4 text-left pb-24 animate-in fade-in duration-200">
@@ -35811,324 +36004,393 @@ Return your response strictly as a JSON object matching this schema:
                       </div>
                     )}
 
-                    {currentTab === 'obsOverlay' && (
-                      <div className="flex-grow p-6 flex gap-6 max-w-[1600px] mx-auto w-full h-full overflow-hidden bg-gray-50/50 text-left">
-                        {/* Left Column: Form Controls */}
-                        <div className="w-5/12 bg-white rounded-3xl border border-gray-200 shadow-sm p-6 flex flex-col h-full overflow-y-auto custom-scrollbar">
-                          <div className="mb-6 shrink-0">
-                            <h3 className="text-base font-black text-gray-900 tracking-tight flex items-center gap-2">
-                              <Tv className="w-5 h-5 text-blue-600" /> OBS Overlay Customiser
-                            </h3>
-                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">Customise widgets for your live stream</p>
-                          </div>
-
-                          <div className="space-y-5 flex-grow">
-                            {/* Widget Picker */}
-                            <div className="space-y-1.5">
-                              <label className="text-[10px] font-black uppercase text-gray-450 tracking-wider">Select Overlay Widget</label>
-                              <select
-                                value={obsSelectedWidget}
-                                onChange={(e) => setObsSelectedWidget(e.target.value)}
-                                className="w-full p-3 border border-gray-200 rounded-2xl text-xs font-bold bg-white text-gray-800 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 cursor-pointer"
-                              >
-
-                                <option value="todayAgenda">📅 Today's Agenda Checklist</option>
-                                <option value="dailyNotes">📝 Daily Notes & Subjects</option>
-                                <option value="timer">⏱️ Pomodoro / Countdown Timer</option>
-                                <option value="todaysStudyTime">🕒 Today's Total Studied Time</option>
-                                <option value="deckTarget">📚 Deck Target & Library Stats</option>
-                                <option value="streaks">🔥 Daily Revision Streak</option>
-                                <option value="analytics">📊 Study Adherence KPI</option>
-                                <option value="cardGenerator">⚡ Card Generator Queue</option>
-                                <option value="performanceFeed">📈 Revision Adherence Feed</option>
-                                <option value="studyRoom">📖 Active Card Study Room Status</option>
-                                <option value="campEfficiency">🏆 CAMP Study Efficiency Tracker</option>
-                              </select>
+                    {currentTab === 'obsOverlay' && (() => {
+                      const isDark = settingsThemeMode === 'dark';
+                      return (
+                        <div className={`flex-grow p-6 flex gap-6 max-w-[1600px] mx-auto w-full h-full overflow-hidden text-left transition-colors duration-300 ${
+                          isDark ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'
+                        }`}>
+                          {/* Left Column: Form Controls */}
+                          <motion.div
+                            initial={{ opacity: 0, x: -16 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                            className={`w-5/12 rounded-3xl border shadow-sm p-6 flex flex-col h-full overflow-y-auto custom-scrollbar ${
+                              isDark ? 'neu-card-dark border-gray-800' : 'neu-card-light border-gray-200'
+                            }`}
+                          >
+                            <div className="mb-6 shrink-0 flex items-center justify-between">
+                              <div>
+                                <h3 className="text-base font-black tracking-tight flex items-center gap-2">
+                                  <div className={`p-2 rounded-xl ${isDark ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'}`}>
+                                    <Tv className="w-5 h-5" />
+                                  </div>
+                                  OBS Overlay Customiser
+                                </h3>
+                                <p className={`text-[10px] font-bold uppercase tracking-wider mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                  Customise widgets for your live stream (Offline / LocalDB)
+                                </p>
+                              </div>
                             </div>
 
-                            {/* Theme Select */}
-                            <div className="space-y-1.5">
-                              <label className="text-[10px] font-black uppercase text-gray-450 tracking-wider">Background Theme Preset</label>
-                              <select
-                                value={obsTheme}
-                                onChange={(e) => setObsTheme(e.target.value)}
-                                className="w-full p-3 border border-gray-200 rounded-2xl text-xs font-bold bg-white text-gray-800 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 cursor-pointer"
+                            <div className="space-y-5 flex-grow">
+                              {/* Widget Picker */}
+                              <motion.div
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.05, duration: 0.3 }}
+                                className="space-y-1.5"
                               >
-                                <option value="transparent">👻 Transparent (Glass Panel - Recommended for streams)</option>
-                                <option value="dark">🌘 Sleek Dark Card</option>
-                                <option value="light">☀️ Clean Light Card</option>
-                                <option value="custom">🎨 Fully Custom styling</option>
-                              </select>
-                            </div>
+                                <label className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                  Select Overlay Widget
+                                </label>
+                                <select
+                                  value={obsSelectedWidget}
+                                  onChange={(e) => setObsSelectedWidget(e.target.value)}
+                                  className={`w-full p-3 rounded-2xl text-xs font-bold outline-none border transition-all cursor-pointer ${
+                                    isDark ? 'neu-pressed-dark text-white border-gray-750 bg-[#1c2128] focus:border-blue-500' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white focus:border-blue-500'
+                                  }`}
+                                >
+                                  <option value="todayAgenda">📅 Today's Agenda Checklist</option>
+                                  <option value="dailyNotes">📝 Daily Notes & Subjects</option>
+                                  <option value="timer">⏱️ Pomodoro / Countdown Timer</option>
+                                  <option value="todaysStudyTime">🕒 Today's Total Studied Time</option>
+                                  <option value="deckTarget">📚 Deck Target & Library Stats</option>
+                                  <option value="streaks">🔥 Daily Revision Streak</option>
+                                  <option value="analytics">📊 Study Adherence KPI</option>
+                                  <option value="cardGenerator">⚡ Card Generator Queue</option>
+                                  <option value="performanceFeed">📈 Revision Adherence Feed</option>
+                                  <option value="studyRoom">📖 Active Card Study Room Status</option>
+                                  <option value="campEfficiency">🏆 CAMP Study Efficiency Tracker</option>
+                                </select>
+                              </motion.div>
 
-                            {/* Custom Styles */}
-                            {obsTheme === 'custom' && (
-                              <div className="p-4 bg-gray-50 border border-gray-150 rounded-2xl space-y-4 animate-in fade-in duration-200">
-                                <h4 className="text-[10px] font-black uppercase tracking-wider text-blue-600 mb-1">Color & Frame Customisation</h4>
+                              {/* Theme Select */}
+                              <motion.div
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.1, duration: 0.3 }}
+                                className="space-y-1.5"
+                              >
+                                <label className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                  Background Theme Preset
+                                </label>
+                                <select
+                                  value={obsTheme}
+                                  onChange={(e) => setObsTheme(e.target.value)}
+                                  className={`w-full p-3 rounded-2xl text-xs font-bold outline-none border transition-all cursor-pointer ${
+                                    isDark ? 'neu-pressed-dark text-white border-gray-750 bg-[#1c2128] focus:border-blue-500' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white focus:border-blue-500'
+                                  }`}
+                                >
+                                  <option value="transparent">👻 Transparent (Glass Panel - Recommended for streams)</option>
+                                  <option value="dark">🌘 Sleek Dark Card</option>
+                                  <option value="light">☀️ Clean Light Card</option>
+                                  <option value="custom">🎨 Fully Custom styling</option>
+                                </select>
+                              </motion.div>
 
-                                <div className="grid grid-cols-2 gap-3">
-                                  <div className="space-y-1">
-                                    <label className="text-[9px] font-black text-gray-400 uppercase">Background Color</label>
-                                    <div className="flex gap-2 items-center">
-                                      <input
-                                        type="color"
-                                        value={obsBgColor}
-                                        onChange={(e) => setObsBgColor(e.target.value)}
-                                        className="w-8 h-8 rounded-lg cursor-pointer border border-gray-200 p-0"
-                                      />
-                                      <span className="text-[10px] font-mono font-bold uppercase">{obsBgColor}</span>
-                                    </div>
-                                  </div>
-                                  <div className="space-y-1">
-                                    <label className="text-[9px] font-black text-gray-400 uppercase">Text Color</label>
-                                    <div className="flex gap-2 items-center">
-                                      <input
-                                        type="color"
-                                        value={obsTextColor}
-                                        onChange={(e) => setObsTextColor(e.target.value)}
-                                        className="w-8 h-8 rounded-lg cursor-pointer border border-gray-200 p-0"
-                                      />
-                                      <span className="text-[10px] font-mono font-bold uppercase">{obsTextColor}</span>
-                                    </div>
-                                  </div>
-                                </div>
+                              {/* Custom Styles */}
+                              {obsTheme === 'custom' && (
+                                <motion.div
+                                  initial={{ opacity: 0, height: 0 }}
+                                  animate={{ opacity: 1, height: 'auto' }}
+                                  exit={{ opacity: 0, height: 0 }}
+                                  className={`p-4 rounded-2xl border space-y-4 ${
+                                    isDark ? 'neu-card-dark border-gray-750 bg-[#1c2128]/50' : 'neu-card-light border-gray-150 bg-gray-50'
+                                  }`}
+                                >
+                                  <h4 className="text-[10px] font-black uppercase tracking-wider text-blue-500 mb-1">Color & Frame Customisation</h4>
 
-                                <div className="space-y-1">
-                                  <div className="flex justify-between text-[9px] font-black text-gray-400 uppercase">
-                                    <span>Background Opacity</span>
-                                    <span>{obsOpacity}%</span>
-                                  </div>
-                                  <input
-                                    type="range"
-                                    min="0"
-                                    max="100"
-                                    value={obsOpacity}
-                                    onChange={(e) => setObsOpacity(Number(e.target.value))}
-                                    className="w-full accent-blue-600"
-                                  />
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-3">
-                                  <div className="space-y-1">
-                                    <label className="text-[9px] font-black text-gray-400 uppercase">Font Size</label>
-                                    <select
-                                      value={obsFontSize}
-                                      onChange={(e) => setObsFontSize(e.target.value)}
-                                      className="w-full p-2 border border-gray-200 rounded-xl text-[10px] font-bold bg-white outline-none"
-                                    >
-                                      <option value="small">Small</option>
-                                      <option value="medium">Medium</option>
-                                      <option value="large">Large</option>
-                                      <option value="xl">Extra Large</option>
-                                    </select>
-                                  </div>
-                                  <div className="space-y-1">
-                                    <label className="text-[9px] font-black text-gray-400 uppercase">Border Radius</label>
-                                    <select
-                                      value={obsBorderRadius}
-                                      onChange={(e) => setObsBorderRadius(e.target.value)}
-                                      className="w-full p-2 border border-gray-200 rounded-xl text-[10px] font-bold bg-white outline-none"
-                                    >
-                                      <option value="none">None</option>
-                                      <option value="md">Medium</option>
-                                      <option value="lg">Large</option>
-                                      <option value="xl">Extra Large</option>
-                                      <option value="full">Full Circle</option>
-                                    </select>
-                                  </div>
-                                </div>
-
-                                <div className="border-t border-gray-200 pt-3 space-y-3">
                                   <div className="grid grid-cols-2 gap-3">
                                     <div className="space-y-1">
-                                      <label className="text-[9px] font-black text-gray-400 uppercase">Border Color</label>
+                                      <label className={`text-[9px] font-black uppercase ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Background Color</label>
                                       <div className="flex gap-2 items-center">
                                         <input
                                           type="color"
-                                          value={obsBorderColor}
-                                          onChange={(e) => setObsBorderColor(e.target.value)}
-                                          className="w-7 h-7 rounded-lg cursor-pointer border border-gray-200 p-0"
+                                          value={obsBgColor}
+                                          onChange={(e) => setObsBgColor(e.target.value)}
+                                          className="w-8 h-8 rounded-lg cursor-pointer border border-gray-300 p-0"
                                         />
-                                        <span className="text-[9px] font-mono font-bold uppercase">{obsBorderColor}</span>
+                                        <span className="text-[10px] font-mono font-bold uppercase">{obsBgColor}</span>
                                       </div>
                                     </div>
                                     <div className="space-y-1">
-                                      <div className="flex justify-between text-[9px] font-black text-gray-400 uppercase">
-                                        <span>Border Width</span>
-                                        <span>{obsBorderWidth}px</span>
+                                      <label className={`text-[9px] font-black uppercase ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Text Color</label>
+                                      <div className="flex gap-2 items-center">
+                                        <input
+                                          type="color"
+                                          value={obsTextColor}
+                                          onChange={(e) => setObsTextColor(e.target.value)}
+                                          className="w-8 h-8 rounded-lg cursor-pointer border border-gray-300 p-0"
+                                        />
+                                        <span className="text-[10px] font-mono font-bold uppercase">{obsTextColor}</span>
                                       </div>
-                                      <input
-                                        type="range"
-                                        min="0"
-                                        max="4"
-                                        value={obsBorderWidth}
-                                        onChange={(e) => setObsBorderWidth(Number(e.target.value))}
-                                        className="w-full accent-blue-600"
-                                      />
                                     </div>
                                   </div>
-                                </div>
-                              </div>
-                            )}
 
-                            {/* Widget Specific Options */}
-                            <div className="p-4 bg-gray-50/50 border border-gray-200 rounded-2xl space-y-3">
-                              <h4 className="text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1">Widget Settings</h4>
-
-
-
-                              {obsSelectedWidget === 'todayAgenda' && (
-                                <div className="space-y-2 text-xs font-bold text-gray-700">
-                                  <label className="flex items-center gap-2 cursor-pointer">
-                                    <input
-                                      type="checkbox"
-                                      checked={obsHideCompleted}
-                                      onChange={(e) => setObsHideCompleted(e.target.checked)}
-                                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
-                                    />
-                                    <span>Hide Completed Tasks</span>
-                                  </label>
-                                </div>
-                              )}
-
-                              {(obsSelectedWidget === 'timer' || obsSelectedWidget === 'todaysStudyTime') && (
-                                <div className="space-y-3">
                                   <div className="space-y-1">
-                                    <label className="text-[9px] font-black text-gray-400 uppercase">Background Style</label>
-                                    <select
-                                      value={obsTimerBgTheme}
-                                      onChange={(e) => setObsTimerBgTheme(e.target.value)}
-                                      className="w-full p-2 border border-gray-200 rounded-xl text-xs font-bold bg-white outline-none"
-                                    >
-                                      <option value="gradient">Linear Gradient</option>
-                                      <option value="animated">Animated Shifting</option>
-                                      <option value="solid">Solid Black</option>
-                                    </select>
+                                    <div className={`flex justify-between text-[9px] font-black uppercase ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                      <span>Background Opacity</span>
+                                      <span>{obsOpacity}%</span>
+                                    </div>
+                                    <input
+                                      type="range"
+                                      min="0"
+                                      max="100"
+                                      value={obsOpacity}
+                                      onChange={(e) => setObsOpacity(Number(e.target.value))}
+                                      className="w-full accent-blue-500 cursor-pointer"
+                                    />
                                   </div>
-                                  {obsTimerBgTheme !== 'solid' && (
+
+                                  <div className="grid grid-cols-2 gap-3">
                                     <div className="space-y-1">
-                                      <label className="text-[9px] font-black text-gray-400 uppercase">Background Theme</label>
+                                      <label className={`text-[9px] font-black uppercase ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Font Size</label>
                                       <select
-                                        value={obsTimerBackground}
-                                        onChange={(e) => setObsTimerBackground(e.target.value)}
-                                        className="w-full p-2 border border-gray-200 rounded-xl text-xs font-bold bg-white outline-none"
+                                        value={obsFontSize}
+                                        onChange={(e) => setObsFontSize(e.target.value)}
+                                        className={`w-full p-2 rounded-xl text-[10px] font-bold outline-none border ${
+                                          isDark ? 'neu-pressed-dark text-white border-gray-750 bg-[#1c2128]' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white'
+                                        }`}
                                       >
-                                        <option value="sunset">🌅 Sunset Glow</option>
-                                        <option value="cyberpunk">🌃 Cyberpunk</option>
-                                        <option value="aurora">🌌 Teal Aurora</option>
-                                        <option value="midnight">🌌 Midnight Blue</option>
-                                        <option value="shiftingCosmic">✨ cosmic Shimmer</option>
-                                        <option value="solarFlare">🔥 Solar Flare</option>
-                                        <option value="glacierMint">❄️ Glacier Mint</option>
-                                        <option value="cyberLime">🟢 Cyber Lime</option>
-                                        <option value="royalAmethyst">💎 Royal Amethyst</option>
+                                        <option value="small">Small</option>
+                                        <option value="medium">Medium</option>
+                                        <option value="large">Large</option>
+                                        <option value="xl">Extra Large</option>
                                       </select>
                                     </div>
+                                    <div className="space-y-1">
+                                      <label className={`text-[9px] font-black uppercase ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Border Radius</label>
+                                      <select
+                                        value={obsBorderRadius}
+                                        onChange={(e) => setObsBorderRadius(e.target.value)}
+                                        className={`w-full p-2 rounded-xl text-[10px] font-bold outline-none border ${
+                                          isDark ? 'neu-pressed-dark text-white border-gray-750 bg-[#1c2128]' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white'
+                                        }`}
+                                      >
+                                        <option value="none">None</option>
+                                        <option value="md">Medium</option>
+                                        <option value="lg">Large</option>
+                                        <option value="xl">Extra Large</option>
+                                        <option value="full">Full Circle</option>
+                                      </select>
+                                    </div>
+                                  </div>
+
+                                  <div className={`border-t pt-3 space-y-3 ${isDark ? 'border-gray-750' : 'border-gray-200'}`}>
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div className="space-y-1">
+                                        <label className={`text-[9px] font-black uppercase ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Border Color</label>
+                                        <div className="flex gap-2 items-center">
+                                          <input
+                                            type="color"
+                                            value={obsBorderColor}
+                                            onChange={(e) => setObsBorderColor(e.target.value)}
+                                            className="w-7 h-7 rounded-lg cursor-pointer border border-gray-300 p-0"
+                                          />
+                                          <span className="text-[9px] font-mono font-bold uppercase">{obsBorderColor}</span>
+                                        </div>
+                                      </div>
+                                      <div className="space-y-1">
+                                        <div className={`flex justify-between text-[9px] font-black uppercase ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                          <span>Border Width</span>
+                                          <span>{obsBorderWidth}px</span>
+                                        </div>
+                                        <input
+                                          type="range"
+                                          min="0"
+                                          max="4"
+                                          value={obsBorderWidth}
+                                          onChange={(e) => setObsBorderWidth(Number(e.target.value))}
+                                          className="w-full accent-blue-500 cursor-pointer"
+                                        />
+                                      </div>
+                                    </div>
+                                  </div>
+                                </motion.div>
+                              )}
+
+                              {/* Widget Specific Options */}
+                              <motion.div
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.15, duration: 0.3 }}
+                                className={`p-4 rounded-2xl border space-y-3 ${
+                                  isDark ? 'neu-card-dark border-gray-750 bg-[#1c2128]/30' : 'neu-card-light border-gray-200 bg-gray-50/50'
+                                }`}
+                              >
+                                <h4 className={`text-[10px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Widget Settings</h4>
+
+                                {obsSelectedWidget === 'todayAgenda' && (
+                                  <div className="space-y-2 text-xs font-bold">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                      <input
+                                        type="checkbox"
+                                        checked={obsHideCompleted}
+                                        onChange={(e) => setObsHideCompleted(e.target.checked)}
+                                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                                      />
+                                      <span className={isDark ? 'text-gray-300' : 'text-gray-700'}>Hide Completed Tasks</span>
+                                    </label>
+                                  </div>
+                                )}
+
+                                {(obsSelectedWidget === 'timer' || obsSelectedWidget === 'todaysStudyTime') && (
+                                  <div className="space-y-3">
+                                    <div className="space-y-1">
+                                      <label className={`text-[9px] font-black uppercase ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Background Style</label>
+                                      <select
+                                        value={obsTimerBgTheme}
+                                        onChange={(e) => setObsTimerBgTheme(e.target.value)}
+                                        className={`w-full p-2 rounded-xl text-xs font-bold outline-none border ${
+                                          isDark ? 'neu-pressed-dark text-white border-gray-750 bg-[#1c2128]' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white'
+                                        }`}
+                                      >
+                                        <option value="gradient">Linear Gradient</option>
+                                        <option value="animated">Animated Shifting</option>
+                                        <option value="solid">Solid Black</option>
+                                      </select>
+                                    </div>
+                                    {obsTimerBgTheme !== 'solid' && (
+                                      <div className="space-y-1">
+                                        <label className={`text-[9px] font-black uppercase ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Background Theme</label>
+                                        <select
+                                          value={obsTimerBackground}
+                                          onChange={(e) => setObsTimerBackground(e.target.value)}
+                                          className={`w-full p-2 rounded-xl text-xs font-bold outline-none border ${
+                                            isDark ? 'neu-pressed-dark text-white border-gray-750 bg-[#1c2128]' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white'
+                                          }`}
+                                        >
+                                          <option value="sunset">🌅 Sunset Glow</option>
+                                          <option value="cyberpunk">🌃 Cyberpunk</option>
+                                          <option value="aurora">🌌 Teal Aurora</option>
+                                          <option value="midnight">🌌 Midnight Blue</option>
+                                          <option value="shiftingCosmic">✨ Cosmic Shimmer</option>
+                                          <option value="solarFlare">🔥 Solar Flare</option>
+                                          <option value="glacierMint">❄️ Glacier Mint</option>
+                                          <option value="cyberLime">🟢 Cyber Lime</option>
+                                          <option value="royalAmethyst">💎 Royal Amethyst</option>
+                                        </select>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+
+                                {obsSelectedWidget !== 'todayAgenda' && obsSelectedWidget !== 'timer' && obsSelectedWidget !== 'todaysStudyTime' && (
+                                  <p className={`text-[10px] italic font-bold py-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>No additional settings for this widget.</p>
+                                )}
+                              </motion.div>
+
+                              {/* Copy Link Section */}
+                              <motion.div
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.2, duration: 0.3 }}
+                                className={`p-5 rounded-3xl border space-y-3 shrink-0 ${
+                                  isDark ? 'neu-card-dark border-blue-900/40 bg-blue-950/20' : 'neu-card-light border-blue-100 bg-blue-50/50'
+                                }`}
+                              >
+                                <div className="flex justify-between items-center">
+                                  <span className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>Your OBS Stream Link</span>
+                                  {copiedLink && (
+                                    <span className="text-[9px] font-black bg-blue-600 text-white px-2 py-0.5 rounded-full uppercase tracking-wider animate-in fade-in zoom-in-75">
+                                      Copied!
+                                    </span>
                                   )}
                                 </div>
-                              )}
-
-                              {obsSelectedWidget !== 'todayAgenda' && obsSelectedWidget !== 'timer' && obsSelectedWidget !== 'todaysStudyTime' && (
-                                <p className="text-[10px] text-gray-450 italic font-bold py-1">No additional settings for this widget.</p>
-                              )}
-                            </div>
-
-                            {/* Copy Link Section */}
-                            <div className="p-5 bg-blue-50/50 rounded-3xl border border-blue-100 space-y-3 shrink-0">
-                              <div className="flex justify-between items-center">
-                                <span className="text-[10px] font-black uppercase text-blue-800 tracking-wider">Your OBS Stream Link</span>
-                                {copiedLink && (
-                                  <span className="text-[9px] font-black bg-blue-600 text-white px-2 py-0.5 rounded-full uppercase tracking-wider animate-in fade-in zoom-in-75">
-                                    Copied!
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex gap-2">
-                                <input
-                                  type="text"
-                                  readOnly
-                                  value={generateObsOverlayUrl()}
-                                  className="flex-grow p-2.5 border border-blue-200 rounded-xl text-xs font-mono bg-white text-gray-700 outline-none select-all"
-                                />
-                                <button
-                                  onClick={handleCopyLink}
-                                  className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition active:scale-95 flex items-center gap-1.5 shrink-0 shadow-md shadow-blue-500/10"
-                                >
-                                  <Copy className="w-3.5 h-3.5" /> Copy
-                                </button>
-                              </div>
-                              {obsToken && (
-                                <div className="flex justify-between items-center pt-2 border-t border-blue-100/60">
-                                  <span className="text-[10px] font-bold text-blue-700">Uses revocable Stream Key.</span>
+                                <div className="flex gap-2">
+                                  <input
+                                    type="text"
+                                    readOnly
+                                    value={generateObsOverlayUrl()}
+                                    className={`flex-grow p-2.5 rounded-xl text-xs font-mono outline-none select-all border ${
+                                      isDark ? 'neu-pressed-dark text-gray-200 border-gray-750 bg-[#1c2128]' : 'neu-pressed-light text-gray-700 border-blue-200 bg-white'
+                                    }`}
+                                  />
                                   <button
-                                    onClick={handleRegenerateObsToken}
-                                    disabled={obsTokenLoading}
-                                    className="text-[10px] text-red-600 hover:text-red-700 font-black uppercase tracking-wider hover:underline transition disabled:opacity-50 flex items-center gap-1"
+                                    onClick={handleCopyLink}
+                                    className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition active:scale-95 flex items-center gap-1.5 shrink-0 shadow-md shadow-blue-500/10 cursor-pointer"
                                   >
-                                    {obsTokenLoading ? 'Regenerating...' : '🔄 Reset Stream Key'}
+                                    <Copy className="w-3.5 h-3.5" /> Copy
                                   </button>
                                 </div>
-                              )}
+                                {obsToken && (
+                                  <div className={`flex justify-between items-center pt-2 border-t ${isDark ? 'border-gray-800' : 'border-blue-100/60'}`}>
+                                    <span className={`text-[10px] font-bold ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>Uses local revocable Stream Key (LocalDB).</span>
+                                    <button
+                                      onClick={handleRegenerateObsToken}
+                                      disabled={obsTokenLoading}
+                                      className="text-[10px] text-red-500 hover:text-red-400 font-black uppercase tracking-wider hover:underline transition disabled:opacity-50 flex items-center gap-1 cursor-pointer"
+                                    >
+                                      {obsTokenLoading ? 'Regenerating...' : '🔄 Reset Stream Key'}
+                                    </button>
+                                  </div>
+                                )}
+                              </motion.div>
                             </div>
-                          </div>
+                          </motion.div>
+
+                          {/* Right Column: Live stream mock preview */}
+                          <motion.div
+                            initial={{ opacity: 0, x: 16 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                            className="w-7/12 bg-slate-950 rounded-3xl border border-slate-850 p-6 flex flex-col h-full overflow-y-auto custom-scrollbar text-center justify-start gap-6 relative shadow-2xl"
+                          >
+                            <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
+
+                            <div className="flex items-center justify-between shrink-0 mb-4 z-10 relative">
+                              <div className="text-left">
+                                <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Overlay Preview Mockup</span>
+                                <h4 className="text-sm font-black text-white tracking-tight mt-0.5">Stream Canvas View</h4>
+                              </div>
+                              <span className="text-[9px] font-black uppercase bg-slate-800 text-slate-300 px-3 py-1 rounded-full border border-slate-700">
+                                Aspect ratio auto-fits OBS
+                              </span>
+                            </div>
+
+                            <div className="flex-grow flex items-center justify-center p-8 z-10 relative">
+                              <div className="w-full max-w-[340px] drop-shadow-2xl">
+                                {renderOverlayWidget(obsSelectedWidget, true)}
+                              </div>
+                            </div>
+
+                            {/* Quick setup guidelines */}
+                            <div className="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl text-left z-10 shrink-0">
+                              <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest block mb-1.5">OBS Setup Instructions</span>
+                              <ul className="text-[10px] text-slate-300 font-bold space-y-1 list-decimal list-inside leading-relaxed pl-1">
+                                <li>Add a new <span className="text-white font-black">Browser Source</span> to your OBS Scene.</li>
+                                <li>Paste the copied URL above into the <span className="text-white font-black">URL</span> field.</li>
+                                <li>
+                                  {(() => {
+                                    const recs = {
+                                      timer: { w: 300, h: 220, label: 'Compact timer layout' },
+                                      todaysStudyTime: { w: 300, h: 220, label: 'Compact study time box' },
+                                      todayAgenda: { w: 360, h: 420, label: 'Taller format to view agenda items checklist' },
+                                      dailyNotes: { w: 360, h: 450, label: 'Comfortable size for text & daily subject lists' },
+                                      deckTarget: { w: 360, h: 320, label: 'Fits progress rings and library stats' },
+                                      streaks: { w: 350, h: 280, label: 'Optimized for streak flame and progress visuals' },
+                                      analytics: { w: 360, h: 360, label: 'Best fits analytics grid and gauges' },
+                                      cardGenerator: { w: 360, h: 420, label: 'Fits card creation queue entries' },
+                                      performanceFeed: { w: 360, h: 460, label: 'Ideal for scrolling feed list items' },
+                                      studyRoom: { w: 350, h: 240, label: 'Fits current card count and active status' },
+                                      campEfficiency: { w: 360, h: 260, label: 'Fits the CAMP efficiency score overlay card' }
+                                    };
+                                    const r = recs[obsSelectedWidget] || { w: 380, h: 480, label: 'Standard layout' };
+                                    return (
+                                      <span>
+                                        Set aspect sizes to <span className="text-white font-black">Width: {r.w}, Height: {r.h}</span> ({r.label}).
+                                      </span>
+                                    );
+                                  })()}
+                                </li>
+                                <li>Overlay synchronizes in real time with AutoAnki locally via BroadcastChannel.</li>
+                              </ul>
+                            </div>
+                          </motion.div>
                         </div>
-
-                        {/* Right Column: Live stream mock preview */}
-                        <div className="w-7/12 bg-slate-900 rounded-3xl border border-slate-850 p-6 flex flex-col h-full overflow-y-auto custom-scrollbar text-center justify-start gap-6 relative">
-                          <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
-
-                          <div className="flex items-center justify-between shrink-0 mb-4 z-10 relative">
-                            <div className="text-left">
-                              <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Overlay Preview Mockup</span>
-                              <h4 className="text-sm font-black text-white tracking-tight mt-0.5">Stream Canvas View</h4>
-                            </div>
-                            <span className="text-[9px] font-black uppercase bg-slate-800 text-slate-400 px-3 py-1 rounded-full border border-slate-750">
-                              Aspect ratio auto-fits OBS
-                            </span>
-                          </div>
-
-                          <div className="flex-grow flex items-center justify-center p-8 z-10 relative">
-                            <div className="w-full max-w-[340px] drop-shadow-2xl">
-                              {renderOverlayWidget(obsSelectedWidget, true)}
-                            </div>
-                          </div>
-
-                          {/* Quick setup guidelines */}
-                          <div className="bg-slate-950/80 border border-slate-850 p-4 rounded-2xl text-left z-10 shrink-0">
-                            <span className="text-[9px] font-black text-blue-450 uppercase tracking-widest block mb-1.5">OBS Setup Instructions</span>
-                            <ul className="text-[10px] text-slate-300 font-bold space-y-1 list-decimal list-inside leading-relaxed pl-1">
-                              <li>Add a new <span className="text-white font-black">Browser Source</span> to your OBS Scene.</li>
-                              <li>Paste the copied URL above into the <span className="text-white font-black">URL</span> field.</li>
-                              <li>
-                                {(() => {
-                                  const recs = {
-                                    timer: { w: 300, h: 220, label: 'Compact timer layout' },
-                                    todaysStudyTime: { w: 300, h: 220, label: 'Compact study time box' },
-
-                                    todayAgenda: { w: 360, h: 420, label: 'Taller format to view agenda items checklist' },
-                                    dailyNotes: { w: 360, h: 450, label: 'Comfortable size for text & daily subject lists' },
-                                    deckTarget: { w: 360, h: 320, label: 'Fits progress rings and library stats' },
-                                    streaks: { w: 350, h: 280, label: 'Optimized for streak flame and progress visuals' },
-                                    analytics: { w: 360, h: 360, label: 'Best fits analytics grid and gauges' },
-                                    cardGenerator: { w: 360, h: 420, label: 'Fits card creation queue entries' },
-                                    performanceFeed: { w: 360, h: 460, label: 'Ideal for scrolling feed list items' },
-                                    studyRoom: { w: 350, h: 240, label: 'Fits current card count and active status' },
-                                    campEfficiency: { w: 360, h: 260, label: 'Fits the CAMP efficiency score overlay card' }
-                                  };
-                                  const r = recs[obsSelectedWidget] || { w: 380, h: 480, label: 'Standard layout' };
-                                  return (
-                                    <span>
-                                      Set aspect sizes to <span className="text-white font-black">Width: {r.w}, Height: {r.h}</span> ({r.label}).
-                                    </span>
-                                  );
-                                })()}
-                              </li>
-                              <li>Right-click the Browser Source and select <span className="text-white font-black">Interact</span> to log in if needed.</li>
-                            </ul>
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
