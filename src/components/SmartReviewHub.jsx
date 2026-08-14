@@ -1345,10 +1345,16 @@ export default function SmartReviewHub({
         <RatingDurationModal
           isOpen={!!pendingRatingData}
           topic={pendingRatingData.topic}
+          rating={pendingRatingData.rating}
+          predictedMinutes={pendingRatingData.predictedMinutes}
           suggestedMinutes={pendingRatingData.predictedMinutes}
+          elapsedSessionSeconds={pendingRatingData.elapsedSessionSeconds || 0}
           timerState={timerState}
+          onSubmit={handleConfirmRatingDuration}
           onConfirm={handleConfirmRatingDuration}
+          onClose={handleSkipRatingDuration}
           onSkip={handleSkipRatingDuration}
+          themeMode={themeMode}
           isDark={isDark}
         />
       )}

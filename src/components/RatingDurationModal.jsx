@@ -18,21 +18,27 @@ const QUICK_PRESETS = [
 export default function RatingDurationModal({
   isOpen,
   onClose,
+  onSkip,
   onSubmit,
+  onConfirm,
   topic,
   rating,
   predictedMinutes = 15,
+  suggestedMinutes = 15,
   elapsedSessionSeconds = 0,
-  themeMode = 'dark'
+  timerState = null,
+  themeMode = 'dark',
+  isDark: isDarkProp = undefined
 }) {
   if (!isOpen) return null;
 
-  const isDark = themeMode === 'dark';
+  const isDark = isDarkProp !== undefined ? isDarkProp : themeMode === 'dark';
+  const effectivePredicted = predictedMinutes || suggestedMinutes || 10;
 
   // Seed default minutes from elapsed timer or engine prediction
   const initialMins = elapsedSessionSeconds > 60
     ? Math.max(1, Math.round(elapsedSessionSeconds / 60))
-    : (predictedMinutes || 10);
+    : effectivePredicted;
 
   const initialHours = Math.floor(initialMins / 60);
   const initialRemainingMins = initialMins % 60;
@@ -46,12 +52,12 @@ export default function RatingDurationModal({
     if (isOpen) {
       const mins = elapsedSessionSeconds > 60
         ? Math.max(1, Math.round(elapsedSessionSeconds / 60))
-        : (predictedMinutes || 10);
+        : effectivePredicted;
       setHours(Math.floor(mins / 60));
       setMinutes(mins % 60);
       setSelectedPreset(null);
     }
-  }, [isOpen, predictedMinutes, elapsedSessionSeconds]);
+  }, [isOpen, effectivePredicted, elapsedSessionSeconds]);
 
   const totalCalculatedMins = (parseInt(hours, 10) || 0) * 60 + (parseInt(minutes, 10) || 0);
 
@@ -70,16 +76,29 @@ export default function RatingDurationModal({
   };
 
   const handleUseSuggested = () => {
-    if (!predictedMinutes) return;
-    setHours(Math.floor(predictedMinutes / 60));
-    setMinutes(predictedMinutes % 60);
+    if (!effectivePredicted) return;
+    setHours(Math.floor(effectivePredicted / 60));
+    setMinutes(effectivePredicted % 60);
     setSelectedPreset(null);
   };
 
   const handleConfirm = (e) => {
-    e?.preventDefault?.();
-    const finalMins = Math.max(1, totalCalculatedMins);
-    onSubmit(finalMins);
+    if (e && e.preventDefault) e.preventDefault();
+    const finalMins = Math.max(1, totalCalculatedMins || effectivePredicted || 10);
+    if (typeof onSubmit === 'function') {
+      onSubmit(finalMins);
+    } else if (typeof onConfirm === 'function') {
+      onConfirm(finalMins);
+    }
+  };
+
+  const handleSkipOrClose = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (typeof onSkip === 'function') {
+      onSkip();
+    } else if (typeof onClose === 'function') {
+      onClose();
+    }
   };
 
   const ratingBadges = {
@@ -89,7 +108,7 @@ export default function RatingDurationModal({
     4: { label: 'Easy (4)', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' }
   };
 
-  const currentBadge = ratingBadges[rating] || { label: `Rating ${rating}`, color: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' };
+  const currentBadge = ratingBadges[rating] || { label: `Rating ${rating || ''}`, color: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' };
 
   return ReactDOM.createPortal(
     <div
@@ -102,7 +121,7 @@ export default function RatingDurationModal({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.2 }}
-        onClick={onClose}
+        onClick={handleSkipOrClose}
         className="absolute inset-0 bg-black/75 transition-opacity"
       />
 
@@ -138,7 +157,8 @@ export default function RatingDurationModal({
           </div>
 
           <button
-            onClick={onClose}
+            type="button"
+            onClick={handleSkipOrClose}
             className={`p-2 rounded-xl transition-all active:scale-95 cursor-pointer ${
               isDark ? 'hover:bg-slate-700/50 text-slate-400 hover:text-white' : 'hover:bg-slate-300/60 text-slate-600 hover:text-slate-900'
             }`}
@@ -273,7 +293,7 @@ export default function RatingDurationModal({
           <div className="grid grid-cols-2 gap-2.5 pt-2">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleSkipOrClose}
               className={`py-3 px-4 rounded-2xl text-xs font-black uppercase tracking-wider transition-all duration-200 active:scale-95 cursor-pointer border ${
                 isDark
                   ? 'neu-btn-dark text-slate-400 border-slate-700/60 hover:text-white'

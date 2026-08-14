@@ -14757,7 +14757,7 @@ const renderTimerHub = (isMobile = false) => {
     };
 
     const ratingLabels = { 1: 'Again (1)', 2: 'Hard (2)', 3: 'Good (3)', 4: 'Easy (4)' };
-    const actualDurationMins = timingMeta?.actualDurationMins || null;
+    const actualDurationMins = typeof timingMeta === 'number' ? timingMeta : (timingMeta?.actualDurationMins || null);
     const pageWeight = topic.pageCount || topic.pageWeight || 1;
     const minsPerPage = actualDurationMins ? Number((actualDurationMins / pageWeight).toFixed(2)) : null;
     const revisionTier = (topic.reviewCount === 0 || !topic.lastReviewDate) ? 'NEW' : (topic.reviewCount === 1 ? 'R1' : (topic.reviewCount === 2 ? 'R2' : 'RN'));
