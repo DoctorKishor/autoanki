@@ -4837,7 +4837,6 @@ export default function App() {
     }
     sidebarCollapseTimerRef.current = setTimeout(() => {
       setIsSidebarExpanded(false);
-      setHoveredNavCategory(null);
     }, 3000);
   };
 
@@ -5451,17 +5450,27 @@ export default function App() {
   const [draftNavIds, setDraftNavIds] = useState(DEFAULT_NAV_IDS);
   const [navSaveToast, setNavSaveToast] = useState(false);
   const [navTabsOpen, setNavTabsOpen] = useState(false);
-  const [hoveredNavCategory, setHoveredNavCategory] = useState(null);
-  const [pinnedNavCategories, setPinnedNavCategories] = useState(new Set());
+  const [openNavCategories, setOpenNavCategories] = useState(() => {
+    try {
+      const saved = localStorage.getItem('auto_anki_open_nav_categories');
+      if (saved) return new Set(JSON.parse(saved));
+      return new Set(['focus', 'knowledge', 'analytics', 'system']);
+    } catch {
+      return new Set(['focus', 'knowledge', 'analytics', 'system']);
+    }
+  });
 
-  const togglePinNavCategory = (catId) => {
-    setPinnedNavCategories(prev => {
+  const toggleNavCategory = (catId) => {
+    setOpenNavCategories(prev => {
       const next = new Set(prev);
       if (next.has(catId)) {
         next.delete(catId);
       } else {
         next.add(catId);
       }
+      try {
+        localStorage.setItem('auto_anki_open_nav_categories', JSON.stringify(Array.from(next)));
+      } catch (_) {}
       return next;
     });
   };
@@ -27669,19 +27678,17 @@ Return your response strictly as a JSON object matching this schema:
                     ].map((cat, catIdx) => {
                       const CatIcon = cat.icon;
                       const hasActiveItem = cat.items.some(item => item.id === currentTab);
-                      const isExpanded = hoveredNavCategory === cat.id || pinnedNavCategories.has(cat.id);
+                      const isExpanded = openNavCategories.has(cat.id);
 
                       return (
                         <div
                           key={cat.id}
-                          onMouseEnter={() => setHoveredNavCategory(cat.id)}
-                          onMouseLeave={() => setHoveredNavCategory(null)}
                           className="space-y-1 transition-all rounded-2xl p-0.5"
                         >
                           {isSidebarExpanded ? (
                             <button
                               type="button"
-                              onClick={() => togglePinNavCategory(cat.id)}
+                              onClick={() => toggleNavCategory(cat.id)}
                               className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-left transition-all cursor-pointer group select-none ${
                                 isExpanded
                                   ? (settingsThemeMode === 'dark' ? 'bg-slate-800/60 shadow-sm' : 'bg-slate-200/70 shadow-sm')
