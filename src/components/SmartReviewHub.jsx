@@ -4,7 +4,9 @@ import { Brain, Calendar, AlertTriangle, CheckCircle, Clock, BookOpen, Layers, S
 import FsrsStatsTab from './FsrsStatsTab';
 import FsrsSettingsModal from './FsrsSettingsModal';
 import SelectNewTopicsModal from './SelectNewTopicsModal';
-import { saveLocalSubjectTrackerDoc, getActiveNewTopicIds, saveActiveNewTopicIds } from '../services/localDb';
+import { saveLocalSubjectTrackerDoc, getActiveNewTopicIds, saveActiveNewTopicIds, getTopicHintsLocal, getLocalPytTopic, getLocalTextbooksMetadata } from '../services/localDb';
+import { generateTopicActiveRecallHints } from '../services/aiHintEngine';
+import { Lightbulb, ChevronDown, ChevronUp } from 'lucide-react';
 import { parsePageNumbers, getTopicPageWeight } from '../utils/pageUtils';
 import { calculateNextFSRSState, ensureCalibratedWeights } from '../services/fsrsEngine';
 
@@ -680,7 +682,7 @@ export default function SmartReviewHub({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <AnimatePresence mode="popLayout">
                     {overdueTopics.map((topic, idx) => (
-                      <TopicCard key={topic.id || (topic.subject + '_' + topic.name)} topic={topic} onRate={onRateTopic} onOpenNotes={onOpenNotesModal} fsrsConfig={fsrsConfig} isOverdue index={idx} isDark={isDark} />
+                      <TopicCard key={topic.id || (topic.subject + '_' + topic.name)} topic={topic} onRate={onRateTopic} onOpenNotes={onOpenNotesModal} fsrsConfig={fsrsConfig} isOverdue index={idx} isDark={isDark} geminiApiKey={geminiApiKey} aiFeatureModels={aiFeatureModels} />
                     ))}
                   </AnimatePresence>
                 </div>
@@ -696,7 +698,7 @@ export default function SmartReviewHub({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <AnimatePresence mode="popLayout">
                     {dueTodayTopics.map((topic, idx) => (
-                      <TopicCard key={topic.id || (topic.subject + '_' + topic.name)} topic={topic} onRate={onRateTopic} onOpenNotes={onOpenNotesModal} fsrsConfig={fsrsConfig} index={idx} isDark={isDark} />
+                      <TopicCard key={topic.id || (topic.subject + '_' + topic.name)} topic={topic} onRate={onRateTopic} onOpenNotes={onOpenNotesModal} fsrsConfig={fsrsConfig} index={idx} isDark={isDark} geminiApiKey={geminiApiKey} aiFeatureModels={aiFeatureModels} />
                     ))}
                   </AnimatePresence>
                 </div>
@@ -742,6 +744,8 @@ export default function SmartReviewHub({
                         isNew
                         index={idx}
                         isDark={isDark}
+                        geminiApiKey={geminiApiKey}
+                        aiFeatureModels={aiFeatureModels}
                       />
                     ))}
                   </AnimatePresence>
@@ -1087,6 +1091,8 @@ export default function SmartReviewHub({
                     onOpenNotes={onOpenNotesModal}
                     fsrsConfig={fsrsConfig}
                     isDark={isDark}
+                    geminiApiKey={geminiApiKey}
+                    aiFeatureModels={aiFeatureModels}
                   />
                 </div>
               ) : (
@@ -1207,9 +1213,93 @@ export default function SmartReviewHub({
 }
 
 // Sub-component: Individual Topic Queue Card
-function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue = false, isNew = false, index = 0, isDark = true }) {
+function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue = false, isNew = false, index = 0, isDark = true, geminiApiKey = '', aiFeatureModels = {} }) {
   const { pageLabel, pageCount } = getTopicPageInfo(topic);
   const [isNotesExpanded, setIsNotesExpanded] = useState(!!topic.notes);
+
+  // --- ACTIVE-RECALL HINT LADDER STATE ---
+  const [topicHints, setTopicHints] = useState(null);
+  const [isHintsExpanded, setIsHintsExpanded] = useState(false);
+  const [isGeneratingHints, setIsGeneratingHints] = useState(false);
+  const [revealedHintCount, setRevealedHintCount] = useState(1);
+  const [hintError, setHintError] = useState(null);
+
+  // Load cached hints on mount or when topic changes
+  useEffect(() => {
+    let isMounted = true;
+    async function loadCachedHints() {
+      try {
+        const topicId = topic.id || `${topic.subject}_${topic.name}`;
+        const cached = await getTopicHintsLocal(topicId);
+        if (isMounted && cached && Array.isArray(cached.hints) && cached.hints.length > 0) {
+          setTopicHints(cached);
+          setRevealedHintCount(1);
+        }
+      } catch (err) {
+        console.warn('Failed loading cached topic hints:', err);
+      }
+    }
+    loadCachedHints();
+    return () => { isMounted = false; };
+  }, [topic]);
+
+  const handleGenerateHints = async (e) => {
+    if (e && e.stopPropagation) e.stopPropagation();
+    setHintError(null);
+
+    if (!geminiApiKey) {
+      alert('⚠️ Missing Gemini API Key!\nPlease add your Gemini API Key in the Settings page to generate AI Active-Recall hints.');
+      return;
+    }
+
+    try {
+      setIsGeneratingHints(true);
+      const subjectName = topic.subject || '';
+
+      // Fetch Subject Master PDF from IndexedDB
+      const pdfKey = `pyt_pdf_${subjectName.toLowerCase().replace(/\s+/g, '_')}`;
+      const pdfObj = await getLocalPytTopic(pdfKey);
+
+      if (!pdfObj || !pdfObj.data) {
+        alert(`⚠️ No Master PDF attached for "${subjectName}".\nPlease upload a Subject PDF in the Subject Tracker tab ("📁 Manage Subject PDF & Offset") before generating hints.`);
+        setIsGeneratingHints(false);
+        return;
+      }
+
+      // Fetch Textbook Metadata to get pageOffset
+      const metadataList = (await getLocalTextbooksMetadata()) || [];
+      const meta = metadataList.find(tb => (tb.subject || '').toLowerCase() === subjectName.toLowerCase());
+      const pageOffset = meta?.pageOffset || 0;
+
+      // Extract page range from topic
+      const pageInfo = parsePageNumbers(topic);
+      const startPage = pageInfo.startPage || 1;
+      const endPage = pageInfo.endPage || startPage;
+
+      const topicId = topic.id || `${topic.subject}_${topic.name}`;
+
+      const hintPayload = await generateTopicActiveRecallHints({
+        topicId,
+        topicName: topic.name,
+        subject: subjectName,
+        pdfArrayBuffer: pdfObj.data,
+        startPage,
+        endPage,
+        pageOffset,
+        geminiApiKey,
+        aiFeatureModels
+      });
+
+      setTopicHints(hintPayload);
+      setRevealedHintCount(1);
+      setIsHintsExpanded(true);
+    } catch (err) {
+      console.error('Failed generating hints:', err);
+      setHintError(err.message || 'Failed to generate hints');
+    } finally {
+      setIsGeneratingHints(false);
+    }
+  };
 
   // Sync state if topic.notes becomes available
   useEffect(() => {
@@ -1308,6 +1398,27 @@ function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue
             <FileText className="w-4 h-4" />
           </button>
 
+          {/* Active-Recall Hint Toggle Button */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsHintsExpanded(prev => !prev);
+            }}
+            title={topicHints ? "Toggle Active-Recall Hints" : "Generate Active-Recall Hints"}
+            className={`p-1.5 rounded-xl border transition-all cursor-pointer ${
+              isHintsExpanded || topicHints
+                ? isDark
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30 ring-1 ring-amber-500/30'
+                  : 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200 ring-1 ring-amber-400/40'
+                : isDark
+                  ? 'bg-slate-800 text-slate-400 hover:text-amber-300 border-slate-700'
+                  : 'bg-slate-100 text-slate-500 hover:text-amber-700 border-slate-200'
+            }`}
+          >
+            <Lightbulb className="w-4 h-4" />
+          </button>
+
           {/* Remove button for New Topics */}
           {isNew && onRemove && (
             <button
@@ -1385,6 +1496,106 @@ function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue
                 }`}
               >
                 No rich notes added yet. Click here to open editor window and add mnemonics, clinical pearls, or bullet lists...
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Collapsible Progressive Hint Ladder Section */}
+      <AnimatePresence>
+        {isHintsExpanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+            className="overflow-hidden space-y-2 pt-2 border-t border-slate-700/40 dark:border-slate-800/60"
+          >
+            <div className="flex items-center justify-between">
+              <span className={`text-[9px] font-black uppercase tracking-wider flex items-center gap-1 ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
+                <Lightbulb className="w-3 h-3 text-amber-400" /> Active-Recall Clues Ladder
+              </span>
+              {topicHints && (
+                <span className="text-[9px] font-mono font-bold text-slate-400">
+                  {revealedHintCount} / {topicHints.hints.length} Clues
+                </span>
+              )}
+            </div>
+
+            {isGeneratingHints ? (
+              <div className={`p-4 rounded-xl text-center space-y-1.5 border animate-pulse ${
+                isDark ? 'bg-amber-950/20 border-amber-500/30 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'
+              }`}>
+                <p className="text-xs font-bold">⏳ Slicing PDF Pages & Generating AI Hints...</p>
+                <p className="text-[10px] opacity-75">Extracting textbook flow without revealing direct answers...</p>
+              </div>
+            ) : hintError ? (
+              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold space-y-1">
+                <p>⚠️ {hintError}</p>
+                <button
+                  type="button"
+                  onClick={handleGenerateHints}
+                  className="text-[10px] font-black uppercase tracking-wider underline hover:text-rose-300"
+                >
+                  Retry Hint Generation
+                </button>
+              </div>
+            ) : topicHints ? (
+              <div className="space-y-2">
+                {/* Revealed Hints Step by Step */}
+                <div className="space-y-1.5">
+                  {topicHints.hints.slice(0, revealedHintCount).map((hint, hIdx) => (
+                    <motion.div
+                      key={hIdx}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className={`p-2.5 rounded-xl text-xs font-medium border flex items-start gap-2 ${
+                        isDark ? 'neu-pressed-dark text-slate-200 border-slate-700/60' : 'neu-pressed-light text-slate-800 border-slate-200'
+                      }`}
+                    >
+                      <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 text-[9px] font-black font-mono shrink-0">
+                        #{hIdx + 1}
+                      </span>
+                      <p className="leading-snug">{hint}</p>
+                    </motion.div>
+                  ))}
+                </div>
+
+                {/* Controls */}
+                <div className="flex items-center justify-between gap-2 pt-1">
+                  {revealedHintCount < topicHints.hints.length ? (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setRevealedHintCount(prev => Math.min(prev + 1, topicHints.hints.length));
+                      }}
+                      className="w-full py-1.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-sm transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      <span>Reveal Next Clue ({revealedHintCount + 1}/{topicHints.hints.length})</span>
+                      <ChevronDown className="w-3.5 h-3.5" />
+                    </button>
+                  ) : (
+                    <div className="w-full text-center py-1 text-[10px] font-bold text-emerald-400 bg-emerald-500/10 rounded-lg border border-emerald-500/30">
+                      ✓ All {topicHints.hints.length} memory clues revealed! Practice your recall now.
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className={`p-3.5 rounded-xl border text-center space-y-2 ${
+                isDark ? 'bg-slate-900/40 border-slate-800 text-slate-400' : 'bg-white border-slate-200 text-slate-600'
+              }`}>
+                <p className="text-[11px] font-medium">No progressive hints generated for this topic yet.</p>
+                <button
+                  type="button"
+                  onClick={handleGenerateHints}
+                  className="px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 shadow-md hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5 mx-auto"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Generate AI Recall Hints</span>
+                </button>
               </div>
             )}
           </motion.div>
