@@ -14828,13 +14828,41 @@ const renderTimerHub = (isMobile = false) => {
 
     // Action 1: Undo Topic Removal from Today's Queue
     if (lastItem.actionType === 'REMOVE_TODAYS_TOPIC') {
-      const { topic, topicId, cleanName, subName } = lastItem;
+      const { topic, topicId, cleanName, subName, previousActivatedDate, previousIsPicked } = lastItem;
       const todayStr = getLocalDateStr();
       const currentList = (await getActiveNewTopicIds(todayStr)) || [];
-      const updatedList = Array.from(new Set([...currentList, topicId, cleanName, `${subName}_${topic?.name}`])).filter(Boolean);
+      const updatedList = Array.from(new Set([
+        ...currentList,
+        topicId,
+        cleanName,
+        `${subName}_${topic?.name}`,
+        `${subName?.toLowerCase()}_${cleanName}`
+      ])).filter(Boolean);
       await saveActiveNewTopicIds(todayStr, updatedList);
 
       window.dispatchEvent(new CustomEvent('autoanki_topic_ids_changed', { detail: { todayStr, updatedList } }));
+
+      if ((previousActivatedDate || previousIsPicked) && subName && topic?.name) {
+        const docId = subName.trim().toLowerCase();
+        setSubjectTrackerData(prev => {
+          const list = Array.isArray(prev) ? prev : [];
+          const idx = list.findIndex(d => d.id === docId);
+          if (idx < 0) return list;
+          const existingDoc = list[idx];
+          const topicsMap = { ...(existingDoc.topics || {}) };
+          const targetKey = Object.keys(topicsMap).find(k => k.trim().toLowerCase() === topic.name.trim().toLowerCase()) || topic.name;
+          if (topicsMap[targetKey]) {
+            topicsMap[targetKey] = {
+              ...topicsMap[targetKey],
+              ...(previousActivatedDate ? { activatedDate: previousActivatedDate } : {}),
+              ...(previousIsPicked ? { isPickedForToday: previousIsPicked } : {})
+            };
+          }
+          const updatedDoc = { ...existingDoc, topics: topicsMap, updatedAt: new Date().toISOString() };
+          saveLocalSubjectTrackerDoc(docId, updatedDoc).catch(err => console.error("[LocalDB] Error restoring activatedDate:", err));
+          return list.map(d => d.id === docId ? updatedDoc : d);
+        });
+      }
 
       setLastRatedToast({
         message: `Undid removal of "${topic?.name || topicId}" from Today's list`,
@@ -15028,6 +15056,27 @@ const renderTimerHub = (isMobile = false) => {
       await saveActiveNewTopicIds(todayStr, updatedList);
 
       window.dispatchEvent(new CustomEvent('autoanki_topic_ids_changed', { detail: { todayStr, updatedList } }));
+
+      if (subName && topic?.name) {
+        const docId = subName.trim().toLowerCase();
+        setSubjectTrackerData(prev => {
+          const list = Array.isArray(prev) ? prev : [];
+          const idx = list.findIndex(d => d.id === docId);
+          if (idx < 0) return list;
+          const existingDoc = list[idx];
+          const topicsMap = { ...(existingDoc.topics || {}) };
+          const targetKey = Object.keys(topicsMap).find(k => k.trim().toLowerCase() === topic.name.trim().toLowerCase()) || topic.name;
+          if (topicsMap[targetKey]) {
+            const topicObj = { ...topicsMap[targetKey] };
+            delete topicObj.activatedDate;
+            delete topicObj.isPickedForToday;
+            topicsMap[targetKey] = topicObj;
+          }
+          const updatedDoc = { ...existingDoc, topics: topicsMap, updatedAt: new Date().toISOString() };
+          saveLocalSubjectTrackerDoc(docId, updatedDoc).catch(err => console.error("[LocalDB] Error clearing activatedDate on redo:", err));
+          return list.map(d => d.id === docId ? updatedDoc : d);
+        });
+      }
 
       setLastRatedToast({
         message: `Redid removal of "${topic?.name || topicId}"`,

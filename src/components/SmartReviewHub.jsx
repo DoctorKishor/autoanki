@@ -351,6 +351,22 @@ export default function SmartReviewHub({
       return next;
     });
 
+    if (onUpdateSubjectDoc && subName && topicToRemove.name) {
+      const docId = subName.trim().toLowerCase();
+      const subDoc = subjectTrackerData.find(d => d.id === docId);
+      if (subDoc && subDoc.topics) {
+        const targetKey = Object.keys(subDoc.topics).find(k => k.trim().toLowerCase() === topicToRemove.name.trim().toLowerCase()) || topicToRemove.name;
+        if (subDoc.topics[targetKey]) {
+          const updatedTopics = { ...subDoc.topics };
+          const topicObj = { ...updatedTopics[targetKey] };
+          delete topicObj.activatedDate;
+          delete topicObj.isPickedForToday;
+          updatedTopics[targetKey] = topicObj;
+          onUpdateSubjectDoc(docId, { topics: updatedTopics });
+        }
+      }
+    }
+
     if (typeof onPushUndoAction === 'function') {
       onPushUndoAction({
         actionType: 'REMOVE_TODAYS_TOPIC',
@@ -358,6 +374,8 @@ export default function SmartReviewHub({
         topicId,
         cleanName,
         subName,
+        previousActivatedDate: topicToRemove.activatedDate || null,
+        previousIsPicked: topicToRemove.isPickedForToday || false,
         timestamp: Date.now()
       });
     }
