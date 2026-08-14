@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Brain, Calendar, AlertTriangle, CheckCircle, Clock, BookOpen, Layers, Sparkles, RotateCcw, RotateCw, Zap, Undo2, X, FileText, Plus, Trash2, Edit3, Target, Search } from 'lucide-react';
 import FsrsStatsTab from './FsrsStatsTab';
@@ -2150,17 +2151,20 @@ function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue
         </button>
       </div>
 
-      {/* PDF Slice Preview Modal */}
-      <PdfSlicePreviewModal
-        isOpen={isPreviewModalOpen}
-        onClose={() => setIsPreviewModalOpen(false)}
-        topicName={topic.name}
-        subjectName={topic.subject}
-        pdfSlice={previewPdfSlice}
-        isLoading={isLoadingPreview}
-        onConfirmGenerate={(e) => handleGenerateHints(e)}
-        isDark={isDark}
-      />
+      {/* PDF Slice Preview Modal Portal: Mounted to document.body to prevent parent grid layout reflows */}
+      {isPreviewModalOpen && typeof document !== 'undefined' && ReactDOM.createPortal(
+        <PdfSlicePreviewModal
+          isOpen={isPreviewModalOpen}
+          onClose={() => setIsPreviewModalOpen(false)}
+          topicName={topic.name}
+          subjectName={topic.subject}
+          pdfSlice={previewPdfSlice}
+          isLoading={isLoadingPreview}
+          onConfirmGenerate={(e) => handleGenerateHints(e)}
+          isDark={isDark}
+        />,
+        document.body
+      )}
     </motion.div>
   );
 }

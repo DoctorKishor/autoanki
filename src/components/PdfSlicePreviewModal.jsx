@@ -33,12 +33,17 @@ export default function PdfSlicePreviewModal({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div
+        onClick={onClose}
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 overflow-hidden"
+      >
         <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 15 }}
+          initial={{ opacity: 0, scale: 0.96, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 15 }}
-          className={`w-full max-w-3xl p-6 rounded-3xl border shadow-2xl space-y-5 max-h-[90vh] flex flex-col ${
+          exit={{ opacity: 0, scale: 0.96, y: 10 }}
+          transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+          onClick={(e) => e.stopPropagation()}
+          className={`w-full max-w-3xl p-6 rounded-3xl border shadow-2xl space-y-5 max-h-[90vh] flex flex-col transform-gpu ${
             isDark ? 'bg-[#222730] border-slate-700/80 text-white' : 'bg-[#e6ecf5] border-slate-300 text-slate-900'
           }`}
         >
@@ -137,7 +142,10 @@ export default function PdfSlicePreviewModal({
               </div>
 
               {/* Tab Body */}
-              <div className="flex-1 overflow-y-auto pr-1 space-y-3 no-scrollbar custom-scrollbar min-h-0">
+              <div
+                onWheel={(e) => e.stopPropagation()}
+                className="flex-1 overflow-y-auto pr-1 space-y-3 overscroll-contain touch-pan-y min-h-0 transform-gpu"
+              >
                 {activeTab === 'text' ? (
                   textPages.length > 0 ? (
                     textPages.map((pageObj, idx) => (
