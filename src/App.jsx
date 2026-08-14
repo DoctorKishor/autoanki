@@ -27760,27 +27760,33 @@ Return your response strictly as a JSON object matching this schema:
                               </AnimatePresence>
                             </>
                           ) : (
-                            <button
+                            <div
                               key={cat.id}
-                              onClick={() => {
-                                if (sidebarCollapseTimerRef.current) {
-                                  clearTimeout(sidebarCollapseTimerRef.current);
-                                  sidebarCollapseTimerRef.current = null;
-                                }
-                                setIsSidebarExpanded(true);
-                                setExpandedNavCategory(cat.id);
-                              }}
-                              onMouseEnter={(e) => {
-                                const rect = e.currentTarget.getBoundingClientRect();
-                                setSidebarTooltip({ label: cat.label, top: rect.top + rect.height / 2 });
-                              }}
-                              onMouseLeave={() => setSidebarTooltip(null)}
-                              className={`neu-action-item ${settingsThemeMode === 'dark' ? 'dark-theme' : 'light-theme'} ${hasActiveItem ? 'active' : ''} flex items-center justify-center p-0 rounded-2xl group relative`}
+                              className={`neu-iso-pro ${settingsThemeMode === 'dark' ? 'dark-theme' : 'light-theme'} ${hasActiveItem ? 'active' : ''}`}
                             >
-                              <div className="neu-action-icon-box">
+                              <span></span>
+                              <span></span>
+                              <span></span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (sidebarCollapseTimerRef.current) {
+                                    clearTimeout(sidebarCollapseTimerRef.current);
+                                    sidebarCollapseTimerRef.current = null;
+                                  }
+                                  setIsSidebarExpanded(true);
+                                  setExpandedNavCategory(cat.id);
+                                }}
+                                onMouseEnter={(e) => {
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  setSidebarTooltip({ label: cat.label, top: rect.top + rect.height / 2 });
+                                }}
+                                onMouseLeave={() => setSidebarTooltip(null)}
+                                className="neu-iso-btn"
+                              >
                                 <CatIcon className="w-5 h-5 shrink-0" />
-                              </div>
-                            </button>
+                              </button>
+                            </div>
                           )}
                         </div>
                       );
@@ -27810,16 +27816,16 @@ Return your response strictly as a JSON object matching this schema:
                     {!isSidebarExpanded && sidebarTooltip && (
                       <motion.div
                         key="sidebar-tooltip-pill"
-                        initial={{ opacity: 0, x: -14, scale: 0.8 }}
-                        animate={{ opacity: 1, x: 0, scale: 1 }}
+                        initial={{ opacity: 0, x: -14, skewX: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, x: 0, skewX: -6, scale: 1 }}
                         exit={{ opacity: 0, x: -10, scale: 0.85 }}
-                        transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                        className={`fixed z-[99999] pointer-events-none ${settingsThemeMode === 'dark'
-                          ? 'bg-[#242832] text-white border-1.5 border-sky-400/40 shadow-[0_6px_22px_rgba(56,189,248,0.35)]'
-                          : 'bg-white text-slate-900 border-1.5 border-blue-500/35 shadow-[0_6px_22px_rgba(37,99,235,0.25)]'
-                          } px-4 py-1.5 rounded-full font-black text-xs whitespace-nowrap flex items-center justify-center`}
+                        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                        className={`fixed z-[99999] pointer-events-none backdrop-blur-md ${settingsThemeMode === 'dark'
+                          ? 'bg-[#242832]/95 text-sky-400 border border-sky-400/40 shadow-[-4px_4px_16px_rgba(0,0,0,0.5),0_0_15px_rgba(56,189,248,0.25)]'
+                          : 'bg-white/95 text-blue-600 border border-blue-500/35 shadow-[-4px_4px_16px_rgba(0,0,0,0.1),0_0_15px_rgba(37,99,235,0.2)]'
+                          } px-3.5 py-1.5 rounded-xl font-black text-xs uppercase tracking-wider whitespace-nowrap flex items-center justify-center`}
                         style={{
-                          left: '88px',
+                          left: '92px',
                           top: `${sidebarTooltip.top}px`,
                           transform: 'translateY(-50%)'
                         }}

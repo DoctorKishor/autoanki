@@ -1050,6 +1050,141 @@ body,
 }
 
 /* ==========================================================
+   NEUMORPHIC 3D ISOMETRIC LAYERED STACK
+   ========================================================== */
+
+.neu-iso-pro {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  margin: 4px 0;
+}
+
+/* 3D Stacking Spans */
+.neu-iso-pro span {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Dark Theme Spans */
+.neu-iso-pro.dark-theme span {
+  background: rgba(30, 35, 43, 0.75);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  box-shadow: inset 0 0 12px rgba(56, 189, 248, 0.15), 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+/* Light Theme Spans */
+.neu-iso-pro.light-theme span {
+  background: rgba(230, 236, 245, 0.85);
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  box-shadow: inset 0 0 12px rgba(37, 99, 235, 0.15), 3px 3px 6px #c4c9d0, -3px -3px 6px #ffffff;
+}
+
+/* Active Category State for Spans */
+.neu-iso-pro.active span:nth-child(1) {
+  opacity: 0.25;
+}
+.neu-iso-pro.active span:nth-child(2) {
+  opacity: 0.45;
+  transform: translate(3px, -3px);
+}
+.neu-iso-pro.active span:nth-child(3) {
+  opacity: 0.65;
+  transform: translate(6px, -6px);
+}
+
+/* Hover Stacking Animation */
+.neu-iso-pro:hover span:nth-child(1) {
+  opacity: 0.35;
+  transform: translate(0, 0);
+}
+
+.neu-iso-pro:hover span:nth-child(2) {
+  opacity: 0.6;
+  transform: translate(4px, -4px);
+}
+
+.neu-iso-pro:hover span:nth-child(3) {
+  opacity: 0.85;
+  transform: translate(8px, -8px);
+}
+
+/* Main Icon Button inside Iso-Pro */
+.neu-iso-btn {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Dark Theme Main Button */
+.neu-iso-pro.dark-theme .neu-iso-btn {
+  background: #222730;
+  color: #94a3b8;
+  box-shadow: 4px 4px 10px #171a20, -4px -4px 10px #2d3440;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.neu-iso-pro.dark-theme:hover .neu-iso-btn {
+  color: #38bdf8;
+  background: #282f3a;
+  transform: translate(12px, -12px);
+  box-shadow: 6px 6px 14px #12151a, -6px -6px 14px #343d4c, 0 0 16px rgba(56, 189, 248, 0.4);
+  border-color: rgba(56, 189, 248, 0.4);
+}
+
+.neu-iso-pro.dark-theme.active .neu-iso-btn {
+  color: #38bdf8;
+  background: #1a1e25;
+  box-shadow: inset 3px 3px 6px #12151a, inset -3px -3px 6px #282f3a, 0 0 12px rgba(56, 189, 248, 0.35);
+  border-color: rgba(56, 189, 248, 0.3);
+}
+
+/* Light Theme Main Button */
+.neu-iso-pro.light-theme .neu-iso-btn {
+  background: #e6ecf5;
+  color: #475569;
+  box-shadow: 4px 4px 9px #c4c9d0, -4px -4px 9px #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+}
+
+.neu-iso-pro.light-theme:hover .neu-iso-btn {
+  color: #2563eb;
+  background: #ffffff;
+  transform: translate(12px, -12px);
+  box-shadow: 6px 6px 14px #b8b9be, -6px -6px 14px #ffffff, 0 0 16px rgba(37, 99, 235, 0.35);
+  border-color: rgba(37, 99, 235, 0.3);
+}
+
+.neu-iso-pro.light-theme.active .neu-iso-btn {
+  color: #2563eb;
+  background: #e6ecf5;
+  box-shadow: inset 3px 3px 6px #c4c9d0, inset -3px -3px 6px #ffffff, 0 0 10px rgba(37, 99, 235, 0.35);
+  border-color: rgba(37, 99, 235, 0.3);
+}
+
+/* ==========================================================
    NEUMORPHIC NAVIGATION CATEGORY ACCORDION
    ========================================================== */
 
