@@ -68,3 +68,10 @@ All UI components, buttons, color schemes, theme modes (Light: `#e6ecf5`, Dark: 
   - **Zero-Log FSRS Reset Standard**: When all logs for a topic or session are deleted/undone, FSRS parameters ($S, D, I, R, \text{due date}, \text{lapses}, \text{isLeech}$) **MUST** reset to unstudied baseline (`S: New`, `D: Unstudied`, `0.0 days`, `0.0 / 10`). No residual values may persist.
   - **Log Structure Unpacking**: All stats components (`FsrsStatsTab`, Analytics, Day Summaries) **MUST** correctly unpack nested log arrays (`dayLog.fsrsLogs`) across all timeframes (`1M`, `3M`, `1Y`, `ALL`).
 - **Pre-Response Audit Checklist**: Before presenting any feature or fix to the user, proactively test and verify every secondary state mutation (Undo, Redo, Delete, Clear All, Unstudied Card Render, Empty Log Array, Filtering Cutoff) to guarantee zero desynchronizations across all components.
+
+---
+
+### 4.7 Mandatory Component Scope & Variable Preservation Standard
+- **Zero-Accidental-Deletion Policy**: When modifying or replacing code blocks in components, the agent **MUST** verify that all destructured props, `useState` hook declarations, and internal local variables used downstream in the component are strictly preserved.
+- **Pre-Commit Symbol Audit**: Before completing any edit in a UI component, explicitly verify that every symbol referenced in the rendered JSX (e.g. `toastMessage`, `examProfiles`, `cleanName`) has a valid, active declaration within the scope of that component.
+
