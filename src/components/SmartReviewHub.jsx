@@ -1223,7 +1223,7 @@ function RecursiveBlueprintNode({ node, depth = 0, recalledMap, onToggleRecall, 
 
   const nodeId = node.id || node.title || Math.random().toString();
   const hasChildren = Array.isArray(node.children) && node.children.length > 0;
-  const isExpanded = expandedMap[nodeId] !== false; // Default open
+  const isExpanded = expandedMap[nodeId] !== undefined ? expandedMap[nodeId] : true; // Default open
   const isRecalled = !!recalledMap[nodeId];
 
   // Dynamic Level Badges & Colors
@@ -1331,6 +1331,68 @@ function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue
   const [hintError, setHintError] = useState(null);
   const [recalledPointsMap, setRecalledPointsMap] = useState({});
   const [expandedNodesMap, setExpandedNodesMap] = useState({});
+
+  // Reset checkboxes when topic changes or starts a new review session
+  useEffect(() => {
+    setRecalledPointsMap({});
+  }, [topic?.id, topic?.lastReview, topic?.reviewCount]);
+
+  const handleToggleRecallNode = (targetNodeId) => {
+    if (!topicHints?.tree || !Array.isArray(topicHints.tree)) {
+      setRecalledPointsMap(prev => ({ ...prev, [targetNodeId]: !prev[targetNodeId] }));
+      return;
+    }
+
+    const nextMap = { ...recalledPointsMap };
+    const targetState = !nextMap[targetNodeId];
+
+    // 1. Top-Down: Set target node and all its descendants to targetState
+    function setDescendants(nodeList, targetId, forceState) {
+      for (const node of nodeList) {
+        const nodeId = node.id || node.title;
+        if (nodeId === targetId || forceState !== null) {
+          const applyState = forceState !== null ? forceState : targetState;
+          nextMap[nodeId] = applyState;
+          if (Array.isArray(node.children) && node.children.length > 0) {
+            setDescendants(node.children, targetId, applyState);
+          }
+          if (nodeId === targetId) return true;
+        } else if (Array.isArray(node.children) && node.children.length > 0) {
+          const found = setDescendants(node.children, targetId, null);
+          if (found) return true;
+        }
+      }
+      return false;
+    }
+
+    setDescendants(topicHints.tree, targetNodeId, null);
+
+    // 2. Bottom-Up: Sync parents so parent is checked ONLY if ALL children are checked
+    function syncParentsBottomUp(nodeList) {
+      let allChildrenChecked = true;
+      for (const node of nodeList) {
+        const nodeId = node.id || node.title;
+        if (Array.isArray(node.children) && node.children.length > 0) {
+          const childStatus = syncParentsBottomUp(node.children);
+          nextMap[nodeId] = childStatus;
+        }
+        if (!nextMap[nodeId]) {
+          allChildrenChecked = false;
+        }
+      }
+      return allChildrenChecked;
+    }
+
+    syncParentsBottomUp(topicHints.tree);
+    setRecalledPointsMap(nextMap);
+  };
+
+  const handleToggleExpandNode = (nodeId) => {
+    setExpandedNodesMap(prev => {
+      const current = prev[nodeId] !== undefined ? prev[nodeId] : true;
+      return { ...prev, [nodeId]: !current };
+    });
+  };
 
   const treeMetrics = useMemo(() => {
     if (!topicHints?.tree || !Array.isArray(topicHints.tree)) return null;
@@ -1894,7 +1956,20 @@ function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setExpandedNodesMap({});
+                          const all = {};
+                          if (topicHints.tree) {
+                            function collapseNodes(list) {
+                              list.forEach(n => {
+                                const id = n.id || n.title;
+                                all[id] = false;
+                                if (n.children) collapseNodes(n.children);
+                              });
+                            }
+                            collapseNodes(topicHints.tree);
+                          } else if (topicHints.structure) {
+                            topicHints.structure.forEach((_, i) => { all[i] = false; });
+                          }
+                          setExpandedNodesMap(all);
                         }}
                         className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border transition ${isDark ? 'neu-btn-dark text-slate-300 border-slate-700 hover:text-white' : 'neu-btn-light text-slate-600 border-slate-300'}`}
                       >
@@ -1952,9 +2027,9 @@ function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue
                         node={rootNode}
                         depth={0}
                         recalledMap={recalledPointsMap}
-                        onToggleRecall={(id) => setRecalledPointsMap(prev => ({ ...prev, [id]: !prev[id] }))}
+                        onToggleRecall={handleToggleRecallNode}
                         expandedMap={expandedNodesMap}
-                        onToggleExpand={(id) => setExpandedNodesMap(prev => ({ ...prev, [id]: prev[id] === false }))}
+                        onToggleExpand={handleToggleExpandNode}
                         isDark={isDark}
                       />
                     ))}
@@ -2115,7 +2190,10 @@ function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue
       <div className="grid grid-cols-4 gap-1.5 pt-1">
         <button
           type="button"
-          onClick={() => onRate && onRate(topic, 1)}
+          onClick={() => {
+            setRecalledPointsMap({});
+            if (onRate) onRate(topic, 1);
+          }}
           title={`Again: Grade 1 (Next review in ${intervalPreviews[1]})`}
           className="py-1.5 px-1 rounded-xl text-[10px] font-black bg-rose-500/20 hover:bg-rose-500/30 text-rose-500 border border-rose-500/30 active:scale-95 transition-all cursor-pointer flex flex-col items-center justify-center"
         >
@@ -2124,7 +2202,10 @@ function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue
         </button>
         <button
           type="button"
-          onClick={() => onRate && onRate(topic, 2)}
+          onClick={() => {
+            setRecalledPointsMap({});
+            if (onRate) onRate(topic, 2);
+          }}
           title={`Hard: Grade 2 (Next review in ${intervalPreviews[2]})`}
           className="py-1.5 px-1 rounded-xl text-[10px] font-black bg-amber-500/20 hover:bg-amber-500/30 text-amber-600 border border-amber-500/30 active:scale-95 transition-all cursor-pointer flex flex-col items-center justify-center"
         >
@@ -2133,7 +2214,10 @@ function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue
         </button>
         <button
           type="button"
-          onClick={() => onRate && onRate(topic, 3)}
+          onClick={() => {
+            setRecalledPointsMap({});
+            if (onRate) onRate(topic, 3);
+          }}
           title={`Good: Grade 3 (Next review in ${intervalPreviews[3]})`}
           className="py-1.5 px-1 rounded-xl text-[10px] font-black bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-600 border border-indigo-500/30 active:scale-95 transition-all cursor-pointer flex flex-col items-center justify-center"
         >
@@ -2142,7 +2226,10 @@ function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue
         </button>
         <button
           type="button"
-          onClick={() => onRate && onRate(topic, 4)}
+          onClick={() => {
+            setRecalledPointsMap({});
+            if (onRate) onRate(topic, 4);
+          }}
           title={`Easy: Grade 4 (Next review in ${intervalPreviews[4]})`}
           className="py-1.5 px-1 rounded-xl text-[10px] font-black bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-600 border border-emerald-500/30 active:scale-95 transition-all cursor-pointer flex flex-col items-center justify-center"
         >
