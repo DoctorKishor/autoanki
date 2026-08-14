@@ -76,3 +76,11 @@ All UI components, buttons, color schemes, theme modes (Light: `#e6ecf5`, Dark: 
 - **Zero-Accidental-Deletion Policy**: When modifying or replacing code blocks in components, the agent **MUST** verify that all destructured props, `useState` hook declarations, and internal local variables used downstream in the component are strictly preserved.
 - **Pre-Commit Symbol Audit**: Before completing any edit in a UI component, explicitly verify that every symbol referenced in the rendered JSX (e.g. `toastMessage`, `examProfiles`, `cleanName`) has a valid, active declaration within the scope of that component.
 
+---
+
+### 4.8 Strict FSRS Algorithm Isolation & Read-Only Predictive Timing Standard
+- **Zero-FSRS-Interference Policy**: The Dynamic Predictive Timing Engine **MUST** operate strictly as a **read-only consumer** of FSRS parameters ($S, D, R, I, \text{lapses}, \text{nextReviewDue}$) and historical study logs.
+- **Strict Read-Only Data Boundary**: The timing engine is **strictly forbidden** from mutating, overwriting, altering, or influencing FSRS memory calculations, interval scheduling, weights, stability adjustments, or retrievability formulas in any way.
+- **Isolating Predictions from Scheduling**: Estimated study durations are exclusively for UI display, workload forecasting, and schedule balancing; FSRS alone governs spaced repetition review intervals.
+
+
