@@ -117,7 +117,6 @@ export default function SmartReviewHub({
 
           // A topic is NEW if it has 0 reviewCount and no lastReviewDate (has never completed a review session)
           const isUnstudied = (!topic.reviewCount || topic.reviewCount === 0) && !topic.lastReviewDate;
-          const cleanName = topic.name.trim().toLowerCase();
           const isPickedForToday = activeNewTopicIds.has(topicId) ||
                                    activeNewTopicIds.has(cleanName) ||
                                    activeNewTopicIds.has(`${subName}_${topic.name}`) ||
@@ -136,9 +135,7 @@ export default function SmartReviewHub({
               dueToday.push(topicObj);
               reviewPages += topicWeight;
             }
-            // If topic.nextReviewDue > todayStr, it is scheduled for a future date and moves OUT of today's review list.
           } else if (!isUnstudied) {
-            // Fallback: If topic has review history but no nextReviewDue set, keep in Due Today
             dueToday.push(topicObj);
             reviewPages += topicWeight;
           }
@@ -150,36 +147,107 @@ export default function SmartReviewHub({
       overdueTopics: overdue,
       dueTodayTopics: dueToday,
       newTopics: newItems,
+      leechTopics: leeches,
       totalReviewPagesToday: reviewPages,
-      totalNewPagesToday: newPages,
-      leechTopics: leeches
+      totalNewPagesToday: newPages
     };
   }, [subjectTrackerData, fsrsConfig, activeNewTopicIds]);
 
-  // Upcoming Exam Countdown from studySchedule
+  // Timezone-safe date parser
+  const parseLocalDate = (dateStr) => {
+    if (!dateStr) return null;
+    if (dateStr instanceof Date) return dateStr;
+    if (typeof dateStr === 'string') {
+      const cleanStr = dateStr.split('T')[0];
+      if (cleanStr.includes('-')) {
+        const [y, m, d] = cleanStr.split('-').map(Number);
+        if (y && m && d) return new Date(y, m - 1, d);
+      }
+    }
+    const d = new Date(dateStr);
+    return isNaN(d.getTime()) ? null : d;
+  };
+
+  // Upcoming Exam Countdown from examProfiles or explicitly tagged studySchedule entries
   const nextExam = useMemo(() => {
-    if (!studySchedule) return null;
-    const scheduleArray = Array.isArray(studySchedule)
-      ? studySchedule
-      : typeof studySchedule === 'object'
-        ? Object.values(studySchedule)
-        : [];
-    if (scheduleArray.length === 0) return null;
+    const candidates = [];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const sorted = scheduleArray
-      .filter(item => {
-        if (!item || !(item.date || item.examDate || item.dateStr)) return false;
-        const hasTasks = Array.isArray(item.tasks) && item.tasks.length > 0;
-        const hasNotes = typeof item.notes === 'string' && item.notes.trim().length > 0;
-        const hasExamTitle = Boolean(item.examTitle || item.title || item.subject);
-        return hasTasks || hasNotes || hasExamTitle;
-      })
-      .map(item => ({ ...item, dateObj: new Date(item.date || item.examDate || item.dateStr) }))
-      .filter(item => !isNaN(item.dateObj.getTime()) && item.dateObj >= today)
-      .sort((a, b) => a.dateObj - b.dateObj);
-    return sorted[0] || null;
-  }, [studySchedule]);
+
+    // 1. Check examProfiles if provided
+    if (Array.isArray(examProfiles)) {
+      examProfiles.forEach(prof => {
+        if (!prof) return;
+        const dStr = prof.date || prof.examDate || prof.targetDate;
+        const dObj = parseLocalDate(dStr);
+        if (dObj && dObj >= today) {
+          candidates.push({
+            title: prof.name || prof.title || prof.examTitle || 'Competitive Exam',
+            dateStr: dStr,
+            dateObj: dObj,
+            isTentative: Boolean(prof.isTentative)
+          });
+        }
+      });
+    }
+
+    // 2. Check studySchedule items specifically tagged as exams (isExam, isExamTarget, examTitle, type === 'exam')
+    if (studySchedule) {
+      const scheduleArray = Array.isArray(studySchedule)
+        ? studySchedule
+        : typeof studySchedule === 'object'
+          ? Object.values(studySchedule)
+          : [];
+
+      scheduleArray.forEach(item => {
+        if (!item) return;
+        const dStr = item.date || item.examDate || item.dateStr;
+        const dObj = parseLocalDate(dStr);
+        if (!dObj || dObj < today) return;
+
+        // Strictly check if explicitly marked as an exam target (do NOT match ordinary daily revision tasks)
+        const isExplicitExam = Boolean(item.isExam || item.isExamTarget || item.examTitle || item.type === 'exam');
+        if (isExplicitExam) {
+          const title = item.examTitle || item.title || item.subject || 'Competitive Exam Target';
+          candidates.push({
+            title,
+            dateStr: dStr,
+            dateObj: dObj,
+            isTentative: Boolean(item.isTentative)
+          });
+        }
+      });
+    }
+
+    if (candidates.length === 0) return null;
+
+    // Sort by earliest upcoming date
+    candidates.sort((a, b) => a.dateObj - b.dateObj);
+    const chosen = candidates[0];
+
+    // Compute dynamic countdown
+    const diffMs = chosen.dateObj.getTime() - today.getTime();
+    const daysLeft = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+    let countdownText = '';
+    if (daysLeft === 0) {
+      countdownText = '🎉 Exam Today!';
+    } else if (daysLeft === 1) {
+      countdownText = '🔥 Tomorrow!';
+    } else if (daysLeft > 1 && daysLeft <= 14) {
+      countdownText = `⏳ ${daysLeft} Days Left`;
+    } else if (daysLeft > 14) {
+      const weeks = Math.floor(daysLeft / 7);
+      const remDays = daysLeft % 7;
+      countdownText = remDays > 0 ? `⏳ ${weeks}w ${remDays}d Left` : `⏳ ${weeks} Weeks Left`;
+    }
+
+    return {
+      ...chosen,
+      daysLeft,
+      countdownText
+    };
+  }, [studySchedule, examProfiles]);
 
   const handleMnemonicChange = (item, text) => {
     if (!item) return;
@@ -496,7 +564,7 @@ export default function SmartReviewHub({
             </motion.div>
           </div>
 
-          {/* Exam Countdown Banner (If schedule exists) */}
+          {/* Exam Countdown Banner */}
           {nextExam && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -512,12 +580,19 @@ export default function SmartReviewHub({
                 <Calendar className="w-5 h-5 text-amber-500" />
                 <div>
                   <div className="text-xs font-black text-amber-600 uppercase tracking-wider">Upcoming Exam Target</div>
-                  <div className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{nextExam.subject || nextExam.title || 'CAMP Exam Target'}</div>
+                  <div className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{nextExam.title}</div>
                 </div>
               </div>
-              <span className="px-3 py-1 rounded-xl bg-amber-500/20 text-amber-600 text-xs font-black">
-                {nextExam.date || 'Scheduled'}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 rounded-xl bg-amber-500/20 text-amber-600 text-xs font-black">
+                  {nextExam.countdownText}
+                </span>
+                {nextExam.dateStr && (
+                  <span className={`text-[11px] font-semibold opacity-75 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                    ({nextExam.dateStr})
+                  </span>
+                )}
+              </div>
             </motion.div>
           )}
 

@@ -14952,6 +14952,7 @@ const renderTimerHub = (isMobile = false) => {
         lastRatedToast={lastRatedToast}
         onClearToast={() => setLastRatedToast(null)}
         studySchedule={studySchedule}
+        examProfiles={examProfiles}
         onUpdateSubjectDoc={handleUpdateSubjectTrackerDoc}
         geminiApiKey={geminiApiKey}
         aiFeatureModels={aiFeatureModels}
