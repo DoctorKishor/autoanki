@@ -4820,8 +4820,61 @@ export default function App() {
     });
   };
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
+  const [activeMobileCategory, setActiveMobileCategory] = useState(null);
   const [sidebarTooltip, setSidebarTooltip] = useState(null); // { label: string, top: number }
   const sidebarCollapseTimerRef = useRef(null);
+
+  const navCategories = useMemo(() => [
+    {
+      id: 'focus',
+      label: 'Focus & Review',
+      shortLabel: 'Focus',
+      icon: Flame,
+      items: [
+        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, action: () => setCurrentTab('dashboard') },
+        { id: 'smartReview', label: 'Smart Review', icon: Brain, action: () => setCurrentTab('smartReview') },
+        { id: 'study', label: 'Study Room', icon: GraduationCap, action: () => { setCurrentTab('study'); setCurrentStudyCardIndex(0); setIsAnswerRevealed(false); } },
+        { id: 'studyScheduler', label: 'Study Scheduler', icon: Calendar, action: () => setCurrentTab('studyScheduler') },
+      ]
+    },
+    {
+      id: 'knowledge',
+      label: 'Content & Knowledge',
+      shortLabel: 'Knowledge',
+      icon: BookOpen,
+      items: [
+        { id: 'library', label: 'Library', icon: Library, action: () => setCurrentTab('library') },
+        { id: 'cards', label: 'Card Generation', icon: Home, action: () => setCurrentTab('cards') },
+        { id: 'subjectTracker', label: 'Subject Tracker', icon: ListChecks, action: () => setCurrentTab('subjectTracker') },
+        { id: 'pytManager', label: 'PYT Manager', icon: BookOpen, action: () => setCurrentTab('pytManager') },
+        { id: 'pytLogger', label: 'PYT Logger', icon: CheckCircle2, action: () => setCurrentTab('pytLogger') },
+      ]
+    },
+    {
+      id: 'analytics',
+      label: 'Progress & Metrics',
+      shortLabel: 'Progress',
+      icon: BarChart2,
+      items: [
+        { id: 'campTracker', label: 'CAMP Tracker', icon: Activity, action: () => setCurrentTab('campTracker') },
+        { id: 'analytics', label: 'Analysis', icon: BarChart2, action: () => setCurrentTab('analytics') },
+      ]
+    },
+    {
+      id: 'system',
+      label: 'Tools & System',
+      shortLabel: 'System',
+      icon: Sliders,
+      items: [
+        { id: 'export', label: 'Exporter Hub', icon: Download, action: () => setCurrentTab('export') },
+        { id: 'prompt', label: 'AI Prompt', icon: MessageSquare, action: () => setCurrentTab('prompt') },
+        { id: 'obsOverlay', label: 'OBS Customiser', icon: Tv, action: () => setCurrentTab('obsOverlay') },
+        { id: 'settings', label: 'Settings', icon: Settings, action: () => setCurrentTab('settings') },
+        { id: 'about', label: 'About', icon: Info, action: () => setCurrentTab('about') },
+        { id: 'trash', label: 'Recycle Bin', icon: Trash2, action: () => setCurrentTab('trash') },
+      ]
+    }
+  ], []);
 
   const handleSidebarMouseEnter = () => {
     if (sidebarCollapseTimerRef.current) {
@@ -27568,26 +27621,141 @@ Return your response strictly as a JSON object matching this schema:
                   )}
                 </main>
 
-                {/* DYNAMIC MOBILE NAVIGATION */}
-                <nav className={`fixed bottom-0 left-0 right-0 border-t flex items-center justify-around z-30 transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-card-dark border-gray-800 text-gray-200' : 'neu-card-light border-gray-200/80 text-gray-700'}`} style={{ paddingBottom: 'env(safe-area-inset-bottom, 12px)', paddingTop: '10px', paddingLeft: '8px', paddingRight: '8px' }}>
-                  {bottomNavIds.slice(0, 8).map(id => {
-                    const menu = ALL_MENUS.find(m => m.id === id);
-                    if (!menu) return null;
-                    const isActive = currentTab === id;
-                    const activeColor = id === 'trash' ? 'text-red-500' : id === 'study' ? 'text-orange-500' : 'text-blue-600';
-                    const IconMap = { LayoutDashboard, Home, Library, Flame, BarChart2, Activity, Download, MessageSquare, BookOpen, Settings, Trash2, CheckCircle2, Calendar, Tv, Brain };
-                    const Icon = IconMap[menu.icon] || Home;
+                {/* BACKDROP FOR MOBILE CATEGORY DRAWER */}
+                <AnimatePresence>
+                  {activeMobileCategory && (
+                    <motion.div
+                      key="mobile-nav-backdrop"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      onClick={() => setActiveMobileCategory(null)}
+                      className="fixed inset-0 bg-black/50 backdrop-blur-xs z-40"
+                    />
+                  )}
+                </AnimatePresence>
+
+                {/* MOBILE CATEGORY POPUP DRAWER */}
+                <AnimatePresence>
+                  {activeMobileCategory && (() => {
+                    const activeCat = navCategories.find(c => c.id === activeMobileCategory);
+                    if (!activeCat) return null;
+                    const ActiveCatIcon = activeCat.icon;
+
+                    return (
+                      <motion.div
+                        key={`mobile-drawer-${activeCat.id}`}
+                        initial={{ opacity: 0, y: 35, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 25, scale: 0.95 }}
+                        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                        className={`fixed left-3 right-3 bottom-[72px] z-50 p-4 rounded-3xl border shadow-2xl overflow-hidden ${
+                          settingsThemeMode === 'dark'
+                            ? 'neu-card-dark border-gray-800 text-slate-100'
+                            : 'neu-card-light border-gray-200/90 text-slate-800'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between pb-3 border-b border-gray-500/15 mb-3">
+                          <div className="flex items-center gap-2.5">
+                            <div className="neu-cat-icon-badge">
+                              <ActiveCatIcon className="w-4 h-4" />
+                            </div>
+                            <span className={`text-xs font-black uppercase tracking-wider ${
+                              settingsThemeMode === 'dark' ? 'text-sky-400 font-extrabold' : 'text-blue-600 font-extrabold'
+                            }`}>
+                              {activeCat.label}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setActiveMobileCategory(null)}
+                            className={`p-1.5 rounded-xl transition-all cursor-pointer active:scale-95 ${
+                              settingsThemeMode === 'dark' ? 'neu-btn-dark text-gray-400 hover:text-white' : 'neu-btn-light text-gray-600 hover:text-gray-900'
+                            }`}
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 max-h-[55vh] overflow-y-auto custom-scrollbar p-1">
+                          {activeCat.items.map(item => {
+                            const ItemIcon = item.icon;
+                            const isActive = currentTab === item.id;
+                            return (
+                              <button
+                                key={item.id}
+                                onClick={() => {
+                                  item.action();
+                                  setActiveMobileCategory(null);
+                                }}
+                                className={`neu-action-item ${settingsThemeMode === 'dark' ? 'dark-theme' : 'light-theme'} ${
+                                  isActive ? 'active' : ''
+                                } flex items-center gap-2.5 p-2.5 rounded-2xl group relative text-left transition-all active:scale-95`}
+                              >
+                                <div className="neu-action-icon-box shrink-0">
+                                  <ItemIcon className="w-4 h-4" />
+                                </div>
+                                <div className="min-w-0 flex-grow">
+                                  <span className={`text-[11px] font-black tracking-tight block truncate ${
+                                    isActive
+                                      ? (settingsThemeMode === 'dark' ? 'text-blue-400' : 'text-blue-600')
+                                      : (settingsThemeMode === 'dark' ? 'text-gray-300' : 'text-gray-700')
+                                  }`}>
+                                    {item.label}
+                                  </span>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </motion.div>
+                    );
+                  })()}
+                </AnimatePresence>
+
+                {/* CATEGORY MOBILE NAVIGATION BAR */}
+                <nav
+                  className={`fixed bottom-0 left-0 right-0 border-t flex items-center justify-around z-40 transition-colors duration-300 ${
+                    settingsThemeMode === 'dark' ? 'neu-card-dark border-gray-800 text-gray-200' : 'neu-card-light border-gray-200/80 text-gray-700'
+                  }`}
+                  style={{ paddingBottom: 'env(safe-area-inset-bottom, 12px)', paddingTop: '8px', paddingLeft: '12px', paddingRight: '12px' }}
+                >
+                  {navCategories.map(cat => {
+                    const CatIcon = cat.icon;
+                    const hasActiveItem = cat.items.some(item => item.id === currentTab);
+                    const isDrawerOpen = activeMobileCategory === cat.id;
+
                     return (
                       <button
-                        key={id}
-                        id={`mobile-nav-${id}`}
-                        onClick={() => { setCurrentTab(id); if (id === 'study') { setCurrentStudyCardIndex(0); setIsAnswerRevealed(false); } }}
-                        className={`flex flex-col items-center gap-0.5 min-w-0 flex-1 py-1 transition-all active:scale-90 ${isActive ? activeColor : 'text-gray-400'}`}
+                        key={cat.id}
+                        id={`mobile-nav-${cat.id}`}
+                        onClick={() => {
+                          setActiveMobileCategory(prev => prev === cat.id ? null : cat.id);
+                        }}
+                        className={`flex flex-col items-center gap-1 min-w-0 flex-1 py-1.5 transition-all active:scale-90 select-none ${
+                          isDrawerOpen || hasActiveItem
+                            ? (settingsThemeMode === 'dark' ? 'text-sky-400' : 'text-blue-600')
+                            : 'text-gray-400'
+                        }`}
                       >
-                        <div className={`p-1.5 rounded-xl transition-all ${isActive ? (id === 'trash' ? 'bg-red-50' : id === 'study' ? 'bg-orange-50' : 'bg-blue-50') : ''}`}>
-                          <Icon className="w-5 h-5" />
+                        <div
+                          className={`p-2 rounded-2xl transition-all duration-300 ${
+                            isDrawerOpen || hasActiveItem
+                              ? (settingsThemeMode === 'dark' ? 'neu-pressed-dark shadow-[inset_0_2px_4px_rgba(0,0,0,0.6),0_0_12px_rgba(56,189,248,0.25)]' : 'neu-pressed-light shadow-[inset_0_2px_4px_rgba(0,0,0,0.1),0_0_12px_rgba(37,99,235,0.2)]')
+                              : (settingsThemeMode === 'dark' ? 'neu-btn-dark' : 'neu-btn-light')
+                          }`}
+                        >
+                          <CatIcon className="w-5 h-5" />
                         </div>
-                        <span className="text-[9px] font-black truncate max-w-full px-1">{menu.label}</span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] font-black uppercase tracking-wider truncate max-w-full">
+                            {cat.shortLabel || cat.label}
+                          </span>
+                          {hasActiveItem && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.8)]" />
+                          )}
+                        </div>
                       </button>
                     );
                   })}
@@ -27613,53 +27781,7 @@ Return your response strictly as a JSON object matching this schema:
                   </div>
 
                   <nav className={`flex-grow space-y-2.5 overflow-y-auto custom-scrollbar max-h-[calc(100vh-200px)] z-10 ${isSidebarExpanded ? 'px-3' : 'px-2'}`}>
-                    {[
-                      {
-                        id: 'focus',
-                        label: 'Focus & Review',
-                        icon: Flame,
-                        items: [
-                          { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, action: () => setCurrentTab('dashboard') },
-                          { id: 'smartReview', label: 'Smart Review', icon: Brain, action: () => setCurrentTab('smartReview') },
-                          { id: 'study', label: 'Study Room', icon: GraduationCap, action: () => { setCurrentTab('study'); setCurrentStudyCardIndex(0); setIsAnswerRevealed(false); } },
-                          { id: 'studyScheduler', label: 'Study Scheduler', icon: Calendar, action: () => setCurrentTab('studyScheduler') },
-                        ]
-                      },
-                      {
-                        id: 'knowledge',
-                        label: 'Content & Knowledge',
-                        icon: BookOpen,
-                        items: [
-                          { id: 'library', label: 'Library', icon: Library, action: () => setCurrentTab('library') },
-                          { id: 'cards', label: 'Card Generation', icon: Home, action: () => setCurrentTab('cards') },
-                          { id: 'subjectTracker', label: 'Subject Tracker', icon: ListChecks, action: () => setCurrentTab('subjectTracker') },
-                          { id: 'pytManager', label: 'PYT Manager', icon: BookOpen, action: () => setCurrentTab('pytManager') },
-                          { id: 'pytLogger', label: 'PYT Logger', icon: CheckCircle2, action: () => setCurrentTab('pytLogger') },
-                        ]
-                      },
-                      {
-                        id: 'analytics',
-                        label: 'Progress & Metrics',
-                        icon: BarChart2,
-                        items: [
-                          { id: 'campTracker', label: 'CAMP Tracker', icon: Activity, action: () => setCurrentTab('campTracker') },
-                          { id: 'analytics', label: 'Analysis', icon: BarChart2, action: () => setCurrentTab('analytics') },
-                        ]
-                      },
-                      {
-                        id: 'system',
-                        label: 'Tools & System',
-                        icon: Sliders,
-                        items: [
-                          { id: 'export', label: 'Exporter Hub', icon: Download, action: () => setCurrentTab('export') },
-                          { id: 'prompt', label: 'AI Prompt', icon: MessageSquare, action: () => setCurrentTab('prompt') },
-                          { id: 'obsOverlay', label: 'OBS Customiser', icon: Tv, action: () => setCurrentTab('obsOverlay') },
-                          { id: 'settings', label: 'Settings', icon: Settings, action: () => setCurrentTab('settings') },
-                          { id: 'about', label: 'About', icon: Info, action: () => setCurrentTab('about') },
-                          { id: 'trash', label: 'Recycle Bin', icon: Trash2, action: () => setCurrentTab('trash') },
-                        ]
-                      }
-                    ].map((cat, catIdx) => {
+                    {navCategories.map((cat, catIdx) => {
                       const CatIcon = cat.icon;
                       const hasActiveItem = cat.items.some(item => item.id === currentTab);
                       const isExpanded = expandedNavCategory === cat.id;
