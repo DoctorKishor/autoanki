@@ -27559,7 +27559,7 @@ Return your response strictly as a JSON object matching this schema:
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.2 }}
                       onClick={() => setActiveMobileCategory(null)}
-                      className="fixed inset-0 bg-black/50 backdrop-blur-xs z-40"
+                      className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40"
                     />
                   )}
                 </AnimatePresence>
@@ -27574,22 +27574,23 @@ Return your response strictly as a JSON object matching this schema:
                     return (
                       <motion.div
                         key={`mobile-drawer-${activeCat.id}`}
-                        initial={{ opacity: 0, y: 35, scale: 0.95 }}
+                        initial={{ opacity: 0, y: 30, scale: 0.96 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 25, scale: 0.95 }}
-                        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                        className={`fixed left-3 right-3 bottom-[72px] z-50 p-4 rounded-3xl border shadow-2xl overflow-hidden ${
+                        exit={{ opacity: 0, y: 20, scale: 0.96 }}
+                        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                        className={`fixed left-3 right-3 sm:left-auto sm:right-6 sm:w-[380px] bottom-[78px] z-50 p-4 sm:p-5 rounded-3xl border shadow-2xl overflow-hidden ${
                           settingsThemeMode === 'dark'
                             ? 'neu-card-dark border-gray-800 text-slate-100'
                             : 'neu-card-light border-gray-200/90 text-slate-800'
                         }`}
                       >
-                        <div className="flex items-center justify-between pb-3 border-b border-gray-500/15 mb-3">
+                        {/* Drawer Category Header */}
+                        <div className="flex items-center justify-between pb-3.5 border-b border-gray-500/15 mb-3">
                           <div className="flex items-center gap-2.5">
                             <div className="neu-cat-icon-badge">
-                              <ActiveCatIcon className="w-4 h-4" />
+                              <ActiveCatIcon className="w-4.5 h-4.5" />
                             </div>
-                            <span className={`text-xs font-black uppercase tracking-wider ${
+                            <span className={`text-xs sm:text-sm font-black uppercase tracking-wider ${
                               settingsThemeMode === 'dark' ? 'text-sky-400 font-extrabold' : 'text-blue-600 font-extrabold'
                             }`}>
                               {activeCat.label}
@@ -27598,15 +27599,17 @@ Return your response strictly as a JSON object matching this schema:
                           <button
                             type="button"
                             onClick={() => setActiveMobileCategory(null)}
-                            className={`p-1.5 rounded-xl transition-all cursor-pointer active:scale-95 ${
+                            className={`p-2 rounded-xl transition-all cursor-pointer active:scale-95 ${
                               settingsThemeMode === 'dark' ? 'neu-btn-dark text-gray-400 hover:text-white' : 'neu-btn-light text-gray-600 hover:text-gray-900'
                             }`}
+                            title="Close menu"
                           >
                             <X className="w-4 h-4" />
                           </button>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2 max-h-[55vh] overflow-y-auto custom-scrollbar p-1">
+                        {/* Full Visibility Menu Items List */}
+                        <div className="flex flex-col gap-2 max-h-[60vh] overflow-y-auto custom-scrollbar p-0.5">
                           {activeCat.items.map(item => {
                             const ItemIcon = item.icon;
                             const isActive = currentTab === item.id;
@@ -27619,20 +27622,25 @@ Return your response strictly as a JSON object matching this schema:
                                 }}
                                 className={`neu-action-item ${settingsThemeMode === 'dark' ? 'dark-theme' : 'light-theme'} ${
                                   isActive ? 'active' : ''
-                                } flex items-center gap-2.5 p-2.5 rounded-2xl group relative text-left transition-all active:scale-95`}
+                                } w-full flex items-center justify-between gap-3 px-3.5 py-3 rounded-2xl group relative text-left transition-all active:scale-[0.98] min-h-[50px]`}
                               >
-                                <div className="neu-action-icon-box shrink-0">
-                                  <ItemIcon className="w-4 h-4" />
-                                </div>
-                                <div className="min-w-0 flex-grow">
-                                  <span className={`text-[11px] font-black tracking-tight block truncate ${
+                                <div className="flex items-center gap-3 min-w-0 flex-grow">
+                                  <div className="neu-action-icon-box shrink-0">
+                                    <ItemIcon className="w-4.5 h-4.5" />
+                                  </div>
+                                  <span className={`text-xs sm:text-sm font-bold tracking-wide break-words whitespace-normal leading-snug transition-colors ${
                                     isActive
-                                      ? (settingsThemeMode === 'dark' ? 'text-blue-400' : 'text-blue-600')
-                                      : (settingsThemeMode === 'dark' ? 'text-gray-300' : 'text-gray-700')
+                                      ? (settingsThemeMode === 'dark' ? 'text-blue-400 font-extrabold' : 'text-blue-600 font-extrabold')
+                                      : (settingsThemeMode === 'dark' ? 'text-gray-200 group-hover:text-white' : 'text-gray-800 group-hover:text-gray-950')
                                   }`}>
                                     {item.label}
                                   </span>
                                 </div>
+                                {isActive && (
+                                  <span className="shrink-0 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                                    Active
+                                  </span>
+                                )}
                               </button>
                             );
                           })}
@@ -27647,7 +27655,7 @@ Return your response strictly as a JSON object matching this schema:
                   className={`fixed bottom-0 left-0 right-0 border-t flex items-center justify-around z-40 transition-colors duration-300 ${
                     settingsThemeMode === 'dark' ? 'neu-card-dark border-gray-800 text-gray-200' : 'neu-card-light border-gray-200/80 text-gray-700'
                   }`}
-                  style={{ paddingBottom: 'env(safe-area-inset-bottom, 12px)', paddingTop: '8px', paddingLeft: '12px', paddingRight: '12px' }}
+                  style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 8px) + 6px)', paddingTop: '8px', paddingLeft: '8px', paddingRight: '8px' }}
                 >
                   {navCategories.map(cat => {
                     const CatIcon = cat.icon;
@@ -27661,14 +27669,14 @@ Return your response strictly as a JSON object matching this schema:
                         onClick={() => {
                           setActiveMobileCategory(prev => prev === cat.id ? null : cat.id);
                         }}
-                        className={`flex flex-col items-center gap-1 min-w-0 flex-1 py-1.5 transition-all active:scale-90 select-none ${
+                        className={`flex flex-col items-center justify-center gap-1 min-w-0 flex-1 py-1 transition-all active:scale-95 select-none ${
                           isDrawerOpen || hasActiveItem
                             ? (settingsThemeMode === 'dark' ? 'text-sky-400' : 'text-blue-600')
                             : 'text-gray-400'
                         }`}
                       >
                         <div
-                          className={`p-2 rounded-2xl transition-all duration-300 ${
+                          className={`w-10 h-10 flex items-center justify-center rounded-2xl transition-all duration-300 ${
                             isDrawerOpen || hasActiveItem
                               ? (settingsThemeMode === 'dark' ? 'neu-pressed-dark shadow-[inset_0_2px_4px_rgba(0,0,0,0.6),0_0_12px_rgba(56,189,248,0.25)]' : 'neu-pressed-light shadow-[inset_0_2px_4px_rgba(0,0,0,0.1),0_0_12px_rgba(37,99,235,0.2)]')
                               : (settingsThemeMode === 'dark' ? 'neu-btn-dark' : 'neu-btn-light')
@@ -27676,12 +27684,12 @@ Return your response strictly as a JSON object matching this schema:
                         >
                           <CatIcon className="w-5 h-5" />
                         </div>
-                        <div className="flex items-center gap-1">
-                          <span className="text-[10px] font-black uppercase tracking-wider truncate max-w-full">
+                        <div className="flex items-center justify-center gap-1 w-full px-0.5">
+                          <span className="text-[9.5px] sm:text-[10px] font-black uppercase tracking-wider whitespace-nowrap text-center">
                             {cat.shortLabel || cat.label}
                           </span>
                           {hasActiveItem && (
-                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.8)]" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.8)] shrink-0" />
                           )}
                         </div>
                       </button>
