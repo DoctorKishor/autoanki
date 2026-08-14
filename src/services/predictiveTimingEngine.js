@@ -564,51 +564,62 @@ export function calculateDynamicProfileMaturity(subjectTrackerData = [], studyLo
   const activeCircadianSlots = Object.values(circadianBins).filter(c => c >= 1).length;
   const circadianScore = Math.round((activeCircadianSlots / 4) * 100);
 
-  // 5. Volume Scale (Logistic Growth)
-  const volumeScore = Math.min(100, Math.round((1 / (1 + Math.exp(-0.10 * (totalLogsCount - 20)))) * 100));
+  // 5. Volume Scale (Normalized directly from 0)
+  const volumeScore = totalLogsCount === 0
+    ? 0
+    : Math.min(100, Math.round((totalLogsCount / 35) * 100));
 
   // Dynamic Composite Score (0–100%)
-  const compositeScore = Math.min(100, Math.max(8, Math.round(
-    volumeScore * 0.25 +
-    curriculumScore * 0.25 +
-    tierScore * 0.20 +
-    rollingErrorScore * 0.20 +
-    circadianScore * 0.10
-  )));
+  const compositeScore = totalLogsCount === 0
+    ? 0
+    : Math.min(100, Math.round(
+        volumeScore * 0.25 +
+        curriculumScore * 0.25 +
+        tierScore * 0.20 +
+        rollingErrorScore * 0.20 +
+        circadianScore * 0.10
+      ));
 
   // Tier classification & Gamified Stage
   let stageKey = 'cold';
-  let stageLabel = '🌱 Calibrating Baseline';
-  let stageDesc = 'Gathering initial topic velocity baselines and syllabus speeds';
+  let stageLabel = '🌱 Cold Start Baseline';
+  let stageDesc = 'No study duration data recorded yet. Rate and confirm your first topic to start engine learning.';
   let colorTheme = 'amber';
 
-  if (compositeScore >= 90) {
-    stageKey = 'master';
-    stageLabel = '🔬 Master Predictive Engine';
-    stageDesc = 'Fully calibrated multi-factor model with high predictive precision across all subjects';
-    colorTheme = 'emerald';
-  } else if (compositeScore >= 66) {
-    stageKey = 'high';
-    stageLabel = '🎯 High-Precision Model';
-    stageDesc = 'Dynamic fatigue, revision decay, and subject speeds fully personalized';
-    colorTheme = 'teal';
-  } else if (compositeScore >= 35) {
-    stageKey = 'adaptive';
-    stageLabel = '⚡ Adaptive Learning';
-    stageDesc = 'Subject baselines established; fine-tuning revision acceleration curve';
-    colorTheme = 'cyan';
+  if (totalLogsCount > 0) {
+    if (compositeScore >= 90) {
+      stageKey = 'master';
+      stageLabel = '🔬 Master Predictive Engine';
+      stageDesc = 'Fully calibrated multi-factor model with high predictive precision across all subjects';
+      colorTheme = 'emerald';
+    } else if (compositeScore >= 66) {
+      stageKey = 'high';
+      stageLabel = '🎯 High-Precision Model';
+      stageDesc = 'Dynamic fatigue, revision decay, and subject speeds fully personalized';
+      colorTheme = 'teal';
+    } else if (compositeScore >= 35) {
+      stageKey = 'adaptive';
+      stageLabel = '⚡ Adaptive Learning';
+      stageDesc = 'Subject baselines established; fine-tuning revision acceleration curve';
+      colorTheme = 'cyan';
+    } else {
+      stageLabel = '🌱 Calibrating Baseline';
+      stageDesc = 'Gathering initial topic velocity baselines and syllabus speeds';
+    }
   }
 
   // Dynamic Next Focus Recommendation
-  let nextFocusRecommendation = 'Log your next study session duration to increase engine precision.';
-  if (activeTiersCount < 3) {
-    nextFocusRecommendation = 'Review older or 2nd-read topics to calibrate your personal memory acceleration curve (+12% maturity).';
-  } else if (curriculumScore < 50) {
-    nextFocusRecommendation = 'Log timings across more varied medical subjects to broaden syllabus mapping (+15% maturity).';
-  } else if (activeCircadianSlots < 3) {
-    nextFocusRecommendation = 'Study during different times of day (morning/evening) to map your circadian peak hours (+8% maturity).';
-  } else if (compositeScore >= 90) {
-    nextFocusRecommendation = 'Your predictive timing engine is running at peak statistical maturity!';
+  let nextFocusRecommendation = 'Rate and confirm your first study review duration to activate predictive pacing.';
+  if (totalLogsCount > 0) {
+    if (activeTiersCount < 3) {
+      nextFocusRecommendation = 'Review older or 2nd-read topics to calibrate your personal memory acceleration curve (+12% maturity).';
+    } else if (curriculumScore < 50) {
+      nextFocusRecommendation = 'Log timings across more varied medical subjects to broaden syllabus mapping (+15% maturity).';
+    } else if (activeCircadianSlots < 3) {
+      nextFocusRecommendation = 'Study during different times of day (morning/evening) to map your circadian peak hours (+8% maturity).';
+    } else if (compositeScore >= 90) {
+      nextFocusRecommendation = 'Your predictive timing engine is running at peak statistical maturity!';
+    }
   }
 
   return {
