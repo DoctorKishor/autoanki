@@ -33,7 +33,7 @@ export default function ProgressChart({ data }) {
 
   return (
     <div className="w-full h-64 md:h-72 mt-2 min-w-0">
-      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+      <ResponsiveContainer width="100%" height={260} minWidth={0} minHeight={0}>
         <LineChart
           data={chartData}
           margin={{ top: 10, right: 15, left: -20, bottom: 5 }}
