@@ -6,9 +6,11 @@ import FsrsSettingsModal from './FsrsSettingsModal';
 import SelectNewTopicsModal from './SelectNewTopicsModal';
 import { saveLocalSubjectTrackerDoc, getActiveNewTopicIds, saveActiveNewTopicIds, getTopicHintsLocal, deleteTopicHintsLocal, getLocalPytTopic, getLocalTextbooksMetadata } from '../services/localDb';
 import { generateTopicActiveRecallHints } from '../services/aiHintEngine';
-import { Lightbulb, ChevronDown, ChevronUp } from 'lucide-react';
+import { Lightbulb, ChevronDown, ChevronUp, Eye } from 'lucide-react';
 import { parsePageNumbers, getTopicPageWeight } from '../utils/pageUtils';
 import { calculateNextFSRSState, ensureCalibratedWeights } from '../services/fsrsEngine';
+import PdfSlicePreviewModal from './PdfSlicePreviewModal';
+import { extractTopicPdfSlice } from '../services/pdfSliceService';
 
 export function getLocalDateStr(d = new Date()) {
   const dateObj = typeof d === 'string' ? new Date(d) : d;
@@ -682,7 +684,7 @@ export default function SmartReviewHub({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <AnimatePresence mode="popLayout">
                     {overdueTopics.map((topic, idx) => (
-                      <TopicCard key={topic.id || (topic.subject + '_' + topic.name)} topic={topic} onRate={onRateTopic} onOpenNotes={onOpenNotesModal} fsrsConfig={fsrsConfig} isOverdue index={idx} isDark={isDark} geminiApiKey={geminiApiKey} aiFeatureModels={aiFeatureModels} />
+                      <TopicCard key={topic.id || (topic.subject + '_' + topic.name)} topic={topic} onRate={onRateTopic} onOpenNotes={onOpenNotesModal} fsrsConfig={fsrsConfig} isOverdue index={idx} isDark={isDark} geminiApiKey={geminiApiKey} aiFeatureModels={aiFeatureModels} subjectTrackerData={subjectTrackerData} />
                     ))}
                   </AnimatePresence>
                 </div>
@@ -698,7 +700,7 @@ export default function SmartReviewHub({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <AnimatePresence mode="popLayout">
                     {dueTodayTopics.map((topic, idx) => (
-                      <TopicCard key={topic.id || (topic.subject + '_' + topic.name)} topic={topic} onRate={onRateTopic} onOpenNotes={onOpenNotesModal} fsrsConfig={fsrsConfig} index={idx} isDark={isDark} geminiApiKey={geminiApiKey} aiFeatureModels={aiFeatureModels} />
+                      <TopicCard key={topic.id || (topic.subject + '_' + topic.name)} topic={topic} onRate={onRateTopic} onOpenNotes={onOpenNotesModal} fsrsConfig={fsrsConfig} index={idx} isDark={isDark} geminiApiKey={geminiApiKey} aiFeatureModels={aiFeatureModels} subjectTrackerData={subjectTrackerData} />
                     ))}
                   </AnimatePresence>
                 </div>
@@ -746,6 +748,7 @@ export default function SmartReviewHub({
                         isDark={isDark}
                         geminiApiKey={geminiApiKey}
                         aiFeatureModels={aiFeatureModels}
+                        subjectTrackerData={subjectTrackerData}
                       />
                     ))}
                   </AnimatePresence>
@@ -1093,6 +1096,7 @@ export default function SmartReviewHub({
                     isDark={isDark}
                     geminiApiKey={geminiApiKey}
                     aiFeatureModels={aiFeatureModels}
+                    subjectTrackerData={subjectTrackerData}
                   />
                 </div>
               ) : (
@@ -1314,7 +1318,7 @@ function RecursiveBlueprintNode({ node, depth = 0, recalledMap, onToggleRecall, 
 }
 
 // Sub-component: Individual Topic Queue Card
-function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue = false, isNew = false, index = 0, isDark = true, geminiApiKey = '', aiFeatureModels = {} }) {
+function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue = false, isNew = false, index = 0, isDark = true, geminiApiKey = '', aiFeatureModels = {}, subjectTrackerData = [] }) {
   const { pageLabel, pageCount } = getTopicPageInfo(topic);
   const [isNotesExpanded, setIsNotesExpanded] = useState(!!topic.notes);
 
@@ -1394,7 +1398,12 @@ function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue
       try {
         const topicId = topic.id || `${topic.subject}_${topic.name}`;
         const cached = await getTopicHintsLocal(topicId);
-        if (isMounted && cached && Array.isArray(cached.hints) && cached.hints.length > 0) {
+        const hasData = cached && (
+          (Array.isArray(cached.tree) && cached.tree.length > 0) ||
+          (Array.isArray(cached.structure) && cached.structure.length > 0) ||
+          (Array.isArray(cached.hints) && cached.hints.length > 0)
+        );
+        if (isMounted && hasData) {
           setTopicHints(cached);
           setRevealedHintCount(1);
         }
@@ -1405,6 +1414,79 @@ function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue
     loadCachedHints();
     return () => { isMounted = false; };
   }, [topic]);
+
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const [previewPdfSlice, setPreviewPdfSlice] = useState(null);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+
+  const handleOpenPreviewModal = async (e) => {
+    if (e && e.stopPropagation) e.stopPropagation();
+    setIsLoadingPreview(true);
+    setIsPreviewModalOpen(true);
+    try {
+      const subjectName = topic.subject || '';
+      const topicName = topic.name || '';
+      const cleanSub = subjectName.trim().toLowerCase().replace(/\s+/g, '_');
+      const cleanTop = topicName.trim().toLowerCase().replace(/\s+/g, '_');
+      const topicPdfKey = `pyt_pdf_${cleanSub}_topic_${cleanTop}`;
+      let pdfObj = await getLocalPytTopic(topicPdfKey);
+      let isPreSplit = false;
+
+      let pdfArrayBuffer = pdfObj?.data || (pdfObj?.topics && pdfObj.topics.data) || (pdfObj?.topics instanceof ArrayBuffer ? pdfObj.topics : null);
+
+      if (pdfObj && pdfArrayBuffer) {
+        isPreSplit = true;
+      } else {
+        const masterPdfKey = `pyt_pdf_${cleanSub}`;
+        pdfObj = await getLocalPytTopic(masterPdfKey);
+        pdfArrayBuffer = pdfObj?.data || (pdfObj?.topics && pdfObj.topics.data) || (pdfObj?.topics instanceof ArrayBuffer ? pdfObj.topics : null);
+      }
+
+      if (!pdfObj || !pdfArrayBuffer) {
+        alert(`No PDF attached for "${topicName}". Please upload a Master PDF or Pre-Split Topic PDF in Subject Tracker.`);
+        setIsPreviewModalOpen(false);
+        setIsLoadingPreview(false);
+        return;
+      }
+
+      const metadataList = (await getLocalTextbooksMetadata()) || [];
+      const meta = metadataList.find(tb => (tb.subject || '').toLowerCase() === subjectName.toLowerCase());
+      const pageOffset = meta?.pageOffset || 0;
+
+      const pageInfo = parsePageNumbers(topic);
+      const startPage = pageInfo.startPage || 1;
+      let endPage = pageInfo.endPage;
+
+      if (!isPreSplit && !endPage) {
+        const subDoc = (subjectTrackerData || []).find(s => (s.id || '').toLowerCase() === (subjectName || '').toLowerCase());
+        const allTopics = subDoc?.topics ? Object.values(subDoc.topics) : [];
+        const nextStartPages = allTopics
+          .map(t => parsePageNumbers(t).startPage)
+          .filter(p => p !== null && p > startPage)
+          .sort((a, b) => a - b);
+
+        if (nextStartPages.length > 0) {
+          endPage = nextStartPages[0] - 1;
+        } else {
+          endPage = startPage + 10;
+        }
+      }
+
+      const slice = await extractTopicPdfSlice({
+        pdfArrayBuffer,
+        startPage,
+        endPage,
+        pageOffset,
+        isPreSplit
+      });
+
+      setPreviewPdfSlice(slice);
+    } catch (err) {
+      console.error('Failed loading preview slice:', err);
+    } finally {
+      setIsLoadingPreview(false);
+    }
+  };
 
   const handleGenerateHints = async (e) => {
     if (e && e.stopPropagation) e.stopPropagation();
@@ -1450,10 +1532,26 @@ function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue
       const meta = metadataList.find(tb => (tb.subject || '').toLowerCase() === subjectName.toLowerCase());
       const pageOffset = meta?.pageOffset || 0;
 
-      // Extract page range from topic
+      // Extract page range from topic with strict next-topic boundary protection
       const pageInfo = parsePageNumbers(topic);
       const startPage = pageInfo.startPage || 1;
-      const endPage = isPreSplit ? pageInfo.endPage : (pageInfo.endPage || (startPage + 15));
+      let endPage = pageInfo.endPage;
+
+      if (!isPreSplit && !endPage) {
+        // Look up all topics for this subject to cap endPage before the NEXT topic starts
+        const subDoc = (subjectTrackerData || []).find(s => (s.id || '').toLowerCase() === (subjectName || '').toLowerCase());
+        const allTopics = subDoc?.topics ? Object.values(subDoc.topics) : [];
+        const nextStartPages = allTopics
+          .map(t => parsePageNumbers(t).startPage)
+          .filter(p => p !== null && p > startPage)
+          .sort((a, b) => a - b);
+
+        if (nextStartPages.length > 0) {
+          endPage = nextStartPages[0] - 1; // Cap strictly before next topic starts!
+        } else {
+          endPage = startPage + 10;
+        }
+      }
 
       const topicId = topic.id || `${topic.subject}_${topic.name}`;
 
@@ -1610,6 +1708,20 @@ function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue
             }`}
           >
             <Lightbulb className="w-4 h-4" />
+          </button>
+
+          {/* Preview PDF Slice Button */}
+          <button
+            type="button"
+            onClick={handleOpenPreviewModal}
+            title="Preview PDF Page Slice Text & Images"
+            className={`p-1.5 rounded-xl border transition-all cursor-pointer ${
+              isDark
+                ? 'bg-blue-500/20 text-blue-300 border-blue-500/40 hover:bg-blue-500/30'
+                : 'bg-blue-100 text-blue-800 border-blue-300 hover:bg-blue-200'
+            }`}
+          >
+            <Eye className="w-4 h-4" />
           </button>
 
           {/* Remove button for New Topics */}
@@ -2037,6 +2149,18 @@ function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue
           <span className="text-[9px] opacity-75 font-mono font-bold mt-0.5">{intervalPreviews[4]}</span>
         </button>
       </div>
+
+      {/* PDF Slice Preview Modal */}
+      <PdfSlicePreviewModal
+        isOpen={isPreviewModalOpen}
+        onClose={() => setIsPreviewModalOpen(false)}
+        topicName={topic.name}
+        subjectName={topic.subject}
+        pdfSlice={previewPdfSlice}
+        isLoading={isLoadingPreview}
+        onConfirmGenerate={(e) => handleGenerateHints(e)}
+        isDark={isDark}
+      />
     </motion.div>
   );
 }
