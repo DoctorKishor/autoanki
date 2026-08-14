@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { saveLocalStudyLog } from '../services/localDb';
+import { saveLocalStudyLog, getLocalCampData, getLocalCampDailyLogs } from '../services/localDb';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import {
   GripVertical, Plus, Edit2, Trash2, Settings, Play, Pause, RotateCcw,
@@ -95,6 +95,24 @@ export default function DashboardGrid({
   useEffect(() => {
     localStorage.setItem('dashboard_daily_hours_target', dailyHoursTarget.toString());
   }, [dailyHoursTarget]);
+
+  // Reactive CAMP Data from LocalDB
+  const [campDbHistory, setCampDbHistory] = useState(null);
+  const [campDbDaily, setCampDbDaily] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const todayDate = new Date().toLocaleDateString('en-CA');
+    Promise.all([
+      getLocalCampData('history'),
+      getLocalCampDailyLogs(todayDate)
+    ]).then(([hist, daily]) => {
+      if (!isMounted) return;
+      if (hist && Array.isArray(hist)) setCampDbHistory(hist);
+      if (daily) setCampDbDaily(daily);
+    }).catch(err => console.warn('[DashboardGrid] LocalDB CAMP loading fallback:', err));
+    return () => { isMounted = false; };
+  }, []);
 
   // Format stopwatch time helper (HH:MM:SS or HH:MM:SS.CC)
   const formatStopwatch = (ms) => {
@@ -820,31 +838,35 @@ export default function DashboardGrid({
         const todayDate = new Date().toLocaleDateString('en-CA');
         const todayLabelStr = new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'short' }).replace(' ', '-');
 
-        let sessions = {
+        let sessions = campDbDaily?.sessions || {
           preLunch: { hours: '0', concentration: 7 },
           midDay: { hours: '0', concentration: 7 },
           postDinner: { hours: '0', concentration: 7 }
         };
-        let bedToBook = 'Less than 45 mins';
+        let bedToBook = campDbDaily?.bedToBook || 'Less than 45 mins';
 
-        try {
-          const savedSessions = localStorage.getItem(`camp_sessions_${todayDate}`);
-          if (savedSessions) sessions = JSON.parse(savedSessions);
-          const savedB2B = localStorage.getItem(`camp_bedToBook_${todayDate}`);
-          if (savedB2B) bedToBook = savedB2B;
-        } catch (e) {
-          console.error("Error reading localStorage in Dashboard widget:", e);
+        if (!campDbDaily) {
+          try {
+            const savedSessions = localStorage.getItem(`camp_sessions_${todayDate}`);
+            if (savedSessions) sessions = JSON.parse(savedSessions);
+            const savedB2B = localStorage.getItem(`camp_bedToBook_${todayDate}`);
+            if (savedB2B) bedToBook = savedB2B;
+          } catch (e) {
+            console.error("Error reading localStorage in Dashboard widget:", e);
+          }
         }
 
         const currentScore = calculateEfficiencyScore(sessions, bedToBook);
         const focusAvg = calculateWeightedConcentration(sessions);
 
-        let history = [];
-        try {
-          const savedHistory = localStorage.getItem('camp_history');
-          if (savedHistory) history = JSON.parse(savedHistory);
-        } catch (e) {
-          console.error("Error reading history in Dashboard widget:", e);
+        let history = campDbHistory || [];
+        if (!campDbHistory || history.length === 0) {
+          try {
+            const savedHistory = localStorage.getItem('camp_history');
+            if (savedHistory) history = JSON.parse(savedHistory);
+          } catch (e) {
+            console.error("Error reading history in Dashboard widget:", e);
+          }
         }
 
         let prevScore = 0;

@@ -19711,6 +19711,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        URL.revokeObjectURL(url);
 
         // 4. Update Database Tracking in Local DB & React State
         setExportProgressText("Updating export status in Local DB...");
@@ -19943,6 +19944,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
 
     // Sync export tracking status in Local DB & React State
     const nowExportTime = Date.now();

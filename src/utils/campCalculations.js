@@ -21,9 +21,16 @@ export function calculateSessionProductiveHours(hours, concentration) {
  * @returns {number}
  */
 export function calculateTotalProductiveHours(sessions) {
+  if (!sessions || typeof sessions !== 'object') return 0;
   let total = 0;
   Object.values(sessions).forEach(session => {
-    total += calculateSessionProductiveHours(session.hours, session.concentration);
+    if (Array.isArray(session)) {
+      session.forEach(s => {
+        if (s) total += calculateSessionProductiveHours(s.hours, s.concentration);
+      });
+    } else if (session) {
+      total += calculateSessionProductiveHours(session.hours, session.concentration);
+    }
   });
   return total;
 }
@@ -34,9 +41,16 @@ export function calculateTotalProductiveHours(sessions) {
  * @returns {number}
  */
 export function calculateTotalGrossHours(sessions) {
+  if (!sessions || typeof sessions !== 'object') return 0;
   let total = 0;
   Object.values(sessions).forEach(session => {
-    total += parseFloat(session.hours) || 0;
+    if (Array.isArray(session)) {
+      session.forEach(s => {
+        if (s) total += parseFloat(s.hours) || 0;
+      });
+    } else if (session) {
+      total += parseFloat(session.hours) || 0;
+    }
   });
   return total;
 }
@@ -48,14 +62,25 @@ export function calculateTotalGrossHours(sessions) {
  * @returns {number}
  */
 export function calculateWeightedConcentration(sessions) {
+  if (!sessions || typeof sessions !== 'object') return 0;
   let totalWeightedFocus = 0;
   let totalGrossHours = 0;
 
   Object.values(sessions).forEach(session => {
-    const h = parseFloat(session.hours) || 0;
-    const c = parseFloat(session.concentration) || 0;
-    totalWeightedFocus += c * h;
-    totalGrossHours += h;
+    if (Array.isArray(session)) {
+      session.forEach(s => {
+        if (!s) return;
+        const h = parseFloat(s.hours) || 0;
+        const c = parseFloat(s.concentration) || 0;
+        totalWeightedFocus += c * h;
+        totalGrossHours += h;
+      });
+    } else if (session) {
+      const h = parseFloat(session.hours) || 0;
+      const c = parseFloat(session.concentration) || 0;
+      totalWeightedFocus += c * h;
+      totalGrossHours += h;
+    }
   });
 
   if (totalGrossHours === 0) return 0;
@@ -68,9 +93,16 @@ export function calculateWeightedConcentration(sessions) {
  * @returns {number}
  */
 export function calculateTotalDeepSessions(sessions) {
+  if (!sessions || typeof sessions !== 'object') return 0;
   let total = 0;
   Object.values(sessions).forEach(session => {
-    total += parseInt(session.deepSessions, 10) || 0;
+    if (Array.isArray(session)) {
+      session.forEach(s => {
+        if (s) total += parseInt(s.deepSessions, 10) || 0;
+      });
+    } else if (session) {
+      total += parseInt(session.deepSessions, 10) || 0;
+    }
   });
   return total;
 }

@@ -818,7 +818,7 @@ export async function saveTopicHintsLocal(topicId, payload) {
   };
   await setLocalKV(`topic_hints_${topicId}`, item);
   try {
-    await executeTransaction(STORES.TOPIC_HINTS, 'readwrite', store => store.put(item));
+    await runTx(STORES.TOPIC_HINTS, 'readwrite', store => store.put(item));
   } catch (e) {
     // Graceful fallback to KV store if store not initialized
   }
@@ -833,7 +833,7 @@ export async function saveTopicHintsLocal(topicId, payload) {
 export async function getTopicHintsLocal(topicId) {
   if (!topicId) return null;
   try {
-    const res = await executeTransaction(STORES.TOPIC_HINTS, 'readonly', store => store.get(topicId));
+    const res = await runTx(STORES.TOPIC_HINTS, 'readonly', store => store.get(topicId));
     if (res && (res.tree || res.structure || (Array.isArray(res.hints) && res.hints.length > 0))) return res;
   } catch (e) {
     // Fallback to KV store
@@ -849,7 +849,7 @@ export async function getTopicHintsLocal(topicId) {
 export async function deleteTopicHintsLocal(topicId) {
   if (!topicId) return;
   try {
-    await executeTransaction(STORES.TOPIC_HINTS, 'readwrite', store => store.delete(topicId));
+    await runTx(STORES.TOPIC_HINTS, 'readwrite', store => store.delete(topicId));
   } catch (e) {}
   await setLocalKV(`topic_hints_${topicId}`, null);
 }
@@ -864,7 +864,7 @@ export async function checkDailyHintQuotaLocal(maxQuota = 500) {
   const todayStr = new Date().toLocaleDateString('en-CA');
   let record = null;
   try {
-    record = await executeTransaction(STORES.HINT_QUOTA, 'readonly', store => store.get(todayStr));
+    record = await runTx(STORES.HINT_QUOTA, 'readonly', store => store.get(todayStr));
   } catch (e) {}
   if (!record) {
     record = await getLocalKV(`hint_quota_${todayStr}`);
@@ -891,7 +891,7 @@ export async function incrementDailyHintQuotaLocal() {
 
   await setLocalKV(`hint_quota_${todayStr}`, record);
   try {
-    await executeTransaction(STORES.HINT_QUOTA, 'readwrite', store => store.put(record));
+    await runTx(STORES.HINT_QUOTA, 'readwrite', store => store.put(record));
   } catch (e) {}
 
   return newCount;
