@@ -4678,7 +4678,8 @@ export default function App() {
   const [deckCardCounts, setDeckCardCounts] = useState({});
   const [subjectCardCounts, setSubjectCardCounts] = useState({});
   // --- LAZY LOADING / QUOTA STATES ---
-  const [totalCardCount, setTotalCardCount] = useState(0);      // from getCountFromServer (1 read)
+  const [totalCardCount, setTotalCardCount] = useState(0);      // from local DB
+  const [pendingPageCount, setPendingPageCount] = useState(0);   // pending triage page count
 
   const [isFolderLoading, setIsFolderLoading] = useState(false); // folder card fetch in progress
   const [isStudyLogsLoading, setIsStudyLogsLoading] = useState(false);
@@ -7683,6 +7684,7 @@ export default function App() {
       const localPages = await getLocalPages();
       const sortedPages = (localPages || []).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
       setLibraryPages(sortedPages);
+      setPendingPageCount(sortedPages.filter(p => p.isPending).length);
       pagesLoaded.current = true;
     } catch (err) {
       console.error('[LocalDB] Failed to load pages locally:', err);
