@@ -7210,6 +7210,18 @@ export default function App() {
       setSubjectPdfOffsetInput(meta?.pageOffset ?? 0);
     }
   }, [isSubjectPdfModalOpen, selectedTrackerSubject, selectedSubjectTrackerSubject, textbooksMetadata]);
+
+  useEffect(() => {
+    if (selectedTrackerSubject && selectedTrackerSubject !== selectedSubjectTrackerSubject) {
+      setSelectedSubjectTrackerSubject(selectedTrackerSubject);
+    }
+  }, [selectedTrackerSubject]);
+
+  useEffect(() => {
+    if (selectedSubjectTrackerSubject && selectedSubjectTrackerSubject !== selectedTrackerSubject) {
+      setSelectedTrackerSubject(selectedSubjectTrackerSubject);
+    }
+  }, [selectedSubjectTrackerSubject]);
   const [newSubjectTrackerTopicName, setNewSubjectTrackerTopicName] = useState('');
   const [subjectTrackerFilter, setSubjectTrackerFilter] = useState('all'); // 'all' | 'studied' | 'remaining'
   const [schedulerTaskSource, setSchedulerTaskSource] = useState('custom'); // 'custom' | 'tracker'
@@ -15031,8 +15043,11 @@ const renderTimerHub = (isMobile = false) => {
                   Select Subject Details
                 </label>
                 <NeumorphicSelect
-                  value={selectedSubjectTrackerSubject}
-                  onChange={(val) => setSelectedSubjectTrackerSubject(val)}
+                  value={selectedSubjectTrackerSubject || selectedTrackerSubject}
+                  onChange={(val) => {
+                    setSelectedSubjectTrackerSubject(val);
+                    setSelectedTrackerSubject(val);
+                  }}
                   options={medicalSubjectsList}
                   isDark={isDark}
                 />
@@ -26803,7 +26818,10 @@ Return your response strictly as a JSON object matching this schema:
                                 return (
                                   <button
                                     key={sub}
-                                    onClick={() => setSelectedTrackerSubject(sub)}
+                                    onClick={() => {
+                                      setSelectedTrackerSubject(sub);
+                                      setSelectedSubjectTrackerSubject(sub);
+                                    }}
                                     className={`px-3.5 py-2.5 rounded-2xl text-xs font-black whitespace-nowrap transition-all flex items-center gap-2 shrink-0 border ${isSelected
                                       ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-blue-500 shadow-md scale-[1.02]'
                                       : isDark
@@ -34427,7 +34445,10 @@ Return your response strictly as a JSON object matching this schema:
                             key={sub}
                             whileHover={{ scale: 1.01 }}
                             whileTap={{ scale: 0.98 }}
-                            onClick={() => setSelectedTrackerSubject(sub)}
+                            onClick={() => {
+                              setSelectedTrackerSubject(sub);
+                              setSelectedSubjectTrackerSubject(sub);
+                            }}
                             className={`w-full text-left p-4 rounded-2xl transition-all duration-200 flex flex-col gap-2 border ${isSelected
                               ? isDark
                                 ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white neu-pressed-dark border-l-4 border-l-blue-400 shadow-lg shadow-blue-950/60'
