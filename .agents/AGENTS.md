@@ -62,12 +62,13 @@ All UI components, buttons, color schemes, theme modes (Light: `#e6ecf5`, Dark: 
 ---
 
 ### 4.6 Proactive Loophole Auditing & Zero-Desync Enforcement (Mandatory Rule)
-- **Zero-Tolerance for User-Discovered Loopholes**: The agent **MUST** proactively audit, trace, and eliminate all edge-case desynchronizations (Undo, Redo, Log Deletion, Manual Log Edits, Empty Logs, Queue Categorization) **BEFORE** declaring work complete. The user must **NEVER** have to manually discover or point out broken edge cases.
+- **Zero-Tolerance for User-Discovered Loopholes & Broken Click Handlers**: The agent **MUST** proactively audit, trace, and eliminate all edge-case desynchronizations (Undo, Redo, Log Deletion, Manual Log Edits, Empty Logs, Queue Categorization) **AND** verify interactive click paths, modal DOM scoping across all subtabs, state initializations, and trigger events **BEFORE** declaring work complete. The agent must **NEVER** assume code works perfectly based on build success alone; every UI button, modal trigger, and state mutation must be audited for unmounted conditional branches and subtab scoping loops.
 - **Mandatory 360-Degree State & Queue Integrity Rules**:
+  - **Global Modal & Action Scoping**: Any modal or overlay triggered from a top header button MUST be mounted in a parent scope accessible to ALL subtabs, ensuring clicking the button triggers the UI regardless of which subtab or view is active.
   - **Queue Preservation on Undo/Redo**: Undoing or redoing an action **MUST** return the item to its exact queue position with 100% visibility. Items must **NEVER** disappear, go invisible, or fall into an unassigned state.
   - **Zero-Log FSRS Reset Standard**: When all logs for a topic or session are deleted/undone, FSRS parameters ($S, D, I, R, \text{due date}, \text{lapses}, \text{isLeech}$) **MUST** reset to unstudied baseline (`S: New`, `D: Unstudied`, `0.0 days`, `0.0 / 10`). No residual values may persist.
   - **Log Structure Unpacking**: All stats components (`FsrsStatsTab`, Analytics, Day Summaries) **MUST** correctly unpack nested log arrays (`dayLog.fsrsLogs`) across all timeframes (`1M`, `3M`, `1Y`, `ALL`).
-- **Pre-Response Audit Checklist**: Before presenting any feature or fix to the user, proactively test and verify every secondary state mutation (Undo, Redo, Delete, Clear All, Unstudied Card Render, Empty Log Array, Filtering Cutoff) to guarantee zero desynchronizations across all components.
+- **Pre-Response Audit Checklist**: Before presenting any feature or fix to the user, proactively test and verify every secondary state mutation (Undo, Redo, Delete, Clear All, Unstudied Card Render, Empty Log Array, Filtering Cutoff) and click-handler DOM path across all active subtabs to guarantee zero dead buttons or desynchronizations across all components.
 
 ---
 
