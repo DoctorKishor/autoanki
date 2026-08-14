@@ -40,7 +40,7 @@ import SmartReviewHub from './components/SmartReviewHub';
 import TopicNotesModal from './components/TopicNotesModal';
 import { cropAndMaskDiagram } from './utils/imageCropper';
 import { getTopicPageWeight, parsePageNumbers } from './utils/pageUtils';
-import { getLocalSetting, saveLocalSetting, getLocalCards, saveLocalCards, replaceAllLocalCards, saveLocalCard, deleteLocalCard, getLocalPages, saveLocalPages, replaceAllLocalPages, saveLocalPage, deleteLocalPage, getLocalKV, setLocalKV, getLocalPrompts, saveLocalPrompt, deleteLocalPrompt, getAllLocalPytTopics, saveLocalPytTopic, getAllLocalPytProgress, saveLocalPytProgressDoc, getLocalTextbooksMetadata, saveLocalTextbooksMetadata, getLocalStudyLogs, saveLocalStudyLog, replaceAllLocalStudyLogs, getLocalSubjectTrackerData, saveLocalSubjectTrackerDoc, replaceAllLocalSubjectTrackerData, getLocalStudySchedule, saveLocalScheduleEntry, replaceAllLocalStudySchedule, getLocalScheduleTemplates, saveLocalScheduleTemplate, deleteLocalScheduleTemplate, replaceAllLocalScheduleTemplates, getFSRSConfig, saveFSRSConfig, DEFAULT_FSRS_CONFIG, getLocalTimerState, saveLocalTimerState } from './services/localDb';
+import { getLocalSetting, saveLocalSetting, getLocalCards, saveLocalCards, replaceAllLocalCards, saveLocalCard, deleteLocalCard, getLocalPages, saveLocalPages, replaceAllLocalPages, saveLocalPage, deleteLocalPage, getLocalKV, setLocalKV, getLocalPrompts, saveLocalPrompt, deleteLocalPrompt, getAllLocalPytTopics, saveLocalPytTopic, getAllLocalPytProgress, saveLocalPytProgressDoc, getLocalTextbooksMetadata, saveLocalTextbooksMetadata, getLocalStudyLogs, saveLocalStudyLog, replaceAllLocalStudyLogs, getLocalSubjectTrackerData, saveLocalSubjectTrackerDoc, replaceAllLocalSubjectTrackerData, getLocalStudySchedule, saveLocalScheduleEntry, replaceAllLocalStudySchedule, getLocalScheduleTemplates, saveLocalScheduleTemplate, deleteLocalScheduleTemplate, replaceAllLocalScheduleTemplates, getFSRSConfig, saveFSRSConfig, DEFAULT_FSRS_CONFIG, getLocalTimerState, saveLocalTimerState, saveActiveNewTopicIds, getActiveNewTopicIds, saveTopicHintsLocal, deleteTopicHintsLocal } from './services/localDb';
 import { calculateNextFSRSState, calculateInitialState, DEFAULT_FSRS6_WEIGHTS, getTopicPageLength, recalculateTopicFSRSFromLogs } from './services/fsrsEngine';
 import { motion, AnimatePresence } from 'framer-motion';
 import UiverseButton from './components/UiverseButton';
@@ -14767,6 +14767,41 @@ const renderTimerHub = (isMobile = false) => {
     setReviewUndoStack(prev => prev.slice(0, prev.length - 1));
     setReviewRedoStack(prev => [...prev, lastItem]);
 
+    // Action 1: Undo Topic Removal from Today's Queue
+    if (lastItem.actionType === 'REMOVE_TODAYS_TOPIC') {
+      const { topic, topicId, cleanName, subName } = lastItem;
+      const todayStr = getLocalDateStr();
+      const currentList = (await getActiveNewTopicIds(todayStr)) || [];
+      const updatedList = Array.from(new Set([...currentList, topicId, cleanName, `${subName}_${topic?.name}`])).filter(Boolean);
+      await saveActiveNewTopicIds(todayStr, updatedList);
+
+      window.dispatchEvent(new CustomEvent('autoanki_topic_ids_changed', { detail: { todayStr, updatedList } }));
+
+      setLastRatedToast({
+        message: `Undid removal of "${topic?.name || topicId}" from Today's list`,
+        topicName: topic?.name,
+        isUndo: true,
+        timestamp: Date.now()
+      });
+      return;
+    }
+
+    // Action 2: Undo Delete Hints
+    if (lastItem.actionType === 'DELETE_TOPIC_HINTS') {
+      const { topicId, topicName, hintPayload } = lastItem;
+      if (hintPayload) {
+        await saveTopicHintsLocal(topicId, hintPayload);
+        window.dispatchEvent(new CustomEvent('autoanki_hints_changed', { detail: { topicId, hintPayload } }));
+      }
+      setLastRatedToast({
+        message: `Undid deletion of hints for "${topicName}"`,
+        topicName,
+        isUndo: true,
+        timestamp: Date.now()
+      });
+      return;
+    }
+
     const { docId, subject, topicName, logEntry, schedulerContext } = lastItem;
 
     // 1. Synchronize studyLogs state: remove the logEntry on Undo
@@ -14880,6 +14915,38 @@ const renderTimerHub = (isMobile = false) => {
     const lastItem = reviewRedoStack[reviewRedoStack.length - 1];
     setReviewRedoStack(prev => prev.slice(0, prev.length - 1));
     setReviewUndoStack(prev => [...prev, lastItem]);
+
+    // Action 1: Redo Topic Removal from Today's Queue
+    if (lastItem.actionType === 'REMOVE_TODAYS_TOPIC') {
+      const { topic, topicId, cleanName, subName } = lastItem;
+      const todayStr = getLocalDateStr();
+      const currentList = (await getActiveNewTopicIds(todayStr)) || [];
+      const updatedList = currentList.filter(id => id !== topicId && id !== cleanName && id !== `${subName}_${topic?.name}`);
+      await saveActiveNewTopicIds(todayStr, updatedList);
+
+      window.dispatchEvent(new CustomEvent('autoanki_topic_ids_changed', { detail: { todayStr, updatedList } }));
+
+      setLastRatedToast({
+        message: `Redid removal of "${topic?.name || topicId}"`,
+        topicName: topic?.name,
+        timestamp: Date.now()
+      });
+      return;
+    }
+
+    // Action 2: Redo Delete Hints
+    if (lastItem.actionType === 'DELETE_TOPIC_HINTS') {
+      const { topicId, topicName } = lastItem;
+      await deleteTopicHintsLocal(topicId);
+      window.dispatchEvent(new CustomEvent('autoanki_hints_changed', { detail: { topicId, hintPayload: null } }));
+
+      setLastRatedToast({
+        message: `Redid deletion of hints for "${topicName}"`,
+        topicName,
+        timestamp: Date.now()
+      });
+      return;
+    }
 
     const { docId, subject, topicName, logEntry, schedulerContext } = lastItem;
 
@@ -15003,6 +15070,7 @@ const renderTimerHub = (isMobile = false) => {
         onUpdateSubjectDoc={handleUpdateSubjectTrackerDoc}
         geminiApiKey={geminiApiKey}
         aiFeatureModels={aiFeatureModels}
+        onPushUndoAction={(action) => setReviewUndoStack(prev => [...prev, action])}
         onOpenNotesModal={(topic) => setNotesModalTopic(topic)}
       />
     );

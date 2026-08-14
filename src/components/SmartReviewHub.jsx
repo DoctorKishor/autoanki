@@ -1655,12 +1655,6 @@ function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue
     }
   };
 
-  // Sync state if topic.notes becomes available
-  useEffect(() => {
-    if (topic.notes) {
-      setIsNotesExpanded(true);
-    }
-  }, [topic.notes]);
 
   // Calculate upcoming FSRS interval previews in days for Again(1), Hard(2), Good(3), Easy(4)
   const intervalPreviews = useMemo(() => {
