@@ -27600,8 +27600,6 @@ Return your response strictly as a JSON object matching this schema:
 
                 {/* SIDEBAR NAVIGATION (Hidden on Mobile) */}
                 <aside
-                  onMouseEnter={handleSidebarMouseEnter}
-                  onMouseLeave={handleSidebarMouseLeave}
                   className={`flex ${isSidebarExpanded ? 'w-64' : 'w-20'} ${settingsThemeMode === 'dark' ? 'neu-card-dark border-r border-gray-800/80 text-slate-100' : 'neu-card-light border-r border-gray-200/80 text-slate-800'} flex flex-col py-6 shrink-0 transition-all duration-300 shadow-xl z-20 neu-action-sidebar`}
                 >
 
