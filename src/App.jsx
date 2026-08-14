@@ -27605,7 +27605,7 @@ Return your response strictly as a JSON object matching this schema:
                   className={`flex ${isSidebarExpanded ? 'w-64' : 'w-20'} ${settingsThemeMode === 'dark' ? 'neu-card-dark border-r border-gray-800/80 text-slate-100' : 'neu-card-light border-r border-gray-200/80 text-slate-800'} flex flex-col py-6 shrink-0 transition-all duration-300 shadow-xl z-20 neu-action-sidebar`}
                 >
 
-                  <div className="px-5 mb-8 flex items-center justify-between z-10">
+                  <div className={`mb-8 flex items-center z-10 transition-all ${isSidebarExpanded ? 'px-5 justify-between' : 'px-2 flex-col gap-2 justify-center'}`}>
                     <div className="flex items-center gap-3">
                       <img src="/favicon.svg" alt="AutoAnki Logo" className="w-9 h-9 shrink-0 object-contain rounded-xl shadow-md" />
                       {isSidebarExpanded && <span className={`font-black tracking-tight text-xl truncate ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>AutoAnki</span>}
@@ -27624,7 +27624,7 @@ Return your response strictly as a JSON object matching this schema:
                     </button>
                   </div>
 
-                  <nav className="flex-grow space-y-2.5 px-3 overflow-y-auto custom-scrollbar max-h-[calc(100vh-200px)] z-10">
+                  <nav className={`flex-grow space-y-2.5 overflow-y-auto custom-scrollbar max-h-[calc(100vh-200px)] z-10 ${isSidebarExpanded ? 'px-3' : 'px-2'}`}>
                     {[
                       {
                         id: 'focus',
@@ -27679,9 +27679,13 @@ Return your response strictly as a JSON object matching this schema:
                       return (
                         <div
                           key={cat.id}
-                          className={`neu-cat-card ${settingsThemeMode === 'dark' ? 'dark-theme' : 'light-theme'} ${
-                            isExpanded ? 'is-expanded' : ''
-                          } space-y-1`}
+                          className={
+                            isSidebarExpanded
+                              ? `neu-cat-card ${settingsThemeMode === 'dark' ? 'dark-theme' : 'light-theme'} ${
+                                  isExpanded ? 'is-expanded' : ''
+                                } space-y-1`
+                              : 'w-full flex flex-col items-center space-y-1.5'
+                          }
                         >
                           {isSidebarExpanded ? (
                             <button
@@ -27709,7 +27713,7 @@ Return your response strictly as a JSON object matching this schema:
                                 )}
                                 <div className="neu-cat-chevron-badge">
                                   <ChevronDown
-                                    className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                                    className={`w-3.5 h-3.5 transition-transform duration-300 ${
                                       isExpanded ? 'rotate-0 text-sky-400' : '-rotate-90 text-slate-400'
                                     }`}
                                   />
@@ -27717,7 +27721,7 @@ Return your response strictly as a JSON object matching this schema:
                               </div>
                             </button>
                           ) : catIdx > 0 ? (
-                            <div className="py-1 flex justify-center">
+                            <div className="py-1 flex justify-center w-full">
                               <div className={`w-8 h-[1px] ${settingsThemeMode === 'dark' ? 'bg-gray-800/80' : 'bg-gray-300/80'}`} />
                             </div>
                           ) : null}
@@ -27730,7 +27734,7 @@ Return your response strictly as a JSON object matching this schema:
                                   initial={{ height: 0, opacity: 0 }}
                                   animate={{ height: 'auto', opacity: 1 }}
                                   exit={{ height: 0, opacity: 0 }}
-                                  transition={{ duration: 0.22, ease: [0.25, 1, 0.5, 1] }}
+                                  transition={{ duration: 0.48, ease: [0.16, 1, 0.3, 1] }}
                                   className="space-y-1.5 overflow-hidden p-1"
                                 >
                                   {cat.items.map(item => {
@@ -27760,7 +27764,7 @@ Return your response strictly as a JSON object matching this schema:
                               )}
                             </AnimatePresence>
                           ) : (
-                            <div className="space-y-1.5">
+                            <div className="w-full flex flex-col items-center space-y-1.5">
                               {cat.items.map(item => {
                                 const IconComp = item.icon;
                                 const isActive = currentTab === item.id;
@@ -27773,7 +27777,7 @@ Return your response strictly as a JSON object matching this schema:
                                       setSidebarTooltip({ label: item.label, top: rect.top + rect.height / 2 });
                                     }}
                                     onMouseLeave={() => setSidebarTooltip(null)}
-                                    className={`neu-action-item ${settingsThemeMode === 'dark' ? 'dark-theme' : 'light-theme'} ${isActive ? 'active' : ''} w-full flex items-center gap-3 px-2 py-1.5 rounded-2xl group relative`}
+                                    className={`neu-action-item ${settingsThemeMode === 'dark' ? 'dark-theme' : 'light-theme'} ${isActive ? 'active' : ''} w-full flex items-center justify-center p-0 rounded-2xl group relative`}
                                   >
                                     <div className="neu-action-icon-box">
                                       <IconComp className="w-5 h-5 shrink-0" />
