@@ -6,7 +6,7 @@
  * Strictly forbidden from mutating or interfering with FSRS algorithm scheduling.
  */
 
-import { parsePageNumbers, getTopicPageWeight } from '../utils/pageUtils';
+import { parsePageNumbers, getTopicPageWeight } from '../utils/pageUtils.js';
 
 // Seed default paces (used strictly when zero historical logs exist)
 export const DEFAULT_SEED_PACE = {
@@ -477,7 +477,7 @@ export function calculateWeeklyWorkloadForecast(subjectTrackerData = [], studyLo
  * 4. Circadian & Fatigue Predictability (spread across time slots and sessions)
  */
 export function calculateDynamicProfileMaturity(subjectTrackerData = [], studyLogs = [], fsrsConfig = {}, timerState = null) {
-  const allLogs = extractAllFsrsTimingLogs(studyLogs);
+  const allLogs = extractAllTimingLogs(studyLogs);
   const totalLogsCount = allLogs.length;
 
   // 1. Dynamic Curriculum Topic Density
