@@ -88,6 +88,13 @@ export const DEFAULT_AI_FEATURE_MODELS = {
     'gemini-2.5-flash-lite',
     'gemini-2.5-flash',
     'gemini-2.0-flash'
+  ],
+  activeRecallHints: [
+    'gemini-3.5-flash-lite',
+    'gemini-3.5-flash',
+    'gemini-2.5-flash-lite',
+    'gemini-2.5-flash',
+    'gemini-2.0-flash'
   ]
 };
 
@@ -3773,7 +3780,8 @@ export default function App() {
           cardGeneration: parsed.cardGeneration || DEFAULT_AI_FEATURE_MODELS.cardGeneration,
           pageIndexing: parsed.pageIndexing || DEFAULT_AI_FEATURE_MODELS.pageIndexing,
           studyScheduler: parsed.studyScheduler || DEFAULT_AI_FEATURE_MODELS.studyScheduler,
-          autoTagging: parsed.autoTagging || DEFAULT_AI_FEATURE_MODELS.autoTagging
+          autoTagging: parsed.autoTagging || DEFAULT_AI_FEATURE_MODELS.autoTagging,
+          activeRecallHints: parsed.activeRecallHints || DEFAULT_AI_FEATURE_MODELS.activeRecallHints
         };
       }
     } catch (e) {
