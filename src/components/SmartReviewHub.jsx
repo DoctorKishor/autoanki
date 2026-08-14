@@ -117,6 +117,7 @@ export default function SmartReviewHub({
 
           // A topic is NEW if it has 0 reviewCount and no lastReviewDate (has never completed a review session)
           const isUnstudied = (!topic.reviewCount || topic.reviewCount === 0) && !topic.lastReviewDate;
+          const cleanName = topic.name.trim().toLowerCase();
           const isPickedForToday = activeNewTopicIds.has(topicId) ||
                                    activeNewTopicIds.has(cleanName) ||
                                    activeNewTopicIds.has(`${subName}_${topic.name}`) ||
