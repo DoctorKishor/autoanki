@@ -7,7 +7,32 @@ export default function FsrsStatsTab({ subjectTrackerData = [], studyLogs = [], 
   const isDark = themeMode === 'dark';
   const [timeRange, setTimeRange] = useState('1M'); // '1M', '3M', '1Y', 'ALL'
 
-  // Filter study logs based on selected time range
+  // Map of valid (subject|topicName|dateStr) present in subjectTrackerData
+  const validTopicDatesMap = useMemo(() => {
+    const map = new Set();
+    if (!Array.isArray(subjectTrackerData)) return map;
+
+    subjectTrackerData.forEach(subDoc => {
+      const subName = (subDoc.subject || '').trim().toLowerCase();
+      if (subDoc.topics && typeof subDoc.topics === 'object') {
+        Object.values(subDoc.topics).forEach(topic => {
+          if (topic && typeof topic.name === 'string' && Array.isArray(topic.studyDates)) {
+            const topName = topic.name.trim().toLowerCase();
+            topic.studyDates.forEach(dStr => {
+              if (dStr) {
+                map.add(`${subName}|${topName}|${dStr}`);
+                map.add(`${topName}|${dStr}`);
+              }
+            });
+          }
+        });
+      }
+    });
+
+    return map;
+  }, [subjectTrackerData]);
+
+  // Filter study logs based on selected time range and valid studyDates
   const filteredLogs = useMemo(() => {
     let rawFsrsLogs = [];
     if (Array.isArray(studyLogs)) {
@@ -38,13 +63,26 @@ export default function FsrsStatsTab({ subjectTrackerData = [], studyLogs = [], 
 
     return rawFsrsLogs.filter(log => {
       if (!log || typeof log !== 'object') return false;
+
+      // Validate log against active subjectTrackerData studyDates
+      if (log.subject && log.topicName) {
+        const subName = log.subject.trim().toLowerCase();
+        const topName = log.topicName.trim().toLowerCase();
+        const dStr = log.dateStr || (log.timestamp ? log.timestamp.split('T')[0] : null);
+
+        if (dStr) {
+          const isValidKey = validTopicDatesMap.has(`${subName}|${topName}|${dStr}`) || validTopicDatesMap.has(`${topName}|${dStr}`);
+          if (!isValidKey) return false; // Exclude legacy or orphan unlinked logs
+        }
+      }
+
       const dateString = log.timestamp || log.dateStr || log.date || log.createdAt;
       if (!dateString) return true; // If no date, include in All Time
       const logDate = new Date(dateString);
       if (isNaN(logDate.getTime())) return true;
       return logDate >= cutoff;
     });
-  }, [studyLogs, timeRange]);
+  }, [studyLogs, validTopicDatesMap, timeRange]);
 
   // Calculated Metrics
   const totalReviews = filteredLogs.length;
@@ -91,7 +129,7 @@ export default function FsrsStatsTab({ subjectTrackerData = [], studyLogs = [], 
             totalTopicsCount++;
             const cleanName = topic.name.trim().toLowerCase();
             const hasActiveLogs = reviewedTopicNames.has(cleanName);
-            const hasReviews = (topic.reviewCount || 0) > 0;
+            const hasReviews = (topic.reviewCount || 0) > 0 && Array.isArray(topic.studyDates) && topic.studyDates.length > 0;
 
             // Only aggregate stability & difficulty if active revision logs exist for topic
             if (filteredLogs.length > 0 && hasActiveLogs && hasReviews && topic.stability != null && topic.difficulty != null) {

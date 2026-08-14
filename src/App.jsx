@@ -8167,17 +8167,80 @@ export default function App() {
     }
   }, []);
 
+  // Helper to purge legacy orphan FSRS logs from IndexedDB that do not match active subjectTrackerData studyDates
+  const sanitizeStudyLogsWithTracker = (rawLogs, trackerList) => {
+    if (!rawLogs || typeof rawLogs !== 'object' || !Array.isArray(trackerList)) {
+      return { cleanedLogs: rawLogs || {}, modified: false };
+    }
+
+    const validKeys = new Set();
+    trackerList.forEach(subDoc => {
+      const subName = (subDoc.subject || '').trim().toLowerCase();
+      if (subDoc.topics && typeof subDoc.topics === 'object') {
+        Object.values(subDoc.topics).forEach(topic => {
+          if (topic && typeof topic.name === 'string' && Array.isArray(topic.studyDates)) {
+            const topName = topic.name.trim().toLowerCase();
+            topic.studyDates.forEach(dStr => {
+              if (dStr) {
+                validKeys.add(`${subName}|${topName}|${dStr}`);
+                validKeys.add(`${topName}|${dStr}`);
+              }
+            });
+          }
+        });
+      }
+    });
+
+    let modified = false;
+    const cleanedLogs = {};
+
+    Object.entries(rawLogs).forEach(([dateKey, dayLog]) => {
+      if (!dayLog || typeof dayLog !== 'object') {
+        cleanedLogs[dateKey] = dayLog;
+        return;
+      }
+
+      if (Array.isArray(dayLog.fsrsLogs) && dayLog.fsrsLogs.length > 0) {
+        const validFsrs = dayLog.fsrsLogs.filter(log => {
+          if (!log || typeof log !== 'object') return false;
+          if (!log.topicName) return true;
+          const sName = (log.subject || '').trim().toLowerCase();
+          const tName = (log.topicName || '').trim().toLowerCase();
+          const dStr = log.dateStr || dateKey;
+          const isValid = validKeys.has(`${sName}|${tName}|${dStr}`) || validKeys.has(`${tName}|${dStr}`);
+          if (!isValid) modified = true;
+          return isValid;
+        });
+
+        if (validFsrs.length !== dayLog.fsrsLogs.length) {
+          modified = true;
+          cleanedLogs[dateKey] = { ...dayLog, fsrsLogs: validFsrs };
+        } else {
+          cleanedLogs[dateKey] = dayLog;
+        }
+      } else {
+        cleanedLogs[dateKey] = dayLog;
+      }
+    });
+
+    return { cleanedLogs, modified };
+  };
+
   // --- LAZY STUDY LOGS LOADER (IndexedDB Offline-First) ---
   const loadStudyLogs = useCallback(async (force = false) => {
     if (studyLogsLoaded.current && !force) return;
     setIsStudyLogsLoading(true);
     try {
       const logs = await getLocalStudyLogs();
-      setStudyLogs(logs || {});
+      const { cleanedLogs, modified } = sanitizeStudyLogsWithTracker(logs || {}, subjectTrackerData);
+      setStudyLogs(cleanedLogs);
+      if (modified) {
+        replaceAllLocalStudyLogs(cleanedLogs).catch(err => console.error("[LocalDB] Error saving sanitized study logs:", err));
+      }
       studyLogsLoaded.current = true;
     } catch (err) { console.error('Failed to load study logs from IndexedDB:', err); }
     finally { setIsStudyLogsLoading(false); }
-  }, []);
+  }, [subjectTrackerData]);
 
   // --- TAB CHANGE: TRIGGER APPROPRIATE LAZY LOADS ---
   useEffect(() => {
