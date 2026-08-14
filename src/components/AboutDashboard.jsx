@@ -1,41 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
 import { 
-  Info, Sparkles, Share2, Check, Brain, GraduationCap, ShieldCheck
+  Sparkles, Share2, Brain, GraduationCap, ShieldCheck, Zap, HardDrive, Cpu
 } from 'lucide-react';
 
 export default function AboutDashboard({ isDark = false, onNavigate }) {
-  // Checklist states (persisted in localStorage)
-  const [checklist, setChecklist] = useState(() => {
-    try {
-      const saved = localStorage.getItem('autoanki_about_checklist_v2');
-      return saved ? JSON.parse(saved) : {
-        profile: false,
-        upload: false,
-        generate: false,
-        review: false,
-        sync: false
-      };
-    } catch {
-      return { profile: false, upload: false, generate: false, review: false, sync: false };
-    }
-  });
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('autoanki_about_checklist_v2', JSON.stringify(checklist));
-    } catch (e) {
-      console.warn('Failed to save checklist to localStorage', e);
-    }
-  }, [checklist]);
-
-  const toggleChecklist = (key) => {
-    setChecklist(prev => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  const completedCount = Object.values(checklist).filter(Boolean).length;
-  const progressPercent = Math.round((completedCount / 5) * 100);
-
   return (
     <div className="space-y-8 pb-24 text-left">
       
@@ -62,117 +31,75 @@ export default function AboutDashboard({ isDark = false, onNavigate }) {
         </div>
       </motion.div>
 
-      {/* OVERVIEW & CHECKLIST GRID */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        
-        {/* WHAT IS AUTOANKI CARD */}
-        <motion.div 
-          initial={{ opacity: 0, x: -12 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.35, delay: 0.05 }}
-          className={`p-6 rounded-3xl border shadow-sm space-y-4 ${
-            isDark 
-              ? 'bg-[#222730] border-slate-700/80 neu-card-dark text-slate-200' 
-              : 'bg-white border-slate-200 neu-card-light text-slate-800'
-          }`}
-        >
-          <div className="flex items-center gap-2.5">
-            <div className="p-2.5 rounded-2xl bg-blue-500/10 text-blue-500">
-              <Brain className="w-5 h-5" />
+      {/* WHAT IS AUTOANKI CARD */}
+      <motion.div 
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: 0.05 }}
+        className={`p-6 md:p-8 rounded-3xl border shadow-sm space-y-6 ${
+          isDark 
+            ? 'bg-[#222730] border-slate-700/80 neu-card-dark text-slate-200' 
+            : 'bg-white border-slate-200 neu-card-light text-slate-800'
+        }`}
+      >
+        <div className="flex items-center gap-3">
+          <div className="p-3 rounded-2xl bg-blue-500/10 text-blue-500">
+            <Brain className="w-6 h-6" />
+          </div>
+          <div>
+            <h2 className="text-lg md:text-xl font-black tracking-tight">What is AutoAnki?</h2>
+            <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">AI Medical Flashcard Engine & Spaced Repetition Suite</p>
+          </div>
+        </div>
+
+        <div className="text-xs md:text-sm leading-relaxed space-y-3 font-medium opacity-90 max-w-4xl">
+          <p>
+            AutoAnki is an advanced, AI-powered active recall ecosystem tailored specifically for postgraduate medical doctors and aspirants preparing for competitive licensing examinations like <strong className="text-blue-500">NEET PG</strong> and <strong className="text-indigo-500">INI-CET</strong>.
+          </p>
+          <p>
+            Built with a <strong className="text-emerald-500">100% offline-first local database model (IndexedDB via localDb.js)</strong>, it ensures lightning-fast flashcard reviews, sub-millisecond queries, and zero cloud dependency while offering flexible private GitHub sync.
+          </p>
+        </div>
+
+        {/* Feature Highlights Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
+          <div className={`p-4 rounded-2xl border ${isDark ? 'bg-slate-800/40 border-slate-700/60' : 'bg-slate-50 border-slate-150'}`}>
+            <div className="flex items-center gap-2 mb-1">
+              <HardDrive className="w-4 h-4 text-blue-500" />
+              <div className="text-base font-black text-blue-500">100%</div>
             </div>
-            <div>
-              <h2 className="text-base md:text-lg font-black tracking-tight">What is AutoAnki?</h2>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">AI Medical Flashcard Engine</p>
-            </div>
+            <div className="text-[10px] text-slate-400 font-black uppercase tracking-wider">Offline First</div>
+            <div className="text-[9px] text-slate-500 font-medium mt-0.5">Zero cloud latency lag</div>
           </div>
 
-          <div className="text-xs leading-relaxed space-y-3 font-medium opacity-90">
-            <p>
-              AutoAnki is an advanced, AI-powered active recall ecosystem tailored specifically for postgraduate medical doctors and aspirants preparing for competitive licensing examinations like <strong className="text-blue-500">NEET PG</strong> and <strong className="text-indigo-500">INI-CET</strong>.
-            </p>
-            <p>
-              Built with a <strong className="text-emerald-500">100% offline-first local database model (IndexedDB)</strong>, it ensures lightning-fast flashcard reviews, sub-millisecond queries, and zero cloud dependency while offering flexible GitHub sync.
-            </p>
+          <div className={`p-4 rounded-2xl border ${isDark ? 'bg-slate-800/40 border-slate-700/60' : 'bg-slate-50 border-slate-150'}`}>
+            <div className="flex items-center gap-2 mb-1">
+              <Zap className="w-4 h-4 text-emerald-500" />
+              <div className="text-base font-black text-emerald-500">&lt; 1ms</div>
+            </div>
+            <div className="text-[10px] text-slate-400 font-black uppercase tracking-wider">Local DB Latency</div>
+            <div className="text-[9px] text-slate-500 font-medium mt-0.5">IndexedDB instant reads</div>
           </div>
 
-          <div className="pt-2 grid grid-cols-3 gap-2 text-center">
-            <div className={`p-2.5 rounded-2xl border ${isDark ? 'bg-slate-800/40 border-slate-700/60' : 'bg-slate-50 border-slate-150'}`}>
-              <div className="text-sm font-black text-blue-500">100%</div>
-              <div className="text-[9px] text-slate-400 font-bold uppercase">Offline First</div>
+          <div className={`p-4 rounded-2xl border ${isDark ? 'bg-slate-800/40 border-slate-700/60' : 'bg-slate-50 border-slate-150'}`}>
+            <div className="flex items-center gap-2 mb-1">
+              <Cpu className="w-4 h-4 text-purple-500" />
+              <div className="text-base font-black text-purple-500">FSRS</div>
             </div>
-            <div className={`p-2.5 rounded-2xl border ${isDark ? 'bg-slate-800/40 border-slate-700/60' : 'bg-slate-50 border-slate-150'}`}>
-              <div className="text-sm font-black text-emerald-500">&lt; 1ms</div>
-              <div className="text-[9px] text-slate-400 font-bold uppercase">DB Latency</div>
-            </div>
-            <div className={`p-2.5 rounded-2xl border ${isDark ? 'bg-slate-800/40 border-slate-700/60' : 'bg-slate-50 border-slate-150'}`}>
-              <div className="text-sm font-black text-purple-500">FSRS</div>
-              <div className="text-[9px] text-slate-400 font-bold uppercase">Algorithm</div>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* POWER USER CHECKLIST SECTION */}
-        <motion.div 
-          initial={{ opacity: 0, x: 12 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.35, delay: 0.1 }}
-          className={`p-6 rounded-3xl border shadow-sm space-y-4 ${
-            isDark 
-              ? 'bg-[#222730] border-slate-700/80 neu-card-dark text-slate-200' 
-              : 'bg-white border-slate-200 neu-card-light text-slate-800'
-          }`}
-        >
-          <div className="flex justify-between items-center">
-            <div>
-              <h2 className="text-base md:text-lg font-black tracking-tight">Power-User Checklist</h2>
-              <p className="text-[10px] text-slate-400 font-bold">Complete your setup goals to master AutoAnki</p>
-            </div>
-            <div className="text-right">
-              <span className="text-lg font-black text-blue-500">{progressPercent}%</span>
-            </div>
+            <div className="text-[10px] text-slate-400 font-black uppercase tracking-wider">Spaced Repetition</div>
+            <div className="text-[9px] text-slate-500 font-medium mt-0.5">Dynamic memory retention</div>
           </div>
 
-          {/* Progress Bar */}
-          <div className="w-full bg-slate-200/50 dark:bg-slate-700/50 h-2.5 rounded-full overflow-hidden">
-            <div 
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 h-full transition-all duration-500 rounded-full" 
-              style={{ width: `${progressPercent}%` }} 
-            />
+          <div className={`p-4 rounded-2xl border ${isDark ? 'bg-slate-800/40 border-slate-700/60' : 'bg-slate-50 border-slate-150'}`}>
+            <div className="flex items-center gap-2 mb-1">
+              <ShieldCheck className="w-4 h-4 text-indigo-500" />
+              <div className="text-base font-black text-indigo-500">19 Subjects</div>
+            </div>
+            <div className="text-[10px] text-slate-400 font-black uppercase tracking-wider">Medical Coverage</div>
+            <div className="text-[9px] text-slate-500 font-medium mt-0.5">Pre & Clinical Modules</div>
           </div>
-
-          <div className="space-y-2">
-            {[
-              { key: 'profile', label: 'Configure Study Archetype Goal', desc: 'Set daily streak and revision targets.' },
-              { key: 'upload', label: 'Upload your first High-Yield PDF file', desc: 'Add files locally inside the Library page.' },
-              { key: 'generate', label: 'Extract Flashcards using Gemini AI', desc: 'Select a page and trigger the card extractor.' },
-              { key: 'review', label: 'Log Study Session in active Study Room', desc: 'Start focus timer and rate flashcards via FSRS.' },
-              { key: 'sync', label: 'Backup & sync to Local Database / GitHub', desc: 'Go to Settings to manage IndexedDB and GitHub backup.' }
-            ].map(item => (
-              <button
-                key={item.key}
-                onClick={() => toggleChecklist(item.key)}
-                className={`w-full text-left flex items-start gap-3 p-3 rounded-2xl transition border ${
-                  checklist[item.key] 
-                    ? (isDark ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-emerald-50/70 border-emerald-200')
-                    : (isDark ? 'hover:bg-slate-800/50 border-transparent' : 'hover:bg-slate-50 border-transparent')
-                }`}
-              >
-                <div className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 mt-0.5 transition ${
-                  checklist[item.key] ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-400/60 bg-transparent'
-                }`}>
-                  {checklist[item.key] && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                </div>
-                <div>
-                  <div className={`text-xs font-black ${checklist[item.key] ? 'line-through opacity-70' : ''}`}>
-                    {item.label}
-                  </div>
-                  <div className="text-[10px] text-slate-400 font-medium">{item.desc}</div>
-                </div>
-              </button>
-            ))}
-          </div>
-        </motion.div>
-      </div>
+        </div>
+      </motion.div>
 
       {/* DEDICATED PREMIUM DEVELOPER PORTFOLIO HERO */}
       <motion.div 
