@@ -13,6 +13,7 @@ import {
   calculateFatigueMultiplier,
   calculateWeeklyWorkloadForecast,
   calculatePredictiveTopicTime,
+  calculateDynamicProfileMaturity,
   extractAllTimingLogs,
   formatPredictedDuration
 } from '../services/predictiveTimingEngine';
@@ -28,7 +29,12 @@ export default function StudyVelocityTab({
 }) {
   const isDark = themeMode === 'dark';
 
-  // 1. Core Speed & Behavioral Metrics
+  // 1. Dynamic Profile Maturity & Model Confidence
+  const profileMaturity = useMemo(() => {
+    return calculateDynamicProfileMaturity(subjectTrackerData, studyLogs, fsrsConfig, timerState);
+  }, [subjectTrackerData, studyLogs, fsrsConfig, timerState]);
+
+  // 2. Core Speed & Behavioral Metrics
   const { subjectPaces, globalAvgPace, totalTimingLogsCount } = useMemo(() => {
     return calculateSubjectPaceMetrics(studyLogs);
   }, [studyLogs]);
@@ -45,12 +51,12 @@ export default function StudyVelocityTab({
     return calculateFatigueMultiplier(timerState);
   }, [timerState]);
 
-  // 2. 7-Day Workload Forecast
+  // 3. 7-Day Workload Forecast
   const weeklyForecast = useMemo(() => {
     return calculateWeeklyWorkloadForecast(subjectTrackerData, studyLogs, activeNewTopicsList, 7);
   }, [subjectTrackerData, studyLogs, activeNewTopicsList]);
 
-  // 3. Time-Boxed Capacity Slider State
+  // 4. Time-Boxed Capacity Slider State
   const [availableStudyMins, setAvailableStudyMins] = useState(45);
 
   // Time-Boxed Topic Selection
@@ -80,7 +86,7 @@ export default function StudyVelocityTab({
     };
   }, [weeklyForecast, availableStudyMins]);
 
-  // 4. Session Log History Table & Filter
+  // 5. Session Log History Table & Filter
   const [logSearchQuery, setLogSearchQuery] = useState('');
   const [selectedSubjectFilter, setSelectedSubjectFilter] = useState('ALL');
 
@@ -115,6 +121,158 @@ export default function StudyVelocityTab({
 
   return (
     <div className="space-y-6">
+      {/* ========================================================================= */}
+      {/* SECTION 0: DYNAMIC PROFILE MATURITY & SELF-LEARNING CONFIDENCE ENGINE     */}
+      {/* ========================================================================= */}
+      <motion.div
+        initial={{ opacity: 0, y: -16, scale: 0.99 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        className={`p-5 sm:p-6 rounded-3xl border shadow-xl relative overflow-hidden transition-all duration-300 ${
+          isDark
+            ? 'bg-gradient-to-br from-[#222730] via-[#1d222b] to-[#171b22] border-slate-700/80 neu-card-dark'
+            : 'bg-gradient-to-br from-[#f2f6fc] via-[#e6ecf5] to-[#d9e2ec] border-white neu-card-light'
+        }`}
+      >
+        {/* Subtle Ambient Glow Background */}
+        <div
+          className={`absolute -top-16 -right-16 w-56 h-56 rounded-full blur-3xl pointer-events-none opacity-20 ${
+            profileMaturity.score >= 90
+              ? 'bg-emerald-500'
+              : profileMaturity.score >= 66
+              ? 'bg-teal-500'
+              : profileMaturity.score >= 35
+              ? 'bg-cyan-500'
+              : 'bg-amber-500'
+          }`}
+        />
+
+        {/* Header Title & Dynamic Stage Badge */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="p-1.5 rounded-xl bg-amber-500/15 text-amber-400 border border-amber-500/20">
+                <Brain className="w-4 h-4" />
+              </div>
+              <h3 className={`text-sm sm:text-base font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                Predictive Profile Maturity
+              </h3>
+              <span className={`text-[10px] sm:text-xs font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border shadow-sm ${
+                profileMaturity.score >= 90
+                  ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                  : profileMaturity.score >= 66
+                  ? 'bg-teal-500/20 text-teal-400 border-teal-500/40'
+                  : profileMaturity.score >= 35
+                  ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40'
+                  : 'bg-amber-500/20 text-amber-400 border-amber-500/40'
+              }`}>
+                {profileMaturity.stageLabel}
+              </span>
+            </div>
+            <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+              {profileMaturity.stageDesc}
+            </p>
+          </div>
+
+          {/* Large Numerical Score Display */}
+          <div className="flex items-baseline gap-1.5 self-start sm:self-auto shrink-0">
+            <span className={`text-3xl sm:text-4xl font-black font-mono tracking-tight ${
+              profileMaturity.score >= 90
+                ? 'text-emerald-400'
+                : profileMaturity.score >= 66
+                ? 'text-teal-400'
+                : profileMaturity.score >= 35
+                ? 'text-cyan-400'
+                : 'text-amber-400'
+            }`}>
+              {profileMaturity.score}%
+            </span>
+            <span className={`text-[10px] sm:text-xs font-black uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+              Maturity
+            </span>
+          </div>
+        </div>
+
+        {/* Master Progress Bar (0–100%) */}
+        <div className="mt-4 relative z-10">
+          <div className={`w-full h-3.5 rounded-full p-0.5 overflow-hidden border shadow-inner ${
+            isDark ? 'bg-slate-900/90 border-slate-700/80 neu-pressed-dark' : 'bg-slate-200/80 border-slate-300 neu-pressed-light'
+          }`}>
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${profileMaturity.score}%` }}
+              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+              className={`h-full rounded-full transition-all duration-500 shadow-sm ${
+                profileMaturity.score >= 90
+                  ? 'bg-gradient-to-r from-teal-500 via-emerald-400 to-emerald-300'
+                  : profileMaturity.score >= 66
+                  ? 'bg-gradient-to-r from-cyan-500 via-teal-400 to-emerald-400'
+                  : profileMaturity.score >= 35
+                  ? 'bg-gradient-to-r from-blue-500 via-cyan-400 to-teal-400'
+                  : 'bg-gradient-to-r from-orange-500 via-amber-400 to-yellow-400'
+              }`}
+            />
+          </div>
+        </div>
+
+        {/* 4 Dynamic Self-Learning Pillar Sub-Meters */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 mt-4 relative z-10">
+          {profileMaturity.pillars.map((pillar, idx) => (
+            <motion.div
+              key={pillar.id}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 * idx, duration: 0.25 }}
+              className={`p-3 rounded-2xl border flex flex-col justify-between shadow-sm ${
+                isDark ? 'bg-[#1b2028]/80 border-slate-700/60' : 'bg-white/75 border-slate-200'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-1 text-[10px] font-black uppercase tracking-wider">
+                <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{pillar.label}</span>
+                <span className={`font-mono font-bold ${
+                  pillar.score >= 80 ? 'text-emerald-400' : pillar.score >= 40 ? 'text-cyan-400' : 'text-amber-400'
+                }`}>
+                  {pillar.score}%
+                </span>
+              </div>
+              <div className="mt-2 mb-1.5 flex items-baseline justify-between">
+                <span className={`text-xs font-bold font-mono ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                  {pillar.text}
+                </span>
+              </div>
+              <div className={`w-full h-1.5 rounded-full overflow-hidden ${
+                isDark ? 'bg-slate-800' : 'bg-slate-200'
+              }`}>
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    pillar.score >= 80 ? 'bg-emerald-400' : pillar.score >= 40 ? 'bg-cyan-400' : 'bg-amber-400'
+                  }`}
+                  style={{ width: `${pillar.score}%` }}
+                />
+              </div>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* Dynamic Telemetry & Next-Step Milestone Banner */}
+        <div className={`mt-4 p-3 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 relative z-10 text-xs ${
+          isDark ? 'bg-slate-900/60 border-slate-700/50 text-slate-300' : 'bg-white/80 border-slate-200 text-slate-700'
+        }`}>
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
+            <span className="font-semibold">
+              <strong className="font-bold text-amber-500">Next Milestone:</strong> {profileMaturity.nextFocusRecommendation}
+            </span>
+          </div>
+
+          {profileMaturity.avgErrorMarginMins > 0 && (
+            <span className="text-[10px] font-mono font-bold opacity-80 px-2 py-0.5 rounded-lg border self-end sm:self-auto shrink-0 bg-slate-800/40 border-slate-700">
+              🎯 Rolling Error: ±{profileMaturity.avgErrorMarginMins}m
+            </span>
+          )}
+        </div>
+      </motion.div>
+
       {/* ========================================================================= */}
       {/* SECTION 1: TOP HERO METRIC BANNER                                        */}
       {/* ========================================================================= */}
