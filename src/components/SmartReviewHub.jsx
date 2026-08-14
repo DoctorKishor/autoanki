@@ -49,6 +49,8 @@ export default function SmartReviewHub({
   const [newExamTentative, setNewExamTentative] = useState(false);
   const [activeNewTopicIds, setActiveNewTopicIds] = useState(new Set());
   const [mnemonicNotes, setMnemonicNotes] = useState({});
+  const [toastMessage, setToastMessage] = useState('');
+
   const handleAddExamTarget = () => {
     if (!newExamTitle.trim() || !newExamDate) return;
     const newEntry = {
