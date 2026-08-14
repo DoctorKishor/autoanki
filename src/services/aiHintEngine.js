@@ -80,17 +80,19 @@ async function callGeminiMultimodalFallback({ prompt, images = [], geminiApiKey,
 
       let hintsArray = [];
       let structure = null;
+      let tree = null;
       let chapterTitle = '';
 
       if (Array.isArray(parsedJson)) {
         hintsArray = parsedJson;
       } else if (parsedJson && typeof parsedJson === 'object') {
+        tree = parsedJson.tree || parsedJson.outline || null;
         structure = parsedJson.structure || parsedJson.topics || null;
         chapterTitle = parsedJson.chapterTitle || '';
         hintsArray = parsedJson.hints || parsedJson.clues || [];
       }
 
-      if (!structure && hintsArray.length === 0) {
+      if (!tree && !structure && hintsArray.length === 0) {
         lastError = new Error(`Model ${modelName} returned empty hint structure.`);
         continue;
       }
@@ -98,6 +100,7 @@ async function callGeminiMultimodalFallback({ prompt, images = [], geminiApiKey,
       return {
         hints: hintsArray,
         structure,
+        tree,
         chapterTitle,
         usedModel: modelName
       };
@@ -124,7 +127,7 @@ async function callGeminiMultimodalFallback({ prompt, images = [], geminiApiKey,
  * @param {boolean} [params.isPreSplit=false] If true, ignores offset (Scenario 2)
  * @param {string} params.geminiApiKey User Gemini API key
  * @param {object} [params.aiFeatureModels] App feature models mapping
- * @returns {Promise<{ hints: string[], structure: array, generatedAt: string, isScannedPdf: boolean }>}
+ * @returns {Promise<{ hints: string[], tree: array, structure: array, generatedAt: string, isScannedPdf: boolean }>}
  */
 export async function generateTopicActiveRecallHints({
   topicId,
@@ -158,30 +161,35 @@ export async function generateTopicActiveRecallHints({
     isPreSplit
   });
 
-  // 3. Construct Hierarchical Active-Recall Blueprint Prompt
+  // 3. Construct Recursive N-Level Active-Recall Outline Prompt
   const prompt = `You are an expert medical professor and active-recall blueprint architect.
-Your task is to analyze the provided textbook pages for the topic: "${topicName}" (${subject || ''}) and build a COMPREHENSIVE HIERARCHICAL ACTIVE-RECALL BLUEPRINT covering the ENTIRE chapter/topic material from start to finish.
+Your task is to analyze the provided textbook pages for the topic: "${topicName}" (${subject || ''}) and generate an EXHAUSTIVE RECURSIVE N-LEVEL OUTLINE (MINDMAP) covering ALL topics, subtopics, sub-subtopics, and granular details present across the entire pages of this chapter/topic.
 
 ### CRITICAL INSTRUCTIONS & CONSTRAINTS:
-1. COVER THE ENTIRE CHAPTER: Do NOT skip any major sections, sub-headings, or key concepts from the textbook pages provided.
-2. HIERARCHICAL TREE STRUCTURE: Organize the output into a 3-level tree:
-   - Level 1: Main Topics (Major headings/sections in the chapter in chronological order)
-   - Level 2: Subtopics (Core sub-concepts, anatomical structures, pathophysiologies, clinical presentations, diagnostics, or treatments under each Main Topic)
-   - Level 3: Sub-subtopics / Recall Anchors (Concise active-recall triggers/prompts for specific points, criteria, mechanisms, or facts the student must recall from memory).
-3. ACTIVE-RECALL PROMPTS (NO ANSWERS/SPOILERS): Do NOT write out full definitions, long textbook summaries, or answer keys. Write recall anchors (e.g. "3 diagnostic criteria for X", "Anatomic boundary of Y", "First-line pharmacological treatment & mechanism").
+1. COVER ALL TOPICS & SUBTOPICS: Do NOT omit any headings, sub-headings, concepts, anatomical structures, pathophysiologies, clinical presentations, or treatment protocols.
+2. RECURSIVE N-LEVEL TREE: Build a nested tree structure of arbitrary depth (topics can have subtopics, which can have sub-subtopics, which can have further sub-points, N-levels deep as required by the textbook content).
+3. ACTIVE-RECALL PROMPTS (NO SPOILERS/ANSWERS): Do NOT write out full textbook paragraphs or direct answers. Write concise active-recall prompts/anchors for each node so the student can look at the node and recall the facts from memory.
 4. OUTPUT FORMAT: Output ONLY a valid JSON object matching this exact schema:
 
 {
   "chapterTitle": "${topicName}",
-  "structure": [
+  "tree": [
     {
-      "topic": "1. Main Topic Name",
-      "subtopics": [
+      "id": "1",
+      "title": "1. Main Topic Title",
+      "prompt": "Active recall trigger phrase for this topic",
+      "children": [
         {
+          "id": "1.1",
           "title": "Subtopic Title",
-          "points": [
-            "Specific Active-Recall Prompt 1",
-            "Specific Active-Recall Prompt 2"
+          "prompt": "Active recall prompt for this subtopic",
+          "children": [
+            {
+              "id": "1.1.1",
+              "title": "Sub-subtopic Title / Detail",
+              "prompt": "Active recall prompt for this sub-subtopic",
+              "children": []
+            }
           ]
         }
       ]
@@ -211,6 +219,7 @@ ${pdfSlice.extractedText || '(No raw text parsed; scanned textbook page images a
   const hintPayload = {
     topicId,
     hints: result.hints || [],
+    tree: result.tree || null,
     structure: result.structure || null,
     chapterTitle: result.chapterTitle || topicName,
     generatedAt,
