@@ -6,7 +6,7 @@ import FsrsSettingsModal from './FsrsSettingsModal';
 import SelectNewTopicsModal from './SelectNewTopicsModal';
 import { saveLocalSubjectTrackerDoc, getActiveNewTopicIds, saveActiveNewTopicIds } from '../services/localDb';
 import { parsePageNumbers, getTopicPageWeight } from '../utils/pageUtils';
-import { calculateNextFSRSState } from '../services/fsrsEngine';
+import { calculateNextFSRSState, ensureCalibratedWeights } from '../services/fsrsEngine';
 
 export function getLocalDateStr(d = new Date()) {
   const dateObj = typeof d === 'string' ? new Date(d) : d;
@@ -1023,7 +1023,7 @@ function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue
   const intervalPreviews = useMemo(() => {
     try {
       const todayStr = getLocalDateStr();
-      const weights = fsrsConfig?.weights;
+      const weights = ensureCalibratedWeights(fsrsConfig?.weights);
       const dr = fsrsConfig?.globalDesiredRetention || 0.90;
 
       const state1 = calculateNextFSRSState(topic, 1, todayStr, weights, dr);

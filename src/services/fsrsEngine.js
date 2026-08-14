@@ -75,12 +75,29 @@ export const calculateInterval = (stability, desiredRetention = 0.90, w20 = DEFA
 };
 
 /**
+ * Helper to ensure weights are calibrated for topic-level active recall.
+ * Automatically upgrades legacy flashcard initial stabilities (w0 < 1.0) to topic stabilities.
+ */
+export const ensureCalibratedWeights = (weights) => {
+  if (!Array.isArray(weights) || weights.length < 21) return DEFAULT_FSRS6_WEIGHTS;
+  if (weights[0] < 1.0) {
+    const updated = [...weights];
+    updated[0] = DEFAULT_FSRS6_WEIGHTS[0];
+    updated[1] = DEFAULT_FSRS6_WEIGHTS[1];
+    updated[2] = DEFAULT_FSRS6_WEIGHTS[2];
+    updated[3] = DEFAULT_FSRS6_WEIGHTS[3];
+    return updated;
+  }
+  return weights;
+};
+
+/**
  * Initial difficulty D0 for rating r ∈ {1, 2, 3, 4}.
  *
  * Formula: D0(r) = clamp(w4 - exp(w5 * (r - 1)) + 1, 1, 10)
  */
 export const calculateInitialDifficulty = (rating, weights = DEFAULT_FSRS6_WEIGHTS) => {
-  const w = weights || DEFAULT_FSRS6_WEIGHTS;
+  const w = ensureCalibratedWeights(weights);
   const r = clamp(rating, 1, 4);
   const D0 = w[4] - Math.exp(w[5] * (r - 1)) + 1;
   return clamp(D0, 1, 10);
@@ -92,7 +109,7 @@ export const calculateInitialDifficulty = (rating, weights = DEFAULT_FSRS6_WEIGH
  * Formula: S0(r) = w[r - 1]
  */
 export const calculateInitialStability = (rating, weights = DEFAULT_FSRS6_WEIGHTS) => {
-  const w = weights || DEFAULT_FSRS6_WEIGHTS;
+  const w = ensureCalibratedWeights(weights);
   const r = clamp(rating, 1, 4);
   return Math.max(0.1, w[r - 1]);
 };
@@ -216,7 +233,7 @@ export const calculateInitialState = (
   desiredRetention = 0.90,
   loadBalancingOptions = {}
 ) => {
-  const w = weights || DEFAULT_FSRS6_WEIGHTS;
+  const w = ensureCalibratedWeights(weights);
   const r = clamp(rating, 1, 4);
   const w20 = w[20] ?? DEFAULT_FSRS6_WEIGHTS[20];
 
@@ -273,7 +290,7 @@ export const calculateNextFSRSState = (
   desiredRetention = 0.90,
   loadBalancingOptions = {}
 ) => {
-  const w = weights && weights.length >= 21 ? weights : DEFAULT_FSRS6_WEIGHTS;
+  const w = ensureCalibratedWeights(weights);
   const w20 = w[20] ?? DEFAULT_FSRS6_WEIGHTS[20];
   const r = clamp(rating, 1, 4);
 
