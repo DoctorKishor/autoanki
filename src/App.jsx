@@ -23855,6 +23855,7 @@ Return your response strictly as a JSON object matching this schema:
                       setCurrentTab={setCurrentTab}
                       setIsMobile={setIsMobile}
                       isMobile={isMobile}
+                      isDark={settingsThemeMode === 'dark'}
                       user={user}
                       isWidgetCustomizerOpen={isWidgetCustomizerOpen}
                       setIsWidgetCustomizerOpen={setIsWidgetCustomizerOpen}
@@ -28762,6 +28763,7 @@ Return your response strictly as a JSON object matching this schema:
                         setCurrentTab={setCurrentTab}
                         setIsMobile={setIsMobile}
                         isMobile={isMobile}
+                        isDark={settingsThemeMode === 'dark'}
                         user={user}
                         isWidgetCustomizerOpen={isWidgetCustomizerOpen}
                         setIsWidgetCustomizerOpen={setIsWidgetCustomizerOpen}
