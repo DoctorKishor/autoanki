@@ -7083,6 +7083,16 @@ export default function App() {
   const [subjectPdfOffsetInput, setSubjectPdfOffsetInput] = useState(0);
   const [subjectPdfUploading, setSubjectPdfUploading] = useState(false);
 
+  useEffect(() => {
+    let isMounted = true;
+    getLocalTextbooksMetadata().then(meta => {
+      if (isMounted && meta && Array.isArray(meta)) {
+        setTextbooksMetadata(meta);
+      }
+    }).catch(err => console.warn('[LocalDB] Error reading textbooksMetadata:', err));
+    return () => { isMounted = false; };
+  }, []);
+
   // Overall Topics/Subject Tracker States
   const [subjectTrackerData, setSubjectTrackerData] = useState([]);
   const [reviewUndoStack, setReviewUndoStack] = useState([]);
@@ -34250,6 +34260,29 @@ Return your response strictly as a JSON object matching this schema:
                                   <span className={`text-[9px] sm:text-[10px] font-black px-3 py-1 rounded-xl border flex items-center gap-1.5 ${isDark ? 'neu-pressed-dark text-emerald-400 border-slate-800' : 'neu-pressed-light text-emerald-700 border-slate-200'}`}>
                                     📈 {coveragePercent}% Coverage
                                   </span>
+
+                                  {/* MASTER SUBJECT PDF & OFFSET MANAGER BUTTON */}
+                                  {(() => {
+                                    const attachedPdf = textbooksMetadata.find(tb => (tb.subject || '').toLowerCase() === (selectedTrackerSubject || '').toLowerCase());
+                                    return (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setSelectedSubjectTrackerSubject(selectedTrackerSubject);
+                                          const offset = attachedPdf?.pageOffset ?? 0;
+                                          setSubjectPdfOffsetInput(String(offset));
+                                          setIsSubjectPdfModalOpen(true);
+                                        }}
+                                        className={`px-3.5 py-1 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-wider border transition-all flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95 ${
+                                          attachedPdf
+                                            ? isDark ? 'neu-btn-dark text-emerald-300 border-emerald-500/40 hover:border-emerald-400' : 'neu-btn-light text-emerald-800 border-emerald-300 hover:border-emerald-400'
+                                            : isDark ? 'neu-btn-dark text-amber-300 border-amber-500/50 hover:border-amber-400 ring-2 ring-amber-500/30' : 'neu-btn-light text-amber-800 border-amber-400 hover:border-amber-500 ring-2 ring-amber-400/30'
+                                        }`}
+                                      >
+                                        <span>📁 {attachedPdf ? `Master PDF (+${attachedPdf.pageOffset || 0} p. offset)` : 'Upload Master Subject PDF & Offset'}</span>
+                                      </button>
+                                    );
+                                  })()}
                                 </div>
                               </div>
 
