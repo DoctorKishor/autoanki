@@ -316,8 +316,8 @@ export default function FsrsStatsTab({ subjectTrackerData = [], studyLogs = [], 
             <span className={`text-[10px] sm:text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Pages per day</span>
           </div>
 
-          <div className="h-56 sm:h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-56 sm:h-64 w-full min-w-0">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
               <BarChart data={forecastData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <XAxis dataKey="label" stroke={isDark ? "#64748b" : "#94a3b8"} fontSize={10} tickLine={false} />
                 <YAxis stroke={isDark ? "#64748b" : "#94a3b8"} fontSize={10} tickLine={false} />
@@ -359,8 +359,8 @@ export default function FsrsStatsTab({ subjectTrackerData = [], studyLogs = [], 
           </h4>
 
           {ratingPieData.length > 0 ? (
-            <div className="h-56 sm:h-64 w-full flex items-center justify-center">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="h-56 sm:h-64 w-full flex items-center justify-center min-w-0">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                 <PieChart>
                   <Pie
                     data={ratingPieData}

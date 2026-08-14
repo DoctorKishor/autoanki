@@ -7683,7 +7683,6 @@ export default function App() {
       const localPages = await getLocalPages();
       const sortedPages = (localPages || []).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
       setLibraryPages(sortedPages);
-      setPendingPageCount(sortedPages.filter(p => p.isPending).length);
       pagesLoaded.current = true;
     } catch (err) {
       console.error('[LocalDB] Failed to load pages locally:', err);
@@ -14874,7 +14873,7 @@ const renderTimerHub = (isMobile = false) => {
               {(() => {
                 const chartData = subjectCoverageStats.allStats.filter(s => s.totalTopics > 0);
                 return (
-                  <ResponsiveContainer width="100%" height={350} minWidth={0}>
+                  <ResponsiveContainer width="100%" height={350} minWidth={0} minHeight={0}>
                     <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#2d3440' : '#f1f5f9'} />
                       <XAxis dataKey="subject" stroke={isDark ? '#64748b' : '#94a3b8'} fontSize={9} tickLine={false} axisLine={false} tickFormatter={(v) => v.slice(0, 8) + '..'} />
@@ -25206,7 +25205,7 @@ Return your response strictly as a JSON object matching this schema:
                                   { name: '3+ Rev', count: activeStat.count3Plus, percentage: Math.round((activeStat.count3Plus / total) * 100), fill: '#10b981' }
                                 ];
                                 return (
-                                  <ResponsiveContainer width="100%" height={350} minWidth={0}>
+                                  <ResponsiveContainer width="100%" height={350} minWidth={0} minHeight={0}>
                                     <BarChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#334155' : '#f1f5f9'} />
                                       <XAxis dataKey="name" stroke={isDark ? '#94a3b8' : '#64748b'} fontSize={9} tickLine={false} axisLine={false} />
@@ -28700,7 +28699,7 @@ Return your response strictly as a JSON object matching this schema:
                               onSelect={(path) => {
                                 setHierarchy(path);
                                 // Clear selected tag filter if clicking a folder
-                                setSelectedTag(null);
+                                setSelectedTags([]);
                               }}
                               onAdd={(path) => setNewFolderDialog({ isOpen: true, basePath: path, input: '' })}
                               onRename={(path) => setRenameDialog({ isOpen: true, path: path, input: path.split('::').pop() })}
@@ -32488,7 +32487,7 @@ Return your response strictly as a JSON object matching this schema:
                                         { name: '3+ Revisions', count: activeStat.count3Plus, percentage: Math.round((activeStat.count3Plus / total) * 100), fill: '#10b981' }
                                       ];
                                       return (
-                                        <ResponsiveContainer width="100%" height={350} minWidth={0}>
+                                        <ResponsiveContainer width="100%" height={350} minWidth={0} minHeight={0}>
                                           <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#334155' : '#f1f5f9'} />
                                             <XAxis dataKey="name" stroke={isDark ? '#94a3b8' : '#64748b'} fontSize={11} tickLine={false} axisLine={false} />
@@ -32639,7 +32638,7 @@ Return your response strictly as a JSON object matching this schema:
                                     <p className="text-xs text-gray-400">Daily completion percentage over last 7 calendar days</p>
                                   </div>
                                   <div className="w-full h-[350px] min-h-[350px]">
-                                    <ResponsiveContainer width="100%" height={350} minWidth={0}>
+                                    <ResponsiveContainer width="100%" height={350} minWidth={0} minHeight={0}>
                                       <BarChart data={adherenceStats.last7Days} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                                         <XAxis dataKey="dateLabel" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
