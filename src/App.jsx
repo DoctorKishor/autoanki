@@ -4760,7 +4760,6 @@ export default function App() {
   ], []);
 
   const [dashboardWidgets, setDashboardWidgets] = useState(DEFAULT_DASHBOARD_WIDGETS);
-  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   const [analyticsSubTab, setAnalyticsSubTab] = useState('generation');
   const [selectedCategory, setSelectedCategory] = useState('General');
   const [selectedTrackerSubject, setSelectedTrackerSubject] = useState('Anatomy');
@@ -22938,19 +22937,19 @@ Return your response strictly as a JSON object matching this schema:
           } else if (isMobile) {
             mainContent = (
               <div className={`flex flex-col h-screen h-[100dvh] w-screen overflow-hidden select-none transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'}`}>
-                {/* MOBILE HEADER - Android Style AppBar */}
-                <header className={`px-5 py-4 flex items-center justify-between border-b shrink-0 z-40 transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-card-dark border-gray-800 text-white' : 'neu-card-light border-gray-200/80 text-blue-950'}`}>
+                {/* MOBILE HEADER - Clean Neumorphic AppBar */}
+                <header className={`px-5 py-3.5 flex items-center justify-between border-b shrink-0 z-40 transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-card-dark border-gray-800 text-white' : 'neu-card-light border-gray-200/80 text-slate-900'}`}>
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white shadow-lg shadow-blue-600/20">
-                      <Server className="w-5 h-5" />
-                    </div>
-                    <span className={`font-black tracking-tight text-xl ${settingsThemeMode === 'dark' ? 'text-white' : 'text-blue-950'}`}>AutoAnki</span>
+                    <img src="/favicon.svg" alt="AutoAnki Logo" className="w-8 h-8 shrink-0 object-contain rounded-xl shadow-md" />
+                    <span className={`font-black tracking-tight text-xl ${settingsThemeMode === 'dark' ? 'text-white' : 'text-slate-900'}`}>AutoAnki</span>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     {currentTab === 'dashboard' && (
                       <button
                         onClick={() => setIsWidgetCustomizerOpen(true)}
-                        className="w-9 h-9 rounded-xl hover:bg-gray-100 flex items-center justify-center border border-gray-200 text-gray-600 active:scale-95 transition"
+                        className={`w-9 h-9 rounded-xl flex items-center justify-center transition active:scale-95 cursor-pointer ${
+                          settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300 hover:text-white' : 'neu-btn-light text-slate-700 hover:text-slate-950'
+                        }`}
                         title="Customize widgets"
                       >
                         <Settings className="w-4.5 h-4.5" />
@@ -22959,86 +22958,15 @@ Return your response strictly as a JSON object matching this schema:
                     <button
                       onClick={handleSyncCurrentPage}
                       disabled={isSyncing}
-                      className={`w-9 h-9 rounded-xl flex items-center justify-center border transition active:scale-95 ${isSyncing
-                        ? 'bg-blue-50 border-blue-100 text-blue-400'
-                        : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-100'
-                        }`}
+                      className={`w-9 h-9 rounded-xl flex items-center justify-center transition active:scale-95 cursor-pointer ${
+                        settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300 hover:text-white' : 'neu-btn-light text-slate-700 hover:text-slate-950'
+                      } ${isSyncing ? 'opacity-60' : ''}`}
                       title="Sync current page data"
                     >
-                      <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                    </button>
-                    <button
-                      onClick={() => setIsMobileDrawerOpen(true)}
-                      className="w-9 h-9 rounded-xl hover:bg-gray-100 flex items-center justify-center border border-gray-200 text-gray-600 active:scale-95 transition"
-                    >
-                      <Menu className="w-5 h-5" />
+                      <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin text-blue-500' : ''}`} />
                     </button>
                   </div>
                 </header>
-
-                {/* MOBILE DRAWER OVERLAY */}
-                {isMobileDrawerOpen && (
-                  <div className="fixed inset-0 z-50 flex overflow-hidden">
-                    {/* Backdrop */}
-                    <div
-                      className="absolute inset-0 bg-blue-950/40 backdrop-blur-sm transition-opacity duration-300"
-                      onClick={() => setIsMobileDrawerOpen(false)}
-                    />
-                    {/* Drawer Panel - Solid Dark Premium Theme */}
-                    <div className="absolute right-0 top-0 bottom-0 w-[280px] bg-[#0d0d0f] text-gray-200 border-l border-gray-850 shadow-2xl flex flex-col py-6 px-4 animate-in slide-in-from-right duration-300 z-50">
-                      <div className="flex items-center justify-between mb-8 px-2">
-                        <div className="flex items-center gap-2">
-                          <div className="bg-red-500/10 p-2 rounded-xl text-red-500">
-                            <Server className="w-5 h-5" />
-                          </div>
-                          <span className="font-black text-lg tracking-tight text-white">AutoAnki Menu</span>
-                        </div>
-                        <button
-                          onClick={() => setIsMobileDrawerOpen(false)}
-                          className="p-1 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white"
-                        >
-                          <X className="w-5 h-5" />
-                        </button>
-                      </div>
-
-                      {/* Drawer Navigation Links */}
-                      <nav className="flex-grow space-y-2 overflow-y-auto pr-1 custom-scrollbar">
-                        {ALL_MENUS.map(menu => {
-                          const IconMap = { LayoutDashboard, Home, Library, Flame, BarChart2, Activity, Download, MessageSquare, BookOpen, Settings, Trash2, CheckCircle2, Calendar, Tv, Info, ListChecks, GraduationCap, Brain };
-                          const Icon = IconMap[menu.icon] || Home;
-                          const isActive = currentTab === menu.id;
-
-                          const activeBg = menu.id === 'trash' ? 'bg-red-500/20 text-red-400' : 'bg-red-600 text-white shadow-lg shadow-red-950/50';
-
-                          return (
-                            <button
-                              key={menu.id}
-                              onClick={() => {
-                                setCurrentTab(menu.id);
-                                setIsMobileDrawerOpen(false);
-                                if (menu.id === 'study') {
-                                  setCurrentStudyCardIndex(0);
-                                  setIsAnswerRevealed(false);
-                                }
-                              }}
-                              className={`w-full flex items-center gap-4 px-4 py-3 rounded-full transition-all duration-200 ${isActive
-                                ? `${activeBg} font-black`
-                                : 'hover:bg-white/5 text-gray-300'
-                                }`}
-                            >
-                              <Icon className="w-5 h-5 shrink-0" />
-                              <span className="text-sm">{menu.label}</span>
-                            </button>
-                          );
-                        })}
-                      </nav>
-
-                      <div className="border-t border-gray-850 pt-4 px-2 text-[10px] text-gray-500">
-                        AutoAnki Mobile v1.0.0
-                      </div>
-                    </div>
-                  </div>
-                )}
 
                 {/* MOBILE MAIN CONTENT */}
                 <main className={`flex-grow overflow-y-auto pb-36 p-4 transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'}`}>
