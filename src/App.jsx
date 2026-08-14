@@ -26717,7 +26717,7 @@ Return your response strictly as a JSON object matching this schema:
                           transition={{ duration: 0.4, delay: 0.05 }}
                           className={`p-5 sm:p-6 rounded-3xl transition-all space-y-4 ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'}`}
                         >
-                          <div className={`flex items-center justify-between pb-3 border-b ${isDark ? 'border-slate-750' : 'border-slate-200/80'}`}>
+                          <div className={`flex items-center justify-between pb-3 border-b flex-wrap gap-2.5 ${isDark ? 'border-slate-750' : 'border-slate-200/80'}`}>
                             <div className="flex items-center gap-3 min-w-0">
                               <div className={`p-2.5 rounded-xl shrink-0 ${isDark ? 'neu-pressed-dark text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
                                 <ListChecks className="w-5 h-5" />
@@ -26727,6 +26727,16 @@ Return your response strictly as a JSON object matching this schema:
                                 <p className={`text-[9px] sm:text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Subject Tracker</p>
                               </div>
                             </div>
+
+                            <button
+                              type="button"
+                              onClick={() => setIsSubjectPdfModalOpen(true)}
+                              className={`px-3 py-1.5 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-wider border transition-all flex items-center gap-1.5 shrink-0 ${
+                                isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300 border-slate-700' : 'neu-btn-light text-blue-600 border-slate-300'
+                              }`}
+                            >
+                              📁 Upload PDF & Offset
+                            </button>
 
                             {/* Subtab Switcher Pill */}
                             <div className={`relative flex items-center p-1.5 rounded-2xl shrink-0 ${isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'}`}>
