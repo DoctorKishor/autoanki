@@ -28534,7 +28534,7 @@ Return your response strictly as a JSON object matching this schema:
                   <header className={`h-16 flex items-center justify-between px-6 shrink-0 z-10 border-b transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-card-dark border-gray-800 text-white shadow-md' : 'neu-card-light border-gray-200/80 text-gray-800 shadow-sm'}`}>
                     <div className="flex items-center gap-4">
                       <h2 className={`font-black text-lg tracking-tight capitalize ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                        {currentTab === 'campTracker' ? 'CAMP Tracker' : currentTab}
+                        {currentTab === 'campTracker' ? 'CAMP Tracker' : currentTab === 'about' ? 'About AutoAnki' : currentTab === 'smartReview' ? 'Smart Review' : currentTab === 'pytManager' ? 'PYT Manager' : currentTab === 'pytLogger' ? 'PYT Logger' : currentTab === 'obsOverlay' ? 'OBS Customiser' : currentTab === 'studyScheduler' ? 'Study Scheduler' : currentTab === 'subjectTracker' ? 'Subject Tracker' : currentTab}
                       </h2>
                       {currentTab === 'dashboard' && (
                         <button
@@ -34202,6 +34202,13 @@ Return your response strictly as a JSON object matching this schema:
                     {currentTab === 'settings' && (
                       <div className={`flex-grow w-full h-full overflow-y-auto smooth-settings-scroll transition-colors duration-300 p-4 lg:p-6 ${settingsThemeMode === 'dark' ? 'neu-bg-dark' : 'neu-bg-light'}`}>
                         {renderSettingsView(false)}
+                      </div>
+                    )}
+
+                    {/* ABOUT VIEW (Desktop) */}
+                    {currentTab === 'about' && (
+                      <div className="flex-grow p-4 lg:p-6 flex flex-col gap-6 max-w-[1280px] mx-auto w-full overflow-y-auto pb-24 lg:pb-6 text-left">
+                        <AboutDashboard isDark={isDark} onNavigate={setCurrentTab} />
                       </div>
                     )}
 
