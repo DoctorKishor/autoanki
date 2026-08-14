@@ -24958,7 +24958,7 @@ Return your response strictly as a JSON object matching this schema:
 
                   {currentTab === 'about' && (
                     <div className="px-1 py-2">
-                      <AboutDashboard />
+                      <AboutDashboard isDark={isDark} onNavigate={setCurrentTab} />
                     </div>
                   )}
 
