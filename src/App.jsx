@@ -23855,7 +23855,6 @@ Return your response strictly as a JSON object matching this schema:
                       setCurrentTab={setCurrentTab}
                       setIsMobile={setIsMobile}
                       isMobile={isMobile}
-                      db={db}
                       user={user}
                       isWidgetCustomizerOpen={isWidgetCustomizerOpen}
                       setIsWidgetCustomizerOpen={setIsWidgetCustomizerOpen}
@@ -28763,7 +28762,6 @@ Return your response strictly as a JSON object matching this schema:
                         setCurrentTab={setCurrentTab}
                         setIsMobile={setIsMobile}
                         isMobile={isMobile}
-                        db={db}
                         user={user}
                         isWidgetCustomizerOpen={isWidgetCustomizerOpen}
                         setIsWidgetCustomizerOpen={setIsWidgetCustomizerOpen}

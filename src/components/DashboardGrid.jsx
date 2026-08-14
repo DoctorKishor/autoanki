@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { doc, setDoc } from 'firebase/firestore';
 import { saveLocalStudyLog } from '../services/localDb';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import {
@@ -51,7 +50,6 @@ export default function DashboardGrid({
   setCurrentTab,
   setIsMobile,
   isMobile,
-  db,
   isWidgetCustomizerOpen,
   setIsWidgetCustomizerOpen,
   showMilliseconds = false,
