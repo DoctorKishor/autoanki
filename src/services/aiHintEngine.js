@@ -48,7 +48,7 @@ async function callGeminiMultimodalFallback({ prompt, images = [], geminiApiKey,
           contents: [{ parts }],
           generationConfig: {
             temperature: 0.3,
-            maxOutputTokens: 8192,
+            maxOutputTokens: 65536,
             responseMimeType: 'application/json'
           }
         })
