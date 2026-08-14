@@ -7099,6 +7099,37 @@ export default function App() {
   const [subjectTrackerData, setSubjectTrackerData] = useState([]);
   const [reviewUndoStack, setReviewUndoStack] = useState([]);
   const [reviewRedoStack, setReviewRedoStack] = useState([]);
+
+  // Global Keyboard Shortcut Listener for Undo (Ctrl+Z / Cmd+Z) and Redo (Ctrl+Y / Cmd+Shift+Z)
+  useEffect(() => {
+    const handleGlobalUndoRedoKeys = (e) => {
+      const activeElement = document.activeElement;
+      if (activeElement && (['INPUT', 'TEXTAREA', 'SELECT'].includes(activeElement.tagName) || activeElement.isContentEditable)) {
+        return;
+      }
+      const isCtrlOrCmd = e.ctrlKey || e.metaKey;
+      if (isCtrlOrCmd && e.key && e.key.toLowerCase() === 'z') {
+        if (e.shiftKey) {
+          if (reviewRedoStack.length > 0) {
+            e.preventDefault();
+            handleRedoReviewRating();
+          }
+        } else {
+          if (reviewUndoStack.length > 0) {
+            e.preventDefault();
+            handleUndoReviewRating();
+          }
+        }
+      } else if (isCtrlOrCmd && e.key && e.key.toLowerCase() === 'y') {
+        if (reviewRedoStack.length > 0) {
+          e.preventDefault();
+          handleRedoReviewRating();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleGlobalUndoRedoKeys);
+    return () => window.removeEventListener('keydown', handleGlobalUndoRedoKeys);
+  }, [reviewUndoStack, reviewRedoStack]);
   const [lastRatedToast, setLastRatedToast] = useState(null);
   const [ratingPopoverTopic, setRatingPopoverTopic] = useState(null);
   const [notesModalTopic, setNotesModalTopic] = useState(null);
@@ -14802,7 +14833,7 @@ const renderTimerHub = (isMobile = false) => {
       return;
     }
 
-    const { docId, subject, topicName, logEntry, schedulerContext } = lastItem;
+    const { docId, subject, topicName, logEntry, schedulerContext, previousDoc } = lastItem;
 
     // 1. Synchronize studyLogs state: remove the logEntry on Undo
     let nextStudyLogs = { ...studyLogs };
@@ -14827,14 +14858,14 @@ const renderTimerHub = (isMobile = false) => {
     Object.values(nextStudyLogs).forEach(dayLog => {
       if (dayLog && Array.isArray(dayLog.fsrsLogs)) {
         dayLog.fsrsLogs.forEach(l => {
-          if (l && l.topicName && l.topicName.trim().toLowerCase() === topicName.trim().toLowerCase()) {
+          if (l && l.topicName && l.topicName.trim().toLowerCase() === (topicName || '').trim().toLowerCase()) {
             remainingLogs.push(l);
           }
         });
       }
     });
 
-    // 3. Recalculate topic FSRS state in subjectTrackerData from remainingLogs
+    // 3. Recalculate topic FSRS state in subjectTrackerData or restore previousDoc directly
     setSubjectTrackerData(prev => {
       const list = Array.isArray(prev) ? prev : [];
       const targetDocId = docId || (subject ? subject.trim().toLowerCase() : null);
@@ -14844,13 +14875,17 @@ const renderTimerHub = (isMobile = false) => {
 
       const existingDoc = list[idx];
       const topicsMap = JSON.parse(JSON.stringify(existingDoc.topics || {}));
-      const currentTopic = topicsMap[topicName];
+      const targetKey = Object.keys(topicsMap).find(k => k.trim().toLowerCase() === (topicName || '').trim().toLowerCase()) || topicName;
+      const currentTopic = topicsMap[targetKey];
 
-      if (currentTopic) {
+      if (previousDoc && previousDoc.topics && previousDoc.topics[targetKey]) {
+        // Restore exact pre-rating state if available
+        topicsMap[targetKey] = previousDoc.topics[targetKey];
+      } else if (currentTopic) {
         const targetDate = logEntry?.dateStr;
         const updatedDates = (currentTopic.studyDates || []).filter(d => d !== targetDate);
         if (remainingLogs.length === 0 || updatedDates.length === 0) {
-          topicsMap[topicName] = {
+          topicsMap[targetKey] = {
             ...currentTopic,
             studyDates: [],
             stability: null,
@@ -14865,7 +14900,7 @@ const renderTimerHub = (isMobile = false) => {
           };
         } else {
           const recalculatedTopic = recalculateTopicFSRSFromLogs({ ...currentTopic, studyDates: updatedDates }, remainingLogs, fsrsConfig, list);
-          topicsMap[topicName] = recalculatedTopic;
+          topicsMap[targetKey] = recalculatedTopic;
         }
       }
 
@@ -14888,7 +14923,7 @@ const renderTimerHub = (isMobile = false) => {
         let changed = false;
         const updatedTasks = entry.tasks.map(t => {
           if ((schedulerContext?.taskId && t.id === schedulerContext.taskId) ||
-              (t.completed && (t.topicName?.toLowerCase() === topicName.toLowerCase() || t.topic?.toLowerCase().includes(topicName.toLowerCase())))) {
+              (t.completed && (t.topicName?.toLowerCase() === (topicName || '').toLowerCase() || t.topic?.toLowerCase().includes((topicName || '').toLowerCase())))) {
             changed = true;
             return { ...t, completed: false, rating: undefined };
           }
@@ -14921,7 +14956,12 @@ const renderTimerHub = (isMobile = false) => {
       const { topic, topicId, cleanName, subName } = lastItem;
       const todayStr = getLocalDateStr();
       const currentList = (await getActiveNewTopicIds(todayStr)) || [];
-      const updatedList = currentList.filter(id => id !== topicId && id !== cleanName && id !== `${subName}_${topic?.name}`);
+      const updatedList = currentList.filter(id =>
+        id !== topicId &&
+        id !== cleanName &&
+        id !== `${subName}_${topic?.name}` &&
+        id !== `${subName?.toLowerCase()}_${cleanName}`
+      );
       await saveActiveNewTopicIds(todayStr, updatedList);
 
       window.dispatchEvent(new CustomEvent('autoanki_topic_ids_changed', { detail: { todayStr, updatedList } }));
@@ -15070,7 +15110,10 @@ const renderTimerHub = (isMobile = false) => {
         onUpdateSubjectDoc={handleUpdateSubjectTrackerDoc}
         geminiApiKey={geminiApiKey}
         aiFeatureModels={aiFeatureModels}
-        onPushUndoAction={(action) => setReviewUndoStack(prev => [...prev, action])}
+        onPushUndoAction={(action) => {
+          setReviewUndoStack(prev => [...prev, action]);
+          setReviewRedoStack([]);
+        }}
         onOpenNotesModal={(topic) => setNotesModalTopic(topic)}
       />
     );
