@@ -2673,7 +2673,11 @@ const ObsPairingView = ({ db, appId, setObsPairedUid, setObsDeviceId }) => {
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
-    if (!db) return;
+    if (!db) {
+      // Offline / Local-only mode: automatically connect as local-user
+      setObsPairedUid('local-user');
+      return;
+    }
 
     let code = '';
     let isUnmounted = false;
@@ -16561,7 +16565,7 @@ const renderTimerHub = (isMobile = false) => {
 
   // Active device session revocation listener for OBS Overlay
   useEffect(() => {
-    if (!isObsOverlay || !db || !targetUid || !obsDeviceId) return;
+    if (!isObsOverlay || !db || !targetUid || targetUid === 'local-user' || !obsDeviceId) return;
 
     const deviceDocRef = doc(db, 'artifacts', appId, 'users', targetUid, 'paired_devices', obsDeviceId);
     const unsubscribe = onSnapshot(deviceDocRef, (snapshot) => {
@@ -23344,11 +23348,13 @@ Return your response strictly as a JSON object matching this schema:
             <button
               onClick={async () => {
                 if (window.confirm("Are you sure you want to unpair this stream overlay device?")) {
-                  try {
-                    const deviceDocRef = doc(db, 'artifacts', appId, 'users', targetUid, 'paired_devices', obsDeviceId);
-                    await deleteDoc(deviceDocRef);
-                  } catch (err) {
-                    console.error("Error deleting pairing from client side:", err);
+                  if (db && targetUid && targetUid !== 'local-user') {
+                    try {
+                      const deviceDocRef = doc(db, 'artifacts', appId, 'users', targetUid, 'paired_devices', obsDeviceId);
+                      await deleteDoc(deviceDocRef);
+                    } catch (err) {
+                      console.error("Error deleting pairing from client side:", err);
+                    }
                   }
                   try {
                     localStorage.removeItem('obs_paired_uid');
