@@ -1481,6 +1481,19 @@ function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue
     }
   };
 
+  const handleRegenerateHints = async (e) => {
+    if (e && e.stopPropagation) e.stopPropagation();
+    try {
+      const topicId = topic.id || `${topic.subject}_${topic.name}`;
+      await deleteTopicHintsLocal(topicId);
+      setTopicHints(null);
+      setRecalledPointsMap({});
+      await handleGenerateHints(e);
+    } catch (err) {
+      console.error('Failed regenerating hints:', err);
+    }
+  };
+
   // Sync state if topic.notes becomes available
   useEffect(() => {
     if (topic.notes) {
