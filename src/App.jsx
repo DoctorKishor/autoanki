@@ -9389,23 +9389,51 @@ JSON Format:
     const docId = subject.trim().toLowerCase();
 
     const localData = await getLocalSubjectTrackerData();
-    const docExists = localData.find(p => p.id === docId);
+    const docExists = localData.find(p => p.id === docId) || subjectTrackerData.find(p => p.id === docId);
     if (!docExists) return;
 
-    const currentTopics = { ...(docExists.topics || {}) };
-    delete currentTopics[topicName];
+    const topicsMap = docExists.topics || {};
+    const targetKey = Object.keys(topicsMap).find(k => k.trim().toLowerCase() === topicName.trim().toLowerCase()) || topicName;
+    const deletedTopicObj = topicsMap[targetKey];
+    if (!deletedTopicObj) return;
+
+    const currentTopics = { ...topicsMap };
+    delete currentTopics[targetKey];
+
+    // Push action to reviewUndoStack for Undo/Redo support
+    setReviewUndoStack(prev => [
+      ...prev,
+      {
+        actionType: 'DELETE_TRACKER_TOPIC',
+        docId,
+        subject,
+        topicName: targetKey,
+        deletedTopicObj: JSON.parse(JSON.stringify(deletedTopicObj)),
+        previousDoc: JSON.parse(JSON.stringify(docExists)),
+        timestamp: Date.now()
+      }
+    ]);
+    setReviewRedoStack([]);
 
     setSubjectTrackerData(prev => {
-      return prev.map(p => p.id === docId ? { ...p, topics: currentTopics } : p);
+      return prev.map(p => p.id === docId ? { ...p, topics: currentTopics, updatedAt: new Date().toISOString() } : p);
     });
 
     try {
       await saveLocalSubjectTrackerDoc(docId, {
-        topics: currentTopics
+        ...docExists,
+        topics: currentTopics,
+        updatedAt: new Date().toISOString()
       });
     } catch (err) {
       console.error("Error deleting tracker topic locally:", err);
     }
+
+    setLastRatedToast({
+      message: `Deleted chapter/topic "${topicName}"`,
+      topicName,
+      timestamp: Date.now()
+    });
   };
 
   // --- MANUAL PAGE DATA SYNC ACTION ---
@@ -14833,6 +14861,41 @@ const renderTimerHub = (isMobile = false) => {
       return;
     }
 
+    // Action 3: Undo Delete Tracker Topic / Chapter
+    if (lastItem.actionType === 'DELETE_TRACKER_TOPIC') {
+      const { docId, subject, topicName, deletedTopicObj } = lastItem;
+      const targetDocId = docId || (subject ? subject.trim().toLowerCase() : null);
+
+      setSubjectTrackerData(prev => {
+        const list = Array.isArray(prev) ? prev : [];
+        if (!targetDocId) return list;
+        const idx = list.findIndex(d => d.id === targetDocId);
+        if (idx < 0) return list;
+
+        const existingDoc = list[idx];
+        const topicsMap = JSON.parse(JSON.stringify(existingDoc.topics || {}));
+        topicsMap[topicName] = deletedTopicObj;
+
+        const updatedDoc = {
+          ...existingDoc,
+          topics: topicsMap,
+          updatedAt: new Date().toISOString()
+        };
+
+        saveLocalSubjectTrackerDoc(targetDocId, updatedDoc).catch(err => console.error("[LocalDB] Error restoring deleted topic:", err));
+
+        return list.map(d => d.id === targetDocId ? updatedDoc : d);
+      });
+
+      setLastRatedToast({
+        message: `Undid deletion of chapter/topic "${topicName}"`,
+        topicName,
+        isUndo: true,
+        timestamp: Date.now()
+      });
+      return;
+    }
+
     const { docId, subject, topicName, logEntry, schedulerContext, previousDoc } = lastItem;
 
     // 1. Synchronize studyLogs state: remove the logEntry on Undo
@@ -14982,6 +15045,40 @@ const renderTimerHub = (isMobile = false) => {
 
       setLastRatedToast({
         message: `Redid deletion of hints for "${topicName}"`,
+        topicName,
+        timestamp: Date.now()
+      });
+      return;
+    }
+
+    // Action 3: Redo Delete Tracker Topic / Chapter
+    if (lastItem.actionType === 'DELETE_TRACKER_TOPIC') {
+      const { docId, subject, topicName } = lastItem;
+      const targetDocId = docId || (subject ? subject.trim().toLowerCase() : null);
+
+      setSubjectTrackerData(prev => {
+        const list = Array.isArray(prev) ? prev : [];
+        if (!targetDocId) return list;
+        const idx = list.findIndex(d => d.id === targetDocId);
+        if (idx < 0) return list;
+
+        const existingDoc = list[idx];
+        const topicsMap = JSON.parse(JSON.stringify(existingDoc.topics || {}));
+        delete topicsMap[topicName];
+
+        const updatedDoc = {
+          ...existingDoc,
+          topics: topicsMap,
+          updatedAt: new Date().toISOString()
+        };
+
+        saveLocalSubjectTrackerDoc(targetDocId, updatedDoc).catch(err => console.error("[LocalDB] Error re-deleting topic:", err));
+
+        return list.map(d => d.id === targetDocId ? updatedDoc : d);
+      });
+
+      setLastRatedToast({
+        message: `Redid deletion of chapter/topic "${topicName}"`,
         topicName,
         timestamp: Date.now()
       });
