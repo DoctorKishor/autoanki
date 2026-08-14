@@ -20,7 +20,6 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
-            if (id.includes('firebase')) return 'firebase';
             if (id.includes('pdfjs-dist')) return 'pdfjs';
             if (id.includes('@hello-pangea')) return 'dnd';
             return 'vendor';

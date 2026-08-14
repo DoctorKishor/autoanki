@@ -6,12 +6,14 @@
  */
 
 const DB_NAME = 'AutoAnkiLocalDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 export const STORES = {
   TOPICS: 'topics',
   SETTINGS: 'settings',
   CAMP_TRACKER: 'camp_tracker',
+  CAMP_DATA: 'camp_data',
+  CAMP_DAILY_LOGS: 'camp_daily_logs',
   PYT_DATA: 'pyt_data',
   KV_STORE: 'kv_store',
   TOPIC_HINTS: 'topic_hints',
@@ -58,22 +60,32 @@ export function initDB() {
         campStore.createIndex('date', 'date', { unique: false });
       }
 
-      // 5. PYT Data store (keyPath: 'key')
+      // 4. CAMP Data store (keyPath: 'key')
+      if (!db.objectStoreNames.contains(STORES.CAMP_DATA)) {
+        db.createObjectStore(STORES.CAMP_DATA, { keyPath: 'key' });
+      }
+
+      // 5. CAMP Daily Logs store (keyPath: 'dateStr')
+      if (!db.objectStoreNames.contains(STORES.CAMP_DAILY_LOGS)) {
+        db.createObjectStore(STORES.CAMP_DAILY_LOGS, { keyPath: 'dateStr' });
+      }
+
+      // 6. PYT Data store (keyPath: 'key')
       if (!db.objectStoreNames.contains(STORES.PYT_DATA)) {
         db.createObjectStore(STORES.PYT_DATA, { keyPath: 'key' });
       }
 
-      // 6. Generic Key-Value Store (keyPath: 'key')
+      // 7. Generic Key-Value Store (keyPath: 'key')
       if (!db.objectStoreNames.contains(STORES.KV_STORE)) {
         db.createObjectStore(STORES.KV_STORE, { keyPath: 'key' });
       }
 
-      // 7. Topic Hints Store (keyPath: 'topicId')
+      // 8. Topic Hints Store (keyPath: 'topicId')
       if (!db.objectStoreNames.contains(STORES.TOPIC_HINTS)) {
         db.createObjectStore(STORES.TOPIC_HINTS, { keyPath: 'topicId' });
       }
 
-      // 8. Hint Quota Store (keyPath: 'dateStr')
+      // 9. Hint Quota Store (keyPath: 'dateStr')
       if (!db.objectStoreNames.contains(STORES.HINT_QUOTA)) {
         db.createObjectStore(STORES.HINT_QUOTA, { keyPath: 'dateStr' });
       }
@@ -237,6 +249,87 @@ export async function getLocalCampRecord(id) {
 
 export async function getAllLocalCampRecords() {
   return getAllLocalItems(STORES.CAMP_TRACKER);
+}
+
+export async function getLocalCampData(key, defaultValue = null) {
+  if (!key) return defaultValue;
+  try {
+    const res = await getLocalItem(STORES.CAMP_DATA, key);
+    return res ? res.data : defaultValue;
+  } catch (err) {
+    console.error(`[LocalDB] Error reading camp_data for key ${key}:`, err);
+    return defaultValue;
+  }
+}
+
+export async function saveLocalCampData(key, data) {
+  if (!key) return null;
+  try {
+    await putLocalItem(STORES.CAMP_DATA, {
+      key,
+      data,
+      updatedAt: new Date().toISOString()
+    });
+    return data;
+  } catch (err) {
+    console.error(`[LocalDB] Error saving camp_data for key ${key}:`, err);
+    return null;
+  }
+}
+
+export async function getLocalCampDailyLogs(dateStr) {
+  if (!dateStr) return null;
+  try {
+    return await getLocalItem(STORES.CAMP_DAILY_LOGS, dateStr);
+  } catch (err) {
+    console.error(`[LocalDB] Error reading camp_daily_logs for date ${dateStr}:`, err);
+    return null;
+  }
+}
+
+export async function saveLocalCampDailyLogs(dateStr, logData) {
+  if (!dateStr || !logData) return null;
+  try {
+    const existing = (await getLocalCampDailyLogs(dateStr)) || { dateStr };
+    const merged = {
+      ...existing,
+      ...logData,
+      dateStr,
+      updatedAt: new Date().toISOString()
+    };
+    await putLocalItem(STORES.CAMP_DAILY_LOGS, merged);
+    return merged;
+  } catch (err) {
+    console.error(`[LocalDB] Error saving camp_daily_logs for date ${dateStr}:`, err);
+    return null;
+  }
+}
+
+export async function getAllLocalCampDailyLogs() {
+  try {
+    return await getAllLocalItems(STORES.CAMP_DAILY_LOGS);
+  } catch (err) {
+    console.error('[LocalDB] Error reading all camp_daily_logs:', err);
+    return [];
+  }
+}
+
+// --- USER PROFILE ---
+export async function getLocalUserProfile() {
+  return getLocalKV('local_user_profile', {
+    uid: 'local_user',
+    email: 'scholar@autoanki.local',
+    displayName: 'Offline Scholar',
+    photoURL: null,
+    isLocalOffline: true
+  });
+}
+
+export async function saveLocalUserProfile(profile) {
+  const existing = await getLocalUserProfile();
+  const merged = { ...existing, ...profile, updatedAt: new Date().toISOString() };
+  await setLocalKV('local_user_profile', merged);
+  return merged;
 }
 
 
@@ -818,6 +911,13 @@ export default {
   saveLocalCampRecord,
   getLocalCampRecord,
   getAllLocalCampRecords,
+  getLocalCampData,
+  saveLocalCampData,
+  getLocalCampDailyLogs,
+  saveLocalCampDailyLogs,
+  getAllLocalCampDailyLogs,
+  getLocalUserProfile,
+  saveLocalUserProfile,
   setLocalKV,
   getLocalKV,
   getLocalCards,

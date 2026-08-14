@@ -15,7 +15,12 @@ import {
   History,
   Filter
 } from 'lucide-react';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import {
+  getLocalCampData,
+  saveLocalCampData,
+  getLocalCampDailyLogs,
+  saveLocalCampDailyLogs
+} from '../../services/localDb';
 import CollapsibleCard from './CollapsibleCard';
 import ProgressChart from './ProgressChart';
 import {
@@ -28,9 +33,6 @@ import {
 
 
 export default function CampDashboard({ 
-  db, 
-  targetUid, 
-  appId, 
   timerState, 
   localStopwatchTime, 
   localCustomTimerTimeLeft, 
@@ -106,7 +108,7 @@ export default function CampDashboard({
   const [selectedCell, setSelectedCell] = useState(null);
   const [showOverviewModal, setShowOverviewModal] = useState(false);
   const [saveStatus, setSaveStatus] = useState('');
-  const [hasLoadedFirestore, setHasLoadedFirestore] = useState(false);
+  const [hasLoadedLocalDb, setHasLoadedLocalDb] = useState(false);
   const currentSessionsDateRef = useRef(selectedDate);
   const currentB2bDateRef = useRef(selectedDate);
 
@@ -152,161 +154,134 @@ export default function CampDashboard({
     }
   }, [history, hasPromptedYesterday]);
 
-  // 1.5. Fetch online logs from Firestore on mount to populate state and LocalStorage safely
+  // 1.5. Fetch local CAMP data from IndexedDB on mount to populate state safely
   useEffect(() => {
-    if (!db || !targetUid || !appId) {
-      setHasLoadedFirestore(true);
-      return;
-    }
-
     let active = true;
-    const fetchFirestoreData = async () => {
+    const fetchLocalDbData = async () => {
       try {
-        const histRef = doc(db, 'artifacts', appId, 'users', targetUid, 'camp_data', 'history');
-        const thRef = doc(db, 'artifacts', appId, 'users', targetUid, 'camp_data', 'timer_history');
-        const infoRef = doc(db, 'artifacts', appId, 'users', targetUid, 'camp_data', 'student_info');
-
-        const [histSnap, thSnap, infoSnap] = await Promise.all([
-          getDoc(histRef),
-          getDoc(thRef),
-          getDoc(infoRef)
+        const [histData, thData, infoData] = await Promise.all([
+          getLocalCampData('history'),
+          getLocalCampData('timer_history'),
+          getLocalCampData('student_info')
         ]);
 
         if (!active) return;
 
-        if (histSnap.exists()) {
-          const remoteData = histSnap.data()?.data || [];
-          setHistory(prev => {
-            if (JSON.stringify(prev) !== JSON.stringify(remoteData)) {
-              localStorage.setItem('camp_history', JSON.stringify(remoteData));
-              return remoteData;
-            }
-            return prev;
-          });
+        if (histData && Array.isArray(histData)) {
+          setHistory(histData);
+          localStorage.setItem('camp_history', JSON.stringify(histData));
         }
 
-        if (thSnap.exists()) {
-          const remoteData = thSnap.data()?.data || [];
-          setTimerHistory(prev => {
-            if (JSON.stringify(prev) !== JSON.stringify(remoteData)) {
-              localStorage.setItem('camp_timer_history', JSON.stringify(remoteData));
-              return remoteData;
-            }
-            return prev;
-          });
+        if (thData && Array.isArray(thData)) {
+          setTimerHistory(thData);
+          localStorage.setItem('camp_timer_history', JSON.stringify(thData));
         }
 
-        if (infoSnap.exists()) {
-          const remoteData = infoSnap.data()?.data;
-          if (remoteData) {
-            setStudentInfo(prev => {
-              if (JSON.stringify(prev) !== JSON.stringify(remoteData)) {
-                localStorage.setItem('camp_student_info', JSON.stringify(remoteData));
-                return remoteData;
-              }
-              return prev;
-            });
-          }
+        if (infoData && typeof infoData === 'object') {
+          setStudentInfo(infoData);
+          localStorage.setItem('camp_student_info', JSON.stringify(infoData));
         }
       } catch (err) {
-        console.error("Error loading CAMP data from Firestore:", err);
+        console.error("[LocalDB] Error loading CAMP data:", err);
       } finally {
         if (active) {
-          setHasLoadedFirestore(true);
+          setHasLoadedLocalDb(true);
         }
       }
     };
 
-    fetchFirestoreData();
+    fetchLocalDbData();
     return () => { active = false; };
-  }, [db, targetUid, appId]);
+  }, []);
 
   // 1.6. Reactively load sessions and B2B whenever selectedDate changes
   useEffect(() => {
-    const savedSessions = localStorage.getItem(`camp_sessions_${selectedDate}`);
-    const parsedSessions = savedSessions ? normalizeSessions(JSON.parse(savedSessions)) : {
-      preLunch: [],
-      midDay: [],
-      postDinner: []
+    let active = true;
+    const loadDaily = async () => {
+      const log = await getLocalCampDailyLogs(selectedDate);
+      if (!active) return;
+      if (log) {
+        if (log.sessions) {
+          const norm = normalizeSessions(log.sessions);
+          setSessions(norm);
+          localStorage.setItem(`camp_sessions_${selectedDate}`, JSON.stringify(norm));
+        }
+        if (log.bedToBook) {
+          setBedToBook(log.bedToBook);
+          localStorage.setItem(`camp_bedToBook_${selectedDate}`, log.bedToBook);
+        }
+      } else {
+        const savedSessions = localStorage.getItem(`camp_sessions_${selectedDate}`);
+        const parsedSessions = savedSessions ? normalizeSessions(JSON.parse(savedSessions)) : {
+          preLunch: [],
+          midDay: [],
+          postDinner: []
+        };
+        const savedB2B = localStorage.getItem(`camp_bedToBook_${selectedDate}`);
+        const b2bValue = savedB2B || 'Less than 45 mins';
+        setSessions(parsedSessions);
+        setBedToBook(b2bValue);
+      }
     };
 
-    const savedB2B = localStorage.getItem(`camp_bedToBook_${selectedDate}`);
-    const b2bValue = savedB2B || 'Less than 45 mins';
-
-    setSessions(parsedSessions);
-    setBedToBook(b2bValue);
-
+    loadDaily();
     currentSessionsDateRef.current = selectedDate;
     currentB2bDateRef.current = selectedDate;
+    return () => { active = false; };
   }, [selectedDate]);
 
   // 2. Persist Student Info
   useEffect(() => {
-    if (!hasLoadedFirestore) return;
+    if (!hasLoadedLocalDb) return;
     localStorage.setItem('camp_student_info', JSON.stringify(studentInfo));
-    if (db && targetUid && appId) {
-      clearTimeout(studentInfoDebounceRef.current);
-      studentInfoDebounceRef.current = setTimeout(() => {
-        const docRef = doc(db, 'artifacts', appId, 'users', targetUid, 'camp_data', 'student_info');
-        setDoc(docRef, { data: studentInfo }).catch(console.error);
-      }, 2000);
-    }
+    clearTimeout(studentInfoDebounceRef.current);
+    studentInfoDebounceRef.current = setTimeout(() => {
+      saveLocalCampData('student_info', studentInfo);
+    }, 500);
     return () => clearTimeout(studentInfoDebounceRef.current);
-  }, [studentInfo, db, targetUid, appId, hasLoadedFirestore]);
+  }, [studentInfo, hasLoadedLocalDb]);
 
   // 3. Persist Daily Inputs based on selectedDate
   useEffect(() => {
-    if (!hasLoadedFirestore || currentB2bDateRef.current !== selectedDate) return;
+    if (!hasLoadedLocalDb || currentB2bDateRef.current !== selectedDate) return;
     localStorage.setItem(`camp_bedToBook_${selectedDate}`, bedToBook);
-    if (db && targetUid && appId) {
-      clearTimeout(bedToBookDebounceRef.current);
-      bedToBookDebounceRef.current = setTimeout(() => {
-        const docRef = doc(db, 'artifacts', appId, 'users', targetUid, 'camp_daily_logs', selectedDate);
-        setDoc(docRef, { bedToBook }, { merge: true }).catch(console.error);
-      }, 2000);
-    }
+    clearTimeout(bedToBookDebounceRef.current);
+    bedToBookDebounceRef.current = setTimeout(() => {
+      saveLocalCampDailyLogs(selectedDate, { bedToBook });
+    }, 500);
     return () => clearTimeout(bedToBookDebounceRef.current);
-  }, [bedToBook, selectedDate, db, targetUid, appId, hasLoadedFirestore]);
+  }, [bedToBook, selectedDate, hasLoadedLocalDb]);
 
   useEffect(() => {
-    if (!hasLoadedFirestore || currentSessionsDateRef.current !== selectedDate) return;
+    if (!hasLoadedLocalDb || currentSessionsDateRef.current !== selectedDate) return;
     localStorage.setItem(`camp_sessions_${selectedDate}`, JSON.stringify(sessions));
-    if (db && targetUid && appId) {
-      clearTimeout(sessionsDebounceRef.current);
-      sessionsDebounceRef.current = setTimeout(() => {
-        const docRef = doc(db, 'artifacts', appId, 'users', targetUid, 'camp_daily_logs', selectedDate);
-        setDoc(docRef, { sessions }, { merge: true }).catch(console.error);
-      }, 2000);
-    }
+    clearTimeout(sessionsDebounceRef.current);
+    sessionsDebounceRef.current = setTimeout(() => {
+      saveLocalCampDailyLogs(selectedDate, { sessions });
+    }, 500);
     return () => clearTimeout(sessionsDebounceRef.current);
-  }, [sessions, selectedDate, db, targetUid, appId, hasLoadedFirestore]);
+  }, [sessions, selectedDate, hasLoadedLocalDb]);
 
-  // 3a. Persist History & Timer History based on state changes to Firestore
+  // 3a. Persist History & Timer History based on state changes
   useEffect(() => {
-    if (!hasLoadedFirestore) return;
+    if (!hasLoadedLocalDb) return;
     localStorage.setItem('camp_history', JSON.stringify(history));
-    if (db && targetUid && appId) {
-      clearTimeout(historyDebounceRef.current);
-      historyDebounceRef.current = setTimeout(() => {
-        const docRef = doc(db, 'artifacts', appId, 'users', targetUid, 'camp_data', 'history');
-        setDoc(docRef, { data: history }).catch(console.error);
-      }, 2000);
-    }
+    clearTimeout(historyDebounceRef.current);
+    historyDebounceRef.current = setTimeout(() => {
+      saveLocalCampData('history', history);
+    }, 500);
     return () => clearTimeout(historyDebounceRef.current);
-  }, [history, db, targetUid, appId, hasLoadedFirestore]);
+  }, [history, hasLoadedLocalDb]);
 
   useEffect(() => {
-    if (!hasLoadedFirestore) return;
+    if (!hasLoadedLocalDb) return;
     localStorage.setItem('camp_timer_history', JSON.stringify(timerHistory));
-    if (db && targetUid && appId) {
-      clearTimeout(timerHistoryDebounceRef.current);
-      timerHistoryDebounceRef.current = setTimeout(() => {
-        const docRef = doc(db, 'artifacts', appId, 'users', targetUid, 'camp_data', 'timer_history');
-        setDoc(docRef, { data: timerHistory }).catch(console.error);
-      }, 2000);
-    }
+    clearTimeout(timerHistoryDebounceRef.current);
+    timerHistoryDebounceRef.current = setTimeout(() => {
+      saveLocalCampData('timer_history', timerHistory);
+    }, 500);
     return () => clearTimeout(timerHistoryDebounceRef.current);
-  }, [timerHistory, db, targetUid, appId, hasLoadedFirestore]);
+  }, [timerHistory, hasLoadedLocalDb]);
 
   // 3b. Real-time BroadcastChannel sync for CAMP overlay widgets
   useEffect(() => {
@@ -607,10 +582,7 @@ export default function CampDashboard({
       });
     });
     localStorage.setItem(`camp_sessions_${dateStr}`, JSON.stringify(rebuilt));
-    if (db && targetUid && appId) {
-      const docRef = doc(db, 'artifacts', appId, 'users', targetUid, 'camp_daily_logs', dateStr);
-      setDoc(docRef, { sessions: rebuilt }, { merge: true }).catch(console.error);
-    }
+    saveLocalCampDailyLogs(dateStr, { sessions: rebuilt });
     // If this is the currently selected date, update UI state too
     if (dateStr === selectedDate) {
       setSessions(rebuilt);

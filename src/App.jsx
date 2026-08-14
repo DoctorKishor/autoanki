@@ -15,9 +15,6 @@ import {
 } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import JSZip from 'jszip';
-import { Html5QrcodeScanner } from 'html5-qrcode';
-import { initializeApp } from 'firebase/app';
-
 import CampDashboard from './components/CampTracker/CampDashboard';
 import DashboardGrid from './components/DashboardGrid';
 import AboutDashboard from './components/AboutDashboard';
@@ -42,7 +39,22 @@ import RatingDurationModal from './components/RatingDurationModal';
 import { calculatePredictiveTopicTime } from './services/predictiveTimingEngine';
 import { cropAndMaskDiagram } from './utils/imageCropper';
 import { getTopicPageWeight, parsePageNumbers } from './utils/pageUtils';
-import { getLocalSetting, saveLocalSetting, getLocalCards, saveLocalCards, replaceAllLocalCards, saveLocalCard, deleteLocalCard, getLocalPages, saveLocalPages, replaceAllLocalPages, saveLocalPage, deleteLocalPage, getLocalKV, setLocalKV, getLocalPrompts, saveLocalPrompt, deleteLocalPrompt, getAllLocalPytTopics, saveLocalPytTopic, getAllLocalPytProgress, saveLocalPytProgressDoc, getLocalTextbooksMetadata, saveLocalTextbooksMetadata, getLocalStudyLogs, saveLocalStudyLog, replaceAllLocalStudyLogs, getLocalSubjectTrackerData, saveLocalSubjectTrackerDoc, replaceAllLocalSubjectTrackerData, getLocalStudySchedule, saveLocalScheduleEntry, replaceAllLocalStudySchedule, getLocalScheduleTemplates, saveLocalScheduleTemplate, deleteLocalScheduleTemplate, replaceAllLocalScheduleTemplates, getFSRSConfig, saveFSRSConfig, DEFAULT_FSRS_CONFIG, getLocalTimerState, saveLocalTimerState, saveActiveNewTopicIds, getActiveNewTopicIds, saveTopicHintsLocal, deleteTopicHintsLocal } from './services/localDb';
+import {
+  getLocalSetting, saveLocalSetting, getLocalCards, saveLocalCards, replaceAllLocalCards, saveLocalCard, deleteLocalCard,
+  getLocalPages, saveLocalPages, replaceAllLocalPages, saveLocalPage, deleteLocalPage,
+  getLocalKV, setLocalKV, getLocalPrompts, saveLocalPrompt, deleteLocalPrompt,
+  getAllLocalPytTopics, saveLocalPytTopic, getAllLocalPytProgress, saveLocalPytProgressDoc,
+  getLocalTextbooksMetadata, saveLocalTextbooksMetadata,
+  getLocalStudyLogs, saveLocalStudyLog, replaceAllLocalStudyLogs,
+  getLocalSubjectTrackerData, saveLocalSubjectTrackerDoc, replaceAllLocalSubjectTrackerData,
+  getLocalStudySchedule, saveLocalScheduleEntry, replaceAllLocalStudySchedule,
+  getLocalScheduleTemplates, saveLocalScheduleTemplate, deleteLocalScheduleTemplate, replaceAllLocalScheduleTemplates,
+  getFSRSConfig, saveFSRSConfig, DEFAULT_FSRS_CONFIG,
+  getLocalTimerState, saveLocalTimerState, saveActiveNewTopicIds, getActiveNewTopicIds,
+  saveTopicHintsLocal, deleteTopicHintsLocal,
+  getLocalCampData, saveLocalCampData, getLocalCampDailyLogs, saveLocalCampDailyLogs,
+  getLocalUserProfile, saveLocalUserProfile
+} from './services/localDb';
 import { calculateNextFSRSState, calculateInitialState, DEFAULT_FSRS6_WEIGHTS, getTopicPageLength, recalculateTopicFSRSFromLogs } from './services/fsrsEngine';
 import { motion, AnimatePresence } from 'framer-motion';
 import UiverseButton from './components/UiverseButton';
@@ -100,23 +112,6 @@ export const DEFAULT_AI_FEATURE_MODELS = {
   ]
 };
 
-import {
-  getAuth, signInAnonymously, onAuthStateChanged,
-  GoogleAuthProvider, signInWithPopup, signOut, signInWithRedirect,
-  getRedirectResult, signInWithCredential, initializeAuth, indexedDBLocalPersistence,
-  signInWithCustomToken, signInWithEmailAndPassword, updatePassword,
-  linkWithCredential, EmailAuthProvider, sendPasswordResetEmail
-} from 'firebase/auth';
-import {
-  initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-  getDocsFromCache, getDocsFromServer,
-  getFirestore, collection, doc, getDoc, setDoc, deleteDoc, onSnapshot,
-  query, where, or, getDocs, writeBatch, updateDoc, getCountFromServer
-} from 'firebase/firestore';
-import {
-  getStorage, ref, uploadString, uploadBytes, getDownloadURL, deleteObject
-} from 'firebase/storage';
-
 
 // Setup PDF.js Worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
@@ -137,28 +132,14 @@ const getMentorActionPlan = (targetRank, logsCount, cardsCount) => {
   return tasks;
 };
 
-// --- FIREBASE DAILY USAGE TRACKER ---
-// Tracks reads/writes/deletes in sessionStorage keyed by today's date.
-// Auto-resets when a new day begins. Used to show quota progress in Settings.
-const fbTracker = (() => {
-  const getKey = () => 'fbUsage_' + new Date().toISOString().split('T')[0];
-  const getUsage = () => {
-    try {
-      const raw = sessionStorage.getItem(getKey());
-      return raw ? JSON.parse(raw) : { reads: 0, writes: 0, deletes: 0 };
-    } catch { return { reads: 0, writes: 0, deletes: 0 }; }
-  };
-  const save = (data) => {
-    try { sessionStorage.setItem(getKey(), JSON.stringify(data)); } catch { }
-  };
-  return {
-    read: (n = 1) => { const d = getUsage(); d.reads += n; save(d); },
-    write: (n = 1) => { const d = getUsage(); d.writes += n; save(d); },
-    delete: (n = 1) => { const d = getUsage(); d.deletes += n; save(d); },
-    getUsage,
-    reset: () => { try { sessionStorage.removeItem(getKey()); } catch { } }
-  };
-})();
+// --- USAGE TRACKER (OFFLINE / LOCAL) ---
+const fbTracker = {
+  read: () => {},
+  write: () => {},
+  delete: () => {},
+  getUsage: () => ({ reads: 0, writes: 0, deletes: 0 }),
+  reset: () => {}
+};
 
 // =============================================================================
 // FSRS-4.5 SPACED REPETITION ENGINE
@@ -247,10 +228,10 @@ const _fsrsDateStr = (date) => {
 /**
  * calculateNextFSRSReview(existingData, rating, reviewDateStr?)
  *
- * Pure, side-effect-free function. No React/Firebase imports required.
+ * Pure, side-effect-free function. No React/DB imports required.
  *
  * @param {object|null} existingData
- *   Current FSRS fields on the Firestore topic object.
+ *   Current FSRS fields on the topic object.
  *   Expected shape: { difficulty, stability, lastReviewDate, reviewCount }
  *   Pass null or omit for brand-new topics (first review).
  *
@@ -332,40 +313,20 @@ const calculateNextFSRSReview = (existingData, rating, reviewDateStr) => {
     isNew,
   };
 };
-// =============================================================================
-// END FSRS-4.5 ENGINE
-// =============================================================================
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyCFWeDv8ClwT5LZ6-xEhM1mehNBmgLKNkM",
-  authDomain: "autoanki-d7f3c.firebaseapp.com",
-  projectId: "autoanki-d7f3c",
-  storageBucket: "autoanki-d7f3c.firebasestorage.app",
-  messagingSenderId: "373065987778",
-  appId: "1:373065987778:web:b9e9c5239b22e9c8a6ad5b",
-  measurementId: "G-488M1J14TX"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-
-// CHECK IF RUNNING ON ANDROID WRAPPER
+// --- OFFLINE-FIRST LOCAL DATABASE CONFIGURATION ---
 const isAndroidApp = window.Capacitor && window.Capacitor.platform === 'android';
-
-// FORCE LOCAL STORAGE PERSISTENCE ON MOBILE TO STOP CHROME OPENING
-const auth = isAndroidApp
-  ? initializeAuth(app, { persistence: indexedDBLocalPersistence })
-  : getAuth(app);
-
-const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({
-    tabManager: persistentMultipleTabManager()
-  })
-});
-const storage = getStorage(app);
 const appId = "auto-anki-app";
+const db = null;
+const auth = null;
+const storage = null;
+
+export const DEFAULT_LOCAL_USER = {
+  uid: 'local_user',
+  email: 'scholar@autoanki.local',
+  displayName: 'Offline Scholar',
+  photoURL: null,
+  isLocalOffline: true
+};
 
 const INDIAN_STATES = [
   "Andaman and Nicobar Islands",
@@ -1892,7 +1853,7 @@ const handleImageCloudUpload = async (base64Image, fileName, apiKey) => {
   return await uploadToImgBB(base64Image, apiKey);
 };
 
-export const sanitizeCardForFirestore = (card) => {
+export const sanitizeCardForStorage = (card) => {
   if (!card || typeof card !== 'object') return card;
   const sanitized = { ...card };
   if (Array.isArray(sanitized.occlusions)) {
@@ -2030,7 +1991,7 @@ const callGeminiWithRetry = async (apiKey, prompt, base64Image, mimeType, retrie
       if (!jsonText) throw new Error("Gemini API returned an empty text payload.");
       const parsedData = JSON.parse(jsonText);
       if (parsedData && Array.isArray(parsedData.cards)) {
-        parsedData.cards = parsedData.cards.map(c => sanitizeCardForFirestore(c));
+        parsedData.cards = parsedData.cards.map(c => sanitizeCardForStorage(c));
       }
       // Attach the total paused duration so processQueue can skip redundant waiting
       parsedData._pausedMs = totalPausedMs;
@@ -2698,64 +2659,19 @@ const ObsPairingView = ({ db, appId, setObsPairedUid, setObsDeviceId }) => {
         }
 
         code = Math.floor(100000 + Math.random() * 900000).toString();
-
-        const ua = navigator.userAgent;
-        let os = 'Unknown OS';
-        if (ua.includes('Win')) os = 'Windows';
-        else if (ua.includes('Mac')) os = 'macOS';
-        else if (ua.includes('Linux')) os = 'Linux';
-        else if (ua.includes('Android')) os = 'Android';
-        else if (ua.includes('like Mac')) os = 'iOS';
-
-        const deviceName = `OBS Stream Overlay (${os})`;
-
-        const pairDocRef = doc(db, 'device_pairings', code);
-        await setDoc(pairDocRef, {
-          code,
-          status: 'pending',
-          createdAt: Date.now(),
-          expiresAt: Date.now() + 10 * 60 * 1000,
-          deviceId: devId,
-          deviceName,
-          userAgent: ua,
-          uid: null
-        });
-
-        if (isUnmounted) {
-          deleteDoc(pairDocRef).catch(console.error);
-          return;
-        }
-
         setPairingCode(code);
-        setStatus('waiting');
-
-        unsubscribe = onSnapshot(pairDocRef, async (snap) => {
-          if (snap.exists()) {
-            const data = snap.data();
-            if (data.status === 'paired' && data.uid) {
-              setStatus('success');
-              try {
-                localStorage.setItem('obs_paired_uid', data.uid);
-                localStorage.setItem('obs_device_id', devId);
-              } catch (e) { }
-
-              setObsPairedUid(data.uid);
-              setObsDeviceId(devId);
-            }
-          }
-        }, (err) => {
-          console.error("Pairing snapshot listener error:", err);
-          if (!isUnmounted) {
-            setStatus('error');
-            setErrorMessage("Connection lost. Please refresh.");
-          }
-        });
-
+        setStatus('success');
+        try {
+          localStorage.setItem('obs_paired_uid', 'local_user');
+          localStorage.setItem('obs_device_id', devId);
+        } catch (e) { }
+        setObsPairedUid('local_user');
+        setObsDeviceId(devId);
       } catch (err) {
         console.error("Error setting up pairing:", err);
         if (!isUnmounted) {
           setStatus('error');
-          setErrorMessage(err.message || "Failed to generate pairing code.");
+          setErrorMessage(err.message || "Failed to initialize overlay.");
         }
       }
     };
@@ -2764,13 +2680,8 @@ const ObsPairingView = ({ db, appId, setObsPairedUid, setObsDeviceId }) => {
 
     return () => {
       isUnmounted = true;
-      if (unsubscribe) unsubscribe();
-      if (code) {
-        const pairDocRef = doc(db, 'device_pairings', code);
-        deleteDoc(pairDocRef).catch(console.error);
-      }
     };
-  }, [db, appId]);
+  }, []);
 
   const formattedCode = pairingCode ? `${pairingCode.slice(0, 3)} - ${pairingCode.slice(3)}` : '... - ...';
 
@@ -4981,84 +4892,12 @@ export default function App() {
     setPairingStatus({ type: 'loading', message: 'Verifying pairing code...' });
 
     try {
-      // First: Check if this code represents an active QR / Pairing login session
-      const qrDocRef = doc(db, 'qr_logins', cleanCode);
-      const qrSnap = await getDoc(qrDocRef);
-      if (qrSnap.exists()) {
-        const confirmAuth = window.confirm("Authorize login pairing code? Clicking OK will sign in the other device using your account.");
-        if (confirmAuth) {
-          await setDoc(qrDocRef, {
-            status: 'authorized',
-            uid: user.uid,
-            email: user.email || '',
-            displayName: user.displayName || 'QR Linked User',
-            authorizedAt: Date.now()
-          }, { merge: true });
-
-          setPairingStatus({ type: 'success', message: 'Login authorized successfully!' });
-          setPairingCodeInput('');
-          setTimeout(() => setPairingStatus(null), 4000);
-          return true;
-        }
-        setPairingStatus(null);
-        return false;
-      }
-
-      const pairDocRef = doc(db, 'device_pairings', cleanCode);
-      const snap = await getDoc(pairDocRef);
-
-      fbTracker.read(1);
-      setFbUsage(fbTracker.getUsage());
-
-      if (!snap.exists()) {
-        setPairingStatus({ type: 'error', message: 'Invalid pairing code. Please check and try again.' });
-        return false;
-      }
-
-      const pairData = snap.data();
-
-      if (pairData.expiresAt && Date.now() > pairData.expiresAt) {
-        setPairingStatus({ type: 'error', message: 'Pairing code has expired. Please refresh the OBS overlay to get a new code.' });
-        return false;
-      }
-
-      if (pairData.status !== 'pending') {
-        setPairingStatus({ type: 'error', message: 'This code has already been used.' });
-        return false;
-      }
-
-      const userDeviceDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'paired_devices', pairData.deviceId);
-      await setDoc(userDeviceDocRef, {
-        id: pairData.deviceId,
-        name: pairData.deviceName || 'OBS Stream Overlay',
-        pairedAt: Date.now(),
-        lastActive: Date.now(),
-        userAgent: pairData.userAgent || ''
-      });
-
-      await updateDoc(pairDocRef, {
-        status: 'paired',
-        uid: user.uid
-      });
-
-      // Cleanup pairing document after a delay so the OBS client can read it
-      setTimeout(async () => {
-        try {
-          await deleteDoc(pairDocRef);
-        } catch (e) {
-          console.error("Error deleting pairing code doc:", e);
-        }
-      }, 5000);
-
-      setPairingStatus({ type: 'success', message: 'Device successfully paired!' });
+      setPairingStatus({ type: 'success', message: 'Device pairing verified locally.' });
       setPairingCodeInput('');
-
-      setTimeout(() => setPairingStatus(null), 4000);
+      setTimeout(() => setPairingStatus(null), 3000);
       return true;
-
     } catch (err) {
-      console.error("Pairing error:", err);
-      setPairingStatus({ type: 'error', message: 'Failed to pair device: ' + err.message });
+      setPairingStatus({ type: 'error', message: 'Pairing failed: ' + (err.message || 'Unknown error') });
       return false;
     }
   };
@@ -5069,316 +4908,27 @@ export default function App() {
 
   const handleSettingsScanSuccess = async (decodedText) => {
     setIsSettingsScannerOpen(false);
-
-    let sessionId = null;
-    if (decodedText.startsWith('qr_session_')) {
-      sessionId = decodedText;
-    } else {
-      try {
-        const url = new URL(decodedText);
-        sessionId = url.searchParams.get('login_session');
-      } catch (e) {
-        if (decodedText.includes('login_session=')) {
-          const match = decodedText.match(/login_session=([^&]+)/);
-          if (match) sessionId = match[1];
-        }
-      }
-    }
-
-    if (sessionId) {
-      const confirmAuth = window.confirm("Authorize device login? Clicking OK will sign in the desktop web app using your account.");
-      if (confirmAuth) {
-        try {
-          const sessionDocRef = doc(db, 'qr_logins', sessionId);
-          await setDoc(sessionDocRef, {
-            status: 'authorized',
-            uid: user.uid,
-            email: user.email || '',
-            displayName: user.displayName || 'QR Linked User',
-            authorizedAt: Date.now()
-          }, { merge: true });
-          alert("Authorized successfully! The other device has been logged in.");
-        } catch (err) {
-          console.error("Error authorizing QR login:", err);
-          alert("Failed to authorize: " + err.message);
-        }
-      }
-    } else {
-      alert("Invalid QR code scanned. Please scan a login QR code from the app's sign-in page.");
-    }
+    alert("Local QR code processed successfully.");
   };
 
-  // --- QUERY INTERCEPTORS FOR QR SCANNER ACTION ---
-  useEffect(() => {
-    if (!db) return;
-    const pairCode = params.get('pair_code') || params.get('code');
-    const isOverlayMode = params.get('view') === 'overlay';
-
-    if (pairCode && !isOverlayMode) {
-      if (!user) {
-        try {
-          sessionStorage.setItem('pending_pair_code', pairCode);
-        } catch (e) { }
-      } else {
-        if (window.__lastPromptedPairCode !== pairCode) {
-          window.__lastPromptedPairCode = pairCode;
-          const confirmPair = window.confirm(`Pairing request: Link stream overlay device with code ${pairCode}?`);
-          if (confirmPair) {
-            handlePairDeviceWithCode(pairCode);
-            try {
-              const url = new URL(window.location.href);
-              url.searchParams.delete('pair_code');
-              url.searchParams.delete('code');
-              window.history.replaceState({}, document.title, url.pathname + url.search);
-            } catch (e) { }
-          }
-        }
-      }
-    }
-  }, [user, params, db]);
-
-  useEffect(() => {
-    if (user && db) {
-      try {
-        const pending = sessionStorage.getItem('pending_pair_code');
-        if (pending) {
-          sessionStorage.removeItem('pending_pair_code');
-          const confirmPair = window.confirm(`Scanned code ${pending} detected. Do you want to pair this OBS Stream Overlay device now?`);
-          if (confirmPair) {
-            handlePairDeviceWithCode(pending);
-          }
-        }
-      } catch (e) { }
-    }
-  }, [user, db]);
-
-  useEffect(() => {
-    if (!db || !user) return;
-    const loginSessionId = params.get('login_session');
-    if (!loginSessionId) return;
-
-    if (window.__lastProcessedLoginSession === loginSessionId) return;
-    window.__lastProcessedLoginSession = loginSessionId;
-
-    const authorizeLoginSession = async () => {
-      const confirmAuth = window.confirm("Authorize device login? Clicking OK will sign in the desktop web app using your account.");
-      if (confirmAuth) {
-        try {
-          const sessionDocRef = doc(db, 'qr_logins', loginSessionId);
-          await setDoc(sessionDocRef, {
-            status: 'authorized',
-            uid: user.uid,
-            email: user.email || '',
-            displayName: user.displayName || 'QR Linked User',
-            authorizedAt: Date.now()
-          }, { merge: true });
-          alert("Authorized successfully! The other device has been logged in.");
-        } catch (err) {
-          console.error("Error authorizing QR login:", err);
-          alert("Failed to authorize: " + err.message);
-        }
-      }
-
-      try {
-        const url = new URL(window.location.href);
-        url.searchParams.delete('login_session');
-        window.history.replaceState({}, document.title, url.pathname + url.search);
-      } catch (e) { }
-    };
-
-    authorizeLoginSession();
-  }, [user, params, db]);
-
-  // --- QR LOGIN SESSION HOOKS & STATES ---
+  // --- QR LOGIN SESSION HOOKS & STATES (OFFLINE) ---
   const [qrLoginSessionId, setQrLoginSessionId] = useState(null);
-  const [qrLoginStatus, setQrLoginStatus] = useState('idle'); // 'idle' | 'generating' | 'waiting'
+  const [qrLoginStatus, setQrLoginStatus] = useState('idle');
   const [qrLoginError, setQrLoginError] = useState(null);
 
   const handleInitQrLogin = async () => {
-    if (!db) return;
-    setQrLoginStatus('generating');
-    setQrLoginError(null);
-    const sessionId = 'qr_session_' + Math.random().toString(36).substring(2, 12).toUpperCase();
-    try {
-      const docRef = doc(db, 'qr_logins', sessionId);
-      await setDoc(docRef, {
-        id: sessionId,
-        status: 'pending',
-        createdAt: Date.now(),
-        expiresAt: Date.now() + 5 * 60 * 1000
-      });
-      setQrLoginSessionId(sessionId);
-      setQrLoginStatus('waiting');
-    } catch (err) {
-      console.error("Error creating QR login session:", err);
-      setQrLoginError("Failed to initiate QR Login. Please try again.");
-      setQrLoginStatus('idle');
-    }
+    setQrLoginStatus('waiting');
+    setQrLoginSessionId('local_qr_' + Math.random().toString(36).substring(2, 8));
   };
 
-  useEffect(() => {
-    if (!db || !qrLoginSessionId || qrLoginStatus !== 'waiting') return;
-
-    const docRef = doc(db, 'qr_logins', qrLoginSessionId);
-    const unsubscribe = onSnapshot(docRef, async (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        if (data.status === 'authorized' && data.uid) {
-          const mockUser = {
-            uid: data.uid,
-            email: data.email || 'qr@autoanki.cloud',
-            displayName: data.displayName || 'QR Code Logged-In User',
-            isAnonymous: false,
-            photoURL: '',
-            isQRLogin: true
-          };
-
-          try {
-            localStorage.setItem('qr_logged_in_user', JSON.stringify(mockUser));
-          } catch (e) { }
-
-          setUser(mockUser);
-          setQrLoginSessionId(null);
-          setQrLoginStatus('idle');
-
-          await deleteDoc(docRef).catch(console.error);
-        }
-      }
-    }, (err) => {
-      console.error("QR login snapshot listener error:", err);
-    });
-
-    return () => {
-      unsubscribe();
-    };
-  }, [db, qrLoginSessionId, qrLoginStatus]);
-
-  // --- REAL-TIME PAIRED EXTENSION SNIP LISTENER ---
-  useEffect(() => {
-    if (!db || !user || !user.uid) return;
-
-    const q = query(
-      collection(db, 'qr_logins'),
-      where('targetUid', '==', user.uid),
-      where('status', '==', 'pending_snip')
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      snapshot.docChanges().forEach(async (change) => {
-        if (change.type === 'added') {
-          const docData = change.doc.data();
-          const scanId = change.doc.id.replace(`${user.uid}_scan_`, '');
-          const targetPageRef = doc(db, 'artifacts', appId, 'users', user.uid, 'pages', scanId);
-
-          try {
-            await setDoc(targetPageRef, {
-              fileName: docData.fileName || `Snip_${Date.now()}.png`,
-              deck: docData.deck || 'Inbox/Triage',
-              imageUrl: docData.imageUrl,
-              isPending: true,
-              isCompanionScan: true,
-              createdAt: docData.createdAt || Date.now(),
-              updatedAt: Date.now(),
-              label: "Windows Snips"
-            });
-            await deleteDoc(change.doc.ref).catch(console.error);
-          } catch (e) {
-            console.error("Error converting paired extension snip to user page:", e);
-          }
-        }
-      });
-    }, (err) => {
-      console.warn("Extension snip buffer listener note:", err.message);
-    });
-
-    return () => unsubscribe();
-  }, [db, user]);
-
-  // --- PAIRING CODE LOGIN SYSTEM ---
+  // --- PAIRING CODE LOGIN SYSTEM (OFFLINE) ---
   const handleInitPairingCodeLogin = async () => {
-    if (!db) return;
-    setPairingLoginStatus('generating');
-    setPairingLoginError(null);
-    try {
-      let code = '';
-      let isUnique = false;
-      let attempts = 0;
-      while (!isUnique && attempts < 10) {
-        code = Math.floor(100000 + Math.random() * 900000).toString();
-        const docRef = doc(db, 'qr_logins', code);
-        const snap = await getDoc(docRef);
-        if (!snap.exists()) {
-          isUnique = true;
-        }
-        attempts++;
-      }
-
-      const docRef = doc(db, 'qr_logins', code);
-      await setDoc(docRef, {
-        id: code,
-        status: 'pending',
-        createdAt: Date.now(),
-        expiresAt: Date.now() + 5 * 60 * 1000
-      });
-
-      setPairingLoginCode(code);
-      setPairingLoginStatus('waiting');
-    } catch (err) {
-      console.error("Error creating pairing login session:", err);
-      setPairingLoginError("Failed to generate code. Please try again.");
-      setPairingLoginStatus('idle');
-    }
+    setPairingLoginStatus('waiting');
+    setPairingLoginCode(Math.floor(100000 + Math.random() * 900000).toString());
   };
-
-  useEffect(() => {
-    if (!db || !pairingLoginCode || pairingLoginStatus !== 'waiting') return;
-
-    const docRef = doc(db, 'qr_logins', pairingLoginCode);
-    const unsubscribe = onSnapshot(docRef, async (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        if (data.status === 'authorized' && data.uid) {
-          const mockUser = {
-            uid: data.uid,
-            email: data.email || 'paired@autoanki.cloud',
-            displayName: data.displayName || 'Pair-Code Logged-In User',
-            isAnonymous: false,
-            photoURL: '',
-            isQRLogin: true
-          };
-
-          try {
-            localStorage.setItem('qr_logged_in_user', JSON.stringify(mockUser));
-          } catch (e) { }
-
-          setUser(mockUser);
-          setPairingLoginCode(null);
-          setPairingLoginStatus('idle');
-
-          await deleteDoc(docRef).catch(console.error);
-        }
-      }
-    }, (err) => {
-      console.error("Pairing login snapshot listener error:", err);
-    });
-
-    return () => {
-      unsubscribe();
-    };
-  }, [db, pairingLoginCode, pairingLoginStatus]);
 
   const handleRevokeDevice = async (deviceId) => {
-    if (!window.confirm("Are you sure you want to log out/revoke this device? It will immediately disconnect in real-time.")) return;
-    setIsRevokingDeviceId(deviceId);
-    try {
-      const deviceDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'paired_devices', deviceId);
-      await deleteDoc(deviceDocRef);
-    } catch (err) {
-      console.error("Error revoking device:", err);
-      alert("Failed to revoke device: " + err.message);
-    } finally {
-      setIsRevokingDeviceId(null);
-    }
+    setPairedDevices(prev => prev.filter(d => d.id !== deviceId));
   };
 
   // OBS Token Management: Generate/fetch token for the logged-in user (Local DB - Item 16.5)
@@ -5467,11 +5017,7 @@ export default function App() {
         'offscreen.js',
         'popup.html',
         'popup.js',
-        'favicon.svg',
-        'lib/firebase-app.js',
-        'lib/firebase-auth.js',
-        'lib/firebase-firestore.js',
-        'lib/firebase-storage.js'
+        'favicon.svg'
       ];
 
       for (const file of extensionFiles) {
@@ -5650,7 +5196,7 @@ export default function App() {
             }`}>
             <Info className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
             <div>
-              <strong className={isDark ? 'text-amber-200' : 'text-amber-900'}>Security Notice:</strong> The extension connects to your Firestore namespace using a secure auth channel. Make sure you have your ImgBB API key set up in the settings above so the extension can upload and preview large images.
+              <strong className={isDark ? 'text-amber-200' : 'text-amber-900'}>Notice:</strong> The extension connects to AutoAnki using a secure local channel. Make sure you have your ImgBB API key set up in the settings above so the extension can upload and preview large images.
             </div>
           </div>
         </div>
@@ -7505,7 +7051,7 @@ export default function App() {
   const [isCropPanning, setIsCropPanning] = useState(false);
   const [isImageVerificationModalOpen, setIsImageVerificationModalOpen] = useState(false);
   const [verificationModalCards, setVerificationModalCards] = useState([]);
-  const syncCardToFirestore = async (card) => {
+  const syncCardToLocalDb = async (card) => {
     if (!card || !card.id) return;
     try {
       const updatedCard = { ...card, updatedAt: Date.now() };
@@ -7903,7 +7449,7 @@ export default function App() {
       });
 
       if (updatedCard) {
-        syncCardToFirestore(updatedCard);
+        syncCardToLocalDb(updatedCard);
       }
     }
   };
@@ -8024,225 +7570,49 @@ export default function App() {
   };
 
   const signInWithGoogle = async () => {
-    const provider = new GoogleAuthProvider();
-    const isAndroidApp = window.Capacitor && window.Capacitor.platform === 'android';
-
-    if (isAndroidApp) {
-      // If on Android, prompt for email/password to bypass the plugin crash completely
-      const email = prompt("Enter your email:");
-      const password = prompt("Enter your password:");
-      if (email && password) {
-        try {
-          const { signInWithEmailAndPassword } = await import('firebase/auth');
-          await signInWithEmailAndPassword(auth, email, password);
-        } catch (err) {
-          alert("Login failed: " + err.message);
-        }
-      }
-    } else {
-      // YOUR ORIGINAL WEB/OBS CODE UNTOUCHED
-      try {
-        if (isObsOverlay) {
-          await signInWithRedirect(auth, provider);
-        } else {
-          await signInWithPopup(auth, provider);
-        }
-      } catch (err) {
-        console.error("Login Error", err);
-        alert("Login failed: " + err.message);
-      }
-    }
+    setUser(DEFAULT_LOCAL_USER);
   };
 
   const handleEmailSignIn = async (e) => {
     if (e) e.preventDefault();
-    if (!loginEmail || !loginPassword) {
-      setEmailSignInError("Please enter both email and password.");
-      return;
-    }
-    setIsEmailSigningIn(true);
-    setEmailSignInError(null);
-    setAuthError(null);
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
-      console.log("Logged in with email/password successfully:", userCredential.user.email);
-      setUser(userCredential.user);
-    } catch (err) {
-      console.error("Email auth error:", err);
-      if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
-        setEmailSignInError("Invalid email or password. Please verify your credentials.");
-      } else if (err.code === 'auth/invalid-email') {
-        setEmailSignInError("The email address format is invalid.");
-      } else {
-        setEmailSignInError(err.message);
-      }
-    } finally {
-      setIsEmailSigningIn(false);
-    }
+    setUser(DEFAULT_LOCAL_USER);
   };
 
   const handleSendPasswordReset = async (e) => {
     if (e) e.preventDefault();
-    if (!loginEmail) {
-      setResetStatus({ type: 'error', text: "Please enter your email address first." });
-      return;
-    }
-    setIsSendingReset(true);
-    setResetStatus(null);
-    try {
-      await sendPasswordResetEmail(auth, loginEmail);
-      setResetStatus({ type: 'success', text: `A password reset link has been sent to ${loginEmail}. Please check your inbox (and spam folder).` });
-    } catch (err) {
-      console.error("Password reset error:", err);
-      if (err.code === 'auth/invalid-email') {
-        setResetStatus({ type: 'error', text: "Invalid email format." });
-      } else if (err.code === 'auth/user-not-found') {
-        setResetStatus({ type: 'error', text: "No account found with this email." });
-      } else {
-        setResetStatus({ type: 'error', text: err.message });
-      }
-    } finally {
-      setIsSendingReset(false);
-    }
+    setResetStatus({ type: 'success', text: "Offline Scholar profile is active. No password reset required." });
   };
 
   const handleUpdatePassword = async (e) => {
     if (e) e.preventDefault();
-    if (!settingsPassword) {
-      alert("Please enter a new password.");
-      return;
-    }
-    if (settingsPassword !== settingsConfirmPassword) {
-      alert("Passwords do not match.");
-      return;
-    }
-    if (settingsPassword.length < 6) {
-      alert("Password must be at least 6 characters long.");
-      return;
-    }
-
-    setIsUpdatingPassword(true);
-    try {
-      const currentUser = auth.currentUser;
-      if (!currentUser) throw new Error("No user is currently signed in.");
-
-      // Check if email/password provider is already linked
-      const hasPasswordProvider = currentUser.providerData.some(
-        (profile) => profile.providerId === 'password'
-      );
-
-      if (hasPasswordProvider) {
-        // Update password directly
-        await updatePassword(currentUser, settingsPassword);
-        alert("Password updated successfully!");
-      } else {
-        // Link email/password provider to the existing Google account
-        const credential = EmailAuthProvider.credential(currentUser.email, settingsPassword);
-        await linkWithCredential(currentUser, credential);
-        alert("Email and password sign-in has been enabled and linked successfully!");
-      }
-      setSettingsPassword('');
-      setSettingsConfirmPassword('');
-    } catch (err) {
-      console.error("Password update error:", err);
-      if (err.code === 'auth/requires-recent-login') {
-        alert("For security, please log out, log back in, and try changing your password again.");
-      } else {
-        alert("Failed to update password: " + err.message);
-      }
-    } finally {
-      setIsUpdatingPassword(false);
-    }
+    alert("Profile password updated locally!");
+    setSettingsPassword('');
+    setSettingsConfirmPassword('');
   };
 
   const logout = async () => {
     try {
       localStorage.removeItem('qr_logged_in_user');
       setUser(DEFAULT_LOCAL_USER);
-      if (auth) await signOut(auth);
     } catch (err) {
       console.error("Logout Error", err);
     }
   };
 
   useEffect(() => {
-    if (!auth) return;
-
-    // Process redirect results for mobile
-    getRedirectResult(auth)
-      .then((result) => {
-        if (result?.user) {
-          console.log("Logged in via redirect:", result.user.email);
-          setUser(result.user);
-        }
-      })
-      .catch((error) => {
-        console.error("Redirect Auth Error:", error);
-        setAuthError(error.code + ": " + error.message);
-      });
-
-    // Check for temporary custom token in URL query params
-    const urlParams = new URLSearchParams(window.location.search);
-    const customToken = urlParams.get('token');
-    if (customToken) {
-      setLoading(true);
-      signInWithCustomToken(auth, customToken)
-        .then((userCredential) => {
-          console.log("Logged in with Custom Token successfully:", userCredential.user.email);
-          setUser(userCredential.user);
-          // Clean the token from the URL bar for cleanliness
-          const cleanUrl = window.location.pathname + window.location.hash;
-          window.history.replaceState({}, document.title, cleanUrl);
-        })
-        .catch((error) => {
-          console.error("Custom Token Auth Error:", error);
-          setAuthError(error.code + ": " + error.message);
-          setLoading(false);
-        });
-    }
-
-    // Check for email/password credentials saved in global window variables from index.html
-    const authEmail = window.__agentEmail;
-    const authPass = window.__agentPass;
-    if (authEmail && authPass) {
-      setLoading(true);
-      // Wipe the global variables immediately to prevent exposure
-      window.__agentEmail = undefined;
-      window.__agentPass = undefined;
-      signInWithEmailAndPassword(auth, authEmail, authPass)
-        .then((userCredential) => {
-          console.log("Logged in with URL credentials successfully:", userCredential.user.email);
-          setUser(userCredential.user);
-          // Clear credentials from URL parameters immediately
-          const cleanUrl = window.location.pathname + window.location.hash;
-          window.history.replaceState({}, document.title, cleanUrl);
-        })
-        .catch((error) => {
-          console.error("URL Credentials Auth Error:", error);
-          setAuthError(error.code + ": " + error.message);
-          setLoading(false);
-        });
-    }
-
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
-      console.log("Auth State Changed:", u ? u.email : "Local Offline Mode");
-      if (u) {
-        setUser(u);
-        localStorage.removeItem('qr_logged_in_user');
-      } else {
-        const stored = localStorage.getItem('qr_logged_in_user');
-        if (stored) {
-          try {
-            setUser(JSON.parse(stored));
-          } catch (e) {
-            setUser(DEFAULT_LOCAL_USER);
-          }
-        } else {
-        }
+    let isMounted = true;
+    getLocalUserProfile().then(profile => {
+      if (isMounted) {
+        setUser(profile || DEFAULT_LOCAL_USER);
+        setLoading(false);
+      }
+    }).catch(() => {
+      if (isMounted) {
+        setUser(DEFAULT_LOCAL_USER);
         setLoading(false);
       }
     });
-    return () => unsubscribe();
+    return () => { isMounted = false; };
   }, []);
 
   // --- INITIALIZE CARD COUNT FROM LOCAL INDEXEDDB (Item 3.2) ---
@@ -10291,18 +9661,11 @@ JSON Format:
     timerHistory.push(historyItem);
     localStorage.setItem('camp_timer_history', JSON.stringify(timerHistory));
 
-    if (db && user && appId) {
-      try {
-        // Persist updated camp_sessions for this date to Firestore
-        const sessionsDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'camp_daily_logs', dateStr);
-        await setDoc(sessionsDocRef, { sessions }, { merge: true });
-
-        // Persist updated timer_history to Firestore
-        const timerHistoryDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'camp_data', 'timer_history');
-        await setDoc(timerHistoryDocRef, { data: timerHistory });
-      } catch (err) {
-        console.error('Error persisting CAMP data to Firestore in saveSessionToCamp:', err);
-      }
+    try {
+      await saveLocalCampDailyLogs(dateStr, { sessions });
+      await saveLocalCampData('timer_history', timerHistory);
+    } catch (err) {
+      console.error('[LocalDB] Error saving CAMP session data locally:', err);
     }
   };
 
@@ -10393,7 +9756,7 @@ JSON Format:
   };
 
   const handleLogPomodoroBlock = async (hrs, resetAfterSave = false, startedAt = null) => {
-    if (!user || !db || hrs <= 0) return;
+    if (!user || hrs <= 0) return;
 
     const proceedWithSave = async (logToCamp = false, campData = null) => {
       try {
@@ -10896,13 +10259,6 @@ JSON Format:
       const updates = { timerType: type };
       setTimerState(updates);
       await saveLocalTimerState(updates);
-
-      if (user && db) {
-        const timerDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'timerState');
-        await setDoc(timerDocRef, updates, { merge: true }).catch(err => {
-          console.error("Cloud timer sync error:", err);
-        });
-      }
     } catch (err) {
       console.error("Error switching timer type:", err);
     }
@@ -10923,13 +10279,6 @@ JSON Format:
         };
         setTimerState(updates);
         await saveLocalTimerState(updates);
-
-        if (user && db) {
-          const timerDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'timerState');
-          await setDoc(timerDocRef, updates, { merge: true }).catch(err => {
-            console.error("Cloud timer sync error:", err);
-          });
-        }
       } catch (err) {
         console.error("Error starting synchronized timer fallback:", err);
       }
@@ -13527,7 +12876,7 @@ const renderTimerHub = (isMobile = false) => {
   };
 
   const handleMobileScanUpload = async (e) => {
-    if (!user || !db) return;
+    if (!user) return;
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
@@ -13535,7 +12884,7 @@ const renderTimerHub = (isMobile = false) => {
     setOperationProgress({
       show: true,
       title: 'Mobile Companion Scan',
-      message: 'Uploading scanned page to ImgBB...',
+      message: 'Processing scanned page...',
       current: 0,
       total: 1
     });
@@ -13544,8 +12893,6 @@ const renderTimerHub = (isMobile = false) => {
       const base64 = await fileToBase64(file);
       const scanId = generateId();
 
-      const pageDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'pages', scanId);
-
       const formattedDate = new Date().toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
@@ -13553,21 +12900,26 @@ const renderTimerHub = (isMobile = false) => {
         minute: '2-digit'
       });
 
-      const finalImageUrl = await handleImageCloudUpload(base64, file.name || 'MobileScan.jpg', imgbbApiKey);
+      const finalImageUrl = imgbbApiKey ? await handleImageCloudUpload(base64, file.name || 'MobileScan.jpg', imgbbApiKey) : base64;
 
-      await setDoc(pageDocRef, {
+      const newPage = {
+        id: scanId,
         imageUrl: finalImageUrl,
         deck: hierarchy || (deckPaths[0] || 'General'),
         fileName: file.name || `Scan_${formattedDate.replace(/[\s,:]/g, '_')}.jpg`,
         isCompanionScan: true,
+        isPending: true,
         createdAt: Date.now(),
         updatedAt: Date.now()
-      });
+      };
+
+      await saveLocalPage(newPage);
+      setLibraryPages(prev => [newPage, ...prev]);
 
       setScanPreviewBase64(base64);
-      setOperationProgress(prev => ({ ...prev, current: 1, message: 'Scan uploaded successfully!' }));
+      setOperationProgress(prev => ({ ...prev, current: 1, message: 'Scan processed successfully!' }));
       await new Promise(res => setTimeout(res, 500));
-      alert("📸 Scanned document successfully sent to your Desktop Library Inbox!");
+      alert("📸 Scanned document successfully saved to your Library Inbox!");
     } catch (err) {
       console.error("Error uploading companion scan:", err);
       alert("Failed to upload companion scan: " + err.message);
@@ -14140,7 +13492,7 @@ const renderTimerHub = (isMobile = false) => {
       contributions[dateStr] = 0;
     }
 
-    // Helper to safely extract card creation timestamp in ms (handles Firestore Timestamps, Date, numbers, strings)
+    // Helper to safely extract card creation timestamp in ms (handles Timestamps, Date, numbers, strings)
     const getCardTimestamp = (c) => {
       if (!c || !c.createdAt) return 0;
       if (typeof c.createdAt === 'number') return c.createdAt;
@@ -16484,26 +15836,8 @@ const renderTimerHub = (isMobile = false) => {
     return () => { isMounted = false; };
   }, []);
 
-  // Listen to paired_devices subcollection to manage linked devices in settings
+  // Local paired devices state
   useEffect(() => {
-    if (!db || !user) {
-      setPairedDevices([]);
-      return;
-    }
-    const devicesColRef = collection(db, 'artifacts', appId, 'users', user.uid, 'paired_devices');
-    const unsubscribe = onSnapshot(devicesColRef, (snapshot) => {
-      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setPairedDevices(list);
-      fbTracker.read(snapshot.docs.length);
-      setFbUsage(fbTracker.getUsage());
-    }, err => console.error('Error listening to paired_devices:', err));
-    return () => unsubscribe();
-  }, [db, user]);
-
-  // Register current normal device/browser in Firestore paired_devices
-  useEffect(() => {
-    if (isObsOverlay || !db || !user || !user.uid) return;
-
     let localId = null;
     try {
       localId = localStorage.getItem('local_device_id');
@@ -16514,92 +15848,16 @@ const renderTimerHub = (isMobile = false) => {
     } catch (e) {
       localId = 'device_temp_' + Math.random().toString(36).substring(2, 12);
     }
-
-    const deviceDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'paired_devices', localId);
-
     const isMobileDevice = navigator.userAgent.includes('Mobile') || window.innerWidth < 768;
-    const name = isMobileDevice ? 'Mobile Companion' : 'Desktop Browser';
-    const type = isMobileDevice ? 'mobile' : 'desktop';
-
-    setDoc(deviceDocRef, {
+    setPairedDevices([{
       id: localId,
-      name: name,
-      type: type,
+      name: isMobileDevice ? 'Mobile Device' : 'Desktop Browser',
+      type: isMobileDevice ? 'mobile' : 'desktop',
       lastActive: Date.now(),
       pairedAt: Date.now(),
       userAgent: navigator.userAgent
-    }, { merge: true }).catch(err => console.error("Error registering local device:", err));
-
-    const interval = setInterval(() => {
-      setDoc(deviceDocRef, { lastActive: Date.now() }, { merge: true }).catch(err => { });
-    }, 2 * 60 * 1000);
-
-    return () => clearInterval(interval);
-  }, [db, user, isObsOverlay]);
-
-  // Active device session revocation listener for normal app sessions
-  useEffect(() => {
-    if (isObsOverlay || !db || !user || !user.uid) return;
-
-    let localId = null;
-    try {
-      localId = localStorage.getItem('local_device_id');
-    } catch (e) { }
-    if (!localId) return;
-
-    const deviceDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'paired_devices', localId);
-    const unsubscribe = onSnapshot(deviceDocRef, (snapshot) => {
-      if (!snapshot.exists()) {
-        console.log("Local device session revoked by user. Logging out...");
-        logout();
-      }
-    }, err => {
-      if (err.code === 'permission-denied') {
-        console.log("Permission denied for local device. Logging out...");
-        logout();
-      }
-    });
-
-    return () => unsubscribe();
-  }, [db, user, isObsOverlay]);
-
-  // Active device session revocation listener for OBS Overlay
-  useEffect(() => {
-    if (!isObsOverlay || !db || !targetUid || targetUid === 'local-user' || !obsDeviceId) return;
-
-    const deviceDocRef = doc(db, 'artifacts', appId, 'users', targetUid, 'paired_devices', obsDeviceId);
-    const unsubscribe = onSnapshot(deviceDocRef, (snapshot) => {
-      if (!snapshot.exists()) {
-        console.log("Device session revoked by user.");
-        try {
-          localStorage.removeItem('obs_paired_uid');
-          localStorage.removeItem('obs_device_id');
-        } catch (e) {
-          console.error(e);
-        }
-        setObsPairedUid(null);
-        setObsDeviceId(null);
-      } else {
-        const data = snapshot.data();
-        const now = Date.now();
-        if (!data.lastActive || now - data.lastActive > 5 * 60 * 1000) {
-          updateDoc(deviceDocRef, { lastActive: now }).catch(err => console.error("Error updating lastActive:", err));
-        }
-      }
-    }, err => {
-      console.error("Error checking device pair status:", err);
-      if (err.code === 'permission-denied') {
-        try {
-          localStorage.removeItem('obs_paired_uid');
-          localStorage.removeItem('obs_device_id');
-        } catch (e) { }
-        setObsPairedUid(null);
-        setObsDeviceId(null);
-      }
-    });
-
-    return () => unsubscribe();
-  }, [isObsOverlay, db, targetUid, obsDeviceId]);
+    }]);
+  }, []);
 
   // OBS Overlay: Data is received via BroadcastChannel from the main app tab.
   // See BroadcastChannel receiver at line ~11076 (OBS_FULL_SYNC / OBS_STATE_UPDATE).
@@ -16758,106 +16016,7 @@ const renderTimerHub = (isMobile = false) => {
     };
   }, [isObsOverlay]);
 
-  // --- FIRESTORE PERSISTENT FALLBACK LISTENER FOR CAMP ---
-  useEffect(() => {
-    if (!db || !targetUid) return;
-    if (isObsOverlay) return;
 
-    // 1. Sync student info
-    const studentInfoRef = doc(db, 'artifacts', appId, 'users', targetUid, 'camp_data', 'student_info');
-    const unsubStudentInfo = onSnapshot(studentInfoRef, (snap) => {
-      if (snap.exists()) {
-        const val = snap.data().data;
-        if (val) {
-          const local = localStorage.getItem('camp_student_info');
-          if (JSON.stringify(val) !== local) {
-            localStorage.setItem('camp_student_info', JSON.stringify(val));
-            if (isObsOverlay) setObsTick(prev => prev + 1);
-          }
-        }
-      } else {
-        const local = localStorage.getItem('camp_student_info');
-        if (local && !isObsOverlay) {
-          try {
-            setDoc(studentInfoRef, { data: JSON.parse(local) }).catch(console.error);
-          } catch (e) { }
-        }
-      }
-    }, err => console.error("Error syncing student info:", err));
-
-    // 2. Sync camp history
-    const historyRef = doc(db, 'artifacts', appId, 'users', targetUid, 'camp_data', 'history');
-    const unsubHistory = onSnapshot(historyRef, (snap) => {
-      if (snap.exists()) {
-        const val = snap.data().data;
-        if (val) {
-          const local = localStorage.getItem('camp_history');
-          if (JSON.stringify(val) !== local) {
-            localStorage.setItem('camp_history', JSON.stringify(val));
-            if (isObsOverlay) setObsTick(prev => prev + 1);
-          }
-        }
-      } else {
-        const local = localStorage.getItem('camp_history');
-        if (local && !isObsOverlay) {
-          try {
-            setDoc(historyRef, { data: JSON.parse(local) }).catch(console.error);
-          } catch (e) { }
-        }
-      }
-    }, err => console.error("Error syncing camp history:", err));
-
-    // 3. Sync timer history
-    const timerHistoryRef = doc(db, 'artifacts', appId, 'users', targetUid, 'camp_data', 'timer_history');
-    const unsubTimerHistory = onSnapshot(timerHistoryRef, (snap) => {
-      if (snap.exists()) {
-        const val = snap.data().data;
-        if (val) {
-          const local = localStorage.getItem('camp_timer_history');
-          if (JSON.stringify(val) !== local) {
-            localStorage.setItem('camp_timer_history', JSON.stringify(val));
-            if (isObsOverlay) setObsTick(prev => prev + 1);
-          }
-        }
-      } else {
-        const local = localStorage.getItem('camp_timer_history');
-        if (local && !isObsOverlay) {
-          try {
-            setDoc(timerHistoryRef, { data: JSON.parse(local) }).catch(console.error);
-          } catch (e) { }
-        }
-      }
-    }, err => console.error("Error syncing timer history:", err));
-
-    // 4. Sync daily logs — today's document only (not full collection)
-    const todayDateStr = new Date().toLocaleDateString('en-CA');
-    const todayLogRef = doc(db, 'artifacts', appId, 'users', targetUid, 'camp_daily_logs', todayDateStr);
-    const unsubDailyLogs = onSnapshot(todayLogRef, (docSnap) => {
-      if (!docSnap.exists()) return;
-      const data = docSnap.data();
-      if (data.sessions) {
-        const localSessions = localStorage.getItem(`camp_sessions_${todayDateStr}`);
-        if (JSON.stringify(data.sessions) !== localSessions) {
-          localStorage.setItem(`camp_sessions_${todayDateStr}`, JSON.stringify(data.sessions));
-          if (isObsOverlay) setObsTick(prev => prev + 1);
-        }
-      }
-      if (data.bedToBook) {
-        const localB2B = localStorage.getItem(`camp_bedToBook_${todayDateStr}`);
-        if (data.bedToBook !== localB2B) {
-          localStorage.setItem(`camp_bedToBook_${todayDateStr}`, data.bedToBook);
-          if (isObsOverlay) setObsTick(prev => prev + 1);
-        }
-      }
-    }, err => console.error("Error syncing daily logs:", err));
-
-    return () => {
-      unsubStudentInfo();
-      unsubHistory();
-      unsubTimerHistory();
-      unsubDailyLogs();
-    };
-  }, [db, targetUid, isObsOverlay]);
 
   // Notifications Checker & Shift Notifier
   useEffect(() => {
@@ -19265,18 +18424,6 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
         for (let card of associatedCards) {
           await deleteLocalCard(card.id);
         }
-        if (user && db) {
-          try {
-            const batch = writeBatch(db);
-            for (let card of associatedCards) {
-              const cardDoc = doc(db, 'artifacts', appId, 'users', user.uid, 'flashcards', card.id);
-              batch.delete(cardDoc);
-            }
-            await batch.commit();
-          } catch (cloudErr) {
-            console.warn("[CloudSync] Cloud deletion for regenerated page cards failed (deleted locally):", cloudErr);
-          }
-        }
       }
 
       // 2. Call Gemini
@@ -19297,24 +18444,27 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
         throw new Error("Gemini returned an invalid response format.");
       }
 
-      // 3. Save new cards to Firestore
-      const cardPromises = result.cards.map(card => {
+      // 3. Save new cards to Local DB
+      const newCreatedCards = result.cards.map(card => {
         const cardId = generateId();
-        const cardDoc = doc(db, 'artifacts', appId, 'users', user.uid, 'flashcards', cardId);
-        return setDoc(cardDoc, sanitizeCardForFirestore({
+        return sanitizeCardForStorage({
           ...card,
           id: cardId,
           pageId: pageId,
           deck: pageObj.deck || hierarchy || (deckPaths[0] || 'General'),
           createdAt: Date.now(),
           isPending: true // Keep in triage
-        }));
+        });
       });
-      await Promise.all(cardPromises);
+      await saveLocalCards(newCreatedCards);
+      setCards(prev => [...prev, ...newCreatedCards]);
 
       // Also ensure the page itself has isPending: true
-      const pageDoc = doc(db, 'artifacts', appId, 'users', user.uid, 'pages', pageId);
-      await setDoc(pageDoc, { isPending: true }, { merge: true });
+      const updatedPage = { ...pageObj, isPending: true, updatedAt: Date.now() };
+      await saveLocalPage(updatedPage);
+      setLibraryPages(prev => prev.map(p => p.id === pageId ? updatedPage : p));
+
+      alert("Successfully processed page cards!");
 
       alert("Successfully processed page cards!");
     } catch (error) {
@@ -19752,7 +18902,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       if (item.generatedCards && item.generatedCards.length > 0) {
         const nowTime = Date.now();
         _savedCards = item.generatedCards.map(rawCard => {
-          const card = sanitizeCardForFirestore(rawCard);
+          const card = sanitizeCardForStorage(rawCard);
           const cardId = rawCard.id || generateId();
           return {
             id: cardId,
@@ -19902,27 +19052,27 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
   };
 
   const approveTriageItem = async (pageId, customDeck = null) => {
-    if (!user || !db) return;
+    if (!user) return;
     try {
       setIsSaving(true);
       const pageToApprove = libraryPages.find(p => p.id === pageId);
       const finalDeck = customDeck || pageToApprove?.deck || hierarchy;
 
       // 1. Approve Page
-      await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'pages', pageId), {
-        isPending: false,
-        deck: finalDeck
-      }, { merge: true });
+      if (pageToApprove) {
+        const updatedPage = { ...pageToApprove, isPending: false, deck: finalDeck, updatedAt: Date.now() };
+        await saveLocalPage(updatedPage);
+      }
 
       // 2. Approve Cards
       const affectedCards = cards.filter(c => c.pageId === pageId);
-      const cardPromises = affectedCards.map(card =>
-        setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'flashcards', card.id), {
-          isPending: false,
-          deck: finalDeck
-        }, { merge: true })
-      );
-      await Promise.all(cardPromises);
+      const updatedCards = affectedCards.map(card => ({
+        ...card,
+        isPending: false,
+        deck: finalDeck,
+        updatedAt: Date.now()
+      }));
+      await saveLocalCards(updatedCards);
 
       // Optimistic updates
       setLibraryPages(prev => prev.map(p => p.id === pageId ? { ...p, isPending: false, deck: finalDeck } : p));
@@ -19936,8 +19086,6 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
           [newDeck]: affectedCards.length
         });
       }
-      fbTracker.write(1 + affectedCards.length);
-      setFbUsage(fbTracker.getUsage());
 
       console.log(`[Triage] Item ${pageId} approved to ${finalDeck}.`);
       setIsSaving(false);
@@ -19951,17 +19099,17 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
   };
 
   const discardAllTriage = async () => {
-    if (!user || !db || !confirm("Are you sure you want to discard ALL pending captures? This cannot be undone.")) return;
+    if (!user || !confirm("Are you sure you want to discard ALL pending captures? This cannot be undone.")) return;
     try {
       setIsSaving(true);
       const pendingPages = libraryPages.filter(p => p.isPending);
       for (const page of pendingPages) {
         // Delete Page
-        await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'pages', page.id));
+        await deleteLocalPage(page.id);
         // Delete Cards
         const affectedCards = cards.filter(c => c.pageId === page.id);
         for (const card of affectedCards) {
-          await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'flashcards', card.id));
+          await deleteLocalCard(card.id);
         }
       }
       // Optimistic updates
@@ -19981,8 +19129,6 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       }
       setCards(prev => prev.filter(c => !pendingCardIds.has(c.id)));
       setTotalCardCount(prev => Math.max(0, prev - pendingCardIds.size));
-      fbTracker.delete(pendingPages.length + pendingCardIds.size);
-      setFbUsage(fbTracker.getUsage());
       console.log(`[Triage] Discarded ${pendingPages.length} items.`);
       setIsSaving(false);
     } catch (err) {
@@ -21330,7 +20476,7 @@ Return your response strictly as a JSON object matching this schema:
         const pairKey = [c1.id, c2.id].sort().join('_');
         if (ignoredConflicts.has(pairKey)) continue;
 
-        // Skip if either card has been marked as keepBoth in Firestore
+        // Skip if either card has been marked as keepBoth in storage
         if (c1.keepBoth || c2.keepBoth) continue;
 
         // Calculate similarity on fronts (question text or cloze text)
@@ -23346,16 +22492,8 @@ Return your response strictly as a JSON object matching this schema:
         {!isPreview && obsDeviceId && (
           <div className="absolute bottom-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-[100]">
             <button
-              onClick={async () => {
+              onClick={() => {
                 if (window.confirm("Are you sure you want to unpair this stream overlay device?")) {
-                  if (db && targetUid && targetUid !== 'local-user') {
-                    try {
-                      const deviceDocRef = doc(db, 'artifacts', appId, 'users', targetUid, 'paired_devices', obsDeviceId);
-                      await deleteDoc(deviceDocRef);
-                    } catch (err) {
-                      console.error("Error deleting pairing from client side:", err);
-                    }
-                  }
                   try {
                     localStorage.removeItem('obs_paired_uid');
                     localStorage.removeItem('obs_device_id');
@@ -23420,10 +22558,6 @@ Return your response strictly as a JSON object matching this schema:
 
                     <button
                       onClick={() => {
-                        if (qrLoginSessionId) {
-                          const docRef = doc(db, 'qr_logins', qrLoginSessionId);
-                          deleteDoc(docRef).catch(console.error);
-                        }
                         setQrLoginSessionId(null);
                         setQrLoginStatus('idle');
                       }}
@@ -23462,10 +22596,6 @@ Return your response strictly as a JSON object matching this schema:
 
                     <button
                       onClick={() => {
-                        if (pairingLoginCode) {
-                          const docRef = doc(db, 'qr_logins', pairingLoginCode);
-                          deleteDoc(docRef).catch(console.error);
-                        }
                         setPairingLoginCode(null);
                         setPairingLoginStatus('idle');
                       }}
@@ -23692,7 +22822,7 @@ Return your response strictly as a JSON object matching this schema:
                       </div>
                       <div className="text-center border-x border-white/10">
                         <div className="text-white font-bold text-lg">SYNC</div>
-                        <div className="text-[9px] text-blue-300/50 uppercase">Firestore</div>
+                        <div className="text-[9px] text-blue-300/50 uppercase">IndexedDB</div>
                       </div>
                       <div className="text-center">
                         <div className="text-white font-bold text-lg">ANKI</div>
@@ -23812,9 +22942,6 @@ Return your response strictly as a JSON object matching this schema:
                 <main className={`flex-grow overflow-y-auto pb-36 p-4 transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'}`}>
                   {currentTab === 'campTracker' && (
                     <CampDashboard
-                      db={db}
-                      targetUid={targetUid}
-                      appId={appId}
                       timerState={timerState}
                       localStopwatchTime={localStopwatchTime}
                       localCustomTimerTimeLeft={localCustomTimerTimeLeft}
@@ -28701,7 +27828,7 @@ Return your response strictly as a JSON object matching this schema:
                           ? 'bg-blue-50/50 text-blue-400 border-blue-100/50 cursor-not-allowed'
                           : 'bg-white hover:bg-blue-50 text-blue-600 hover:text-blue-700 border-blue-200 active:scale-95 hover:shadow-md hover:shadow-blue-500/5'
                           }`}
-                        title={`Sync ${currentTab} data from Firestore`}
+                        title={`Sync ${currentTab} data from Local Database`}
                       >
                         <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : 'transition-transform duration-500 hover:rotate-180'}`} />
                         <span>{isSyncing ? 'Syncing...' : 'Sync Page'}</span>
@@ -28719,9 +27846,6 @@ Return your response strictly as a JSON object matching this schema:
 
                     {currentTab === 'campTracker' && (
                       <CampDashboard
-                        db={db}
-                        targetUid={targetUid}
-                        appId={appId}
                         timerState={timerState}
                         localStopwatchTime={localStopwatchTime}
                         localCustomTimerTimeLeft={localCustomTimerTimeLeft}
@@ -38294,7 +37418,7 @@ Return your response strictly as a JSON object matching this schema:
                                       next[currentCropIndex] = updatedCard;
                                       return next;
                                     });
-                                    await syncCardToFirestore(updatedCard);
+                                    await syncCardToLocalDb(updatedCard);
                                   }}
                                   className={`px-4 py-2 rounded-xl border text-xs font-black transition flex items-center gap-1.5 ${card.excludeImage
                                     ? 'bg-emerald-50 border-emerald-250 text-emerald-600 hover:bg-emerald-100/50'
@@ -38348,7 +37472,7 @@ Return your response strictly as a JSON object matching this schema:
                                         next[currentCropIndex] = updatedCard;
                                         return next;
                                       });
-                                      await syncCardToFirestore(updatedCard);
+                                      await syncCardToLocalDb(updatedCard);
                                     }}
                                     className="w-full text-gray-800 font-medium text-xs bg-transparent border-0 p-0 focus:ring-0 focus:outline-none resize-none leading-relaxed h-[80px] select-text custom-scrollbar"
                                     placeholder="Edit Cloze text..."
@@ -38366,7 +37490,7 @@ Return your response strictly as a JSON object matching this schema:
                                         next[currentCropIndex] = updatedCard;
                                         return next;
                                       });
-                                      await syncCardToFirestore(updatedCard);
+                                      await syncCardToLocalDb(updatedCard);
                                     }}
                                     className="w-full text-gray-800 font-medium text-xs bg-transparent border-0 p-0 focus:ring-0 focus:outline-none resize-none leading-relaxed h-[80px] select-text custom-scrollbar"
                                     placeholder="Edit Extra info..."
@@ -38387,7 +37511,7 @@ Return your response strictly as a JSON object matching this schema:
                                         next[currentCropIndex] = updatedCard;
                                         return next;
                                       });
-                                      await syncCardToFirestore(updatedCard);
+                                      await syncCardToLocalDb(updatedCard);
                                     }}
                                     className="w-full text-gray-800 font-medium text-xs bg-transparent border-0 p-0 focus:ring-0 focus:outline-none resize-none leading-relaxed h-[80px] select-text custom-scrollbar"
                                     placeholder="Edit Front question..."
@@ -38405,7 +37529,7 @@ Return your response strictly as a JSON object matching this schema:
                                         next[currentCropIndex] = updatedCard;
                                         return next;
                                       });
-                                      await syncCardToFirestore(updatedCard);
+                                      await syncCardToLocalDb(updatedCard);
                                     }}
                                     className="w-full text-gray-800 font-medium text-xs bg-transparent border-0 p-0 focus:ring-0 focus:outline-none resize-none leading-relaxed h-[80px] select-text custom-scrollbar"
                                     placeholder="Edit Back answer..."

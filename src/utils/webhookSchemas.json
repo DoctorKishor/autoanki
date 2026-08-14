@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "HealthMetricsWebhookPayload",
-  "description": "JSON payload schema pushed to Firestore by Make.com for daily health tracking correlations",
+  "description": "JSON payload schema pushed to LocalDB by Make.com for daily health tracking correlations",
   "type": "OBJECT",
   "properties": {
     "date": {
