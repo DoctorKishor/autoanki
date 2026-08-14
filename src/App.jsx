@@ -27600,26 +27600,16 @@ Return your response strictly as a JSON object matching this schema:
 
                 {/* SIDEBAR NAVIGATION (Hidden on Mobile) */}
                 <aside
+                  onMouseEnter={handleSidebarMouseEnter}
+                  onMouseLeave={handleSidebarMouseLeave}
                   className={`flex ${isSidebarExpanded ? 'w-64' : 'w-20'} ${settingsThemeMode === 'dark' ? 'neu-card-dark border-r border-gray-800/80 text-slate-100' : 'neu-card-light border-r border-gray-200/80 text-slate-800'} flex flex-col py-6 shrink-0 transition-all duration-300 shadow-xl z-20 neu-action-sidebar`}
                 >
 
-                  <div className={`mb-8 flex items-center z-10 transition-all ${isSidebarExpanded ? 'px-5 justify-between' : 'px-2 flex-col gap-2 justify-center'}`}>
+                  <div className={`mb-8 flex items-center z-10 transition-all ${isSidebarExpanded ? 'px-5' : 'px-2 justify-center'}`}>
                     <div className="flex items-center gap-3">
                       <img src="/favicon.svg" alt="AutoAnki Logo" className="w-9 h-9 shrink-0 object-contain rounded-xl shadow-md" />
                       {isSidebarExpanded && <span className={`font-black tracking-tight text-xl truncate ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>AutoAnki</span>}
                     </div>
-                    <button
-                      onClick={() => {
-                        if (sidebarCollapseTimerRef.current) {
-                          clearTimeout(sidebarCollapseTimerRef.current);
-                          sidebarCollapseTimerRef.current = null;
-                        }
-                        setIsSidebarExpanded(prev => !prev);
-                      }}
-                      className={`p-1.5 rounded-xl transition-all cursor-pointer active:scale-95 ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-gray-400 hover:text-blue-400' : 'neu-btn-light text-gray-600 hover:text-blue-600'}`}
-                    >
-                      {isSidebarExpanded ? <ChevronLeft className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
-                    </button>
                   </div>
 
                   <nav className={`flex-grow space-y-2.5 overflow-y-auto custom-scrollbar max-h-[calc(100vh-200px)] z-10 ${isSidebarExpanded ? 'px-3' : 'px-2'}`}>
@@ -27758,33 +27748,27 @@ Return your response strictly as a JSON object matching this schema:
                               </AnimatePresence>
                             </>
                           ) : (
-                            <div
+                            <button
                               key={cat.id}
-                              className={`neu-iso-pro ${settingsThemeMode === 'dark' ? 'dark-theme' : 'light-theme'} ${hasActiveItem ? 'active' : ''}`}
+                              onClick={() => {
+                                if (sidebarCollapseTimerRef.current) {
+                                  clearTimeout(sidebarCollapseTimerRef.current);
+                                  sidebarCollapseTimerRef.current = null;
+                                }
+                                setIsSidebarExpanded(true);
+                                setExpandedNavCategory(cat.id);
+                              }}
+                              onMouseEnter={(e) => {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                setSidebarTooltip({ label: cat.label, top: rect.top + rect.height / 2 });
+                              }}
+                              onMouseLeave={() => setSidebarTooltip(null)}
+                              className={`neu-action-item ${settingsThemeMode === 'dark' ? 'dark-theme' : 'light-theme'} ${hasActiveItem ? 'active' : ''} flex items-center justify-center p-0 rounded-2xl group relative`}
                             >
-                              <span></span>
-                              <span></span>
-                              <span></span>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (sidebarCollapseTimerRef.current) {
-                                    clearTimeout(sidebarCollapseTimerRef.current);
-                                    sidebarCollapseTimerRef.current = null;
-                                  }
-                                  setIsSidebarExpanded(true);
-                                  setExpandedNavCategory(cat.id);
-                                }}
-                                onMouseEnter={(e) => {
-                                  const rect = e.currentTarget.getBoundingClientRect();
-                                  setSidebarTooltip({ label: cat.label, top: rect.top + rect.height / 2 });
-                                }}
-                                onMouseLeave={() => setSidebarTooltip(null)}
-                                className="neu-iso-btn"
-                              >
+                              <div className="neu-action-icon-box">
                                 <CatIcon className="w-5 h-5 shrink-0" />
-                              </button>
-                            </div>
+                              </div>
+                            </button>
                           )}
                         </div>
                       );
@@ -27814,16 +27798,16 @@ Return your response strictly as a JSON object matching this schema:
                     {!isSidebarExpanded && sidebarTooltip && (
                       <motion.div
                         key="sidebar-tooltip-pill"
-                        initial={{ opacity: 0, x: -14, skewX: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, x: 0, skewX: -6, scale: 1 }}
+                        initial={{ opacity: 0, x: -14, scale: 0.8 }}
+                        animate={{ opacity: 1, x: 0, scale: 1 }}
                         exit={{ opacity: 0, x: -10, scale: 0.85 }}
-                        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                        className={`fixed z-[99999] pointer-events-none backdrop-blur-md ${settingsThemeMode === 'dark'
-                          ? 'bg-[#242832]/95 text-sky-400 border border-sky-400/40 shadow-[-4px_4px_16px_rgba(0,0,0,0.5),0_0_15px_rgba(56,189,248,0.25)]'
-                          : 'bg-white/95 text-blue-600 border border-blue-500/35 shadow-[-4px_4px_16px_rgba(0,0,0,0.1),0_0_15px_rgba(37,99,235,0.2)]'
-                          } px-3.5 py-1.5 rounded-xl font-black text-xs uppercase tracking-wider whitespace-nowrap flex items-center justify-center`}
+                        transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                        className={`fixed z-[99999] pointer-events-none ${settingsThemeMode === 'dark'
+                          ? 'bg-[#242832] text-white border-1.5 border-sky-400/40 shadow-[0_6px_22px_rgba(56,189,248,0.35)]'
+                          : 'bg-white text-slate-900 border-1.5 border-blue-500/35 shadow-[0_6px_22px_rgba(37,99,235,0.25)]'
+                          } px-4 py-1.5 rounded-full font-black text-xs whitespace-nowrap flex items-center justify-center`}
                         style={{
-                          left: '92px',
+                          left: '88px',
                           top: `${sidebarTooltip.top}px`,
                           transform: 'translateY(-50%)'
                         }}
