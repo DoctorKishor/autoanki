@@ -38,6 +38,8 @@ import FsrsSettingsModal from './components/FsrsSettingsModal';
 import FsrsStatsTab from './components/FsrsStatsTab';
 import SmartReviewHub, { getLocalDateStr } from './components/SmartReviewHub';
 import TopicNotesModal from './components/TopicNotesModal';
+import RatingDurationModal from './components/RatingDurationModal';
+import { calculatePredictiveTopicTime } from './services/predictiveTimingEngine';
 import { cropAndMaskDiagram } from './utils/imageCropper';
 import { getTopicPageWeight, parsePageNumbers } from './utils/pageUtils';
 import { getLocalSetting, saveLocalSetting, getLocalCards, saveLocalCards, replaceAllLocalCards, saveLocalCard, deleteLocalCard, getLocalPages, saveLocalPages, replaceAllLocalPages, saveLocalPage, deleteLocalPage, getLocalKV, setLocalKV, getLocalPrompts, saveLocalPrompt, deleteLocalPrompt, getAllLocalPytTopics, saveLocalPytTopic, getAllLocalPytProgress, saveLocalPytProgressDoc, getLocalTextbooksMetadata, saveLocalTextbooksMetadata, getLocalStudyLogs, saveLocalStudyLog, replaceAllLocalStudyLogs, getLocalSubjectTrackerData, saveLocalSubjectTrackerDoc, replaceAllLocalSubjectTrackerData, getLocalStudySchedule, saveLocalScheduleEntry, replaceAllLocalStudySchedule, getLocalScheduleTemplates, saveLocalScheduleTemplate, deleteLocalScheduleTemplate, replaceAllLocalScheduleTemplates, getFSRSConfig, saveFSRSConfig, DEFAULT_FSRS_CONFIG, getLocalTimerState, saveLocalTimerState, saveActiveNewTopicIds, getActiveNewTopicIds, saveTopicHintsLocal, deleteTopicHintsLocal } from './services/localDb';
@@ -7132,6 +7134,7 @@ export default function App() {
   }, [reviewUndoStack, reviewRedoStack]);
   const [lastRatedToast, setLastRatedToast] = useState(null);
   const [ratingPopoverTopic, setRatingPopoverTopic] = useState(null);
+  const [globalRatingDurationData, setGlobalRatingDurationData] = useState(null);
   const [notesModalTopic, setNotesModalTopic] = useState(null);
   const [examProfiles, setExamProfiles] = useState([]);
   const isExamProfilesLoaded = useRef(false);
@@ -9121,7 +9124,7 @@ JSON Format:
     }
   };
 
-  const handleLogTrackerStudyDate = async (subject, topicName, dateStr, rating = 3, schedulerContext = null) => {
+  const handleLogTrackerStudyDate = async (subject, topicName, dateStr, rating = 3, schedulerContext = null, timingMeta = null) => {
     if (!subject || !topicName || !dateStr) return null;
     const docId = subject.trim().toLowerCase();
     const subjectName = subject.trim();
@@ -9201,15 +9204,29 @@ JSON Format:
     }
 
     // 3. Save study log entry for analytics & update studyLogs React state
+    const actualDurationMins = typeof timingMeta === 'number'
+      ? timingMeta
+      : (timingMeta?.actualDurationMins != null ? Number(timingMeta.actualDurationMins) : null);
+    const pageWeight = getTopicPageWeight(topicObj) || topicObj.pageCount || topicObj.pageWeight || getTopicPageLength(topicObj) || 1;
+    const minsPerPage = actualDurationMins ? Number((actualDurationMins / pageWeight).toFixed(2)) : null;
+    const revisionTier = (topicObj.reviewCount === 0 || !topicObj.lastReviewDate) ? 'NEW' : (topicObj.reviewCount === 1 ? 'R1' : (topicObj.reviewCount === 2 ? 'R2' : 'RN'));
+
     const logEntry = {
       id: 'log_' + Math.random().toString(36).substring(2, 9),
       subject: subjectName,
       topicName: cleanTopicName,
+      pageWeight,
       dateStr,
       rating,
       stability: fsrsResult.stability,
       difficulty: fsrsResult.difficulty,
       nextReviewDue: fsrsResult.nextReviewDue,
+      actualDurationMins,
+      durationMins: actualDurationMins,
+      minsPerPage,
+      revisionTier,
+      continuousSessionMins: timingMeta?.continuousSessionMins || 0,
+      hourOfDay: new Date().getHours(),
       timestamp: new Date().toISOString()
     };
 
@@ -9219,6 +9236,8 @@ JSON Format:
       const updatedDayLog = {
         ...currentDayLog,
         cards: (currentDayLog.cards || 0) + 1,
+        pages: (currentDayLog.pages || 0) + (pageWeight || 1),
+        hours: actualDurationMins ? ((currentDayLog.hours || 0) + (actualDurationMins / 60)) : (currentDayLog.hours || 0),
         fsrsLogs: [...existingFsrsLogs, logEntry]
       };
       saveLocalStudyLog(dateStr, updatedDayLog).catch(err => {
