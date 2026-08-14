@@ -14953,6 +14953,10 @@ const renderTimerHub = (isMobile = false) => {
         onClearToast={() => setLastRatedToast(null)}
         studySchedule={studySchedule}
         examProfiles={examProfiles}
+        onSaveExamProfiles={(updated) => {
+          setExamProfiles(updated);
+          saveLocalSetting('exam_profiles', updated).catch(err => console.error("[LocalDB] Error saving exam profiles:", err));
+        }}
         onUpdateSubjectDoc={handleUpdateSubjectTrackerDoc}
         geminiApiKey={geminiApiKey}
         aiFeatureModels={aiFeatureModels}

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Brain, Calendar, AlertTriangle, CheckCircle, Clock, BookOpen, Layers, Sparkles, RotateCcw, RotateCw, Zap, Undo2, X, FileText } from 'lucide-react';
+import { Brain, Calendar, AlertTriangle, CheckCircle, Clock, BookOpen, Layers, Sparkles, RotateCcw, RotateCw, Zap, Undo2, X, FileText, Plus, Trash2, Edit3, Target } from 'lucide-react';
 import FsrsStatsTab from './FsrsStatsTab';
 import FsrsSettingsModal from './FsrsSettingsModal';
 import SelectNewTopicsModal from './SelectNewTopicsModal';
@@ -33,6 +33,7 @@ export default function SmartReviewHub({
   onClearToast,
   studySchedule = [],
   examProfiles = [],
+  onSaveExamProfiles,
   onUpdateSubjectDoc,
   geminiApiKey = '',
   aiFeatureModels = {},
@@ -42,9 +43,34 @@ export default function SmartReviewHub({
   const [subTab, setSubTab] = useState('queue'); // 'queue', 'analytics', 'leeches'
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isPickModalOpen, setIsPickModalOpen] = useState(false);
+  const [isExamModalOpen, setIsExamModalOpen] = useState(false);
+  const [newExamTitle, setNewExamTitle] = useState('');
+  const [newExamDate, setNewExamDate] = useState('');
+  const [newExamTentative, setNewExamTentative] = useState(false);
   const [activeNewTopicIds, setActiveNewTopicIds] = useState(new Set());
   const [mnemonicNotes, setMnemonicNotes] = useState({});
-  const [toastMessage, setToastMessage] = useState('');
+  const handleAddExamTarget = () => {
+    if (!newExamTitle.trim() || !newExamDate) return;
+    const newEntry = {
+      id: Date.now().toString(),
+      name: newExamTitle.trim(),
+      title: newExamTitle.trim(),
+      date: newExamDate,
+      examDate: newExamDate,
+      isTentative: newExamTentative
+    };
+    const updated = Array.isArray(examProfiles) ? [...examProfiles, newEntry] : [newEntry];
+    if (typeof onSaveExamProfiles === 'function') onSaveExamProfiles(updated);
+    setNewExamTitle('');
+    setNewExamDate('');
+    setNewExamTentative(false);
+  };
+
+  const handleDeleteExamTarget = (idOrIndex) => {
+    if (!Array.isArray(examProfiles)) return;
+    const updated = examProfiles.filter((item, idx) => (item.id ? item.id !== idOrIndex : idx !== idOrIndex));
+    if (typeof onSaveExamProfiles === 'function') onSaveExamProfiles(updated);
+  };
 
   useEffect(() => {
     const todayStr = getLocalDateStr();
@@ -566,37 +592,61 @@ export default function SmartReviewHub({
             </motion.div>
           </div>
 
-          {/* Exam Countdown Banner */}
-          {nextExam && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15 }}
-              className={`p-4 rounded-2xl border flex items-center justify-between shadow-sm ${
-                isDark
-                  ? 'bg-gradient-to-r from-amber-500/10 via-slate-900 to-amber-500/10 border-amber-500/30'
-                  : 'bg-gradient-to-r from-amber-500/10 via-amber-100/50 to-amber-500/10 border-amber-300'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <Calendar className="w-5 h-5 text-amber-500" />
-                <div>
-                  <div className="text-xs font-black text-amber-600 uppercase tracking-wider">Upcoming Exam Target</div>
-                  <div className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{nextExam.title}</div>
+          {/* Exam Target Banner */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm ${
+              isDark
+                ? 'bg-gradient-to-r from-amber-500/10 via-slate-900 to-amber-500/10 border-amber-500/30'
+                : 'bg-gradient-to-r from-amber-500/10 via-amber-100/50 to-amber-500/10 border-amber-300'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <Calendar className="w-5 h-5 text-amber-500 shrink-0" />
+              <div>
+                <div className="text-xs font-black text-amber-600 uppercase tracking-wider flex items-center gap-2">
+                  <span>Upcoming Exam Target</span>
+                </div>
+                <div className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  {nextExam ? nextExam.title : 'No Exam Date Configured'}
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="px-3 py-1 rounded-xl bg-amber-500/20 text-amber-600 text-xs font-black">
-                  {nextExam.countdownText}
-                </span>
-                {nextExam.dateStr && (
-                  <span className={`text-[11px] font-semibold opacity-75 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                    ({nextExam.dateStr})
+            </div>
+
+            <div className="flex items-center gap-2 self-end sm:self-auto">
+              {nextExam ? (
+                <>
+                  <span className="px-3 py-1 rounded-xl bg-amber-500/20 text-amber-600 text-xs font-black">
+                    {nextExam.countdownText}
                   </span>
-                )}
-              </div>
-            </motion.div>
-          )}
+                  {nextExam.dateStr && (
+                    <span className={`text-[11px] font-semibold opacity-75 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                      ({nextExam.dateStr})
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setIsExamModalOpen(true)}
+                    className={`ml-1 px-3 py-1 rounded-xl text-xs font-bold border transition-all ${
+                      isDark ? 'neu-btn-dark text-amber-400 hover:border-amber-500/50' : 'neu-btn-light text-amber-700 hover:border-amber-400'
+                    }`}
+                  >
+                    Edit / Manage
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsExamModalOpen(true)}
+                  className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black text-xs shadow-sm hover:brightness-110 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Set Exam Target Date
+                </button>
+              )}
+            </div>
+          </motion.div>
 
           {/* Topic Queue Lists */}
           <div className="space-y-6">
@@ -797,6 +847,160 @@ export default function SmartReviewHub({
           )}
         </motion.div>
       )}
+
+      {/* EXAM TARGET MANAGEMENT MODAL */}
+      <AnimatePresence>
+        {isExamModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className={`w-full max-w-lg p-6 rounded-3xl border shadow-2xl space-y-6 ${
+                isDark ? 'bg-[#222730] border-slate-700/80 text-white' : 'bg-[#e6ecf5] border-slate-300 text-slate-900'
+              }`}
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between border-b pb-3 border-slate-700/40">
+                <div className="flex items-center gap-2.5">
+                  <Target className="w-5 h-5 text-amber-500" />
+                  <h3 className="text-base font-black tracking-wide">Upcoming Exam Targets</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsExamModalOpen(false)}
+                  className={`p-1.5 rounded-xl border transition-all ${
+                    isDark ? 'neu-btn-dark text-slate-400 hover:text-white' : 'neu-btn-light text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Add New Exam Form */}
+              <div className="space-y-3 p-4 rounded-2xl border border-amber-500/30 bg-amber-500/5">
+                <h4 className="text-xs font-black uppercase tracking-wider text-amber-500 flex items-center gap-2">
+                  <Plus className="w-4 h-4" /> Add Exam Target
+                </h4>
+                
+                {/* Presets */}
+                <div className="flex flex-wrap gap-1.5">
+                  {['NEET PG 2026', 'INI-CET 2026', 'FMGE 2026', 'USMLE Step 1'].map(preset => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setNewExamTitle(preset)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all ${
+                        newExamTitle === preset
+                          ? 'bg-amber-500 text-slate-950 border-amber-400 font-extrabold'
+                          : isDark ? 'bg-slate-800 border-slate-700 text-slate-300 hover:border-amber-500/50' : 'bg-white border-slate-300 text-slate-700 hover:border-amber-400'
+                      }`}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-black uppercase tracking-wider text-amber-600 mb-1">Exam Title / Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. NEET PG 2026"
+                      value={newExamTitle}
+                      onChange={(e) => setNewExamTitle(e.target.value)}
+                      className={`w-full px-3 py-2 rounded-xl text-xs font-semibold border outline-none ${
+                        isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                      }`}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black uppercase tracking-wider text-amber-600 mb-1">Exam Date</label>
+                    <input
+                      type="date"
+                      value={newExamDate}
+                      onChange={(e) => setNewExamDate(e.target.value)}
+                      className={`w-full px-3 py-2 rounded-xl text-xs font-semibold border outline-none ${
+                        isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-1">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-400">
+                    <input
+                      type="checkbox"
+                      checked={newExamTentative}
+                      onChange={(e) => setNewExamTentative(e.target.checked)}
+                      className="rounded accent-amber-500"
+                    />
+                    Tentative Date
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleAddExamTarget}
+                    disabled={!newExamTitle.trim() || !newExamDate}
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black text-xs shadow-md disabled:opacity-40 hover:brightness-110 transition-all cursor-pointer"
+                  >
+                    Save Exam Target
+                  </button>
+                </div>
+              </div>
+
+              {/* Active Exam Targets List */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-black uppercase tracking-wider opacity-75">Saved Exam Targets ({examProfiles.length})</h4>
+                {examProfiles.length === 0 ? (
+                  <div className="text-center py-4 text-xs font-semibold text-slate-400 italic">No exam target saved yet. Add one above!</div>
+                ) : (
+                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                    {examProfiles.map((exam, idx) => (
+                      <div
+                        key={exam.id || idx}
+                        className={`p-3 rounded-xl border flex items-center justify-between ${
+                          isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <Calendar className="w-4 h-4 text-amber-500" />
+                          <div>
+                            <div className="text-xs font-bold">{exam.name || exam.title || 'Exam Target'}</div>
+                            <div className="text-[10px] text-slate-400">
+                              {exam.date || exam.examDate} {exam.isTentative ? '(Tentative)' : ''}
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteExamTarget(exam.id || idx)}
+                          className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 transition-all cursor-pointer"
+                          title="Delete Exam Target"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsExamModalOpen(false)}
+                  className={`px-5 py-2 rounded-xl text-xs font-bold border transition-all ${
+                    isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-700'
+                  }`}
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
