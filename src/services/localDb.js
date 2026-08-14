@@ -13,7 +13,9 @@ export const STORES = {
   SETTINGS: 'settings',
   CAMP_TRACKER: 'camp_tracker',
   PYT_DATA: 'pyt_data',
-  KV_STORE: 'kv_store'
+  KV_STORE: 'kv_store',
+  TOPIC_HINTS: 'topic_hints',
+  HINT_QUOTA: 'hint_quota'
 };
 
 let dbPromise = null;
@@ -64,6 +66,16 @@ export function initDB() {
       // 6. Generic Key-Value Store (keyPath: 'key')
       if (!db.objectStoreNames.contains(STORES.KV_STORE)) {
         db.createObjectStore(STORES.KV_STORE, { keyPath: 'key' });
+      }
+
+      // 7. Topic Hints Store (keyPath: 'topicId')
+      if (!db.objectStoreNames.contains(STORES.TOPIC_HINTS)) {
+        db.createObjectStore(STORES.TOPIC_HINTS, { keyPath: 'topicId' });
+      }
+
+      // 8. Hint Quota Store (keyPath: 'dateStr')
+      if (!db.objectStoreNames.contains(STORES.HINT_QUOTA)) {
+        db.createObjectStore(STORES.HINT_QUOTA, { keyPath: 'dateStr' });
       }
     };
 
@@ -685,6 +697,102 @@ export async function saveActiveNewTopicIds(dateStr, topicIds) {
   return await setLocalKV(`active_new_topics_${dateStr}`, Array.isArray(topicIds) ? topicIds : []);
 }
 
+/**
+ * Saves generated AI hints for a specific topic to LocalDB.
+ * @param {string} topicId 
+ * @param {object} payload { topicId, hints: [], generatedAt, pdfFileName, startPage, endPage }
+ */
+export async function saveTopicHintsLocal(topicId, payload) {
+  if (!topicId) return null;
+  const item = {
+    topicId,
+    hints: Array.isArray(payload?.hints) ? payload.hints : [],
+    generatedAt: payload?.generatedAt || new Date().toISOString(),
+    pdfFileName: payload?.pdfFileName || '',
+    startPage: payload?.startPage || 1,
+    endPage: payload?.endPage || 1
+  };
+  await setLocalKV(`topic_hints_${topicId}`, item);
+  try {
+    await executeTransaction(STORES.TOPIC_HINTS, 'readwrite', store => store.put(item));
+  } catch (e) {
+    // Graceful fallback to KV store if store not initialized
+  }
+  return item;
+}
+
+/**
+ * Gets cached AI hints for a topic from LocalDB.
+ * @param {string} topicId 
+ * @returns {Promise<object|null>}
+ */
+export async function getTopicHintsLocal(topicId) {
+  if (!topicId) return null;
+  try {
+    const res = await executeTransaction(STORES.TOPIC_HINTS, 'readonly', store => store.get(topicId));
+    if (res && res.hints) return res;
+  } catch (e) {
+    // Fallback to KV store
+  }
+  const kv = await getLocalKV(`topic_hints_${topicId}`);
+  return kv || null;
+}
+
+/**
+ * Deletes cached AI hints for a topic from LocalDB.
+ * @param {string} topicId 
+ */
+export async function deleteTopicHintsLocal(topicId) {
+  if (!topicId) return;
+  try {
+    await executeTransaction(STORES.TOPIC_HINTS, 'readwrite', store => store.delete(topicId));
+  } catch (e) {}
+  await setLocalKV(`topic_hints_${topicId}`, null);
+}
+
+/**
+ * Checks the student's daily Free Tier AI hint request quota (500 RPD budget).
+ * Auto-resets count to 0 if a new day has started.
+ * @param {number} maxQuota Default 500
+ * @returns {Promise<{ dateStr: string, count: number, remaining: number, isExceeded: boolean }>}
+ */
+export async function checkDailyHintQuotaLocal(maxQuota = 500) {
+  const todayStr = new Date().toLocaleDateString('en-CA');
+  let record = null;
+  try {
+    record = await executeTransaction(STORES.HINT_QUOTA, 'readonly', store => store.get(todayStr));
+  } catch (e) {}
+  if (!record) {
+    record = await getLocalKV(`hint_quota_${todayStr}`);
+  }
+
+  const currentCount = record?.count || 0;
+  return {
+    dateStr: todayStr,
+    count: currentCount,
+    remaining: Math.max(0, maxQuota - currentCount),
+    isExceeded: currentCount >= maxQuota
+  };
+}
+
+/**
+ * Increments today's AI hint request counter by 1.
+ * @returns {Promise<number>} New count
+ */
+export async function incrementDailyHintQuotaLocal() {
+  const todayStr = new Date().toLocaleDateString('en-CA');
+  const status = await checkDailyHintQuotaLocal();
+  const newCount = status.count + 1;
+  const record = { dateStr: todayStr, count: newCount, updatedAt: new Date().toISOString() };
+
+  await setLocalKV(`hint_quota_${todayStr}`, record);
+  try {
+    await executeTransaction(STORES.HINT_QUOTA, 'readwrite', store => store.put(record));
+  } catch (e) {}
+
+  return newCount;
+}
+
 export default {
   initDB,
   STORES,
@@ -741,6 +849,11 @@ export default {
   getActiveNewTopicIds,
   saveActiveNewTopicIds,
   getLocalTimerState,
-  saveLocalTimerState
+  saveLocalTimerState,
+  saveTopicHintsLocal,
+  getTopicHintsLocal,
+  deleteTopicHintsLocal,
+  checkDailyHintQuotaLocal,
+  incrementDailyHintQuotaLocal
 };
 
