@@ -4837,7 +4837,7 @@ export default function App() {
     }
     sidebarCollapseTimerRef.current = setTimeout(() => {
       setIsSidebarExpanded(false);
-    }, 1000);
+    }, 400);
   };
 
   useEffect(() => {
@@ -27734,7 +27734,7 @@ Return your response strictly as a JSON object matching this schema:
                                   initial={{ height: 0, opacity: 0 }}
                                   animate={{ height: 'auto', opacity: 1 }}
                                   exit={{ height: 0, opacity: 0 }}
-                                  transition={{ duration: 0.48, ease: [0.16, 1, 0.3, 1] }}
+                                  transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
                                   className="space-y-1.5 overflow-hidden p-1"
                                 >
                                   {cat.items.map(item => {
