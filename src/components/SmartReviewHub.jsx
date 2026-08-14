@@ -3,6 +3,8 @@ import ReactDOM from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Brain, Calendar, AlertTriangle, CheckCircle, Clock, BookOpen, Layers, Sparkles, RotateCcw, RotateCw, Zap, Undo2, X, FileText, Plus, Trash2, Edit3, Target, Search } from 'lucide-react';
 import FsrsStatsTab from './FsrsStatsTab';
+import StudyVelocityTab from './StudyVelocityTab';
+import RatingDurationModal from './RatingDurationModal';
 import FsrsSettingsModal from './FsrsSettingsModal';
 import SelectNewTopicsModal from './SelectNewTopicsModal';
 import { saveLocalSubjectTrackerDoc, getActiveNewTopicIds, saveActiveNewTopicIds, getTopicHintsLocal, deleteTopicHintsLocal, getLocalPytTopic, getLocalTextbooksMetadata } from '../services/localDb';
@@ -10,6 +12,7 @@ import { generateTopicActiveRecallHints } from '../services/aiHintEngine';
 import { Lightbulb, ChevronDown, ChevronUp, Eye } from 'lucide-react';
 import { parsePageNumbers, getTopicPageWeight } from '../utils/pageUtils';
 import { calculateNextFSRSState, ensureCalibratedWeights } from '../services/fsrsEngine';
+import { calculatePredictiveTopicTime, formatPredictedDuration } from '../services/predictiveTimingEngine';
 import PdfSlicePreviewModal from './PdfSlicePreviewModal';
 import { extractTopicPdfSlice } from '../services/pdfSliceService';
 
@@ -28,6 +31,7 @@ export default function SmartReviewHub({
   subjectTrackerData = [],
   studyLogs = [],
   fsrsConfig = {},
+  timerState = null,
   onSaveConfig,
   onRateTopic,
   onUndoRating,
@@ -46,8 +50,9 @@ export default function SmartReviewHub({
   onOpenNotesModal
 }) {
   const isDark = themeMode === 'dark';
-  const [subTab, setSubTab] = useState('queue'); // 'queue', 'analytics', 'leeches'
+  const [subTab, setSubTab] = useState('queue'); // 'queue', 'analytics', 'velocity', 'leeches'
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [pendingRatingData, setPendingRatingData] = useState(null);
   const [isPickModalOpen, setIsPickModalOpen] = useState(false);
   const [isExamModalOpen, setIsExamModalOpen] = useState(false);
   const [isAdHocModalOpen, setIsAdHocModalOpen] = useState(false);
@@ -111,6 +116,35 @@ export default function SmartReviewHub({
       return () => clearTimeout(timer);
     }
   }, [lastRatedToast, onClearToast]);
+
+  const handleRequestRateTopic = (topic, rating, predictedMinutes = 0) => {
+    setPendingRatingData({
+      topic,
+      rating,
+      predictedMinutes: predictedMinutes || 10
+    });
+  };
+
+  const handleConfirmRatingDuration = (actualMins) => {
+    if (!pendingRatingData) return;
+    const { topic, rating } = pendingRatingData;
+    if (typeof onRateTopic === 'function') {
+      onRateTopic(topic, rating, {
+        actualDurationMins: actualMins,
+        continuousSessionMins: timerState?.continuousMins || 0
+      });
+    }
+    setPendingRatingData(null);
+  };
+
+  const handleSkipRatingDuration = () => {
+    if (!pendingRatingData) return;
+    const { topic, rating } = pendingRatingData;
+    if (typeof onRateTopic === 'function') {
+      onRateTopic(topic, rating, null);
+    }
+    setPendingRatingData(null);
+  };
 
   // 1. Calculate Daily Limits & Page Counts from subjectTrackerData
   const todayStr = getLocalDateStr();
@@ -531,7 +565,7 @@ export default function SmartReviewHub({
         initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.3, delay: 0.08 }}
-        className={`relative grid grid-cols-3 p-1.5 rounded-2xl border w-full max-w-2xl shrink-0 select-none overflow-hidden ${
+        className={`relative grid grid-cols-4 p-1.5 rounded-2xl border w-full max-w-3xl shrink-0 select-none overflow-hidden ${
           isDark ? 'neu-pressed-dark border border-slate-700/60' : 'neu-pressed-light border border-slate-200/80'
         }`}
       >
@@ -541,8 +575,8 @@ export default function SmartReviewHub({
             isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
           }`}
           style={{
-            left: `calc(0.375rem + ${['queue', 'analytics', 'leeches'].indexOf(subTab)} * ((100% - 0.75rem) / 3))`,
-            width: `calc((100% - 0.75rem) / 3)`,
+            left: `calc(0.375rem + ${['queue', 'analytics', 'velocity', 'leeches'].indexOf(subTab)} * ((100% - 0.75rem) / 4))`,
+            width: `calc((100% - 0.75rem) / 4)`,
             transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
           }}
         />
@@ -554,7 +588,7 @@ export default function SmartReviewHub({
             subTab === 'queue' ? 'text-white font-extrabold' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          <span className="hidden sm:inline">⚡ Daily Study Hub ({overdueTopics.length + dueTodayTopics.length})</span>
+          <span className="hidden sm:inline">⚡ Study Hub ({overdueTopics.length + dueTodayTopics.length})</span>
           <span className="sm:hidden">⚡ Hub ({overdueTopics.length + dueTodayTopics.length})</span>
         </button>
 
@@ -571,12 +605,23 @@ export default function SmartReviewHub({
 
         <button
           type="button"
+          onClick={() => setSubTab('velocity')}
+          className={`relative z-10 py-2.5 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center transition-colors duration-300 px-1 text-center truncate ${
+            subTab === 'velocity' ? 'text-white font-extrabold' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <span className="hidden sm:inline">⚡ Study Velocity</span>
+          <span className="sm:hidden">⚡ Velocity</span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => setSubTab('leeches')}
           className={`relative z-10 py-2.5 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center transition-colors duration-300 px-1 text-center truncate ${
             subTab === 'leeches' ? 'text-white font-extrabold' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          <span className="hidden sm:inline">⚠️ Leech Revision ({leechTopics.length})</span>
+          <span className="hidden sm:inline">⚠️ Leech Focus ({leechTopics.length})</span>
           <span className="sm:hidden">⚠️ Leeches ({leechTopics.length})</span>
         </button>
       </motion.div>
@@ -723,7 +768,22 @@ export default function SmartReviewHub({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <AnimatePresence mode="popLayout">
                     {overdueTopics.map((topic, idx) => (
-                      <TopicCard key={topic.id || (topic.subject + '_' + topic.name)} topic={topic} onRate={onRateTopic} onOpenNotes={onOpenNotesModal} fsrsConfig={fsrsConfig} isOverdue index={idx} isDark={isDark} geminiApiKey={geminiApiKey} aiFeatureModels={aiFeatureModels} subjectTrackerData={subjectTrackerData} onPushUndoAction={onPushUndoAction} />
+                      <TopicCard
+                        key={topic.id || (topic.subject + '_' + topic.name)}
+                        topic={topic}
+                        onRate={handleRequestRateTopic}
+                        onOpenNotes={onOpenNotesModal}
+                        fsrsConfig={fsrsConfig}
+                        isOverdue
+                        index={idx}
+                        isDark={isDark}
+                        geminiApiKey={geminiApiKey}
+                        aiFeatureModels={aiFeatureModels}
+                        subjectTrackerData={subjectTrackerData}
+                        studyLogs={studyLogs}
+                        timerState={timerState}
+                        onPushUndoAction={onPushUndoAction}
+                      />
                     ))}
                   </AnimatePresence>
                 </div>
@@ -739,7 +799,21 @@ export default function SmartReviewHub({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <AnimatePresence mode="popLayout">
                     {dueTodayTopics.map((topic, idx) => (
-                      <TopicCard key={topic.id || (topic.subject + '_' + topic.name)} topic={topic} onRate={onRateTopic} onOpenNotes={onOpenNotesModal} fsrsConfig={fsrsConfig} index={idx} isDark={isDark} geminiApiKey={geminiApiKey} aiFeatureModels={aiFeatureModels} subjectTrackerData={subjectTrackerData} onPushUndoAction={onPushUndoAction} />
+                      <TopicCard
+                        key={topic.id || (topic.subject + '_' + topic.name)}
+                        topic={topic}
+                        onRate={handleRequestRateTopic}
+                        onOpenNotes={onOpenNotesModal}
+                        fsrsConfig={fsrsConfig}
+                        index={idx}
+                        isDark={isDark}
+                        geminiApiKey={geminiApiKey}
+                        aiFeatureModels={aiFeatureModels}
+                        subjectTrackerData={subjectTrackerData}
+                        studyLogs={studyLogs}
+                        timerState={timerState}
+                        onPushUndoAction={onPushUndoAction}
+                      />
                     ))}
                   </AnimatePresence>
                 </div>
@@ -778,7 +852,7 @@ export default function SmartReviewHub({
                       <TopicCard
                         key={topic.id || (topic.subject + '_' + topic.name)}
                         topic={topic}
-                        onRate={onRateTopic}
+                        onRate={handleRequestRateTopic}
                         onRemove={handleRemoveNewTopic}
                         onOpenNotes={onOpenNotesModal}
                         fsrsConfig={fsrsConfig}
@@ -788,6 +862,8 @@ export default function SmartReviewHub({
                         geminiApiKey={geminiApiKey}
                         aiFeatureModels={aiFeatureModels}
                         subjectTrackerData={subjectTrackerData}
+                        studyLogs={studyLogs}
+                        timerState={timerState}
                         onPushUndoAction={onPushUndoAction}
                       />
                     ))}
@@ -847,7 +923,18 @@ export default function SmartReviewHub({
         />
       )}
 
-      {/* Subtab 3: Leech Revision */}
+      {/* Subtab 3: Study Velocity Hub (Predictive Timing Engine) */}
+      {subTab === 'velocity' && (
+        <StudyVelocityTab
+          subjectTrackerData={subjectTrackerData}
+          studyLogs={studyLogs}
+          fsrsConfig={fsrsConfig}
+          timerState={timerState}
+          themeMode={themeMode}
+        />
+      )}
+
+      {/* Subtab 4: Leech Revision */}
       {subTab === 'leeches' && (
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -1123,13 +1210,10 @@ export default function SmartReviewHub({
 
                   <TopicCard
                     topic={adHocActiveTopic}
-                    onRate={(topicToRate, rating) => {
-                      if (typeof onRateTopic === 'function') {
-                        onRateTopic(topicToRate, rating);
-                      }
+                    onRate={(topicToRate, rating, predictedMinutes) => {
+                      handleRequestRateTopic(topicToRate, rating, predictedMinutes);
                       setAdHocActiveTopic(null);
-                      setToastMessage(`⚡ Ad-hoc review recorded for "${topicToRate.name}"!`);
-                      setTimeout(() => setToastMessage(''), 3500);
+                      setIsAdHocModalOpen(false);
                     }}
                     onOpenNotes={onOpenNotesModal}
                     fsrsConfig={fsrsConfig}
@@ -1137,6 +1221,8 @@ export default function SmartReviewHub({
                     geminiApiKey={geminiApiKey}
                     aiFeatureModels={aiFeatureModels}
                     subjectTrackerData={subjectTrackerData}
+                    studyLogs={studyLogs}
+                    timerState={timerState}
                     onPushUndoAction={onPushUndoAction}
                   />
                 </div>
@@ -1253,6 +1339,19 @@ export default function SmartReviewHub({
           </div>
         )}
       </AnimatePresence>
+
+      {/* Post-Rating Duration Confirmation Modal */}
+      {pendingRatingData && (
+        <RatingDurationModal
+          isOpen={!!pendingRatingData}
+          topic={pendingRatingData.topic}
+          suggestedMinutes={pendingRatingData.predictedMinutes}
+          timerState={timerState}
+          onConfirm={handleConfirmRatingDuration}
+          onSkip={handleSkipRatingDuration}
+          isDark={isDark}
+        />
+      )}
     </div>
   );
 }
@@ -1359,7 +1458,23 @@ function RecursiveBlueprintNode({ node, depth = 0, recalledMap, onToggleRecall, 
 }
 
 // Sub-component: Individual Topic Queue Card
-function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue = false, isNew = false, index = 0, isDark = true, geminiApiKey = '', aiFeatureModels = {}, subjectTrackerData = [], onPushUndoAction }) {
+function TopicCard({
+  topic,
+  onRate,
+  onRemove,
+  onOpenNotes,
+  fsrsConfig,
+  isOverdue = false,
+  isNew = false,
+  index = 0,
+  isDark = true,
+  geminiApiKey = '',
+  aiFeatureModels = {},
+  subjectTrackerData = [],
+  studyLogs = [],
+  timerState = null,
+  onPushUndoAction
+}) {
   const { pageLabel, pageCount } = getTopicPageInfo(topic);
   const [isNotesExpanded, setIsNotesExpanded] = useState(false);
 
@@ -1765,6 +1880,11 @@ function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue
   // A topic is truly reviewed only if reviewCount > 0 AND it has a lastReviewDate AND is not in New queue
   const isReviewed = !isNew && (topic.reviewCount || 0) > 0 && !!topic.lastReviewDate;
 
+  // Dynamic Predictive Time Engine Calculation
+  const topicPrediction = useMemo(() => {
+    return calculatePredictiveTopicTime(topic, subjectTrackerData, studyLogs, fsrsConfig, timerState);
+  }, [topic, subjectTrackerData, studyLogs, fsrsConfig, timerState]);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12, scale: 0.98 }}
@@ -1787,7 +1907,7 @@ function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue
           </span>
           <h5 className={`text-sm font-bold mt-1.5 ${isDark ? 'text-white' : 'text-slate-900'}`}>{topic.name}</h5>
           <p className={`text-[11px] font-medium mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-            <span className={`font-mono font-bold ${isDark ? 'text-indigo-300' : 'text-indigo-600'}`}>{pageLabel}</span> • {pageCount} {pageCount === 1 ? 'page' : 'pages'}
+            <span className={`font-mono font-bold ${isDark ? 'text-indigo-300' : 'text-indigo-600'}`}>{pageLabel}</span> • {pageCount} {pageCount === 1 ? 'page' : 'pages'} • <span className={`font-mono font-bold ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>⚡ ~{topicPrediction.predictedMinutes}m ({topicPrediction.tierLabel})</span>
           </p>
         </div>
 
@@ -2262,7 +2382,7 @@ function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue
           type="button"
           onClick={() => {
             setRecalledPointsMap({});
-            if (onRate) onRate(topic, 1);
+            if (onRate) onRate(topic, 1, topicPrediction.predictedMinutes);
           }}
           title={`Again: Grade 1 (Next review in ${intervalPreviews[1]})`}
           className="py-1.5 px-1 rounded-xl text-[10px] font-black bg-rose-500/20 hover:bg-rose-500/30 text-rose-500 border border-rose-500/30 active:scale-95 transition-all cursor-pointer flex flex-col items-center justify-center"
@@ -2274,7 +2394,7 @@ function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue
           type="button"
           onClick={() => {
             setRecalledPointsMap({});
-            if (onRate) onRate(topic, 2);
+            if (onRate) onRate(topic, 2, topicPrediction.predictedMinutes);
           }}
           title={`Hard: Grade 2 (Next review in ${intervalPreviews[2]})`}
           className="py-1.5 px-1 rounded-xl text-[10px] font-black bg-amber-500/20 hover:bg-amber-500/30 text-amber-600 border border-amber-500/30 active:scale-95 transition-all cursor-pointer flex flex-col items-center justify-center"
@@ -2286,7 +2406,7 @@ function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue
           type="button"
           onClick={() => {
             setRecalledPointsMap({});
-            if (onRate) onRate(topic, 3);
+            if (onRate) onRate(topic, 3, topicPrediction.predictedMinutes);
           }}
           title={`Good: Grade 3 (Next review in ${intervalPreviews[3]})`}
           className="py-1.5 px-1 rounded-xl text-[10px] font-black bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-600 border border-indigo-500/30 active:scale-95 transition-all cursor-pointer flex flex-col items-center justify-center"
@@ -2298,7 +2418,7 @@ function TopicCard({ topic, onRate, onRemove, onOpenNotes, fsrsConfig, isOverdue
           type="button"
           onClick={() => {
             setRecalledPointsMap({});
-            if (onRate) onRate(topic, 4);
+            if (onRate) onRate(topic, 4, topicPrediction.predictedMinutes);
           }}
           title={`Easy: Grade 4 (Next review in ${intervalPreviews[4]})`}
           className="py-1.5 px-1 rounded-xl text-[10px] font-black bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-600 border border-emerald-500/30 active:scale-95 transition-all cursor-pointer flex flex-col items-center justify-center"

@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { parsePageNumbers, getTopicPageWeight } from '../utils/pageUtils';
 import { getAiTopicRecommendations, saveAiTopicRecommendations } from '../services/localDb';
+import { calculatePredictiveTopicTime } from '../services/predictiveTimingEngine';
 
 const DEFAULT_CARD_GEN_MODELS = [
   'gemini-3.5-flash-lite',
@@ -64,7 +65,8 @@ export default function SelectNewTopicsModal({
           if (isUnstudied) {
             const pageWeight = getTopicPageWeight(topic, topicsList);
             const { pageLabel } = parsePageNumbers(topic);
-            const estMinutes = Math.max(5, Math.round(pageWeight * 1.5));
+            const pred = calculatePredictiveTopicTime(topic, subjectTrackerData, studyLogs);
+            const estMinutes = pred.predictedMinutes;
             const topicId = topic.id || `${subName}_${topic.name}`;
 
             catalog.push({
@@ -73,7 +75,8 @@ export default function SelectNewTopicsModal({
               subject: subName,
               pageWeight,
               pageLabel,
-              estMinutes
+              estMinutes,
+              tierLabel: pred.tierLabel
             });
           }
         });
@@ -81,7 +84,7 @@ export default function SelectNewTopicsModal({
     });
 
     return catalog;
-  }, [subjectTrackerData]);
+  }, [subjectTrackerData, studyLogs]);
 
   // List of distinct subjects for manual filtering
   const distinctSubjects = useMemo(() => {

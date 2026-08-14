@@ -14687,7 +14687,7 @@ const renderTimerHub = (isMobile = false) => {
     }
   };
 
-  const handleInstantRateTopic = (topic, rating) => {
+  const handleInstantRateTopic = (topic, rating, timingMeta = null) => {
     if (!topic || !topic.name || !topic.subject) return;
     const cleanTopicName = topic.name.trim();
     const docId = topic.subject.trim().toLowerCase();
@@ -14757,16 +14757,27 @@ const renderTimerHub = (isMobile = false) => {
     };
 
     const ratingLabels = { 1: 'Again (1)', 2: 'Hard (2)', 3: 'Good (3)', 4: 'Easy (4)' };
+    const actualDurationMins = timingMeta?.actualDurationMins || null;
+    const pageWeight = topic.pageCount || topic.pageWeight || 1;
+    const minsPerPage = actualDurationMins ? Number((actualDurationMins / pageWeight).toFixed(2)) : null;
+    const revisionTier = (topic.reviewCount === 0 || !topic.lastReviewDate) ? 'NEW' : (topic.reviewCount === 1 ? 'R1' : (topic.reviewCount === 2 ? 'R2' : 'RN'));
 
     const logEntry = {
       id: 'log_' + Math.random().toString(36).substring(2, 9),
       subject: subjectName,
       topicName: cleanTopicName,
+      pageWeight,
       dateStr: todayStr,
       rating,
       stability: fsrsResult.stability,
       difficulty: fsrsResult.difficulty,
       nextReviewDue: fsrsResult.nextReviewDue,
+      actualDurationMins,
+      durationMins: actualDurationMins,
+      minsPerPage,
+      revisionTier,
+      continuousSessionMins: timingMeta?.continuousSessionMins || 0,
+      hourOfDay: new Date().getHours(),
       timestamp: new Date().toISOString()
     };
 
@@ -14804,7 +14815,7 @@ const renderTimerHub = (isMobile = false) => {
       const updatedDayLog = {
         ...prevDayLog,
         cards: (prevDayLog.cards || 0) + 1,
-        pages: (prevDayLog.pages || 0) + (topic.pageCount || 1),
+        pages: (prevDayLog.pages || 0) + (pageWeight || 1),
         fsrsLogs: [...(prevDayLog.fsrsLogs || []), logEntry]
       };
       saveLocalStudyLog(todayStr, updatedDayLog).catch(err => console.error("[LocalDB] Error saving study log:", err));
@@ -15239,6 +15250,7 @@ const renderTimerHub = (isMobile = false) => {
         subjectTrackerData={subjectTrackerData}
         studyLogs={studyLogs}
         fsrsConfig={fsrsConfig}
+        timerState={timerState}
         onSaveConfig={updateFsrsConfig}
         onRateTopic={handleInstantRateTopic}
         onUndoRating={handleUndoReviewRating}
