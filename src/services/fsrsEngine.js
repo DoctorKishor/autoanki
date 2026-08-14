@@ -8,11 +8,12 @@
  */
 
 // Default FSRS-6 21 Benchmark Parameters (w0..w20)
+// w0..w3 are calibrated for textbook chapter/topic-level active recall (S0: Again=1d, Hard=3d, Good=7d, Easy=14d)
 export const DEFAULT_FSRS6_WEIGHTS = [
-  0.4072,  // w0  - S0(Again)
-  1.1829,  // w1  - S0(Hard)
-  3.1262,  // w2  - S0(Good)
-  15.4722, // w3  - S0(Easy)
+  9.3820,  // w0  - S0(Again)  -> 1 day
+  28.1460, // w1  - S0(Hard)   -> 3 days
+  65.6740, // w2  - S0(Good)   -> 7 days
+  131.3480,// w3  - S0(Easy)   -> 14 days
   7.2102,  // w4  - D0 base
   0.5316,  // w5  - D0 sensitivity
   1.0651,  // w6  - D update rate per rating delta
