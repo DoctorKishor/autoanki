@@ -3704,33 +3704,25 @@ export default function App() {
 
   const [activeSettingsFeatureKey, setActiveSettingsFeatureKey] = useState('cardGeneration');
   const [customModelInput, setCustomModelInput] = useState('');
-  const [pinnedSettingsSection, setPinnedSettingsSection] = useState(null);
-  const [hoveredSettingsSection, setHoveredSettingsSection] = useState(null);
+  const [openSettingsSections, setOpenSettingsSections] = useState(new Set());
 
   const handleSettingsSectionClick = (key) => {
-    setPinnedSettingsSection(prev => prev === key ? null : key);
+    setOpenSettingsSections(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
   };
 
-  const handleSettingsSectionMouseEnter = (key) => {
-    if (!isMobile) {
-      setHoveredSettingsSection(key);
-    }
-  };
-
-  const handleSettingsSectionMouseLeave = (key) => {
-    if (!isMobile) {
-      setHoveredSettingsSection(null);
-    }
-  };
+  const handleSettingsSectionMouseEnter = () => {};
+  const handleSettingsSectionMouseLeave = () => {};
 
   const isSettingsSectionOpen = (key) => {
-    if (pinnedSettingsSection) {
-      return pinnedSettingsSection === key;
-    }
-    if (!isMobile) {
-      return hoveredSettingsSection === key;
-    }
-    return false;
+    return openSettingsSections.has(key);
   };
 
   const getFeatureModelChain = useCallback((featureKey) => {
