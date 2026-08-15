@@ -104,14 +104,14 @@ export default function StorageUsageSection({
         setCleanToast('✓ Persistent Storage Granted! Quota expanded & locked.');
         await loadStorageMetrics();
       } else {
-        alert('Browser did not grant persistent storage mode. Storage remains active under standard quota.');
+        setCleanToast('ℹ️ Standard Sandbox Active (Auto-grows with usage. Install as App or bookmark to grant persistent status).');
       }
     } catch (e) {
       console.error(e);
-      alert('Error requesting persistent storage: ' + e.message);
+      setCleanToast('Storage running under standard browser quota.');
     } finally {
       setRequestingPersist(false);
-      setTimeout(() => setCleanToast(''), 4000);
+      setTimeout(() => setCleanToast(''), 5000);
     }
   };
 
