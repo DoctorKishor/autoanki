@@ -242,7 +242,10 @@ export const calculateInitialState = (
   const R = 1.0;
   const interval = calculateInterval(S, desiredRetention, w20);
 
-  const reviewDate = new Date(reviewDateStr ? `${reviewDateStr}T00:00:00` : new Date());
+  // Fix Bug 2.6: always parse as local-timezone midnight to prevent IST UTC off-by-one.
+  // new Date('YYYY-MM-DD') is parsed as UTC; appending T00:00:00 forces local-timezone interpretation.
+  const nowStr = new Date().toISOString().split('T')[0];
+  const reviewDate = new Date(`${reviewDateStr || nowStr}T00:00:00`);
   reviewDate.setHours(0, 0, 0, 0);
 
   const baseNextDate = new Date(reviewDate);
@@ -388,10 +391,12 @@ export const recalculateTopicFSRSFromLogs = (topic, topicLogs, fsrsConfig, subje
     return cleaned;
   }
 
+  // Fix Bug 2.5: use numeric timestamp comparison instead of localeCompare.
+  // Mixed formats (ISO timestamp vs bare dateStr) were sorting incorrectly, corrupting FSRS replay.
   const sortedLogs = [...topicLogs].sort((a, b) => {
-    const tA = a.timestamp || a.dateStr || '';
-    const tB = b.timestamp || b.dateStr || '';
-    return tA.localeCompare(tB);
+    const dA = new Date(a.timestamp || (a.dateStr ? `${a.dateStr}T00:00:00` : 0)).getTime();
+    const dB = new Date(b.timestamp || (b.dateStr ? `${b.dateStr}T00:00:00` : 0)).getTime();
+    return dA - dB;
   });
 
   const subjectName = topic.subject || '';

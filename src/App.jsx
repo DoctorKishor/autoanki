@@ -774,48 +774,9 @@ JSON OUTPUT FORMAT:
   }
 ]`;
 
-// --- SPACED REPETITION SCHEDULER (SM-2) ---
-const calculateSM2 = (card, rating) => {
-  // rating: 1 (Again), 2 (Hard), 3 (Good), 4 (Easy)
-  let repetitions = card.reviewState?.repetitions || 0;
-  let interval = card.reviewState?.interval || 1; // in days
-  let easeFactor = card.reviewState?.easeFactor || 2.5;
-
-  if (rating === 1) {
-    repetitions = 0;
-    interval = 1;
-  } else {
-    if (repetitions === 0) {
-      interval = 1;
-    } else if (repetitions === 1) {
-      interval = 6;
-    } else {
-      interval = Math.round(interval * easeFactor);
-    }
-    repetitions = repetitions + 1;
-  }
-
-  // Adjust EF (1 -> 0, 2 -> 3, 3 -> 4, 4 -> 5)
-  let quality = 4;
-  if (rating === 1) quality = 0;
-  else if (rating === 2) quality = 3;
-  else if (rating === 3) quality = 4;
-  else if (rating === 4) quality = 5;
-
-  easeFactor = easeFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
-  if (easeFactor < 1.3) easeFactor = 1.3;
-
-  // Set the next review date (interval in days)
-  const nextReviewDue = Date.now() + interval * 24 * 60 * 60 * 1000;
-
-  return {
-    repetitions,
-    interval,
-    easeFactor,
-    nextReviewDue,
-    lastReviewed: Date.now()
-  };
-};
+// NOTE: Legacy SM-2 scheduler removed (Bug 2.1 — Audit Fix).
+// All spaced repetition scheduling is handled exclusively by fsrsEngine.js (FSRS-6).
+// Do NOT re-introduce SM-2; it would silently produce incorrect review intervals.
 
 // --- TREE VIEW HELPER COMPONENTS ---
 const buildTree = (paths, pages = [], deckCardCounts = {}) => {
@@ -852,7 +813,8 @@ const buildTree = (paths, pages = [], deckCardCounts = {}) => {
       parts.forEach(part => {
         if (current.children[part]) current = current.children[part];
       });
-      if (current.path === p.deck) current.pCount++;
+      // Bug 2.4 Fix: normalize path comparison to prevent case/whitespace mismatches silently dropping pages.
+      if (current.path.trim().toLowerCase() === (p.deck || '').trim().toLowerCase()) current.pCount++;
     } else {
       root.pCount++;
     }
@@ -1751,7 +1713,7 @@ const TreeFolder = ({ node, level = 0, selectedPath, onSelect, onAdd, onRename, 
 
 // --- FILE HELPERS ---
 const resizeImage = (base64Str, maxWidth = 1600, maxHeight = 1600) => {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const img = new Image();
     img.src = base64Str;
     img.onload = () => {
@@ -1777,6 +1739,8 @@ const resizeImage = (base64Str, maxWidth = 1600, maxHeight = 1600) => {
       ctx.drawImage(img, 0, 0, width, height);
       resolve(canvas.toDataURL('image/jpeg', 0.6)); // 60% quality is perfect for 3,300+ page capacity
     };
+    // Bug 2.16 Fix: reject on load error so the upload pipeline does not hang forever on a bad base64 string.
+    img.onerror = (err) => reject(new Error(`resizeImage: failed to load image data (${err?.type || 'unknown error'})`));
   });
 };
 
@@ -2083,18 +2047,24 @@ const callGeminiIndexExtractor = async (apiKey, base64Image, mimeType, retries =
     : getSavedIndexingModels();
   for (let i = 0; i < retries; i++) {
     const model = models[i % models.length];
+    // Bug 2.2 Fix: add per-attempt AbortController with 45s timeout to prevent permanently hung UI.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 45000);
     try {
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({ ...payload }),
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
       const result = await response.json();
       if (result.error) throw new Error(result.error.message);
       const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!jsonText) throw new Error("No response content from Gemini.");
       return JSON.parse(jsonText);
     } catch (error) {
+      clearTimeout(timeoutId);
       if (i === retries - 1) throw error;
       await new Promise(res => setTimeout(res, delays[i]));
     }
@@ -2256,7 +2226,8 @@ const validatePageRange = (val, maxPages) => {
     message = `Page number(s) ${[...new Set(outOfBounds)].join(', ')} out of bounds (1-${maxPages})`;
   }
 
-  return { isValid, cleanVal: val, message };
+  // Bug 2.3 Fix: return the sanitized cleanVal, not the original dirty val.
+  return { isValid, cleanVal, message };
 };
 
 // Module-level semaphore: at most 2 PDF page previews render simultaneously.
@@ -2281,6 +2252,8 @@ const PdfPagePreview = ({ pdf, pageNum, rotation = 0, onRotate, themeMode = 'lig
   const wrapperRef = useRef(null);
   const [isVisible, setIsVisible] = useState(false);
   const [rendered, setRendered] = useState(false);
+  // Bug 2.7 Fix: track the pending semaphore resolve so cleanup can remove it from the queue.
+  const pendingResolveRef = useRef(null);
 
   // Step 1: Only render when tile is actually visible in the scrollable container
   useEffect(() => {
@@ -2304,7 +2277,19 @@ const PdfPagePreview = ({ pdf, pageNum, rotation = 0, onRotate, themeMode = 'lig
     let cancelled = false;
 
     const renderPage = async () => {
-      await _pdfPreviewAcquire();
+      // Bug 2.7 Fix: wrap acquire to capture the queued resolve into pendingResolveRef.
+      // This lets the cleanup function precisely remove it from the semaphore queue on unmount.
+      await new Promise(resolve => {
+        pendingResolveRef.current = resolve;
+        if (_pdfPreviewSem.count < _pdfPreviewSem.max) {
+          _pdfPreviewSem.count++;
+          pendingResolveRef.current = null;
+          resolve();
+        } else {
+          _pdfPreviewSem.queue.push(resolve);
+        }
+      });
+      pendingResolveRef.current = null;
       if (cancelled) { _pdfPreviewRelease(); return; }
 
       try {
@@ -2337,7 +2322,15 @@ const PdfPagePreview = ({ pdf, pageNum, rotation = 0, onRotate, themeMode = 'lig
     };
 
     renderPage();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      // Bug 2.7 Fix: if this component's resolve is still pending in the semaphore queue,
+      // remove it so the semaphore slot count is never lost and other tiles can proceed.
+      if (pendingResolveRef.current) {
+        _pdfPreviewSem.queue = _pdfPreviewSem.queue.filter(r => r !== pendingResolveRef.current);
+        pendingResolveRef.current = null;
+      }
+    };
   }, [isVisible, pdf, pageNum, rotation]);
 
   return (
@@ -4970,8 +4963,16 @@ export default function App() {
 
     setPairingStatus({ type: 'loading', message: 'Verifying pairing code...' });
 
+    // Bug 2.12 Fix: actually compare the entered code against the generated pairingLoginCode.
+    // Previously this try/catch always succeeded without any verification, allowing any 6-digit input.
+    if (!pairingLoginCode || cleanCode !== String(pairingLoginCode).trim()) {
+      setPairingStatus({ type: 'error', message: 'Invalid pairing code. Please try again.' });
+      return false;
+    }
+
     try {
-      setPairingStatus({ type: 'success', message: 'Device pairing verified locally.' });
+      setPairingStatus({ type: 'success', message: 'Device pairing verified successfully.' });
+      setPairingLoginCode(null); // Invalidate the used code immediately
       setPairingCodeInput('');
       setTimeout(() => setPairingStatus(null), 3000);
       return true;
@@ -5077,8 +5078,10 @@ export default function App() {
       setObsTokenChecking(false);
     }).catch(err => {
       console.error("[LocalDB] Error resolving OBS token:", err);
-      setObsTokenUid('local-user');
-      setObsTokenError(false);
+      // SEC 3.2 Fix: deny access on DB error instead of granting it.
+      // An IndexedDB failure must NOT silently authorize an OBS overlay session.
+      setObsTokenUid(null);
+      setObsTokenError(true);
       setObsTokenChecking(false);
     });
   }, [isObsOverlay, params]);
