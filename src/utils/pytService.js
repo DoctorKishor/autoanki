@@ -12,13 +12,10 @@ export const normalizeSubjectName = (name) => {
 
 /**
  * Fetches the PYT topics for a specific subject name from local IndexedDB.
- * @param {any} db (deprecated parameter kept for signature compatibility)
- * @param {string} appId
- * @param {string} userId
- * @param {string} subjectName
- * @returns {Promise<{subject: string, topics: string}|null>}
+ * Supports both getPytTopics(subjectName) and legacy getPytTopics(db, appId, userId, subjectName).
  */
-export const getPytTopics = async (db, appId, userId, subjectName) => {
+export const getPytTopics = async (subjectNameOrDb, ...rest) => {
+  const subjectName = rest.length >= 3 ? rest[2] : subjectNameOrDb;
   const docId = normalizeSubjectName(subjectName);
   if (!docId) return null;
   return getLocalPytTopic(docId);
@@ -26,14 +23,15 @@ export const getPytTopics = async (db, appId, userId, subjectName) => {
 
 /**
  * Sets/updates the PYT topics for a specific subject name in local IndexedDB.
- * @param {any} db (deprecated parameter kept for signature compatibility)
- * @param {string} appId
- * @param {string} userId
- * @param {string} subjectName
- * @param {string} topicsText
- * @returns {Promise<void>}
+ * Supports both upsertPytTopics(subjectName, topicsText) and legacy upsertPytTopics(db, appId, userId, subjectName, topicsText).
  */
-export const upsertPytTopics = async (db, appId, userId, subjectName, topicsText) => {
+export const upsertPytTopics = async (subjectNameOrDb, topicsTextOrAppId, ...rest) => {
+  let subjectName = subjectNameOrDb;
+  let topicsText = topicsTextOrAppId;
+  if (rest.length >= 2) {
+    subjectName = rest[1];
+    topicsText = rest[2];
+  }
   const docId = normalizeSubjectName(subjectName);
   if (!docId) throw new Error("Invalid subject name");
   await saveLocalPytTopic(subjectName, topicsText);

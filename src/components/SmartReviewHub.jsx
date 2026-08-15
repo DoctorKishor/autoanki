@@ -204,7 +204,7 @@ export default function SmartReviewHub({
                                    activeNewTopicIds.has(`${subName}_${topic.name}`) ||
                                    activeNewTopicIds.has(`${subName.toLowerCase()}_${cleanName}`) ||
                                    topic.isPickedForToday ||
-                                   topic.activatedDate === todayStr;
+                                   (topic.activatedDate && topic.activatedDate <= todayStr);
 
           if (isUnstudied && isPickedForToday) {
             newItems.push(topicObj);
@@ -218,7 +218,7 @@ export default function SmartReviewHub({
               reviewPages += topicWeight;
             }
           } else if (!isUnstudied) {
-            dueToday.push(topicObj);
+            dueToday.push({ ...topicObj, nextReviewDue: topicObj.nextReviewDue || todayStr });
             reviewPages += topicWeight;
           }
         });

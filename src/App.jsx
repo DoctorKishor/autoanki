@@ -2004,7 +2004,7 @@ const callGeminiIndexExtractor = async (apiKey, base64Image, mimeType, retries =
     contents: [{
       parts: [
         { text: prompt },
-        { inlineData: { mimeType: mimeType, data: imgBase64.split(',')[1] } }
+        { inlineData: { mimeType: mimeType || "image/jpeg", data: (imgBase64 && imgBase64.includes(',')) ? imgBase64.split(',')[1] : (imgBase64 || "") } }
       ]
     }],
     generationConfig: {
@@ -6918,27 +6918,14 @@ export default function App() {
   };
 
 
-  const [selectedSubjectTrackerSubject, setSelectedSubjectTrackerSubject] = useState('Anatomy');
-
   useEffect(() => {
     if (isSubjectPdfModalOpen) {
-      const activeSubName = selectedTrackerSubject || selectedSubjectTrackerSubject;
+      const activeSubName = selectedTrackerSubject;
       const meta = textbooksMetadata.find(tb => (tb.subject || '').toLowerCase() === (activeSubName || '').toLowerCase());
       setSubjectPdfOffsetInput(meta?.pageOffset ?? 0);
     }
-  }, [isSubjectPdfModalOpen, selectedTrackerSubject, selectedSubjectTrackerSubject, textbooksMetadata]);
+  }, [isSubjectPdfModalOpen, selectedTrackerSubject, textbooksMetadata]);
 
-  useEffect(() => {
-    if (selectedTrackerSubject && selectedTrackerSubject !== selectedSubjectTrackerSubject) {
-      setSelectedSubjectTrackerSubject(selectedTrackerSubject);
-    }
-  }, [selectedTrackerSubject]);
-
-  useEffect(() => {
-    if (selectedSubjectTrackerSubject && selectedSubjectTrackerSubject !== selectedTrackerSubject) {
-      setSelectedTrackerSubject(selectedSubjectTrackerSubject);
-    }
-  }, [selectedSubjectTrackerSubject]);
   const [newSubjectTrackerTopicName, setNewSubjectTrackerTopicName] = useState('');
   const [subjectTrackerFilter, setSubjectTrackerFilter] = useState('all'); // 'all' | 'studied' | 'remaining'
   const [schedulerTaskSource, setSchedulerTaskSource] = useState('custom'); // 'custom' | 'tracker'
@@ -7248,7 +7235,7 @@ export default function App() {
         } else if (mainTab === 'pytLogger') {
           setSelectedLoggerSubject(decodeURIComponent(subTab));
         } else if (mainTab === 'subjectTracker') {
-          setSelectedSubjectTrackerSubject(decodeURIComponent(subTab));
+          setSelectedTrackerSubject(decodeURIComponent(subTab));
         }
       }
     }
@@ -7302,8 +7289,8 @@ export default function App() {
             }
           } else if (mainTab === 'subjectTracker') {
             const decodedSub = decodeURIComponent(subTab);
-            if (decodedSub !== selectedSubjectTrackerSubject) {
-              setSelectedSubjectTrackerSubject(decodedSub);
+            if (decodedSub !== selectedTrackerSubject) {
+              setSelectedTrackerSubject(decodedSub);
             }
           }
         }
@@ -7311,7 +7298,7 @@ export default function App() {
     };
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
-  }, [currentTab, mobileLibraryLevel, companionSubTab, analyticsSubTab, selectedPytSubject, selectedLoggerSubject, selectedSubjectTrackerSubject]);
+  }, [currentTab, mobileLibraryLevel, companionSubTab, analyticsSubTab, selectedPytSubject, selectedLoggerSubject, selectedTrackerSubject]);
 
   // Sync React state changes to browser URL hash
   useEffect(() => {
@@ -7327,13 +7314,13 @@ export default function App() {
     } else if (currentTab === 'pytLogger') {
       path += `/${encodeURIComponent(selectedLoggerSubject)}`;
     } else if (currentTab === 'subjectTracker') {
-      path += `/${encodeURIComponent(selectedSubjectTrackerSubject)}`;
+      path += `/${encodeURIComponent(selectedTrackerSubject)}`;
     }
 
     if (window.location.hash.replace(/^#\/?/, '') !== path.replace(/^\//, '')) {
       window.location.hash = path;
     }
-  }, [currentTab, mobileLibraryLevel, companionSubTab, analyticsSubTab, selectedPytSubject, selectedLoggerSubject, selectedSubjectTrackerSubject]);
+  }, [currentTab, mobileLibraryLevel, companionSubTab, analyticsSubTab, selectedPytSubject, selectedLoggerSubject, selectedTrackerSubject]);
 
   // Reset mobile library selection & search whenever the level changes away from 'pages'
   useEffect(() => {
@@ -8023,11 +8010,17 @@ export default function App() {
     });
     newProgressMap[canonicalTopic] = summedCount;
 
-    // Optimistic local state update
-    setUserPytProgress(prev => prev.map(p => p.id === docId
-      ? { ...p, merged_topics: newMergedMap, progress_map: newProgressMap }
-      : p
-    ));
+    // Optimistic local state update (safe upsert)
+    setUserPytProgress(prev => {
+      const list = Array.isArray(prev) ? prev : [];
+      const exists = list.find(p => p.id === docId);
+      const updated = {
+        ...(exists || { id: docId, subject: subject.trim() }),
+        merged_topics: newMergedMap,
+        progress_map: newProgressMap
+      };
+      return exists ? list.map(p => p.id === docId ? updated : p) : [...list, updated];
+    });
     setPytKeptSeparate(prev => prev.filter(k => k !== canonicalTopic.toLowerCase()));
 
     // Persist to local IndexedDB
@@ -8057,11 +8050,17 @@ export default function App() {
     newProgressMap[targetTopic] = (newProgressMap[targetTopic] || 0) + (newProgressMap[sourceTopic] || 0);
     delete newProgressMap[sourceTopic];
 
-    // Optimistic update
-    setUserPytProgress(prev => prev.map(p => p.id === docId
-      ? { ...p, merged_topics: newMergedMap, progress_map: newProgressMap }
-      : p
-    ));
+    // Optimistic update (safe upsert)
+    setUserPytProgress(prev => {
+      const list = Array.isArray(prev) ? prev : [];
+      const exists = list.find(p => p.id === docId);
+      const updated = {
+        ...(exists || { id: docId, subject: subject.trim() }),
+        merged_topics: newMergedMap,
+        progress_map: newProgressMap
+      };
+      return exists ? list.map(p => p.id === docId ? updated : p) : [...list, updated];
+    });
 
     try {
       await saveLocalPytProgressDoc(docId, {
@@ -8078,10 +8077,12 @@ export default function App() {
   const handleResetMergedPyt = async (subject) => {
     const docId = subject.trim().toLowerCase();
 
-    setUserPytProgress(prev => prev.map(p => p.id === docId
-      ? { ...p, merged_topics: {} }
-      : p
-    ));
+    setUserPytProgress(prev => {
+      const list = Array.isArray(prev) ? prev : [];
+      const exists = list.find(p => p.id === docId);
+      if (!exists) return list;
+      return list.map(p => p.id === docId ? { ...p, merged_topics: {} } : p);
+    });
 
     try {
       await saveLocalPytProgressDoc(docId, {
@@ -8101,10 +8102,15 @@ export default function App() {
     const currentPagesMap = progressDoc ? (progressDoc.pages_map || {}) : {};
     const newPagesMap = { ...currentPagesMap, [topicName]: updatedPagesArray };
 
-    setUserPytProgress(prev => prev.map(p => p.id === docId
-      ? { ...p, pages_map: newPagesMap }
-      : p
-    ));
+    setUserPytProgress(prev => {
+      const list = Array.isArray(prev) ? prev : [];
+      const exists = list.find(p => p.id === docId);
+      const updated = {
+        ...(exists || { id: docId, subject: subject.trim() }),
+        pages_map: newPagesMap
+      };
+      return exists ? list.map(p => p.id === docId ? updated : p) : [...list, updated];
+    });
 
     try {
       await saveLocalPytProgressDoc(docId, {
@@ -8147,36 +8153,72 @@ export default function App() {
     const cleanPage = String(pageNumber || "").trim();
     const cleanEndPage = String(endPage || "").trim();
 
-    const localData = await getLocalSubjectTrackerData();
-    const docExists = localData.find(p => p.id === docId);
-    const currentTopics = docExists ? docExists.topics || {} : {};
-    const updatedTopics = {
-      ...currentTopics,
-      [cleanTopicName]: {
-        name: cleanTopicName,
-        page: cleanPage,
-        endPage: cleanEndPage,
-        studyDates: []
-      }
-    };
+    setSubjectTrackerData(prev => {
+      const list = Array.isArray(prev) ? prev : [];
+      const docExists = list.find(p => p.id === docId);
+      const currentTopics = docExists ? { ...(docExists.topics || {}) } : {};
+      const updatedTopics = {
+        ...currentTopics,
+        [cleanTopicName]: {
+          name: cleanTopicName,
+          page: cleanPage,
+          endPage: cleanEndPage,
+          studyDates: currentTopics[cleanTopicName]?.studyDates || []
+        }
+      };
+
+      const updatedDoc = {
+        ...(docExists || { id: docId, subject: subject.trim() }),
+        subject: subject.trim(),
+        topics: updatedTopics,
+        updatedAt: new Date().toISOString()
+      };
+
+      saveLocalSubjectTrackerDoc(docId, updatedDoc).catch(err => console.error("[LocalDB] Error adding tracker topic:", err));
+
+      return docExists ? list.map(p => p.id === docId ? updatedDoc : p) : [...list, updatedDoc];
+    });
+  };
+
+  const handleAddBulkTrackerTopics = async (subject, newTopicsList) => {
+    if (!subject || !Array.isArray(newTopicsList) || newTopicsList.length === 0) return 0;
+    const docId = subject.trim().toLowerCase();
+    let countAdded = 0;
 
     setSubjectTrackerData(prev => {
-      const exists = prev.find(p => p.id === docId);
-      if (exists) {
-        return prev.map(p => p.id === docId ? { ...p, topics: updatedTopics } : p);
-      } else {
-        return [...prev, { id: docId, subject: subject.trim(), topics: updatedTopics }];
-      }
+      const list = Array.isArray(prev) ? prev : [];
+      const docExists = list.find(p => p.id === docId);
+      const currentTopics = docExists ? { ...(docExists.topics || {}) } : {};
+
+      newTopicsList.forEach(topic => {
+        const topicName = typeof topic === 'string' ? topic : (topic.name || topic.topic || '');
+        if (topicName && topicName.trim()) {
+          const cleanName = topicName.trim();
+          const cleanPage = typeof topic === 'object' && topic.page ? String(topic.page).trim() : '';
+          const cleanEndPage = typeof topic === 'object' && topic.endPage ? String(topic.endPage).trim() : '';
+          currentTopics[cleanName] = {
+            name: cleanName,
+            page: cleanPage,
+            endPage: cleanEndPage,
+            studyDates: currentTopics[cleanName]?.studyDates || []
+          };
+          countAdded++;
+        }
+      });
+
+      const updatedDoc = {
+        ...(docExists || { id: docId, subject: subject.trim() }),
+        subject: subject.trim(),
+        topics: currentTopics,
+        updatedAt: new Date().toISOString()
+      };
+
+      saveLocalSubjectTrackerDoc(docId, updatedDoc).catch(err => console.error("[LocalDB] Bulk add tracker topics error:", err));
+
+      return docExists ? list.map(p => p.id === docId ? updatedDoc : p) : [...list, updatedDoc];
     });
 
-    try {
-      await saveLocalSubjectTrackerDoc(docId, {
-        subject: subject.trim(),
-        topics: updatedTopics
-      });
-    } catch (err) {
-      console.error("Error adding tracker topic locally:", err);
-    }
+    return countAdded;
   };
 
   const handleSaveTopicNotes = async (subject, topicName, notesHtml) => {
@@ -8249,12 +8291,8 @@ export default function App() {
             throw new Error("Invalid response format from Gemini index extractor");
           }
 
-          for (const topic of result.topics) {
-            if (topic.name && topic.name.trim()) {
-              await handleAddTrackerTopic(subject, topic.name.trim(), topic.page ? String(topic.page).trim() : "");
-              totalTopicsCount++;
-            }
-          }
+          const addedCount = await handleAddBulkTrackerTopics(subject, result.topics);
+          totalTopicsCount += (addedCount || result.topics.length);
           successCount++;
         } catch (err) {
           console.error(`AI index extraction failed for file ${file.name}:`, err);
@@ -8592,7 +8630,15 @@ JSON Format:
       });
 
       console.log(`[PDF Scan] Saving pages_map to Local DB. Subject: "${subject}", DocId: "${docId}", Replacing: ${replacingBookName || 'none'}`);
-      setUserPytProgress(prev => prev.map(p => p.id === docId ? { ...p, pages_map: newPagesMap } : p));
+      setUserPytProgress(prev => {
+        const list = Array.isArray(prev) ? prev : [];
+        const exists = list.find(p => p.id === docId);
+        const updated = {
+          ...(exists || { id: docId, subject: subject.trim() }),
+          pages_map: newPagesMap
+        };
+        return exists ? list.map(p => p.id === docId ? updated : p) : [...list, updated];
+      });
 
       await saveLocalPytProgressDoc(docId, {
         subject: subject.trim(),
@@ -8630,7 +8676,12 @@ JSON Format:
       }
     });
 
-    setUserPytProgress(prev => prev.map(p => p.id === docId ? { ...p, pages_map: newPagesMap } : p));
+    setUserPytProgress(prev => {
+      const list = Array.isArray(prev) ? prev : [];
+      const exists = list.find(p => p.id === docId);
+      if (!exists) return list;
+      return list.map(p => p.id === docId ? { ...p, pages_map: newPagesMap } : p);
+    });
 
     try {
       await saveLocalPytProgressDoc(docId, { subject: subject.trim(), pages_map: newPagesMap });
@@ -8823,11 +8874,36 @@ JSON Format:
       return { ...prev, [dateStr]: updatedDayLog };
     });
 
-    // 4. Push to reviewUndoStack for Cross-Tab Undo/Redo
+    // 4. Auto-complete matching task in Study Schedule if present
+    if (dateStr && studySchedule[dateStr]) {
+      const entry = studySchedule[dateStr];
+      if (entry && Array.isArray(entry.tasks)) {
+        let taskChanged = false;
+        const updatedTasks = entry.tasks.map(t => {
+          if (!t.completed && (
+            (t.subject?.toLowerCase() === subjectName.toLowerCase() && t.topicName?.toLowerCase() === cleanTopicName.toLowerCase()) ||
+            t.topic?.toLowerCase().includes(cleanTopicName.toLowerCase())
+          )) {
+            taskChanged = true;
+            return { ...t, completed: true, rating };
+          }
+          return t;
+        });
+
+        if (taskChanged) {
+          saveLocalScheduleEntry(dateStr, { ...entry, tasks: updatedTasks })
+            .then(updatedSchedule => setStudySchedule(updatedSchedule))
+            .catch(err => console.error("[LocalDB] Error updating schedule on tracker rating:", err));
+        }
+      }
+    }
+
+    // 5. Push to reviewUndoStack for Cross-Tab Undo/Redo
     const ratingLabels = { 1: 'Again', 2: 'Hard', 3: 'Good', 4: 'Easy' };
     setReviewUndoStack(prev => [
       ...prev,
       {
+        actionType: 'TOPIC_RATING',
         docId,
         subject: subjectName,
         topicName: cleanTopicName,
@@ -8996,6 +9072,38 @@ JSON Format:
     const currentTopics = { ...topicsMap };
     delete currentTopics[targetKey];
 
+    // Prune orphaned study logs for this deleted topic and snapshot them for undo
+    const deletedLogsSnapshot = [];
+    let nextStudyLogs = { ...studyLogs };
+    let logsChanged = false;
+
+    Object.entries(nextStudyLogs).forEach(([dStr, dayLog]) => {
+      if (dayLog && Array.isArray(dayLog.fsrsLogs)) {
+        const matchingLogs = dayLog.fsrsLogs.filter(l =>
+          l.subject?.toLowerCase() === subject.toLowerCase() &&
+          l.topicName?.toLowerCase() === targetKey.toLowerCase()
+        );
+        if (matchingLogs.length > 0) {
+          logsChanged = true;
+          deletedLogsSnapshot.push(...matchingLogs);
+          const remainingDayLogs = dayLog.fsrsLogs.filter(l =>
+            !(l.subject?.toLowerCase() === subject.toLowerCase() && l.topicName?.toLowerCase() === targetKey.toLowerCase())
+          );
+          const updatedDayLog = {
+            ...dayLog,
+            cards: Math.max(0, (dayLog.cards || 0) - matchingLogs.length),
+            fsrsLogs: remainingDayLogs
+          };
+          nextStudyLogs[dStr] = updatedDayLog;
+          saveLocalStudyLog(dStr, updatedDayLog).catch(err => console.error("[LocalDB] Error pruning study log:", err));
+        }
+      }
+    });
+
+    if (logsChanged) {
+      setStudyLogs(nextStudyLogs);
+    }
+
     // Push action to reviewUndoStack for Undo/Redo support
     setReviewUndoStack(prev => [
       ...prev,
@@ -9005,6 +9113,7 @@ JSON Format:
         subject,
         topicName: targetKey,
         deletedTopicObj: JSON.parse(JSON.stringify(deletedTopicObj)),
+        deletedLogs: deletedLogsSnapshot,
         previousDoc: JSON.parse(JSON.stringify(docExists)),
         timestamp: Date.now()
       }
@@ -9034,7 +9143,7 @@ JSON Format:
 
   // --- MANUAL PAGE DATA SYNC ACTION ---
   const handleSyncCurrentPage = useCallback(async () => {
-    if (!user || !db || isSyncing) return;
+    if (isSyncing) return;
 
     setIsSyncing(true);
     console.log("Sync started for tab:", currentTab);
@@ -9065,7 +9174,7 @@ JSON Format:
     } finally {
       setIsSyncing(false);
     }
-  }, [user, db, currentTab, isSyncing, loadPages, loadFolderCards, loadAllCards, loadStudyLogs, loadTrash]);
+  }, [currentTab, isSyncing, loadPages, loadFolderCards, loadAllCards, loadStudyLogs, loadTrash]);
   // --- DYNAMIC STUDY STREAK CALCULATOR ---
   const streakStats = useMemo(() => {
     const dates = Object.keys(studyLogs).filter(d => {
@@ -9496,8 +9605,6 @@ JSON Format:
 
           setLocalTimerTimeLeft(secondsRemaining);
 
-          setLocalTimerTimeLeft(secondsRemaining);
-
           if (secondsRemaining === 0) {
             const nextRounds = state.pomodoroMode === 'study' ? (state.pomodoroRounds || 0) + 1 : (state.pomodoroRounds || 0);
             let nextMode = 'study';
@@ -9713,8 +9820,6 @@ JSON Format:
     timerState.pomodoroStartedAt,
     timerState.timerStartedAt,
     timerState.stopwatchStartedAt,
-    user,
-    db,
     isObsOverlay
   ]);
 
@@ -10140,8 +10245,6 @@ JSON Format:
 
   // --- SYNCHRONIZED CONTROLS FOR POMODORO, TIMER, & STOPWATCH ---
 
-  // Resume or start generic active timer state
-  // Resume or start generic active timer state
   // Resume or start generic active timer state
   const handleResumeActiveTimer = async () => {
     try {
@@ -13962,17 +14065,21 @@ const renderTimerHub = (isMobile = false) => {
   }, [pytTopicsList, userPytProgress, selectedLoggerSubject, loggerSearch, pytShowOnlyDuplicates, pytSortType]);
 
   const syncedTextbooks = useMemo(() => {
+    const docId = (selectedLoggerSubject || '').trim().toLowerCase();
+    const progressDoc = (userPytProgress || []).find(p => p.id === docId);
+    const pagesMap = progressDoc ? (progressDoc.pages_map || {}) : {};
     const textbooks = {};
-    pytProcessedList.forEach(item => {
-      const pages = item.pages || [];
-      pages.forEach(p => {
-        if (p.source && p.url && !textbooks[p.source]) {
-          textbooks[p.source] = { url: p.url, offset: p.offset || 0 };
-        }
-      });
+    Object.values(pagesMap).forEach(pagesList => {
+      if (Array.isArray(pagesList)) {
+        pagesList.forEach(p => {
+          if (p.source && !textbooks[p.source]) {
+            textbooks[p.source] = { url: p.url || '', offset: p.offset || 0 };
+          }
+        });
+      }
     });
     return Object.entries(textbooks).map(([name, info]) => ({ name, url: info.url, offset: info.offset }));
-  }, [pytProcessedList]);
+  }, [userPytProgress, selectedLoggerSubject]);
 
   const handleOpenPdfViewer = (url, pagesStr, name, offset = 0) => {
     let firstPage = 1;
@@ -14130,43 +14237,36 @@ const renderTimerHub = (isMobile = false) => {
   const handleUpdateTrackerTopicPages = async (subject, topicName, startPage, endPage) => {
     if (!subject || !topicName) return;
     const docId = subject.trim().toLowerCase();
+    const cleanStart = String(startPage || "").trim();
+    const cleanEnd = String(endPage || "").trim();
 
-    const localData = await getLocalSubjectTrackerData();
-    const docExists = localData.find(p => p.id === docId);
+    setSubjectTrackerData(prev => {
+      const list = Array.isArray(prev) ? prev : [];
+      const idx = list.findIndex(p => p.id === docId);
+      if (idx < 0) return list;
 
-    const updatedSubjectData = subjectTrackerData.map(p => {
-      if (p.id === docId) {
-        const currentTopics = p.topics || {};
-        if (currentTopics[topicName]) {
-          const updated = {
-            ...currentTopics,
-            [topicName]: {
-              ...currentTopics[topicName],
-              page: String(startPage).trim(),
-              endPage: String(endPage).trim()
-            }
-          };
-          return { ...p, topics: updated };
-        }
-      }
-      return p;
+      const existingDoc = list[idx];
+      const currentTopics = { ...(existingDoc.topics || {}) };
+      if (!currentTopics[topicName]) return list;
+
+      currentTopics[topicName] = {
+        ...currentTopics[topicName],
+        page: cleanStart,
+        endPage: cleanEnd
+      };
+
+      const updatedDoc = {
+        ...existingDoc,
+        id: docId,
+        subject: subject.trim(),
+        topics: currentTopics,
+        updatedAt: new Date().toISOString()
+      };
+
+      saveLocalSubjectTrackerDoc(docId, updatedDoc).catch(err => console.error("[LocalDB] Error updating topic pages:", err));
+
+      return list.map(p => p.id === docId ? updatedDoc : p);
     });
-
-    setSubjectTrackerData(updatedSubjectData);
-
-    try {
-      if (docExists && docExists.topics && docExists.topics[topicName]) {
-        const topics = { ...docExists.topics };
-        topics[topicName] = {
-          ...topics[topicName],
-          page: String(startPage).trim(),
-          endPage: String(endPage).trim()
-        };
-        await saveLocalSubjectTrackerDoc(docId, { topics });
-      }
-    } catch (err) {
-      console.error("Error updating topic pages locally:", err);
-    }
   };
 
   const handleRescheduleFuture = () => {
@@ -14504,6 +14604,25 @@ const renderTimerHub = (isMobile = false) => {
         return list.map(d => d.id === targetDocId ? updatedDoc : d);
       });
 
+      if (lastItem.deletedLogs && Array.isArray(lastItem.deletedLogs) && lastItem.deletedLogs.length > 0) {
+        setStudyLogs(prevLogs => {
+          let nextLogs = { ...prevLogs };
+          lastItem.deletedLogs.forEach(log => {
+            if (log && log.dateStr) {
+              const currentDayLog = nextLogs[log.dateStr] || { questions: 0, cards: 0, hours: 0, pages: 0, gts: [], fsrsLogs: [] };
+              const updatedDayLog = {
+                ...currentDayLog,
+                cards: (currentDayLog.cards || 0) + 1,
+                fsrsLogs: [...(currentDayLog.fsrsLogs || []), log]
+              };
+              nextLogs[log.dateStr] = updatedDayLog;
+              saveLocalStudyLog(log.dateStr, updatedDayLog).catch(err => console.error("[LocalDB] Error restoring deleted study log:", err));
+            }
+          });
+          return nextLogs;
+        });
+      }
+
       setLastRatedToast({
         message: `Undid deletion of chapter/topic "${topicName}"`,
         topicName,
@@ -14715,6 +14834,30 @@ const renderTimerHub = (isMobile = false) => {
         return list.map(d => d.id === targetDocId ? updatedDoc : d);
       });
 
+      if (lastItem.deletedLogs && Array.isArray(lastItem.deletedLogs) && lastItem.deletedLogs.length > 0) {
+        setStudyLogs(prevLogs => {
+          let nextLogs = { ...prevLogs };
+          Object.entries(nextLogs).forEach(([dStr, dayLog]) => {
+            if (dayLog && Array.isArray(dayLog.fsrsLogs)) {
+              const remainingDayLogs = dayLog.fsrsLogs.filter(l =>
+                !(l.subject?.toLowerCase() === subject?.toLowerCase() && l.topicName?.toLowerCase() === topicName?.toLowerCase())
+              );
+              const removedCount = dayLog.fsrsLogs.length - remainingDayLogs.length;
+              if (removedCount > 0) {
+                const updatedDayLog = {
+                  ...dayLog,
+                  cards: Math.max(0, (dayLog.cards || 0) - removedCount),
+                  fsrsLogs: remainingDayLogs
+                };
+                nextLogs[dStr] = updatedDayLog;
+                saveLocalStudyLog(dStr, updatedDayLog).catch(err => console.error("[LocalDB] Error re-pruning study log on redo:", err));
+              }
+            }
+          });
+          return nextLogs;
+        });
+      }
+
       setLastRatedToast({
         message: `Redid deletion of chapter/topic "${topicName}"`,
         topicName,
@@ -14857,8 +15000,8 @@ const renderTimerHub = (isMobile = false) => {
 
   const renderSubjectCoverageDashboard = (isPerformanceView = false) => {
     const isDark = settingsThemeMode === 'dark';
-    const activeStat = subjectCoverageStats.allStats.find(s => s.subject.toLowerCase() === selectedSubjectTrackerSubject.toLowerCase()) || {
-      subject: selectedSubjectTrackerSubject,
+    const activeStat = subjectCoverageStats.allStats.find(s => s.subject.toLowerCase() === selectedTrackerSubject.toLowerCase()) || {
+      subject: selectedTrackerSubject,
       totalTopics: 0,
       coveredTopics: 0,
       remainingTopics: 0,
@@ -14890,9 +15033,8 @@ const renderTimerHub = (isMobile = false) => {
                   Select Subject Details
                 </label>
                 <NeumorphicSelect
-                  value={selectedSubjectTrackerSubject || selectedTrackerSubject}
+                  value={selectedTrackerSubject}
                   onChange={(val) => {
-                    setSelectedSubjectTrackerSubject(val);
                     setSelectedTrackerSubject(val);
                   }}
                   options={medicalSubjectsList}
@@ -14903,7 +15045,7 @@ const renderTimerHub = (isMobile = false) => {
                 <button
                   type="button"
                   onClick={() => {
-                    const existing = textbooksMetadata.find(tb => (tb.subject || '').toLowerCase() === (selectedSubjectTrackerSubject || '').toLowerCase());
+                    const existing = textbooksMetadata.find(tb => (tb.subject || '').toLowerCase() === (selectedTrackerSubject || '').toLowerCase());
                     setSubjectPdfOffsetInput(existing?.pageOffset || 0);
                     setIsSubjectPdfModalOpen(true);
                   }}
@@ -14919,7 +15061,7 @@ const renderTimerHub = (isMobile = false) => {
 
                 {/* PDF Status Badge */}
                 {(() => {
-                  const existing = textbooksMetadata.find(tb => (tb.subject || '').toLowerCase() === (selectedSubjectTrackerSubject || '').toLowerCase());
+                  const existing = textbooksMetadata.find(tb => (tb.subject || '').toLowerCase() === (selectedTrackerSubject || '').toLowerCase());
                   if (existing) {
                     return (
                       <div className="mt-1.5 text-[10px] font-bold text-emerald-400 flex items-center gap-1.5 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/30">
@@ -15867,10 +16009,10 @@ const renderTimerHub = (isMobile = false) => {
   // Bind global functions for subject-wise PYT topic management (offline-first IndexedDB)
   useEffect(() => {
     window.getPytTopics = async (subjectName) => {
-      return getPytTopics(db, appId, targetUid, subjectName);
+      return getPytTopics(subjectName);
     };
     window.upsertPytTopics = async (subjectName, topicsText) => {
-      const result = await upsertPytTopics(db, appId, targetUid, subjectName, topicsText);
+      const result = await upsertPytTopics(subjectName, topicsText);
       const updatedList = await getAllLocalPytTopics();
       setPytTopicsList(updatedList || []);
       return result;
@@ -15879,7 +16021,7 @@ const renderTimerHub = (isMobile = false) => {
       delete window.getPytTopics;
       delete window.upsertPytTopics;
     };
-  }, [db, targetUid]);
+  }, []);
 
   // Load PYT topics from IndexedDB local database
   useEffect(() => {
@@ -16277,39 +16419,57 @@ const renderTimerHub = (isMobile = false) => {
     let matchedSubject = null;
     let matchedTopicName = null;
 
-    const colonIdx = taskTopic.indexOf(':');
-    const dashIdx = taskTopic.indexOf(' - ');
+    if (!taskTopic) return;
 
-    if (colonIdx !== -1) {
-      const parts = taskTopic.split(':');
-      const sub = parts[0].trim();
-      const top = parts.slice(1).join(':').trim();
-      const trackerDoc = subjectTrackerData.find(p => p.subject.toLowerCase() === sub.toLowerCase());
-      if (trackerDoc) {
-        matchedSubject = trackerDoc.subject;
-        const matchingKey = trackerDoc.topics ? Object.keys(trackerDoc.topics).find(k => k.toLowerCase() === top.toLowerCase()) : null;
-        matchedTopicName = matchingKey || top;
-      }
-    } else if (dashIdx !== -1) {
-      const parts = taskTopic.split(' - ');
-      const sub = parts[0].trim();
-      const top = parts.slice(1).join(' - ').trim();
-      const trackerDoc = subjectTrackerData.find(p => p.subject.toLowerCase() === sub.toLowerCase());
-      if (trackerDoc) {
-        matchedSubject = trackerDoc.subject;
-        const matchingKey = trackerDoc.topics ? Object.keys(trackerDoc.topics).find(k => k.toLowerCase() === top.toLowerCase()) : null;
-        matchedTopicName = matchingKey || top;
-      }
-    }
+    // Priority 1: Check if taskTopic starts with any registered subject name
+    const foundDoc = (subjectTrackerData || []).find(doc =>
+      doc.subject && (
+        taskTopic.toLowerCase().startsWith(doc.subject.toLowerCase() + ':') ||
+        taskTopic.toLowerCase().startsWith(doc.subject.toLowerCase() + ' - ')
+      )
+    );
 
-    if (!matchedSubject) {
-      for (const doc of subjectTrackerData) {
-        if (doc.topics) {
-          const matchingKey = Object.keys(doc.topics).find(k => k.toLowerCase() === taskTopic.trim().toLowerCase());
-          if (matchingKey) {
-            matchedSubject = doc.subject;
-            matchedTopicName = matchingKey;
-            break;
+    if (foundDoc) {
+      matchedSubject = foundDoc.subject;
+      const prefixLength = foundDoc.subject.length + (taskTopic.charAt(foundDoc.subject.length) === ':' ? 1 : 3);
+      const top = taskTopic.slice(prefixLength).trim();
+      const matchingKey = foundDoc.topics ? Object.keys(foundDoc.topics).find(k => k.toLowerCase() === top.toLowerCase()) : null;
+      matchedTopicName = matchingKey || top;
+    } else {
+      const colonIdx = taskTopic.indexOf(':');
+      const dashIdx = taskTopic.indexOf(' - ');
+
+      if (colonIdx !== -1) {
+        const parts = taskTopic.split(':');
+        const sub = parts[0].trim();
+        const top = parts.slice(1).join(':').trim();
+        const trackerDoc = subjectTrackerData.find(p => p.subject.toLowerCase() === sub.toLowerCase());
+        if (trackerDoc) {
+          matchedSubject = trackerDoc.subject;
+          const matchingKey = trackerDoc.topics ? Object.keys(trackerDoc.topics).find(k => k.toLowerCase() === top.toLowerCase()) : null;
+          matchedTopicName = matchingKey || top;
+        }
+      } else if (dashIdx !== -1) {
+        const parts = taskTopic.split(' - ');
+        const sub = parts[0].trim();
+        const top = parts.slice(1).join(' - ').trim();
+        const trackerDoc = subjectTrackerData.find(p => p.subject.toLowerCase() === sub.toLowerCase());
+        if (trackerDoc) {
+          matchedSubject = trackerDoc.subject;
+          const matchingKey = trackerDoc.topics ? Object.keys(trackerDoc.topics).find(k => k.toLowerCase() === top.toLowerCase()) : null;
+          matchedTopicName = matchingKey || top;
+        }
+      }
+
+      if (!matchedSubject) {
+        for (const doc of subjectTrackerData) {
+          if (doc.topics) {
+            const matchingKey = Object.keys(doc.topics).find(k => k.toLowerCase() === taskTopic.trim().toLowerCase());
+            if (matchingKey) {
+              matchedSubject = doc.subject;
+              matchedTopicName = matchingKey;
+              break;
+            }
           }
         }
       }
@@ -16452,39 +16612,55 @@ const renderTimerHub = (isMobile = false) => {
     const taskTopic = task.topic || "";
 
     if (!matchedSubject || !matchedTopicName) {
-      const colonIdx = taskTopic.indexOf(':');
-      const dashIdx = taskTopic.indexOf(' - ');
+      // Priority 1: Check if taskTopic starts with any registered subject name
+      const foundDoc = (subjectTrackerData || []).find(doc =>
+        doc.subject && (
+          taskTopic.toLowerCase().startsWith(doc.subject.toLowerCase() + ':') ||
+          taskTopic.toLowerCase().startsWith(doc.subject.toLowerCase() + ' - ')
+        )
+      );
 
-      if (colonIdx !== -1) {
-        const parts = taskTopic.split(':');
-        const sub = parts[0].trim();
-        const top = parts.slice(1).join(':').trim();
-        const trackerDoc = subjectTrackerData.find(p => p.subject.toLowerCase() === sub.toLowerCase());
-        if (trackerDoc) {
-          matchedSubject = trackerDoc.subject;
-          const matchingKey = trackerDoc.topics ? Object.keys(trackerDoc.topics).find(k => k.toLowerCase() === top.toLowerCase()) : null;
-          matchedTopicName = matchingKey || top;
-        }
-      } else if (dashIdx !== -1) {
-        const parts = taskTopic.split(' - ');
-        const sub = parts[0].trim();
-        const top = parts.slice(1).join(' - ').trim();
-        const trackerDoc = subjectTrackerData.find(p => p.subject.toLowerCase() === sub.toLowerCase());
-        if (trackerDoc) {
-          matchedSubject = trackerDoc.subject;
-          const matchingKey = trackerDoc.topics ? Object.keys(trackerDoc.topics).find(k => k.toLowerCase() === top.toLowerCase()) : null;
-          matchedTopicName = matchingKey || top;
-        }
-      }
+      if (foundDoc) {
+        matchedSubject = foundDoc.subject;
+        const prefixLength = foundDoc.subject.length + (taskTopic.charAt(foundDoc.subject.length) === ':' ? 1 : 3);
+        const top = taskTopic.slice(prefixLength).trim();
+        const matchingKey = foundDoc.topics ? Object.keys(foundDoc.topics).find(k => k.toLowerCase() === top.toLowerCase()) : null;
+        matchedTopicName = matchingKey || top;
+      } else {
+        const colonIdx = taskTopic.indexOf(':');
+        const dashIdx = taskTopic.indexOf(' - ');
 
-      if (!matchedSubject) {
-        for (const doc of subjectTrackerData) {
-          if (doc.topics) {
-            const matchingKey = Object.keys(doc.topics).find(k => k.toLowerCase() === taskTopic.trim().toLowerCase());
-            if (matchingKey) {
-              matchedSubject = doc.subject;
-              matchedTopicName = matchingKey;
-              break;
+        if (colonIdx !== -1) {
+          const parts = taskTopic.split(':');
+          const sub = parts[0].trim();
+          const top = parts.slice(1).join(':').trim();
+          const trackerDoc = subjectTrackerData.find(p => p.subject.toLowerCase() === sub.toLowerCase());
+          if (trackerDoc) {
+            matchedSubject = trackerDoc.subject;
+            const matchingKey = trackerDoc.topics ? Object.keys(trackerDoc.topics).find(k => k.toLowerCase() === top.toLowerCase()) : null;
+            matchedTopicName = matchingKey || top;
+          }
+        } else if (dashIdx !== -1) {
+          const parts = taskTopic.split(' - ');
+          const sub = parts[0].trim();
+          const top = parts.slice(1).join(' - ').trim();
+          const trackerDoc = subjectTrackerData.find(p => p.subject.toLowerCase() === sub.toLowerCase());
+          if (trackerDoc) {
+            matchedSubject = trackerDoc.subject;
+            const matchingKey = trackerDoc.topics ? Object.keys(trackerDoc.topics).find(k => k.toLowerCase() === top.toLowerCase()) : null;
+            matchedTopicName = matchingKey || top;
+          }
+        }
+
+        if (!matchedSubject) {
+          for (const doc of subjectTrackerData) {
+            if (doc.topics) {
+              const matchingKey = Object.keys(doc.topics).find(k => k.toLowerCase() === taskTopic.trim().toLowerCase());
+              if (matchingKey) {
+                matchedSubject = doc.subject;
+                matchedTopicName = matchingKey;
+                break;
+              }
             }
           }
         }
@@ -23064,7 +23240,6 @@ Return your response strictly as a JSON object matching this schema:
                       setIsMobile={setIsMobile}
                       isMobile={isMobile}
                       isDark={settingsThemeMode === 'dark'}
-                      user={user}
                       isWidgetCustomizerOpen={isWidgetCustomizerOpen}
                       setIsWidgetCustomizerOpen={setIsWidgetCustomizerOpen}
                       showMilliseconds={showMilliseconds}
@@ -25962,7 +26137,7 @@ Return your response strictly as a JSON object matching this schema:
                               if (!selectedPytSubject) return;
                               setIsPytSaving(true);
                               try {
-                                await upsertPytTopics(db, appId, targetUid, selectedPytSubject, pytText);
+                                await upsertPytTopics(selectedPytSubject, pytText);
                                 const updatedList = await getAllLocalPytTopics();
                                 setPytTopicsList(updatedList || []);
                                 alert(`PYT Topics for ${selectedPytSubject} saved successfully!`);
@@ -28162,7 +28337,6 @@ Return your response strictly as a JSON object matching this schema:
                         setIsMobile={setIsMobile}
                         isMobile={isMobile}
                         isDark={settingsThemeMode === 'dark'}
-                        user={user}
                         isWidgetCustomizerOpen={isWidgetCustomizerOpen}
                         setIsWidgetCustomizerOpen={setIsWidgetCustomizerOpen}
                         showMilliseconds={showMilliseconds}
@@ -33663,7 +33837,7 @@ Return your response strictly as a JSON object matching this schema:
                                 if (!selectedPytSubject) return;
                                 setIsPytSaving(true);
                                 try {
-                                  await upsertPytTopics(db, appId, targetUid, selectedPytSubject, pytText);
+                                  await upsertPytTopics(selectedPytSubject, pytText);
                                   const updatedList = await getAllLocalPytTopics();
                                   setPytTopicsList(updatedList || []);
                                   alert(`PYT Topics for ${selectedPytSubject} saved successfully!`);

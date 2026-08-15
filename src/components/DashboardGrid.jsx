@@ -699,7 +699,7 @@ export default function DashboardGrid({
 
                             {/* WIDGET CONTENT RENDERER */}
                             <div className="flex-grow p-5 min-h-[160px] flex flex-col justify-between">
-                              {renderWidgetBody(widget.id)}
+                              {widget.id === 'focusTimerHub' ? renderWidgetBody('focusTimerHub') : (staticWidgetBodies[widget.id] || renderWidgetBody(widget.id))}
                             </div>
 
                           </motion.div>
@@ -842,6 +842,40 @@ export default function DashboardGrid({
     </div>
   );
 
+  // Memoize static non-timer widgets to prevent 20Hz/1Hz timer ticks from re-rendering the full grid
+  const staticWidgetBodies = useMemo(() => {
+    const map = {};
+    (widgets || []).forEach(w => {
+      if (w.id !== 'focusTimerHub' && w.enabled !== false) {
+        map[w.id] = renderWidgetBody(w.id);
+      }
+    });
+    return map;
+  }, [
+    widgets,
+    studySchedule,
+    todayStr,
+    studyLogs,
+    cards,
+    currentStreak,
+    streakLabel,
+    subjectTrackerData,
+    subjects,
+    pytTopicsList,
+    userPytProgress,
+    campDbHistory,
+    campDbDaily,
+    isDark,
+    quickCards,
+    quickHours,
+    quickQuestions,
+    quickPages,
+    isLoggingQuick,
+    hoveredStreakIdx,
+    hoveredIntensityIdx,
+    radarViewType
+  ]);
+
   // --- CORE WIDGET BODY RENDER SWITCHER ---
   function renderWidgetBody(id) {
     switch (id) {
@@ -939,8 +973,12 @@ export default function DashboardGrid({
                   B2B Penalty
                 </span>
                 <span className={`text-xs font-black mt-0.5 block ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                  {bedToBook === 'Less than 45 mins' || bedToBook === '<45 min' ? 'None' :
-                    bedToBook === '45-60 min' || bedToBook === '45 to 60 mins' ? '5%' : '15%'}
+                  {(() => {
+                    const cleanB2B = (bedToBook || '').toLowerCase().replace(/[\s\-_]/g, '');
+                    if (cleanB2B.includes('<45') || cleanB2B.includes('lessthan45') || cleanB2B.includes('under45')) return 'None';
+                    if (cleanB2B.includes('4560') || cleanB2B.includes('45to60') || cleanB2B.includes('45-60')) return '5%';
+                    return '15%';
+                  })()}
                 </span>
               </div>
             </div>

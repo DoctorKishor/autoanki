@@ -557,11 +557,19 @@ export async function getLocalTimerState() {
   return (data && typeof data === 'object' && !Array.isArray(data)) ? data : null;
 }
 
+let timerStateWritePromise = Promise.resolve();
+
 export async function saveLocalTimerState(updates) {
-  const current = (await getLocalTimerState()) || {};
-  const updated = { ...current, ...updates };
-  await setLocalKV('timerState', updated);
-  return updated;
+  timerStateWritePromise = timerStateWritePromise.then(async () => {
+    const current = (await getLocalTimerState()) || {};
+    const updated = { ...current, ...updates };
+    await setLocalKV('timerState', updated);
+    return updated;
+  }).catch(err => {
+    console.error("[LocalDB] saveLocalTimerState mutex error:", err);
+    return getLocalTimerState();
+  });
+  return timerStateWritePromise;
 }
 
 // --- SUBJECT TRACKER HELPERS ---
