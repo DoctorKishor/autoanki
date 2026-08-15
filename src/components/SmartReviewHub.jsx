@@ -1679,6 +1679,39 @@ function TopicCard({
   const [previewPdfSlice, setPreviewPdfSlice] = useState(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
+  /**
+   * Safely extracts a native ArrayBuffer from a PDF object retrieved from IndexedDB.
+   * Handles ArrayBuffers, TypedArrays, or Base64 data URLs, and strictly rejects empty plain objects ({}).
+   */
+  const extractValidPdfBuffer = (pdfObj) => {
+    if (!pdfObj || typeof pdfObj !== 'object') return null;
+    const candidates = [
+      pdfObj.data,
+      pdfObj.topics?.data,
+      pdfObj.topics,
+      pdfObj
+    ];
+    for (const c of candidates) {
+      if (!c) continue;
+      if (c instanceof ArrayBuffer && c.byteLength > 0) return c;
+      if (ArrayBuffer.isView(c) && c.byteLength > 0) {
+        return c.buffer.slice(c.byteOffset, c.byteOffset + c.byteLength);
+      }
+      if (typeof c === 'string' && c.startsWith('data:application/pdf;base64,')) {
+        try {
+          const base64 = c.split(',')[1];
+          const binary = atob(base64);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+          return bytes.buffer;
+        } catch (e) {
+          console.warn('[SmartReviewHub] Failed to decode base64 data url:', e);
+        }
+      }
+    }
+    return null;
+  };
+
   const handleOpenPreviewModal = async (e) => {
     if (e && e.stopPropagation) e.stopPropagation();
     setIsLoadingPreview(true);
@@ -1692,18 +1725,21 @@ function TopicCard({
       let pdfObj = await getLocalPytTopic(topicPdfKey);
       let isPreSplit = false;
 
-      let pdfArrayBuffer = pdfObj?.data || (pdfObj?.topics && pdfObj.topics.data) || (pdfObj?.topics instanceof ArrayBuffer ? pdfObj.topics : null);
+      let pdfArrayBuffer = extractValidPdfBuffer(pdfObj);
 
       if (pdfObj && pdfArrayBuffer) {
         isPreSplit = true;
       } else {
         const masterPdfKey = `pyt_pdf_${cleanSub}`;
         pdfObj = await getLocalPytTopic(masterPdfKey);
-        pdfArrayBuffer = pdfObj?.data || (pdfObj?.topics && pdfObj.topics.data) || (pdfObj?.topics instanceof ArrayBuffer ? pdfObj.topics : null);
+        pdfArrayBuffer = extractValidPdfBuffer(pdfObj);
       }
 
       if (!pdfObj || !pdfArrayBuffer) {
-        alert(`No PDF attached for "${topicName}". Please upload a Master PDF or Pre-Split Topic PDF in Subject Tracker.`);
+        const reason = pdfObj
+          ? `⚠️ The attached PDF for "${topicName}" (${subjectName}) has missing binary data (e.g. from an earlier text-only backup export).\n\nPlease open Subject Tracker -> "📁 Textbook Manager" and re-upload the PDF.`
+          : `No PDF attached for "${topicName}". Please upload a Master PDF or Pre-Split Topic PDF in Subject Tracker.`;
+        alert(reason);
         setIsPreviewModalOpen(false);
         setIsLoadingPreview(false);
         return;
@@ -1769,7 +1805,7 @@ function TopicCard({
       let pdfObj = await getLocalPytTopic(topicPdfKey);
       let isPreSplit = false;
 
-      let pdfArrayBuffer = pdfObj?.data || (pdfObj?.topics && pdfObj.topics.data) || (pdfObj?.topics instanceof ArrayBuffer ? pdfObj.topics : null);
+      let pdfArrayBuffer = extractValidPdfBuffer(pdfObj);
 
       if (pdfObj && pdfArrayBuffer) {
         isPreSplit = true;
@@ -1778,11 +1814,14 @@ function TopicCard({
         // 2. Fall back to Master Subject PDF (Scenario 1)
         const masterPdfKey = `pyt_pdf_${cleanSub}`;
         pdfObj = await getLocalPytTopic(masterPdfKey);
-        pdfArrayBuffer = pdfObj?.data || (pdfObj?.topics && pdfObj.topics.data) || (pdfObj?.topics instanceof ArrayBuffer ? pdfObj.topics : null);
+        pdfArrayBuffer = extractValidPdfBuffer(pdfObj);
       }
 
       if (!pdfObj || !pdfArrayBuffer) {
-        alert(`⚠️ No PDF attached for "${topicName}" (${subjectName}).\nPlease upload a Master Subject PDF or Pre-Split Topic PDF in the Subject Tracker tab ("📁 Textbook Manager").`);
+        const reason = pdfObj
+          ? `⚠️ The attached PDF for "${topicName}" (${subjectName}) has missing binary data (e.g. from an earlier text-only backup export).\n\nPlease open Subject Tracker -> "📁 Textbook Manager" and re-upload the PDF to enable AI hint generation.`
+          : `⚠️ No PDF attached for "${topicName}" (${subjectName}).\nPlease upload a Master Subject PDF or Pre-Split Topic PDF in the Subject Tracker tab ("📁 Textbook Manager").`;
+        alert(reason);
         setIsGeneratingHints(false);
         return;
       }

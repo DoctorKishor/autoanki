@@ -1205,11 +1205,113 @@ function computeChecksum(str) {
 }
 
 /**
- * Reads ALL entries from a given object store into a plain array.
+ * Efficiently converts an ArrayBuffer/TypedArray to a Base64 string in chunks to avoid call stack limits.
+ */
+export function arrayBufferToBase64(buffer) {
+  if (!buffer) return '';
+  const bytes = buffer instanceof ArrayBuffer
+    ? new Uint8Array(buffer)
+    : ArrayBuffer.isView(buffer)
+      ? new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength)
+      : null;
+  if (!bytes) return '';
+  let binary = '';
+  const len = bytes.byteLength;
+  const CHUNK_SIZE = 0x8000; // 32KB chunks
+  for (let i = 0; i < len; i += CHUNK_SIZE) {
+    const chunk = bytes.subarray(i, Math.min(i + CHUNK_SIZE, len));
+    binary += String.fromCharCode.apply(null, chunk);
+  }
+  return btoa(binary);
+}
+
+/**
+ * Converts a Base64 string back to a native ArrayBuffer.
+ */
+export function base64ToArrayBuffer(base64) {
+  if (!base64 || typeof base64 !== 'string') return new ArrayBuffer(0);
+  try {
+    const binaryString = atob(base64);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes.buffer;
+  } catch (e) {
+    console.warn('[LocalDB] Failed to decode base64 buffer:', e);
+    return new ArrayBuffer(0);
+  }
+}
+
+/**
+ * Recursively scans and serializes any ArrayBuffer / TypedArray into JSON-safe Base64 objects.
+ */
+export function serializeBinaryValues(obj) {
+  if (!obj || typeof obj !== 'object') return obj;
+
+  if (obj instanceof ArrayBuffer) {
+    return {
+      __type: 'ArrayBuffer',
+      base64: arrayBufferToBase64(obj),
+      byteLength: obj.byteLength
+    };
+  }
+
+  if (ArrayBuffer.isView(obj)) {
+    return {
+      __type: 'TypedArray',
+      viewType: obj.constructor.name,
+      base64: arrayBufferToBase64(obj),
+      byteLength: obj.byteLength
+    };
+  }
+
+  if (Array.isArray(obj)) {
+    return obj.map(item => serializeBinaryValues(item));
+  }
+
+  const result = {};
+  for (const [k, v] of Object.entries(obj)) {
+    result[k] = serializeBinaryValues(v);
+  }
+  return result;
+}
+
+/**
+ * Recursively scans and reconstructs any serialized Base64 objects back into native ArrayBuffers.
+ */
+export function deserializeBinaryValues(obj) {
+  if (!obj || typeof obj !== 'object') return obj;
+
+  if (obj.__type === 'ArrayBuffer' && typeof obj.base64 === 'string') {
+    return base64ToArrayBuffer(obj.base64);
+  }
+
+  if (obj.__type === 'TypedArray' && typeof obj.base64 === 'string') {
+    const ab = base64ToArrayBuffer(obj.base64);
+    if (obj.viewType === 'Uint8Array') return new Uint8Array(ab);
+    return ab;
+  }
+
+  if (Array.isArray(obj)) {
+    return obj.map(item => deserializeBinaryValues(item));
+  }
+
+  const result = {};
+  for (const [k, v] of Object.entries(obj)) {
+    result[k] = deserializeBinaryValues(v);
+  }
+  return result;
+}
+
+/**
+ * Reads ALL entries from a given object store into a plain array with binary data safely serialized.
  */
 async function dumpStore(storeName) {
   try {
-    return (await getAllLocalItems(storeName)) || [];
+    const items = (await getAllLocalItems(storeName)) || [];
+    return serializeBinaryValues(items);
   } catch (e) {
     console.warn(`[LocalDB] dumpStore(${storeName}) failed:`, e);
     return [];
@@ -1223,7 +1325,7 @@ async function dumpStore(storeName) {
  * @returns {Promise<object>} Full snapshot object ready for JSON.stringify
  */
 export async function exportFullUniversalSnapshot() {
-  // 1. Dump all 9 IndexedDB object stores
+  // 1. Dump all 9 IndexedDB object stores (binary-safe)
   const [
     topicsRaw,
     settingsRaw,
@@ -1359,7 +1461,9 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
     for (const r of records) { if (r && r.key) await putLocalItem(STORES.KV_STORE, r); }
   };
 
-  const stores = payload?.stores || {};
+  // Deserialize any binary Base64 payloads into native ArrayBuffers
+  const rawStores = payload?.stores || {};
+  const stores = deserializeBinaryValues(rawStores);
   const kv = stores.kv_store || [];
 
   // Helper: get KV entries for given keys
