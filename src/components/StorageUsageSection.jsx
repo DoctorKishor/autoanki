@@ -783,8 +783,8 @@ export default function StorageUsageSection({
                                     </div>
                                   </div>
                                   <div className="flex items-center gap-2 shrink-0">
-                                    <span className="font-mono font-bold text-rose-400 text-[10px]">
-                                      {formatBytes(file.bytes)}
+                                    <span className={`font-mono font-bold text-[10px] ${file.bytes > 0 ? 'text-rose-400' : 'text-amber-400'}`}>
+                                      {file.bytes > 0 ? formatBytes(file.bytes) : '⚠️ 0 B (Re-upload needed)'}
                                     </span>
                                     <button
                                       type="button"

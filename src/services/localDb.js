@@ -999,42 +999,127 @@ export async function calculateDetailedStorageBreakdown() {
     getByteSize(campData) +
     getByteSize(timerState);
 
-  // 4. Textbook PDFs & Master Materials (stored in PYT_DATA)
+  // 4. Textbook PDFs & Master Materials (stored in PYT_DATA and textbooksMetadata)
   const allPytItems = (await getAllLocalPytTopics()) || [];
   const textbooksMetadata = (await getLocalTextbooksMetadata()) || [];
   const pdfItems = [];
   const curriculumTopics = [];
+  const processedKeys = new Set();
 
+  // Helper to extract clean subject from key or subject field
+  const extractSubject = (keyStr, rawSub) => {
+    if (rawSub && !rawSub.toLowerCase().startsWith('pyt_pdf_')) return rawSub;
+    const cleanKey = (keyStr || '').toLowerCase().replace(/^pyt_pdf_/, '');
+    if (cleanKey.includes('_topic_')) {
+      const parts = cleanKey.split('_topic_');
+      return parts[0].replace(/_/g, ' ').toUpperCase();
+    }
+    return cleanKey.replace(/_/g, ' ').toUpperCase() || 'General';
+  };
+
+  // Helper to calculate exact byte size of any PDF item or binary field
+  const extractPdfBytes = (item, meta) => {
+    // 1. Check ArrayBuffer on item.data or item.topics
+    if (item?.data instanceof ArrayBuffer && item.data.byteLength > 0) return item.data.byteLength;
+    if (ArrayBuffer.isView(item?.data) && item.data.byteLength > 0) return item.data.byteLength;
+    if (item?.topics instanceof ArrayBuffer && item.topics.byteLength > 0) return item.topics.byteLength;
+    if (ArrayBuffer.isView(item?.topics) && item.topics.byteLength > 0) return item.topics.byteLength;
+
+    // 2. Check serialized Base64 payload
+    if (item?.data?.__type === 'ArrayBuffer' && typeof item.data.byteLength === 'number' && item.data.byteLength > 0) {
+      return item.data.byteLength;
+    }
+    if (typeof item?.data?.base64 === 'string' && item.data.base64.length > 0) {
+      return Math.round(item.data.base64.length * 0.75);
+    }
+    if (typeof item?.data === 'string' && item.data.startsWith('data:application/pdf;base64,')) {
+      return Math.round((item.data.length - 28) * 0.75);
+    }
+    if (typeof item?.data === 'string' && item.data.length > 100) {
+      return Math.round(item.data.length * 0.75);
+    }
+
+    // 3. Check Blob
+    if (typeof Blob !== 'undefined' && item?.data instanceof Blob && item.data.size > 0) {
+      return item.data.size;
+    }
+
+    // 4. Check explicit numeric size properties on item
+    if (typeof item?.size === 'number' && item.size > 0) return item.size;
+    if (typeof item?.fileSize === 'number' && item.fileSize > 0) return item.fileSize;
+    if (typeof item?.bytes === 'number' && item.bytes > 0) return item.bytes;
+
+    // 5. Check metadata fields
+    if (typeof meta?.size === 'number' && meta.size > 0) return meta.size;
+    if (typeof meta?.fileSize === 'number' && meta.fileSize > 0) return meta.fileSize;
+    if (typeof meta?.bytes === 'number' && meta.bytes > 0) return meta.bytes;
+
+    return 0;
+  };
+
+  // Process items in pyt_data
   for (const item of allPytItems) {
-    const isPdf = (item?.id || item?.key || '').startsWith('pyt_pdf_') ||
+    const itemKey = (item?.id || item?.key || '').toLowerCase();
+    const isPdf = itemKey.startsWith('pyt_pdf_') ||
                   item?.data instanceof ArrayBuffer ||
                   (item?.data && typeof item.data === 'object' && item.data.__type === 'ArrayBuffer') ||
-                  item?.fileName;
-    if (isPdf) {
-      let size = 0;
-      if (item?.data instanceof ArrayBuffer) size = item.data.byteLength;
-      else if (item?.data?.__type === 'ArrayBuffer' && item.data.byteLength) size = item.data.byteLength;
-      else if (item?.data?.base64) size = Math.round(item.data.base64.length * 0.75);
-      else if (typeof item?.size === 'number') size = item.size;
+                  item?.fileName ||
+                  item?.pdfFileName ||
+                  item?.fileSize;
 
-      // Find matching metadata for subject/name
-      const meta = textbooksMetadata.find(m =>
-        (m.id || '').toLowerCase() === (item.id || item.key || '').toLowerCase() ||
-        (m.subject || '').toLowerCase() === (item.subject || '').toLowerCase()
-      );
+    if (isPdf) {
+      processedKeys.add(itemKey);
+
+      // Find matching metadata
+      const cleanSub = (item.subject || '').toLowerCase().replace(/^pyt_pdf_/, '').replace(/\s+/g, '_');
+      const meta = textbooksMetadata.find(m => {
+        const mId = (m.id || '').toLowerCase();
+        const mSub = (m.subject || '').toLowerCase().replace(/\s+/g, '_');
+        return mId === itemKey || mSub === cleanSub || `pyt_pdf_${mSub}` === itemKey;
+      });
+
+      const bytes = extractPdfBytes(item, meta);
+      const subjectName = extractSubject(itemKey, item.subject || meta?.subject);
+      const fileName = item.fileName || item.pdfFileName || meta?.fileName || meta?.pdfFileName || meta?.name || item.name || `${subjectName}_Master.pdf`;
 
       pdfItems.push({
-        id: item.id || item.key,
-        key: item.key || item.id,
-        name: item.fileName || item.name || meta?.fileName || meta?.name || item.subject || 'PDF File',
-        subject: item.subject || meta?.subject || 'General',
-        fileName: item.fileName || meta?.fileName || item.name || 'Master.pdf',
-        bytes: size,
-        pageOffset: meta?.pageOffset || 0,
-        updatedAt: item.updatedAt || meta?.updatedAt
+        id: item.id || item.key || `pyt_pdf_${cleanSub}`,
+        key: item.key || item.id || `pyt_pdf_${cleanSub}`,
+        name: fileName,
+        subject: subjectName,
+        fileName,
+        bytes,
+        hasBinary: (item?.data instanceof ArrayBuffer && item.data.byteLength > 0) || (item?.data?.__type === 'ArrayBuffer') || (typeof item?.data === 'string' && item.data.length > 100),
+        pageOffset: meta?.pageOffset || item?.pageOffset || 0,
+        updatedAt: item.updatedAt || item.uploadedAt || meta?.updatedAt
       });
     } else {
       curriculumTopics.push(item);
+    }
+  }
+
+  // Also check textbooksMetadata for any registered textbooks that were not in allPytItems
+  for (const meta of textbooksMetadata) {
+    const metaSub = (meta.subject || '').toLowerCase().replace(/\s+/g, '_');
+    const metaKey = (meta.id || `pyt_pdf_${metaSub}`).toLowerCase();
+
+    if (!processedKeys.has(metaKey) && !processedKeys.has(`pyt_pdf_${metaSub}`)) {
+      processedKeys.add(metaKey);
+      const bytes = extractPdfBytes(null, meta);
+      const subjectName = meta.subject || extractSubject(metaKey, '');
+      const fileName = meta.fileName || meta.pdfFileName || meta.name || `${subjectName}_Master.pdf`;
+
+      pdfItems.push({
+        id: meta.id || metaKey,
+        key: metaKey,
+        name: fileName,
+        subject: subjectName,
+        fileName,
+        bytes,
+        hasBinary: false,
+        pageOffset: meta.pageOffset || 0,
+        updatedAt: meta.updatedAt
+      });
     }
   }
 
