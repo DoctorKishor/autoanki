@@ -18,6 +18,7 @@ import JSZip from 'jszip';
 import CampDashboard from './components/CampTracker/CampDashboard';
 import DashboardGrid from './components/DashboardGrid';
 import AboutDashboard from './components/AboutDashboard';
+import StorageUsageSection from './components/StorageUsageSection';
 import {
   BG_CATEGORIES, STATIC_BG_GRADIENTS, SOUND_TRACKS, STUDY_QUOTES, OBS_CSS_TEMPLATE,
   CtrlBtn, BgPanel, SoundsPanel, QuotesPanel, StatsPanel, TimerSettingsPanel, WidgetsPanel, FloatingWidget,
@@ -3857,7 +3858,17 @@ export default function App() {
           </div>
         </motion.div>
 
-        {/* Section 2: API & Integration Credentials */}
+        {/* Section 2: Telegram-Style Storage Usage & Cache Manager */}
+        <StorageUsageSection
+          isDark={settingsThemeMode === 'dark'}
+          themeMode={settingsThemeMode}
+          onExportBackup={handleExportBackup}
+          onRefreshParent={() => {
+            if (typeof loadTrash === 'function') loadTrash();
+          }}
+        />
+
+        {/* Section 3: API & Integration Credentials */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}

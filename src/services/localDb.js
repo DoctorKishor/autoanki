@@ -905,6 +905,238 @@ export async function incrementDailyHintQuotaLocal() {
   return newCount;
 }
 
+/**
+ * Calculates a comprehensive breakdown of storage usage across all IndexedDB stores,
+ * KV collections, LocalStorage, and navigator.storage estimate.
+ */
+export async function calculateDetailedStorageBreakdown() {
+  let browserUsage = 0;
+  let browserQuota = 0;
+  try {
+    if (typeof navigator !== 'undefined' && navigator.storage && navigator.storage.estimate) {
+      const est = await navigator.storage.estimate();
+      browserUsage = est.usage || 0;
+      browserQuota = est.quota || 0;
+    }
+  } catch (e) {
+    console.warn('[LocalDB] navigator.storage.estimate unavailable:', e);
+  }
+
+  const getByteSize = (obj) => {
+    if (!obj) return 0;
+    try {
+      const str = typeof obj === 'string' ? obj : JSON.stringify(obj);
+      return new Blob([str]).size;
+    } catch (e) {
+      try {
+        return (typeof obj === 'string' ? obj : JSON.stringify(obj)).length * 2;
+      } catch (err) {
+        return 0;
+      }
+    }
+  };
+
+  // 1. Pages & Scans (LocalDB & Trash pages)
+  const pages = (await getLocalPages()) || [];
+  const trashPages = (await getLocalKV('trash_pages')) || [];
+  const pagesBytes = getByteSize(pages) + getByteSize(trashPages);
+
+  // 2. Flashcards & Topics (including trash cards)
+  const cards = (await getLocalCards()) || [];
+  const topics = (await getAllLocalTopics()) || [];
+  const trashCards = (await getLocalKV('trash_cards')) || [];
+  const cardsTopicsBytes = getByteSize(cards) + getByteSize(topics) + getByteSize(trashCards);
+
+  // 3. Study Logs, FSRS History & CAMP Timetable
+  const studyLogs = (await getLocalStudyLogs()) || {};
+  const studySchedule = (await getLocalStudySchedule()) || {};
+  const scheduleTemplates = (await getLocalScheduleTemplates()) || [];
+  const campTracker = (await getAllLocalCampRecords()) || [];
+  const campDailyLogs = (await getAllLocalCampDailyLogs()) || [];
+  let campData = null;
+  try {
+    campData = await getLocalCampData('camp_data');
+  } catch (e) {}
+  const timerState = (await getLocalTimerState()) || null;
+  const studyLogsBytes =
+    getByteSize(studyLogs) +
+    getByteSize(studySchedule) +
+    getByteSize(scheduleTemplates) +
+    getByteSize(campTracker) +
+    getByteSize(campDailyLogs) +
+    getByteSize(campData) +
+    getByteSize(timerState);
+
+  // 4. PYT & Subject Tracker
+  const pytTopics = (await getAllLocalPytTopics()) || [];
+  const pytProgress = (await getAllLocalPytProgress()) || [];
+  const subjectTracker = (await getLocalSubjectTrackerData()) || [];
+  const textbooksMetadata = (await getLocalTextbooksMetadata()) || [];
+  const pytTrackerBytes =
+    getByteSize(pytTopics) +
+    getByteSize(pytProgress) +
+    getByteSize(subjectTracker) +
+    getByteSize(textbooksMetadata);
+
+  // 5. AI Hints & Custom Prompts
+  let topicHints = [];
+  try {
+    topicHints = (await getAllLocalItems(STORES.TOPIC_HINTS)) || [];
+  } catch (e) {}
+  const prompts = (await getLocalPrompts()) || [];
+  let hintQuotas = [];
+  try {
+    hintQuotas = (await getAllLocalItems(STORES.HINT_QUOTA)) || [];
+  } catch (e) {}
+  const aiHintsBytes = getByteSize(topicHints) + getByteSize(prompts) + getByteSize(hintQuotas);
+
+  // 6. Settings & Local Storage
+  const settings = (await getAllLocalSettings()) || {};
+  let localStorageBytes = 0;
+  let localStorageItemCount = 0;
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      for (let i = 0; i < window.localStorage.length; i++) {
+        const key = window.localStorage.key(i);
+        const val = window.localStorage.getItem(key);
+        localStorageBytes += (key ? key.length : 0) + (val ? val.length : 0);
+        localStorageItemCount++;
+      }
+    }
+  } catch (e) {}
+  const settingsBytes = getByteSize(settings) + localStorageBytes;
+
+  const totalCalculatedBytes =
+    pagesBytes +
+    cardsTopicsBytes +
+    studyLogsBytes +
+    pytTrackerBytes +
+    aiHintsBytes +
+    settingsBytes;
+
+  const effectiveTotalBytes = Math.max(browserUsage, totalCalculatedBytes);
+
+  return {
+    browserUsage,
+    browserQuota,
+    totalCalculatedBytes,
+    effectiveTotalBytes,
+    categories: {
+      pages: {
+        id: 'pages',
+        name: 'Scanned Pages & Images',
+        shortName: 'Scans & Images',
+        color: '#22c55e', // Emerald
+        badgeBg: 'bg-emerald-500/15',
+        badgeText: 'text-emerald-500',
+        strokeColor: '#22c55e',
+        bytes: pagesBytes,
+        count: pages.length + trashPages.length,
+        label: `${pages.length} Pages (${trashPages.length} in trash)`,
+        clearable: false
+      },
+      cardsTopics: {
+        id: 'cardsTopics',
+        name: 'Flashcards & Topics',
+        shortName: 'Cards & Topics',
+        color: '#0ea5e9', // Sky Blue
+        badgeBg: 'bg-sky-500/15',
+        badgeText: 'text-sky-500',
+        strokeColor: '#0ea5e9',
+        bytes: cardsTopicsBytes,
+        count: cards.length + topics.length + trashCards.length,
+        label: `${cards.length} Cards · ${topics.length} Topics`,
+        clearable: false
+      },
+      studyLogs: {
+        id: 'studyLogs',
+        name: 'Study Logs & FSRS History',
+        shortName: 'Logs & Timetable',
+        color: '#6366f1', // Indigo
+        badgeBg: 'bg-indigo-500/15',
+        badgeText: 'text-indigo-500',
+        strokeColor: '#6366f1',
+        bytes: studyLogsBytes,
+        count: Object.keys(studyLogs).length + campTracker.length + campDailyLogs.length,
+        label: `${Object.keys(studyLogs).length} Review Days · CAMP Logs`,
+        clearable: false
+      },
+      pytTracker: {
+        id: 'pytTracker',
+        name: 'PYT & Subject Tracker',
+        shortName: 'PYT & Subjects',
+        color: '#f59e0b', // Amber
+        badgeBg: 'bg-amber-500/15',
+        badgeText: 'text-amber-500',
+        strokeColor: '#f59e0b',
+        bytes: pytTrackerBytes,
+        count: pytTopics.length + subjectTracker.length,
+        label: `${pytTopics.length} PYT Subjects · ${subjectTracker.length} Tracker Docs`,
+        clearable: false
+      },
+      aiHints: {
+        id: 'aiHints',
+        name: 'AI Hints & Concept Cache',
+        shortName: 'AI Hints & Cache',
+        color: '#14b8a6', // Teal
+        badgeBg: 'bg-teal-500/15',
+        badgeText: 'text-teal-500',
+        strokeColor: '#14b8a6',
+        bytes: aiHintsBytes,
+        count: topicHints.length + prompts.length,
+        label: `${topicHints.length} Cached Hints · ${prompts.length} Prompts`,
+        clearable: true,
+        clearActionType: 'aiHints'
+      },
+      settings: {
+        id: 'settings',
+        name: 'App Settings & Local Storage',
+        shortName: 'Settings & Cache',
+        color: '#a855f7', // Purple
+        badgeBg: 'bg-purple-500/15',
+        badgeText: 'text-purple-500',
+        strokeColor: '#a855f7',
+        bytes: settingsBytes,
+        count: Object.keys(settings).length + localStorageItemCount,
+        label: `${Object.keys(settings).length} Config Keys · ${localStorageItemCount} Local Items`,
+        clearable: false
+      }
+    }
+  };
+}
+
+/**
+ * Safely purges cached AI topic hints to reclaim storage space without touching user cards or logs.
+ */
+export async function clearAiHintsCacheLocal() {
+  try {
+    await clearLocalStore(STORES.TOPIC_HINTS);
+  } catch (e) {
+    console.warn('[LocalDB] Could not clear TOPIC_HINTS store directly:', e);
+  }
+  // Also clear cached recommendations from KV store
+  try {
+    const allKv = (await getAllLocalItems(STORES.KV_STORE)) || [];
+    for (const item of allKv) {
+      if (item && item.key && (item.key.startsWith('topic_hints_') || item.key.startsWith('ai_recommendations_'))) {
+        await deleteLocalItem(STORES.KV_STORE, item.key);
+      }
+    }
+  } catch (e) {
+    console.warn('[LocalDB] Error purging KV topic hint keys:', e);
+  }
+  return true;
+}
+
+/**
+ * Permanently clears all soft-deleted pages and cards from the Recycle Bin.
+ */
+export async function purgeRecycleBinLocal() {
+  await setLocalKV('trash_pages', []);
+  await setLocalKV('trash_cards', []);
+  return true;
+}
+
 export default {
   initDB,
   STORES,
@@ -973,6 +1205,10 @@ export default {
   getTopicHintsLocal,
   deleteTopicHintsLocal,
   checkDailyHintQuotaLocal,
-  incrementDailyHintQuotaLocal
+  incrementDailyHintQuotaLocal,
+  calculateDetailedStorageBreakdown,
+  clearAiHintsCacheLocal,
+  purgeRecycleBinLocal
 };
+
 
