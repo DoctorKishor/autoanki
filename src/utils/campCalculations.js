@@ -150,12 +150,15 @@ export function calculateEfficiencyScore(sessions, bedToBook) {
 
   // Bed-to-Book Penalty (Subtracted from the efficiency score)
   let penalty = 0;
-  if (bedToBook === 'Less than 45 mins' || bedToBook === '<45 min') {
+  const cleanB2B = (bedToBook || '').toLowerCase().replace(/[\s\-_]/g, '');
+  if (cleanB2B.includes('<45') || cleanB2B.includes('lessthan45') || cleanB2B.includes('under45')) {
     penalty = 0;
-  } else if (bedToBook === '45-60 min' || bedToBook === '45 to 60 mins') {
+  } else if (cleanB2B.includes('4560') || cleanB2B.includes('45to60') || cleanB2B.includes('45-60')) {
     penalty = 5;
-  } else if (bedToBook === '>1 hour' || bedToBook === 'More than 1 hour' || bedToBook === '>60 min' || bedToBook === 'More than 60 mins' || bedToBook === '> 60 mins') {
+  } else if (cleanB2B.includes('>1') || cleanB2B.includes('>60') || cleanB2B.includes('morethan') || cleanB2B.includes('over60')) {
     penalty = 15;
+  } else {
+    penalty = 0;
   }
 
   // Deep Study Bonus: +2% per session, capped at +10%

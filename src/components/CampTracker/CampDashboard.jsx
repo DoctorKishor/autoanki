@@ -43,7 +43,10 @@ export default function CampDashboard({
   themeMode = 'dark'
 }) {
   const isDark = themeMode === 'dark';
-  const todayDateStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
+  const todayDateStr = (() => {
+    const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+    return (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10);
+  })();
   const todayLabel = new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'short' }).replace(' ', '-'); // e.g. "27-May"
 
   const [selectedDate, setSelectedDate] = useState(todayDateStr);

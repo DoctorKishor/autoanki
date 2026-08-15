@@ -9823,40 +9823,40 @@ JSON Format:
     isObsOverlay
   ]);
 
+  // Normalize in case of legacy object structure for CAMP sessions
+  const normalizeCampSessions = (data) => {
+    const cats = ['preLunch', 'midDay', 'postDinner'];
+    const norm = {};
+    cats.forEach(c => {
+      if (!data || !data[c]) {
+        norm[c] = [];
+      } else if (Array.isArray(data[c])) {
+        norm[c] = data[c];
+      } else {
+        const old = data[c];
+        const oldHrs = parseFloat(old.hours) || 0;
+        if (oldHrs > 0) {
+          norm[c] = [{
+            id: 'migrated_1',
+            hours: oldHrs.toString(),
+            concentration: Number(old.concentration) || 7,
+            type: 'notes',
+            isManual: false
+          }];
+        } else {
+          norm[c] = [];
+        }
+      }
+    });
+    return norm;
+  };
+
   const saveSessionToCamp = async (dateStr, period, hours, focus, campData) => {
     // 1. Update camp_sessions_DATE in localStorage
     const saved = localStorage.getItem(`camp_sessions_${dateStr}`);
     let sessions = saved ? JSON.parse(saved) : { preLunch: [], midDay: [], postDinner: [] };
 
-    // Normalize in case of legacy object structure
-    const normalize = (data) => {
-      const cats = ['preLunch', 'midDay', 'postDinner'];
-      const norm = {};
-      cats.forEach(c => {
-        if (!data || !data[c]) {
-          norm[c] = [];
-        } else if (Array.isArray(data[c])) {
-          norm[c] = data[c];
-        } else {
-          const old = data[c];
-          const oldHrs = parseFloat(old.hours) || 0;
-          if (oldHrs > 0) {
-            norm[c] = [{
-              id: 'migrated_1',
-              hours: oldHrs.toString(),
-              concentration: Number(old.concentration) || 7,
-              type: 'notes',
-              isManual: false
-            }];
-          } else {
-            norm[c] = [];
-          }
-        }
-      });
-      return norm;
-    };
-
-    sessions = normalize(sessions);
+    sessions = normalizeCampSessions(sessions);
 
     const newSessionItem = {
       id: Date.now().toString() + '_' + Math.random().toString(36).substr(2, 9),
@@ -31240,11 +31240,9 @@ Return your response strictly as a JSON object matching this schema:
                                                 // Group dates into 53 week columns (0..52), each with 7 day slots
                                                 const weeks = Array.from({ length: 53 }, () => Array(7).fill(null));
                                                 dateKeys.forEach((dateStr, idx) => {
-                                                  const colIndex = Math.floor((jan1Weekday + idx) / 7);
+                                                  const colIndex = Math.min(52, Math.floor((jan1Weekday + idx) / 7));
                                                   const rowIndex = (jan1Weekday + idx) % 7;
-                                                  if (colIndex < 53) {
-                                                    weeks[colIndex][rowIndex] = dateStr;
-                                                  }
+                                                  weeks[colIndex][rowIndex] = dateStr;
                                                 });
 
                                                 // Calculate month header labels
@@ -31252,8 +31250,8 @@ Return your response strictly as a JSON object matching this schema:
                                                 dateKeys.forEach((dateStr, idx) => {
                                                   const d = new Date(dateStr + 'T00:00:00');
                                                   if (d.getDate() === 1) {
-                                                    const colIndex = Math.floor((jan1Weekday + idx) / 7);
-                                                    if (colIndex < 53 && !monthLabels[colIndex]) {
+                                                    const colIndex = Math.min(52, Math.floor((jan1Weekday + idx) / 7));
+                                                    if (!monthLabels[colIndex]) {
                                                       monthLabels[colIndex] = d.toLocaleDateString('en-US', { month: 'short' });
                                                     }
                                                   }
@@ -31561,7 +31559,7 @@ Return your response strictly as a JSON object matching this schema:
                                       const pct = parseFloat(gt.percentage);
                                       parsedPercentile = isNaN(pct) ? null : pct;
                                     } else if (gt.rank && (gt.rankTotal || gt.total)) {
-                                      const tot = Number(gt.rankTotal || gt.total) || 1;
+                                      const tot = Math.max(1, Number(gt.rankTotal || gt.total) || 1);
                                       parsedPercentile = Number((((tot - Number(gt.rank)) / tot) * 100).toFixed(2));
                                     }
                                   }
@@ -31718,10 +31716,11 @@ Return your response strictly as a JSON object matching this schema:
                             const poolLabel = isNeetPg ? 'NEET PG' : 'INI CET';
 
                             let percentileFraction = 0.5;
-                            if (activeGt.rank && activeGt.rankTotal) {
-                              percentileFraction = Number(activeGt.rank) / Number(activeGt.rankTotal);
+                            if (activeGt.rank && (activeGt.rankTotal || activeGt.total)) {
+                              const tot = Math.max(1, Number(activeGt.rankTotal || activeGt.total) || 1);
+                              percentileFraction = Number(activeGt.rank) / tot;
                             } else {
-                              const pct = activeGt.percentile === null ? (activeGt.score / activeGt.maxMarks * 100) : activeGt.percentile;
+                              const pct = activeGt.percentile === null ? (activeGt.score / (activeGt.maxMarks || 1) * 100) : activeGt.percentile;
                               percentileFraction = (100 - pct) / 100;
                             }
                             if (percentileFraction < 1e-4) percentileFraction = 1e-4;
@@ -31782,12 +31781,12 @@ Return your response strictly as a JSON object matching this schema:
                                   { college: 'Government Theni Medical College, Theni (TN)', course: 'MS Orthopedics / MD Pediatrics' },
                                   { college: 'Government Thoothukudi Medical College, Thoothukudi (TN)', course: 'MS General Surgery / MD OBG' },
                                   { college: 'Kanyakumari Government Medical College, Asaripallam (TN)', course: 'MD General Medicine / MD Pediatrics' },
-                                  { college: 'Vellore Government Medical College, Vellore (TN)', course: 'MS Orthopedics / MD OBG font-mono' },
+                                  { college: 'Vellore Government Medical College, Vellore (TN)', course: 'MS Orthopedics / MD OBG' },
                                   { college: 'Government Dharmapuri Medical College, Dharmapuri (TN)', course: 'MS General Surgery / MD Pediatrics' },
                                   { college: 'ESIC Medical College & PGIMSR, KK Nagar, Chennai (TN)', course: 'MD General Medicine / MS Orthopedics' },
                                   { college: 'Mysore Medical College and Research Institute (MMCRI), Mysuru (KA)', course: 'MD OBG / MD Pediatrics' },
                                   { college: 'Karnataka Institute of Medical Sciences (KIMS), Hubballi (KA)', course: 'MD General Medicine / MS General Surgery' },
-                                  { college: 'Vijayanagar Institute of Medical Sciences (VIMS), Ballari (KA)', course: 'MS Orthopedics / MD Pediatrics font-mono' },
+                                  { college: 'Vijayanagar Institute of Medical Sciences (VIMS), Ballari (KA)', course: 'MS Orthopedics / MD Pediatrics' },
                                   { college: 'Bowring & Lady Curzon Medical College & RI, Bengaluru (KA)', course: 'MD General Medicine / MD OBG' },
                                   { college: 'Mandya Institute of Medical Sciences, Mandya (KA)', course: 'MS General Surgery / MD Pediatrics' },
                                   { college: 'Hassan Institute of Medical Sciences, Hassan (KA)', course: 'MS Orthopedics / MD OBG' },
@@ -31834,7 +31833,7 @@ Return your response strictly as a JSON object matching this schema:
                                   { college: 'Koppal Institute of Medical Sciences, Koppal (KA)', course: 'MD Anesthesiology / MS ENT' },
                                   { college: 'Gadag Institute of Medical Sciences, Gadag (KA)', course: 'MS Ophthalmology / MD Anesthesiology' },
                                   { college: 'Kodagu Institute of Medical Sciences, Madikeri (KA)', course: 'MD Anesthesiology / MS ENT' },
-                                  { college: 'St. John\'s Medical College, Bengaluru (KA)', course: 'MD Anesthesiology / MS Ophthalmology font-mono' },
+                                  { college: 'St. John\'s Medical College, Bengaluru (KA)', course: 'MD Anesthesiology / MS Ophthalmology' },
                                   { college: 'Kempegowda Institute of Medical Sciences (KIMS), Bengaluru (KA)', course: 'MS ENT / MD Psychiatry' },
                                   { college: 'M.S. Ramaiah Medical College, Bengaluru (KA)', course: 'MD Anesthesiology / MS Ophthalmology' },
                                   { college: 'Government Medical College, Ernakulam (KL)', course: 'MD Anesthesiology / MS ENT' },
@@ -31876,13 +31875,13 @@ Return your response strictly as a JSON object matching this schema:
                                   { college: 'Government Medical College, Namakkal (TN)', course: 'MD Pathology / MD Pharmacology' },
                                   { college: 'Government Medical College, The Nilgiris (TN)', course: 'MD Microbiology / MD Pathology' },
                                   { college: 'Government Medical College, Ramanathapuram (TN)', course: 'MD Pathology / MD Forensic Medicine' },
-                                  { college: 'Government Medical College, Thiruvallur (TN)', course: 'MD Pathology / MD Pharmacology font-mono' },
+                                  { college: 'Government Medical College, Thiruvallur (TN)', course: 'MD Pathology / MD Pharmacology' },
                                   { college: 'Government Medical College, Tiruppur (TN)', course: 'MD Pathology / MD Microbiology' },
                                   { college: 'Sri Ramachandra Medical College & RI, Chennai (TN)', course: 'MD General Medicine / MS General Surgery (Deemed Paid)' },
                                   { college: 'SRM Medical College Hospital & RI, Chennai (TN)', course: 'MD Pediatrics / MD OBG (Deemed Paid)' },
                                   { college: 'Saveetha Medical College, Chennai (TN)', course: 'MD General Medicine / MS Orthopedics (Deemed Paid)' },
                                   { college: 'Chettinad Hospital & Research Institute, Kelambakkam (TN)', course: 'MD Pediatrics / MS General Surgery (Deemed Paid)' },
-                                  { college: 'Chitradurga Government Medical College, Chitradurga (KA)', course: 'MD Pathology / MD Forensic Medicine font-mono' },
+                                  { college: 'Chitradurga Government Medical College, Chitradurga (KA)', course: 'MD Pathology / MD Forensic Medicine' },
                                   { college: 'Haveri Institute of Medical Sciences, Haveri (KA)', course: 'MD Microbiology / MD Pathology' },
                                   { college: 'Yadgiri Institute of Medical Sciences, Yadgiri (KA)', course: 'MD Pathology / MD Pharmacology' },
                                   { college: 'Chikkamagaluru Institute of Medical Sciences, Chikkamagaluru (KA)', course: 'MD Pathology / MD Microbiology' },
@@ -31904,7 +31903,7 @@ Return your response strictly as a JSON object matching this schema:
                                   { college: 'Government Medical College, Machilipatnam (AP)', course: 'MD Pathology / MD Forensic Medicine' },
                                   { college: 'Government Medical College, Rajamahendravaram (AP)', course: 'MD Microbiology / MD Biochemistry' },
                                   { college: 'Government Medical College, Vizianagaram (AP)', course: 'MD Pathology / MD Pharmacology' },
-                                  { college: 'Government Medical College, Nandyal (AP)', course: 'MD Pathology / MD Microbiology font-mono' },
+                                  { college: 'Government Medical College, Nandyal (AP)', course: 'MD Pathology / MD Microbiology' },
                                   { college: 'Narayana Medical College, Nellore (AP)', course: 'MD General Medicine / MS General Surgery (Private)' }
                                 ];
                                 trendPredictionText = `Govt Para-clinical cutoffs remain stable for ${selectedCategory} candidates. Deemed/Private clinical fee caps are rising. Identify weak subjects in bottom grids to elevate scores by +40 marks.`;
@@ -31916,7 +31915,7 @@ Return your response strictly as a JSON object matching this schema:
                                 matchedColleges = [
                                   { college: 'Annapoorna Medical College & Hospital, Salem (TN)', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
                                   { college: 'Meenakshi Medical College Hospital & RI, Kanchipuram (TN)', course: 'MD Physiology / MD Biochemistry' },
-                                  { college: 'Sree Balaji Medical College & Hospital, Chennai (TN)', course: 'MD Anatomy / MD Physiology font-mono' },
+                                  { college: 'Sree Balaji Medical College & Hospital, Chennai (TN)', course: 'MD Anatomy / MD Physiology' },
                                   { college: 'Vinayaka Mission\'s Kirupananda Variyar Medical College, Salem (TN)', course: 'MD Anatomy / MD Physiology' },
                                   { college: 'Karpagam Faculty of Medical Sciences & Research, Coimbatore (TN)', course: 'MD Anatomy / MD Physiology' },
                                   { college: 'Velammal Medical College Hospital & RI, Madurai (TN)', course: 'MD Anatomy / MD Physiology' },
@@ -31929,12 +31928,12 @@ Return your response strictly as a JSON object matching this schema:
                                   { college: 'Madha Medical College & Hospital, Chennai (TN)', course: 'MD Anatomy / MD Physiology' },
                                   { college: 'KMCH Institute of Health Sciences & Research, Coimbatore (TN)', course: 'MD Anatomy / MD Physiology' },
                                   { college: 'Panimalar Medical College Hospital & RI, Chennai (TN)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Indira Medical College and Hospital, Thiruvallur (TN)', course: 'MD Anatomy / MD Physiology font-mono' },
+                                  { college: 'Indira Medical College and Hospital, Thiruvallur (TN)', course: 'MD Anatomy / MD Physiology' },
                                   { college: 'Arunai Medical College and Hospital, Tiruvannamalai (TN)', course: 'MD Anatomy / MD Physiology' },
                                   { college: 'Swamy Vivekanandha Medical College Hospital, Namakkal (TN)', course: 'MD Anatomy / MD Physiology' },
                                   { college: 'St. Peter\'s Medical College Hospital & RI, Hosur (TN)', course: 'MD Anatomy / MD Physiology' },
                                   { college: 'PSP Medical College Hospital and RI, Kanchipuram (TN)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Nandha Medical College and Hospital, Erode (TN)', course: 'MD Anatomy / MD Physiology font-mono' },
+                                  { college: 'Nandha Medical College and Hospital, Erode (TN)', course: 'MD Anatomy / MD Physiology' },
                                   { college: 'Dhanalakshmi Srinivasan University Medical College, Samayapuram (TN)', course: 'MD Anatomy / MD Physiology' },
                                   { college: 'Shri B.M. Patil Medical College (BLDE), Vijayapura (KA)', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
                                   { college: 'Sri Siddhartha Medical College, Tumakuru (KA)', course: 'MD Anatomy / MD Physiology' },
@@ -31951,41 +31950,41 @@ Return your response strictly as a JSON object matching this schema:
                                   { college: 'Shridevi Institute of Medical Sciences & RC, Tumakuru (KA)', course: 'MD Anatomy / MD Physiology' },
                                   { college: 'Sapthagiri Institute of Medical Sciences, Bengaluru (KA)', course: 'MD Anatomy / MD Physiology' },
                                   { college: 'G.R. Medical College, Mangaluru (KA)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Dr. Chandramma Dayananda Sagar Institute of Medical Sciences, Harohalli (KA)', course: 'MD Anatomy / MD Physiology font-mono' },
+                                  { college: 'Dr. Chandramma Dayananda Sagar Institute of Medical Sciences, Harohalli (KA)', course: 'MD Anatomy / MD Physiology' },
                                   { college: 'Jagadguru Gangadhar Mahaswamigalu Moorusavirmath (JGMM) Medical College, Hubballi (KA)', course: 'MD Anatomy / MD Physiology' },
                                   { college: 'Malankara Orthodox Syrian Church (MOSC) Medical College, Kolenchery (KL)', course: 'MD Anatomy / MD Physiology' },
                                   { college: 'MES Medical College, Perinthalmanna (KL)', course: 'MD Anatomy / MD Physiology' },
                                   { college: 'Karuna Medical College, Palakkad (KL)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'KMCT Medical College, Kozhikode (KL)', course: 'MD Anatomy / MD Physiology font-mono' },
+                                  { college: 'KMCT Medical College, Kozhikode (KL)', course: 'MD Anatomy / MD Physiology' },
                                   { college: 'Sree Gokulam Medical College, Venjaramoodu, Thiruvananthapuram (KL)', course: 'MD Anatomy / MD Physiology' },
                                   { college: 'Believers Church Medical College Hospital, Thiruvalla (KL)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'DM Wayanad Institute of Medical Sciences, Wayanad (KL)', course: 'MD Anatomy / MD Physiology font-mono' },
+                                  { college: 'DM Wayanad Institute of Medical Sciences, Wayanad (KL)', course: 'MD Anatomy / MD Physiology' },
                                   { college: 'Azeezia Institute of Medical Sciences & RI, Kollam (KL)', course: 'MD Anatomy / MD Physiology' },
                                   { college: 'Travancore Medicity Medical College, Kollam (KL)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'SUT Academy of Medical Sciences, Thiruvananthapuram (KL)', course: 'MD Anatomy / MD Physiology font-mono' },
+                                  { college: 'SUT Academy of Medical Sciences, Thiruvananthapuram (KL)', course: 'MD Anatomy / MD Physiology' },
                                   { college: 'Somervell Memorial CSI Medical College, Karakonam, Thiruvananthapuram (KL)', course: 'MD Anatomy / MD Physiology' },
                                   { college: 'Mount Zion Medical College, Adoor (KL)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'PK Das Institute of Medical Sciences, Palakkad (KL)', course: 'MD Anatomy / MD Physiology font-mono' },
+                                  { college: 'PK Das Institute of Medical Sciences, Palakkad (KL)', course: 'MD Anatomy / MD Physiology' },
                                   { college: 'Al Azhar Medical College & Super Speciality Hospital, Thodupuzha (KL)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Malabar Medical College, Kozhikode (KL)', course: 'MD Anatomy / MD Physiology font-mono' },
+                                  { college: 'Malabar Medical College, Kozhikode (KL)', course: 'MD Anatomy / MD Physiology' },
                                   { college: 'Kannur Medical College, Anjarakandy (KL)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Kamineni Institute of Medical Sciences, Narketpally (TS)', course: 'MD Anatomy / MD Physiology font-mono' },
-                                  { college: 'Mamata Medical College, Khammam (TS)', course: 'MD Anatomy / MD Physiology font-mono' },
-                                  { college: 'Prathima Institute of Medical Sciences, Karimnagar (TS)', course: 'MD Anatomy / MD Physiology font-mono' },
+                                  { college: 'Kamineni Institute of Medical Sciences, Narketpally (TS)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'Mamata Medical College, Khammam (TS)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'Prathima Institute of Medical Sciences, Karimnagar (TS)', course: 'MD Anatomy / MD Physiology' },
                                   { college: 'MediCiti Institute of Medical Sciences, Ghanpur (TS)', course: 'MD Anatomy / MD Physiology' },
                                   { college: 'Chalmeda Anand Rao Institute of Medical Sciences, Karimnagar (TS)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Shadan Institute of Medical Sciences, Hyderabad (TS)', course: 'MD Anatomy / MD Physiology font-mono' },
-                                  { college: 'Deccan College of Medical Sciences, Hyderabad (TS)', course: 'MD Anatomy / MD Physiology font-mono' },
-                                  { college: 'SVS Medical College, Mahabubnagar (TS)', course: 'MD Anatomy / MD Physiology font-mono' },
-                                  { college: 'Bhaskar Medical College, Yenkapally (TS)', course: 'MD Anatomy / MD Physiology font-mono' },
+                                  { college: 'Shadan Institute of Medical Sciences, Hyderabad (TS)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'Deccan College of Medical Sciences, Hyderabad (TS)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'SVS Medical College, Mahabubnagar (TS)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'Bhaskar Medical College, Yenkapally (TS)', course: 'MD Anatomy / MD Physiology' },
                                   { college: 'Malla Reddy Institute of Medical Sciences, Hyderabad (TS)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'NRI Academy of Medical Sciences, Chinakakani (AP)', course: 'MD Anatomy / MD Physiology font-mono' },
-                                  { college: 'PES Institute of Medical Sciences & Research, Kuppam (AP)', course: 'MD Anatomy / MD Physiology font-mono' },
+                                  { college: 'NRI Academy of Medical Sciences, Chinakakani (AP)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'PES Institute of Medical Sciences & Research, Kuppam (AP)', course: 'MD Anatomy / MD Physiology' },
                                   { college: 'Alluri Sitarama Raju (ASRAM) Academy of Medical Sciences, Eluru (AP)', course: 'MD Anatomy / MD Physiology' },
-                                  { college: 'Great Eastern Medical School & Hospital (GEMS), Srikakulam (AP)', course: 'MD Anatomy / MD Physiology font-mono' },
-                                  { college: 'Gitam Institute of Medical Sciences & RI, Visakhapatnam (AP)', course: 'MD Anatomy / MD Physiology font-mono' },
-                                  { college: 'DNB in Family Medicine (Tier-2/3 Private Hospitals)', course: 'NBEMS Family Medicine Quota font-mono' },
-                                  { college: 'Private Medical Colleges (Pan-India)', course: 'MD/MS Clinical branches (High-Budget Management Seats / NRI Quota) font-mono' }
+                                  { college: 'Great Eastern Medical School & Hospital (GEMS), Srikakulam (AP)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'Gitam Institute of Medical Sciences & RI, Visakhapatnam (AP)', course: 'MD Anatomy / MD Physiology' },
+                                  { college: 'DNB in Family Medicine (Tier-2/3 Private Hospitals)', course: 'NBEMS Family Medicine Quota' },
+                                  { college: 'Private Medical Colleges (Pan-India)', course: 'MD/MS Clinical branches (High-Budget Management Seats / NRI Quota)' }
                                 ];
                                 trendPredictionText = `Government non-clinical seats regularly drift to stray vacancy rounds. Re-strategize with high-yield mock analysis, revise high weightage systems, and double daily Anki recall drills.`;
                               }
@@ -31999,14 +31998,14 @@ Return your response strictly as a JSON object matching this schema:
                                 matchedColleges = [
                                   { college: 'AIIMS, New Delhi', course: 'MD General Medicine / MD Radiodiagnosis' },
                                   { college: 'PGIMER, Chandigarh', course: 'MS General Surgery / MD Pediatrics' },
-                                  { college: 'JIPMER, Puducherry', course: 'MD General Medicine / MS Orthopedics font-mono' },
+                                  { college: 'JIPMER, Puducherry', course: 'MD General Medicine / MS Orthopedics' },
                                   { college: 'AIIMS, Bhubaneswar', course: 'MD Pediatrics / MD OBG' },
                                   { college: 'NIMHANS, Bengaluru (KA)', course: 'DM Neurology / MCh Neurosurgery (Direct 6-Year Courses)' },
                                   { college: 'AIIMS, Rishikesh', course: 'MD General Medicine / MS General Surgery' },
                                   { college: 'AIIMS, Jodhpur', course: 'MD Radiodiagnosis / MD OBG' },
-                                  { college: 'AIIMS, Patna', course: 'MD General Medicine / MS Orthopedics font-mono' },
+                                  { college: 'AIIMS, Patna', course: 'MD General Medicine / MS Orthopedics' },
                                   { college: 'AIIMS, Bhopal', course: 'MD General Medicine / MD Pediatrics' },
-                                  { college: 'AIIMS, Raipur', course: 'MD General Medicine / MS General Surgery font-mono' }
+                                  { college: 'AIIMS, Raipur', course: 'MD General Medicine / MS General Surgery' }
                                 ];
                                 trendPredictionText = `Elite central seats are extremely volatile. Even minor differences in double-precision penalty points (-1/3) trigger large rank shifts. Double-down on extreme precision during final mock reviews to ensure absolute retention of micro-details.`;
                               } else if (effectiveCategoryRank <= 1500) {
@@ -32019,16 +32018,16 @@ Return your response strictly as a JSON object matching this schema:
                                   { college: 'AIIMS, Patna', course: 'MD Anesthesiology / MS Ophthalmology' },
                                   { college: 'AIIMS, Jodhpur', course: 'MS ENT / MD Psychiatry' },
                                   { college: 'NIMHANS, Bengaluru (KA)', course: 'MD Psychiatry (Premium Neuro-clinical seat)' },
-                                  { college: 'AIIMS, Raipur', course: 'MD General Medicine / MS Ophthalmology font-mono' },
+                                  { college: 'AIIMS, Raipur', course: 'MD General Medicine / MS Ophthalmology' },
                                   { college: 'AIIMS, Bhopal', course: 'MD OBG / MD Anesthesiology' },
-                                  { college: 'AIIMS, Bhubaneswar', course: 'MD Anesthesiology / MS ENT font-mono' },
+                                  { college: 'AIIMS, Bhubaneswar', course: 'MD Anesthesiology / MS ENT' },
                                   { college: 'AIIMS, Nagpur', course: 'MD Anesthesiology / MS Ophthalmology' },
                                   { college: 'PGIMER, Chandigarh', course: 'MD Anesthesiology / MS ENT' },
-                                  { college: 'JIPMER, Puducherry', course: 'MD Anesthesiology / MS Ophthalmology font-mono' },
-                                  { college: 'AIIMS, Bathinda', course: 'MD Pediatrics / MS General Surgery font-mono' },
-                                  { college: 'AIIMS, Gorakhpur', course: 'MD Anesthesiology / MS ENT font-mono' },
-                                  { college: 'AIIMS, Mangalagiri (AP)', course: 'MD Psychiatry / MS Ophthalmology font-mono' },
-                                  { college: 'AIIMS, Bibinagar (TS)', course: 'MD Pediatrics / MD OBG font-mono' }
+                                  { college: 'JIPMER, Puducherry', course: 'MD Anesthesiology / MS Ophthalmology' },
+                                  { college: 'AIIMS, Bathinda', course: 'MD Pediatrics / MS General Surgery' },
+                                  { college: 'AIIMS, Gorakhpur', course: 'MD Anesthesiology / MS ENT' },
+                                  { college: 'AIIMS, Mangalagiri (AP)', course: 'MD Psychiatry / MS Ophthalmology' },
+                                  { college: 'AIIMS, Bibinagar (TS)', course: 'MD Pediatrics / MD OBG' }
                                 ];
                                 trendPredictionText = `INI CET mid-clinical seats are filling up rapidly. Your current performance suggests robust clinical competence. Aiming for an additional +10 correct questions will safely elevate your rank below 500.`;
                               } else if (effectiveCategoryRank <= 3000) {
@@ -32039,18 +32038,18 @@ Return your response strictly as a JSON object matching this schema:
                                 matchedColleges = [
                                   { college: 'AIIMS, Patna', course: 'MD Pathology / MD Pharmacology' },
                                   { college: 'AIIMS, Nagpur', course: 'MD Microbiology / MD Biochemistry' },
-                                  { college: 'PGIMER, Chandigarh', course: 'Para-clinical branches / MD Pathology font-mono' },
+                                  { college: 'PGIMER, Chandigarh', course: 'Para-clinical branches / MD Pathology' },
                                   { college: 'AIIMS, New Delhi', course: 'MD Pathology / MD Pharmacology' },
-                                  { college: 'JIPMER, Puducherry', course: 'MD Pathology / MD Pharmacology font-mono' },
+                                  { college: 'JIPMER, Puducherry', course: 'MD Pathology / MD Pharmacology' },
                                   { college: 'AIIMS, Rishikesh', course: 'MD Pathology / MD Forensic Medicine' },
-                                  { college: 'AIIMS, Jodhpur', course: 'MD Pathology / MD Microbiology font-mono' },
-                                  { college: 'AIIMS, Bhopal', course: 'MD Pathology / MD Biochemistry font-mono' },
-                                  { college: 'AIIMS, Raipur', course: 'MD Pathology / MD Pharmacology font-mono' },
+                                  { college: 'AIIMS, Jodhpur', course: 'MD Pathology / MD Microbiology' },
+                                  { college: 'AIIMS, Bhopal', course: 'MD Pathology / MD Biochemistry' },
+                                  { college: 'AIIMS, Raipur', course: 'MD Pathology / MD Pharmacology' },
                                   { college: 'AIIMS, Deoghar', course: 'MD Pathology / MD Microbiology' },
-                                  { college: 'AIIMS, Bathinda', course: 'MD Pathology / MD Forensic Medicine font-mono' },
-                                  { college: 'AIIMS, Gorakhpur', course: 'MD Pathology / MD Microbiology font-mono' },
-                                  { college: 'AIIMS, Mangalagiri (AP)', course: 'MD Pathology / MD Pharmacology font-mono' },
-                                  { college: 'AIIMS, Bibinagar (TS)', course: 'MD Pathology / MD Microbiology font-mono' },
+                                  { college: 'AIIMS, Bathinda', course: 'MD Pathology / MD Forensic Medicine' },
+                                  { college: 'AIIMS, Gorakhpur', course: 'MD Pathology / MD Microbiology' },
+                                  { college: 'AIIMS, Mangalagiri (AP)', course: 'MD Pathology / MD Pharmacology' },
+                                  { college: 'AIIMS, Bibinagar (TS)', course: 'MD Pathology / MD Microbiology' },
                                   { college: 'AIIMS, Kalyani', course: 'MD Pathology / MD Microbiology' }
                                 ];
                                 trendPredictionText = `Central Para-clinical seats remain accessible. Focus on Anatomy and Biochemistry to break into central clinical branches. Keep daily Anki review cycles active.`;
@@ -32064,14 +32063,14 @@ Return your response strictly as a JSON object matching this schema:
                                   { college: 'PGIMER, Chandigarh', course: 'MD Anatomy / MD Physiology / MD Transfusion Medicine' },
                                   { college: 'JIPMER, Puducherry', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
                                   { college: 'AIIMS, Jodhpur', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
-                                  { college: 'AIIMS, Rishikesh', course: 'MD Anatomy / MD Physiology / MD Biochemistry font-mono' },
+                                  { college: 'AIIMS, Rishikesh', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
                                   { college: 'AIIMS, Patna', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
-                                  { college: 'AIIMS, Bhopal', course: 'MD Anatomy / MD Physiology / MD Biochemistry font-mono' },
+                                  { college: 'AIIMS, Bhopal', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
                                   { college: 'AIIMS, Bhubaneswar', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
-                                  { college: 'AIIMS, Gorakhpur', course: 'MD Anatomy / MD Physiology / MD Biochemistry font-mono' },
-                                  { college: 'AIIMS, Bathinda', course: 'MD Anatomy / MD Physiology / MD Biochemistry font-mono' },
-                                  { college: 'AIIMS, Mangalagiri (AP)', course: 'MD Anatomy / MD Physiology / MD Biochemistry font-mono' },
-                                  { college: 'AIIMS, Bibinagar (TS)', course: 'MD Anatomy / MD Physiology / MD Biochemistry font-mono' },
+                                  { college: 'AIIMS, Gorakhpur', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
+                                  { college: 'AIIMS, Bathinda', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
+                                  { college: 'AIIMS, Mangalagiri (AP)', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
+                                  { college: 'AIIMS, Bibinagar (TS)', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
                                   { college: 'AIIMS, Rajkot', course: 'MD Anatomy / MD Physiology / MD Biochemistry' },
                                   { college: 'AIIMS, Jammu', course: 'MD Anatomy / MD Physiology / MD Biochemistry' }
                                 ];
@@ -32239,23 +32238,33 @@ Return your response strictly as a JSON object matching this schema:
                             return (
                               <div className="space-y-6 w-full text-left">
                                 {/* SVG Trend Chart & Metric Selectors */}
-                                <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex flex-col hover:shadow-md transition w-full space-y-4">
-                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-3">
+                                <div className={`p-6 rounded-3xl border shadow-sm flex flex-col hover:shadow-md transition w-full space-y-4 ${
+                                  isDark ? 'neu-card-dark border-slate-750 text-white' : 'neu-card-light border-slate-200 bg-white text-slate-800'
+                                }`}>
+                                  <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-3 ${
+                                    isDark ? 'border-slate-800' : 'border-gray-100'
+                                  }`}>
                                     <div className="text-left">
-                                      <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider font-mono">Interactive Performance Trend Chart</span>
-                                      <h4 className="text-xs font-black text-gray-800 uppercase tracking-widest mt-0.5 font-mono">
+                                      <span className={`text-[9px] font-black uppercase tracking-wider font-mono ${
+                                        isDark ? 'text-slate-400' : 'text-gray-400'
+                                      }`}>Interactive Performance Trend Chart</span>
+                                      <h4 className={`text-xs font-black uppercase tracking-widest mt-0.5 font-mono ${
+                                        isDark ? 'text-white' : 'text-gray-800'
+                                      }`}>
                                         Y-Axis: {loggerGtYAxisMetric === 'percentile' ? 'Percentile (%ile)' : loggerGtYAxisMetric === 'accuracy' ? 'Accuracy Rate (%)' : 'Correct Questions (Qs)'}
                                       </h4>
                                     </div>
                                     <div className="flex items-center gap-3 shrink-0 flex-wrap">
                                       {/* NEETPG/INICET filter */}
-                                      <div className="flex bg-gray-100 p-0.5 rounded-xl border border-gray-200 shadow-inner select-none font-mono">
+                                      <div className={`flex p-0.5 rounded-xl border select-none font-mono ${
+                                        isDark ? 'neu-pressed-dark border-slate-800' : 'bg-gray-100 border-gray-200 shadow-inner'
+                                      }`}>
                                         {['All', 'NEETPG', 'INICET'].map(e => (
                                           <button
                                             key={e}
                                             type="button"
                                             onClick={() => { setGtFilter(e); setSelectedGtForAnalysisId(null); }}
-                                            className={`px-3 py-1.5 text-[9px] font-black uppercase rounded-lg transition-all duration-200 ${gtFilter === e ? 'bg-orange-500 text-white shadow-sm font-extrabold' : 'text-gray-500 hover:text-gray-700'}`}
+                                            className={`px-3 py-1.5 text-[9px] font-black uppercase rounded-lg transition-all duration-200 ${gtFilter === e ? 'bg-orange-500 text-white shadow-sm font-extrabold' : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-gray-500 hover:text-gray-700')}`}
                                           >
                                             {e === 'All' ? 'All Tests' : e === 'NEETPG' ? 'NEET PG' : 'INI CET'}
                                           </button>
@@ -32263,13 +32272,15 @@ Return your response strictly as a JSON object matching this schema:
                                       </div>
 
                                       {/* Y Axis Metric Selector */}
-                                      <div className="flex bg-white p-0.5 rounded-xl border border-gray-200 shadow-sm select-none font-mono">
+                                      <div className={`flex p-0.5 rounded-xl border select-none font-mono ${
+                                        isDark ? 'neu-pressed-dark border-slate-800' : 'bg-white border-gray-200 shadow-sm'
+                                      }`}>
                                         {[{ id: 'percentile', label: 'Percentile' }, { id: 'accuracy', label: 'Accuracy' }, { id: 'correct', label: 'Correct Qs' }].map(e => (
                                           <button
                                             key={e.id}
                                             type="button"
                                             onClick={() => setLoggerGtYAxisMetric(e.id)}
-                                            className={`px-3 py-1.5 text-[9px] font-black uppercase rounded-lg transition-all duration-200 ${loggerGtYAxisMetric === e.id ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                            className={`px-3 py-1.5 text-[9px] font-black uppercase rounded-lg transition-all duration-200 ${loggerGtYAxisMetric === e.id ? 'bg-orange-500 text-white shadow-sm' : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-gray-500 hover:text-gray-700')}`}
                                           >
                                             {e.label}
                                           </button>
@@ -32293,8 +32304,8 @@ Return your response strictly as a JSON object matching this schema:
                                         const tickLabel = loggerGtYAxisMetric === 'percentile' ? `${tick}%ile` : loggerGtYAxisMetric === 'accuracy' ? `${tick}%` : `${tick} Qs`;
                                         return (
                                           <g key={tick}>
-                                            <line x1={45} y1={y} x2={770} y2={y} stroke="#e5e7eb" strokeWidth="0.5" strokeDasharray="3 3" />
-                                            <text x={37} y={y + 3} textAnchor="end" className="text-[8px] font-mono font-bold fill-gray-400">{tickLabel}</text>
+                                            <line x1={45} y1={y} x2={770} y2={y} stroke={isDark ? '#334155' : '#e5e7eb'} strokeWidth="0.5" strokeDasharray="3 3" />
+                                            <text x={37} y={y + 3} textAnchor="end" className={`text-[8px] font-mono font-bold ${isDark ? 'fill-slate-400' : 'fill-gray-400'}`}>{tickLabel}</text>
                                           </g>
                                         );
                                       })}
@@ -32312,7 +32323,7 @@ Return your response strictly as a JSON object matching this schema:
                                               cx={p.x}
                                               cy={p.y}
                                               r={isSelected ? '6' : '4.5'}
-                                              className={`transition-all duration-300 ${isSelected ? 'fill-orange-500 stroke-orange-100 stroke-[5px]' : 'fill-white stroke-orange-500 stroke-2 hover:fill-orange-500'}`}
+                                              className={`transition-all duration-300 ${isSelected ? 'fill-orange-500 stroke-orange-100 stroke-[5px]' : (isDark ? 'fill-[#222730] stroke-orange-400 stroke-2 hover:fill-orange-500' : 'fill-white stroke-orange-500 stroke-2 hover:fill-orange-500')}`}
                                             />
                                             <title>
                                               {`${p.name} | Score: ${p.score}/${p.maxMarks} | Percentile: ${p.percentile === null ? 'N/A' : p.percentile}%ile | Accuracy: ${p.accuracy}% | Correct: ${p.correct} Qs`}
@@ -32323,7 +32334,9 @@ Return your response strictly as a JSON object matching this schema:
                                     </svg>
                                   </div>
 
-                                  <div className="flex justify-between items-center px-2 mt-2 text-[8.5px] font-bold text-gray-400 select-none font-mono">
+                                  <div className={`flex justify-between items-center px-2 mt-2 text-[8.5px] font-bold select-none font-mono ${
+                                    isDark ? 'text-slate-400' : 'text-gray-400'
+                                  }`}>
                                     <span className="truncate max-w-[40%] text-left">
                                       Attempt {chartPoints[0]?.name} ({formatChartDate(chartPoints[0]?.date)})
                                     </span>
@@ -32337,25 +32350,35 @@ Return your response strictly as a JSON object matching this schema:
                                 </div>
 
                                 {/* Active Mock detailed report */}
-                                <div className="bg-gradient-to-br from-white to-gray-50/20 border border-gray-200/80 rounded-3xl p-6 shadow-sm space-y-6">
-                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-5">
+                                <div className={`border rounded-3xl p-6 shadow-sm space-y-6 ${
+                                  isDark ? 'neu-card-dark border-slate-750 text-white' : 'bg-gradient-to-br from-white to-gray-50/20 border-gray-200/80 text-slate-800'
+                                }`}>
+                                  <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-5 ${
+                                    isDark ? 'border-slate-800' : 'border-gray-100'
+                                  }`}>
                                     <div className="flex items-center gap-4.5">
                                       <div className="bg-orange-500 text-white p-3 rounded-2xl shadow-lg shadow-orange-500/20 shrink-0">
                                         <Activity className="w-6 h-6 animate-pulse" />
                                       </div>
                                       <div className="text-left">
                                         {activeGt.platform && (
-                                          <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-indigo-50 text-indigo-600 border border-indigo-100/50 font-mono tracking-wider inline-block mb-1.5">
+                                          <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded font-mono tracking-wider inline-block mb-1.5 ${
+                                            isDark ? 'bg-indigo-950/80 text-indigo-300 border border-indigo-800/60' : 'bg-indigo-50 text-indigo-600 border border-indigo-100/50'
+                                          }`}>
                                             {activeGt.platform}
                                           </span>
                                         )}
                                         <div className="flex items-center gap-2">
-                                          <h4 className="text-base font-black text-gray-900 leading-tight">{activeGt.name}</h4>
+                                          <h4 className={`text-base font-black leading-tight ${
+                                            isDark ? 'text-white' : 'text-gray-900'
+                                          }`}>{activeGt.name}</h4>
                                           <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-orange-100 text-orange-600 font-mono tracking-wider">
                                             {activeGt.type === 'NEETPG' ? 'NEET PG' : 'INI CET'}
                                           </span>
                                         </div>
-                                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mt-1">
+                                        <span className={`text-[10px] font-bold uppercase tracking-wider block mt-1 ${
+                                          isDark ? 'text-slate-400' : 'text-gray-400'
+                                        }`}>
                                           Submitted on {formatChartDate(activeGt.date)}
                                         </span>
                                       </div>
@@ -32382,7 +32405,11 @@ Return your response strictly as a JSON object matching this schema:
                                         setEditGtShowSubjects(Object.keys(activeGt.subjects || {}).length > 0);
                                         setIsEditGtModalOpen(true);
                                       }}
-                                      className="px-4 py-2 bg-white border border-gray-200 text-gray-700 text-xs font-black uppercase tracking-wider rounded-xl shadow-sm hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition duration-150 flex items-center gap-1.5 active:scale-95 shrink-0 font-mono"
+                                      className={`px-4 py-2 border text-xs font-black uppercase tracking-wider rounded-xl shadow-sm transition duration-150 flex items-center gap-1.5 active:scale-95 shrink-0 font-mono ${
+                                        isDark
+                                          ? 'neu-btn-dark text-slate-200 border-slate-750 hover:text-white'
+                                          : 'bg-white border-gray-200 text-gray-700 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200'
+                                      }`}
                                     >
                                       <Edit3 className="w-3.5 h-3.5" />
                                       Edit Test Data
@@ -32391,63 +32418,87 @@ Return your response strictly as a JSON object matching this schema:
 
                                   {/* Score metrics grid */}
                                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4.5">
-                                    <div className="bg-white p-5 rounded-2xl border border-gray-150 flex flex-col justify-between shadow-sm hover:shadow transition">
-                                      <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider font-mono">All India Rank (AIR)</span>
-                                      <div className="flex items-baseline gap-1 mt-2 text-indigo-600">
+                                    <div className={`p-5 rounded-2xl border flex flex-col justify-between shadow-sm transition ${
+                                      isDark ? 'neu-pressed-dark border-slate-800 text-white' : 'bg-white border-gray-150 text-slate-800'
+                                    }`}>
+                                      <span className={`text-[9px] font-black uppercase tracking-wider font-mono ${
+                                        isDark ? 'text-slate-400' : 'text-gray-400'
+                                      }`}>All India Rank (AIR)</span>
+                                      <div className="flex items-baseline gap-1 mt-2 text-indigo-400">
                                         <span className="text-2xl font-black font-mono">#{activeGt.rank || 'N/A'}</span>
                                       </div>
-                                      <p className="text-[9.5px] text-gray-400 font-semibold mt-2.5 leading-snug">
+                                      <p className={`text-[9.5px] font-semibold mt-2.5 leading-snug ${
+                                        isDark ? 'text-slate-400' : 'text-gray-400'
+                                      }`}>
                                         {activeGt.rankTotal ? `Out of ${activeGt.rankTotal.toLocaleString()} candidates` : 'National rank index'}
                                         {activeGt.stateRank && (
-                                          <span className="block text-orange-600 font-bold mt-0.5 font-mono">
+                                          <span className="block text-orange-400 font-bold mt-0.5 font-mono">
                                             State Rank: #{activeGt.stateRank} ({activeGt.state || 'N/A'})
                                           </span>
                                         )}
                                       </p>
                                     </div>
 
-                                    <div className="bg-white p-5 rounded-2xl border border-gray-150 flex flex-col justify-between shadow-sm hover:shadow transition">
-                                      <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider font-mono">Your Marks</span>
-                                      <div className="flex items-baseline gap-1 mt-2 text-orange-600">
+                                    <div className={`p-5 rounded-2xl border flex flex-col justify-between shadow-sm transition ${
+                                      isDark ? 'neu-pressed-dark border-slate-800 text-white' : 'bg-white border-gray-150 text-slate-800'
+                                    }`}>
+                                      <span className={`text-[9px] font-black uppercase tracking-wider font-mono ${
+                                        isDark ? 'text-slate-400' : 'text-gray-400'
+                                      }`}>Your Marks</span>
+                                      <div className="flex items-baseline gap-1 mt-2 text-orange-400">
                                         <span className="text-2xl font-black font-mono">{activeGt.score}</span>
-                                        <span className="text-xs text-gray-400 font-bold">/ {activeGt.maxMarks}</span>
+                                        <span className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>/ {activeGt.maxMarks}</span>
                                       </div>
-                                      <p className="text-[9.5px] text-gray-400 font-semibold mt-2.5">
+                                      <p className={`text-[9.5px] font-semibold mt-2.5 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
                                         {activeGt.type === 'NEETPG' ? 'Scoring: +4 correct, -1 incorrect' : 'Scoring: +1 correct, -1/3 incorrect'}
                                       </p>
                                     </div>
 
-                                    <div className="bg-white p-5 rounded-2xl border border-gray-150 flex flex-col justify-between shadow-sm hover:shadow transition">
-                                      <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider font-mono">Percentile</span>
-                                      <div className="flex items-baseline gap-1 mt-2 text-blue-600">
+                                    <div className={`p-5 rounded-2xl border flex flex-col justify-between shadow-sm transition ${
+                                      isDark ? 'neu-pressed-dark border-slate-800 text-white' : 'bg-white border-gray-150 text-slate-800'
+                                    }`}>
+                                      <span className={`text-[9px] font-black uppercase tracking-wider font-mono ${
+                                        isDark ? 'text-slate-400' : 'text-gray-400'
+                                      }`}>Percentile</span>
+                                      <div className="flex items-baseline gap-1 mt-2 text-blue-400">
                                         <span className="text-2xl font-black font-mono">{activeGt.percentile === null ? 'N/A' : activeGt.percentile.toFixed(2)}</span>
-                                        <span className="text-xs text-blue-400 font-bold">%ile</span>
+                                        <span className="text-xs text-blue-300 font-bold">%ile</span>
                                       </div>
-                                      <p className="text-[9.5px] text-gray-400 font-semibold mt-2.5">
+                                      <p className={`text-[9.5px] font-semibold mt-2.5 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
                                         National rank percentile curve
                                       </p>
                                     </div>
 
-                                    <div className="bg-white p-5 rounded-2xl border border-gray-150 flex flex-col justify-between shadow-sm hover:shadow transition">
-                                      <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider font-mono">Accuracy Rate</span>
-                                      <div className="flex items-baseline gap-1 mt-2 text-emerald-600">
+                                    <div className={`p-5 rounded-2xl border flex flex-col justify-between shadow-sm transition ${
+                                      isDark ? 'neu-pressed-dark border-slate-800 text-white' : 'bg-white border-gray-150 text-slate-800'
+                                    }`}>
+                                      <span className={`text-[9px] font-black uppercase tracking-wider font-mono ${
+                                        isDark ? 'text-slate-400' : 'text-gray-400'
+                                      }`}>Accuracy Rate</span>
+                                      <div className="flex items-baseline gap-1 mt-2 text-emerald-400">
                                         <span className="text-2xl font-black font-mono">{activeGt.accuracy}%</span>
                                       </div>
-                                      <p className="text-[9.5px] text-gray-400 font-semibold mt-2.5">
+                                      <p className={`text-[9.5px] font-semibold mt-2.5 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
                                         {activeGt.correct} Correct of {activeGt.attended} Attended
                                       </p>
                                     </div>
                                   </div>
 
                                   {/* Attended vs Incorrect vs Unattempted Progress Bar */}
-                                  <div className="bg-gray-50 border border-gray-150 p-4.5 rounded-2xl space-y-3.5">
-                                    <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-gray-500 font-mono">
+                                  <div className={`p-4.5 rounded-2xl space-y-3.5 border ${
+                                    isDark ? 'neu-pressed-dark border-slate-800' : 'bg-gray-50 border-gray-150'
+                                  }`}>
+                                    <div className={`flex items-center justify-between text-[10px] font-black uppercase tracking-wider font-mono ${
+                                      isDark ? 'text-slate-400' : 'text-gray-500'
+                                    }`}>
                                       <span>Simulated Paper Completion</span>
-                                      <span className="text-gray-700 font-bold font-sans">
+                                      <span className={`font-bold font-sans ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>
                                         {activeGt.correct + activeGt.incorrect} / {activeGt.maxMarks === 800 ? 200 : 200} Questions Attempted
                                       </span>
                                     </div>
-                                    <div className="relative w-full bg-gray-200 rounded-full h-3 flex overflow-hidden">
+                                    <div className={`relative w-full rounded-full h-3 flex overflow-hidden ${
+                                      isDark ? 'bg-slate-700' : 'bg-gray-200'
+                                    }`}>
                                       <div
                                         style={{ width: `${(activeGt.correct / (activeGt.maxMarks === 800 ? 200 : 200)) * 100}%` }}
                                         className="bg-emerald-500 h-full transition-all duration-300"
@@ -32460,21 +32511,21 @@ Return your response strictly as a JSON object matching this schema:
                                       />
                                       <div
                                         style={{ width: `${(activeGt.unattempted / (activeGt.maxMarks === 800 ? 200 : 200)) * 100}%` }}
-                                        className="bg-gray-300 h-full transition-all duration-300"
+                                        className={`h-full transition-all duration-300 ${isDark ? 'bg-slate-600' : 'bg-gray-300'}`}
                                         title={`${activeGt.unattempted} Unattempted`}
                                       />
                                     </div>
                                     <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-wider font-mono">
-                                      <div className="flex items-center gap-1.5 text-emerald-600">
+                                      <div className="flex items-center gap-1.5 text-emerald-400">
                                         <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
                                         Correct: {activeGt.correct} Qs
                                       </div>
-                                      <div className="flex items-center gap-1.5 text-red-600">
+                                      <div className="flex items-center gap-1.5 text-red-400">
                                         <span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block" />
                                         Incorrect: {activeGt.incorrect} Qs
                                       </div>
-                                      <div className="flex items-center gap-1.5 text-gray-400">
-                                        <span className="w-2.5 h-2.5 rounded-full bg-gray-300 inline-block" />
+                                      <div className={`flex items-center gap-1.5 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
+                                        <span className={`w-2.5 h-2.5 rounded-full inline-block ${isDark ? 'bg-slate-500' : 'bg-gray-300'}`} />
                                         Unattempted: {activeGt.unattempted} Qs
                                       </div>
                                     </div>
@@ -32483,12 +32534,20 @@ Return your response strictly as a JSON object matching this schema:
                                   {/* Detailed Subject Accuracy Table */}
                                   {Object.keys(activeGt.subjects || {}).length > 0 && (
                                     <div className="space-y-3">
-                                      <h5 className="text-[10px] font-black uppercase text-gray-400 tracking-wider font-mono text-left">Subject-wise Performance Scorecard</h5>
-                                      <div className="border border-gray-150 rounded-2xl overflow-hidden bg-white shadow-sm">
+                                      <h5 className={`text-[10px] font-black uppercase tracking-wider font-mono text-left ${
+                                        isDark ? 'text-slate-400' : 'text-gray-400'
+                                      }`}>Subject-wise Performance Scorecard</h5>
+                                      <div className={`border rounded-2xl overflow-hidden shadow-sm ${
+                                        isDark ? 'neu-pressed-dark border-slate-800' : 'border-gray-150 bg-white'
+                                      }`}>
                                         <div className="overflow-x-auto">
-                                          <table className="w-full border-collapse text-left text-xs text-gray-600">
+                                          <table className={`w-full border-collapse text-left text-xs ${
+                                            isDark ? 'text-slate-300' : 'text-gray-600'
+                                          }`}>
                                             <thead>
-                                              <tr className="bg-gray-50 border-b border-gray-150 font-mono text-[9px] font-black text-gray-400 uppercase tracking-wider">
+                                              <tr className={`border-b font-mono text-[9px] font-black uppercase tracking-wider ${
+                                                isDark ? 'bg-[#181c22] border-slate-800 text-slate-400' : 'bg-gray-50 border-gray-150 text-gray-400'
+                                              }`}>
                                                 <th className="px-4 py-2.5">Subject Name</th>
                                                 <th className="px-4 py-2.5">Correct Qs</th>
                                                 <th className="px-4 py-2.5">Total Qs</th>
@@ -32497,25 +32556,25 @@ Return your response strictly as a JSON object matching this schema:
                                                 <th className="px-4 py-2.5">Status Card</th>
                                               </tr>
                                             </thead>
-                                            <tbody className="divide-y divide-gray-100 font-semibold">
+                                            <tbody className={`divide-y font-semibold ${isDark ? 'divide-slate-800/60' : 'divide-gray-100'}`}>
                                               {SYSTEM_SUBJECTS.map(sysSub => {
                                                 const subScore = activeGt.subjects[sysSub.name] || { correct: 0, total: sysSub.weight };
                                                 const cCount = Number(subScore.correct) || 0;
                                                 const tCount = Number(subScore.total) || sysSub.weight;
                                                 const subAcc = tCount > 0 ? (cCount / tCount) * 100 : 0;
-                                                const accClass = subAcc >= 80 ? 'text-emerald-600 bg-emerald-50 border-emerald-200' : subAcc >= 70 ? 'text-blue-600 bg-blue-50 border-blue-200' : subAcc >= 50 ? 'text-amber-600 bg-amber-50 border-amber-200' : 'text-red-600 bg-red-50 border-red-200';
+                                                const accClass = subAcc >= 80 ? 'text-emerald-400 bg-emerald-950/60 border-emerald-800/60' : subAcc >= 70 ? 'text-blue-400 bg-blue-950/60 border-blue-800/60' : subAcc >= 50 ? 'text-amber-400 bg-amber-950/60 border-amber-800/60' : 'text-red-400 bg-red-950/60 border-red-800/60';
                                                 const accLabel = subAcc >= 80 ? 'Mastered' : subAcc >= 70 ? 'Proficient' : subAcc >= 50 ? 'Needs Practice' : 'Critical Weakness';
 
                                                 return (
-                                                  <tr key={sysSub.name} className="hover:bg-gray-50/50">
-                                                    <td className="px-4 py-2 font-bold text-gray-800">{sysSub.name}</td>
-                                                    <td className="px-4 py-2 font-mono text-[10px] text-gray-700">{cCount}</td>
-                                                    <td className="px-4 py-2 font-mono text-[10px] text-gray-500">{tCount}</td>
-                                                    <td className="px-4 py-2 font-mono text-[10px] text-gray-400">{sysSub.weight} Qs</td>
+                                                  <tr key={sysSub.name} className={isDark ? 'hover:bg-slate-800/40' : 'hover:bg-gray-50/50'}>
+                                                    <td className={`px-4 py-2 font-bold ${isDark ? 'text-slate-200' : 'text-gray-800'}`}>{sysSub.name}</td>
+                                                    <td className={`px-4 py-2 font-mono text-[10px] ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>{cCount}</td>
+                                                    <td className={`px-4 py-2 font-mono text-[10px] ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>{tCount}</td>
+                                                    <td className={`px-4 py-2 font-mono text-[10px] ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>{sysSub.weight} Qs</td>
                                                     <td className="px-4 py-2">
                                                       <div className="flex items-center gap-1.5">
-                                                        <span className="font-bold font-mono text-[10.5px] text-gray-700">{Math.round(subAcc)}%</span>
-                                                        <div className="w-16 bg-gray-100 h-1.5 rounded-full overflow-hidden shrink-0">
+                                                        <span className={`font-bold font-mono text-[10.5px] ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{Math.round(subAcc)}%</span>
+                                                        <div className={`w-16 h-1.5 rounded-full overflow-hidden shrink-0 ${isDark ? 'bg-slate-800' : 'bg-gray-100'}`}>
                                                           <div style={{ width: `${subAcc}%` }} className={`h-full rounded-full ${subAcc >= 70 ? 'bg-emerald-500' : subAcc >= 50 ? 'bg-amber-500' : 'bg-red-500'}`} />
                                                         </div>
                                                       </div>
