@@ -9,6 +9,32 @@ import {
   Eye, Lightbulb, Filter, AlertTriangle, RefreshCw
 } from 'lucide-react';
 
+// Liquid Button Component matching exact spec
+function LiquidButton({ children, onClick, className = '' }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`liquid-glass rounded-xl px-5 py-2.5 text-xs md:text-sm font-semibold text-white/90 transition-transform duration-200 hover:scale-[1.02] cursor-pointer inline-flex items-center justify-center gap-2 active:scale-95 ${className}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+// Card Video Component with auto-play looping 100% opacity matching exact spec
+function CardVideo({ src }) {
+  return (
+    <video
+      src={src}
+      autoPlay
+      muted
+      loop
+      playsInline
+      className="absolute inset-0 h-full w-full object-cover pointer-events-none"
+    />
+  );
+}
+
 const MANUAL_CATEGORIES = [
   {
     id: 'focus',
@@ -184,7 +210,7 @@ const MANUAL_CATEGORIES = [
           { name: 'Subject Syllabus Selector', type: 'Dropdown', desc: 'Filter PYT topics across all 19 medical subjects.' },
           { name: 'Bulk Topic Ingestion Box', type: 'Text Area / Parser', desc: 'Paste syllabus topic lists (one topic per line) with automated indexing and storage in IndexedDB.' },
           { name: 'Yield Level Ratings', type: 'Tag Badges', desc: 'Flags topics as Standard, High-Yield, or Super-High-Yield based on past exam frequency.' },
-          { name: 'Textbook PDF Mapping', type: 'File Linker', desc: 'Link scanned textbook PDFs directly to PYT topics for contextual reading.' }
+          { name: 'Textbook PDF Mapping', type: 'File Linker', desc: 'Link scanned textbook PDFs directly to PYT topics for contextual study.' }
         ],
         howToUse: [
           '1. Choose a subject and paste your topic list into the bulk ingestion box.',
@@ -383,7 +409,7 @@ const MANUAL_CATEGORIES = [
 ];
 
 export default function AboutDashboard({ isDark = false, onNavigate }) {
-  const [activeTab, setActiveTab] = useState('app_info'); // 'app_info' | 'manual'
+  const [activeTab, setActiveTab] = useState('app_info'); // 'app_info' | 'features' | 'manual'
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all'); // 'all' | 'focus' | 'knowledge' | 'analytics' | 'system'
   const [selectedFeatureModal, setSelectedFeatureModal] = useState(null);
@@ -413,6 +439,8 @@ export default function AboutDashboard({ isDark = false, onNavigate }) {
     return MANUAL_CATEGORIES.reduce((acc, cat) => acc + cat.features.length, 0);
   }, []);
 
+  const tabIndex = activeTab === 'app_info' ? 0 : activeTab === 'features' ? 1 : 2;
+
   return (
     <div className="space-y-8 pb-24 text-left">
       
@@ -439,9 +467,9 @@ export default function AboutDashboard({ isDark = false, onNavigate }) {
         </div>
       </motion.div>
 
-      {/* MODERN SLIDING PILL SUBTABS SWITCHER */}
+      {/* MODERN SLIDING PILL 3-SUBTAB SWITCHER */}
       <div 
-        className={`relative flex items-center p-1.5 rounded-2xl select-none overflow-x-auto custom-scrollbar max-w-md ${
+        className={`relative flex items-center p-1.5 rounded-2xl select-none overflow-x-auto custom-scrollbar max-w-lg ${
           isDark 
             ? 'neu-pressed-dark border border-gray-800/80 bg-[#1e232d]' 
             : 'neu-pressed-light border border-white/80 bg-[#e6ecf5]'
@@ -453,39 +481,53 @@ export default function AboutDashboard({ isDark = false, onNavigate }) {
             isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
           }`}
           style={{
-            width: 'calc(50% - 0.375rem)',
-            left: activeTab === 'app_info' ? '0.375rem' : 'calc(50%)',
+            width: 'calc(33.333% - 0.25rem)',
+            left: `calc(0.375rem + ${tabIndex} * (33.333% - 0.125rem))`,
             transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
           }}
         />
 
         <button
           onClick={() => setActiveTab('app_info')}
-          className={`w-1/2 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-2 relative z-10 transition-colors duration-300 ${
+          className={`w-1/3 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-1.5 relative z-10 transition-colors duration-300 ${
             activeTab === 'app_info'
               ? 'text-white font-extrabold'
               : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
           }`}
         >
-          <Info className="w-4 h-4" />
+          <Info className="w-3.5 h-3.5" />
           <span>About App</span>
         </button>
 
         <button
+          onClick={() => setActiveTab('features')}
+          className={`w-1/3 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-1.5 relative z-10 transition-colors duration-300 ${
+            activeTab === 'features'
+              ? 'text-white font-extrabold'
+              : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+          }`}
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>Showcase</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('manual')}
-          className={`w-1/2 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-2 relative z-10 transition-colors duration-300 ${
+          className={`w-1/3 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-1.5 relative z-10 transition-colors duration-300 ${
             activeTab === 'manual'
               ? 'text-white font-extrabold'
               : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
           }`}
         >
-          <FileText className="w-4 h-4" />
-          <span>Complete Manual ({totalFeatureCount})</span>
+          <FileText className="w-3.5 h-3.5" />
+          <span>Manual ({totalFeatureCount})</span>
         </button>
       </div>
 
-      {/* SUBTAB 1: ABOUT APP */}
       <AnimatePresence mode="wait">
+        {/* ========================================================================= */}
+        {/* SUBTAB 1: ABOUT APP */}
+        {/* ========================================================================= */}
         {activeTab === 'app_info' && (
           <motion.div 
             key="app_info_tab"
@@ -681,7 +723,157 @@ export default function AboutDashboard({ isDark = false, onNavigate }) {
           </motion.div>
         )}
 
-        {/* SUBTAB 2: COMPLETE APPLICATION MANUAL */}
+        {/* ========================================================================= */}
+        {/* SUBTAB 2: FEATURES SHOWCASE (CINEMATIC BENTO GRID SPEC) */}
+        {/* ========================================================================= */}
+        {activeTab === 'features' && (
+          <motion.div 
+            key="features_tab"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.3 }}
+            className="rounded-3xl p-6 md:p-10 text-white shadow-2xl relative overflow-hidden border border-slate-800"
+            style={{
+              backgroundColor: '#000000',
+              fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif'
+            }}
+          >
+            {/* Header matching exact prompt spec */}
+            <div className="mb-10 flex flex-col gap-6 md:flex-row md:items-start md:justify-between text-left">
+              <div className="space-y-2 max-w-2xl">
+                <h2 className="text-2xl md:text-4xl lg:text-[2.75rem] font-normal tracking-tight text-white leading-tight">
+                  Medical-grade tools for high-yield licensure mastery.
+                </h2>
+                <p className="text-sm md:text-base text-white/40 mt-2 font-normal">
+                  Study with confidence. Powered by FSRS-6 & Gemini Vision AI.
+                </p>
+              </div>
+              <div className="md:pt-3 shrink-0">
+                <LiquidButton onClick={() => onNavigate && onNavigate('smartReview')}>
+                  Start Using AutoAnki
+                </LiquidButton>
+              </div>
+            </div>
+
+            {/* Bento Grid matching exact spec: grid-cols-1 gap-5 md:grid-cols-3 md:grid-rows-2 */}
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-3 md:grid-rows-2 text-left">
+              
+              {/* CARD 01 — feature-card md:row-span-2 min-h-[28rem] (tall left column) */}
+              <div className="feature-card md:row-span-2 min-h-[28rem] p-7 flex flex-col relative rounded-[1.25rem] overflow-hidden bg-[#252B4C]">
+                <CardVideo src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260427_104605_2700410c-4303-4d44-a368-e1b8c84eca8c.mp4" />
+                
+                {/* Top row */}
+                <div className="relative z-10 flex justify-between text-sm text-white/60 font-medium">
+                  <span>01/</span>
+                  <span>Focus & FSRS-6 Review</span>
+                </div>
+
+                {/* Spacer */}
+                <div className="flex-1 min-h-24" />
+
+                {/* Bottom block */}
+                <div className="relative z-10">
+                  <h3 className="text-xl md:text-2xl font-medium text-white leading-tight">
+                    Scientific Memory Retention<br/>Built for Clinical Mastery
+                  </h3>
+                  <div className="mt-4 h-px w-full bg-white/20" />
+                  <p className="mt-4 text-xs text-white/70 leading-relaxed font-normal">
+                    FSRS-6 algorithm with 21 calibrated parameters.<br/>
+                    Adaptive stability, difficulty, and interval scheduling engineered for medical doctors.
+                  </p>
+                  <div className="mt-5">
+                    <LiquidButton onClick={() => onNavigate && onNavigate('smartReview')}>
+                      Launch Smart Review
+                    </LiquidButton>
+                  </div>
+                </div>
+              </div>
+
+              {/* CARD 02 — feature-card-dark md:col-span-2 (wide top right) */}
+              <div className="feature-card-dark md:col-span-2 p-7 flex flex-col relative rounded-[1.25rem] overflow-hidden bg-[#252B4C]">
+                <CardVideo src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260427_104731_bfd355f7-1f84-4f81-ad88-52c2bca70bad.mp4" />
+                
+                {/* Top row */}
+                <div className="relative z-10 flex justify-between items-start gap-4">
+                  <h3 className="text-xl md:text-2xl font-medium text-white leading-tight">
+                    Where High-Yield Clinical Mastery Begins
+                  </h3>
+                  <span className="text-sm text-white/60 font-medium shrink-0">02/</span>
+                </div>
+
+                {/* Spacer */}
+                <div className="flex-1 min-h-36 md:min-h-48" />
+
+                {/* Bottom block */}
+                <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-4">
+                  <p className="text-xs text-white/80 max-w-md font-normal leading-relaxed">
+                    Extract high-yield clinical cards directly from textbook PDF pages using Gemini Vision AI. Integrated with the 19-subject syllabus and NEET PG / INI-CET PYT indices.
+                  </p>
+                  <div className="shrink-0">
+                    <LiquidButton onClick={() => onNavigate && onNavigate('cards')}>
+                      Open Cards Manager
+                    </LiquidButton>
+                  </div>
+                </div>
+              </div>
+
+              {/* CARD 03 — feature-card (bottom middle) */}
+              <div className="feature-card p-7 flex flex-col relative rounded-[1.25rem] overflow-hidden bg-[#252B4C]">
+                <CardVideo src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260427_104758_e7d78f06-3700-4862-8c9b-595ed447e81a.mp4" />
+                
+                {/* Top row */}
+                <div className="relative z-10 flex justify-between text-sm text-white/60 font-medium">
+                  <span>CAMP Protocol & Velocity</span>
+                  <span>03/</span>
+                </div>
+
+                <p className="relative z-10 mt-8 text-xs text-white/80 leading-relaxed font-normal">
+                  Consistent Active Memorization Protocol (CAMP). Measure mathematical efficiency throughput, track subject milestones, and forecast exam rank percentiles.
+                </p>
+
+                {/* Spacer */}
+                <div className="flex-1 min-h-8" />
+
+                {/* Bottom */}
+                <div className="relative z-10 mt-6">
+                  <LiquidButton onClick={() => onNavigate && onNavigate('campTracker')}>
+                    Open CAMP Tracker
+                  </LiquidButton>
+                </div>
+              </div>
+
+              {/* CARD 04 — feature-card (bottom right) */}
+              <div className="feature-card p-7 flex flex-col relative rounded-[1.25rem] overflow-hidden bg-[#252B4C]">
+                <CardVideo src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260427_105007_f90de0f3-0f93-44d4-9b71-7446f78c4bd2.mp4" />
+                
+                {/* Top row */}
+                <div className="relative z-10 flex justify-between text-sm text-white/60 font-medium">
+                  <span>100% Offline-First LocalDB</span>
+                  <span>04/</span>
+                </div>
+
+                {/* Spacer */}
+                <div className="flex-1 min-h-16" />
+
+                {/* Bottom paragraph */}
+                <div className="relative z-10 text-center space-y-2">
+                  <p className="text-xs text-white/80 font-normal leading-relaxed">
+                    Sub-millisecond query speed powered by IndexedDB. Zero cloud latency lag with full SQLite Anki package (.apkg) compilation.
+                  </p>
+                  <p className="text-[10px] text-white/50 uppercase tracking-wider font-bold">
+                    Medical Aspirants & Rankers Trust Our Local Engine
+                  </p>
+                </div>
+              </div>
+
+            </div>
+          </motion.div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* SUBTAB 3: COMPLETE APPLICATION MANUAL */}
+        {/* ========================================================================= */}
         {activeTab === 'manual' && (
           <motion.div 
             key="manual_tab"
