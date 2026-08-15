@@ -3862,6 +3862,10 @@ export default function App() {
         <StorageUsageSection
           isDark={settingsThemeMode === 'dark'}
           themeMode={settingsThemeMode}
+          isOpen={isSettingsSectionOpen('storage')}
+          onToggle={() => handleSettingsSectionClick('storage')}
+          onMouseEnter={() => handleSettingsSectionMouseEnter('storage')}
+          onMouseLeave={() => handleSettingsSectionMouseLeave('storage')}
           onExportBackup={handleExportBackup}
           onRefreshParent={() => {
             if (typeof loadTrash === 'function') loadTrash();
