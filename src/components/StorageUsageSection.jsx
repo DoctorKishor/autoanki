@@ -447,9 +447,9 @@ export default function StorageUsageSection({
           </div>
 
           <div className="flex justify-between items-center text-[10px] font-mono text-slate-400 px-1">
-            <span>App: {formatBytes(totalBytes)}</span>
+            <span>App Data: {formatBytes(totalBytes)}</span>
             <span>
-              Browser Pool: {storageData?.browserQuota ? formatBytes(storageData.browserQuota) : 'Dynamic'}
+              Dynamic Pool: {storageData?.browserQuota ? `${formatBytes(storageData.browserQuota)} (Auto-Expands)` : 'Dynamic (Unlimited)'}
             </span>
           </div>
 
@@ -458,15 +458,15 @@ export default function StorageUsageSection({
             isThemeDark ? 'bg-slate-800/60 border border-slate-700/50' : 'bg-slate-100 border border-slate-200'
           }`}>
             <div className="flex items-center gap-1.5 text-left">
-              <ShieldCheck className={`w-3.5 h-3.5 ${isPersisted ? 'text-emerald-400' : 'text-amber-400'} shrink-0`} />
+              <ShieldCheck className={`w-3.5 h-3.5 ${isPersisted ? 'text-emerald-400' : 'text-blue-400'} shrink-0`} />
               <div>
                 <span className="font-bold">
-                  {isPersisted ? 'Persistent Storage: Active' : 'Standard Browser Sandbox (2 GB Pool)'}
+                  {isPersisted ? 'Persistent Storage: Active' : 'Dynamic Local Storage (Auto-Expanding)'}
                 </span>
                 <p className="text-[9px] text-slate-400">
                   {isPersisted
                     ? 'Storage is protected against browser auto-eviction.'
-                    : 'Initial browser safety pool. Follow instructions to unlock permanent full capacity.'}
+                    : 'Initial 2 GB browser buffer. Expands dynamically as data is added.'}
                 </p>
               </div>
             </div>
@@ -480,8 +480,8 @@ export default function StorageUsageSection({
                   : 'bg-blue-600 hover:bg-blue-500 text-white'
               }`}
             >
-              <HelpCircle className="w-3 h-3" />
-              <span>{isPersisted ? 'Details' : 'How to Unlock'}</span>
+              <Info className="w-3 h-3" />
+              <span>{isPersisted ? 'Details' : 'Quota Info'}</span>
             </button>
           </div>
         </div>
@@ -1049,9 +1049,19 @@ export default function StorageUsageSection({
               </div>
 
               {/* Informative Note */}
-              <p className="text-[10px] text-slate-400 text-center leading-relaxed">
-                💡 <em>Note: Your IndexedDB database will continue saving all flashcards, notes, and scans normally even under standard quota mode.</em>
-              </p>
+              <div className={`p-3 rounded-2xl text-[10px] text-left leading-relaxed ${
+                isThemeDark ? 'bg-blue-500/10 border border-blue-500/20 text-blue-300' : 'bg-blue-50 border border-blue-200 text-blue-700'
+              }`}>
+                <div className="font-bold mb-1 flex items-center gap-1.5">
+                  <Info className="w-3.5 h-3.5 shrink-0 text-blue-400" />
+                  <span>Why 2 GB is displayed & How AutoAnki Storage Works:</span>
+                </div>
+                <ul className="list-disc pl-4 space-y-1 text-[9.5px] opacity-90">
+                  <li><strong>Not a hard limit</strong>: 2.0 GB is just the browser's initial dynamic buffer reporting window.</li>
+                  <li><strong>Auto-expanding</strong>: IndexedDB automatically expands past 2 GB up to your free hard drive capacity as you save more textbook scans.</li>
+                  <li><strong>No app limitation</strong>: AutoAnki does not impose any storage restrictions.</li>
+                </ul>
+              </div>
 
               {/* Close Button */}
               <div className="pt-1">
