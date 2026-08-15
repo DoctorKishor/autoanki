@@ -42,7 +42,7 @@ import { getTopicPageWeight, parsePageNumbers } from './utils/pageUtils';
 import {
   getLocalSetting, saveLocalSetting, getLocalCards, saveLocalCards, replaceAllLocalCards, saveLocalCard, deleteLocalCard,
   getLocalPages, saveLocalPages, replaceAllLocalPages, saveLocalPage, deleteLocalPage,
-  getLocalKV, setLocalKV, getLocalPrompts, saveLocalPrompt, deleteLocalPrompt,
+  getLocalKV, setLocalKV, getLocalPrompts, replaceAllLocalPrompts, saveLocalPrompt, deleteLocalPrompt,
   getAllLocalPytTopics, saveLocalPytTopic, getAllLocalPytProgress, saveLocalPytProgressDoc,
   getLocalTextbooksMetadata, saveLocalTextbooksMetadata,
   getLocalStudyLogs, saveLocalStudyLog, replaceAllLocalStudyLogs,
@@ -52,7 +52,7 @@ import {
   getFSRSConfig, saveFSRSConfig, DEFAULT_FSRS_CONFIG,
   getLocalTimerState, saveLocalTimerState, saveActiveNewTopicIds, getActiveNewTopicIds,
   saveTopicHintsLocal, deleteTopicHintsLocal,
-  getLocalCampData, saveLocalCampData, getLocalCampDailyLogs, saveLocalCampDailyLogs,
+  getLocalCampData, saveLocalCampData, getLocalCampDailyLogs, saveLocalCampDailyLogs, getAllLocalCampDailyLogs,
   getLocalUserProfile, saveLocalUserProfile
 } from './services/localDb';
 import { calculateNextFSRSState, calculateInitialState, DEFAULT_FSRS6_WEIGHTS, getTopicPageLength, recalculateTopicFSRSFromLogs } from './services/fsrsEngine';
@@ -15915,28 +15915,62 @@ const renderTimerHub = (isMobile = false) => {
 
   const handleExportBackup = async () => {
     try {
-      const backupData = {
-        version: 1,
-        timestamp: new Date().toISOString(),
-        apiKeys: (await getLocalSetting('apiKeys')) || {
-          geminiApiKey: geminiApiKey || '',
-          imgbbApiKey: imgbbApiKey || '',
-          githubUsername: githubUsername || '',
-          githubRepo: githubRepo || '',
-          githubPatToken: githubPatToken || ''
-        },
-        settingsThemeMode,
-        draftNavIds,
-        autoBackupEnabled,
-        autoBackupFrequency,
-        autoBackupRetention
+      const allCards = (await getLocalCards()) || [];
+      const allPages = (await getLocalPages()) || [];
+      const allLogs = (await getLocalStudyLogs()) || {};
+      const allPyt = (await getAllLocalPytTopics()) || [];
+      const allPytProg = (await getAllLocalPytProgress()) || [];
+      const allPrompts = (await getLocalPrompts()) || [];
+      const subjectData = (await getLocalSubjectTrackerData()) || [];
+      const studySched = (await getLocalStudySchedule()) || {};
+      const schedTemplates = (await getLocalScheduleTemplates()) || [];
+      const campLogs = (await getAllLocalCampDailyLogs()) || [];
+      const campHist = (await getLocalCampData('history')) || [];
+      const campTimerHist = (await getLocalCampData('timer_history')) || [];
+      const campStudent = (await getLocalCampData('student_info')) || null;
+      const apiKeys = (await getLocalSetting('apiKeys')) || {
+        geminiApiKey: geminiApiKey || '',
+        imgbbApiKey: imgbbApiKey || '',
+        githubUsername: githubUsername || '',
+        githubRepo: githubRepo || '',
+        githubPatToken: githubPatToken || ''
       };
+
+      const backupData = {
+        app: 'AutoAnki',
+        version: 2,
+        timestamp: new Date().toISOString(),
+        stores: {
+          cards: allCards,
+          libraryPages: allPages,
+          studyLogs: allLogs,
+          pytTopics: allPyt,
+          pytProgress: allPytProg,
+          customPrompts: allPrompts,
+          subjectTracker: subjectData,
+          studySchedule: studySched,
+          scheduleTemplates: schedTemplates,
+          campDailyLogs: campLogs,
+          campHistory: campHist,
+          campTimerHistory: campTimerHist,
+          campStudentInfo: campStudent,
+          apiKeys
+        },
+        settings: {
+          settingsThemeMode,
+          draftNavIds,
+          autoBackupEnabled,
+          autoBackupFrequency,
+          autoBackupRetention
+        }
+      };
+
       const jsonStr = JSON.stringify(backupData, null, 2);
       const blob = new Blob([jsonStr], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `auto-anki-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `auto-anki-full-backup-${new Date().toISOString().slice(0, 10)}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -15945,7 +15979,8 @@ const renderTimerHub = (isMobile = false) => {
       setExportBackupState(true);
       setTimeout(() => setExportBackupState(false), 2500);
     } catch (err) {
-      console.error("Export backup failed:", err);
+      console.error("Export full backup failed:", err);
+      alert("Failed to export backup: " + (err?.message || err));
     }
   };
 
@@ -15959,25 +15994,77 @@ const renderTimerHub = (isMobile = false) => {
       try {
         const text = await file.text();
         const backup = JSON.parse(text);
-        if (backup.apiKeys) {
-          await saveLocalSetting('apiKeys', backup.apiKeys);
-          if (backup.apiKeys.geminiApiKey) setGeminiApiKey(backup.apiKeys.geminiApiKey);
-          if (backup.apiKeys.imgbbApiKey) setImgbbApiKey(backup.apiKeys.imgbbApiKey);
-          if (backup.apiKeys.githubUsername) setGithubUsername(backup.apiKeys.githubUsername);
-          if (backup.apiKeys.githubRepo) setGithubRepo(backup.apiKeys.githubRepo);
-          if (backup.apiKeys.githubPatToken) setGithubPatToken(backup.apiKeys.githubPatToken);
+
+        // 1. Restore API Keys & settings
+        const apiKeysToRestore = backup.stores?.apiKeys || backup.apiKeys;
+        if (apiKeysToRestore) {
+          await saveLocalSetting('apiKeys', apiKeysToRestore);
+          if (apiKeysToRestore.geminiApiKey) setGeminiApiKey(apiKeysToRestore.geminiApiKey);
+          if (apiKeysToRestore.imgbbApiKey) setImgbbApiKey(apiKeysToRestore.imgbbApiKey);
+          if (apiKeysToRestore.githubUsername) setGithubUsername(apiKeysToRestore.githubUsername);
+          if (apiKeysToRestore.githubRepo) setGithubRepo(apiKeysToRestore.githubRepo);
+          if (apiKeysToRestore.githubPatToken) setGithubPatToken(apiKeysToRestore.githubPatToken);
         }
-        if (backup.draftNavIds) {
-          setDraftNavIds(backup.draftNavIds);
-          saveBottomNavIds(backup.draftNavIds);
+
+        const draftNav = backup.settings?.draftNavIds || backup.draftNavIds;
+        if (draftNav) {
+          setDraftNavIds(draftNav);
+          saveBottomNavIds(draftNav);
         }
-        if (backup.settingsThemeMode) {
-          setSettingsThemeMode(backup.settingsThemeMode);
+
+        const themeMode = backup.settings?.settingsThemeMode || backup.settingsThemeMode;
+        if (themeMode) {
+          setSettingsThemeMode(themeMode);
         }
+
+        // 2. Restore primary database stores if present (v2 snapshot format)
+        if (backup.stores) {
+          if (Array.isArray(backup.stores.cards) && backup.stores.cards.length > 0) {
+            await saveLocalCards(backup.stores.cards);
+            setCards(backup.stores.cards);
+          }
+          if (Array.isArray(backup.stores.libraryPages) && backup.stores.libraryPages.length > 0) {
+            await saveLocalPages(backup.stores.libraryPages);
+            setLibraryPages(backup.stores.libraryPages);
+          }
+          if (backup.stores.studyLogs && typeof backup.stores.studyLogs === 'object') {
+            await replaceAllLocalStudyLogs(backup.stores.studyLogs);
+            setStudyLogs(backup.stores.studyLogs);
+          }
+          if (Array.isArray(backup.stores.pytTopics) && backup.stores.pytTopics.length > 0) {
+            for (const item of backup.stores.pytTopics) {
+              await saveLocalPytTopic(item.subject || item.id, item);
+            }
+            setPytTopicsList(backup.stores.pytTopics);
+          }
+          if (Array.isArray(backup.stores.customPrompts)) {
+            await replaceAllLocalPrompts(backup.stores.customPrompts);
+            setCustomPrompts(backup.stores.customPrompts);
+          }
+          if (Array.isArray(backup.stores.subjectTracker) && backup.stores.subjectTracker.length > 0) {
+            await replaceAllLocalSubjectTrackerData(backup.stores.subjectTracker);
+            setSubjectTrackerData(backup.stores.subjectTracker);
+          }
+          if (backup.stores.studySchedule && typeof backup.stores.studySchedule === 'object') {
+            await replaceAllLocalStudySchedule(backup.stores.studySchedule);
+            setStudySchedule(backup.stores.studySchedule);
+          }
+          if (Array.isArray(backup.stores.campDailyLogs)) {
+            for (const log of backup.stores.campDailyLogs) {
+              if (log.dateStr) await saveLocalCampDailyLogs(log.dateStr, log);
+            }
+          }
+          if (Array.isArray(backup.stores.campHistory)) {
+            await saveLocalCampData('history', backup.stores.campHistory);
+          }
+        }
+
         setImportBackupState(true);
         setTimeout(() => setImportBackupState(false), 2500);
+        alert("Backup snapshot imported successfully!");
       } catch (err) {
         console.error("Import backup failed:", err);
+        alert("Failed to import backup file: " + (err?.message || err));
       }
     };
     input.click();
@@ -18772,8 +18859,6 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       setLibraryPages(prev => prev.map(p => p.id === pageId ? updatedPage : p));
 
       alert("Successfully processed page cards!");
-
-      alert("Successfully processed page cards!");
     } catch (error) {
       console.error("Failed to process triage page:", error);
       alert("Failed to process page: " + error.message);
@@ -20224,7 +20309,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
             </div>
             <div style="margin-top: 16px; border-top: 1px dashed #f3f4f6; padding-top: 16px;">
               <div class="a-title">Answer</div>
-              <div class="a-text">${type === 'Cloze' ? ((card.text.match(/\{\{c\d+::(.*?)\}\}/g) || []).map(m => m.replace(/\{\{c\d+::(.*?)\}\}/g, '$1')).join(', ')) : card.back}</div>
+              <div class="a-text">${type === 'Cloze' ? ((card.text.match(/\{\{c\d+::[\s\S]*?\}\}/g) || []).map(m => m.replace(/\{\{c\d+::([^:|]+)(?:::[\s\S]*?)?\}\}/g, '$1')).join(', ')) : card.back}</div>
             </div>
           </div>
         `;
@@ -26037,13 +26122,19 @@ Return your response strictly as a JSON object matching this schema:
                                 <button
                                   onClick={() => {
                                     if (selectedPromptId === 'default') {
-                                      createCustomPrompt("Duplicate of Default", DEFAULT_PROMPT);
+                                      createCustomPrompt("Duplicate of Default", DEFAULT_PROMPT, 'image');
                                     } else if (selectedPromptId === 'pyt_generator') {
-                                      createCustomPrompt("Duplicate of High-Yield PYT", PYT_GENERATOR_PROMPT);
+                                      createCustomPrompt("Duplicate of High-Yield PYT", PYT_GENERATOR_PROMPT, 'image');
                                     } else if (selectedPromptId === 'qbank_engine') {
-                                      createCustomPrompt("Duplicate of Q-Bank Engine", QBANK_ENGINE_PROMPT);
+                                      createCustomPrompt("Duplicate of Q-Bank Engine", QBANK_ENGINE_PROMPT, 'image');
+                                    } else if (selectedPromptId === 'text_default') {
+                                      createCustomPrompt("Duplicate of Default Text Extractor", TEXT_DEFAULT_PROMPT, 'text');
+                                    } else if (selectedPromptId === 'text_verbatim_json') {
+                                      createCustomPrompt("Duplicate of Strict 1:1 Verbatim Extractor", TEXT_VERBATIM_JSON_PROMPT, 'text');
                                     } else {
-                                      createCustomPrompt("Duplicate of " + editingPromptName, editingPromptContent);
+                                      const srcPrompt = customPrompts.find(p => p.id === selectedPromptId);
+                                      const srcType = srcPrompt?.type || promptCategoryTab;
+                                      createCustomPrompt("Duplicate of " + editingPromptName, editingPromptContent, srcType);
                                     }
                                   }}
                                   className={`${settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-700'} px-3 py-1.5 rounded-xl text-[10px] font-bold transition active:scale-95`}
@@ -27517,12 +27608,12 @@ Return your response strictly as a JSON object matching this schema:
                             className="space-y-4 pt-1"
                           >
                             <div className="space-y-1.5">
-                              <label className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-450'}`}>Overlay Widget</label>
+                              <label className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>Overlay Widget</label>
                               <select
                                 value={obsSelectedWidget}
                                 onChange={(e) => setObsSelectedWidget(e.target.value)}
                                 className={`w-full p-3 rounded-2xl text-xs font-bold outline-none border transition-all ${
-                                  isDark ? 'neu-pressed-dark text-white border-gray-750 bg-[#1c2128]' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white'
+                                  isDark ? 'neu-pressed-dark text-white border-slate-700 bg-[#1c2128]' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white'
                                 }`}
                               >
                                 <option value="todayAgenda">📅 Today's Agenda</option>
@@ -27540,12 +27631,12 @@ Return your response strictly as a JSON object matching this schema:
                             </div>
 
                             <div className="space-y-1.5">
-                              <label className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-450'}`}>Theme Preset</label>
+                              <label className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>Theme Preset</label>
                               <select
                                 value={obsTheme}
                                 onChange={(e) => setObsTheme(e.target.value)}
                                 className={`w-full p-3 rounded-2xl text-xs font-bold outline-none border transition-all ${
-                                  isDark ? 'neu-pressed-dark text-white border-gray-750 bg-[#1c2128]' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white'
+                                  isDark ? 'neu-pressed-dark text-white border-slate-700 bg-[#1c2128]' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white'
                                 }`}
                               >
                                 <option value="transparent">👻 Transparent (Glass)</option>
@@ -33785,13 +33876,19 @@ Return your response strictly as a JSON object matching this schema:
                                   <button
                                     onClick={() => {
                                       if (selectedPromptId === 'default') {
-                                        createCustomPrompt("Duplicate of Default", DEFAULT_PROMPT);
+                                        createCustomPrompt("Duplicate of Default", DEFAULT_PROMPT, 'image');
                                       } else if (selectedPromptId === 'pyt_generator') {
-                                        createCustomPrompt("Duplicate of High-Yield PYT", PYT_GENERATOR_PROMPT);
+                                        createCustomPrompt("Duplicate of High-Yield PYT", PYT_GENERATOR_PROMPT, 'image');
                                       } else if (selectedPromptId === 'qbank_engine') {
-                                        createCustomPrompt("Duplicate of Q-Bank Engine", QBANK_ENGINE_PROMPT);
+                                        createCustomPrompt("Duplicate of Q-Bank Engine", QBANK_ENGINE_PROMPT, 'image');
+                                      } else if (selectedPromptId === 'text_default') {
+                                        createCustomPrompt("Duplicate of Default Text Extractor", TEXT_DEFAULT_PROMPT, 'text');
+                                      } else if (selectedPromptId === 'text_verbatim_json') {
+                                        createCustomPrompt("Duplicate of Strict 1:1 Verbatim Extractor", TEXT_VERBATIM_JSON_PROMPT, 'text');
                                       } else {
-                                        createCustomPrompt("Duplicate of " + editingPromptName, editingPromptContent);
+                                        const srcPrompt = customPrompts.find(p => p.id === selectedPromptId);
+                                        const srcType = srcPrompt?.type || promptCategoryTab;
+                                        createCustomPrompt("Duplicate of " + editingPromptName, editingPromptContent, srcType);
                                       }
                                     }}
                                     className={`${settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-700'} px-4 py-2 rounded-xl text-xs font-bold transition active:scale-95`}
@@ -35685,14 +35782,14 @@ Return your response strictly as a JSON object matching this schema:
                                 transition={{ delay: 0.05, duration: 0.3 }}
                                 className="space-y-1.5"
                               >
-                                <label className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                <label className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                   Select Overlay Widget
                                 </label>
                                 <select
                                   value={obsSelectedWidget}
                                   onChange={(e) => setObsSelectedWidget(e.target.value)}
                                   className={`w-full p-3 rounded-2xl text-xs font-bold outline-none border transition-all cursor-pointer ${
-                                    isDark ? 'neu-pressed-dark text-white border-gray-750 bg-[#1c2128] focus:border-blue-500' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white focus:border-blue-500'
+                                    isDark ? 'neu-pressed-dark text-white border-slate-700 bg-[#1c2128] focus:border-blue-500' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white focus:border-blue-500'
                                   }`}
                                 >
                                   <option value="todayAgenda">📅 Today's Agenda Checklist</option>
@@ -35716,14 +35813,14 @@ Return your response strictly as a JSON object matching this schema:
                                 transition={{ delay: 0.1, duration: 0.3 }}
                                 className="space-y-1.5"
                               >
-                                <label className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                <label className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                   Background Theme Preset
                                 </label>
                                 <select
                                   value={obsTheme}
                                   onChange={(e) => setObsTheme(e.target.value)}
                                   className={`w-full p-3 rounded-2xl text-xs font-bold outline-none border transition-all cursor-pointer ${
-                                    isDark ? 'neu-pressed-dark text-white border-gray-750 bg-[#1c2128] focus:border-blue-500' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white focus:border-blue-500'
+                                    isDark ? 'neu-pressed-dark text-white border-slate-700 bg-[#1c2128] focus:border-blue-500' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white focus:border-blue-500'
                                   }`}
                                 >
                                   <option value="transparent">👻 Transparent (Glass Panel - Recommended for streams)</option>
