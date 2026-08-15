@@ -3868,7 +3868,7 @@ export default function App() {
           onMouseLeave={() => handleSettingsSectionMouseLeave('storage')}
           onExportBackup={handleExportBackup}
           onRefreshParent={() => {
-            if (typeof loadTrash === 'function') loadTrash();
+            if (typeof loadTrash === 'function') loadTrash(true);
           }}
         />
 
@@ -7927,8 +7927,8 @@ export default function App() {
   }, [searchQuery, loadAllCards]);
 
   // --- LOCAL TRASH LOADER (Item 3.6 - INDEXEDDB) ---
-  const loadTrash = useCallback(async () => {
-    if (trashLoaded.current) return;
+  const loadTrash = useCallback(async (force = false) => {
+    if (trashLoaded.current && !force) return;
     setIsTrashLoading(true);
     try {
       const [tPages, tCards] = await Promise.all([
@@ -8754,6 +8754,7 @@ JSON Format:
   const handleRestoreCard = async (card) => {
     try {
       const { deletedAt, ...restoredCard } = card;
+      restoredCard.deck = restoredCard.deck || 'Default';
       await saveLocalCard(restoredCard);
       const currentTrash = (await getLocalKV('trash_cards')) || [];
       const updatedTrash = currentTrash.filter(c => c.id !== card.id);
@@ -18235,9 +18236,18 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
 
       setTotalCardCount(prev => Math.max(0, prev - targetCardIds.size));
 
+      const currentTrashPages = (await getLocalKV('trash_pages')) || [];
+      const currentTrashCards = (await getLocalKV('trash_cards')) || [];
+
+      const newTrashPages = [...allTargetPages.map(p => ({ ...p, deletedAt: nowTs })), ...currentTrashPages.filter(tp => !targetPageIds.has(tp.id))];
+      const newTrashCards = [...allTargetCards.map(c => ({ ...c, deletedAt: nowTs })), ...currentTrashCards.filter(tc => !targetCardIds.has(tc.id))];
+
+      await setLocalKV('trash_pages', newTrashPages);
+      await setLocalKV('trash_cards', newTrashCards);
+
       if (trashLoaded.current) {
-        setTrashPages(prev => [...allTargetPages.map(p => ({ ...p, deletedAt: nowTs })), ...prev]);
-        setTrashCards(prev => [...allTargetCards.map(c => ({ ...c, deletedAt: nowTs })), ...prev]);
+        setTrashPages(newTrashPages);
+        setTrashCards(newTrashCards);
       }
 
       // Update deckPaths locally

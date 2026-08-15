@@ -453,6 +453,17 @@ export default function AboutDashboard({ isDark = false, onNavigate }) {
     return () => clearInterval(timer);
   }, []);
 
+  // Close feature modal on Escape key
+  useEffect(() => {
+    if (!selectedFeatureModal) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setSelectedFeatureModal(null);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedFeatureModal]);
+
+
   // FAQ Accordion Open State
   const [openFaqIdx, setOpenFaqIdx] = useState(0);
 
@@ -1346,6 +1357,7 @@ export default function AboutDashboard({ isDark = false, onNavigate }) {
                     <img 
                       src="/developer_profile.png" 
                       alt="Dr. Kishor Anbazhakan silhouette" 
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
                       className="w-36 h-64 md:w-56 md:h-96 object-contain float-left mr-6 mb-2 [shape-outside:url('/developer_profile.png')] [shape-margin:1.5rem]"
                     />
                     
