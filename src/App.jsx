@@ -22979,6 +22979,7 @@ Return your response strictly as a JSON object matching this schema:
                       localStopwatchTime={localStopwatchTime}
                       localCustomTimerTimeLeft={localCustomTimerTimeLeft}
                       localTimerTimeLeft={localTimerTimeLeft}
+                      themeMode={settingsThemeMode}
                     />
                   )}
                   {currentTab === 'dashboard' && (
@@ -28075,6 +28076,7 @@ Return your response strictly as a JSON object matching this schema:
                         localStopwatchTime={localStopwatchTime}
                         localCustomTimerTimeLeft={localCustomTimerTimeLeft}
                         localTimerTimeLeft={localTimerTimeLeft}
+                        themeMode={settingsThemeMode}
                       />
                     )}
 
