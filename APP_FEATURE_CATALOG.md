@@ -1,14 +1,14 @@
 # 🩺 AutoAnki — Complete Application Feature Catalog & Technical Manual
 
-This document provides a comprehensive, verified, and detailed catalog of every single module, tab, sub-feature, modal, service, and algorithm across the **AutoAnki** codebase—organized according to the 4 primary application navigation categories.
+This document provides a comprehensive, verified, and detailed A-to-Z manual of every single module, tab, button, toggle, setting, preference, modal, and algorithm across the **AutoAnki** codebase—organized according to the 4 primary application navigation categories.
 
 ---
 
 ## 📑 Application Navigation Architecture
 
 AutoAnki organizes its 17 modules into 4 specialized categories:
-1. **⚡ Focus & Review**: High-yield study execution, FSRS-4.5 spaced repetition review, and workload scheduling.
-2. **📚 Content & Knowledge**: Medical textbook ingestion, Vision AI card extraction, 19 medical subjects, and NEET PG PYT indices.
+1. **⚡ Focus & Review**: High-yield study execution, FSRS-6 spaced repetition review, Pomodoro lounge, and workload scheduling.
+2. **📚 Content & Knowledge**: Medical textbook ingestion, Gemini Vision AI card extraction, 19 medical subjects, and NEET PG PYT indices.
 3. **📊 Progress & Metrics**: CAMP milestone protocol, counseling rank predictors, and nested Sunburst deck charts.
 4. **🛠️ Tools & System**: Official Anki APKG compiler, AI prompt tuning, OBS stream overlays, local database manager, and Chrome extension.
 
@@ -18,7 +18,7 @@ AutoAnki organizes its 17 modules into 4 specialized categories:
 - [1. Architecture & Storage Model](#1-architecture--storage-model)
 - [2. Category I: Focus & Review](#2-category-i-focus--review)
   - [2.1 Dashboard (`dashboard`)](#21-dashboard-dashboard)
-  - [2.2 Smart Review Hub & FSRS-4.5 Engine (`smartReview`)](#22-smart-review-hub--fsrs-45-engine-smartreview)
+  - [2.2 Smart Review Hub & FSRS-6 Engine (`smartReview`)](#22-smart-review-hub--fsrs-6-engine-smartreview)
   - [2.3 Study Room & Focus Lounge (`study`)](#23-study-room--focus-lounge-study)
   - [2.4 Study Scheduler (`studyScheduler`)](#24-study-scheduler-studyscheduler)
 - [3. Category II: Content & Knowledge](#3-category-ii-content--knowledge)
@@ -37,7 +37,7 @@ AutoAnki organizes its 17 modules into 4 specialized categories:
   - [5.4 Settings & LocalDB Control (`settings`)](#54-settings--localdb-control-settings)
   - [5.5 Recycle Bin / Trash (`trash`)](#55-recycle-bin--trash-trash)
   - [5.6 About Page & Manual (`about`)](#56-about-page--manual-about)
-- [6. Specialized Modals & Utility Components](#6-specialized-modals--utility-components)
+- [6. Specialized Modals & Dialogs Reference](#6-specialized-modals--dialogs-reference)
 - [7. Core Algorithms & Background Services](#7-core-algorithms--background-services)
 - [8. Chrome Extension Ecosystem](#8-chrome-extension-ecosystem)
 
@@ -67,91 +67,98 @@ AutoAnki organizes its 17 modules into 4 specialized categories:
 
 ### 2.1 Dashboard (`dashboard`)
 *Source: `src/App.jsx`, `src/components/DashboardGrid.jsx`*
-* **Central Command Center**: Real-time overview of active study progress, streak status, and due reviews.
-* **Live Study Tracker Widget**:
-  * Active session timer with live Start, Pause, Resume, and Stop controls.
-  * Today's accumulated study hours counter (`getLiveTodayHours()`).
-  * Session hour commitment directly to local IndexedDB logs.
-* **Streak Meter & Archetypes**:
-  * Visual streak tracker awarding motivational titles based on consistency:
-    * **Rookie**: Building initial daily study habits (1+ hr/day).
-    * **Consistent**: Regular paced revision focus (2–3 hrs/day).
-    * **Topper**: High volume & analytical consistency (3–5 hrs/day).
-    * **Legend**: Mastery dedication with high review throughput (5+ hrs/day).
-* **Customizable Neumorphic Dashboard Grid**:
-  * Drag-and-drop widget layout with customizable positions and dimensions.
-  * Widget Customizer modal to toggle visibility of individual widgets (Streak, Study Time, Quick Links, Upcoming Due Cards, Subject Matrix).
-* **Quick Access Action Buttons**: Instant shortcuts to jump to Library uploads, Card Extractor, Smart Review Hub, or Settings.
-* **FSRS Due Cards Forecast**: Live count of flashcards scheduled for review today.
+
+#### Overview & Core Purpose
+The central command center provides real-time visibility into active study sessions, daily streak metrics, due card loads, and customizable Neumorphic widgets.
+
+#### Buttons, Controls & UI Elements
+* **Live Timer Play / Pause / Reset**: Starts, pauses, and resets the active study timer.
+* **Milliseconds Toggle (`showMilliseconds`)**: Toggles high-precision centisecond display on the timer widget.
+* **Timer Fullscreen Button (`Maximize2`)**: Expands the timer into a distraction-free ambient full-screen mode.
+* **Widget Customizer Button (`Settings`)**: Opens modal to toggle visibility and reorder widgets (Streak, Study Time, Quick Links, Due Cards, Subject Matrix).
+* **Daily Card Target Slider (`dashboard_daily_card_target`)**: Configures daily flashcard review targets (e.g. 50 cards).
+* **Daily Hours Target Slider (`dashboard_daily_hours_target`)**: Configures daily study duration targets (e.g. 4.0 hours).
+* **Streak Meter & Archetypes**: Evaluates daily consistency:
+  * **Rookie**: Initial habit builder (1+ hr/day).
+  * **Consistent**: Regular revision pacing (2–3 hrs/day).
+  * **Topper**: High volume & analytical consistency (3–5 hrs/day).
+  * **Legend**: High review throughput mastery (5+ hrs/day).
+* **Quick Logger Inputs**: Text inputs to quickly log cards, hours, questions, or pages directly to IndexedDB.
+* **Quick Access Action Buttons**: One-click jumps to Library, Smart Review Hub, or Card Extractor.
+
+#### Step-by-Step Workflow
+1. Check your streak meter and today's due cards forecast.
+2. Click **Play** on the Live Timer widget to start recording focus hours.
+3. Click **Customize** to toggle or rearrange widgets.
+4. Jump straight to Smart Review or Library using the Quick Action buttons.
 
 ---
 
-### 2.2 Smart Review Hub & FSRS-4.5 Engine (`smartReview`)
+### 2.2 Smart Review Hub & FSRS-6 Engine (`smartReview`)
 *Source: `src/components/SmartReviewHub.jsx`, `src/services/fsrsEngine.js`, `src/services/predictiveTimingEngine.js`, `src/components/FsrsSettingsModal.jsx`, `src/components/FsrsStatsTab.jsx`, `src/components/StudyVelocityTab.jsx`, `src/components/RatingDurationModal.jsx`, `src/components/TopicNotesModal.jsx`, `src/components/SelectNewTopicsModal.jsx`*
-* **FSRS-4.5 Memory Engine (`fsrsEngine.js`)**:
-  * Next-generation Free Spaced Repetition Scheduler replacing legacy SM-2.
-  * Tracks 4 core memory parameters per card:
-    * **Stability ($S$)**: Days required for memory retention to drop from 100% to 90%.
-    * **Difficulty ($D$)**: Inherent complexity scale ($1.0$ to $10.0$).
-    * **Retrievability ($R$)**: Probability of successfully recalling the card on any given day.
-    * **Interval ($I$)**: Days until next scheduled review.
-  * 19 optimized weight coefficients governing memory consolidation and lapse decay.
-* **Review Subtabs & Components**:
-  1. **Smart Review Session**:
-     * Daily queue of due flashcards with live preview of next interval dates for each rating (*Again*, *Hard*, *Good*, *Easy*).
-     * Undo / Redo review actions with 100% queue preservation.
-     * Leech detection: Automatically flags cards with excessive lapses for clinical remediation.
-  2. **Study Velocity Tab (`StudyVelocityTab.jsx`)**:
-     * Real-time cognitive throughput metrics: Cards/Hour, Retention Velocity, Daily Target Projection.
-     * Speed and pacing gauges with circadian load distribution.
-  3. **FSRS Stats Tab (`FsrsStatsTab.jsx`)**:
-     * Memory retention decay curves across timeframes (`1M`, `3M`, `1Y`, `ALL`).
-     * Card difficulty distribution bar charts and stability histograms.
-     * Log array unpacking across all historical review sessions.
-  4. **Dynamic Predictive Timing Engine (`predictiveTimingEngine.js` & `RatingDurationModal.jsx`)**:
-     * Read-only timing engine measuring card reading duration and forecasting study block completion time.
-     * **Strict FSRS Isolation**: Read-only consumer that never mutates or alters FSRS spaced repetition formulas.
-  5. **Topic Notes Modal (`TopicNotesModal.jsx`)**:
-     * Comprehensive clinical notes, mnemonics, and diagnostic flowcharts attached to active review topics.
-  6. **Select New Topics Modal (`SelectNewTopicsModal.jsx`)**:
-     * Intelligent topic selector with AI Strategy Modes (*High-Yield Priority*, *Weakness First*, *Balanced Spread*) to introduce new topics into the daily spaced repetition queue.
-  7. **FSRS Settings Modal (`FsrsSettingsModal.jsx`)**:
-     * Target retention rate slider ($80\%$ to $97\%$).
-     * Maximum review interval limiter (e.g. 365 days).
-     * Weight parameter inspector and baseline reset utilities.
+
+#### Overview & Core Purpose
+The core spaced repetition review environment powered by the official **FSRS-6 (Free Spaced Repetition Scheduler)** algorithm with 21 benchmark parameters ($w_0 \dots w_{20}$).
+
+#### FSRS-6 Mathematical Specification
+* **Retrievability Formula**: $R(t, S) = (1 + w_{20} \cdot (t / S))^{-1 / w_{20}}$
+* **Scheduled Interval Formula**: $I = (S / w_{20}) \cdot (DR^{-w_{20}} - 1)$
+* **4 Core Parameters**:
+  * **Stability ($S$)**: Days required for memory retention to decay from 100% to 90%.
+  * **Difficulty ($D$)**: Inherent complexity scale ($1.0$ to $10.0$).
+  * **Retrievability ($R$)**: Probability of recall on day $t$.
+  * **Interval ($I$)**: Days until next scheduled review.
+
+#### Subtabs & Navigation
+1. **Review Queue Subtab (`queue`)**: Displays daily queues for Overdue Topics, Due Today Topics, and New Unstudied Topics.
+2. **Study Velocity Subtab (`velocity`)**: Tracks Cards/Hour throughput, retention velocity, and circadian cognitive load distribution.
+3. **Analytics (FSRS Stats) Subtab (`analytics`)**: Historical memory retention decay curves and stability histograms across timeframes (`1M`, `3M`, `1Y`, `ALL`).
+4. **Leeches Subtab (`leeches`)**: Filters cards with excessive lapses ($\ge \text{leechThreshold}$) for targeted clinical review.
+
+#### Buttons, Controls & UI Elements
+* **Reveal Answer (Spacebar / `Eye`)**: Flips the flashcard or reveals hidden answer fields.
+* **Rating Button — Again (1)**: Lapsed review ($r=1$). Resets stability to initial baseline $S_0(\text{Again})$ ($w_0$).
+* **Rating Button — Hard (2)**: Difficult recall ($r=2$). Applies hard penalty multiplier ($w_{15}$).
+* **Rating Button — Good (3)**: Successful recall ($r=3$). Normal stability growth.
+* **Rating Button — Easy (4)**: Instant effortless recall ($r=4$). Applies easy bonus multiplier ($w_{16}$).
+* **Live Interval Previews**: Displayed directly above each rating button (e.g. `1d`, `3d`, `7d`, `14d`).
+* **AI Recall Hints Button (`Lightbulb`)**: Triggers tiered active recall clues (First-line clue, Mechanism clue, Diagnostic hallmark) without spoiling the answer.
+* **PDF Slice Viewer Button (`Eye`)**: Opens a modal displaying the exact high-res PDF textbook slice linked to the card.
+* **Topic Notes Button (`FileText`)**: Opens clinical notes, diagnostic tables, and mnemonics for the active topic.
+* **Select New Topics Modal (`Plus`)**: Launches AI strategy modes (*High-Yield Priority*, *Weakness First*, *Balanced Spread*) to introduce unstudied topics into the queue.
+* **Exam Target Profiles Modal (`Target`)**: Set target examination dates (NEET PG, INI-CET) and tentative flags to balance retention pacing.
+* **FSRS Settings Modal (`Settings`)**: Adjust Desired Retention ($0.70$ to $0.97$), Max Interval, Leech Threshold, and 21 weight parameters.
+* **Undo / Redo Buttons (`Undo2` / `RotateCw`)**: Reverts or re-applies ratings with 100% queue order and FSRS state preservation.
 
 ---
 
 ### 2.3 Study Room & Focus Lounge (`study`)
 *Source: `src/App.jsx`, `src/components/StudyRoomComponents.jsx`*
-* **Immersive Active Study Room**:
-  * Distraction-free full-screen environment for deep focus sessions.
-* **Integrated Pomodoro & Focus Timer**:
-  * Customizable work intervals, short breaks, and long breaks with audio chime notifications.
-* **Ambient Sound Lounge (`SoundsPanel`)**:
-  * Built-in sound tracks: Lo-Fi Study Beats, Gentle Rain, Forest Ambience, White Noise.
-  * **YouTube Audio Stream Embed**: Ingest and play background audio streams via YouTube Video ID parser.
-* **Motivational Quote Engine (`QuotesPanel`)**:
-  * Curated database of motivational quotes tailored for medical doctors and exam aspirants.
-* **Spaced Repetition Review Simulator**:
-  * Quick flashcard review interface with *Again*, *Hard*, *Good*, and *Easy* rating buttons.
-* **Scorecard & Grand Test (GT) Logger (`StatsPanel`)**:
-  * Log mock test scores, total questions, correct/incorrect splits, and percentile trends over time.
-* **Floating Utility Widgets**:
-  * Draggable, minimizable floating widgets for Timer, Audio Player, Notes, and Stats.
+
+#### Overview & Core Purpose
+A full-screen active study lounge designed for deep focus blocks, Pomodoro cycles, background sound mixing, and mock exam score tracking.
+
+#### Buttons, Controls & UI Elements
+* **Pomodoro Timer Controller**: Presets for 25m/5m, 50m/10m, and custom intervals with audio chime alerts.
+* **Ambient Sound Mixer**: Independent volume sliders for Lo-Fi study beats, Gentle Rain, Forest Ambience, and White Noise.
+* **YouTube Audio Stream Embed**: Input field parsing YouTube Video URLs/IDs to play custom audio streams.
+* **Motivational Quote Engine**: Curated medical quotes with previous/next controls.
+* **GT Scorecard Logger**: Input fields for Exam Name, Platform (Marrow, Prepladder, Cerebellum), Type (NEET PG 200/180 Qs, INI-CET), Correct/Incorrect numbers, and All-India Rank.
+* **Floating Utility Overlays**: Minimizable widgets for Timer, Audio, Notes, and Stats.
 
 ---
 
 ### 2.4 Study Scheduler (`studyScheduler`)
 *Source: `src/App.jsx`*
-* **Dynamic Revision Planner**:
-  * Visual Spaced Repetition Calendar mapping overdue, due today, and upcoming review workloads.
-* **Overdue Topic Alerts**:
-  * Automatically flags medical topics that have exceeded their optimal FSRS retention cutoff.
-* **Daily Action Checklist**:
-  * Interactive checklist for planning daily subject targets, QBank question quotas, and mock tests.
-* **Workload Balancing**:
-  * Distributes upcoming card reviews evenly across future days to prevent study session spikes.
+
+#### Overview & Core Purpose
+A dynamic spaced repetition calendar that balances upcoming revision loads and highlights overdue clinical topics.
+
+#### Buttons, Controls & UI Elements
+* **Spaced Repetition Calendar Matrix**: Visual daily schedule displaying due topics, completed decks, and workloads.
+* **Overdue Topic Alerts**: Color-coded banners for topics past their FSRS retention deadline.
+* **Daily Action Checklist**: Add, edit, check off, and delete daily study goals and QBank question quotas.
+* **Workload Leveling**: Balances card reviews across future days to avoid study spikes.
 
 ---
 
@@ -159,81 +166,75 @@ AutoAnki organizes its 17 modules into 4 specialized categories:
 
 ### 3.1 Library & PDF Ingestion (`library`)
 *Source: `src/App.jsx`, `src/services/pdfSliceService.js`, `src/components/PdfSlicePreviewModal.jsx`*
-* **Local Document Repository**:
-  * Upload, view, and organize medical reference PDFs, notes, and study slides.
-  * PDF files are stored directly in local IndexedDB storage.
-* **Interactive PDF Viewer**:
-  * Powered by `pdfjs-dist` with high-resolution canvas rendering.
-  * Smooth multi-page scrolling, jump-to-page, zooming, and thumbnail previews.
-* **PDF Slice Preview Modal (`PdfSlicePreviewModal.jsx`)**:
-  * Slice multi-page PDF sections into isolated high-resolution images for card generation.
-* **Subject & Deck Folders**:
-  * Hierarchical organization matching the 19 medical subjects.
-  * Deck creation, renaming, merging, and folder deletion.
-* **Direct Flashcard Anchoring**:
-  * Selecting any page region instantly triggers AI extraction anchored to that exact textbook coordinate.
+
+#### Overview & Core Purpose
+Localized document repository for medical textbook PDFs and slide images with high-resolution canvas rendering and diagram anchoring.
+
+#### Buttons, Controls & UI Elements
+* **Upload PDF / Slides Button (`UploadCloud`)**: Ingests reference PDFs or images directly into local IndexedDB storage.
+* **Interactive PDF Canvas Viewer**: Multi-page scrolling, zoom in/out, jump-to-page, and thumbnail browser.
+* **Diagram Bounding Box Selector**: Click-and-drag bounding box on textbook diagrams to attach visual crops directly to flashcards.
+* **PDF Slice Preview Modal**: Slices multi-page PDF sections into high-res images for visual flashcard extraction.
+* **Subject Folders Manager**: Create, rename, organize, and delete folders for all 19 medical subjects.
 
 ---
 
 ### 3.2 Cards Manager & AI Generation (`cards`)
 *Source: `src/App.jsx`, `src/components/ManualCardModal.jsx`, `src/components/ConflictInspectorModal.jsx`, `src/utils/imageCropper.js`*
-* **AI-Powered Card Extraction**:
-  * Powered by Google **Gemini Vision AI** via user API key.
-  * Ingests medical PDF textbook pages and lecture slides to extract high-yield clinical questions, answers, and tags.
-  * Automatic detection of clinical case-vignettes, diagnostic hallmarks, and pharmacological mechanisms.
-* **Interactive Pre-Save Card Editor**:
-  * Modify Question, Answer, Notes, Tags, and Deck assignments before committing to database.
-  * Add custom clinical mnemonics, high-yield pearls, and source page references.
-* **Visual Flashcard Image Cropper**:
-  * Integrated bounding box selector (`imageCropper.js`) to crop clinical diagrams, histological slides, and flowcharts directly from source PDFs.
-  * Automatically embeds cropped images into flashcard question/answer fields.
-* **Manual Card Creator Modal (`ManualCardModal.jsx`)**:
-  * Create custom Anki cards manually with rich formatting, image drag-and-drop, and tag autocomplete.
-  * Dual-mode editor: Standard Front/Back and Cloze Deletion syntax (`{{c1::text}}`).
-* **Conflict Inspector Modal (`ConflictInspectorModal.jsx`)**:
-  * Detects duplicate or similar cards already existing in local decks.
-  * Side-by-side visual diff comparison to merge, overwrite, or discard conflicts.
-* **Deck Filtering & Search**: Filter cards by Subject, Deck, Yield Rating (High-Yield / Super-High-Yield), and Review Status.
-* **Batch Processing & Queue Management**: Process multiple pages in sequence with rate-limit pacing.
+
+#### Overview & Core Purpose
+Extracts high-yield clinical cards from textbook pages using Google Gemini Vision AI with rich pre-save editing and Cloze deletion support.
+
+#### Buttons, Controls & UI Elements
+* **AI Extract Flashcards Button**: Sends page layout and text to Gemini Vision AI to extract high-yield clinical Q&A pairs.
+* **Interactive Pre-Save Card Editor**: Edit Question, Answer, Notes, Tags, Deck, and Yield Rating before saving.
+* **Manual Card Creator Modal (`ManualCardModal.jsx`)**: Create cards manually with rich formatting, Cloze deletion syntax (`{{c1::text}}`), and image drag-and-drop.
+* **Image Cropper Tool (`imageCropper.js`)**: Adjust crop boundaries for clinical diagrams, histology slides, and ECG strips.
+* **Conflict Inspector Modal (`ConflictInspectorModal.jsx`)**: Side-by-side visual diff to merge, overwrite, or discard duplicate cards.
+* **Search & Tag Filters**: Filter generated cards by Subject, Tag, Status, or Yield Tier (High-Yield / Super-High-Yield).
 
 ---
 
 ### 3.3 Subject Tracker — 19 Subjects (`subjectTracker`)
 *Source: `src/App.jsx`*
-* **Complete 19-Subject Medical Matrix**:
-  * Pre-clinical: Anatomy, Physiology, Biochemistry.
-  * Para-clinical: Pathology, Pharmacology, Microbiology, Forensic Medicine, Community Medicine (PSM).
-  * Clinical: Ophthalmology, ENT, General Medicine, General Surgery, OBG, Pediatrics, Orthopedics, Dermatology, Psychiatry, Radiology, Anesthesia.
-* **Subject Checklist & Progress Matrix**:
-  * Map chapters, completed flashcard decks, and revision hours per subject.
-* **Projected Completion Timeline**:
-  * Dynamically projects syllabus completion dates based on current daily study velocity.
+
+#### Overview & Core Purpose
+Complete syllabus matrix covering all 19 medical subjects required for postgraduate medical entrance exams.
+
+#### Buttons, Controls & UI Elements
+* **19-Subject Matrix Grid**: Covers Anatomy, Physiology, Biochemistry, Pathology, Pharmacology, Microbiology, FMT, PSM, Ophthal, ENT, Medicine, Surgery, OBG, Peds, Ortho, Derma, Psych, Radio, and Anesthesia.
+* **Chapter Milestone Checklists**: Mark individual chapters and revision stages complete as you progress.
+* **Time Log Sync**: Links focus hours logged in the Study Room directly to individual subject milestones.
+* **Completion Date Projection**: Estimates syllabus completion date based on your active daily study velocity.
 
 ---
 
 ### 3.4 PYT Manager — Previous Year Topics (`pytManager`)
 *Source: `src/App.jsx`, `src/utils/pytService.js`*
-* **Previous Year Topics (PYT) Knowledge Base**:
-  * Comprehensive syllabus index mapping clinical themes tested in past NEET PG and INI-CET papers.
-* **Yield Classification**:
-  * Categorizes topics into *High-Yield* and *Super-High-Yield* priority tiers.
-* **Bulk Topic Ingestion**:
-  * Paste and parse full subject syllabi (one topic per line) with automated indexing.
-* **Textbook PDF Mapping**:
-  * Link scanned medical textbook PDFs directly to PYT subjects for contextual study.
+
+#### Overview & Core Purpose
+Central reference database of clinical themes tested in past NEET PG and INI-CET entrance examinations.
+
+#### Buttons, Controls & UI Elements
+* **Subject Syllabus Selector**: Filter PYT topics across all 19 medical subjects.
+* **Bulk Topic Ingestion Box**: Paste syllabus topic lists (one topic per line) with automated indexing into IndexedDB.
+* **Yield Level Ratings**: Flags topics as Standard, High-Yield, or Super-High-Yield based on past exam frequency.
+* **Textbook PDF Mapping**: Link scanned textbook PDFs directly to PYT topics for contextual reading.
 
 ---
 
 ### 3.5 PYT Logger & Revision Heatmap (`pytLogger`)
 *Source: `src/App.jsx`*
-* **Topic Revision Frequency Tracker**:
-  * Log study sessions and review counts directly against individual PYT entries.
-* **Revision Heatmaps & Neglect Alerts**:
-  * Color-coded indicators showing which topics are thoroughly revised and which haven't been reviewed in $> 30$ days.
-* **Duplicate Topic Detector**:
-  * Identifies duplicate topics across different subjects or spellings with 1-click deduplication.
-* **Search & Multi-Sort Engine**:
-  * Search topic names and sort by Alphabetical, Page Number, Highest Revisions, or Lowest Revisions.
+
+#### Overview & Core Purpose
+Log study events directly against PYT IDs with revision frequency heatmaps and neglect warnings.
+
+#### Buttons, Controls & UI Elements
+* **Topic Revision Counters (`+` / `-`)**: Increments or decrements the logged revision count for individual medical topics.
+* **Coverage Heatmap**: Color-coded indicators showing thoroughly revised vs neglected topics.
+* **Neglected Topics Filter (>30 Days)**: Isolates critical clinical topics that have not been revised in over 30 days.
+* **Duplicate Topics Cleaner**: Detects and merges duplicate topic entries across spelling variations.
+* **Multi-Sort Selector**: Sorts by Alphabetical (A-Z), Page Number (Ascending), Revisions (High to Low), or Revisions (Low to High).
 
 ---
 
@@ -241,31 +242,31 @@ AutoAnki organizes its 17 modules into 4 specialized categories:
 
 ### 4.1 CAMP Tracker — Milestone Protocol (`campTracker`)
 *Source: `src/components/CampTracker/CampDashboard.jsx`, `CollapsibleCard.jsx`, `ProgressChart.jsx`, `src/utils/campCalculations.js`*
-* **Consistent Active Memorization Protocol (CAMP)**: A medical study framework tracking completion across all 19 medical subjects.
-* **Subject-Level Milestone Tracking**:
-  * Breaks down all 19 NEET PG subjects into micro-milestone cards.
-  * Status progression states: *Unstudied*, *In-Progress*, and *Completed*.
-  * Progress percentage calculations with color-coded elevation badges.
-* **Mathematical Efficiency & Concentration Metrics**:
-  * `calculateEfficiencyScore(milestones, hours)`: Computes cognitive throughput based on completed milestones vs time invested.
-  * `calculateWeightedConcentration(...)`: Evaluates subject distribution balance across high-yield clinical vs pre-clinical subjects.
-* **Visual Progress Distribution Charts**:
-  * Collapsible subject cards with individual module checklists.
-  * Responsive progress bars and completion radars.
+
+#### Overview & Core Purpose
+Consistent Active Memorization Protocol tracking micro-milestone progression and mathematical throughput.
+
+#### Buttons, Controls & UI Elements
+* **Micro-Milestone Cards**: Breaks down subjects into small milestone cards with Unstudied, In-Progress, and Completed states.
+* **Efficiency Score Calculator**: Computes cognitive throughput score based on completed milestones vs logged hours (`calculateEfficiencyScore`).
+* **Weighted Concentration Index**: Evaluates balance between clinical and pre-clinical subject coverage (`calculateWeightedConcentration`).
+* **Milestone Progress Radars**: Visualizes completion percentage across each subject module.
 
 ---
 
 ### 4.2 Analysis Suite & Counseling Rank Predictor (`analytics`)
 *Source: `src/App.jsx`*
-* **Deep Analytics Hub with 5 Specialized Subtabs**:
-  1. **Cards Generation Analytics**: Track AI extraction volume, daily created cards, and token usage.
-  2. **Study Analytics**: Long-term revision consistency, daily study hours heatmap, and review accuracy rates.
-  3. **Counseling & Mentorship Rank Predictor**:
-     * Input Grand Test scores to predict percentile brackets and estimated NEET PG rank cutoffs for competitive medical specialties.
-  4. **PYT Coverage Heatmap**: Visual matrix tracking syllabus coverage against tested Previous Year Topics.
-  5. **Subject Coverage Distribution**: Interactive nested Sunburst chart mapping card counts across all 19 medical subjects and sub-specialties.
-* **Circadian Peak Heatmap**:
-  * Analyzes historical review performance to pinpoint peak cognitive productivity hours (Morning vs Afternoon vs Night).
+
+#### Overview & Core Purpose
+Deep analytical suite with 5 specialized subtabs, counseling rank predictors, and circadian peak heatmaps.
+
+#### Buttons, Controls & UI Elements
+* **Generation Analytics Subtab**: Tracks total AI-generated cards, daily creation volume, and API token usage.
+* **Study Analytics Subtab**: Displays daily study consistency heatmaps, review accuracy percentages, and hours distribution.
+* **Counseling & Rank Predictor Subtab**: Input mock Grand Test scores to predict estimated NEET PG rank brackets and counseling specialty cutoffs.
+* **PYT Coverage Subtab**: Visualizes percentage of tested Previous Year Topics revised across all 19 subjects.
+* **Subject Coverage Subtab**: Interactive nested Sunburst chart mapping cards count across subjects and subtopics.
+* **Circadian Peak Heatmap**: Pinpoints peak cognitive performance hours (Morning, Afternoon, Evening, Night).
 
 ---
 
@@ -273,86 +274,90 @@ AutoAnki organizes its 17 modules into 4 specialized categories:
 
 ### 5.1 Exporter Hub & Anki APKG Compiler (`export`)
 *Source: `src/App.jsx`, `src/components/ExportImageVerificationModal.jsx`*
-* **Official Anki Package (.apkg) Compiler**:
-  * Packages cards, tags, formatting, and notes into standardized SQLite database files compatible with official Anki desktop, AnkiDroid, and AnkiMobile.
-* **Media & Diagram Bundling**:
-  * Automatically packages embedded textbook images and cropped diagrams into the `.apkg` media collection.
-* **Export Image Verification Modal (`ExportImageVerificationModal.jsx`)**:
-  * Pre-compilation scanner identifying missing image references, broken coordinates, or unlinked attachments with 1-click repair.
-* **Selective Modular Export**:
-  * Select specific subjects, sub-decks, or tag filters to export modular specialty packages.
+
+#### Overview & Core Purpose
+Compile curated deck collections into standardized SQLite `.apkg` files compatible with official Anki apps.
+
+#### Buttons, Controls & UI Elements
+* **Compile .apkg Package Button**: Packages cards, tags, formatting, and notes into standard SQLite Anki databases.
+* **Media Asset Bundler**: Automatically embeds cropped images and diagrams into the `.apkg` media collection.
+* **Export Image Verification Modal**: Scans deck for broken image links or missing coordinates and fixes them before export.
+* **Subject / Tag Selectors**: Select specific subjects or tag groups for modular specialty exports.
 
 ---
 
 ### 5.2 AI Prompt Editor (`prompt`)
 *Source: `src/App.jsx`*
-* **System Instruction Profile Manager**:
-  * Customize the system prompts used by Gemini Vision AI for card extraction.
-* **Dual Category Prompts**:
-  * **Image Prompts**: Optimized for diagram parsing, histology labels, clinical flowcharts, and radiology signs.
-  * **Text Prompts**: Optimized for high-yield factual tables, differential diagnoses, and pharmacological bullet points.
-* **JSON Schema Enforcement**:
-  * Validates AI response structure against strict JSON output schemas to prevent corrupted card formats.
-* **Template Backups & Factory Reset**:
-  * Save custom prompt presets or restore default medical extraction guidelines with 1 click.
+
+#### Overview & Core Purpose
+Refine Gemini AI extraction guidelines with dual prompt categories and JSON schema validation.
+
+#### Buttons, Controls & UI Elements
+* **Image Prompts Category Tab**: Prompts tailored for diagram parsing, histology labels, clinical flowcharts, and radiology signs.
+* **Text Prompts Category Tab**: Prompts tailored for high-yield tables, differential diagnoses, and pharmacological bullet points.
+* **Instruction Profile Editor**: Customize extraction rules (e.g. emphasize clinical case-vignettes, diagnostic criteria).
+* **JSON Schema Validation Tester**: Validates AI response structure against strict JSON output schemas.
+* **Template Backups & Factory Reset**: Save custom presets or restore original medical extraction guidelines.
 
 ---
 
 ### 5.3 OBS Overlay Customizer (`obsOverlay`)
 *Source: `src/App.jsx`, `src/components/StudyRoomComponents.jsx`*
-* **Live Streaming Overlay Studio**:
-  * Generates clean, broadcast-ready overlays for study streams (Twitch, YouTube Live, Kick).
-* **Real-Time Data Feed**:
-  * Displays active session timer, current study hours, today's question count, and streak badges.
-* **Visual Customizer**:
-  * Adjust background opacity, neumorphic borders, theme colors, typography, and widget positioning.
-* **1-Click OBS URL Export**:
-  * Generates a persistent Browser Source URL formatted with custom dimensions for OBS Studio.
+
+#### Overview & Core Purpose
+Broadcast live session statistics, timers, and streak badges on study streams via OBS Studio.
+
+#### Buttons, Controls & UI Elements
+* **Live Data Synchronizer**: Synchronizes active session timer, study hours, and streak titles with streaming client inputs.
+* **Visual Layout Customizer**: Adjust background opacity, borders, typography, and color schemes.
+* **Copy Browser Source Link**: Generates and copies a persistent Browser Source URL formatted for OBS Studio.
 
 ---
 
 ### 5.4 Settings & LocalDB Control (`settings`)
 *Source: `src/App.jsx`, `src/services/localDb.js`*
-* **100% Offline-First Local Database Control**:
-  * **Backup Database (JSON)**: Export the complete IndexedDB database (flashcards, logs, PYTs, settings) to a single portable file.
-  * **Restore Database**: Import a saved JSON backup to restore all data instantly.
-  * **Database Diagnostic & Reset**: Inspect storage sizes and clear individual stores safely.
-* **Private GitHub Cloud Backup**:
-  * Store credentials (GitHub Username, Repo Name, Personal Access Token).
-  * 1-Click push and pull of database snapshots to personal private repositories for cross-device sync.
-* **API Credentials Management**:
-  * Configure and securely store Google Gemini API keys with live connection validation.
-* **Theme Customizer**:
-  * Switch between Neumorphic Light (`#e6ecf5`) and Neumorphic Dark (`#222730`) themes.
-* **Mobile Navigation Customizer**:
-  * Drag-and-drop selector to configure up to 8 bottom navigation tab shortcuts for mobile views.
+
+#### Overview & Core Purpose
+100% offline-first IndexedDB database control, JSON database backup/restore, and private GitHub sync.
+
+#### Buttons, Controls & UI Elements
+* **Backup Database (Export JSON)**: Exports entire IndexedDB database (flashcards, logs, PYTs, settings) to a single portable JSON file.
+* **Restore Database (Import JSON)**: Imports a saved JSON backup to restore all data instantly with zero data loss.
+* **Storage Store Diagnostics**: Inspects item counts and storage footprint for each IndexedDB store.
+* **GitHub Cloud Sync (PAT Manager)**: Configure GitHub Username, Repo, and Personal Access Token for secure push/pull cloud backups.
+* **Gemini API Key Manager**: Input and validate Google Gemini API key with live connection testing.
+* **Theme Mode Toggle (Light / Dark)**: Switches between Neumorphic Light (`#e6ecf5`) and Dark (`#222730`).
+* **Mobile Navigation Customizer**: Configure up to 8 bottom navigation tab shortcuts for mobile view.
 
 ---
 
 ### 5.5 Recycle Bin / Trash (`trash`)
 *Source: `src/App.jsx`*
-* **Soft-Delete Safety Net**:
-  * Deleted flashcards and PDF scans are moved to the Recycle Bin rather than permanently erased.
-* **1-Click Restore**:
-  * Instantly restores cards and pages back to their exact original parent decks and queues.
-* **Permanent Batch Deletion**:
-  * "Empty Recycle Bin" utility to permanently delete soft-deleted content and reclaim local disk space.
-* **Recovery Audit Log**:
-  * Tracks original deletion timestamps and parent deck metadata.
+
+#### Overview & Core Purpose
+Soft-delete safety net for restoring accidentally removed cards and pages back to active decks.
+
+#### Buttons, Controls & UI Elements
+* **Restore Card Button**: Instantly restores soft-deleted cards back to their exact original parent deck.
+* **Empty Recycle Bin Button**: Permanently deletes all soft-deleted items to reclaim local disk space.
+* **Deletion Audit Log**: Displays original deletion timestamps and parent deck tags.
 
 ---
 
 ### 5.6 About Page & Manual (`about`)
 *Source: `src/components/AboutDashboard.jsx`*
-* **Interactive Documentation & Knowledge Hub**:
-  * Top hero gradient banner highlighting the platform mission and offline-first ethos.
-* **Dual-Subtab Architecture**:
-  1. **About App**: Core platform overview, 4-pillar architectural metrics, and dedicated developer hero for Dr. Kishor Anbazhakan (MBBS) with silhouette text-wrapping.
-  2. **App Manual**: Interactive searchable feature catalog covering all 17 modules grouped by the 4 application categories with direct "Jump to Tab" navigation.
+
+#### Overview & Core Purpose
+Knowledge hub containing platform architecture metrics, developer portfolio for Dr. Kishor, and complete interactive A-to-Z feature manual.
+
+#### Buttons, Controls & UI Elements
+* **About App Subtab**: Overview hero, 4-pillar architectural metrics, and developer bio with silhouette text-wrapping.
+* **Complete Manual Subtab**: Categorized feature cards across all 4 categories, interactive search bar, category filter pills, and "Jump to Tab" buttons.
+* **Feature Inspector Modal**: Click any feature to launch a detailed dialog showing all buttons, controls, and step-by-step instructions.
 
 ---
 
-## 6. Specialized Modals & Utility Components
+## 6. Specialized Modals & Dialogs Reference
 
 1. **Manual Card Modal (`ManualCardModal.jsx`)**: Comprehensive card editor with rich inputs, Cloze syntax, image pasting, and tag autocomplete.
 2. **Conflict Inspector Modal (`ConflictInspectorModal.jsx`)**: Visual side-by-side diff resolving card conflicts and duplicates.
@@ -361,20 +366,17 @@ AutoAnki organizes its 17 modules into 4 specialized categories:
 5. **Rating Duration Modal (`RatingDurationModal.jsx`)**: Read-only predictive timing modal displaying review duration and velocity without altering FSRS memory math.
 6. **Topic Notes Modal (`TopicNotesModal.jsx`)**: Attached medical notes and diagnostic flowcharts for clinical review cards.
 7. **Select New Topics Modal (`SelectNewTopicsModal.jsx`)**: Topic scheduler modal with strategy modes to introduce new clinical material.
-8. **FsrsSettingsModal (`FsrsSettingsModal.jsx`)**: Configuration panel for FSRS target retention, max interval, and weight parameters.
+8. **FsrsSettingsModal (`FsrsSettingsModal.jsx`)**: Configuration panel for FSRS target retention, max interval, and 21 weight parameters.
 9. **FsrsStatsTab (`FsrsStatsTab.jsx`)**: Memory decay charts and difficulty distributions.
 10. **StudyVelocityTab (`StudyVelocityTab.jsx`)**: Throughput and speed analytics dashboard.
-11. **NeumorphicSelect (`NeumorphicSelect.jsx`)**: Smooth Neumorphic dropdown selector with keyboard navigation and dark mode support.
-12. **RichInputField (`RichInputField.jsx`)**: Rich text input field with syntax highlighting and medical formatting shortcuts.
-13. **Uiverse Components (`UiverseSwitch.jsx`, `UiverseButton.jsx`, `UiverseGlassRadio.jsx`)**: Smooth micro-animated toggles and glassmorphic inputs.
 
 ---
 
 ## 7. Core Algorithms & Background Services
 
 * **`src/services/localDb.js`**: Offline-first IndexedDB database engine (`AutoAnkiLocalDB`) handling transactions, indexed queries, bulk operations, and exports.
-* **`src/services/fsrsEngine.js`**: Full mathematical implementation of FSRS-4.5 (Stability $S$, Difficulty $D$, Retrievability $R$, Intervals $I$, Leech detection, and parameter optimization).
-* **`src/services/predictiveTimingEngine.js`**: Strictly read-only predictive timing engine estimating card study duration and workload balancing.
+* **`src/services/fsrsEngine.js`**: Full mathematical implementation of **FSRS-6** (21 benchmark parameters $w_0 \dots w_{20}$, Stability $S$, Difficulty $D$, Retrievability $R$, Intervals $I$, and Leech detection).
+* **`src/services/predictiveTimingEngine.js`**: Strictly read-only predictive timing engine estimating card study duration and workload balancing without altering FSRS formulas.
 * **`src/services/aiHintEngine.js`**: Generates tiered clinical hints (First-line clue, Mechanism clue, Diagnostic hallmark) for active card reviews.
 * **`src/services/pdfSliceService.js`**: Canvas rasterizer and slice processor extracting high-resolution regions from PDF pages.
 * **`src/utils/campCalculations.js`**: Mathematical calculations for CAMP efficiency scores and weighted concentration indexes.
