@@ -1,31 +1,45 @@
-# 🩺 AutoAnki — Complete Application Feature Catalog & Technical Audit
+# 🩺 AutoAnki — Complete Application Feature Catalog & Technical Manual
 
-This document provides a comprehensive, verified, and detailed catalog of every single tab, menu, sub-feature, modal, service, and algorithm across the **AutoAnki** codebase.
+This document provides a comprehensive, verified, and detailed catalog of every single module, tab, sub-feature, modal, service, and algorithm across the **AutoAnki** codebase—organized according to the 4 primary application navigation categories.
+
+---
+
+## 📑 Application Navigation Architecture
+
+AutoAnki organizes its 17 modules into 4 specialized categories:
+1. **⚡ Focus & Review**: High-yield study execution, FSRS-4.5 spaced repetition review, and workload scheduling.
+2. **📚 Content & Knowledge**: Medical textbook ingestion, Vision AI card extraction, 19 medical subjects, and NEET PG PYT indices.
+3. **📊 Progress & Metrics**: CAMP milestone protocol, counseling rank predictors, and nested Sunburst deck charts.
+4. **🛠️ Tools & System**: Official Anki APKG compiler, AI prompt tuning, OBS stream overlays, local database manager, and Chrome extension.
 
 ---
 
 ## Table of Contents
-1. [Architecture & Storage Model](#1-architecture--storage-model)
-2. [Tab 1: Dashboard (`dashboard`)](#2-tab-1-dashboard-dashboard)
-3. [Tab 2: CAMP Tracker (`campTracker`)](#3-tab-2-camp-tracker-camptracker)
-4. [Tab 3: Cards Manager & Generation (`cards`)](#4-tab-3-cards-manager--generation-cards)
-5. [Tab 4: Library & PDF Ingestion (`library`)](#5-tab-4-library--pdf-ingestion-library)
-6. [Tab 5: Study Room & Focus Lounge (`study`)](#6-tab-5-study-room--focus-lounge-study)
-7. [Tab 6: Smart Review Hub & FSRS Spaced Repetition (`smartReview`)](#7-tab-6-smart-review-hub--fsrs-spaced-repetition-smartreview)
-8. [Tab 7: Study Scheduler (`studyScheduler`)](#8-tab-7-study-scheduler-studyscheduler)
-9. [Tab 8: OBS Overlay Customizer (`obsOverlay`)](#9-tab-8-obs-overlay-customizer-obsoverlay)
-10. [Tab 9: Analysis & Analytics Suite (`analytics`)](#10-tab-9-analysis--analytics-suite-analytics)
-11. [Tab 10: Exporter Hub & Anki APKG Generator (`export`)](#11-tab-10-exporter-hub--anki-apkg-generator-export)
-12. [Tab 11: AI Prompt Editor (`prompt`)](#12-tab-11-ai-prompt-editor-prompt)
-13. [Tab 12: PYT Manager (`pytManager`)](#13-tab-12-pyt-manager-pytmanager)
-14. [Tab 13: PYT Logger (`pytLogger`)](#14-tab-13-pyt-logger-pytlogger)
-15. [Tab 14: Subject Tracker (`subjectTracker`)](#15-tab-14-subject-tracker-subjecttracker)
-16. [Tab 15: Setup & Settings (`settings`)](#16-tab-15-setup--settings-settings)
-17. [Tab 16: Recycle Bin / Trash (`trash`)](#17-tab-16-recycle-bin--trash-trash)
-18. [Tab 17: About Page (`about`)](#18-tab-17-about-page-about)
-19. [Specialized Modals & Utility Components](#19-specialized-modals--utility-components)
-20. [Core Algorithms & Services](#20-core-algorithms--services)
-21. [Chrome Extension Ecosystem](#21-chrome-extension-ecosystem)
+- [1. Architecture & Storage Model](#1-architecture--storage-model)
+- [2. Category I: Focus & Review](#2-category-i-focus--review)
+  - [2.1 Dashboard (`dashboard`)](#21-dashboard-dashboard)
+  - [2.2 Smart Review Hub & FSRS-4.5 Engine (`smartReview`)](#22-smart-review-hub--fsrs-45-engine-smartreview)
+  - [2.3 Study Room & Focus Lounge (`study`)](#23-study-room--focus-lounge-study)
+  - [2.4 Study Scheduler (`studyScheduler`)](#24-study-scheduler-studyscheduler)
+- [3. Category II: Content & Knowledge](#3-category-ii-content--knowledge)
+  - [3.1 Library & PDF Ingestion (`library`)](#31-library--pdf-ingestion-library)
+  - [3.2 Cards Manager & AI Generation (`cards`)](#32-cards-manager--ai-generation-cards)
+  - [3.3 Subject Tracker — 19 Subjects (`subjectTracker`)](#33-subject-tracker--19-subjects-subjecttracker)
+  - [3.4 PYT Manager — Previous Year Topics (`pytManager`)](#34-pyt-manager--previous-year-topics-pytmanager)
+  - [3.5 PYT Logger & Revision Heatmap (`pytLogger`)](#35-pyt-logger--revision-heatmap-pytlogger)
+- [4. Category III: Progress & Metrics](#4-category-iii-progress--metrics)
+  - [4.1 CAMP Tracker — Milestone Protocol (`campTracker`)](#41-camp-tracker--milestone-protocol-camptracker)
+  - [4.2 Analysis Suite & Counseling Rank Predictor (`analytics`)](#42-analysis-suite--counseling-rank-predictor-analytics)
+- [5. Category IV: Tools & System](#5-category-iv-tools--system)
+  - [5.1 Exporter Hub & Anki APKG Compiler (`export`)](#51-exporter-hub--anki-apkg-compiler-export)
+  - [5.2 AI Prompt Editor (`prompt`)](#52-ai-prompt-editor-prompt)
+  - [5.3 OBS Overlay Customizer (`obsOverlay`)](#53-obs-overlay-customizer-obsoverlay)
+  - [5.4 Settings & LocalDB Control (`settings`)](#54-settings--localdb-control-settings)
+  - [5.5 Recycle Bin / Trash (`trash`)](#55-recycle-bin--trash-trash)
+  - [5.6 About Page & Manual (`about`)](#56-about-page--manual-about)
+- [6. Specialized Modals & Utility Components](#6-specialized-modals--utility-components)
+- [7. Core Algorithms & Background Services](#7-core-algorithms--background-services)
+- [8. Chrome Extension Ecosystem](#8-chrome-extension-ecosystem)
 
 ---
 
@@ -49,9 +63,10 @@ This document provides a comprehensive, verified, and detailed catalog of every 
 
 ---
 
-## 2. Tab 1: Dashboard (`dashboard`)
-*Source: `src/App.jsx`, `src/components/DashboardGrid.jsx`*
+## 2. Category I: Focus & Review
 
+### 2.1 Dashboard (`dashboard`)
+*Source: `src/App.jsx`, `src/components/DashboardGrid.jsx`*
 * **Central Command Center**: Real-time overview of active study progress, streak status, and due reviews.
 * **Live Study Tracker Widget**:
   * Active session timer with live Start, Pause, Resume, and Stop controls.
@@ -71,91 +86,8 @@ This document provides a comprehensive, verified, and detailed catalog of every 
 
 ---
 
-## 3. Tab 2: CAMP Tracker (`campTracker`)
-*Source: `src/components/CampTracker/CampDashboard.jsx`, `CollapsibleCard.jsx`, `ProgressChart.jsx`, `src/utils/campCalculations.js`*
-
-* **Consistent Active Memorization Protocol (CAMP)**: A medical study framework tracking completion across all 19 medical subjects.
-* **Subject-Level Milestone Tracking**:
-  * Breaks down all 19 NEET PG subjects into micro-milestone cards.
-  * Status progression states: *Unstudied*, *In-Progress*, and *Completed*.
-  * Progress percentage calculations with color-coded elevation badges.
-* **Mathematical Efficiency & Concentration Metrics**:
-  * `calculateEfficiencyScore(milestones, hours)`: Computes cognitive throughput based on completed milestones vs time invested.
-  * `calculateWeightedConcentration(...)`: Evaluates subject distribution balance across high-yield clinical vs pre-clinical subjects.
-* **Visual Progress Distribution Charts**:
-  * Collapsible subject cards with individual module checklists.
-  * Responsive progress bars and completion radars.
-* **Instant Persistence**: Updates save immediately to `AutoAnkiLocalDB` with zero cloud delay.
-
----
-
-## 4. Tab 3: Cards Manager & Generation (`cards`)
-*Source: `src/App.jsx`, `src/components/ManualCardModal.jsx`, `src/components/ConflictInspectorModal.jsx`, `src/utils/imageCropper.js`*
-
-* **AI-Powered Card Extraction**:
-  * Powered by Google **Gemini Vision AI** via user API key.
-  * Ingests medical PDF textbook pages and lecture slides to extract high-yield clinical questions, answers, and tags.
-  * Automatic detection of clinical case-vignettes, diagnostic hallmarks, and pharmacological mechanisms.
-* **Interactive Pre-Save Card Editor**:
-  * Modify Question, Answer, Notes, Tags, and Deck assignments before committing to database.
-  * Add custom clinical mnemonics, high-yield pearls, and source page references.
-* **Visual Flashcard Image Cropper**:
-  * Integrated bounding box selector (`imageCropper.js`) to crop clinical diagrams, histological slides, and flowcharts directly from source PDFs.
-  * Automatically embeds cropped images into flashcard question/answer fields.
-* **Manual Card Creator Modal (`ManualCardModal.jsx`)**:
-  * Create custom Anki cards manually with rich formatting, image drag-and-drop, and tag autocomplete.
-  * Dual-mode editor: Standard Front/Back and Cloze Deletion syntax (`{{c1::text}}`).
-* **Conflict Inspector Modal (`ConflictInspectorModal.jsx`)**:
-  * Detects duplicate or similar cards already existing in local decks.
-  * Side-by-side visual diff comparison to merge, overwrite, or discard conflicts.
-* **Deck Filtering & Search**: Filter cards by Subject, Deck, Yield Rating (High-Yield / Super-High-Yield), and Review Status.
-* **Batch Processing & Queue Management**: Process multiple pages in sequence with rate-limit pacing.
-
----
-
-## 5. Tab 4: Library & PDF Ingestion (`library`)
-*Source: `src/App.jsx`, `src/services/pdfSliceService.js`, `src/components/PdfSlicePreviewModal.jsx`*
-
-* **Local Document Repository**:
-  * Upload, view, and organize medical reference PDFs, notes, and study slides.
-  * PDF files are stored directly in local IndexedDB storage (or cached locally).
-* **Interactive PDF Viewer**:
-  * Powered by `pdfjs-dist` with high-resolution canvas rendering.
-  * Smooth multi-page scrolling, jump-to-page, zooming, and thumbnail previews.
-* **PDF Slice Preview Modal (`PdfSlicePreviewModal.jsx`)**:
-  * Slice multi-page PDF sections into isolated high-resolution images for card generation.
-* **Subject & Deck Folders**:
-  * Hierarchical organization matching the 19 medical subjects.
-  * Deck creation, renaming, merging, and folder deletion.
-* **Direct Flashcard Anchoring**:
-  * Selecting any page region instantly triggers AI extraction anchored to that exact textbook coordinate.
-
----
-
-## 6. Tab 5: Study Room & Focus Lounge (`study`)
-*Source: `src/App.jsx`, `src/components/StudyRoomComponents.jsx`*
-
-* **Immersive Active Study Room**:
-  * Distraction-free full-screen environment for deep focus sessions.
-* **Integrated Pomodoro & Focus Timer**:
-  * Customizable work intervals, short breaks, and long breaks with audio chime notifications.
-* **Ambient Sound Lounge (`SoundsPanel`)**:
-  * Built-in sound tracks: Lo-Fi Study Beats, Gentle Rain, Forest Ambience, White Noise.
-  * **YouTube Audio Stream Embed**: Ingest and play background audio streams via YouTube Video ID parser.
-* **Motivational Quote Engine (`QuotesPanel`)**:
-  * Curated database of motivational quotes tailored for medical doctors and exam aspirants.
-* **Spaced Repetition Review Simulator**:
-  * Quick flashcard review interface with *Again*, *Hard*, *Good*, and *Easy* rating buttons.
-* **Scorecard & Grand Test (GT) Logger (`StatsPanel`)**:
-  * Log mock test scores, total questions, correct/incorrect splits, and percentile trends over time.
-* **Floating Utility Widgets**:
-  * Draggable, minimizable floating widgets for Timer, Audio Player, Notes, and Stats.
-
----
-
-## 7. Tab 6: Smart Review Hub & FSRS Spaced Repetition (`smartReview`)
+### 2.2 Smart Review Hub & FSRS-4.5 Engine (`smartReview`)
 *Source: `src/components/SmartReviewHub.jsx`, `src/services/fsrsEngine.js`, `src/services/predictiveTimingEngine.js`, `src/components/FsrsSettingsModal.jsx`, `src/components/FsrsStatsTab.jsx`, `src/components/StudyVelocityTab.jsx`, `src/components/RatingDurationModal.jsx`, `src/components/TopicNotesModal.jsx`, `src/components/SelectNewTopicsModal.jsx`*
-
 * **FSRS-4.5 Memory Engine (`fsrsEngine.js`)**:
   * Next-generation Free Spaced Repetition Scheduler replacing legacy SM-2.
   * Tracks 4 core memory parameters per card:
@@ -190,9 +122,28 @@ This document provides a comprehensive, verified, and detailed catalog of every 
 
 ---
 
-## 8. Tab 7: Study Scheduler (`studyScheduler`)
-*Source: `src/App.jsx`*
+### 2.3 Study Room & Focus Lounge (`study`)
+*Source: `src/App.jsx`, `src/components/StudyRoomComponents.jsx`*
+* **Immersive Active Study Room**:
+  * Distraction-free full-screen environment for deep focus sessions.
+* **Integrated Pomodoro & Focus Timer**:
+  * Customizable work intervals, short breaks, and long breaks with audio chime notifications.
+* **Ambient Sound Lounge (`SoundsPanel`)**:
+  * Built-in sound tracks: Lo-Fi Study Beats, Gentle Rain, Forest Ambience, White Noise.
+  * **YouTube Audio Stream Embed**: Ingest and play background audio streams via YouTube Video ID parser.
+* **Motivational Quote Engine (`QuotesPanel`)**:
+  * Curated database of motivational quotes tailored for medical doctors and exam aspirants.
+* **Spaced Repetition Review Simulator**:
+  * Quick flashcard review interface with *Again*, *Hard*, *Good*, and *Easy* rating buttons.
+* **Scorecard & Grand Test (GT) Logger (`StatsPanel`)**:
+  * Log mock test scores, total questions, correct/incorrect splits, and percentile trends over time.
+* **Floating Utility Widgets**:
+  * Draggable, minimizable floating widgets for Timer, Audio Player, Notes, and Stats.
 
+---
+
+### 2.4 Study Scheduler (`studyScheduler`)
+*Source: `src/App.jsx`*
 * **Dynamic Revision Planner**:
   * Visual Spaced Repetition Calendar mapping overdue, due today, and upcoming review workloads.
 * **Overdue Topic Alerts**:
@@ -204,23 +155,108 @@ This document provides a comprehensive, verified, and detailed catalog of every 
 
 ---
 
-## 9. Tab 8: OBS Overlay Customizer (`obsOverlay`)
-*Source: `src/App.jsx`, `src/components/StudyRoomComponents.jsx`*
+## 3. Category II: Content & Knowledge
 
-* **Live Streaming Overlay Studio**:
-  * Generates clean, broadcast-ready overlays for study streams (Twitch, YouTube Live, Kick).
-* **Real-Time Data Feed**:
-  * Displays active session timer, current study hours, today's question count, and streak badges.
-* **Visual Customizer**:
-  * Adjust background opacity, neumorphic borders, theme colors, typography, and widget positioning.
-* **1-Click OBS URL Export**:
-  * Generates a persistent Browser Source URL formatted with custom dimensions for OBS Studio.
+### 3.1 Library & PDF Ingestion (`library`)
+*Source: `src/App.jsx`, `src/services/pdfSliceService.js`, `src/components/PdfSlicePreviewModal.jsx`*
+* **Local Document Repository**:
+  * Upload, view, and organize medical reference PDFs, notes, and study slides.
+  * PDF files are stored directly in local IndexedDB storage.
+* **Interactive PDF Viewer**:
+  * Powered by `pdfjs-dist` with high-resolution canvas rendering.
+  * Smooth multi-page scrolling, jump-to-page, zooming, and thumbnail previews.
+* **PDF Slice Preview Modal (`PdfSlicePreviewModal.jsx`)**:
+  * Slice multi-page PDF sections into isolated high-resolution images for card generation.
+* **Subject & Deck Folders**:
+  * Hierarchical organization matching the 19 medical subjects.
+  * Deck creation, renaming, merging, and folder deletion.
+* **Direct Flashcard Anchoring**:
+  * Selecting any page region instantly triggers AI extraction anchored to that exact textbook coordinate.
 
 ---
 
-## 10. Tab 9: Analysis & Analytics Suite (`analytics`)
-*Source: `src/App.jsx`*
+### 3.2 Cards Manager & AI Generation (`cards`)
+*Source: `src/App.jsx`, `src/components/ManualCardModal.jsx`, `src/components/ConflictInspectorModal.jsx`, `src/utils/imageCropper.js`*
+* **AI-Powered Card Extraction**:
+  * Powered by Google **Gemini Vision AI** via user API key.
+  * Ingests medical PDF textbook pages and lecture slides to extract high-yield clinical questions, answers, and tags.
+  * Automatic detection of clinical case-vignettes, diagnostic hallmarks, and pharmacological mechanisms.
+* **Interactive Pre-Save Card Editor**:
+  * Modify Question, Answer, Notes, Tags, and Deck assignments before committing to database.
+  * Add custom clinical mnemonics, high-yield pearls, and source page references.
+* **Visual Flashcard Image Cropper**:
+  * Integrated bounding box selector (`imageCropper.js`) to crop clinical diagrams, histological slides, and flowcharts directly from source PDFs.
+  * Automatically embeds cropped images into flashcard question/answer fields.
+* **Manual Card Creator Modal (`ManualCardModal.jsx`)**:
+  * Create custom Anki cards manually with rich formatting, image drag-and-drop, and tag autocomplete.
+  * Dual-mode editor: Standard Front/Back and Cloze Deletion syntax (`{{c1::text}}`).
+* **Conflict Inspector Modal (`ConflictInspectorModal.jsx`)**:
+  * Detects duplicate or similar cards already existing in local decks.
+  * Side-by-side visual diff comparison to merge, overwrite, or discard conflicts.
+* **Deck Filtering & Search**: Filter cards by Subject, Deck, Yield Rating (High-Yield / Super-High-Yield), and Review Status.
+* **Batch Processing & Queue Management**: Process multiple pages in sequence with rate-limit pacing.
 
+---
+
+### 3.3 Subject Tracker — 19 Subjects (`subjectTracker`)
+*Source: `src/App.jsx`*
+* **Complete 19-Subject Medical Matrix**:
+  * Pre-clinical: Anatomy, Physiology, Biochemistry.
+  * Para-clinical: Pathology, Pharmacology, Microbiology, Forensic Medicine, Community Medicine (PSM).
+  * Clinical: Ophthalmology, ENT, General Medicine, General Surgery, OBG, Pediatrics, Orthopedics, Dermatology, Psychiatry, Radiology, Anesthesia.
+* **Subject Checklist & Progress Matrix**:
+  * Map chapters, completed flashcard decks, and revision hours per subject.
+* **Projected Completion Timeline**:
+  * Dynamically projects syllabus completion dates based on current daily study velocity.
+
+---
+
+### 3.4 PYT Manager — Previous Year Topics (`pytManager`)
+*Source: `src/App.jsx`, `src/utils/pytService.js`*
+* **Previous Year Topics (PYT) Knowledge Base**:
+  * Comprehensive syllabus index mapping clinical themes tested in past NEET PG and INI-CET papers.
+* **Yield Classification**:
+  * Categorizes topics into *High-Yield* and *Super-High-Yield* priority tiers.
+* **Bulk Topic Ingestion**:
+  * Paste and parse full subject syllabi (one topic per line) with automated indexing.
+* **Textbook PDF Mapping**:
+  * Link scanned medical textbook PDFs directly to PYT subjects for contextual study.
+
+---
+
+### 3.5 PYT Logger & Revision Heatmap (`pytLogger`)
+*Source: `src/App.jsx`*
+* **Topic Revision Frequency Tracker**:
+  * Log study sessions and review counts directly against individual PYT entries.
+* **Revision Heatmaps & Neglect Alerts**:
+  * Color-coded indicators showing which topics are thoroughly revised and which haven't been reviewed in $> 30$ days.
+* **Duplicate Topic Detector**:
+  * Identifies duplicate topics across different subjects or spellings with 1-click deduplication.
+* **Search & Multi-Sort Engine**:
+  * Search topic names and sort by Alphabetical, Page Number, Highest Revisions, or Lowest Revisions.
+
+---
+
+## 4. Category III: Progress & Metrics
+
+### 4.1 CAMP Tracker — Milestone Protocol (`campTracker`)
+*Source: `src/components/CampTracker/CampDashboard.jsx`, `CollapsibleCard.jsx`, `ProgressChart.jsx`, `src/utils/campCalculations.js`*
+* **Consistent Active Memorization Protocol (CAMP)**: A medical study framework tracking completion across all 19 medical subjects.
+* **Subject-Level Milestone Tracking**:
+  * Breaks down all 19 NEET PG subjects into micro-milestone cards.
+  * Status progression states: *Unstudied*, *In-Progress*, and *Completed*.
+  * Progress percentage calculations with color-coded elevation badges.
+* **Mathematical Efficiency & Concentration Metrics**:
+  * `calculateEfficiencyScore(milestones, hours)`: Computes cognitive throughput based on completed milestones vs time invested.
+  * `calculateWeightedConcentration(...)`: Evaluates subject distribution balance across high-yield clinical vs pre-clinical subjects.
+* **Visual Progress Distribution Charts**:
+  * Collapsible subject cards with individual module checklists.
+  * Responsive progress bars and completion radars.
+
+---
+
+### 4.2 Analysis Suite & Counseling Rank Predictor (`analytics`)
+*Source: `src/App.jsx`*
 * **Deep Analytics Hub with 5 Specialized Subtabs**:
   1. **Cards Generation Analytics**: Track AI extraction volume, daily created cards, and token usage.
   2. **Study Analytics**: Long-term revision consistency, daily study hours heatmap, and review accuracy rates.
@@ -233,9 +269,10 @@ This document provides a comprehensive, verified, and detailed catalog of every 
 
 ---
 
-## 11. Tab 10: Exporter Hub & Anki APKG Generator (`export`)
-*Source: `src/App.jsx`, `src/components/ExportImageVerificationModal.jsx`*
+## 5. Category IV: Tools & System
 
+### 5.1 Exporter Hub & Anki APKG Compiler (`export`)
+*Source: `src/App.jsx`, `src/components/ExportImageVerificationModal.jsx`*
 * **Official Anki Package (.apkg) Compiler**:
   * Packages cards, tags, formatting, and notes into standardized SQLite database files compatible with official Anki desktop, AnkiDroid, and AnkiMobile.
 * **Media & Diagram Bundling**:
@@ -247,9 +284,8 @@ This document provides a comprehensive, verified, and detailed catalog of every 
 
 ---
 
-## 12. Tab 11: AI Prompt Editor (`prompt`)
+### 5.2 AI Prompt Editor (`prompt`)
 *Source: `src/App.jsx`*
-
 * **System Instruction Profile Manager**:
   * Customize the system prompts used by Gemini Vision AI for card extraction.
 * **Dual Category Prompts**:
@@ -262,51 +298,21 @@ This document provides a comprehensive, verified, and detailed catalog of every 
 
 ---
 
-## 13. Tab 12: PYT Manager (`pytManager`)
-*Source: `src/App.jsx`, `src/utils/pytService.js`*
-
-* **Previous Year Topics (PYT) Knowledge Base**:
-  * Comprehensive syllabus index mapping clinical themes tested in past NEET PG and INI-CET papers.
-* **Yield Classification**:
-  * Categorizes topics into *High-Yield* and *Super-High-Yield* priority tiers.
-* **Bulk Topic Ingestion**:
-  * Paste and parse full subject syllabi (one topic per line) with automated indexing.
-* **Textbook PDF Mapping**:
-  * Link scanned medical textbook PDFs directly to PYT subjects for contextual study.
-
----
-
-## 14. Tab 13: PYT Logger (`pytLogger`)
-*Source: `src/App.jsx`*
-
-* **Topic Revision Frequency Tracker**:
-  * Log study sessions and review counts directly against individual PYT entries.
-* **Revision Heatmaps & Neglect Alerts**:
-  * Color-coded indicators showing which topics are thoroughly revised and which haven't been reviewed in $> 30$ days.
-* **Duplicate Topic Detector**:
-  * Identifies duplicate topics across different subjects or spellings with 1-click deduplication.
-* **Search & Multi-Sort Engine**:
-  * Search topic names and sort by Alphabetical, Page Number, Highest Revisions, or Lowest Revisions.
+### 5.3 OBS Overlay Customizer (`obsOverlay`)
+*Source: `src/App.jsx`, `src/components/StudyRoomComponents.jsx`*
+* **Live Streaming Overlay Studio**:
+  * Generates clean, broadcast-ready overlays for study streams (Twitch, YouTube Live, Kick).
+* **Real-Time Data Feed**:
+  * Displays active session timer, current study hours, today's question count, and streak badges.
+* **Visual Customizer**:
+  * Adjust background opacity, neumorphic borders, theme colors, typography, and widget positioning.
+* **1-Click OBS URL Export**:
+  * Generates a persistent Browser Source URL formatted with custom dimensions for OBS Studio.
 
 ---
 
-## 15. Tab 14: Subject Tracker (`subjectTracker`)
-*Source: `src/App.jsx`*
-
-* **Complete 19-Subject Medical Matrix**:
-  * Pre-clinical: Anatomy, Physiology, Biochemistry.
-  * Para-clinical: Pathology, Pharmacology, Microbiology, Forensic Medicine, Community Medicine (PSM).
-  * Clinical: Ophthalmology, ENT, General Medicine, General Surgery, OBG, Pediatrics, Orthopedics, Dermatology, Psychiatry, Radiology, Anesthesia.
-* **Subject Checklist & Progress Matrix**:
-  * Map chapters, completed flashcard decks, and revision hours per subject.
-* **Projected Completion Timeline**:
-  * Dynamically projects syllabus completion dates based on current daily study velocity.
-
----
-
-## 16. Tab 15: Setup & Settings (`settings`)
+### 5.4 Settings & LocalDB Control (`settings`)
 *Source: `src/App.jsx`, `src/services/localDb.js`*
-
 * **100% Offline-First Local Database Control**:
   * **Backup Database (JSON)**: Export the complete IndexedDB database (flashcards, logs, PYTs, settings) to a single portable file.
   * **Restore Database**: Import a saved JSON backup to restore all data instantly.
@@ -323,9 +329,8 @@ This document provides a comprehensive, verified, and detailed catalog of every 
 
 ---
 
-## 17. Tab 16: Recycle Bin / Trash (`trash`)
+### 5.5 Recycle Bin / Trash (`trash`)
 *Source: `src/App.jsx`*
-
 * **Soft-Delete Safety Net**:
   * Deleted flashcards and PDF scans are moved to the Recycle Bin rather than permanently erased.
 * **1-Click Restore**:
@@ -337,27 +342,17 @@ This document provides a comprehensive, verified, and detailed catalog of every 
 
 ---
 
-## 18. Tab 17: About Page (`about`)
+### 5.6 About Page & Manual (`about`)
 *Source: `src/components/AboutDashboard.jsx`*
-
 * **Interactive Documentation & Knowledge Hub**:
-  * Modern top gradient hero highlighting the platform mission and offline-first ethos.
-* **What is AutoAnki Architectural Card**:
-  * Detailed overview of the AI flashcard engine with 4 key metrics:
-    * **100% Offline First** (zero cloud lag).
-    * **< 1ms Query Latency** (IndexedDB local performance).
-    * **FSRS Algorithm** (dynamic memory retention).
-    * **19 Medical Subjects** (full licensure exam syllabus coverage).
-* **Dedicated Developer Portfolio Hero**:
-  * Profile for **Dr. Kishor Anbazhakan** (MBBS, General Practitioner & Medical Tech Developer).
-  * Transparent silhouette with CSS `shape-outside` text-wrapping.
-  * *The Story*: Born during 14-hour hospital ward shifts to eliminate flashcard formatting busywork.
-  * *Mission & Vision*: Bridging medicine and computer science for medical aspirants.
-  * Project statistics and direct developer connect link.
+  * Top hero gradient banner highlighting the platform mission and offline-first ethos.
+* **Dual-Subtab Architecture**:
+  1. **About App**: Core platform overview, 4-pillar architectural metrics, and dedicated developer hero for Dr. Kishor Anbazhakan (MBBS) with silhouette text-wrapping.
+  2. **App Manual**: Interactive searchable feature catalog covering all 17 modules grouped by the 4 application categories with direct "Jump to Tab" navigation.
 
 ---
 
-## 19. Specialized Modals & Utility Components
+## 6. Specialized Modals & Utility Components
 
 1. **Manual Card Modal (`ManualCardModal.jsx`)**: Comprehensive card editor with rich inputs, Cloze syntax, image pasting, and tag autocomplete.
 2. **Conflict Inspector Modal (`ConflictInspectorModal.jsx`)**: Visual side-by-side diff resolving card conflicts and duplicates.
@@ -375,7 +370,7 @@ This document provides a comprehensive, verified, and detailed catalog of every 
 
 ---
 
-## 20. Core Algorithms & Services
+## 7. Core Algorithms & Background Services
 
 * **`src/services/localDb.js`**: Offline-first IndexedDB database engine (`AutoAnkiLocalDB`) handling transactions, indexed queries, bulk operations, and exports.
 * **`src/services/fsrsEngine.js`**: Full mathematical implementation of FSRS-4.5 (Stability $S$, Difficulty $D$, Retrievability $R$, Intervals $I$, Leech detection, and parameter optimization).
@@ -389,7 +384,7 @@ This document provides a comprehensive, verified, and detailed catalog of every 
 
 ---
 
-## 21. Chrome Extension Ecosystem
+## 8. Chrome Extension Ecosystem
 *Source: `chrome-extension/`*
 
 * **Direct Web Scraper**: Browser extension allowing doctors and students to highlight medical text and diagrams on question banks or online textbook portals.
