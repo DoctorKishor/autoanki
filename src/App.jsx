@@ -6127,18 +6127,23 @@ export default function App() {
   };
   const bgIframeRef = useRef(null);
   const soundIframeRefs = useRef({});
+  const soundIframeTimeoutsRef = useRef({});
 
   // Handler to update sound player volume dynamically
   const updateSoundPlayerVolume = useCallback((id, vol) => {
     const iframe = soundIframeRefs.current[id];
     if (iframe && iframe.contentWindow) {
-      iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'setVolume', args: [vol] }), '*');
-      if (vol === 0) {
-        iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'mute', args: [] }), '*');
-        iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'pauseVideo', args: [] }), '*');
-      } else {
-        iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'unmute', args: [] }), '*');
-        iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*');
+      try {
+        iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'setVolume', args: [vol] }), '*');
+        if (vol === 0) {
+          iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'mute', args: [] }), '*');
+          iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'pauseVideo', args: [] }), '*');
+        } else {
+          iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'unmute', args: [] }), '*');
+          iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*');
+        }
+      } catch (err) {
+        console.warn(`[AudioEngine] postMessage failed for track ${id}:`, err);
       }
     }
   }, []);
@@ -6156,19 +6161,41 @@ export default function App() {
     const initBgVol = () => {
       const iframe = bgIframeRef.current;
       if (iframe && iframe.contentWindow) {
-        iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'setVolume', args: [fsBgVideoVolume] }), '*');
-        if (fsBgVideoVolume === 0) {
-          iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'mute', args: [] }), '*');
-        } else {
-          iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'unmute', args: [] }), '*');
-          iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*');
-        }
+        try {
+          iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'setVolume', args: [fsBgVideoVolume] }), '*');
+          if (fsBgVideoVolume === 0) {
+            iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'mute', args: [] }), '*');
+          } else {
+            iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'unmute', args: [] }), '*');
+            iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*');
+          }
+        } catch (_) {}
       }
     };
     initBgVol();
     const t = setTimeout(initBgVol, 1000);
     return () => clearTimeout(t);
   }, [fsBgVideoVolume, fsYoutubeVideoId]);
+
+  // Teardown sound streams when exiting fullscreen timer
+  useEffect(() => {
+    if (!isTimerFullscreen) {
+      SOUND_TRACKS.forEach(track => {
+        const iframe = soundIframeRefs.current[track.id];
+        if (iframe && iframe.contentWindow) {
+          try {
+            iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'pauseVideo', args: [] }), '*');
+            iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'stopVideo', args: [] }), '*');
+          } catch (_) {}
+        }
+      });
+      if (bgIframeRef.current && bgIframeRef.current.contentWindow) {
+        try {
+          bgIframeRef.current.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'pauseVideo', args: [] }), '*');
+        } catch (_) {}
+      }
+    }
+  }, [isTimerFullscreen]);
 
   const [showMilliseconds, setShowMilliseconds] = useState(() => {
     try {
@@ -21543,16 +21570,22 @@ Return your response strictly as a JSON object matching this schema:
               style={{ position: 'absolute', width: '1px', height: '1px', opacity: 0, pointerEvents: 'none' }}
               frameBorder="0"
               onLoad={() => {
-                // Send initial volume settings multiple times as player initializes
-                [100, 500, 1000, 2000].forEach(delay => {
-                  setTimeout(() => {
+                if (soundIframeTimeoutsRef.current[track.id]) {
+                  soundIframeTimeoutsRef.current[track.id].forEach(clearTimeout);
+                }
+                soundIframeTimeoutsRef.current[track.id] = [];
+                [150, 600, 1500].forEach(delay => {
+                  const t = setTimeout(() => {
                     const iframe = soundIframeRefs.current[track.id];
                     if (iframe && iframe.contentWindow) {
-                      iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'setVolume', args: [vol] }), '*');
-                      iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'unmute', args: [] }), '*');
-                      iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*');
+                      try {
+                        iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'setVolume', args: [vol] }), '*');
+                        iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'unmute', args: [] }), '*');
+                        iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*');
+                      } catch (_) {}
                     }
                   }, delay);
+                  soundIframeTimeoutsRef.current[track.id].push(t);
                 });
               }}
             />
@@ -21854,10 +21887,22 @@ Return your response strictly as a JSON object matching this schema:
           <FloatingWidget key={widget.id} widget={widget} customizing={fsCustomizingWidgets}
             onDragStart={startWidgetDrag} onResizeStart={startWidgetResize}
             onEdit={openCssEditor} onRemove={id => setFsWidgets(prev => prev.filter(w => w.id !== id))}>
-            {widget.type === 'custom_browser'
-              ? <iframe src={widget.url} title={widget.title} className="w-full h-full border-0" allow="autoplay; encrypted-media" />
-              : renderNativeWidget(widget.nativeId)
-            }
+            {widget.type === 'custom_browser' ? (
+              <div className="w-full h-full relative">
+                {fsCustomizingWidgets && (
+                  <div className="absolute inset-0 z-30 bg-transparent cursor-grab" />
+                )}
+                <iframe
+                  src={widget.url && (widget.url.startsWith('http://') || widget.url.startsWith('https://')) ? widget.url : `https://${widget.url || ''}`}
+                  title={widget.title || "Custom Browser"}
+                  className="w-full h-full border-0 rounded-2xl"
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                  referrerPolicy="no-referrer"
+                  loading="lazy"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                />
+              </div>
+            ) : renderNativeWidget(widget.nativeId)}
           </FloatingWidget>
         ))}
 

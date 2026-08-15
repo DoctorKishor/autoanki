@@ -125,6 +125,8 @@ export default function CampDashboard({
   const sessionsDebounceRef = useRef(null);
   const historyDebounceRef = useRef(null);
   const timerHistoryDebounceRef = useRef(null);
+  const obsBroadcastChannelRef = useRef(null);
+  const obsBroadcastDebounceRef = useRef(null);
 
   const [showYesterdayPrompt, setShowYesterdayPrompt] = useState(false);
   const [yesterdayLabelText, setYesterdayLabelText] = useState('');
@@ -288,21 +290,42 @@ export default function CampDashboard({
     return () => clearTimeout(timerHistoryDebounceRef.current);
   }, [timerHistory, hasLoadedLocalDb]);
 
-  // 3b. Real-time BroadcastChannel sync for CAMP overlay widgets
+  // 3b. Real-time BroadcastChannel sync for CAMP overlay widgets (debounced singleton)
   useEffect(() => {
-    const channel = new BroadcastChannel('auto_anki_obs_channel');
-    channel.postMessage({
-      type: 'CAMP_STATE_UPDATE',
-      payload: {
-        campSessions: JSON.stringify(sessions),
-        campB2B: bedToBook,
-        campHistory: JSON.stringify(history),
-        campTimerHistory: JSON.stringify(timerHistory),
-        campStudentInfo: JSON.stringify(studentInfo),
-        selectedDate
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      obsBroadcastChannelRef.current = new BroadcastChannel('auto_anki_obs_channel');
+    }
+    return () => {
+      if (obsBroadcastChannelRef.current) {
+        obsBroadcastChannelRef.current.close();
+        obsBroadcastChannelRef.current = null;
       }
-    });
-    return () => channel.close();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!obsBroadcastChannelRef.current) return;
+    clearTimeout(obsBroadcastDebounceRef.current);
+    obsBroadcastDebounceRef.current = setTimeout(() => {
+      try {
+        if (obsBroadcastChannelRef.current) {
+          obsBroadcastChannelRef.current.postMessage({
+            type: 'CAMP_STATE_UPDATE',
+            payload: {
+              campSessions: JSON.stringify(sessions),
+              campB2B: bedToBook,
+              campHistory: JSON.stringify(history),
+              campTimerHistory: JSON.stringify(timerHistory),
+              campStudentInfo: JSON.stringify(studentInfo),
+              selectedDate
+            }
+          });
+        }
+      } catch (err) {
+        console.warn("OBS BroadcastChannel postMessage failed:", err);
+      }
+    }, 150);
+    return () => clearTimeout(obsBroadcastDebounceRef.current);
   }, [sessions, bedToBook, history, timerHistory, studentInfo, selectedDate]);
 
   // 3c. Sync inputs and timer history in real time from localStorage (for active timer modal logs)
@@ -458,21 +481,34 @@ export default function CampDashboard({
   const handleSaveProgress = () => {
     setSaveStatus('Saving...');
 
-    const [yr, mo, dy] = selectedDate.split('-').map(Number);
+    const targetDateStr = selectedDate || new Date().toLocaleDateString('en-CA');
+    const [yr, mo, dy] = targetDateStr.split('-').map(Number);
     const dateObj = new Date(yr, mo - 1, dy);
     const dateLabel = dateObj.toLocaleDateString('en-US', { day: '2-digit', month: 'short' }).replace(' ', '-');
 
     const updatedHistory = [...history];
-    const dayIndex = updatedHistory.findIndex(h => h.date === dateLabel);
+    const dayIndex = updatedHistory.findIndex(h => 
+      (h.fullDate && h.fullDate === targetDateStr) || h.date === dateLabel
+    );
+
+    const historyEntry = {
+      date: dateLabel,
+      fullDate: targetDateStr,
+      timestamp: dateObj.getTime(),
+      score: Number(efficiencyScore.toFixed(1))
+    };
 
     if (dayIndex >= 0) {
-      updatedHistory[dayIndex].score = efficiencyScore;
+      updatedHistory[dayIndex] = { ...updatedHistory[dayIndex], ...historyEntry };
     } else {
-      updatedHistory.push({ date: dateLabel, score: efficiencyScore });
+      updatedHistory.push(historyEntry);
     }
 
-    // Chronological sorting of entries
+    // Chronological sorting of entries using reliable timestamp
     updatedHistory.sort((a, b) => {
+      const timeA = a.timestamp || (a.fullDate ? new Date(a.fullDate).getTime() : 0);
+      const timeB = b.timestamp || (b.fullDate ? new Date(b.fullDate).getTime() : 0);
+      if (timeA && timeB) return timeA - timeB;
       const currentYear = new Date().getFullYear();
       const dateA = new Date(`${a.date}-${currentYear}`);
       const dateB = new Date(`${b.date}-${currentYear}`);
@@ -668,7 +704,8 @@ export default function CampDashboard({
       flashcardPeriodSums[s.period].count += 1;
     });
     Object.keys(flashcardPeriodSums).forEach(p => {
-      const avg = flashcardPeriodSums[p].sum / flashcardPeriodSums[p].count;
+      const count = flashcardPeriodSums[p].count || 0;
+      const avg = count > 0 ? flashcardPeriodSums[p].sum / count : 0;
       if (avg > maxFlashcardFocus) {
         maxFlashcardFocus = avg;
         bestFlashcardPeriod = p;
@@ -686,7 +723,8 @@ export default function CampDashboard({
       qbankPeriodSums[s.period].count += 1;
     });
     Object.keys(qbankPeriodSums).forEach(p => {
-      const avg = qbankPeriodSums[p].sum / qbankPeriodSums[p].count;
+      const count = qbankPeriodSums[p].count || 0;
+      const avg = count > 0 ? qbankPeriodSums[p].sum / count : 0;
       if (avg > maxQbankFocus) {
         maxQbankFocus = avg;
         bestQbankPeriod = p;
@@ -735,7 +773,8 @@ export default function CampDashboard({
     let bestDay = 'Wednesday';
     let maxDayFocus = 0;
     Object.keys(daySums).forEach(d => {
-      const avg = daySums[d].sum / daySums[d].count;
+      const count = daySums[d].count || 0;
+      const avg = count > 0 ? daySums[d].sum / count : 0;
       if (avg > maxDayFocus) {
         maxDayFocus = avg;
         bestDay = d;

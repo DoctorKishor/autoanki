@@ -676,7 +676,21 @@ function WidgetsPanel({ fsWidgets, setFsWidgets, fsCustomizingWidgets, setFsCust
 }
 
 // ─── Floating Widget Wrapper ──────────────────────────────────────────────────
+const sanitizeWidgetCss = (css, widgetId) => {
+  if (!css || typeof css !== 'string') return '';
+  // Strip dangerous CSS constructs (expressions, script schemes, @import)
+  const cleaned = css
+    .replace(/@import\s+[^;]+;/gi, '')
+    .replace(/javascript\s*:/gi, '')
+    .replace(/behavior\s*:/gi, '')
+    .replace(/-moz-binding\s*:/gi, '')
+    .replace(/expression\s*\([^)]*\)/gi, '');
+  return cleaned;
+};
+
 function FloatingWidget({ widget, customizing, onDragStart, onResizeStart, onEdit, onRemove, children }) {
+  const safeCustomCss = sanitizeWidgetCss(widget.customCss, widget.id);
+
   return (
     <div
       className={`absolute z-20 rounded-2xl overflow-hidden shadow-2xl ${customizing ? 'ring-2 ring-blue-400/50' : ''}`}
@@ -691,7 +705,7 @@ function FloatingWidget({ widget, customizing, onDragStart, onResizeStart, onEdi
         #fw-${widget.id} *:not(.cursor-grab):not(.cursor-se-resize):not(svg):not(path) {
           ${widget.fontSize ? `font-size: inherit !important;` : ''}
         }
-        ${widget.customCss || ''}
+        ${safeCustomCss}
       `}</style>
       {(() => {
         let bgClass = "bg-black/15 backdrop-blur-md border border-white/10";
