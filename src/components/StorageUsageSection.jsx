@@ -1048,19 +1048,67 @@ export default function StorageUsageSection({
                 )}
               </div>
 
-              {/* Informative Note */}
-              <div className={`p-3 rounded-2xl text-[10px] text-left leading-relaxed ${
-                isThemeDark ? 'bg-blue-500/10 border border-blue-500/20 text-blue-300' : 'bg-blue-50 border border-blue-200 text-blue-700'
-              }`}>
-                <div className="font-bold mb-1 flex items-center gap-1.5">
-                  <Info className="w-3.5 h-3.5 shrink-0 text-blue-400" />
-                  <span>Why 2 GB is displayed & How AutoAnki Storage Works:</span>
+              {/* Comprehensive Educational FAQ Breakdown */}
+              <div className="space-y-2 text-left">
+                <span className={`text-[10px] font-black uppercase tracking-widest ${
+                  isThemeDark ? 'text-slate-400' : 'text-slate-500'
+                }`}>
+                  Storage FAQs & Technical Details
+                </span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[10px]">
+                  {/* Card 1 */}
+                  <div className={`p-3 rounded-2xl space-y-1 border ${
+                    isThemeDark ? 'bg-slate-800/40 border-slate-700/60 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-700'
+                  }`}>
+                    <div className="font-bold flex items-center gap-1.5 text-blue-400">
+                      <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                      <span>Why does it report 2 GB?</span>
+                    </div>
+                    <p className="text-[9px] text-slate-400 leading-relaxed">
+                      Chrome & Edge assign a standard 2.0 GB initial reporting window for newly opened web origins. This is a default browser reporting buffer, not a hard limit.
+                    </p>
+                  </div>
+
+                  {/* Card 2 */}
+                  <div className={`p-3 rounded-2xl space-y-1 border ${
+                    isThemeDark ? 'bg-slate-800/40 border-slate-700/60 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-700'
+                  }`}>
+                    <div className="font-bold flex items-center gap-1.5 text-emerald-400">
+                      <Zap className="w-3.5 h-3.5 shrink-0" />
+                      <span>Dynamic Auto-Expansion</span>
+                    </div>
+                    <p className="text-[9px] text-slate-400 leading-relaxed">
+                      Your database does NOT stop at 2 GB. As you import high-res textbook pages and cards, IndexedDB automatically expands past 2 GB seamlessly.
+                    </p>
+                  </div>
+
+                  {/* Card 3 */}
+                  <div className={`p-3 rounded-2xl space-y-1 border ${
+                    isThemeDark ? 'bg-slate-800/40 border-slate-700/60 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-700'
+                  }`}>
+                    <div className="font-bold flex items-center gap-1.5 text-amber-400">
+                      <HardDrive className="w-3.5 h-3.5 shrink-0" />
+                      <span>Total Allowed Capacity</span>
+                    </div>
+                    <p className="text-[9px] text-slate-400 leading-relaxed">
+                      Modern browsers allocate up to <strong>60%–80% of your free disk drive</strong> (50 GB to 500+ GB) for offline IndexedDB applications.
+                    </p>
+                  </div>
+
+                  {/* Card 4 */}
+                  <div className={`p-3 rounded-2xl space-y-1 border ${
+                    isThemeDark ? 'bg-slate-800/40 border-slate-700/60 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-700'
+                  }`}>
+                    <div className="font-bold flex items-center gap-1.5 text-purple-400">
+                      <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                      <span>Zero App Limits</span>
+                    </div>
+                    <p className="text-[9px] text-slate-400 leading-relaxed">
+                      AutoAnki runs 100% offline with no subscription or file size caps. Your data is stored directly onto your local hard drive.
+                    </p>
+                  </div>
                 </div>
-                <ul className="list-disc pl-4 space-y-1 text-[9.5px] opacity-90">
-                  <li><strong>Not a hard limit</strong>: 2.0 GB is just the browser's initial dynamic buffer reporting window.</li>
-                  <li><strong>Auto-expanding</strong>: IndexedDB automatically expands past 2 GB up to your free hard drive capacity as you save more textbook scans.</li>
-                  <li><strong>No app limitation</strong>: AutoAnki does not impose any storage restrictions.</li>
-                </ul>
               </div>
 
               {/* Close Button */}
