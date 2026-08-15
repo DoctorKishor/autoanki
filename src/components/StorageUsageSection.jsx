@@ -18,7 +18,13 @@ import {
   Download,
   ShieldCheck,
   Check,
-  Circle
+  Circle,
+  Monitor,
+  Bookmark,
+  Bell,
+  HelpCircle,
+  Zap,
+  ArrowRight
 } from 'lucide-react';
 import {
   calculateDetailedStorageBreakdown,
@@ -67,6 +73,9 @@ export default function StorageUsageSection({
   const [cleanToast, setCleanToast] = useState('');
   const [isPersisted, setIsPersisted] = useState(false);
   const [requestingPersist, setRequestingPersist] = useState(false);
+  const [unlockModalOpen, setUnlockModalOpen] = useState(false);
+  const [selectedUnlockMethod, setSelectedUnlockMethod] = useState('pwa'); // 'pwa' | 'bookmark' | 'notifications'
+  const [notifState, setNotifState] = useState('default'); // 'default' | 'granted' | 'denied'
 
   // Check persistent storage status
   const checkPersistence = useCallback(async () => {
@@ -74,6 +83,9 @@ export default function StorageUsageSection({
       if (typeof navigator !== 'undefined' && navigator.storage && navigator.storage.persisted) {
         const persisted = await navigator.storage.persisted();
         setIsPersisted(persisted);
+      }
+      if (typeof window !== 'undefined' && 'Notification' in window) {
+        setNotifState(Notification.permission);
       }
     } catch (e) {
       console.warn('[StorageUsageSection] Persistence check failed:', e);
@@ -94,17 +106,17 @@ export default function StorageUsageSection({
     }
   }, [checkPersistence]);
 
-  const handleRequestPersistence = async () => {
+  const handleTestPersistence = async () => {
     if (!navigator.storage || !navigator.storage.persist) return;
     setRequestingPersist(true);
     try {
       const granted = await navigator.storage.persist();
       setIsPersisted(granted);
       if (granted) {
-        setCleanToast('✓ Persistent Storage Granted! Quota expanded & locked.');
+        setCleanToast('✓ Persistent Storage Granted! Full device capacity unlocked.');
         await loadStorageMetrics();
       } else {
-        setCleanToast('ℹ️ Standard Sandbox Active (Auto-grows with usage. Install as App or bookmark to grant persistent status).');
+        setCleanToast('ℹ️ Standard quota active. Complete one of the steps below to enable persistent mode.');
       }
     } catch (e) {
       console.error(e);
@@ -112,6 +124,25 @@ export default function StorageUsageSection({
     } finally {
       setRequestingPersist(false);
       setTimeout(() => setCleanToast(''), 5000);
+    }
+  };
+
+  const handleRequestNotification = async () => {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      alert('Notifications are not supported in this browser.');
+      return;
+    }
+    try {
+      const perm = await Notification.requestPermission();
+      setNotifState(perm);
+      if (perm === 'granted') {
+        setCleanToast('✓ Notification permission granted! Testing persistence...');
+        await handleTestPersistence();
+      } else {
+        alert('Notification permission was ' + perm);
+      }
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -430,26 +461,28 @@ export default function StorageUsageSection({
               <ShieldCheck className={`w-3.5 h-3.5 ${isPersisted ? 'text-emerald-400' : 'text-amber-400'} shrink-0`} />
               <div>
                 <span className="font-bold">
-                  {isPersisted ? 'Persistent Storage: Active' : 'Standard Browser Sandbox'}
+                  {isPersisted ? 'Persistent Storage: Active' : 'Standard Browser Sandbox (2 GB Pool)'}
                 </span>
                 <p className="text-[9px] text-slate-400">
                   {isPersisted
                     ? 'Storage is protected against browser auto-eviction.'
-                    : 'Initial 2 GB safety pool assigned by browser. Click to unlock full device quota.'}
+                    : 'Initial browser safety pool. Follow instructions to unlock permanent full capacity.'}
                 </p>
               </div>
             </div>
 
-            {!isPersisted && (
-              <button
-                type="button"
-                onClick={handleRequestPersistence}
-                disabled={requestingPersist}
-                className="px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-wider bg-blue-600 hover:bg-blue-500 text-white shrink-0 shadow-sm transition active:scale-95"
-              >
-                {requestingPersist ? 'Requesting...' : 'Unlock'}
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setUnlockModalOpen(true)}
+              className={`px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-wider flex items-center gap-1 shrink-0 shadow-sm transition active:scale-95 ${
+                isPersisted
+                  ? isThemeDark ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                  : 'bg-blue-600 hover:bg-blue-500 text-white'
+              }`}
+            >
+              <HelpCircle className="w-3 h-3" />
+              <span>{isPersisted ? 'Details' : 'How to Unlock'}</span>
+            </button>
           </div>
         </div>
       </div>
@@ -803,6 +836,233 @@ export default function StorageUsageSection({
                   }`}
                 >
                   Done
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* How to Unlock Persistent Storage Modal */}
+      <AnimatePresence>
+        {unlockModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 16 }}
+              className={`max-w-lg w-full rounded-3xl p-6 md:p-7 space-y-5 shadow-2xl border ${
+                isThemeDark
+                  ? 'neu-card-dark border-slate-700 text-white'
+                  : 'neu-card-light border-slate-200 text-slate-900'
+              }`}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2.5 rounded-2xl bg-blue-500/10 text-blue-500">
+                    <ShieldCheck className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black uppercase tracking-wider">
+                      Unlock Storage Quota
+                    </h3>
+                    <p className="text-xs text-slate-400 font-medium">
+                      Enable Persistent Mode & expand to device capacity
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setUnlockModalOpen(false)}
+                  className={`p-2 rounded-xl text-xs font-bold ${
+                    isThemeDark ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Status Banner */}
+              <div className={`p-3.5 rounded-2xl flex items-center justify-between text-xs font-bold border ${
+                isPersisted
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                  : 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+              }`}>
+                <div className="flex items-center gap-2">
+                  <span className={`w-2 h-2 rounded-full ${isPersisted ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
+                  <span>{isPersisted ? 'Persistent Storage: Granted & Active' : 'Standard 2 GB Sandbox Active'}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleTestPersistence}
+                  disabled={requestingPersist}
+                  className="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider bg-white/10 hover:bg-white/20 text-white transition active:scale-95"
+                >
+                  {requestingPersist ? 'Checking...' : 'Check Status'}
+                </button>
+              </div>
+
+              {/* Method Selector Tabs */}
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">
+                  Select an Option to View Steps:
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedUnlockMethod('pwa')}
+                    className={`p-2.5 rounded-2xl flex flex-col items-center gap-1.5 text-center transition-all ${
+                      selectedUnlockMethod === 'pwa'
+                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25 scale-[1.02]'
+                        : isThemeDark
+                        ? 'neu-btn-dark text-slate-400 hover:text-slate-200'
+                        : 'neu-btn-light text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Monitor className="w-4 h-4" />
+                    <span className="text-[10px] font-black leading-tight">Install as App</span>
+                    <span className="text-[8px] opacity-80 font-mono">Recommended</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedUnlockMethod('bookmark')}
+                    className={`p-2.5 rounded-2xl flex flex-col items-center gap-1.5 text-center transition-all ${
+                      selectedUnlockMethod === 'bookmark'
+                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25 scale-[1.02]'
+                        : isThemeDark
+                        ? 'neu-btn-dark text-slate-400 hover:text-slate-200'
+                        : 'neu-btn-light text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Bookmark className="w-4 h-4" />
+                    <span className="text-[10px] font-black leading-tight">Bookmark Site</span>
+                    <span className="text-[8px] opacity-80 font-mono">Easy & Safe</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedUnlockMethod('notifications')}
+                    className={`p-2.5 rounded-2xl flex flex-col items-center gap-1.5 text-center transition-all ${
+                      selectedUnlockMethod === 'notifications'
+                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25 scale-[1.02]'
+                        : isThemeDark
+                        ? 'neu-btn-dark text-slate-400 hover:text-slate-200'
+                        : 'neu-btn-light text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Bell className="w-4 h-4" />
+                    <span className="text-[10px] font-black leading-tight">Allow Alerts</span>
+                    <span className="text-[8px] opacity-80 font-mono">1-Click</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Step-by-Step Instructions Container */}
+              <div className={`p-4 rounded-2xl space-y-3 text-left border ${
+                isThemeDark ? 'neu-pressed-dark border-slate-800' : 'neu-pressed-light border-slate-200'
+              }`}>
+                {selectedUnlockMethod === 'pwa' && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-blue-400 font-bold text-xs">
+                      <Monitor className="w-4 h-4" />
+                      <span>Option 1: Install AutoAnki as a Web App (PWA)</span>
+                    </div>
+                    <ol className="space-y-2 text-xs text-slate-300">
+                      <li className="flex items-start gap-2">
+                        <span className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">1</span>
+                        <span>Look at the right side of your browser URL bar (or browser menu ⋮).</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">2</span>
+                        <span>Click the <strong>"Install AutoAnki"</strong> icon (or tap <strong>"Add to Home screen"</strong> on mobile/tablet).</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">3</span>
+                        <span>Click <strong>Install</strong>. Chrome immediately classifies AutoAnki as a trusted desktop application and unlocks unlimited persistent storage.</span>
+                      </li>
+                    </ol>
+                  </div>
+                )}
+
+                {selectedUnlockMethod === 'bookmark' && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-amber-400 font-bold text-xs">
+                      <Bookmark className="w-4 h-4" />
+                      <span>Option 2: Bookmark AutoAnki in Your Browser</span>
+                    </div>
+                    <ol className="space-y-2 text-xs text-slate-300">
+                      <li className="flex items-start gap-2">
+                        <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">1</span>
+                        <span>Press <kbd className="px-1.5 py-0.5 rounded bg-slate-700 text-[10px] font-mono text-white font-bold">Ctrl + D</kbd> (or <kbd className="px-1.5 py-0.5 rounded bg-slate-700 text-[10px] font-mono text-white font-bold">Cmd + D</kbd> on Mac).</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">2</span>
+                        <span>Save the bookmark to your <strong>Bookmarks Bar</strong>.</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">3</span>
+                        <span>Bookmarking signals high engagement to the browser, automatically lifting storage eviction constraints.</span>
+                      </li>
+                    </ol>
+                  </div>
+                )}
+
+                {selectedUnlockMethod === 'notifications' && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-teal-400 font-bold text-xs">
+                      <Bell className="w-4 h-4" />
+                      <span>Option 3: Enable Study Room & Timer Notifications</span>
+                    </div>
+                    <ol className="space-y-2 text-xs text-slate-300">
+                      <li className="flex items-start gap-2">
+                        <span className="w-5 h-5 rounded-full bg-teal-500/20 text-teal-400 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">1</span>
+                        <span>Click the button below to request browser alert permission.</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="w-5 h-5 rounded-full bg-teal-500/20 text-teal-400 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">2</span>
+                        <span>Click <strong>"Allow"</strong> on the popup prompt. Chromium browsers automatically grant persistent storage status to sites with notification permissions.</span>
+                      </li>
+                    </ol>
+
+                    <div className="pt-2 flex items-center justify-between">
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        Status: <strong className={notifState === 'granted' ? 'text-emerald-400' : 'text-slate-300'}>{notifState}</strong>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleRequestNotification}
+                        disabled={notifState === 'granted'}
+                        className={`px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 transition active:scale-95 ${
+                          notifState === 'granted'
+                            ? 'bg-emerald-500/20 text-emerald-400 cursor-default'
+                            : 'bg-teal-600 hover:bg-teal-500 text-white shadow-md'
+                        }`}
+                      >
+                        <Bell className="w-3.5 h-3.5" />
+                        <span>{notifState === 'granted' ? 'Permission Granted' : 'Allow Notifications'}</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Informative Note */}
+              <p className="text-[10px] text-slate-400 text-center leading-relaxed">
+                💡 <em>Note: Your IndexedDB database will continue saving all flashcards, notes, and scans normally even under standard quota mode.</em>
+              </p>
+
+              {/* Close Button */}
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={() => setUnlockModalOpen(false)}
+                  className={`w-full py-2.5 rounded-2xl font-black text-xs uppercase tracking-wider transition ${
+                    isThemeDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-700'
+                  }`}
+                >
+                  Got It
                 </button>
               </div>
             </motion.div>
