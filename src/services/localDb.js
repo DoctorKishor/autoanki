@@ -932,6 +932,30 @@ export async function calculateDetailedStorageBreakdown() {
 
   const getByteSize = (obj) => {
     if (!obj) return 0;
+    if (obj instanceof ArrayBuffer) return obj.byteLength;
+    if (ArrayBuffer.isView(obj)) return obj.byteLength;
+    if (typeof obj === 'object') {
+      if (obj.__type === 'ArrayBuffer' && typeof obj.byteLength === 'number') return obj.byteLength;
+      if (obj.data instanceof ArrayBuffer) return obj.data.byteLength + 200;
+      if (obj.data?.__type === 'ArrayBuffer' && typeof obj.data.byteLength === 'number') return obj.data.byteLength + 200;
+      if (Array.isArray(obj)) {
+        let sum = 0;
+        for (const item of obj) {
+          if (item?.data instanceof ArrayBuffer) sum += item.data.byteLength;
+          else if (item?.data?.__type === 'ArrayBuffer') sum += item.data.byteLength || 0;
+          else if (item instanceof ArrayBuffer) sum += item.byteLength;
+          else if (ArrayBuffer.isView(item)) sum += item.byteLength;
+        }
+        if (sum > 0) {
+          try {
+            const stripped = obj.map(i => (i?.data instanceof ArrayBuffer || i?.data?.__type === 'ArrayBuffer' ? { ...i, data: undefined } : i));
+            return sum + new Blob([JSON.stringify(stripped)]).size;
+          } catch {
+            return sum;
+          }
+        }
+      }
+    }
     try {
       const str = typeof obj === 'string' ? obj : JSON.stringify(obj);
       return new Blob([str]).size;
@@ -975,18 +999,57 @@ export async function calculateDetailedStorageBreakdown() {
     getByteSize(campData) +
     getByteSize(timerState);
 
-  // 4. PYT & Subject Tracker
-  const pytTopics = (await getAllLocalPytTopics()) || [];
+  // 4. Textbook PDFs & Master Materials (stored in PYT_DATA)
+  const allPytItems = (await getAllLocalPytTopics()) || [];
+  const textbooksMetadata = (await getLocalTextbooksMetadata()) || [];
+  const pdfItems = [];
+  const curriculumTopics = [];
+
+  for (const item of allPytItems) {
+    const isPdf = (item?.id || item?.key || '').startsWith('pyt_pdf_') ||
+                  item?.data instanceof ArrayBuffer ||
+                  (item?.data && typeof item.data === 'object' && item.data.__type === 'ArrayBuffer') ||
+                  item?.fileName;
+    if (isPdf) {
+      let size = 0;
+      if (item?.data instanceof ArrayBuffer) size = item.data.byteLength;
+      else if (item?.data?.__type === 'ArrayBuffer' && item.data.byteLength) size = item.data.byteLength;
+      else if (item?.data?.base64) size = Math.round(item.data.base64.length * 0.75);
+      else if (typeof item?.size === 'number') size = item.size;
+
+      // Find matching metadata for subject/name
+      const meta = textbooksMetadata.find(m =>
+        (m.id || '').toLowerCase() === (item.id || item.key || '').toLowerCase() ||
+        (m.subject || '').toLowerCase() === (item.subject || '').toLowerCase()
+      );
+
+      pdfItems.push({
+        id: item.id || item.key,
+        key: item.key || item.id,
+        name: item.fileName || item.name || meta?.fileName || meta?.name || item.subject || 'PDF File',
+        subject: item.subject || meta?.subject || 'General',
+        fileName: item.fileName || meta?.fileName || item.name || 'Master.pdf',
+        bytes: size,
+        pageOffset: meta?.pageOffset || 0,
+        updatedAt: item.updatedAt || meta?.updatedAt
+      });
+    } else {
+      curriculumTopics.push(item);
+    }
+  }
+
+  const textbooksBytes = pdfItems.reduce((sum, f) => sum + f.bytes, 0);
+
+  // 5. PYT & Subject Tracker (Curriculum text, user progress, tracker docs)
   const pytProgress = (await getAllLocalPytProgress()) || [];
   const subjectTracker = (await getLocalSubjectTrackerData()) || [];
-  const textbooksMetadata = (await getLocalTextbooksMetadata()) || [];
   const pytTrackerBytes =
-    getByteSize(pytTopics) +
+    getByteSize(curriculumTopics) +
     getByteSize(pytProgress) +
     getByteSize(subjectTracker) +
     getByteSize(textbooksMetadata);
 
-  // 5. AI Hints & Custom Prompts
+  // 6. AI Hints & Custom Prompts
   let topicHints = [];
   try {
     topicHints = (await getAllLocalItems(STORES.TOPIC_HINTS)) || [];
@@ -998,7 +1061,7 @@ export async function calculateDetailedStorageBreakdown() {
   } catch (e) {}
   const aiHintsBytes = getByteSize(topicHints) + getByteSize(prompts) + getByteSize(hintQuotas);
 
-  // 6. Settings & Local Storage
+  // 7. Settings & Local Storage
   const settings = (await getAllLocalSettings()) || {};
   let localStorageBytes = 0;
   let localStorageItemCount = 0;
@@ -1015,6 +1078,7 @@ export async function calculateDetailedStorageBreakdown() {
   const settingsBytes = getByteSize(settings) + localStorageBytes;
 
   const totalCalculatedBytes =
+    textbooksBytes +
     pagesBytes +
     cardsTopicsBytes +
     studyLogsBytes +
@@ -1030,6 +1094,21 @@ export async function calculateDetailedStorageBreakdown() {
     totalCalculatedBytes,
     effectiveTotalBytes,
     categories: {
+      textbooks: {
+        id: 'textbooks',
+        name: 'Textbook PDFs & Master Materials',
+        shortName: 'Textbooks & PDFs',
+        color: '#f43f5e', // Rose
+        badgeBg: 'bg-rose-500/15',
+        badgeText: 'text-rose-500',
+        strokeColor: '#f43f5e',
+        bytes: textbooksBytes,
+        count: pdfItems.length,
+        label: `${pdfItems.length} Master & Topic PDFs`,
+        clearable: true,
+        clearActionType: 'textbooks',
+        files: pdfItems
+      },
       pages: {
         id: 'pages',
         name: 'Scanned Pages & Images',
@@ -1071,15 +1150,15 @@ export async function calculateDetailedStorageBreakdown() {
       },
       pytTracker: {
         id: 'pytTracker',
-        name: 'PYT & Subject Tracker',
-        shortName: 'PYT & Subjects',
+        name: 'PYT Curriculum & Progress',
+        shortName: 'PYT & Curriculum',
         color: '#f59e0b', // Amber
         badgeBg: 'bg-amber-500/15',
         badgeText: 'text-amber-500',
         strokeColor: '#f59e0b',
         bytes: pytTrackerBytes,
-        count: pytTopics.length + subjectTracker.length,
-        label: `${pytTopics.length} PYT Subjects · ${subjectTracker.length} Tracker Docs`,
+        count: curriculumTopics.length + subjectTracker.length,
+        label: `${curriculumTopics.length} PYT Subjects · ${subjectTracker.length} Tracker Docs`,
         clearable: false
       },
       aiHints: {
@@ -1111,6 +1190,42 @@ export async function calculateDetailedStorageBreakdown() {
       }
     }
   };
+}
+
+/**
+ * Safely purges an individual textbook PDF from IndexedDB and updates metadata.
+ */
+export async function deleteLocalTextbookPdf(keyOrId) {
+  if (!keyOrId) return false;
+  const cleanKey = keyOrId.trim().toLowerCase();
+  await deleteLocalPytTopic(cleanKey);
+  const meta = (await getLocalTextbooksMetadata()) || [];
+  const filtered = meta.filter(m =>
+    (m.id || '').toLowerCase() !== cleanKey &&
+    `pyt_pdf_${(m.subject || '').toLowerCase().replace(/\s+/g, '_')}` !== cleanKey
+  );
+  await saveLocalTextbooksMetadata(filtered);
+  return true;
+}
+
+/**
+ * Purges all textbook PDF files from IndexedDB while preserving curriculum topics and progress.
+ */
+export async function clearAllTextbookPdfsLocal() {
+  try {
+    const allPytItems = (await getAllLocalPytTopics()) || [];
+    for (const item of allPytItems) {
+      const key = item?.id || item?.key || '';
+      if (key.startsWith('pyt_pdf_') || item?.data instanceof ArrayBuffer || item?.data?.__type === 'ArrayBuffer') {
+        await deleteLocalPytTopic(key);
+      }
+    }
+    await saveLocalTextbooksMetadata([]);
+    return true;
+  } catch (e) {
+    console.error('[LocalDB] Failed to clear textbook PDFs:', e);
+    return false;
+  }
 }
 
 /**
@@ -1763,6 +1878,8 @@ export default {
   incrementDailyHintQuotaLocal,
   calculateDetailedStorageBreakdown,
   clearAiHintsCacheLocal,
+  deleteLocalTextbookPdf,
+  clearAllTextbookPdfsLocal,
   purgeRecycleBinLocal,
   exportFullUniversalSnapshot,
   verifySnapshotChecksum,
