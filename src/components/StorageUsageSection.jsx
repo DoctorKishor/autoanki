@@ -65,19 +65,55 @@ export default function StorageUsageSection({
   const [cleanModalOpen, setCleanModalOpen] = useState(false);
   const [cleanProgress, setCleanProgress] = useState(null); // 'cleaning' | 'done' | null
   const [cleanToast, setCleanToast] = useState('');
+  const [isPersisted, setIsPersisted] = useState(false);
+  const [requestingPersist, setRequestingPersist] = useState(false);
+
+  // Check persistent storage status
+  const checkPersistence = useCallback(async () => {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.storage && navigator.storage.persisted) {
+        const persisted = await navigator.storage.persisted();
+        setIsPersisted(persisted);
+      }
+    } catch (e) {
+      console.warn('[StorageUsageSection] Persistence check failed:', e);
+    }
+  }, []);
 
   // Fetch storage breakdown from IndexedDB and browser storage
   const loadStorageMetrics = useCallback(async () => {
     try {
       const data = await calculateDetailedStorageBreakdown();
       setStorageData(data);
+      await checkPersistence();
     } catch (err) {
       console.error('[StorageUsageSection] Error calculating storage:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [checkPersistence]);
+
+  const handleRequestPersistence = async () => {
+    if (!navigator.storage || !navigator.storage.persist) return;
+    setRequestingPersist(true);
+    try {
+      const granted = await navigator.storage.persist();
+      setIsPersisted(granted);
+      if (granted) {
+        setCleanToast('✓ Persistent Storage Granted! Quota expanded & locked.');
+        await loadStorageMetrics();
+      } else {
+        alert('Browser did not grant persistent storage mode. Storage remains active under standard quota.');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Error requesting persistent storage: ' + e.message);
+    } finally {
+      setRequestingPersist(false);
+      setTimeout(() => setCleanToast(''), 4000);
+    }
+  };
 
   useEffect(() => {
     loadStorageMetrics();
@@ -382,8 +418,38 @@ export default function StorageUsageSection({
           <div className="flex justify-between items-center text-[10px] font-mono text-slate-400 px-1">
             <span>App: {formatBytes(totalBytes)}</span>
             <span>
-              Browser Quota: {storageData?.browserQuota ? formatBytes(storageData.browserQuota) : 'Dynamic'}
+              Browser Pool: {storageData?.browserQuota ? formatBytes(storageData.browserQuota) : 'Dynamic'}
             </span>
+          </div>
+
+          {/* Persistent Storage Status & Unlock Action */}
+          <div className={`p-2.5 rounded-2xl flex items-center justify-between gap-2 text-[10px] ${
+            isThemeDark ? 'bg-slate-800/60 border border-slate-700/50' : 'bg-slate-100 border border-slate-200'
+          }`}>
+            <div className="flex items-center gap-1.5 text-left">
+              <ShieldCheck className={`w-3.5 h-3.5 ${isPersisted ? 'text-emerald-400' : 'text-amber-400'} shrink-0`} />
+              <div>
+                <span className="font-bold">
+                  {isPersisted ? 'Persistent Storage: Active' : 'Standard Browser Sandbox'}
+                </span>
+                <p className="text-[9px] text-slate-400">
+                  {isPersisted
+                    ? 'Storage is protected against browser auto-eviction.'
+                    : 'Initial 2 GB safety pool assigned by browser. Click to unlock full device quota.'}
+                </p>
+              </div>
+            </div>
+
+            {!isPersisted && (
+              <button
+                type="button"
+                onClick={handleRequestPersistence}
+                disabled={requestingPersist}
+                className="px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-wider bg-blue-600 hover:bg-blue-500 text-white shrink-0 shadow-sm transition active:scale-95"
+              >
+                {requestingPersist ? 'Requesting...' : 'Unlock'}
+              </button>
+            )}
           </div>
         </div>
       </div>
