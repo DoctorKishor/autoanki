@@ -114,6 +114,7 @@ export default function CampDashboard({
   const [showOverviewModal, setShowOverviewModal] = useState(false);
   const [saveStatus, setSaveStatus] = useState('');
   const [hasLoadedLocalDb, setHasLoadedLocalDb] = useState(false);
+  const isLoadingDateRef = useRef(false);
   const currentSessionsDateRef = useRef(selectedDate);
   const currentB2bDateRef = useRef(selectedDate);
 
@@ -204,36 +205,53 @@ export default function CampDashboard({
   // 1.6. Reactively load sessions and B2B whenever selectedDate changes
   useEffect(() => {
     let active = true;
+    isLoadingDateRef.current = true;
+
     const loadDaily = async () => {
-      const log = await getLocalCampDailyLogs(selectedDate);
-      if (!active) return;
-      if (log) {
-        if (log.sessions) {
-          const norm = normalizeSessions(log.sessions);
-          setSessions(norm);
-          localStorage.setItem(`camp_sessions_${selectedDate}`, JSON.stringify(norm));
+      try {
+        const log = await getLocalCampDailyLogs(selectedDate);
+        if (!active) return;
+        if (log) {
+          if (log.sessions) {
+            const norm = normalizeSessions(log.sessions);
+            setSessions(norm);
+            localStorage.setItem(`camp_sessions_${selectedDate}`, JSON.stringify(norm));
+          } else {
+            setSessions({ preLunch: [], midDay: [], postDinner: [] });
+          }
+          if (log.bedToBook) {
+            setBedToBook(log.bedToBook);
+            localStorage.setItem(`camp_bedToBook_${selectedDate}`, log.bedToBook);
+          } else {
+            setBedToBook('Less than 45 mins');
+          }
+        } else {
+          const savedSessions = localStorage.getItem(`camp_sessions_${selectedDate}`);
+          let parsedSessions = { preLunch: [], midDay: [], postDinner: [] };
+          if (savedSessions) {
+            try {
+              parsedSessions = normalizeSessions(JSON.parse(savedSessions));
+            } catch (err) {
+              console.error("Error parsing sessions cache:", err);
+            }
+          }
+          const savedB2B = localStorage.getItem(`camp_bedToBook_${selectedDate}`);
+          const b2bValue = savedB2B || 'Less than 45 mins';
+          setSessions(parsedSessions);
+          setBedToBook(b2bValue);
         }
-        if (log.bedToBook) {
-          setBedToBook(log.bedToBook);
-          localStorage.setItem(`camp_bedToBook_${selectedDate}`, log.bedToBook);
+      } catch (err) {
+        console.error("[LocalDB] Error loading daily CAMP log:", err);
+      } finally {
+        if (active) {
+          currentSessionsDateRef.current = selectedDate;
+          currentB2bDateRef.current = selectedDate;
+          isLoadingDateRef.current = false;
         }
-      } else {
-        const savedSessions = localStorage.getItem(`camp_sessions_${selectedDate}`);
-        const parsedSessions = savedSessions ? normalizeSessions(JSON.parse(savedSessions)) : {
-          preLunch: [],
-          midDay: [],
-          postDinner: []
-        };
-        const savedB2B = localStorage.getItem(`camp_bedToBook_${selectedDate}`);
-        const b2bValue = savedB2B || 'Less than 45 mins';
-        setSessions(parsedSessions);
-        setBedToBook(b2bValue);
       }
     };
 
     loadDaily();
-    currentSessionsDateRef.current = selectedDate;
-    currentB2bDateRef.current = selectedDate;
     return () => { active = false; };
   }, [selectedDate]);
 
@@ -250,7 +268,7 @@ export default function CampDashboard({
 
   // 3. Persist Daily Inputs based on selectedDate
   useEffect(() => {
-    if (!hasLoadedLocalDb || currentB2bDateRef.current !== selectedDate) return;
+    if (!hasLoadedLocalDb || isLoadingDateRef.current || currentB2bDateRef.current !== selectedDate) return;
     localStorage.setItem(`camp_bedToBook_${selectedDate}`, bedToBook);
     clearTimeout(bedToBookDebounceRef.current);
     bedToBookDebounceRef.current = setTimeout(() => {
@@ -260,7 +278,7 @@ export default function CampDashboard({
   }, [bedToBook, selectedDate, hasLoadedLocalDb]);
 
   useEffect(() => {
-    if (!hasLoadedLocalDb || currentSessionsDateRef.current !== selectedDate) return;
+    if (!hasLoadedLocalDb || isLoadingDateRef.current || currentSessionsDateRef.current !== selectedDate) return;
     localStorage.setItem(`camp_sessions_${selectedDate}`, JSON.stringify(sessions));
     clearTimeout(sessionsDebounceRef.current);
     sessionsDebounceRef.current = setTimeout(() => {
@@ -332,42 +350,58 @@ export default function CampDashboard({
   useEffect(() => {
     const syncData = () => {
       if (isManuallyEditingRef.current) return;
-      const savedSessions = localStorage.getItem(`camp_sessions_${selectedDate}`);
-      if (savedSessions) {
-        setSessions(prev => {
-          const parsed = normalizeSessions(JSON.parse(savedSessions));
-          if (JSON.stringify(prev) !== JSON.stringify(parsed)) {
-            return parsed;
-          }
-          return prev;
-        });
-      }
+      try {
+        const savedSessions = localStorage.getItem(`camp_sessions_${selectedDate}`);
+        if (savedSessions) {
+          setSessions(prev => {
+            try {
+              const parsed = normalizeSessions(JSON.parse(savedSessions));
+              if (JSON.stringify(prev) !== JSON.stringify(parsed)) {
+                return parsed;
+              }
+            } catch (err) {
+              console.warn("[CampDashboard] syncData parse error (sessions):", err);
+            }
+            return prev;
+          });
+        }
 
-      const savedB2B = localStorage.getItem(`camp_bedToBook_${selectedDate}`);
-      if (savedB2B && savedB2B !== bedToBook) {
-        setBedToBook(savedB2B);
-      }
+        const savedB2B = localStorage.getItem(`camp_bedToBook_${selectedDate}`);
+        if (savedB2B && savedB2B !== bedToBook) {
+          setBedToBook(savedB2B);
+        }
 
-      const savedTimerHistory = localStorage.getItem('camp_timer_history');
-      if (savedTimerHistory) {
-        setTimerHistory(prev => {
-          const parsed = JSON.parse(savedTimerHistory);
-          if (JSON.stringify(prev) !== JSON.stringify(parsed)) {
-            return parsed;
-          }
-          return prev;
-        });
-      }
+        const savedTimerHistory = localStorage.getItem('camp_timer_history');
+        if (savedTimerHistory) {
+          setTimerHistory(prev => {
+            try {
+              const parsed = JSON.parse(savedTimerHistory);
+              if (JSON.stringify(prev) !== JSON.stringify(parsed)) {
+                return parsed;
+              }
+            } catch (err) {
+              console.warn("[CampDashboard] syncData parse error (timerHistory):", err);
+            }
+            return prev;
+          });
+        }
 
-      const savedCampHistory = localStorage.getItem('camp_history');
-      if (savedCampHistory) {
-        setHistory(prev => {
-          const parsed = JSON.parse(savedCampHistory);
-          if (JSON.stringify(prev) !== JSON.stringify(parsed)) {
-            return parsed;
-          }
-          return prev;
-        });
+        const savedCampHistory = localStorage.getItem('camp_history');
+        if (savedCampHistory) {
+          setHistory(prev => {
+            try {
+              const parsed = JSON.parse(savedCampHistory);
+              if (JSON.stringify(prev) !== JSON.stringify(parsed)) {
+                return parsed;
+              }
+            } catch (err) {
+              console.warn("[CampDashboard] syncData parse error (history):", err);
+            }
+            return prev;
+          });
+        }
+      } catch (e) {
+        console.warn("[CampDashboard] syncData outer exception:", e);
       }
     };
 
@@ -389,7 +423,10 @@ export default function CampDashboard({
     } else if (timerState.timerType === 'timer') {
       const total = (timerState.timerDuration || 600) * 1000;
       totalElapsedMs = Math.max(0, total - (localCustomTimerTimeLeft ?? (total / 1000)) * 1000);
-    } else if (timerState.timerType === 'pomodoro' && timerState.pomodoroMode === 'study') {
+    } else if (
+      timerState.timerType === 'pomodoro' &&
+      (timerState.mode === 'study' || timerState.pomodoroMode === 'study')
+    ) {
       const total = (timerState.pomodoroDuration || 1500) * 1000;
       totalElapsedMs = Math.max(0, total - (localTimerTimeLeft ?? (total / 1000)) * 1000);
     }
@@ -453,13 +490,30 @@ export default function CampDashboard({
       const list = state[cat] || [];
       const totalHours = list.reduce((sum, s) => sum + (parseFloat(s.hours) || 0), 0);
       let avgFocus = 7;
+      let qualifiedDeepSessions = 0;
+
       if (list.length > 0) {
         const sumFocus = list.reduce((sum, s) => sum + (Number(s.concentration) || 7), 0);
         avgFocus = sumFocus / list.length;
+
+        // Strictly validate each session against duration (>= 50m / 0.833h) AND concentration (>= 8)
+        list.forEach(s => {
+          if (!s) return;
+          if (s.deepSessions !== undefined && s.deepSessions !== null && s.deepSessions !== '') {
+            qualifiedDeepSessions += parseInt(s.deepSessions, 10) || 0;
+          } else {
+            const h = parseFloat(s.hours) || 0;
+            const c = parseFloat(s.concentration) || 0;
+            if (h >= 0.833 && c >= 8) {
+              qualifiedDeepSessions += 1;
+            }
+          }
+        });
       }
+
       agg[cat] = {
         hours: totalHours.toString(),
-        deepSessions: Math.round(totalHours * 2) / 2,
+        deepSessions: qualifiedDeepSessions,
         concentration: Math.round(avgFocus)
       };
     });
@@ -610,14 +664,15 @@ export default function CampDashboard({
     };
     relevantItems.forEach(item => {
       if (!rebuilt[item.period]) return;
+      const numHours = parseFloat(item.hours) || 0;
       rebuilt[item.period].push({
         id: Date.now().toString() + '_' + Math.random().toString(36).substr(2, 9),
-        hours: item.hours.toFixed(3),
-        concentration: item.concentration,
+        hours: numHours.toFixed(3),
+        concentration: Number(item.concentration) || 7,
         type: item.type || 'notes',
-        pagesRead: item.pagesRead || 0,
-        questionsSolved: item.questionsSolved || 0,
-        cardsReviewed: item.cardsReviewed || 0,
+        pagesRead: Number(item.pagesRead) || 0,
+        questionsSolved: Number(item.questionsSolved) || 0,
+        cardsReviewed: Number(item.cardsReviewed) || 0,
         gtDetails: item.gtDetails || null,
         isManual: false
       });

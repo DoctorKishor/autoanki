@@ -5894,6 +5894,11 @@ export default function App() {
     }
     if (found) {
       setFsBgCategories(nextCategories);
+      // If the edited background is currently active, sync live playback state
+      if (itemId === fullscreenTimerBg || (videoId && fsYoutubeVideoId === videoId)) {
+        if (videoId) setFsYoutubeVideoId(videoId);
+        if (updatedStartTime !== undefined) setFsBgVideoStartTime(updatedStartTime);
+      }
       try {
         await saveLocalSetting('studyRoomBackgrounds', { categories: nextCategories });
       } catch (e) {
@@ -6134,13 +6139,13 @@ export default function App() {
     const iframe = soundIframeRefs.current[id];
     if (iframe && iframe.contentWindow) {
       try {
-        iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'setVolume', args: [vol] }), '*');
+        iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'setVolume', args: [vol] }), 'https://www.youtube.com');
         if (vol === 0) {
-          iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'mute', args: [] }), '*');
-          iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'pauseVideo', args: [] }), '*');
+          iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'mute', args: [] }), 'https://www.youtube.com');
+          iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'pauseVideo', args: [] }), 'https://www.youtube.com');
         } else {
-          iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'unmute', args: [] }), '*');
-          iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*');
+          iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'unmute', args: [] }), 'https://www.youtube.com');
+          iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), 'https://www.youtube.com');
         }
       } catch (err) {
         console.warn(`[AudioEngine] postMessage failed for track ${id}:`, err);
@@ -6162,12 +6167,12 @@ export default function App() {
       const iframe = bgIframeRef.current;
       if (iframe && iframe.contentWindow) {
         try {
-          iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'setVolume', args: [fsBgVideoVolume] }), '*');
+          iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'setVolume', args: [fsBgVideoVolume] }), 'https://www.youtube.com');
           if (fsBgVideoVolume === 0) {
-            iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'mute', args: [] }), '*');
+            iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'mute', args: [] }), 'https://www.youtube.com');
           } else {
-            iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'unmute', args: [] }), '*');
-            iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*');
+            iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'unmute', args: [] }), 'https://www.youtube.com');
+            iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), 'https://www.youtube.com');
           }
         } catch (_) {}
       }
@@ -6184,14 +6189,14 @@ export default function App() {
         const iframe = soundIframeRefs.current[track.id];
         if (iframe && iframe.contentWindow) {
           try {
-            iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'pauseVideo', args: [] }), '*');
-            iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'stopVideo', args: [] }), '*');
+            iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'pauseVideo', args: [] }), 'https://www.youtube.com');
+            iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'stopVideo', args: [] }), 'https://www.youtube.com');
           } catch (_) {}
         }
       });
       if (bgIframeRef.current && bgIframeRef.current.contentWindow) {
         try {
-          bgIframeRef.current.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'pauseVideo', args: [] }), '*');
+          bgIframeRef.current.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'pauseVideo', args: [] }), 'https://www.youtube.com');
         } catch (_) {}
       }
     }
@@ -9885,7 +9890,7 @@ JSON Format:
   };
 
   const handleLogPomodoroBlock = async (hrs, resetAfterSave = false, startedAt = null) => {
-    if (!user || hrs <= 0) return;
+    if (hrs <= 0) return;
 
     const proceedWithSave = async (logToCamp = false, campData = null) => {
       try {
@@ -10425,7 +10430,7 @@ JSON Format:
   };
 
   const handleAddTimerTimeToSession = async (seconds, startedAt = null) => {
-    if (!user || !db || seconds <= 0) return;
+    if (seconds <= 0) return;
     const hrs = Number((seconds / 3600).toFixed(3));
     if (hrs <= 0.001) {
       alert("Session duration is too short to log (must be at least a few seconds).");
@@ -13404,7 +13409,7 @@ const renderTimerHub = (isMobile = false) => {
   };
 
   const handleSaveEditedGt = async () => {
-    if (!user || !db || !editGtTargetDate || editGtTargetIndex === null) return;
+    if (!editGtTargetDate || editGtTargetIndex === null) return;
 
     const correct = Number(editGtCorrect) || 0;
     const incorrect = Number(editGtIncorrect) || 0;
@@ -21544,11 +21549,11 @@ Return your response strictly as a JSON object matching this schema:
                 setTimeout(() => {
                   const iframe = bgIframeRef.current;
                   if (iframe && iframe.contentWindow) {
-                    iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'setVolume', args: [vol] }), '*');
+                    iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'setVolume', args: [vol] }), 'https://www.youtube.com');
                     if (vol === 0) {
-                      iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'mute', args: [] }), '*');
+                      iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'mute', args: [] }), 'https://www.youtube.com');
                     } else {
-                      iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'unmute', args: [] }), '*');
+                      iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'unmute', args: [] }), 'https://www.youtube.com');
                     }
                   }
                 }, delay);
@@ -21579,9 +21584,9 @@ Return your response strictly as a JSON object matching this schema:
                     const iframe = soundIframeRefs.current[track.id];
                     if (iframe && iframe.contentWindow) {
                       try {
-                        iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'setVolume', args: [vol] }), '*');
-                        iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'unmute', args: [] }), '*');
-                        iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*');
+                        iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'setVolume', args: [vol] }), 'https://www.youtube.com');
+                        iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'unmute', args: [] }), 'https://www.youtube.com');
+                        iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), 'https://www.youtube.com');
                       } catch (_) {}
                     }
                   }, delay);
@@ -21896,7 +21901,7 @@ Return your response strictly as a JSON object matching this schema:
                   src={widget.url && (widget.url.startsWith('http://') || widget.url.startsWith('https://')) ? widget.url : `https://${widget.url || ''}`}
                   title={widget.title || "Custom Browser"}
                   className="w-full h-full border-0 rounded-2xl"
-                  sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                  sandbox="allow-scripts allow-forms allow-popups"
                   referrerPolicy="no-referrer"
                   loading="lazy"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

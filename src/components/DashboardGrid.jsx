@@ -434,17 +434,28 @@ export default function DashboardGrid({
     });
   }, [subjectTrackerData]);
 
-  // Compute 63-day intensity map data
+  // Compute 63-day intensity map data (aligned to Sunday-Saturday calendar weeks)
   const intensityMapData = useMemo(() => {
     const days = [];
     const now = new Date();
+    now.setHours(23, 59, 59, 999);
+    
+    // Find Sunday of current week
+    const currentSunday = new Date(now);
+    currentSunday.setDate(now.getDate() - now.getDay());
+    currentSunday.setHours(0, 0, 0, 0);
 
-    for (let i = 62; i >= 0; i--) {
-      const d = new Date(now);
-      d.setDate(now.getDate() - i);
+    // Start 8 weeks before current Sunday (total 9 weeks = 63 days)
+    const startDate = new Date(currentSunday);
+    startDate.setDate(currentSunday.getDate() - (8 * 7));
+
+    for (let i = 0; i < 63; i++) {
+      const d = new Date(startDate);
+      d.setDate(startDate.getDate() + i);
       const dStr = d.toLocaleDateString('en-CA');
-      const log = studyLogs[dStr] || { hours: 0, questions: 0, cards: 0, pages: 0 };
-      const score = (log.hours || 0) * 2 + (log.questions || 0) / 20 + (log.cards || 0) / 30 + (log.pages || 0) / 10;
+      const isFuture = d > now;
+      const log = !isFuture && studyLogs[dStr] ? studyLogs[dStr] : { hours: 0, questions: 0, cards: 0, pages: 0 };
+      const score = isFuture ? 0 : (log.hours || 0) * 2 + (log.questions || 0) / 20 + (log.cards || 0) / 30 + (log.pages || 0) / 10;
       days.push({
         dateStr: dStr,
         dateLabel: d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
@@ -452,6 +463,7 @@ export default function DashboardGrid({
         questions: log.questions || 0,
         cards: log.cards || 0,
         pages: log.pages || 0,
+        isFuture,
         score
       });
     }

@@ -679,12 +679,36 @@ function WidgetsPanel({ fsWidgets, setFsWidgets, fsCustomizingWidgets, setFsCust
 const sanitizeWidgetCss = (css, widgetId) => {
   if (!css || typeof css !== 'string') return '';
   // Strip dangerous CSS constructs (expressions, script schemes, @import)
-  const cleaned = css
+  let cleaned = css
     .replace(/@import\s+[^;]+;/gi, '')
     .replace(/javascript\s*:/gi, '')
     .replace(/behavior\s*:/gi, '')
     .replace(/-moz-binding\s*:/gi, '')
     .replace(/expression\s*\([^)]*\)/gi, '');
+
+  // Scope CSS rules to the widget's container ID if not already scoped
+  if (cleaned.trim() && !cleaned.includes(`#fw-${widgetId}`)) {
+    cleaned = cleaned
+      .split('}')
+      .map(block => {
+        const trimmed = block.trim();
+        if (!trimmed) return '';
+        const parts = trimmed.split('{');
+        if (parts.length === 2) {
+          const selectors = parts[0].split(',').map(s => {
+            const sel = s.trim();
+            if (sel === 'body' || sel === 'html' || sel === ':root') {
+              return `#fw-${widgetId}`;
+            }
+            return `#fw-${widgetId} ${sel}`;
+          }).join(', ');
+          return `${selectors} { ${parts[1]} }`;
+        }
+        return trimmed;
+      })
+      .filter(Boolean)
+      .join('\n');
+  }
   return cleaned;
 };
 
