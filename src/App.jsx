@@ -37,6 +37,7 @@ import FsrsStatsTab from './components/FsrsStatsTab';
 import SmartReviewHub, { getLocalDateStr } from './components/SmartReviewHub';
 import TopicNotesModal from './components/TopicNotesModal';
 import RatingDurationModal from './components/RatingDurationModal';
+import ImportBackupModal from './components/ImportBackupModal';
 import { calculatePredictiveTopicTime } from './services/predictiveTimingEngine';
 import { cropAndMaskDiagram } from './utils/imageCropper';
 import { getTopicPageWeight, parsePageNumbers } from './utils/pageUtils';
@@ -54,7 +55,10 @@ import {
   getLocalTimerState, saveLocalTimerState, saveActiveNewTopicIds, getActiveNewTopicIds,
   saveTopicHintsLocal, deleteTopicHintsLocal,
   getLocalCampData, saveLocalCampData, getLocalCampDailyLogs, saveLocalCampDailyLogs, getAllLocalCampDailyLogs,
-  getLocalUserProfile, saveLocalUserProfile
+  getLocalUserProfile, saveLocalUserProfile,
+  exportFullUniversalSnapshot, importUniversalSnapshot,
+  saveInternalSnapshot, getAllInternalSnapshots, deleteInternalSnapshot, pruneOldSnapshots,
+  getAllLocalItems, STORES
 } from './services/localDb';
 import { calculateNextFSRSState, calculateInitialState, DEFAULT_FSRS6_WEIGHTS, getTopicPageLength, recalculateTopicFSRSFromLogs } from './services/fsrsEngine';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -4520,6 +4524,94 @@ export default function App() {
                     )}
                   </AnimatePresence>
                 </div>
+
+                {/* Internal Snapshot Vault */}
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.15 }}
+                  className={`p-5 rounded-2xl space-y-4 border ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-gray-200'}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className={`text-sm font-bold ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>Internal Snapshot Vault</h3>
+                      <p className="text-[11px] text-gray-400 font-medium">Periodic snapshots saved directly to IndexedDB. Restore to a previous state instantly.</p>
+                    </div>
+                    <UiverseButton
+                      icon={isCreatingManualSnapshot ? <Loader2 className="w-4 h-4 animate-spin" /> : <HardDrive className="w-4 h-4 text-blue-400" />}
+                      onClick={handleManualSnapshot}
+                      disabled={isCreatingManualSnapshot}
+                      size="sm"
+                      themeMode={settingsThemeMode}
+                    >
+                      {isCreatingManualSnapshot ? 'Saving...' : 'Save Now'}
+                    </UiverseButton>
+                  </div>
+
+                  {isLoadingSnapshots ? (
+                    <div className="flex items-center justify-center py-4 gap-2 text-gray-400">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span className="text-xs font-medium">Loading snapshots…</span>
+                    </div>
+                  ) : internalSnapshots.length === 0 ? (
+                    <div className={`text-center py-5 rounded-xl text-xs font-medium ${settingsThemeMode === 'dark' ? 'text-gray-500 bg-white/3' : 'text-gray-400 bg-black/3'}`}>
+                      No snapshots yet. Enable auto-backup or click "Save Now" to create one.
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-64 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
+                      {internalSnapshots.map((snap, i) => {
+                        const op = snapshotOpState[snap.id];
+                        const dateStr = snap.createdAt ? new Date(snap.createdAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }) : '—';
+                        const sizeStr = snap.byteSize ? (snap.byteSize < 1048576 ? `${(snap.byteSize / 1024).toFixed(0)} KB` : `${(snap.byteSize / 1048576).toFixed(1)} MB`) : '—';
+                        return (
+                          <motion.div
+                            key={snap.id}
+                            initial={{ opacity: 0, x: -8 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.04 * i, duration: 0.25 }}
+                            className={`flex items-center justify-between gap-3 px-3.5 py-3 rounded-xl border ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/8' : 'bg-black/[0.04] border-black/8'}`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className={`w-2 h-2 rounded-full flex-shrink-0 ${snap.label === 'auto' ? 'bg-emerald-400' : 'bg-blue-400'}`} />
+                              <div className="min-w-0">
+                                <p className={`text-xs font-bold truncate ${settingsThemeMode === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>{dateStr}</p>
+                                <p className="text-[10px] text-gray-500 font-medium capitalize">{snap.label} · {sizeStr}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                              <button
+                                onClick={() => handleRestoreSnapshot(snap)}
+                                disabled={!!op}
+                                title="Restore this snapshot (replaces all current data)"
+                                className={`px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition disabled:opacity-40 ${
+                                  op === 'done'
+                                    ? 'bg-emerald-500/20 text-emerald-400'
+                                    : settingsThemeMode === 'dark'
+                                      ? 'bg-blue-500/15 text-blue-400 hover:bg-blue-500/25'
+                                      : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
+                                }`}
+                              >
+                                {op === 'restoring' ? <Loader2 className="w-3 h-3 animate-spin" /> : op === 'done' ? <CheckCircle2 className="w-3 h-3" /> : <RotateCcw className="w-3 h-3" />}
+                              </button>
+                              <button
+                                onClick={() => handleDeleteSnapshot(snap.id)}
+                                disabled={!!op}
+                                title="Delete this snapshot"
+                                className={`px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition disabled:opacity-40 ${
+                                  settingsThemeMode === 'dark'
+                                    ? 'bg-red-500/12 text-red-400 hover:bg-red-500/25'
+                                    : 'bg-red-50 text-red-500 hover:bg-red-100'
+                                }`}
+                              >
+                                {op === 'deleting' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                              </button>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </motion.div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -4768,6 +4860,7 @@ export default function App() {
   const [analyticsSubTab, setAnalyticsSubTab] = useState('generation');
   const [selectedCategory, setSelectedCategory] = useState('General');
   const [selectedTrackerSubject, setSelectedTrackerSubject] = useState('Anatomy');
+  const [selectedSubjectTrackerSubject, setSelectedSubjectTrackerSubject] = useState('Anatomy');
   const [trackerSourceInputs, setTrackerSourceInputs] = useState({});
   const [trackerNewTopicInput, setTrackerNewTopicInput] = useState('');
   const [subjectTrackerSubTab, setSubjectTrackerSubTab] = useState('manager');
@@ -6628,6 +6721,14 @@ export default function App() {
   const [autoBackupFrequency, setAutoBackupFrequency] = useState('daily');
   const [autoBackupRetention, setAutoBackupRetention] = useState('5');
   const [lastBackupTime, setLastBackupTime] = useState(null);
+  // --- IMPORT BACKUP MODAL ---
+  const [showImportBackupModal, setShowImportBackupModal] = useState(false);
+  // --- INTERNAL SNAPSHOT VAULT ---
+  const [internalSnapshots, setInternalSnapshots] = useState([]);
+  const [isLoadingSnapshots, setIsLoadingSnapshots] = useState(false);
+  const [snapshotOpState, setSnapshotOpState] = useState({}); // { [id]: 'restoring'|'deleting'|'done' }
+  const [isCreatingManualSnapshot, setIsCreatingManualSnapshot] = useState(false);
+
   const [floatingPos, setFloatingPos] = useState({ x: window.innerWidth - 200, y: 150 });
   const [isDraggingFloating, setIsDraggingFloating] = useState(false);
   const dragStartOffset = useRef({ x: 0, y: 0 });
@@ -15929,162 +16030,48 @@ const renderTimerHub = (isMobile = false) => {
     }
   };
 
+  // ── Universal Export Backup (v2.0 — All 9 Stores + localStorage) ──────────
   const handleExportBackup = async () => {
     try {
-      const allCards = (await getLocalCards()) || [];
-      const allPages = (await getLocalPages()) || [];
-      const allLogs = (await getLocalStudyLogs()) || {};
-      const allPyt = (await getAllLocalPytTopics()) || [];
-      const allPytProg = (await getAllLocalPytProgress()) || [];
-      const allPrompts = (await getLocalPrompts()) || [];
-      const subjectData = (await getLocalSubjectTrackerData()) || [];
-      const studySched = (await getLocalStudySchedule()) || {};
-      const schedTemplates = (await getLocalScheduleTemplates()) || [];
-      const campLogs = (await getAllLocalCampDailyLogs()) || [];
-      const campHist = (await getLocalCampData('history')) || [];
-      const campTimerHist = (await getLocalCampData('timer_history')) || [];
-      const campStudent = (await getLocalCampData('student_info')) || null;
-      const apiKeys = (await getLocalSetting('apiKeys')) || {
-        geminiApiKey: geminiApiKey || '',
-        imgbbApiKey: imgbbApiKey || '',
-        githubUsername: githubUsername || '',
-        githubRepo: githubRepo || '',
-        githubPatToken: githubPatToken || ''
-      };
-
-      const backupData = {
-        app: 'AutoAnki',
-        version: 2,
-        timestamp: new Date().toISOString(),
-        stores: {
-          cards: allCards,
-          libraryPages: allPages,
-          studyLogs: allLogs,
-          pytTopics: allPyt,
-          pytProgress: allPytProg,
-          customPrompts: allPrompts,
-          subjectTracker: subjectData,
-          studySchedule: studySched,
-          scheduleTemplates: schedTemplates,
-          campDailyLogs: campLogs,
-          campHistory: campHist,
-          campTimerHistory: campTimerHist,
-          campStudentInfo: campStudent,
-          apiKeys
-        },
-        settings: {
-          settingsThemeMode,
-          draftNavIds,
-          autoBackupEnabled,
-          autoBackupFrequency,
-          autoBackupRetention
-        }
-      };
-
-      const jsonStr = JSON.stringify(backupData, null, 2);
+      const payload = await exportFullUniversalSnapshot();
+      const ts = new Date();
+      const dateStr = `${ts.getFullYear()}-${String(ts.getMonth()+1).padStart(2,'0')}-${String(ts.getDate()).padStart(2,'0')}`;
+      const timeStr = `${String(ts.getHours()).padStart(2,'0')}-${String(ts.getMinutes()).padStart(2,'0')}`;
+      const fileName = `AutoAnki_Vault_Backup_${dateStr}_${timeStr}.json`;
+      const jsonStr = JSON.stringify(payload, null, 2);
       const blob = new Blob([jsonStr], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `auto-anki-full-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-
       setExportBackupState(true);
       setTimeout(() => setExportBackupState(false), 2500);
+      // Update last backup timestamp
+      const nowStr = new Date().toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
+      setLastBackupTime(nowStr);
+      try { localStorage.setItem('auto_anki_last_manual_backup', new Date().toISOString()); } catch (_) {}
     } catch (err) {
-      console.error("Export full backup failed:", err);
-      alert("Failed to export backup: " + (err?.message || err));
+      console.error('[AutoAnki] Export backup failed:', err);
+      alert('Failed to export backup: ' + (err?.message || String(err)));
     }
   };
 
+  // ── Import Backup — launches ImportBackupModal ────────────────────────────
   const handleImportBackup = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json,application/json';
-    input.onchange = async (e) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      try {
-        const text = await file.text();
-        const backup = JSON.parse(text);
-
-        // 1. Restore API Keys & settings
-        const apiKeysToRestore = backup.stores?.apiKeys || backup.apiKeys;
-        if (apiKeysToRestore) {
-          await saveLocalSetting('apiKeys', apiKeysToRestore);
-          if (apiKeysToRestore.geminiApiKey) setGeminiApiKey(apiKeysToRestore.geminiApiKey);
-          if (apiKeysToRestore.imgbbApiKey) setImgbbApiKey(apiKeysToRestore.imgbbApiKey);
-          if (apiKeysToRestore.githubUsername) setGithubUsername(apiKeysToRestore.githubUsername);
-          if (apiKeysToRestore.githubRepo) setGithubRepo(apiKeysToRestore.githubRepo);
-          if (apiKeysToRestore.githubPatToken) setGithubPatToken(apiKeysToRestore.githubPatToken);
-        }
-
-        const draftNav = backup.settings?.draftNavIds || backup.draftNavIds;
-        if (draftNav) {
-          setDraftNavIds(draftNav);
-          saveBottomNavIds(draftNav);
-        }
-
-        const themeMode = backup.settings?.settingsThemeMode || backup.settingsThemeMode;
-        if (themeMode) {
-          setSettingsThemeMode(themeMode);
-        }
-
-        // 2. Restore primary database stores if present (v2 snapshot format)
-        if (backup.stores) {
-          if (Array.isArray(backup.stores.cards) && backup.stores.cards.length > 0) {
-            await saveLocalCards(backup.stores.cards);
-            setCards(backup.stores.cards);
-          }
-          if (Array.isArray(backup.stores.libraryPages) && backup.stores.libraryPages.length > 0) {
-            await saveLocalPages(backup.stores.libraryPages);
-            setLibraryPages(backup.stores.libraryPages);
-          }
-          if (backup.stores.studyLogs && typeof backup.stores.studyLogs === 'object') {
-            await replaceAllLocalStudyLogs(backup.stores.studyLogs);
-            setStudyLogs(backup.stores.studyLogs);
-          }
-          if (Array.isArray(backup.stores.pytTopics) && backup.stores.pytTopics.length > 0) {
-            for (const item of backup.stores.pytTopics) {
-              await saveLocalPytTopic(item.subject || item.id, item);
-            }
-            setPytTopicsList(backup.stores.pytTopics);
-          }
-          if (Array.isArray(backup.stores.customPrompts)) {
-            await replaceAllLocalPrompts(backup.stores.customPrompts);
-            setCustomPrompts(backup.stores.customPrompts);
-          }
-          if (Array.isArray(backup.stores.subjectTracker) && backup.stores.subjectTracker.length > 0) {
-            await replaceAllLocalSubjectTrackerData(backup.stores.subjectTracker);
-            setSubjectTrackerData(backup.stores.subjectTracker);
-          }
-          if (backup.stores.studySchedule && typeof backup.stores.studySchedule === 'object') {
-            await replaceAllLocalStudySchedule(backup.stores.studySchedule);
-            setStudySchedule(backup.stores.studySchedule);
-          }
-          if (Array.isArray(backup.stores.campDailyLogs)) {
-            for (const log of backup.stores.campDailyLogs) {
-              if (log.dateStr) await saveLocalCampDailyLogs(log.dateStr, log);
-            }
-          }
-          if (Array.isArray(backup.stores.campHistory)) {
-            await saveLocalCampData('history', backup.stores.campHistory);
-          }
-        }
-
-        setImportBackupState(true);
-        setTimeout(() => setImportBackupState(false), 2500);
-        alert("Backup snapshot imported successfully!");
-      } catch (err) {
-        console.error("Import backup failed:", err);
-        alert("Failed to import backup file: " + (err?.message || err));
-      }
-    };
-    input.click();
+    setShowImportBackupModal(true);
   };
+
+  const handleImportComplete = (result) => {
+    setImportBackupState(true);
+    setTimeout(() => setImportBackupState(false), 3000);
+    // Reload vault list
+    loadInternalSnapshots();
+  };
+
 
   const saveBackupConfigLocal = async (enabled, freq, ret) => {
     setAutoBackupEnabled(enabled);
@@ -16107,6 +16094,107 @@ const renderTimerHub = (isMobile = false) => {
     }
   };
 
+  // ── Internal Snapshot Vault Helpers ──────────────────────────────────────
+  const loadInternalSnapshots = useCallback(async () => {
+    setIsLoadingSnapshots(true);
+    try {
+      const snaps = await getAllInternalSnapshots();
+      setInternalSnapshots(snaps || []);
+    } catch (e) {
+      console.error('[AutoAnki] Failed to load internal snapshots:', e);
+      setInternalSnapshots([]);
+    } finally {
+      setIsLoadingSnapshots(false);
+    }
+  }, []);
+
+  const handleManualSnapshot = useCallback(async () => {
+    setIsCreatingManualSnapshot(true);
+    try {
+      await saveInternalSnapshot('manual');
+      const retCount = parseInt(autoBackupRetention, 10) || 5;
+      await pruneOldSnapshots(retCount);
+      await loadInternalSnapshots();
+      const nowStr = new Date().toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
+      setLastBackupTime(nowStr);
+    } catch (e) {
+      console.error('[AutoAnki] Manual snapshot failed:', e);
+    } finally {
+      setIsCreatingManualSnapshot(false);
+    }
+  }, [autoBackupRetention, loadInternalSnapshots]);
+
+  const handleRestoreSnapshot = useCallback(async (snap) => {
+    if (!snap?.payload) return;
+    setSnapshotOpState(prev => ({ ...prev, [snap.id]: 'restoring' }));
+    try {
+      const result = await importUniversalSnapshot(snap.payload, 'replace', 'all');
+      if (result.success) {
+        setSnapshotOpState(prev => ({ ...prev, [snap.id]: 'done' }));
+        setTimeout(() => setSnapshotOpState(prev => { const n = { ...prev }; delete n[snap.id]; return n; }), 2000);
+      }
+    } catch (e) {
+      console.error('[AutoAnki] Snapshot restore failed:', e);
+      setSnapshotOpState(prev => { const n = { ...prev }; delete n[snap.id]; return n; });
+    }
+  }, []);
+
+  const handleDeleteSnapshot = useCallback(async (snapId) => {
+    setSnapshotOpState(prev => ({ ...prev, [snapId]: 'deleting' }));
+    try {
+      await deleteInternalSnapshot(snapId);
+      setInternalSnapshots(prev => prev.filter(s => s.id !== snapId));
+    } catch (e) {
+      console.error('[AutoAnki] Snapshot deletion failed:', e);
+    } finally {
+      setSnapshotOpState(prev => { const n = { ...prev }; delete n[snapId]; return n; });
+    }
+  }, []);
+
+  // Load vault on mount
+  useEffect(() => {
+    loadInternalSnapshots();
+  }, [loadInternalSnapshots]);
+
+  // ── Auto-Scheduler useEffect ──────────────────────────────────────────────
+  useEffect(() => {
+    if (!autoBackupEnabled) return;
+    const freqMs = {
+      daily:  1 * 24 * 60 * 60 * 1000,
+      '3days': 3 * 24 * 60 * 60 * 1000,
+      weekly: 7 * 24 * 60 * 60 * 1000,
+      onEdit: null, // Handled per-mutation; not time-based
+    };
+    const ms = freqMs[autoBackupFrequency];
+    if (!ms) return;
+
+    const lastAutoRaw = localStorage.getItem('auto_anki_last_auto_backup');
+    const lastAuto = lastAutoRaw ? new Date(lastAutoRaw).getTime() : 0;
+    const now = Date.now();
+    const shouldRun = (now - lastAuto) >= ms;
+
+    if (!shouldRun) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const retCount = parseInt(autoBackupRetention, 10) || 5;
+        await saveInternalSnapshot('auto');
+        await pruneOldSnapshots(retCount);
+        if (!cancelled) {
+          localStorage.setItem('auto_anki_last_auto_backup', new Date().toISOString());
+          const nowStr = new Date().toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
+          setLastBackupTime(nowStr);
+          await loadInternalSnapshots();
+          console.log('[AutoAnki] Auto-snapshot created successfully.');
+        }
+      } catch (e) {
+        console.error('[AutoAnki] Auto-snapshot failed:', e);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [autoBackupEnabled, autoBackupFrequency, autoBackupRetention, loadInternalSnapshots]);
 
 
   // Bind global functions for subject-wise PYT topic management (offline-first IndexedDB)
@@ -37179,6 +37267,14 @@ Return your response strictly as a JSON object matching this schema:
                 deleteLocalCard={deleteLocalCard}
                 setIgnoredConflicts={setIgnoredConflicts}
                 themeMode={settingsThemeMode}
+              />
+
+              {/* Import Backup Modal — globally mounted so it opens from any view */}
+              <ImportBackupModal
+                isOpen={showImportBackupModal}
+                onClose={() => setShowImportBackupModal(false)}
+                themeMode={settingsThemeMode}
+                onImportComplete={handleImportComplete}
               />
 
               {/* Quick FSRS Recall Rating Popover Modal for Subject Tracker & Study Schedule */}

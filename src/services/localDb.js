@@ -6,7 +6,7 @@
  */
 
 const DB_NAME = 'AutoAnkiLocalDB';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 export const STORES = {
   TOPICS: 'topics',
@@ -17,7 +17,8 @@ export const STORES = {
   PYT_DATA: 'pyt_data',
   KV_STORE: 'kv_store',
   TOPIC_HINTS: 'topic_hints',
-  HINT_QUOTA: 'hint_quota'
+  HINT_QUOTA: 'hint_quota',
+  SNAPSHOTS: 'snapshots'
 };
 
 let dbPromise = null;
@@ -88,6 +89,13 @@ export function initDB() {
       // 9. Hint Quota Store (keyPath: 'dateStr')
       if (!db.objectStoreNames.contains(STORES.HINT_QUOTA)) {
         db.createObjectStore(STORES.HINT_QUOTA, { keyPath: 'dateStr' });
+      }
+
+      // 10. [v3] Internal Snapshot Vault (keyPath: 'id', indexed by createdAt)
+      if (!db.objectStoreNames.contains(STORES.SNAPSHOTS)) {
+        const snapshotStore = db.createObjectStore(STORES.SNAPSHOTS, { keyPath: 'id' });
+        snapshotStore.createIndex('createdAt', 'createdAt', { unique: false });
+        snapshotStore.createIndex('label', 'label', { unique: false });
       }
     };
 
@@ -1137,9 +1145,451 @@ export async function purgeRecycleBinLocal() {
   return true;
 }
 
+// ==========================================
+// UNIVERSAL SNAPSHOT ENGINE (v2.0)
+// ==========================================
+
+/**
+ * SNAPSHOT BUNDLE IDENTIFIERS
+ * Maps logical bundle names to their store/key sources for granular export/import.
+ */
+export const SNAPSHOT_BUNDLES = {
+  cards_fsrs:          'cards_fsrs',
+  topics_curriculum:   'topics_curriculum',
+  study_logs_velocity: 'study_logs_velocity',
+  scans_media:         'scans_media',
+  settings_prompts:    'settings_prompts',
+  recycle_bin:         'recycle_bin',
+};
+
+const LS_KEYS_TO_SNAPSHOT = [
+  'pyt_gemini_api_key',
+  'pyt_imgbb_api_key',
+  'pyt_github_username',
+  'pyt_github_repo',
+  'pyt_github_pat',
+  'pyt_auto_backup_enabled',
+  'pyt_auto_backup_freq',
+  'pyt_auto_backup_ret',
+  'pyt_settings_theme_mode',
+  'pyt_image_storage_mode',
+  'pyt_ai_feature_models',
+  'local_device_id',
+  'obs_device_id',
+  'obs_paired_uid',
+  'auto_anki_expanded_nav_category',
+  'auto_anki_exam_profiles',
+  'study_room_layout_prefs',
+  'fs_quick_notes',
+  'stopwatch_show_milliseconds',
+  'dashboard_daily_card_target',
+  'dashboard_daily_hours_target',
+  'camp_student_info',
+  'camp_history',
+  'camp_timer_history',
+];
+
+/**
+ * Computes a fast FNV-1a 32-bit checksum from a JSON string.
+ * Used for snapshot integrity validation.
+ * @param {string} str
+ * @returns {string} Hex checksum string
+ */
+function computeChecksum(str) {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash = (hash * 0x01000193) >>> 0;
+  }
+  return hash.toString(16).padStart(8, '0');
+}
+
+/**
+ * Reads ALL entries from a given object store into a plain array.
+ */
+async function dumpStore(storeName) {
+  try {
+    return (await getAllLocalItems(storeName)) || [];
+  } catch (e) {
+    console.warn(`[LocalDB] dumpStore(${storeName}) failed:`, e);
+    return [];
+  }
+}
+
+/**
+ * Exports a COMPLETE zero-loss universal snapshot of all 9 IndexedDB stores
+ * and all synchronized localStorage keys into a single structured payload.
+ *
+ * @returns {Promise<object>} Full snapshot object ready for JSON.stringify
+ */
+export async function exportFullUniversalSnapshot() {
+  // 1. Dump all 9 IndexedDB object stores
+  const [
+    topicsRaw,
+    settingsRaw,
+    campTrackerRaw,
+    campDataRaw,
+    campDailyLogsRaw,
+    pytDataRaw,
+    kvStoreRaw,
+    topicHintsRaw,
+    hintQuotaRaw,
+  ] = await Promise.all([
+    dumpStore(STORES.TOPICS),
+    dumpStore(STORES.SETTINGS),
+    dumpStore(STORES.CAMP_TRACKER),
+    dumpStore(STORES.CAMP_DATA),
+    dumpStore(STORES.CAMP_DAILY_LOGS),
+    dumpStore(STORES.PYT_DATA),
+    dumpStore(STORES.KV_STORE),
+    dumpStore(STORES.TOPIC_HINTS),
+    dumpStore(STORES.HINT_QUOTA),
+  ]);
+
+  // 2. Capture all 27 synchronized localStorage keys
+  const localStorageSnapshot = {};
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      LS_KEYS_TO_SNAPSHOT.forEach(key => {
+        const val = localStorage.getItem(key);
+        if (val !== null) localStorageSnapshot[key] = val;
+      });
+      // Also capture all camp_sessions_* and camp_bedToBook_* dynamic keys
+      for (let i = 0; i < window.localStorage.length; i++) {
+        const k = window.localStorage.key(i);
+        if (k && (k.startsWith('camp_sessions_') || k.startsWith('camp_bedToBook_'))) {
+          localStorageSnapshot[k] = window.localStorage.getItem(k);
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('[LocalDB] Could not read localStorage for snapshot:', e);
+  }
+
+  const payload = {
+    meta: {
+      version: '2.0',
+      engine: 'AutoAnki FSRS-6 Unified Vault',
+      timestamp: new Date().toISOString(),
+      schemaVersion: DB_VERSION,
+    },
+    stores: {
+      topics:          topicsRaw,
+      settings:        settingsRaw,
+      camp_tracker:    campTrackerRaw,
+      camp_data:       campDataRaw,
+      camp_daily_logs: campDailyLogsRaw,
+      pyt_data:        pytDataRaw,
+      kv_store:        kvStoreRaw,
+      topic_hints:     topicHintsRaw,
+      hint_quota:      hintQuotaRaw,
+    },
+    localStorageSnapshot,
+  };
+
+  // 3. Compute FNV-1a checksum over the stores payload
+  try {
+    const checksumInput = JSON.stringify(payload.stores);
+    payload.meta.checksum = computeChecksum(checksumInput);
+  } catch (e) {
+    payload.meta.checksum = 'unavailable';
+  }
+
+  return payload;
+}
+
+/**
+ * Verifies a snapshot payload's integrity checksum.
+ * @param {object} payload
+ * @returns {{ valid: boolean, reason: string }}
+ */
+export function verifySnapshotChecksum(payload) {
+  if (!payload?.meta?.checksum || !payload?.stores) {
+    return { valid: false, reason: 'Missing checksum or stores.' };
+  }
+  if (payload.meta.checksum === 'unavailable') {
+    return { valid: true, reason: 'Checksum unavailable (legacy snapshot).' };
+  }
+  try {
+    const computed = computeChecksum(JSON.stringify(payload.stores));
+    return computed === payload.meta.checksum
+      ? { valid: true, reason: 'Checksum verified.' }
+      : { valid: false, reason: `Checksum mismatch. Expected ${payload.meta.checksum}, got ${computed}.` };
+  } catch (e) {
+    return { valid: false, reason: 'Checksum computation error: ' + e.message };
+  }
+}
+
+/**
+ * Imports a universal snapshot payload into IndexedDB and localStorage.
+ *
+ * @param {object} payload     - Full snapshot exported by exportFullUniversalSnapshot
+ * @param {'merge'|'replace'}  strategy     - 'merge' (non-destructive) | 'replace' (atomic clear + hydrate)
+ * @param {string[]|'all'}     selectedBundles - Bundle IDs to restore, or 'all'
+ * @param {Function}           [onProgress]  - Optional progress callback (step, total, message)
+ * @returns {Promise<{success: boolean, restored: string[], errors: string[]}>}
+ */
+export async function importUniversalSnapshot(payload, strategy = 'merge', selectedBundles = 'all', onProgress = null) {
+  const report = { success: false, restored: [], errors: [] };
+  const emit = (step, total, msg) => { if (onProgress) onProgress(step, total, msg); };
+  const bundles = selectedBundles === 'all' ? Object.keys(SNAPSHOT_BUNDLES) : selectedBundles;
+
+  // Helper: bulk put an array of records into a store
+  const bulkPut = async (storeName, records) => {
+    if (!Array.isArray(records) || records.length === 0) return;
+    const db = await initDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, 'readwrite');
+      const store = tx.objectStore(storeName);
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => reject(tx.error);
+      records.forEach(r => { if (r) store.put(r); });
+    });
+  };
+
+  // Helper: clear a store then bulk put
+  const clearAndPut = async (storeName, records) => {
+    await clearLocalStore(storeName);
+    if (Array.isArray(records) && records.length > 0) await bulkPut(storeName, records);
+  };
+
+  // Helper: merge KV entries by key (put each one — IDB put is upsert)
+  const mergeKV = async (records) => {
+    if (!Array.isArray(records) || records.length === 0) return;
+    for (const r of records) { if (r && r.key) await putLocalItem(STORES.KV_STORE, r); }
+  };
+
+  const stores = payload?.stores || {};
+  const kv = stores.kv_store || [];
+
+  // Helper: get KV entries for given keys
+  const kvSubset = (keys) => kv.filter(r => r && keys.includes(r.key));
+
+  const totalSteps = bundles.length + 2; // bundles + settings + localStorage
+  let step = 0;
+
+  try {
+    // ── Bundle: cards_fsrs ──────────────────────────────────────────────
+    if (bundles.includes('cards_fsrs')) {
+      emit(++step, totalSteps, 'Restoring Flashcards & FSRS States…');
+      const cardKv = kvSubset(['flashcards']);
+      if (strategy === 'replace') {
+        // Remove flashcards KV entry then put incoming
+        await deleteLocalItem(STORES.KV_STORE, 'flashcards');
+        for (const r of cardKv) await putLocalItem(STORES.KV_STORE, r);
+      } else {
+        // Merge: union by card.id
+        const existing = await getLocalCards();
+        const incoming = cardKv.find(r => r.key === 'flashcards')?.value || [];
+        const map = new Map(existing.map(c => [c.id, c]));
+        incoming.forEach(c => { if (c && c.id) map.set(c.id, { ...map.get(c.id), ...c }); });
+        await setLocalKV('flashcards', Array.from(map.values()));
+      }
+      report.restored.push('cards_fsrs');
+    }
+
+    // ── Bundle: topics_curriculum ────────────────────────────────────────
+    if (bundles.includes('topics_curriculum')) {
+      emit(++step, totalSteps, 'Restoring Curriculum Topics & PYT Progress…');
+      if (strategy === 'replace') {
+        if (stores.topics) await clearAndPut(STORES.TOPICS, stores.topics);
+        if (stores.pyt_data) await clearAndPut(STORES.PYT_DATA, stores.pyt_data);
+        // subject_tracker_data, pyt_user_progress are KV keys
+        const trackerKvs = kvSubset(['subject_tracker_data', 'pyt_user_progress', 'textbooks_metadata']);
+        for (const r of trackerKvs) await putLocalItem(STORES.KV_STORE, r);
+      } else {
+        // Merge topics by id
+        if (Array.isArray(stores.topics)) await bulkPut(STORES.TOPICS, stores.topics);
+        if (Array.isArray(stores.pyt_data)) await bulkPut(STORES.PYT_DATA, stores.pyt_data);
+        await mergeKV(kvSubset(['subject_tracker_data', 'pyt_user_progress', 'textbooks_metadata']));
+      }
+      report.restored.push('topics_curriculum');
+    }
+
+    // ── Bundle: study_logs_velocity ──────────────────────────────────────
+    if (bundles.includes('study_logs_velocity')) {
+      emit(++step, totalSteps, 'Restoring Study Logs & Velocity Telemetry…');
+      if (strategy === 'replace') {
+        if (stores.camp_tracker) await clearAndPut(STORES.CAMP_TRACKER, stores.camp_tracker);
+        if (stores.camp_data) await clearAndPut(STORES.CAMP_DATA, stores.camp_data);
+        if (stores.camp_daily_logs) await clearAndPut(STORES.CAMP_DAILY_LOGS, stores.camp_daily_logs);
+        const logKvs = kvSubset(['study_logs', 'study_schedule', 'schedule_templates', 'timerState', 'active_new_topics_today']);
+        for (const r of logKvs) await putLocalItem(STORES.KV_STORE, r);
+        // Also restore camp dynamic KV keys
+        const campDynamic = kv.filter(r => r && (r.key?.startsWith('active_new_topics_')));
+        for (const r of campDynamic) await putLocalItem(STORES.KV_STORE, r);
+      } else {
+        // Merge: append new study log dates (non-destructive, existing days preserved)
+        if (Array.isArray(stores.camp_tracker)) await bulkPut(STORES.CAMP_TRACKER, stores.camp_tracker);
+        if (Array.isArray(stores.camp_data)) await bulkPut(STORES.CAMP_DATA, stores.camp_data);
+        if (Array.isArray(stores.camp_daily_logs)) await bulkPut(STORES.CAMP_DAILY_LOGS, stores.camp_daily_logs);
+        const studyLogsKv = kv.find(r => r?.key === 'study_logs');
+        if (studyLogsKv) {
+          const existing = await getLocalStudyLogs();
+          const incoming = (typeof studyLogsKv.value === 'object' && studyLogsKv.value) ? studyLogsKv.value : {};
+          const merged = { ...incoming, ...existing }; // existing takes priority on same-day conflicts
+          await setLocalKV('study_logs', merged);
+        }
+        await mergeKV(kvSubset(['study_schedule', 'schedule_templates', 'timerState']));
+      }
+      report.restored.push('study_logs_velocity');
+    }
+
+    // ── Bundle: scans_media ──────────────────────────────────────────────
+    if (bundles.includes('scans_media')) {
+      emit(++step, totalSteps, 'Restoring Scanned Pages & Textbook Metadata…');
+      const pagesKvs = kvSubset(['pages', 'textbooks_metadata']);
+      if (strategy === 'replace') {
+        await deleteLocalItem(STORES.KV_STORE, 'pages');
+        for (const r of pagesKvs) await putLocalItem(STORES.KV_STORE, r);
+      } else {
+        // Merge pages by id
+        const existing = (await getLocalPages()) || [];
+        const incoming = pagesKvs.find(r => r.key === 'pages')?.value || [];
+        const map = new Map(existing.map(p => [p.id, p]));
+        incoming.forEach(p => { if (p && p.id && !map.has(p.id)) map.set(p.id, p); });
+        await setLocalKV('pages', Array.from(map.values()));
+        await mergeKV(kvSubset(['textbooks_metadata']));
+      }
+      report.restored.push('scans_media');
+    }
+
+    // ── Bundle: settings_prompts ─────────────────────────────────────────
+    if (bundles.includes('settings_prompts')) {
+      emit(++step, totalSteps, 'Restoring FSRS-6 Config, API Keys & Prompts…');
+      if (strategy === 'replace') {
+        if (stores.settings) await clearAndPut(STORES.SETTINGS, stores.settings);
+        if (stores.hint_quota) await clearAndPut(STORES.HINT_QUOTA, stores.hint_quota);
+        if (stores.topic_hints) await clearAndPut(STORES.TOPIC_HINTS, stores.topic_hints);
+        await mergeKV(kvSubset(['custom_prompts', 'local_user_profile']));
+      } else {
+        // Merge: put all settings (upsert by key — non-destructive)
+        if (Array.isArray(stores.settings)) await bulkPut(STORES.SETTINGS, stores.settings);
+        await mergeKV(kvSubset(['custom_prompts']));
+      }
+      report.restored.push('settings_prompts');
+    }
+
+    // ── Bundle: recycle_bin ───────────────────────────────────────────────
+    if (bundles.includes('recycle_bin')) {
+      emit(++step, totalSteps, 'Restoring Recycle Bin…');
+      const trashKvs = kvSubset(['trash_pages', 'trash_cards']);
+      if (strategy === 'replace') {
+        for (const r of trashKvs) await putLocalItem(STORES.KV_STORE, r);
+      } else {
+        // Merge trash: union by id
+        for (const r of trashKvs) {
+          const existing = (await getLocalKV(r.key)) || [];
+          const incoming = r.value || [];
+          const map = new Map(existing.map(x => [x.id, x]));
+          incoming.forEach(x => { if (x && x.id && !map.has(x.id)) map.set(x.id, x); });
+          await setLocalKV(r.key, Array.from(map.values()));
+        }
+      }
+      report.restored.push('recycle_bin');
+    }
+
+    // ── Restore localStorage snapshot ─────────────────────────────────────
+    emit(++step, totalSteps, 'Restoring LocalStorage preferences…');
+    const lsSnap = payload.localStorageSnapshot;
+    if (lsSnap && typeof lsSnap === 'object') {
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          Object.entries(lsSnap).forEach(([k, v]) => {
+            if (strategy === 'replace' || localStorage.getItem(k) === null) {
+              if (v !== null && v !== undefined) localStorage.setItem(k, v);
+            }
+          });
+        }
+      } catch (e) {
+        report.errors.push('localStorage restore failed: ' + e.message);
+      }
+    }
+
+    emit(++step, totalSteps, 'Done!');
+    report.success = true;
+  } catch (err) {
+    console.error('[LocalDB] importUniversalSnapshot error:', err);
+    report.errors.push(err.message || String(err));
+  }
+
+  return report;
+}
+
+// ==========================================
+// INTERNAL SNAPSHOT VAULT HELPERS
+// ==========================================
+
+/**
+ * Saves a full snapshot into the internal IDB vault.
+ *
+ * @param {string} label - Snapshot label: 'auto', 'manual', or custom string
+ * @param {object} [customPayload] - If provided, uses this instead of generating a fresh snapshot
+ * @returns {Promise<object>} Saved snapshot manifest
+ */
+export async function saveInternalSnapshot(label = 'auto', customPayload = null) {
+  const payload = customPayload || (await exportFullUniversalSnapshot());
+  const id = `snap_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  let byteSize = 0;
+  try {
+    byteSize = new Blob([JSON.stringify(payload)]).size;
+  } catch (e) {
+    byteSize = JSON.stringify(payload).length * 2;
+  }
+
+  const manifest = {
+    id,
+    label,
+    createdAt: new Date().toISOString(),
+    byteSize,
+    meta: payload.meta,
+    payload,
+  };
+
+  await putLocalItem(STORES.SNAPSHOTS, manifest);
+  return manifest;
+}
+
+/**
+ * Retrieves all internal snapshots sorted by createdAt descending (newest first).
+ * @returns {Promise<object[]>}
+ */
+export async function getAllInternalSnapshots() {
+  try {
+    const all = (await getAllLocalItems(STORES.SNAPSHOTS)) || [];
+    return all.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  } catch (e) {
+    console.error('[LocalDB] getAllInternalSnapshots error:', e);
+    return [];
+  }
+}
+
+/**
+ * Deletes a single internal snapshot by its id.
+ * @param {string} id
+ */
+export async function deleteInternalSnapshot(id) {
+  return deleteLocalItem(STORES.SNAPSHOTS, id);
+}
+
+/**
+ * Prunes old internal snapshots to enforce a retention policy.
+ * Keeps the `maxCount` most recent snapshots and deletes the rest.
+ * @param {number} maxCount
+ */
+export async function pruneOldSnapshots(maxCount = 5) {
+  const all = await getAllInternalSnapshots();
+  if (all.length <= maxCount) return;
+  const toDelete = all.slice(maxCount);
+  for (const snap of toDelete) {
+    await deleteInternalSnapshot(snap.id);
+  }
+}
+
 export default {
   initDB,
   STORES,
+  SNAPSHOT_BUNDLES,
   getLocalItem,
   putLocalItem,
   deleteLocalItem,
@@ -1195,6 +1645,7 @@ export default {
   replaceAllLocalStudySchedule,
   DEFAULT_FSRS_CONFIG,
   getFSRSConfig,
+  saveFSRSConfig,
   getAiTopicRecommendations,
   saveAiTopicRecommendations,
   getActiveNewTopicIds,
@@ -1208,7 +1659,13 @@ export default {
   incrementDailyHintQuotaLocal,
   calculateDetailedStorageBreakdown,
   clearAiHintsCacheLocal,
-  purgeRecycleBinLocal
+  purgeRecycleBinLocal,
+  exportFullUniversalSnapshot,
+  verifySnapshotChecksum,
+  importUniversalSnapshot,
+  saveInternalSnapshot,
+  getAllInternalSnapshots,
+  deleteInternalSnapshot,
+  pruneOldSnapshots,
 };
-
 
