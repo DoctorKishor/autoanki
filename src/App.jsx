@@ -19,6 +19,10 @@ import CampDashboard from './components/CampTracker/CampDashboard';
 import DashboardGrid from './components/DashboardGrid';
 import AboutDashboard from './components/AboutDashboard';
 import StorageUsageSection from './components/StorageUsageSection';
+import GoogleDriveSyncSection from './components/GoogleDriveSyncSection';
+import GoogleDriveConflictModal from './components/GoogleDriveConflictModal';
+import { getGoogleDriveAuthState } from './services/googleDriveAuth';
+import { syncWithGoogleDrive, triggerDebouncedSmartPush } from './services/googleDriveSync';
 import {
   BG_CATEGORIES, STATIC_BG_GRADIENTS, SOUND_TRACKS, STUDY_QUOTES, OBS_CSS_TEMPLATE,
   CtrlBtn, BgPanel, SoundsPanel, QuotesPanel, StatsPanel, TimerSettingsPanel, WidgetsPanel, FloatingWidget,
@@ -3854,7 +3858,17 @@ export default function App() {
           </div>
         </motion.div>
 
-        {/* Section 2: Telegram-Style Storage Usage & Cache Manager */}
+        {/* Section 2: Google Drive Cloud Sync */}
+        <GoogleDriveSyncSection
+          isDark={settingsThemeMode === 'dark'}
+          themeMode={settingsThemeMode}
+          isOpen={isSettingsSectionOpen('googleDrive')}
+          onToggle={() => handleSettingsSectionClick('googleDrive')}
+          onMouseEnter={() => handleSettingsSectionMouseEnter('googleDrive')}
+          onMouseLeave={() => handleSettingsSectionMouseLeave('googleDrive')}
+        />
+
+        {/* Section 3: Telegram-Style Storage Usage & Cache Manager */}
         <StorageUsageSection
           isDark={settingsThemeMode === 'dark'}
           themeMode={settingsThemeMode}
@@ -3868,7 +3882,7 @@ export default function App() {
           }}
         />
 
-        {/* Section 3: API & Integration Credentials */}
+        {/* Section 4: API & Integration Credentials */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -4858,6 +4872,63 @@ export default function App() {
   });
   const [isSyncing, setIsSyncing] = useState(false);
   const [mobileLibraryLevel, setMobileLibraryLevel] = useState('folders');
+
+  // --- GOOGLE DRIVE CLOUD SYNC STATE ---
+  const [gdriveAuthState, setGdriveAuthState] = useState(null);
+  const [gdriveSyncState, setGdriveSyncState] = useState({ isSyncing: false, step: 0, total: 0, message: '' });
+  const [gdriveConflictData, setGdriveConflictData] = useState(null);
+
+  // Initialize and listen to Google Drive Auth & Sync events
+  useEffect(() => {
+    getGoogleDriveAuthState().then(state => {
+      setGdriveAuthState(state);
+      if (state?.accessToken) {
+        // Fast background check on boot
+        syncWithGoogleDrive({
+          force: false,
+          onConflict: (conflict) => setGdriveConflictData(conflict)
+        }).catch(err => console.warn('[App] Boot sync error:', err));
+      }
+    });
+
+    const handleAuthChanged = (e) => {
+      setGdriveAuthState(e.detail);
+    };
+
+    const handleSyncStatus = (e) => {
+      const { status, message, step, total } = e.detail || {};
+      if (status === 'syncing') {
+        setGdriveSyncState({ isSyncing: true, step: step || 0, total: total || 10, message: message || 'Syncing...' });
+      } else if (status === 'synced') {
+        setGdriveSyncState({ isSyncing: false, step: 0, total: 0, message: message || 'In sync' });
+      } else if (status === 'error' || status === 'cancelled') {
+        setGdriveSyncState({ isSyncing: false, step: 0, total: 0, message: '' });
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        getGoogleDriveAuthState().then(state => {
+          if (state?.accessToken) {
+            syncWithGoogleDrive({
+              force: false,
+              onConflict: (conflict) => setGdriveConflictData(conflict)
+            }).catch(() => {});
+          }
+        });
+      }
+    };
+
+    window.addEventListener('gdrive-auth-changed', handleAuthChanged);
+    window.addEventListener('gdrive-sync-status', handleSyncStatus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('gdrive-auth-changed', handleAuthChanged);
+      window.removeEventListener('gdrive-sync-status', handleSyncStatus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
 
   // --- OBS OVERLAY URL PARAMETERS & BYPASS LOGIN ---
   const params = useMemo(() => new URLSearchParams(typeof window !== 'undefined' ? window.location.search : ''), []);
@@ -9145,6 +9216,24 @@ JSON Format:
       setIsSyncing(false);
     }
   }, [currentTab, isSyncing, loadPages, loadFolderCards, loadAllCards, loadStudyLogs, loadTrash]);
+
+  // --- UNIFIED GLOBAL HEADER SYNC ACTION ---
+  const handleHeaderSync = useCallback(async () => {
+    if (isSyncing || gdriveSyncState.isSyncing) return;
+
+    if (gdriveAuthState?.accessToken) {
+      try {
+        await syncWithGoogleDrive({
+          force: true,
+          onConflict: (conflict) => setGdriveConflictData(conflict)
+        });
+      } catch (err) {
+        console.warn('[App] Header Google Drive sync error:', err);
+      }
+    }
+    await handleSyncCurrentPage();
+  }, [isSyncing, gdriveSyncState.isSyncing, gdriveAuthState, handleSyncCurrentPage]);
+
   // --- DYNAMIC STUDY STREAK CALCULATOR ---
   const streakStats = useMemo(() => {
     const dates = Object.keys(studyLogs).filter(d => {
@@ -23260,14 +23349,17 @@ Return your response strictly as a JSON object matching this schema:
                       </button>
                     )}
                     <button
-                      onClick={handleSyncCurrentPage}
-                      disabled={isSyncing}
-                      className={`w-9 h-9 rounded-xl flex items-center justify-center transition active:scale-95 cursor-pointer ${
+                      onClick={handleHeaderSync}
+                      disabled={isSyncing || gdriveSyncState.isSyncing}
+                      className={`relative w-9 h-9 rounded-xl flex items-center justify-center transition active:scale-95 cursor-pointer ${
                         settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300 hover:text-white' : 'neu-btn-light text-slate-700 hover:text-slate-950'
-                      } ${isSyncing ? 'opacity-60' : ''}`}
-                      title="Sync current page data"
+                      } ${(isSyncing || gdriveSyncState.isSyncing) ? 'opacity-75' : ''}`}
+                      title={gdriveSyncState.isSyncing ? gdriveSyncState.message : (gdriveAuthState ? 'Sync with Google Drive & LocalDB' : 'Sync current page data')}
                     >
-                      <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin text-blue-500' : ''}`} />
+                      <RefreshCw className={`w-4 h-4 ${(isSyncing || gdriveSyncState.isSyncing) ? 'animate-spin text-blue-500' : ''}`} />
+                      <span className={`absolute top-1.5 right-1.5 w-2 h-2 rounded-full ${
+                        gdriveSyncState.isSyncing ? 'bg-amber-500 animate-ping' : (gdriveAuthState ? 'bg-green-500 shadow-xs shadow-green-500/50' : 'bg-slate-400')
+                      }`} />
                     </button>
                   </div>
                 </header>
@@ -28376,21 +28468,38 @@ Return your response strictly as a JSON object matching this schema:
                         </div>
                       )}
                       <button
-                        onClick={handleSyncCurrentPage}
-                        disabled={isSyncing}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border ${isSyncing
-                          ? 'bg-blue-50/50 text-blue-400 border-blue-100/50 cursor-not-allowed'
-                          : 'bg-white hover:bg-blue-50 text-blue-600 hover:text-blue-700 border-blue-200 active:scale-95 hover:shadow-md hover:shadow-blue-500/5'
-                          }`}
-                        title={`Sync ${currentTab} data from Local Database`}
+                        onClick={handleHeaderSync}
+                        disabled={isSyncing || gdriveSyncState.isSyncing}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border ${
+                          (isSyncing || gdriveSyncState.isSyncing)
+                            ? 'bg-blue-50/50 text-blue-500 border-blue-200 shadow-sm cursor-wait'
+                            : (settingsThemeMode === 'dark'
+                                ? 'neu-btn-dark text-slate-200 border-gray-800 active:scale-95'
+                                : 'bg-white hover:bg-blue-50 text-blue-600 hover:text-blue-700 border-blue-200 active:scale-95 hover:shadow-md hover:shadow-blue-500/5')
+                        }`}
+                        title={gdriveSyncState.isSyncing ? gdriveSyncState.message : (gdriveAuthState ? 'Sync with Google Drive & LocalDB' : `Sync ${currentTab} data from Local Database`)}
                       >
-                        <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : 'transition-transform duration-500 hover:rotate-180'}`} />
-                        <span>{isSyncing ? 'Syncing...' : 'Sync Page'}</span>
+                        <RefreshCw className={`w-3.5 h-3.5 ${(isSyncing || gdriveSyncState.isSyncing) ? 'animate-spin text-blue-500' : 'transition-transform duration-500 hover:rotate-180'}`} />
+                        <span>
+                          {gdriveSyncState.isSyncing
+                            ? (gdriveSyncState.message || 'Syncing…')
+                            : (isSyncing ? 'Syncing…' : (gdriveAuthState ? 'Drive Sync' : 'Sync Page'))}
+                        </span>
                       </button>
 
-                      <div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 ${user ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700'}`}>
-                        <div className={`w-1.5 h-1.5 rounded-full ${user ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'}`}></div>
-                        {user ? 'Online' : 'Offline'}
+                      <div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 ${
+                        gdriveAuthState
+                          ? 'bg-green-500/10 text-green-600 border border-green-500/30'
+                          : (user ? 'bg-blue-500/10 text-blue-600 border border-blue-500/20' : 'bg-amber-500/10 text-amber-600 border border-amber-500/20')
+                      }`}>
+                        <div className={`w-1.5 h-1.5 rounded-full ${
+                          gdriveSyncState.isSyncing
+                            ? 'bg-amber-500 animate-pulse'
+                            : (gdriveAuthState ? 'bg-green-500 animate-pulse' : 'bg-blue-500')
+                        }`} />
+                        {gdriveSyncState.isSyncing
+                          ? 'Syncing'
+                          : (gdriveAuthState ? 'Cloud Vault' : (user ? 'Online' : 'Offline'))}
                       </div>
                     </div>
                   </header>
@@ -37119,6 +37228,19 @@ Return your response strictly as a JSON object matching this schema:
                 saveLocalCard={saveLocalCard}
                 deleteLocalCard={deleteLocalCard}
                 setIgnoredConflicts={setIgnoredConflicts}
+                themeMode={settingsThemeMode}
+              />
+
+              {/* Google Drive Anki-Style Sync Conflict Modal */}
+              <GoogleDriveConflictModal
+                isOpen={Boolean(gdriveConflictData)}
+                conflictData={gdriveConflictData}
+                onResolve={(resolution) => {
+                  if (gdriveConflictData?.onResolve) {
+                    gdriveConflictData.onResolve(resolution);
+                  }
+                  setGdriveConflictData(null);
+                }}
                 themeMode={settingsThemeMode}
               />
 
