@@ -830,7 +830,7 @@ const buildTree = (paths, pages = [], deckCardCounts = {}) => {
         parts.forEach(part => {
           if (current.children[part]) current = current.children[part];
         });
-        if (current.path === deckPath) current.cCount = count;
+        if (current.path.trim().toLowerCase() === (deckPath || '').trim().toLowerCase()) current.cCount = count;
       } else {
         root.cCount = count;
       }
@@ -17425,6 +17425,33 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
+
+      // Detect Cloze Deletion syntax (e.g. {{c1::answer::hint}})
+      if (/\{\{c\d+::.*?\}\}/i.test(line)) {
+        if (currentQ) {
+          parsedCards.push({
+            id: generateId(),
+            type: 'Basic',
+            front: currentQ.trim(),
+            back: currentA.trim() || 'No answer specified',
+            text: '',
+            source: 'local_regex'
+          });
+          currentQ = '';
+          currentA = '';
+          collectingAns = false;
+        }
+        parsedCards.push({
+          id: generateId(),
+          type: 'Cloze',
+          front: '',
+          back: '',
+          text: line.replace(/^(?:\d+[\.:\)\s]+|\*+Q:?\*+)\s*/i, '').trim(),
+          source: 'local_regex'
+        });
+        continue;
+      }
+
       const aMatch = line.match(aPrefixRegex);
       if (aMatch) {
         currentA = currentA ? `${currentA}\n${aMatch[1]}` : aMatch[1];
@@ -19342,8 +19369,8 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
           };
         });
 
-        for (const card of _savedCards) {
-          await saveLocalCard(card);
+        if (_savedCards.length > 0) {
+          await saveLocalCards(_savedCards);
         }
       }
 
@@ -23385,52 +23412,74 @@ Return your response strictly as a JSON object matching this schema:
                         transition={{ duration: 0.6, delay: 0.18, ease: [0.16, 1, 0.3, 1] }}
                         className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-2 rounded-2xl shrink-0 space-y-2`}
                       >
-                        <div className={`grid grid-cols-2 gap-1.5 p-1 rounded-xl ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-gray-200/80'}`}>
-                          <button
-                            type="button"
-                            onClick={() => setCardGenerationInputMode('image')}
-                            className={`py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-200 active:scale-95 cursor-pointer ${cardGenerationInputMode === 'image'
-                              ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400 border border-blue-500/30' : 'neu-btn-light text-blue-600 border border-blue-200/70')
-                              : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200 font-bold' : 'text-gray-500 hover:text-gray-800 font-bold')
-                              }`}
-                          >
-                            <span>🖼️</span> Image Mode
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setCardGenerationInputMode('text')}
-                            className={`py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-200 active:scale-95 cursor-pointer ${cardGenerationInputMode === 'text'
-                              ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400 border border-blue-500/30' : 'neu-btn-light text-blue-600 border border-blue-200/70')
-                              : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200 font-bold' : 'text-gray-500 hover:text-gray-800 font-bold')
-                              }`}
-                          >
-                            <span>📝</span> Raw Text Mode
-                          </button>
+                        <div className={`relative flex items-center p-1 rounded-xl w-full select-none ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-gray-200/80'}`}>
+                          {/* Single Sliding Pill Indicator with exact 0.6s cubic-bezier(0,0,0,1) transition */}
+                          <div
+                            className={`absolute top-1 bottom-1 rounded-lg shadow-sm ${settingsThemeMode === 'dark' ? 'neu-btn-dark border border-blue-500/30' : 'neu-btn-light border border-blue-200/70'}`}
+                            style={{
+                              width: `calc((100% - 0.5rem) / 2)`,
+                              left: `calc(0.25rem + ${cardGenerationInputMode === 'image' ? 0 : 1} * ((100% - 0.5rem) / 2))`,
+                              transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                            }}
+                          />
+                          <div className="grid grid-cols-2 w-full relative z-10 gap-0">
+                            <button
+                              type="button"
+                              onClick={() => setCardGenerationInputMode('image')}
+                              className={`py-2 px-3 text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-colors duration-300 cursor-pointer ${cardGenerationInputMode === 'image'
+                                ? (settingsThemeMode === 'dark' ? 'text-blue-400 font-black' : 'text-blue-600 font-black')
+                                : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200 font-bold' : 'text-gray-500 hover:text-gray-800 font-bold')
+                                }`}
+                            >
+                              <span>🖼️</span> Image Mode
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setCardGenerationInputMode('text')}
+                              className={`py-2 px-3 text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-colors duration-300 cursor-pointer ${cardGenerationInputMode === 'text'
+                                ? (settingsThemeMode === 'dark' ? 'text-blue-400 font-black' : 'text-blue-600 font-black')
+                                : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200 font-bold' : 'text-gray-500 hover:text-gray-800 font-bold')
+                                }`}
+                            >
+                              <span>📝</span> Raw Text Mode
+                            </button>
+                          </div>
                         </div>
 
                         {/* Sub-Mode Toggle inside Raw Text Mode */}
                         {cardGenerationInputMode === 'text' && (
-                          <div className={`grid grid-cols-2 gap-1.5 p-1 rounded-xl animate-in fade-in duration-300 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-gray-200/80'}`}>
-                            <button
-                              type="button"
-                              onClick={() => setRawTextSubMode('pure')}
-                              className={`py-2 px-2.5 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-95 cursor-pointer ${rawTextSubMode === 'pure'
-                                ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-amber-400 border border-amber-500/30' : 'neu-btn-light text-amber-600 border border-amber-200/70')
-                                : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-800')
-                                }`}
-                            >
-                              <span>⚡</span> Pure Parser
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setRawTextSubMode('ai')}
-                              className={`py-2 px-2.5 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-95 cursor-pointer ${rawTextSubMode === 'ai'
-                                ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-purple-400 border border-purple-500/30' : 'neu-btn-light text-purple-600 border border-purple-200/70')
-                                : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-800')
-                                }`}
-                            >
-                              <span>🧠</span> AI Extractor
-                            </button>
+                          <div className={`relative flex items-center p-1 rounded-xl w-full select-none animate-in fade-in duration-300 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-gray-200/80'}`}>
+                            {/* Single Sliding Pill Indicator with exact 0.6s cubic-bezier(0,0,0,1) transition */}
+                            <div
+                              className={`absolute top-1 bottom-1 rounded-lg shadow-sm ${settingsThemeMode === 'dark' ? 'neu-btn-dark border border-amber-500/30' : 'neu-btn-light border border-amber-200/70'}`}
+                              style={{
+                                width: `calc((100% - 0.5rem) / 2)`,
+                                left: `calc(0.25rem + ${rawTextSubMode === 'pure' ? 0 : 1} * ((100% - 0.5rem) / 2))`,
+                                transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                              }}
+                            />
+                            <div className="grid grid-cols-2 w-full relative z-10 gap-0">
+                              <button
+                                type="button"
+                                onClick={() => setRawTextSubMode('pure')}
+                                className={`py-1.5 px-2.5 text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-colors duration-300 cursor-pointer ${rawTextSubMode === 'pure'
+                                  ? (settingsThemeMode === 'dark' ? 'text-amber-400 font-black' : 'text-amber-600 font-black')
+                                  : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200 font-bold' : 'text-gray-500 hover:text-gray-800 font-bold')
+                                  }`}
+                              >
+                                <span>⚡</span> Pure Parser
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setRawTextSubMode('ai')}
+                                className={`py-1.5 px-2.5 text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-colors duration-300 cursor-pointer ${rawTextSubMode === 'ai'
+                                  ? (settingsThemeMode === 'dark' ? 'text-purple-400 font-black' : 'text-purple-600 font-black')
+                                  : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200 font-bold' : 'text-gray-500 hover:text-gray-800 font-bold')
+                                  }`}
+                              >
+                                <span>🧠</span> AI Extractor
+                              </button>
+                            </div>
                           </div>
                         )}
                       </motion.div>
@@ -28487,52 +28536,74 @@ Return your response strictly as a JSON object matching this schema:
                             transition={{ duration: 0.5, delay: 0.05 }}
                             className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-2 rounded-2xl shrink-0 space-y-2`}
                           >
-                            <div className={`grid grid-cols-2 gap-1.5 p-1 rounded-xl ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-gray-200/80'}`}>
-                              <button
-                                type="button"
-                                onClick={() => setCardGenerationInputMode('image')}
-                                className={`py-2 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-200 active:scale-95 cursor-pointer ${cardGenerationInputMode === 'image'
-                                  ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400 border border-blue-500/30' : 'neu-btn-light text-blue-600 border border-blue-200/70')
-                                  : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200 font-bold' : 'text-gray-500 hover:text-gray-800 font-bold')
-                                  }`}
-                              >
-                                <span>🖼️</span> Image Mode
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setCardGenerationInputMode('text')}
-                                className={`py-2 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-200 active:scale-95 cursor-pointer ${cardGenerationInputMode === 'text'
-                                  ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400 border border-blue-500/30' : 'neu-btn-light text-blue-600 border border-blue-200/70')
-                                  : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200 font-bold' : 'text-gray-500 hover:text-gray-800 font-bold')
-                                  }`}
-                              >
-                                <span>📝</span> Raw Text Mode
-                              </button>
+                            <div className={`relative flex items-center p-1 rounded-xl w-full select-none ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-gray-200/80'}`}>
+                              {/* Single Sliding Pill Indicator with exact 0.6s cubic-bezier(0,0,0,1) transition */}
+                              <div
+                                className={`absolute top-1 bottom-1 rounded-lg shadow-sm ${settingsThemeMode === 'dark' ? 'neu-btn-dark border border-blue-500/30' : 'neu-btn-light border border-blue-200/70'}`}
+                                style={{
+                                  width: `calc((100% - 0.5rem) / 2)`,
+                                  left: `calc(0.25rem + ${cardGenerationInputMode === 'image' ? 0 : 1} * ((100% - 0.5rem) / 2))`,
+                                  transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                                }}
+                              />
+                              <div className="grid grid-cols-2 w-full relative z-10 gap-0">
+                                <button
+                                  type="button"
+                                  onClick={() => setCardGenerationInputMode('image')}
+                                  className={`py-2 px-3 text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-colors duration-300 cursor-pointer ${cardGenerationInputMode === 'image'
+                                    ? (settingsThemeMode === 'dark' ? 'text-blue-400 font-black' : 'text-blue-600 font-black')
+                                    : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200 font-bold' : 'text-gray-500 hover:text-gray-800 font-bold')
+                                    }`}
+                                >
+                                  <span>🖼️</span> Image Mode
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setCardGenerationInputMode('text')}
+                                  className={`py-2 px-3 text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-colors duration-300 cursor-pointer ${cardGenerationInputMode === 'text'
+                                    ? (settingsThemeMode === 'dark' ? 'text-blue-400 font-black' : 'text-blue-600 font-black')
+                                    : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200 font-bold' : 'text-gray-500 hover:text-gray-800 font-bold')
+                                    }`}
+                                >
+                                  <span>📝</span> Raw Text Mode
+                                </button>
+                              </div>
                             </div>
 
                             {/* Sub-Mode Toggle inside Raw Text Mode */}
                             {cardGenerationInputMode === 'text' && (
-                              <div className={`grid grid-cols-2 gap-1.5 p-1 rounded-xl animate-in fade-in duration-300 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-gray-200/80'}`}>
-                                <button
-                                  type="button"
-                                  onClick={() => setRawTextSubMode('pure')}
-                                  className={`py-1.5 px-2 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-95 cursor-pointer ${rawTextSubMode === 'pure'
-                                    ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-amber-400 border border-amber-500/30' : 'neu-btn-light text-amber-600 border border-amber-200/70')
-                                    : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-800')
-                                    }`}
-                                >
-                                  <span>⚡</span> Pure Parser
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setRawTextSubMode('ai')}
-                                  className={`py-1.5 px-2 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-95 cursor-pointer ${rawTextSubMode === 'ai'
-                                    ? (settingsThemeMode === 'dark' ? 'neu-btn-dark text-purple-400 border border-purple-500/30' : 'neu-btn-light text-purple-600 border border-purple-200/70')
-                                    : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-800')
-                                    }`}
-                                >
-                                  <span>🧠</span> AI Extractor
-                                </button>
+                              <div className={`relative flex items-center p-1 rounded-xl w-full select-none animate-in fade-in duration-300 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800/80' : 'neu-pressed-light border border-gray-200/80'}`}>
+                                {/* Single Sliding Pill Indicator with exact 0.6s cubic-bezier(0,0,0,1) transition */}
+                                <div
+                                  className={`absolute top-1 bottom-1 rounded-lg shadow-sm ${settingsThemeMode === 'dark' ? 'neu-btn-dark border border-amber-500/30' : 'neu-btn-light border border-amber-200/70'}`}
+                                  style={{
+                                    width: `calc((100% - 0.5rem) / 2)`,
+                                    left: `calc(0.25rem + ${rawTextSubMode === 'pure' ? 0 : 1} * ((100% - 0.5rem) / 2))`,
+                                    transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                                  }}
+                                />
+                                <div className="grid grid-cols-2 w-full relative z-10 gap-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => setRawTextSubMode('pure')}
+                                    className={`py-1.5 px-2 text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-colors duration-300 cursor-pointer ${rawTextSubMode === 'pure'
+                                      ? (settingsThemeMode === 'dark' ? 'text-amber-400 font-black' : 'text-amber-600 font-black')
+                                      : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200 font-bold' : 'text-gray-500 hover:text-gray-800 font-bold')
+                                      }`}
+                                  >
+                                    <span>⚡</span> Pure Parser
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setRawTextSubMode('ai')}
+                                    className={`py-1.5 px-2 text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-colors duration-300 cursor-pointer ${rawTextSubMode === 'ai'
+                                      ? (settingsThemeMode === 'dark' ? 'text-purple-400 font-black' : 'text-purple-600 font-black')
+                                      : (settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-gray-200 font-bold' : 'text-gray-500 hover:text-gray-800 font-bold')
+                                      }`}
+                                  >
+                                    <span>🧠</span> AI Extractor
+                                  </button>
+                                </div>
                               </div>
                             )}
                           </motion.div>
@@ -37943,23 +38014,29 @@ Return your response strictly as a JSON object matching this schema:
               {/* MANUAL CROP & REVIEW WORKSPACE MODAL */}
               {isCustomCropModalOpen && (
                 <div className="fixed inset-0 bg-[#090d16]/75 backdrop-blur-md z-[230] flex items-center justify-center p-4 lg:p-6 animate-in fade-in duration-300">
-                  <div className="bg-white w-full max-w-7xl h-[94vh] rounded-[2.5rem] shadow-2xl border border-gray-150 overflow-hidden flex flex-col lg:flex-row animate-in zoom-in-95 duration-300 relative">
+                  <div className={`w-full max-w-7xl h-[94vh] rounded-[2.5rem] shadow-2xl border overflow-hidden flex flex-col lg:flex-row animate-in zoom-in-95 duration-300 relative ${
+                    settingsThemeMode === 'dark' ? 'neu-card-dark text-white border-gray-800 bg-[#222730]' : 'bg-white text-gray-900 border-gray-150'
+                  }`}>
 
                     {/* Left Sidebar Queue */}
-                    <div className="w-full lg:w-80 border-r border-gray-100 flex flex-col h-full bg-gray-50/50 shrink-0 text-left">
-                      <div className="p-6 border-b border-gray-100 bg-white">
+                    <div className={`w-full lg:w-80 border-r flex flex-col h-full shrink-0 text-left ${
+                      settingsThemeMode === 'dark' ? 'border-gray-800 bg-[#1e232b]' : 'border-gray-100 bg-gray-50/50'
+                    }`}>
+                      <div className={`p-6 border-b ${settingsThemeMode === 'dark' ? 'border-gray-800 bg-[#222730]' : 'border-gray-100 bg-white'}`}>
                         <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center shadow-inner">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-inner ${
+                            settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400' : 'bg-blue-100 text-blue-600'
+                          }`}>
                             <ImageIcon className="w-4 h-4" />
                           </div>
                           <div>
-                            <h3 className="text-sm font-black text-gray-900 tracking-tight leading-none">Export Queue</h3>
+                            <h3 className={`text-sm font-black tracking-tight leading-none ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>Export Queue</h3>
                             <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider mt-1 block">In-order card preview</span>
                           </div>
                         </div>
                       </div>
 
-                      <div className="flex-grow overflow-y-auto p-4 space-y-2">
+                      <div className="flex-grow overflow-y-auto p-4 space-y-2 custom-scrollbar">
                         {customCropCards.map((card, idx) => {
                           const isActive = currentCropIndex === idx;
                           const isCloze = card.type === 'Cloze';
@@ -37969,21 +38046,23 @@ Return your response strictly as a JSON object matching this schema:
                             <button
                               key={card.id}
                               onClick={() => setCurrentCropIndex(idx)}
-                              className={`w-full p-4 rounded-2xl border text-left transition flex items-start gap-3 group relative ${isActive
+                              className={`w-full p-4 rounded-2xl border text-left transition flex items-start gap-3 group relative cursor-pointer ${isActive
                                 ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/10'
-                                : 'bg-white border-gray-200/80 hover:border-blue-300 text-gray-700'
+                                : settingsThemeMode === 'dark'
+                                  ? 'neu-pressed-dark border-gray-800 hover:border-blue-500/50 text-gray-200'
+                                  : 'bg-white border-gray-200/80 hover:border-blue-300 text-gray-700'
                                 }`}
                             >
-                              <span className={`text-[10px] font-mono font-black shrink-0 px-2 py-0.5 rounded-full ${isActive ? 'bg-blue-700 text-white' : 'bg-gray-100 text-gray-500'
+                              <span className={`text-[10px] font-mono font-black shrink-0 px-2 py-0.5 rounded-full ${isActive ? 'bg-blue-700 text-white' : (settingsThemeMode === 'dark' ? 'bg-slate-700/80 text-gray-300' : 'bg-gray-100 text-gray-500')
                                 }`}>
                                 #{idx + 1}
                               </span>
                               <div className="flex-1 min-w-0">
-                                <div className={`text-[11px] font-black truncate ${isActive ? 'text-white' : 'text-gray-900'}`}>
+                                <div className={`text-[11px] font-black truncate ${isActive ? 'text-white' : (settingsThemeMode === 'dark' ? 'text-gray-100' : 'text-gray-900')}`}>
                                   {textSnippet || 'No question text'}
                                 </div>
                                 <div className="flex items-center gap-1.5 mt-1.5">
-                                  <span className={`text-[8px] font-bold px-1.5 py-0.2 rounded ${isActive ? 'bg-blue-500 text-blue-100' : 'bg-gray-100 text-gray-500 border border-gray-200'
+                                  <span className={`text-[8px] font-bold px-1.5 py-0.2 rounded ${isActive ? 'bg-blue-500 text-blue-100' : (settingsThemeMode === 'dark' ? 'bg-slate-700 text-gray-300' : 'bg-gray-100 text-gray-500 border border-gray-200')
                                     }`}>
                                     {card.type || 'Basic'}
                                   </span>
@@ -38016,15 +38095,21 @@ Return your response strictly as a JSON object matching this schema:
                       const isCloze = card.type === 'Cloze';
 
                       return (
-                        <div className="flex-1 flex flex-col h-full overflow-hidden bg-white text-left">
+                        <div className={`flex-1 flex flex-col h-full overflow-hidden text-left ${
+                          settingsThemeMode === 'dark' ? 'bg-[#222730] text-white' : 'bg-white text-slate-800'
+                        }`}>
                           {/* Workspace Header */}
-                          <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shrink-0 bg-white">
+                          <div className={`p-6 border-b flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shrink-0 ${
+                            settingsThemeMode === 'dark' ? 'border-gray-800 bg-[#222730]' : 'border-gray-100 bg-white'
+                          }`}>
                             <div>
                               <div className="flex items-center gap-2">
-                                <span className="text-xs font-black text-gray-900">
+                                <span className={`text-xs font-black ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                                   Card {currentCropIndex + 1} of {customCropCards.length}
                                 </span>
-                                <span className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-bold border border-blue-100">
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
+                                  settingsThemeMode === 'dark' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-100'
+                                }`}>
                                   {card.deck || hierarchy || (deckPaths[0] || 'General')}
                                 </span>
                               </div>
@@ -38049,7 +38134,7 @@ Return your response strictly as a JSON object matching this schema:
                                     });
                                     await syncCardToLocalDb(updatedCard);
                                   }}
-                                  className={`px-4 py-2 rounded-xl border text-xs font-black transition flex items-center gap-1.5 ${card.excludeImage
+                                  className={`px-4 py-2 rounded-xl border text-xs font-black transition flex items-center gap-1.5 cursor-pointer ${card.excludeImage
                                     ? 'bg-emerald-50 border-emerald-250 text-emerald-600 hover:bg-emerald-100/50'
                                     : 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100/50'
                                     }`}
@@ -38070,26 +38155,38 @@ Return your response strictly as a JSON object matching this schema:
                                 <button
                                   onClick={() => setCurrentCropIndex(prev => Math.max(0, prev - 1))}
                                   disabled={currentCropIndex === 0}
-                                  className="w-9 h-9 border border-gray-250 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-white rounded-xl flex items-center justify-center transition active:scale-95 shrink-0"
+                                  className={`w-9 h-9 border rounded-xl flex items-center justify-center transition active:scale-95 shrink-0 cursor-pointer ${
+                                    settingsThemeMode === 'dark'
+                                      ? 'border-gray-700 bg-slate-800 hover:bg-slate-700 text-white disabled:opacity-30'
+                                      : 'border-gray-250 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-40'
+                                  }`}
                                 >
-                                  <ChevronLeft className="w-5 h-5 text-gray-700" />
+                                  <ChevronLeft className="w-5 h-5" />
                                 </button>
                                 <button
                                   onClick={() => setCurrentCropIndex(prev => Math.min(customCropCards.length - 1, prev + 1))}
                                   disabled={currentCropIndex === customCropCards.length - 1}
-                                  className="w-9 h-9 border border-gray-250 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-white rounded-xl flex items-center justify-center transition active:scale-95 shrink-0"
+                                  className={`w-9 h-9 border rounded-xl flex items-center justify-center transition active:scale-95 shrink-0 cursor-pointer ${
+                                    settingsThemeMode === 'dark'
+                                      ? 'border-gray-700 bg-slate-800 hover:bg-slate-700 text-white disabled:opacity-30'
+                                      : 'border-gray-250 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-40'
+                                  }`}
                                 >
-                                  <ChevronRight className="w-5 h-5 text-gray-700" />
+                                  <ChevronRight className="w-5 h-5" />
                                 </button>
                               </div>
                             </div>
                           </div>
 
                           {/* Beautiful Full Card Text Panel (Shows Full Card Question & Answer) */}
-                          <div className="px-6 py-4 bg-gray-50/60 border-b border-gray-100 flex flex-col gap-3 shrink-0 text-xs">
+                          <div className={`px-6 py-4 border-b flex flex-col gap-3 shrink-0 text-xs ${
+                            settingsThemeMode === 'dark' ? 'bg-[#1e232b] border-gray-800' : 'bg-gray-50/60 border-gray-100'
+                          }`}>
                             {isCloze ? (
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="bg-white p-3 rounded-xl border border-gray-200/60 shadow-sm flex flex-col focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-400 transition-all duration-200">
+                                <div className={`p-3 rounded-xl border shadow-sm flex flex-col focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-400 transition-all duration-200 ${
+                                  settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-700 bg-[#222730]' : 'bg-white border-gray-200/60'
+                                }`}>
                                   <span className="text-[9px] font-black uppercase text-blue-500 tracking-wider block mb-1">Cloze Text (Question)</span>
                                   <textarea
                                     value={card.text || ""}
@@ -38103,11 +38200,15 @@ Return your response strictly as a JSON object matching this schema:
                                       });
                                       await syncCardToLocalDb(updatedCard);
                                     }}
-                                    className="w-full text-gray-800 font-medium text-xs bg-transparent border-0 p-0 focus:ring-0 focus:outline-none resize-none leading-relaxed h-[80px] select-text custom-scrollbar"
+                                    className={`w-full font-medium text-xs bg-transparent border-0 p-0 focus:ring-0 focus:outline-none resize-none leading-relaxed h-[80px] select-text custom-scrollbar ${
+                                      settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'
+                                    }`}
                                     placeholder="Edit Cloze text..."
                                   />
                                 </div>
-                                <div className="bg-white p-3 rounded-xl border border-gray-200/60 shadow-sm flex flex-col focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-400 transition-all duration-200">
+                                <div className={`p-3 rounded-xl border shadow-sm flex flex-col focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-400 transition-all duration-200 ${
+                                  settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-700 bg-[#222730]' : 'bg-white border-gray-200/60'
+                                }`}>
                                   <span className="text-[9px] font-black uppercase text-purple-500 tracking-wider block mb-1">Extra Info (Answer)</span>
                                   <textarea
                                     value={card.extra || ""}
@@ -38121,14 +38222,18 @@ Return your response strictly as a JSON object matching this schema:
                                       });
                                       await syncCardToLocalDb(updatedCard);
                                     }}
-                                    className="w-full text-gray-800 font-medium text-xs bg-transparent border-0 p-0 focus:ring-0 focus:outline-none resize-none leading-relaxed h-[80px] select-text custom-scrollbar"
+                                    className={`w-full font-medium text-xs bg-transparent border-0 p-0 focus:ring-0 focus:outline-none resize-none leading-relaxed h-[80px] select-text custom-scrollbar ${
+                                      settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'
+                                    }`}
                                     placeholder="Edit Extra info..."
                                   />
                                 </div>
                               </div>
                             ) : (
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="bg-white p-3 rounded-xl border border-gray-200/60 shadow-sm flex flex-col focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-400 transition-all duration-200">
+                                <div className={`p-3 rounded-xl border shadow-sm flex flex-col focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-400 transition-all duration-200 ${
+                                  settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-700 bg-[#222730]' : 'bg-white border-gray-200/60'
+                                }`}>
                                   <span className="text-[9px] font-black uppercase text-blue-500 tracking-wider block mb-1">Front (Question)</span>
                                   <textarea
                                     value={card.front || ""}
@@ -38142,11 +38247,15 @@ Return your response strictly as a JSON object matching this schema:
                                       });
                                       await syncCardToLocalDb(updatedCard);
                                     }}
-                                    className="w-full text-gray-800 font-medium text-xs bg-transparent border-0 p-0 focus:ring-0 focus:outline-none resize-none leading-relaxed h-[80px] select-text custom-scrollbar"
+                                    className={`w-full font-medium text-xs bg-transparent border-0 p-0 focus:ring-0 focus:outline-none resize-none leading-relaxed h-[80px] select-text custom-scrollbar ${
+                                      settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'
+                                    }`}
                                     placeholder="Edit Front question..."
                                   />
                                 </div>
-                                <div className="bg-white p-3 rounded-xl border border-gray-200/60 shadow-sm flex flex-col focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-400 transition-all duration-200">
+                                <div className={`p-3 rounded-xl border shadow-sm flex flex-col focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-400 transition-all duration-200 ${
+                                  settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-700 bg-[#222730]' : 'bg-white border-gray-200/60'
+                                }`}>
                                   <span className="text-[9px] font-black uppercase text-purple-500 tracking-wider block mb-1">Back (Answer)</span>
                                   <textarea
                                     value={card.back || ""}
@@ -38160,7 +38269,9 @@ Return your response strictly as a JSON object matching this schema:
                                       });
                                       await syncCardToLocalDb(updatedCard);
                                     }}
-                                    className="w-full text-gray-800 font-medium text-xs bg-transparent border-0 p-0 focus:ring-0 focus:outline-none resize-none leading-relaxed h-[80px] select-text custom-scrollbar"
+                                    className={`w-full font-medium text-xs bg-transparent border-0 p-0 focus:ring-0 focus:outline-none resize-none leading-relaxed h-[80px] select-text custom-scrollbar ${
+                                      settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'
+                                    }`}
                                     placeholder="Edit Back answer..."
                                   />
                                 </div>
@@ -38169,14 +38280,18 @@ Return your response strictly as a JSON object matching this schema:
                           </div>
 
                           {/* Interactive Board */}
-                          <div className="flex-grow p-6 bg-gray-50/50 flex flex-col items-center justify-center overflow-hidden relative border-b border-gray-100">
+                          <div className={`flex-grow p-6 flex flex-col items-center justify-center overflow-hidden relative border-b ${
+                            settingsThemeMode === 'dark' ? 'bg-[#181c22] border-gray-800' : 'bg-gray-50/50 border-gray-100'
+                          }`}>
                             {card.excludeImage ? (
-                              <div className="flex flex-col items-center justify-center text-center p-8 bg-white border border-gray-205 rounded-[2rem] shadow-inner max-w-sm">
+                              <div className={`flex flex-col items-center justify-center text-center p-8 border rounded-[2rem] shadow-inner max-w-sm ${
+                                settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-800 text-white' : 'bg-white border-gray-205'
+                              }`}>
                                 <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mb-4 text-red-500 shadow-sm">
                                   <XCircle className="w-8 h-8" />
                                 </div>
-                                <h5 className="text-xs font-black text-gray-900 uppercase tracking-wider">Image Excluded for Export</h5>
-                                <p className="text-[10px] text-gray-500 mt-2 font-medium leading-relaxed">
+                                <h5 className={`text-xs font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>Image Excluded for Export</h5>
+                                <p className="text-[10px] text-gray-400 mt-2 font-medium leading-relaxed">
                                   This clinical page image has been excluded. It will not be bundled or exported in the Anki APKG file for this card.
                                 </p>
                                 <button
@@ -38190,17 +38305,19 @@ Return your response strictly as a JSON object matching this schema:
                                       return next;
                                     });
                                   }}
-                                  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-blue-700 transition"
+                                  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-blue-700 transition cursor-pointer"
                                 >
                                   Re-enable Image
                                 </button>
                               </div>
                             ) : !rawSrc ? (
-                              <div className="flex flex-col items-center justify-center text-center p-8 bg-white border border-gray-250 rounded-[2rem] shadow-inner max-w-sm">
-                                <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mb-4 text-gray-400 shadow-sm">
+                              <div className={`flex flex-col items-center justify-center text-center p-8 border rounded-[2rem] shadow-inner max-w-sm ${
+                                settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-800 text-white' : 'bg-white border-gray-250'
+                              }`}>
+                                <div className="w-16 h-16 bg-gray-500/10 rounded-2xl flex items-center justify-center mb-4 text-gray-400 shadow-sm">
                                   <HelpCircle className="w-8 h-8" />
                                 </div>
-                                <h5 className="text-xs font-black text-gray-500 uppercase tracking-wider">No Source Page Image</h5>
+                                <h5 className="text-xs font-black text-gray-400 uppercase tracking-wider">No Source Page Image</h5>
                                 <p className="text-[10px] text-gray-400 mt-2 font-medium leading-relaxed">
                                   This flashcard does not have an active medical page reference linked in the local library.
                                 </p>
@@ -38212,28 +38329,30 @@ Return your response strictly as a JSON object matching this schema:
                                 </div>
 
                                 {/* Floating Zoom Control Bar */}
-                                <div className="absolute top-8 right-4 z-20 bg-white/95 backdrop-blur border border-gray-200/80 rounded-2xl p-1 shadow-lg flex items-center gap-1 select-none">
+                                <div className={`absolute top-8 right-4 z-20 backdrop-blur border rounded-2xl p-1 shadow-lg flex items-center gap-1 select-none ${
+                                  settingsThemeMode === 'dark' ? 'bg-[#222730]/95 border-gray-700 text-white' : 'bg-white/95 border-gray-200/80 text-gray-700'
+                                }`}>
                                   <button
                                     onClick={() => setCropZoom(prev => Math.max(0.5, Math.round((prev - 0.1) * 10) / 10))}
-                                    className="w-7 h-7 rounded-xl hover:bg-gray-100 flex items-center justify-center text-gray-700 font-bold transition active:scale-90"
+                                    className="w-7 h-7 rounded-xl hover:bg-white/10 flex items-center justify-center font-bold transition active:scale-90 cursor-pointer"
                                     title="Zoom Out"
                                   >
                                     <ZoomOut className="w-3.5 h-3.5" />
                                   </button>
-                                  <span className="text-[9px] font-black text-gray-700 w-11 text-center font-mono">
+                                  <span className="text-[9px] font-black w-11 text-center font-mono">
                                     {Math.round(cropZoom * 100)}%
                                   </span>
                                   <button
                                     onClick={() => setCropZoom(prev => Math.min(3.0, Math.round((prev + 0.1) * 10) / 10))}
-                                    className="w-7 h-7 rounded-xl hover:bg-gray-100 flex items-center justify-center text-gray-700 font-bold transition active:scale-90"
+                                    className="w-7 h-7 rounded-xl hover:bg-white/10 flex items-center justify-center font-bold transition active:scale-90 cursor-pointer"
                                     title="Zoom In"
                                   >
                                     <ZoomIn className="w-3.5 h-3.5" />
                                   </button>
-                                  <div className="w-px h-4 bg-gray-200 mx-0.5"></div>
+                                  <div className="w-px h-4 bg-gray-500/20 mx-0.5"></div>
                                   <button
                                     onClick={() => setCropZoom(1.0)}
-                                    className="px-2 h-7 rounded-xl hover:bg-gray-100 flex items-center justify-center text-[9px] font-black uppercase text-blue-600 transition active:scale-90"
+                                    className="px-2 h-7 rounded-xl hover:bg-white/10 flex items-center justify-center text-[9px] font-black uppercase text-blue-400 transition active:scale-90 cursor-pointer"
                                     title="Reset Zoom"
                                   >
                                     Reset
@@ -38244,14 +38363,18 @@ Return your response strictly as a JSON object matching this schema:
                                 <div
                                   ref={zoomWindowRef}
                                   onMouseDown={handlePanMouseDown}
-                                  className="w-full flex-grow overflow-auto p-8 flex custom-scrollbar select-none bg-gray-50/50"
+                                  className={`w-full flex-grow overflow-auto p-8 flex custom-scrollbar select-none ${
+                                    settingsThemeMode === 'dark' ? 'bg-[#181c22]' : 'bg-gray-50/50'
+                                  }`}
                                   style={{
                                     cursor: isCropPanning ? 'grabbing' : cropZoom > 1.0 ? 'grab' : 'default'
                                   }}
                                 >
                                   <div
                                     ref={containerRef}
-                                    className="relative select-none border-2 border-gray-300 rounded-xl bg-white shadow-xl inline-block"
+                                    className={`relative select-none border-2 rounded-xl shadow-xl inline-block ${
+                                      settingsThemeMode === 'dark' ? 'border-gray-700 bg-gray-900' : 'border-gray-300 bg-white'
+                                    }`}
                                     style={{
                                       margin: 'auto'
                                     }}
@@ -38309,10 +38432,14 @@ Return your response strictly as a JSON object matching this schema:
                           </div>
 
                           {/* Footer Controls */}
-                          <div className="p-6 bg-white flex items-center justify-between shrink-0">
+                          <div className={`p-6 flex items-center justify-between shrink-0 ${
+                            settingsThemeMode === 'dark' ? 'bg-[#222730] border-t border-gray-800' : 'bg-white'
+                          }`}>
                             <button
                               onClick={() => setIsCustomCropModalOpen(false)}
-                              className="px-6 py-3.5 bg-gray-50 border border-gray-200 text-gray-500 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-gray-100 transition active:scale-95"
+                              className={`px-6 py-3.5 border rounded-2xl text-xs font-black uppercase tracking-widest transition active:scale-95 cursor-pointer ${
+                                settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-800 text-gray-400 hover:text-white' : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'
+                              }`}
                             >
                               Cancel Review
                             </button>
@@ -38322,7 +38449,7 @@ Return your response strictly as a JSON object matching this schema:
                                 setIsCustomCropModalOpen(false);
                                 exportDeck('apkg', customCropCards);
                               }}
-                              className="px-8 py-3.5 bg-blue-600 text-white rounded-2xl text-xs font-black tracking-widest hover:bg-blue-700 transition shadow-lg shadow-blue-600/20 active:scale-95 flex items-center gap-2"
+                              className="px-8 py-3.5 bg-blue-600 text-white rounded-2xl text-xs font-black tracking-widest hover:bg-blue-700 transition shadow-lg shadow-blue-600/20 active:scale-95 flex items-center gap-2 cursor-pointer"
                             >
                               <Download className="w-4 h-4" /> Compile & Export
                             </button>
