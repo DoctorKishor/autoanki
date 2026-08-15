@@ -490,6 +490,40 @@ export default function DashboardGrid({
   const gridStroke = isDark ? '#334155' : '#e2e8f0';
   const axisStroke = isDark ? '#94a3b8' : '#64748b';
 
+  // Memoize static non-timer widgets to prevent 20Hz/1Hz timer ticks from re-rendering the full grid
+  const staticWidgetBodies = useMemo(() => {
+    const map = {};
+    (widgets || []).forEach(w => {
+      if (w.id !== 'focusTimerHub' && w.enabled !== false) {
+        map[w.id] = renderWidgetBody(w.id);
+      }
+    });
+    return map;
+  }, [
+    widgets,
+    studySchedule,
+    todayStr,
+    studyLogs,
+    cards,
+    currentStreak,
+    streakLabel,
+    subjectTrackerData,
+    subjects,
+    pytTopicsList,
+    userPytProgress,
+    campDbHistory,
+    campDbDaily,
+    isDark,
+    quickCards,
+    quickHours,
+    quickQuestions,
+    quickPages,
+    isLoggingQuick,
+    hoveredStreakIdx,
+    hoveredIntensityIdx,
+    radarViewType
+  ]);
+
   return (
     <div className={`flex-grow flex flex-col overflow-hidden p-4 md:p-6 select-none transition-colors duration-300 ${
       isDark ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'
@@ -841,40 +875,6 @@ export default function DashboardGrid({
 
     </div>
   );
-
-  // Memoize static non-timer widgets to prevent 20Hz/1Hz timer ticks from re-rendering the full grid
-  const staticWidgetBodies = useMemo(() => {
-    const map = {};
-    (widgets || []).forEach(w => {
-      if (w.id !== 'focusTimerHub' && w.enabled !== false) {
-        map[w.id] = renderWidgetBody(w.id);
-      }
-    });
-    return map;
-  }, [
-    widgets,
-    studySchedule,
-    todayStr,
-    studyLogs,
-    cards,
-    currentStreak,
-    streakLabel,
-    subjectTrackerData,
-    subjects,
-    pytTopicsList,
-    userPytProgress,
-    campDbHistory,
-    campDbDaily,
-    isDark,
-    quickCards,
-    quickHours,
-    quickQuestions,
-    quickPages,
-    isLoggingQuick,
-    hoveredStreakIdx,
-    hoveredIntensityIdx,
-    radarViewType
-  ]);
 
   // --- CORE WIDGET BODY RENDER SWITCHER ---
   function renderWidgetBody(id) {
