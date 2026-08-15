@@ -346,6 +346,19 @@ export default function CampDashboard({
     return () => clearTimeout(obsBroadcastDebounceRef.current);
   }, [sessions, bedToBook, history, timerHistory, studentInfo, selectedDate]);
 
+  // 3b-2. Unmount cleanup effect for all debounced timer refs
+  useEffect(() => {
+    return () => {
+      if (studentInfoDebounceRef.current) clearTimeout(studentInfoDebounceRef.current);
+      if (bedToBookDebounceRef.current) clearTimeout(bedToBookDebounceRef.current);
+      if (sessionsDebounceRef.current) clearTimeout(sessionsDebounceRef.current);
+      if (historyDebounceRef.current) clearTimeout(historyDebounceRef.current);
+      if (timerHistoryDebounceRef.current) clearTimeout(timerHistoryDebounceRef.current);
+      if (obsBroadcastDebounceRef.current) clearTimeout(obsBroadcastDebounceRef.current);
+      if (manualEditTimeoutRef.current) clearTimeout(manualEditTimeoutRef.current);
+    };
+  }, []);
+
   // 3c. Sync inputs and timer history in real time from localStorage (for active timer modal logs)
   useEffect(() => {
     const syncData = () => {
@@ -558,15 +571,13 @@ export default function CampDashboard({
       updatedHistory.push(historyEntry);
     }
 
-    // Chronological sorting of entries using reliable timestamp
+    // Chronological sorting of entries using reliable timestamp or ISO date
     updatedHistory.sort((a, b) => {
       const timeA = a.timestamp || (a.fullDate ? new Date(a.fullDate).getTime() : 0);
       const timeB = b.timestamp || (b.fullDate ? new Date(b.fullDate).getTime() : 0);
       if (timeA && timeB) return timeA - timeB;
-      const currentYear = new Date().getFullYear();
-      const dateA = new Date(`${a.date}-${currentYear}`);
-      const dateB = new Date(`${b.date}-${currentYear}`);
-      return dateA - dateB;
+      if (a.fullDate && b.fullDate) return a.fullDate.localeCompare(b.fullDate);
+      return 0;
     });
 
     setHistory(updatedHistory);
@@ -678,7 +689,9 @@ export default function CampDashboard({
       });
     });
     localStorage.setItem(`camp_sessions_${dateStr}`, JSON.stringify(rebuilt));
-    saveLocalCampDailyLogs(dateStr, { sessions: rebuilt });
+    saveLocalCampDailyLogs(dateStr, { sessions: rebuilt }).catch(err => {
+      console.error("[LocalDB] Error saving rebuilt daily sessions:", err);
+    });
     // If this is the currently selected date, update UI state too
     if (dateStr === selectedDate) {
       setSessions(rebuilt);
@@ -791,14 +804,19 @@ export default function CampDashboard({
     let maxDurationFocus = 0;
     const durationSums = { short: { sum: 0, count: 0 }, medium: { sum: 0, count: 0 }, long: { sum: 0, count: 0 } };
     timerHistory.forEach(s => {
-      if (s.hours < 1.0) {
-        durationSums.short.sum += s.concentration;
+      if (!s) return;
+      const numHours = parseFloat(s.hours) || 0;
+      const numConc = parseFloat(s.concentration) || 0;
+      if (numHours <= 0) return;
+
+      if (numHours < 1.0) {
+        durationSums.short.sum += numConc;
         durationSums.short.count += 1;
-      } else if (s.hours >= 1.0 && s.hours <= 2.0) {
-        durationSums.medium.sum += s.concentration;
+      } else if (numHours >= 1.0 && numHours <= 2.0) {
+        durationSums.medium.sum += numConc;
         durationSums.medium.count += 1;
       } else {
-        durationSums.long.sum += s.concentration;
+        durationSums.long.sum += numConc;
         durationSums.long.count += 1;
       }
     });
@@ -813,7 +831,7 @@ export default function CampDashboard({
     } else if (avgMedium > avgShort && avgMedium > avgLong) {
       bestDurationRange = 'Medium Sessions (1.0 to 2.0 hours)';
       maxDurationFocus = avgMedium;
-    } else {
+    } else if (avgLong > 0) {
       bestDurationRange = 'Deep Grinds (> 2.0 hours)';
       maxDurationFocus = avgLong;
     }
@@ -821,8 +839,10 @@ export default function CampDashboard({
     // 4. Optimal Day of Week
     const daySums = {};
     timerHistory.forEach(s => {
+      if (!s || !s.dayOfWeek) return;
+      const numConc = parseFloat(s.concentration) || 0;
       if (!daySums[s.dayOfWeek]) daySums[s.dayOfWeek] = { sum: 0, count: 0 };
-      daySums[s.dayOfWeek].sum += s.concentration;
+      daySums[s.dayOfWeek].sum += numConc;
       daySums[s.dayOfWeek].count += 1;
     });
     let bestDay = 'Wednesday';
@@ -895,10 +915,11 @@ export default function CampDashboard({
                     ? isDark ? 'neu-pressed-dark text-slate-500 border border-slate-750' : 'neu-pressed-light text-slate-400 border border-slate-200'
                     : `border-transparent text-white cursor-pointer hover:scale-[1.03] active:scale-[0.97]`;
 
+                  const safeFocus = isNaN(data.avgFocus) ? 7 : Math.max(1, Math.min(10, data.avgFocus));
                   const cellColorStyle = data.count > 0 ? {
                     backgroundColor: isDark 
-                      ? `hsl(215, 85%, ${20 + data.avgFocus * 4}%)` 
-                      : `hsl(215, 85%, ${100 - data.avgFocus * 5.5}%)`,
+                      ? `hsl(215, 85%, ${20 + safeFocus * 4}%)` 
+                      : `hsl(215, 85%, ${100 - safeFocus * 5.5}%)`,
                     textShadow: '0 1px 2px rgba(0, 0, 0, 0.4)'
                   } : {};
 

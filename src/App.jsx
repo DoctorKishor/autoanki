@@ -3271,13 +3271,8 @@ const QuickLogger = ({ todayLog, todayStr, setStudyLogs, isDark: isDarkProp }) =
       return;
     }
 
-    const newHours = Number(((todayLog.hours || 0) + addedHrs).toFixed(3));
-    const newQuestions = (todayLog.questions || 0) + addedQs;
-    const newCards = (todayLog.cards || 0) + addedCards;
-    const newPages = (todayLog.pages || 0) + addedPages;
-
     const newSessionItem = {
-      id: Date.now().toString(),
+      id: Date.now().toString() + '_' + Math.random().toString(36).substr(2, 5),
       timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
       hours: Number(addedHrs.toFixed(3)),
       questions: addedQs,
@@ -3285,32 +3280,34 @@ const QuickLogger = ({ todayLog, todayStr, setStudyLogs, isDark: isDarkProp }) =
       pages: addedPages,
       isManual: true
     };
-    const updatedSessions = [...(todayLog.sessions || []), newSessionItem];
 
-    // Optimistic local state update
-    setStudyLogs(prev => ({
-      ...prev,
-      [todayStr]: {
-        ...(prev[todayStr] || {}),
-        hours: newHours,
-        questions: newQuestions,
-        cards: newCards,
-        pages: newPages,
-        sessions: updatedSessions
-      }
-    }));
+    // Functional state update ensures rapid successive entries accumulate correctly
+    setStudyLogs(prev => {
+      const currentDay = prev[todayStr] || { hours: 0, questions: 0, cards: 0, pages: 0, sessions: [], gts: [] };
+      const updatedHours = Number(((currentDay.hours || 0) + addedHrs).toFixed(3));
+      const updatedQuestions = (currentDay.questions || 0) + addedQs;
+      const updatedCards = (currentDay.cards || 0) + addedCards;
+      const updatedPages = (currentDay.pages || 0) + addedPages;
+      const updatedSessions = [...(currentDay.sessions || []), newSessionItem];
 
-    try {
-      await saveLocalStudyLog(todayStr, {
-        hours: newHours,
-        questions: newQuestions,
-        cards: newCards,
-        pages: newPages,
+      const updatedDayLog = {
+        ...currentDay,
+        hours: updatedHours,
+        questions: updatedQuestions,
+        cards: updatedCards,
+        pages: updatedPages,
         sessions: updatedSessions
+      };
+
+      saveLocalStudyLog(todayStr, updatedDayLog).catch(err => {
+        console.error("[LocalDB] Error saving manual session locally:", err);
       });
-    } catch (err) {
-      console.error("Error saving manual session locally:", err);
-    }
+
+      return {
+        ...prev,
+        [todayStr]: updatedDayLog
+      };
+    });
 
     // Reset inputs after adding
     setQsVal('');
@@ -21901,7 +21898,7 @@ Return your response strictly as a JSON object matching this schema:
                   src={widget.url && (widget.url.startsWith('http://') || widget.url.startsWith('https://')) ? widget.url : `https://${widget.url || ''}`}
                   title={widget.title || "Custom Browser"}
                   className="w-full h-full border-0 rounded-2xl"
-                  sandbox="allow-scripts allow-forms allow-popups"
+                  sandbox="allow-scripts allow-forms"
                   referrerPolicy="no-referrer"
                   loading="lazy"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

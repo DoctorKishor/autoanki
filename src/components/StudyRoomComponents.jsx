@@ -675,16 +675,16 @@ function WidgetsPanel({ fsWidgets, setFsWidgets, fsCustomizingWidgets, setFsCust
   );
 }
 
-// ─── Floating Widget Wrapper ──────────────────────────────────────────────────
 const sanitizeWidgetCss = (css, widgetId) => {
   if (!css || typeof css !== 'string') return '';
-  // Strip dangerous CSS constructs (expressions, script schemes, @import)
+  // Strip dangerous CSS constructs (expressions, script schemes, @import, external url keyloggers)
   let cleaned = css
     .replace(/@import\s+[^;]+;/gi, '')
     .replace(/javascript\s*:/gi, '')
     .replace(/behavior\s*:/gi, '')
     .replace(/-moz-binding\s*:/gi, '')
-    .replace(/expression\s*\([^)]*\)/gi, '');
+    .replace(/expression\s*\([^)]*\)/gi, '')
+    .replace(/url\s*\(\s*['"]?(?!data:image\/)(?:https?:|\/\/)[^'")]+['"]?\s*\)/gi, 'none');
 
   // Scope CSS rules to the widget's container ID if not already scoped
   if (cleaned.trim() && !cleaned.includes(`#fw-${widgetId}`)) {
