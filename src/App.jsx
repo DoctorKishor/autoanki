@@ -7239,6 +7239,27 @@ export default function App() {
     }));
   };
 
+  const batchSetCardsSuspended = async (cardsList, isSuspended) => {
+    if (!cardsList || cardsList.length === 0) return;
+    if (activeQueueId && queue.some(q => q.id === activeQueueId)) {
+      setAllGeneratedCardsSuspended(activeQueueId, isSuspended);
+    }
+    try {
+      const targetCards = cardsList.filter(c => c && c.id);
+      if (targetCards.length > 0) {
+        const updatedMap = new Map();
+        for (const c of targetCards) {
+          const updated = { ...c, isSuspended, updatedAt: Date.now() };
+          await saveLocalCard(updated);
+          updatedMap.set(c.id, updated);
+        }
+        setCards(prev => prev.map(c => updatedMap.get(c.id) || c));
+      }
+    } catch (err) {
+      console.error("[LocalDB] Error batch updating cards suspension:", err);
+    }
+  };
+
   const syncCardToLocalDb = async (card) => {
     if (!card || !card.id) return;
     try {
@@ -23933,25 +23954,25 @@ Return your response strictly as a JSON object matching this schema:
                                 {queue.find(q => q.id === activeQueueId) ? 'Preview: AI Generation' : 'Library: Saved Cards'}
                               </h3>
                               <div className="flex items-center gap-2">
-                                {activeQueueId && queue.find(q => q.id === activeQueueId)?.generatedCards?.length > 0 && (
+                                {((queue.find(q => q.id === activeQueueId)?.generatedCards || pageCards)?.length || 0) > 0 && (
                                   <div className="flex items-center gap-1">
                                     <button
                                       type="button"
-                                      onClick={() => setAllGeneratedCardsSuspended(activeQueueId, true)}
+                                      onClick={() => batchSetCardsSuspended(queue.find(q => q.id === activeQueueId)?.generatedCards || pageCards, true)}
                                       className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-wider transition ${
                                         settingsThemeMode === 'dark' ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 border border-amber-500/30' : 'bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200'
                                       }`}
-                                      title="Suspend all cards in this batch on export"
+                                      title="Suspend all cards in this view on export"
                                     >
                                       Suspend All
                                     </button>
                                     <button
                                       type="button"
-                                      onClick={() => setAllGeneratedCardsSuspended(activeQueueId, false)}
+                                      onClick={() => batchSetCardsSuspended(queue.find(q => q.id === activeQueueId)?.generatedCards || pageCards, false)}
                                       className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-wider transition ${
                                         settingsThemeMode === 'dark' ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                       }`}
-                                      title="Set all cards in this batch to active on export"
+                                      title="Set all cards in this view to active on export"
                                     >
                                       Active All
                                     </button>
@@ -25952,9 +25973,43 @@ Return your response strictly as a JSON object matching this schema:
                         </div>
                       </div>
 
+                      {/* Card Suspension State */}
+                      <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-5 rounded-3xl flex flex-col gap-3`}>
+                        <div className="flex items-center justify-between">
+                          <label className={`block text-[10px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-400'}`}>4. Card Suspension State</label>
+                          <span className={`text-[9px] font-bold ${exportSuspendedMode === 'force_suspended' ? 'text-amber-400' : exportSuspendedMode === 'force_active' ? 'text-emerald-400' : 'text-blue-400'}`}>
+                            {exportSuspendedMode === 'force_suspended' ? 'All Suspended' : exportSuspendedMode === 'force_active' ? 'All Active' : 'Preserve Individual'}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          {[
+                            { id: 'individual', label: 'Preserve', sub: 'Per-card state' },
+                            { id: 'force_suspended', label: 'Suspend All', sub: 'Yellow in Anki' },
+                            { id: 'force_active', label: 'Active All', sub: 'Normal Queue' }
+                          ].map(mode => (
+                            <button
+                              key={mode.id}
+                              type="button"
+                              onClick={() => setExportSuspendedMode(mode.id)}
+                              className={`py-2 px-1 rounded-xl flex flex-col items-center justify-center text-center transition active:scale-95 ${exportSuspendedMode === mode.id
+                                ? mode.id === 'force_suspended'
+                                  ? 'bg-gradient-to-br from-amber-500/20 to-amber-600/10 border-2 border-amber-500 text-amber-400 shadow-md shadow-amber-500/10'
+                                  : mode.id === 'force_active'
+                                    ? 'bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 border-2 border-emerald-500 text-emerald-400 shadow-md shadow-emerald-500/10'
+                                    : 'bg-gradient-to-br from-blue-500/20 to-blue-600/10 border-2 border-blue-500 text-blue-400 shadow-md shadow-blue-500/10'
+                                : settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-500'
+                                }`}
+                            >
+                              <span className="text-[10px] font-black leading-tight">{mode.label}</span>
+                              <span className="text-[8px] opacity-70 font-medium">{mode.sub}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
                       {/* Bundle Check & Media Assets */}
                       <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-5 rounded-3xl flex flex-col gap-4`}>
-                        <label className={`block text-[10px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-400'}`}>4. Pre-Flight & Media Asset Config</label>
+                        <label className={`block text-[10px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-400'}`}>5. Pre-Flight & Media Asset Config</label>
 
                         {activeConflicts.length === 0 ? (
                           <div className={`p-3.5 rounded-2xl flex items-center gap-3 ${settingsThemeMode === 'dark' ? 'bg-emerald-900/20 border border-emerald-700/40' : 'bg-green-50 border border-green-200/60'}`}>
@@ -29832,6 +29887,30 @@ Return your response strictly as a JSON object matching this schema:
                                       <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">Cards from this page</h3>
                                       <div className="flex items-center gap-2 flex-wrap">
                                         {pageCards.length > 0 && (
+                                          <div className="flex items-center gap-1">
+                                            <button
+                                              type="button"
+                                              onClick={() => batchSetCardsSuspended(pageCards, true)}
+                                              className={`px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-wider transition ${
+                                                settingsThemeMode === 'dark' ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 border border-amber-500/30' : 'bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200'
+                                              }`}
+                                              title="Suspend all cards from this page on export"
+                                            >
+                                              Suspend All
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => batchSetCardsSuspended(pageCards, false)}
+                                              className={`px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-wider transition ${
+                                                settingsThemeMode === 'dark' ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                              }`}
+                                              title="Set all cards from this page to active on export"
+                                            >
+                                              Active All
+                                            </button>
+                                          </div>
+                                        )}
+                                        {pageCards.length > 0 && (
                                           <UiverseButton
                                             icon={<CheckCircle className="w-3.5 h-3.5 text-emerald-500" />}
                                             onClick={() => saveQueueItemToCloud(activeQueueId)}
@@ -30372,9 +30451,35 @@ Return your response strictly as a JSON object matching this schema:
                                   )}
 
                                   <div>
-                                    <h3 className="text-sm font-black text-gray-400 mb-4 flex items-center gap-2 uppercase tracking-widest text-[10px]">
-                                      <Layers className="w-4 h-4 text-blue-500" /> All Cards in Folder ({pageCards.length})
-                                    </h3>
+                                    <div className="flex justify-between items-center mb-4">
+                                      <h3 className="text-sm font-black text-gray-400 flex items-center gap-2 uppercase tracking-widest text-[10px]">
+                                        <Layers className="w-4 h-4 text-blue-500" /> All Cards in Folder ({pageCards.length})
+                                      </h3>
+                                      {pageCards.length > 0 && (
+                                        <div className="flex items-center gap-1.5">
+                                          <button
+                                            type="button"
+                                            onClick={() => batchSetCardsSuspended(pageCards, true)}
+                                            className={`px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider transition ${
+                                              settingsThemeMode === 'dark' ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 border border-amber-500/30' : 'bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200'
+                                            }`}
+                                            title="Suspend all cards in this folder on export"
+                                          >
+                                            Suspend All
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => batchSetCardsSuspended(pageCards, false)}
+                                            className={`px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider transition ${
+                                              settingsThemeMode === 'dark' ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                            }`}
+                                            title="Set all cards in this folder to active on export"
+                                          >
+                                            Active All
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5 p-3 pb-14">
                                       <AnimatePresence mode="popLayout">
                                         {pageCards.map((card, idx) => {
@@ -33810,6 +33915,40 @@ Return your response strictly as a JSON object matching this schema:
                                 </div>
                               </div>
 
+                              {/* Card Suspension State */}
+                              <div>
+                                <div className="flex items-center justify-between mb-2">
+                                  <label className={`block text-[10px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-400'}`}>4. Card Suspension State</label>
+                                  <span className={`text-[10px] font-bold ${exportSuspendedMode === 'force_suspended' ? 'text-amber-400' : exportSuspendedMode === 'force_active' ? 'text-emerald-400' : 'text-blue-400'}`}>
+                                    {exportSuspendedMode === 'force_suspended' ? 'All Suspended (Yellow in Anki)' : exportSuspendedMode === 'force_active' ? 'All Active (Normal Queue)' : 'Preserve Individual Flags'}
+                                  </span>
+                                </div>
+                                <div className="grid grid-cols-3 gap-2">
+                                  {[
+                                    { id: 'individual', label: 'Preserve', sub: 'Per-card status' },
+                                    { id: 'force_suspended', label: 'Force Suspend All', sub: 'Yellow in Anki' },
+                                    { id: 'force_active', label: 'Force Active All', sub: 'Normal Queue' }
+                                  ].map(mode => (
+                                    <button
+                                      key={mode.id}
+                                      type="button"
+                                      onClick={() => setExportSuspendedMode(mode.id)}
+                                      className={`py-2.5 px-2 rounded-xl text-center flex flex-col items-center justify-center transition active:scale-95 ${exportSuspendedMode === mode.id
+                                        ? mode.id === 'force_suspended'
+                                          ? 'bg-gradient-to-br from-amber-500/20 to-amber-600/10 border-2 border-amber-500 text-amber-400 shadow-md shadow-amber-500/10'
+                                          : mode.id === 'force_active'
+                                            ? 'bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 border-2 border-emerald-500 text-emerald-400 shadow-md shadow-emerald-500/10'
+                                            : 'bg-gradient-to-br from-blue-500/20 to-blue-600/10 border-2 border-blue-500 text-blue-500 shadow-md shadow-blue-500/10'
+                                        : settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-500'
+                                        }`}
+                                    >
+                                      <span className="text-xs font-black leading-none">{mode.label}</span>
+                                      <span className="text-[9px] opacity-70 font-medium mt-1">{mode.sub}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+
                               {/* Pre-Flight Check Panel */}
                               <div className={`border-t pt-4 flex flex-col gap-3 ${settingsThemeMode === 'dark' ? 'border-slate-600/30' : 'border-slate-200/60'}`}>
                                 <label className={`block text-[10px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-400'}`}>Bundle Pre-Flight Check</label>
@@ -33844,7 +33983,7 @@ Return your response strictly as a JSON object matching this schema:
                             {/* COLUMN 3: Media Asset Config */}
                             <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-6 rounded-[2rem] flex flex-col gap-6 justify-between`}>
                               <div className="flex flex-col gap-6">
-                                <label className={`block text-[10px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-400'}`}>4. Media Asset Configuration</label>
+                                <label className={`block text-[10px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-400'}`}>5. Media Asset Configuration</label>
 
                                 {exportFormat === 'apkg' ? (
                                   <div className={`rounded-2xl p-5 flex flex-col gap-4 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
