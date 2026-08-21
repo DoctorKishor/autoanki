@@ -20022,7 +20022,16 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
           }
         });
 
-        dbInstance.run(`INSERT INTO col VALUES (1, ${crt}, ${mod}, ${mod}, 11, 0, 0, 0, ?, ?, ?, ?, '{}')`, [conf, models, decks, dconf]);
+        const allExportTags = new Set();
+        cardsToUse.forEach(c => {
+          (c.tags || []).forEach(t => { if (t) allExportTags.add(t); });
+        });
+        allExportTags.add('suspended');
+        const colTagsObj = {};
+        allExportTags.forEach(t => { if (t) colTagsObj[t] = 0; });
+        const colTagsJson = JSON.stringify(colTagsObj);
+
+        dbInstance.run(`INSERT INTO col VALUES (1, ${crt}, ${mod}, ${mod}, 11, 0, 0, 0, ?, ?, ?, ?, ?)`, [conf, models, decks, dconf, colTagsJson]);
 
         dbInstance.run(`CREATE TABLE notes (
           id integer primary key,
@@ -20209,19 +20218,27 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
           const sfld = escapedF1;
           const csum = computeChecksum(sfld);
 
-          dbInstance.run(`INSERT INTO notes VALUES (?, ?, ?, ?, -1, ?, ?, ?, ?, 0, '')`, [
-            noteId, guid, mid, Math.floor(Date.now() / 1000), (card.tags || []).join(' '), flds, sfld, csum
-          ]);
-
-          const cardDeck = card.deck || firstDeck || 'Default';
-          const cardDeckId = getDeckId(cardDeck);
-
           const shouldSuspend = exportSuspendedMode === 'force_suspended'
             ? true
             : exportSuspendedMode === 'force_active'
               ? false
               : Boolean(card.isSuspended);
           const cardQueue = shouldSuspend ? -1 : 0;
+
+          const cardTagsList = Array.isArray(card.tags) ? [...card.tags] : [];
+          if (shouldSuspend) {
+            if (!cardTagsList.includes('suspended')) {
+              cardTagsList.push('suspended');
+            }
+          }
+          const formattedTags = cardTagsList.length > 0 ? ` ${cardTagsList.join(' ')} ` : '';
+
+          dbInstance.run(`INSERT INTO notes VALUES (?, ?, ?, ?, -1, ?, ?, ?, ?, 0, '')`, [
+            noteId, guid, mid, Math.floor(Date.now() / 1000), formattedTags, flds, sfld, csum
+          ]);
+
+          const cardDeck = card.deck || firstDeck || 'Default';
+          const cardDeckId = getDeckId(cardDeck);
 
           dbInstance.run(`INSERT INTO cards VALUES (?, ?, ?, 0, ?, -1, 0, ?, ?, 0, 0, 0, 0, 0, 0, 0, 0, '')`, [
             cardId, noteId, cardDeckId, Math.floor(Date.now() / 1000), cardQueue, i
@@ -20287,7 +20304,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     let fileExtension = 'txt';
 
     if (format === 'anki') {
-      fileContent = "#separator:tab\n#html:true\n#notetype column:1\n#deck column:2\n";
+      fileContent = "#separator:tab\n#html:true\n#notetype column:1\n#deck column:2\n#tags column:5\n";
       cardsToUse.forEach(card => {
         const clean = (str) => {
           const stripped = (str || '').replace(/<button[^>]*>[\s\S]*?<\/button>/gi, '').replace(/contenteditable=["'](false|true)["']/gi, '');
@@ -20296,10 +20313,20 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
         const type = card.type || 'Basic';
         const cardDeck = card.deck || firstDeck || hierarchy || 'Default';
         const cleanDeck = clean(cardDeck);
+        const shouldSuspend = exportSuspendedMode === 'force_suspended'
+          ? true
+          : exportSuspendedMode === 'force_active'
+            ? false
+            : Boolean(card.isSuspended);
+        const cardTags = Array.isArray(card.tags) ? [...card.tags] : [];
+        if (shouldSuspend && !cardTags.includes('suspended')) {
+          cardTags.push('suspended');
+        }
+        const tagsStr = cardTags.join(' ');
         if (type === 'Cloze') {
-          fileContent += `${type}\t${cleanDeck}\t${clean(card.text)}\t${clean(card.extra || '')}\n`;
+          fileContent += `${type}\t${cleanDeck}\t${clean(card.text)}\t${clean(card.extra || '')}\t${tagsStr}\n`;
         } else {
-          fileContent += `${type}\t${cleanDeck}\t${clean(card.front)}\t${clean(card.back)}\n`;
+          fileContent += `${type}\t${cleanDeck}\t${clean(card.front)}\t${clean(card.back)}\t${tagsStr}\n`;
         }
       });
       mimeType = 'text/plain;charset=utf-8;';
@@ -20317,7 +20344,16 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
         };
         const type = card.type || 'Basic';
         const deck = card.deck || firstDeck || hierarchy || '';
-        const tags = (card.tags || []).join('; ');
+        const shouldSuspend = exportSuspendedMode === 'force_suspended'
+          ? true
+          : exportSuspendedMode === 'force_active'
+            ? false
+            : Boolean(card.isSuspended);
+        const cardTags = Array.isArray(card.tags) ? [...card.tags] : [];
+        if (shouldSuspend && !cardTags.includes('suspended')) {
+          cardTags.push('suspended');
+        }
+        const tags = cardTags.join('; ');
 
         if (type === 'Cloze') {
           fileContent += `${escapeCSV(type)},${escapeCSV(deck)},${escapeCSV(card.text)},,${escapeCSV(tags)}\n`;
