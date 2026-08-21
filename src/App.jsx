@@ -18881,6 +18881,11 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       alert("Gemini API key is not configured. Please enter your Gemini API key in Settings / Setup to generate flashcards.");
       return;
     }
+    const isSubjectRequired = generationPromptId === 'comprehensive_pyt' || generationPromptId === 'pyt_generator';
+    if (isSubjectRequired && (!selectedGenerationSubject || !selectedGenerationSubject.trim())) {
+      alert("Subject selection is required for this prompt template. Please select a Subject before starting card generation.");
+      return;
+    }
     const items = Array.isArray(itemsToProcess) ? itemsToProcess : queue;
     const pendingItems = items.filter(item => item.status === 'pending' || item.status === 'error');
     if (pendingItems.length === 0) return;
@@ -19043,6 +19048,15 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
 
   const processTriagePage = async (pageId) => {
     if (isProcessing) return;
+    if (!geminiApiKey) {
+      alert("Gemini API key is not configured. Please enter your Gemini API key in Settings / Setup to generate flashcards.");
+      return;
+    }
+    const isSubjectRequired = generationPromptId === 'comprehensive_pyt' || generationPromptId === 'pyt_generator';
+    if (isSubjectRequired && (!selectedGenerationSubject || !selectedGenerationSubject.trim())) {
+      alert("Subject selection is required for this prompt template. Please select a Subject before starting card generation.");
+      return;
+    }
     const pageObj = libraryPages.find(p => p.id === pageId);
     if (!pageObj) {
       alert("Page not found in cloud pages.");
@@ -19463,6 +19477,11 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     }
     if (!geminiApiKey) {
       alert("Please configure a Gemini API Key in Settings / Setup to generate flashcards.");
+      return;
+    }
+    const isSubjectRequired = generationPromptId === 'comprehensive_pyt' || generationPromptId === 'pyt_generator';
+    if (isSubjectRequired && (!selectedGenerationSubject || !selectedGenerationSubject.trim())) {
+      alert("Subject selection is required for this prompt template. Please select a Subject before starting card generation.");
       return;
     }
     // Mark item as pending and trigger original full generation pipeline for this page
@@ -23739,17 +23758,23 @@ Return your response strictly as a JSON object matching this schema:
                             <button onClick={() => setQueue([])} className={`text-[10px] font-bold uppercase ${settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}`}>Clear</button>
                           </div>
 
-                          <UiverseButton
-                            onClick={processQueue}
-                            disabled={isProcessing}
-                            fullWidth
-                            size="lg"
-                            themeMode={settingsThemeMode}
-                            icon={isProcessing ? <Loader2 className="w-5 h-5 animate-spin text-blue-400" /> : <Play className="w-5 h-5 text-blue-400" />}
-                            className="mb-3"
-                          >
-                            {isProcessing ? 'AI Thinking...' : `Start Analysis (${queue.length})`}
-                          </UiverseButton>
+                          {(() => {
+                            const isPytSubjectRequired = generationPromptId === 'comprehensive_pyt' || generationPromptId === 'pyt_generator';
+                            const isPytSubjectMissing = isPytSubjectRequired && (!selectedGenerationSubject || !selectedGenerationSubject.trim());
+                            return (
+                              <UiverseButton
+                                onClick={processQueue}
+                                disabled={isProcessing || (isPytSubjectMissing && queue.length > 0)}
+                                fullWidth
+                                size="lg"
+                                themeMode={settingsThemeMode}
+                                icon={isProcessing ? <Loader2 className="w-5 h-5 animate-spin text-blue-400" /> : <Play className="w-5 h-5 text-blue-400" />}
+                                className="mb-3"
+                              >
+                                {isProcessing ? 'AI Thinking...' : isPytSubjectMissing ? 'Select Subject to Start' : `Start Analysis (${queue.length})`}
+                              </UiverseButton>
+                            );
+                          })()}
 
                           {/* Mobile Prompt Template Selector */}
                           <div className={`p-3.5 rounded-2xl mb-3 transition-colors ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200/60'}`}>
@@ -23779,15 +23804,18 @@ Return your response strictly as a JSON object matching this schema:
                                     : generationPromptId === 'qbank_engine'
                                       ? 'Q-Bank engine/ error log'
                                       : (customPrompts.find(p => p.id === generationPromptId)?.name || '');
-                              const isPytAware = generationPromptId === 'comprehensive_pyt'
-                                || generationPromptId === 'pyt_generator'
+                              const isPytSubjectRequired = generationPromptId === 'comprehensive_pyt' || generationPromptId === 'pyt_generator';
+                              const isPytAware = isPytSubjectRequired
                                 || currentPromptName.toLowerCase().includes('pyt')
                                 || currentPromptName.toLowerCase().includes('high-yield');
                               if (isPytAware) {
                                 const subjects = Array.from(new Set(pytTopicsList.map(p => p.subject).filter(s => s && typeof s === 'string' && !s.toLowerCase().startsWith('pyt_pdf_') && !s.toLowerCase().startsWith('pyt_topic_') && !s.toLowerCase().includes('_topic_'))));
+                                const isMissing = isPytSubjectRequired && (!selectedGenerationSubject || !selectedGenerationSubject.trim());
                                 return (
                                   <div className="mt-2.5 animate-in slide-in-from-top-2 duration-200">
-                                    <label className={`block text-[9px] font-black uppercase tracking-widest mb-1 text-left ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Select Subject</label>
+                                    <label className={`block text-[9px] font-black uppercase tracking-widest mb-1 text-left ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                                      Select Subject {isPytSubjectRequired && <span className="text-red-500 font-black ml-0.5">* (Required)</span>}
+                                    </label>
                                     <NeumorphicSelect
                                       value={selectedGenerationSubject}
                                       onChange={(val) => setSelectedGenerationSubject(val)}
@@ -23798,6 +23826,11 @@ Return your response strictly as a JSON object matching this schema:
                                       themeMode={settingsThemeMode}
                                       placeholder="Choose Subject..."
                                     />
+                                    {isMissing && (
+                                      <div className="text-[10px] text-amber-500 font-bold mt-1.5 flex items-center gap-1 animate-in fade-in">
+                                        ⚠️ Subject selection is required before generating
+                                      </div>
+                                    )}
                                   </div>
                                 );
                               }
@@ -29127,7 +29160,7 @@ Return your response strictly as a JSON object matching this schema:
 
                           {/* PROMPT SELECTORS - Shown for Image Mode OR (Raw Text Mode -> AI Extractor) */}
                           {(cardGenerationInputMode === 'image' || (cardGenerationInputMode === 'text' && rawTextSubMode === 'ai')) && (
-                            <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-4 shrink-0`}>
+<div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-4 shrink-0`}>
                               <div className="space-y-3">
                                 {cardGenerationInputMode === 'image' ? (
                                   <div>
@@ -29155,15 +29188,18 @@ Return your response strictly as a JSON object matching this schema:
                                             : generationPromptId === 'qbank_engine'
                                               ? 'Q-Bank engine/ error log'
                                               : (customPrompts.find(p => p.id === generationPromptId)?.name || '');
-                                      const isPytAware = generationPromptId === 'comprehensive_pyt'
-                                        || generationPromptId === 'pyt_generator'
+                                      const isPytSubjectRequired = generationPromptId === 'comprehensive_pyt' || generationPromptId === 'pyt_generator';
+                                      const isPytAware = isPytSubjectRequired
                                         || currentPromptName.toLowerCase().includes('pyt')
                                         || currentPromptName.toLowerCase().includes('high-yield');
                                       if (isPytAware) {
-                                        const subjects = Array.from(new Set(pytTopicsList.map(p => p.subject).filter(Boolean)));
+                                        const subjects = Array.from(new Set(pytTopicsList.map(p => p.subject).filter(s => s && typeof s === 'string' && !s.toLowerCase().startsWith('pyt_pdf_') && !s.toLowerCase().startsWith('pyt_topic_') && !s.toLowerCase().includes('_topic_'))));
+                                        const isMissing = isPytSubjectRequired && (!selectedGenerationSubject || !selectedGenerationSubject.trim());
                                         return (
                                           <div className="mt-2.5 animate-in slide-in-from-top-2 duration-200">
-                                            <label className={`block text-[9px] font-black uppercase tracking-widest mb-1 text-left ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Select Subject</label>
+                                            <label className={`block text-[9px] font-black uppercase tracking-widest mb-1 text-left ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                                              Select Subject {isPytSubjectRequired && <span className="text-red-500 font-black ml-0.5">* (Required)</span>}
+                                            </label>
                                             <NeumorphicSelect
                                               value={selectedGenerationSubject}
                                               onChange={(val) => setSelectedGenerationSubject(val)}
@@ -29174,6 +29210,11 @@ Return your response strictly as a JSON object matching this schema:
                                               themeMode={settingsThemeMode}
                                               placeholder="Choose Subject..."
                                             />
+                                            {isMissing && (
+                                              <div className="text-[10px] text-amber-500 font-bold mt-1.5 flex items-center gap-1 animate-in fade-in">
+                                                ⚠️ Subject selection is required before generating
+                                              </div>
+                                            )}
                                           </div>
                                         );
                                       }
@@ -29199,9 +29240,11 @@ Return your response strictly as a JSON object matching this schema:
                               </div>
                             </div>
                           )}
-
                           {(() => {
                             const isExpanded = isQueueCardHovered || isQueueCardClicked;
+                            const isPytSubjectRequired = generationPromptId === 'comprehensive_pyt' || generationPromptId === 'pyt_generator';
+                            const isPytSubjectMissing = isPytSubjectRequired && (!selectedGenerationSubject || !selectedGenerationSubject.trim());
+                            const isStartDisabled = isProcessing || queue.filter(q => q.status === 'pending').length === 0 || isPytSubjectMissing;
                             return (
                               <div
                                 onMouseEnter={() => setIsQueueCardHovered(true)}
@@ -29223,10 +29266,11 @@ Return your response strictly as a JSON object matching this schema:
                                   <div className="flex gap-2 items-center">
                                     <button
                                       onClick={(e) => { e.stopPropagation(); processQueue(); }}
-                                      disabled={isProcessing || queue.filter(q => q.status === 'pending').length === 0}
-                                      className={`px-3 py-1 rounded-xl text-xs font-black flex items-center gap-1.5 transition bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20 disabled:opacity-50 active:scale-95`}
+                                      disabled={isStartDisabled}
+                                      title={isPytSubjectMissing ? "Please select a Subject before starting card generation" : isProcessing ? "Processing..." : "Start"}
+                                      className={`px-3 py-1 rounded-xl text-xs font-black flex items-center gap-1.5 transition ${isPytSubjectMissing ? 'bg-amber-600/80 hover:bg-amber-600 text-white cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20'} disabled:opacity-50 active:scale-95`}
                                     >
-                                      <Play className="w-3 h-3" /> {isProcessing ? 'Wait...' : 'Start'}
+                                      <Play className="w-3 h-3" /> {isProcessing ? 'Wait...' : isPytSubjectMissing ? 'Need Subject' : 'Start'}
                                     </button>
                                     <button
                                       onClick={(e) => { e.stopPropagation(); setIsQueueCardClicked(prev => !prev); }}
