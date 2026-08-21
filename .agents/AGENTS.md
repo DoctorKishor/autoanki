@@ -1,5 +1,11 @@
 # Workspace Rules for AutoAnki
 
+## 🚨 0. ZERO-DATA-LOSS PRIME DIRECTIVE (Highest Priority & Non-Negotiable)
+- **Absolute Zero-Tolerance for Data Loss**: While modifying, refactoring, writing, or optimizing any part of the codebase, the agent **MUST** prioritize data preservation above all else and proactively detect, audit, and eliminate **ANY** bug, race condition, unhandled error, silent overwrite, accidental deletion, or loophole that could cause a user to lose data (flashcards, review logs, topics, notes, occlusions, study time, or settings).
+- **Defensive Engineering**: Every state mutation, deletion, migration, cloud sync, backup, and restore pathway must be engineered defensively with non-destructive fallback mechanisms and rollback safety before changes are declared complete.
+
+---
+
 ## 1. Design System & App Appearance Guidelines
 All UI components, buttons, color schemes, theme modes (Light: `#e6ecf5`, Dark: `#222730`), Neumorphic elevations, Framer Motion parameters, and layout standards are documented in detail in:
 [DESIGN_SYSTEM.md](file:///d:/Projects/Antigravity/auto-anki-app/DESIGN_SYSTEM.md)
