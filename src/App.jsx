@@ -37803,6 +37803,14 @@ Return your response strictly as a JSON object matching this schema:
                                 <p className="text-gray-500 font-medium mt-0.5">Anki will automatically build the deck hierarchy <span className="font-bold text-blue-600">"{exportSuccessGuide.deckName}"</span>. All <span className="font-bold text-gray-900">Basic</span> and <span className="font-bold text-gray-900">Cloze</span> note definitions along with all embedded clinical diagrams are loaded natively!</p>
                               </div>
                             </div>
+
+                            <div className="flex gap-3 bg-amber-500/10 border border-amber-500/20 rounded-xl p-3">
+                              <span className="flex items-center justify-center w-5 h-5 bg-amber-500 text-white rounded-full text-[10px] font-mono font-black shrink-0">5</span>
+                              <div className="text-xs">
+                                <span className="font-black text-amber-700 dark:text-amber-300 block">Suspended Cards in Anki</span>
+                                <p className="text-gray-600 dark:text-gray-400 font-medium mt-0.5">When Anki's import dialog opens, check <span className="font-bold text-gray-900 dark:text-white">"Import any learning progress"</span> (or "Import scheduling") to retain the suspended queue directly (yellow highlight). If imported without scheduling, you can also search <span className="font-mono font-bold text-blue-600">tag:suspended</span> in Anki Browser and press <kbd className="px-1 py-0.5 bg-white border border-gray-300 rounded text-[10px] font-mono font-bold text-gray-700">Ctrl + J</kbd> (Toggle Suspend).</p>
+                              </div>
+                            </div>
                           </>
                         )}
 
