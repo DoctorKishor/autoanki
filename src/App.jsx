@@ -529,50 +529,35 @@ Set "has_image": true ONLY for MANDATORY cards that directly test an actual visu
 
 "img_box": WHENEVER "has_image" is true, YOU MUST RETURN [ymin, xmin, ymax, xmax] relative bounding coordinates (0 to 1000 scale) tightly cropping ONLY the visual asset/diagram itself. NEVER return [0, 0, 1000, 1000]. If "has_image" is false, return null.
 
-"image_side": Specify "front", "back", or "both" for Basic cards. For Cloze cards, default to "front". If "has_image" is false, return "none".
-
-"image_confidence": Return an integer from 0 to 100 representing AI confidence that this card genuinely requires a cropped diagram.
+"image_side": Specify "front", "back", or "both" for Basic cards. For Cloze cards, default to "front".
 
 STRICT JSON OUTPUT FORMAT
 Return ONLY a valid JSON array containing card objects. Do not wrap in extra commentary or conversational fluff outside the JSON.
 
-CRITICAL JSON RULE: You MUST return all fields for EVERY card. For EVERY card generated, you MUST populate all 13 of the following fields:
+CRITICAL JSON RULE: You MUST return all fields for EVERY card. For EVERY card generated, you MUST populate all 16 of the following fields:
 
-"type": Exactly "Basic" or "Cloze" (Case-sensitive spelling).
-
-"front":
-
-If "Basic": The Topic Subheading + Question text (e.g., "Thyroidectomy: What is the most common complication?").
-
-If "Cloze": Must be an empty string ("").
-
-"back":
-
-If "Basic": The answer text. NEVER LEAVE 'back' EMPTY for a Basic card.
-
-If "Cloze": Optional extra context or notes — leave empty ("") if none.
-
-"text":
-
-If "Basic": Must be an empty string ("").
-
-If "Cloze": The Topic Subheading + Cloze text (e.g., "Thyroidectomy: The most common complication is {{c1::recurrent laryngeal nerve injury}}.").
-
-"ymin": Top source coordinate of card text on the image (integer 0 to 1000).
-
-"xmin": Left source coordinate of card text on the image (integer 0 to 1000).
-
-"ymax": Bottom source coordinate of card text on the image (integer 0 to 1000).
-
-"xmax": Right source coordinate of card text on the image (integer 0 to 1000).
-
-"has_image": boolean (true if card has visual diagram/figure, false for pure text).
-
-"img_box": [ymin, xmin, ymax, xmax] or null.
-
-"image_side": "front" | "back" | "both" | "none".
-
-"image_confidence": integer (0 to 100).
+1. "type": Exactly "Basic" or "Cloze" (Case-sensitive spelling).
+2. "front":
+   - If "Basic": The Topic Subheading + Question text (e.g., "Thyroidectomy: What is the most common complication?").
+   - If "Cloze": Must be an empty string ("").
+3. "back":
+   - If "Basic": The answer text. NEVER LEAVE 'back' EMPTY for a Basic card.
+   - If "Cloze": Optional extra context or notes — leave empty ("") if none.
+4. "text":
+   - If "Basic": Must be an empty string ("").
+   - If "Cloze": The Topic Subheading + Cloze text (e.g., "Thyroidectomy: The most common complication is {{c1::recurrent laryngeal nerve injury}}.").
+5. "is_pyt": boolean (true if card conceptually matches an item in {FETCHED_TOPICS}, false otherwise).
+6. "pyt_topic": string with exact matched PYT topic name, or null if not a PYT.
+7. "tags": Array of strings (e.g., ["Surgery", "Thyroid", "PYT", "PYT::Thyroid_Carcinoma"] if PYT, or ["Surgery", "Thyroid"] if non-PYT).
+8. "ymin": Top source coordinate of card text on the image (integer 0 to 1000).
+9. "xmin": Left source coordinate of card text on the image (integer 0 to 1000).
+10. "ymax": Bottom source coordinate of card text on the image (integer 0 to 1000).
+11. "xmax": Right source coordinate of card text on the image (integer 0 to 1000).
+12. "has_image": boolean (true if card has visual diagram/figure, false for pure text).
+13. "img_box": [ymin, xmin, ymax, xmax] or null.
+14. "image_side": "front" | "back" | "both" | "none".
+15. "image_confidence": integer (0 to 100).
+16. "isSuspended": false.
 
 EXACT LOCATION BOUNDING BOXES: For EVERY card, inspect the page image and return exact 0 to 1000 normalized bounding coordinates for text (ymin, xmin, ymax, xmax) and diagram (img_box).
 `;
@@ -1926,6 +1911,54 @@ const handleImageCloudUpload = async (base64Image, fileName, apiKey) => {
   return await uploadToImgBB(base64Image, apiKey);
 };
 
+export const isCardPyt = (card) => {
+  if (!card || typeof card !== 'object') return false;
+  if (card.is_pyt === true || card.isPyt === true) return true;
+  if (typeof card.pyt_topic === 'string' && card.pyt_topic.trim().length > 0) return true;
+  if (typeof card.pytTopic === 'string' && card.pytTopic.trim().length > 0) return true;
+  if (Array.isArray(card.tags)) {
+    return card.tags.some(t => {
+      if (typeof t !== 'string') return false;
+      const clean = t.trim().toUpperCase();
+      return clean === 'PYT' || clean.startsWith('PYT::') || clean.startsWith('PYT:') || clean === 'IS_PYT';
+    });
+  } else if (typeof card.tags === 'string') {
+    const clean = card.tags.trim().toUpperCase();
+    return clean === 'PYT' || clean.includes('PYT') || clean.includes('IS_PYT');
+  }
+  return false;
+};
+
+export const getCardPytTopic = (card) => {
+  if (!card || typeof card !== 'object') return '';
+  if (typeof card.pyt_topic === 'string' && card.pyt_topic.trim().length > 0) return card.pyt_topic.trim();
+  if (typeof card.pytTopic === 'string' && card.pytTopic.trim().length > 0) return card.pytTopic.trim();
+  if (Array.isArray(card.tags)) {
+    const pytTag = card.tags.find(t => typeof t === 'string' && (t.startsWith('PYT::') || t.startsWith('PYT:')));
+    if (pytTag) {
+      return pytTag.replace(/^PYT::?/, '').trim();
+    }
+  }
+  return '';
+};
+
+export const renderPytBadge = (card, isCompact = false) => {
+  if (!isCardPyt(card)) return null;
+  const topic = getCardPytTopic(card);
+  return (
+    <span
+      className={`font-black uppercase tracking-wider bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-400 border border-amber-500/35 rounded-full flex items-center gap-1 shadow-sm shrink-0 ${
+        isCompact ? 'text-[8px] px-1.5 py-0.5' : 'text-[9px] px-2 py-0.5'
+      }`}
+      title={topic ? `High-Yield PYT: ${topic}` : 'High-Yield Previous Year Topic'}
+    >
+      <Sparkles className="w-2.5 h-2.5 text-amber-400 fill-amber-400/40" />
+      <span>PYT</span>
+      {!isCompact && topic ? <span className="opacity-80 max-w-[110px] truncate font-semibold">({topic})</span> : null}
+    </span>
+  );
+};
+
 export const sanitizeCardForStorage = (card) => {
   if (!card || typeof card !== 'object') return card;
   const sanitized = { ...card };
@@ -1942,6 +1975,29 @@ export const sanitizeCardForStorage = (card) => {
       return occ;
     });
   }
+
+  // Normalize tags array
+  if (typeof sanitized.tags === 'string') {
+    sanitized.tags = sanitized.tags.split(',').map(t => t.trim()).filter(Boolean);
+  } else if (!Array.isArray(sanitized.tags)) {
+    sanitized.tags = [];
+  }
+
+  // Normalize PYT metadata
+  const isPyt = isCardPyt(sanitized);
+  const pytTopic = getCardPytTopic(sanitized);
+  sanitized.is_pyt = isPyt;
+  sanitized.pyt_topic = pytTopic || null;
+
+  if (isPyt) {
+    if (!sanitized.tags.includes('PYT')) {
+      sanitized.tags.push('PYT');
+    }
+    if (pytTopic && !sanitized.tags.some(t => t.toLowerCase() === `pyt::${pytTopic.toLowerCase()}`)) {
+      sanitized.tags.push(`PYT::${pytTopic}`);
+    }
+  }
+
   return sanitized;
 };
 
@@ -2015,7 +2071,10 @@ const callGeminiWithRetry = async (apiKey, prompt, base64Image, mimeType, retrie
                 has_image: { type: "BOOLEAN", description: "Set true ONLY if an actual, clear visual figure (lesion photo, diagram, medical instrument, X-ray/CT/MRI, histological slide) on the page is directly relevant. Pure text, headers, and text tables are strictly false." },
                 img_box: { type: "ARRAY", items: { type: "INTEGER" }, description: "[ymin, xmin, ymax, xmax] relative bounding box (0-1000 scale) for the visual asset if has_image is true" },
                 image_side: { type: "STRING", enum: ["front", "back", "both", "none"], description: "Which card side the diagram belongs on" },
-                image_confidence: { type: "INTEGER", description: "Confidence score 0-100 that diagram adds high value to recall" }
+                image_confidence: { type: "INTEGER", description: "Confidence score 0-100 that diagram adds high value to recall" },
+                is_pyt: { type: "BOOLEAN", description: "true if card conceptually matches an item in the provided PYT list, false otherwise" },
+                pyt_topic: { type: "STRING", description: "Exact matched PYT topic name from the provided list, or empty string if not a PYT" },
+                tags: { type: "ARRAY", items: { type: "STRING" }, description: "Tags array for the card. Include 'PYT' and 'PYT::{Matched_Topic}' if is_pyt is true" }
               },
               required: ["type", "front", "back", "text", "ymin", "xmin", "ymax", "xmax", "has_image"]
             }
@@ -17896,6 +17955,9 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
           img_box: null,
           image_side: 'none',
           image_confidence: 0,
+          is_pyt: Boolean(rawCard.is_pyt || isCardPyt(rawCard)),
+          pyt_topic: rawCard.pyt_topic || getCardPytTopic(rawCard) || null,
+          tags: Array.isArray(rawCard.tags) ? rawCard.tags : [],
           isSuspended: Boolean(rawCard.isSuspended),
           createdAt: nowTime,
           updatedAt: nowTime,
@@ -19580,6 +19642,9 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
             img_box: Array.isArray(card.img_box) ? card.img_box : null,
             image_side: card.image_side || 'none',
             image_confidence: typeof card.image_confidence === 'number' ? card.image_confidence : 0,
+            is_pyt: Boolean(card.is_pyt || isCardPyt(card)),
+            pyt_topic: card.pyt_topic || getCardPytTopic(card) || null,
+            tags: Array.isArray(card.tags) ? card.tags : [],
             isSuspended: Boolean(card.isSuspended),
             createdAt: nowTime,
             updatedAt: nowTime
@@ -20360,6 +20425,14 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
           const cardQueue = shouldSuspend ? -1 : 0;
 
           const cardTagsList = Array.isArray(card.tags) ? [...card.tags] : [];
+          const isPyt = isCardPyt(card);
+          const pytTopic = getCardPytTopic(card);
+          if (isPyt) {
+            if (!cardTagsList.includes('PYT')) cardTagsList.push('PYT');
+            if (pytTopic && !cardTagsList.some(t => t.toLowerCase() === `pyt::${pytTopic.toLowerCase()}`)) {
+              cardTagsList.push(`PYT::${pytTopic.replace(/\s+/g, '_')}`);
+            }
+          }
           if (shouldSuspend) {
             if (!cardTagsList.includes('suspended')) {
               cardTagsList.push('suspended');
@@ -20383,12 +20456,20 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
         setExportProgressText("Finalizing SQLite database compilation...");
         const dbBinary = dbInstance.export();
         zip.file('collection.anki2', dbBinary);
+
+        // Export media manifest
         zip.file('media', JSON.stringify(mediaManifest));
 
-        // Generate download
-        setExportProgressText("Compressing Anki package payload (.apkg)...");
-        const blob = await zip.generateAsync({ type: 'blob' });
-        const url = URL.createObjectURL(blob);
+        // Generate zip blob
+        setExportProgressText("Compressing archive into .apkg format...");
+        const content = await zip.generateAsync({
+          type: 'blob',
+          compression: "DEFLATE",
+          compressionOptions: { level: 6 }
+        });
+
+        // Trigger Download
+        const url = URL.createObjectURL(content);
         const link = document.createElement('a');
         link.href = url;
         link.setAttribute('download', `export_${safeName}.apkg`);
@@ -20453,6 +20534,14 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
             ? false
             : Boolean(card.isSuspended);
         const cardTags = Array.isArray(card.tags) ? [...card.tags] : [];
+        const isPyt = isCardPyt(card);
+        const pytTopic = getCardPytTopic(card);
+        if (isPyt) {
+          if (!cardTags.includes('PYT')) cardTags.push('PYT');
+          if (pytTopic && !cardTags.some(t => t.toLowerCase() === `pyt::${pytTopic.toLowerCase()}`)) {
+            cardTags.push(`PYT::${pytTopic.replace(/\s+/g, '_')}`);
+          }
+        }
         if (shouldSuspend && !cardTags.includes('suspended')) {
           cardTags.push('suspended');
         }
@@ -20484,6 +20573,14 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
             ? false
             : Boolean(card.isSuspended);
         const cardTags = Array.isArray(card.tags) ? [...card.tags] : [];
+        const isPyt = isCardPyt(card);
+        const pytTopic = getCardPytTopic(card);
+        if (isPyt) {
+          if (!cardTags.includes('PYT')) cardTags.push('PYT');
+          if (pytTopic && !cardTags.some(t => t.toLowerCase() === `pyt::${pytTopic.toLowerCase()}`)) {
+            cardTags.push(`PYT::${pytTopic.replace(/\s+/g, '_')}`);
+          }
+        }
         if (shouldSuspend && !cardTags.includes('suspended')) {
           cardTags.push('suspended');
         }
@@ -20613,6 +20710,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
           <div class="card">
             <div class="card-header">
               <span class="tag">${type}</span>
+              ${isCardPyt(card) ? `<span class="tag" style="background:#f59e0b;color:#ffffff;font-weight:bold;">★ PYT${getCardPytTopic(card) ? ': ' + getCardPytTopic(card) : ''}</span>` : ''}
               <span class="index">Card #${idx + 1}</span>
             </div>
             <div>
