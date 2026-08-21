@@ -7199,6 +7199,7 @@ export default function App() {
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [exportFormat, setExportFormat] = useState('apkg'); // 'apkg' | 'anki' | 'notion' | 'pdf' | 'json'
   const [exportScope, setExportScope] = useState('all'); // 'all' | 'unexported' | 'exported'
+  const [exportSuspendedMode, setExportSuspendedMode] = useState('individual'); // 'individual' | 'force_suspended' | 'force_active'
   const [includeImages, setIncludeImages] = useState(true);
   const [imagePortion, setImagePortion] = useState('crop'); // 'crop' | 'full'
   const [manualReviewImages, setManualReviewImages] = useState(false);
@@ -7209,6 +7210,35 @@ export default function App() {
   const [isCropPanning, setIsCropPanning] = useState(false);
   const [isImageVerificationModalOpen, setIsImageVerificationModalOpen] = useState(false);
   const [verificationModalCards, setVerificationModalCards] = useState([]);
+
+  const toggleGeneratedCardSuspended = (queueId, cardId) => {
+    setQueue(prev => prev.map(q => {
+      if (q.id === queueId && q.generatedCards) {
+        return {
+          ...q,
+          generatedCards: q.generatedCards.map(c =>
+            (c.id ? c.id === cardId : c.text === cardId)
+              ? { ...c, isSuspended: !c.isSuspended }
+              : c
+          )
+        };
+      }
+      return q;
+    }));
+  };
+
+  const setAllGeneratedCardsSuspended = (queueId, isSuspended) => {
+    setQueue(prev => prev.map(q => {
+      if (q.id === queueId && q.generatedCards) {
+        return {
+          ...q,
+          generatedCards: q.generatedCards.map(c => ({ ...c, isSuspended }))
+        };
+      }
+      return q;
+    }));
+  };
+
   const syncCardToLocalDb = async (card) => {
     if (!card || !card.id) return;
     try {
@@ -17734,6 +17764,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
           img_box: null,
           image_side: 'none',
           image_confidence: 0,
+          isSuspended: Boolean(rawCard.isSuspended),
           createdAt: nowTime,
           updatedAt: nowTime,
           reviewState: rawCard.reviewState || {
@@ -19394,6 +19425,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
             img_box: Array.isArray(card.img_box) ? card.img_box : null,
             image_side: card.image_side || 'none',
             image_confidence: typeof card.image_confidence === 'number' ? card.image_confidence : 0,
+            isSuspended: Boolean(card.isSuspended),
             createdAt: nowTime,
             updatedAt: nowTime
           };
@@ -20163,8 +20195,15 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
           const cardDeck = card.deck || firstDeck || 'Default';
           const cardDeckId = getDeckId(cardDeck);
 
-          dbInstance.run(`INSERT INTO cards VALUES (?, ?, ?, 0, ?, -1, 0, 0, ?, 0, 0, 0, 0, 0, 0, 0, 0, '')`, [
-            cardId, noteId, cardDeckId, Math.floor(Date.now() / 1000), i
+          const shouldSuspend = exportSuspendedMode === 'force_suspended'
+            ? true
+            : exportSuspendedMode === 'force_active'
+              ? false
+              : Boolean(card.isSuspended);
+          const cardQueue = shouldSuspend ? -1 : 0;
+
+          dbInstance.run(`INSERT INTO cards VALUES (?, ?, ?, 0, ?, -1, 0, ?, ?, 0, 0, 0, 0, 0, 0, 0, 0, '')`, [
+            cardId, noteId, cardDeckId, Math.floor(Date.now() / 1000), cardQueue, i
           ]);
         }
 
@@ -23893,7 +23932,33 @@ Return your response strictly as a JSON object matching this schema:
                               <h3 className={`text-[10px] font-black uppercase tracking-widest ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                                 {queue.find(q => q.id === activeQueueId) ? 'Preview: AI Generation' : 'Library: Saved Cards'}
                               </h3>
-                              <button onClick={() => setActiveQueueId(null)} className="text-red-500 text-[10px] font-black uppercase">Close</button>
+                              <div className="flex items-center gap-2">
+                                {activeQueueId && queue.find(q => q.id === activeQueueId)?.generatedCards?.length > 0 && (
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => setAllGeneratedCardsSuspended(activeQueueId, true)}
+                                      className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-wider transition ${
+                                        settingsThemeMode === 'dark' ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 border border-amber-500/30' : 'bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200'
+                                      }`}
+                                      title="Suspend all cards in this batch on export"
+                                    >
+                                      Suspend All
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setAllGeneratedCardsSuspended(activeQueueId, false)}
+                                      className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-wider transition ${
+                                        settingsThemeMode === 'dark' ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                      }`}
+                                      title="Set all cards in this batch to active on export"
+                                    >
+                                      Active All
+                                    </button>
+                                  </div>
+                                )}
+                                <button onClick={() => setActiveQueueId(null)} className="text-red-500 text-[10px] font-black uppercase">Close</button>
+                              </div>
                             </div>
 
                             {/* Cards Display */}
@@ -23914,7 +23979,32 @@ Return your response strictly as a JSON object matching this schema:
                                       }`}
                                   >
                                     <div className="flex items-center justify-between w-full">
-                                      <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full inline-block ${settingsThemeMode === 'dark' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}>{card.type}</span>
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                        <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full inline-block ${settingsThemeMode === 'dark' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}>{card.type}</span>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (activeQueueId) {
+                                              toggleGeneratedCardSuspended(activeQueueId, card.id || card.text);
+                                            } else if (card.id) {
+                                              const updated = { ...card, isSuspended: !card.isSuspended };
+                                              syncCardToLocalDb(updated);
+                                            }
+                                          }}
+                                          className={`text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1 transition ${
+                                            card.isSuspended
+                                              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
+                                              : settingsThemeMode === 'dark'
+                                                ? 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-slate-200'
+                                                : 'bg-slate-100 text-slate-500 border border-slate-200 hover:text-slate-700'
+                                          }`}
+                                          title={card.isSuspended ? "Card is Suspended on export. Click to activate." : "Click to Suspend on export"}
+                                        >
+                                          {card.isSuspended ? <Pause className="w-2.5 h-2.5 fill-amber-400/40" /> : <Play className="w-2.5 h-2.5 opacity-60" />}
+                                          <span>{card.isSuspended ? 'Suspended' : 'Active'}</span>
+                                        </button>
+                                      </div>
 
                                       {/* Mobile Card Edit and Delete Action Buttons */}
                                       <div className="flex items-center gap-1.5 z-10" onClick={(e) => e.stopPropagation()}>
@@ -29102,8 +29192,34 @@ Return your response strictly as a JSON object matching this schema:
                               <h2 className={`text-base font-black flex items-center gap-2 uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>
                                 <CheckCircle className="w-5 h-5 text-emerald-500" /> Current Page Cards ({pageCards.length})
                               </h2>
-                              <div className={`flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-xl font-mono ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400 border border-blue-500/30' : 'neu-pressed-light text-blue-700 border border-blue-200/50'}`}>
-                                <Folder className="w-3 h-3" /> {hierarchy === 'PENDING_REVIEW' ? 'Triage Queue' : hierarchy}
+                              <div className="flex items-center gap-2">
+                                {activeQueueId && queue.find(q => q.id === activeQueueId)?.generatedCards?.length > 0 && (
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => setAllGeneratedCardsSuspended(activeQueueId, true)}
+                                      className={`px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-wider transition ${
+                                        settingsThemeMode === 'dark' ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 border border-amber-500/30' : 'bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200'
+                                      }`}
+                                      title="Suspend all cards in this batch on export"
+                                    >
+                                      Suspend All
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setAllGeneratedCardsSuspended(activeQueueId, false)}
+                                      className={`px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-wider transition ${
+                                        settingsThemeMode === 'dark' ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                      }`}
+                                      title="Set all cards in this batch to active on export"
+                                    >
+                                      Active All
+                                    </button>
+                                  </div>
+                                )}
+                                <div className={`flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-xl font-mono ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400 border border-blue-500/30' : 'neu-pressed-light text-blue-700 border border-blue-200/50'}`}>
+                                  <Folder className="w-3 h-3" /> {hierarchy === 'PENDING_REVIEW' ? 'Triage Queue' : hierarchy}
+                                </div>
                               </div>
                             </div>
 
@@ -29208,6 +29324,29 @@ Return your response strictly as a JSON object matching this schema:
                                                   }`}>
                                                   {card.type}
                                                 </span>
+                                                <button
+                                                  type="button"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (activeQueueId) {
+                                                      toggleGeneratedCardSuspended(activeQueueId, card.id || card.text);
+                                                    } else if (card.id) {
+                                                      const updated = { ...card, isSuspended: !card.isSuspended };
+                                                      syncCardToLocalDb(updated);
+                                                    }
+                                                  }}
+                                                  className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1 transition ${
+                                                    card.isSuspended
+                                                      ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-sm'
+                                                      : settingsThemeMode === 'dark'
+                                                        ? 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-slate-200'
+                                                        : 'bg-slate-100 text-slate-500 border border-slate-200 hover:text-slate-700'
+                                                  }`}
+                                                  title={card.isSuspended ? "Card is Suspended on export. Click to activate." : "Click to Suspend on export"}
+                                                >
+                                                  {card.isSuspended ? <Pause className="w-2.5 h-2.5 fill-amber-400/40" /> : <Play className="w-2.5 h-2.5 opacity-60" />}
+                                                  <span>{card.isSuspended ? 'Suspended' : 'Active'}</span>
+                                                </button>
                                                 {Boolean(card.has_image || (card.img_box && (Array.isArray(card.img_box) ? card.img_box.length === 4 : card.img_box.ymin !== undefined)) || card.include_image) && (
                                                   <span className="text-[9px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-500 border border-emerald-500/25 px-2 py-0.5 rounded-full flex items-center gap-1">
                                                     <ImageIcon className="w-2.5 h-2.5 text-emerald-500" /> Image
@@ -29806,6 +29945,29 @@ Return your response strictly as a JSON object matching this schema:
                                                         }`}>
                                                         {card.type || 'BASIC'}
                                                       </span>
+                                                      <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                          e.stopPropagation();
+                                                          if (activeQueueId) {
+                                                            toggleGeneratedCardSuspended(activeQueueId, card.id || card.text);
+                                                          } else if (card.id) {
+                                                            const updated = { ...card, isSuspended: !card.isSuspended };
+                                                            syncCardToLocalDb(updated);
+                                                          }
+                                                        }}
+                                                        className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1 transition ${
+                                                          card.isSuspended
+                                                            ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-sm'
+                                                            : settingsThemeMode === 'dark'
+                                                              ? 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-slate-200'
+                                                              : 'bg-slate-100 text-slate-500 border border-slate-200 hover:text-slate-700'
+                                                        }`}
+                                                        title={card.isSuspended ? "Card is Suspended on export. Click to activate." : "Click to Suspend on export"}
+                                                      >
+                                                        {card.isSuspended ? <Pause className="w-2.5 h-2.5 fill-amber-400/40" /> : <Play className="w-2.5 h-2.5 opacity-60" />}
+                                                        <span>{card.isSuspended ? 'Suspended' : 'Active'}</span>
+                                                      </button>
                                                       {Boolean(card.has_image || (card.img_box && (Array.isArray(card.img_box) ? card.img_box.length === 4 : card.img_box.ymin !== undefined)) || card.include_image) && (
                                                         <span className="text-[9px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-500 border border-emerald-500/25 px-2 py-0.5 rounded-full flex items-center gap-1">
                                                           <ImageIcon className="w-2.5 h-2.5 text-emerald-500" /> Image
@@ -30238,6 +30400,27 @@ Return your response strictly as a JSON object matching this schema:
                                                     }`}>
                                                     {card.type || 'BASIC'}
                                                   </span>
+                                                  <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      if (card.id) {
+                                                        const updated = { ...card, isSuspended: !card.isSuspended };
+                                                        syncCardToLocalDb(updated);
+                                                      }
+                                                    }}
+                                                    className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1 transition ${
+                                                      card.isSuspended
+                                                        ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-sm'
+                                                        : settingsThemeMode === 'dark'
+                                                          ? 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-slate-200'
+                                                          : 'bg-slate-100 text-slate-500 border border-slate-200 hover:text-slate-700'
+                                                    }`}
+                                                    title={card.isSuspended ? "Card is Suspended on export. Click to activate." : "Click to Suspend on export"}
+                                                  >
+                                                    {card.isSuspended ? <Pause className="w-2.5 h-2.5 fill-amber-400/40" /> : <Play className="w-2.5 h-2.5 opacity-60" />}
+                                                    <span>{card.isSuspended ? 'Suspended' : 'Active'}</span>
+                                                  </button>
                                                   {card.isManual && (
                                                     <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full inline-block ${settingsThemeMode === 'dark' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'bg-purple-50 text-purple-600 border border-purple-100'
                                                       }`}>Manual</span>
@@ -36912,6 +37095,43 @@ Return your response strictly as a JSON object matching this schema:
                           }}
                           className={`w-full p-3 rounded-xl outline-none text-xs font-semibold transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-white border border-gray-800' : 'neu-pressed-light text-gray-800 border border-gray-200'}`}
                         />
+                      </div>
+
+                      {/* Export Status (Suspended / Active) Toggle */}
+                      <div className={`pt-4 border-t ${settingsThemeMode === 'dark' ? 'border-gray-800' : 'border-gray-200/60'}`}>
+                        <div className={`p-3.5 rounded-2xl flex items-center justify-between gap-3 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
+                          <div>
+                            <span className={`text-xs font-black block ${settingsThemeMode === 'dark' ? 'text-slate-200' : 'text-slate-800'}`}>
+                              Suspend Card on Export
+                            </span>
+                            <span className={`text-[10px] font-medium block mt-0.5 ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
+                              {editingCard.isSuspended ? 'This card will be imported into Anki in a suspended state (yellow).' : 'This card will be imported into Anki in normal active review queue.'}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setEditingCard({ ...editingCard, isSuspended: !editingCard.isSuspended })}
+                            className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all shrink-0 ${
+                              editingCard.isSuspended
+                                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-sm'
+                                : settingsThemeMode === 'dark'
+                                  ? 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'
+                                  : 'bg-slate-200 text-slate-600 hover:text-slate-900 border border-slate-300'
+                            }`}
+                          >
+                            {editingCard.isSuspended ? (
+                              <>
+                                <Pause className="w-3 h-3 fill-amber-400/40 text-amber-400" />
+                                <span>Suspended</span>
+                              </>
+                            ) : (
+                              <>
+                                <Play className="w-3 h-3" />
+                                <span>Active</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
                       </div>
                     </div>
                     <div className={`p-6 border-t flex justify-end gap-4 ${settingsThemeMode === 'dark' ? 'border-gray-800' : 'border-gray-200/60'}`}>
