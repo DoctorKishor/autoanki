@@ -473,12 +473,17 @@ export async function deleteLocalPrompt(promptId) {
 export async function saveLocalPytTopic(subjectName, topicsText) {
   if (!subjectName) return null;
   const key = subjectName.trim().toLowerCase();
+  const isPdfKey = key.startsWith('pyt_pdf_') || key.startsWith('pyt_topic_pdf_') || key.includes('_topic_');
+
   const item = {
     key,
     id: key,
-    subject: subjectName.trim(),
     updatedAt: new Date().toISOString()
   };
+
+  if (!isPdfKey) {
+    item.subject = subjectName.trim();
+  }
 
   if (typeof topicsText === 'object' && topicsText !== null) {
     Object.assign(item, topicsText);
@@ -496,7 +501,21 @@ export async function getLocalPytTopic(subjectName) {
 }
 
 export async function getAllLocalPytTopics() {
-  return getAllLocalItems(STORES.PYT_DATA);
+  const allItems = (await getAllLocalItems(STORES.PYT_DATA)) || [];
+  return allItems.filter(item => {
+    if (!item) return false;
+    const key = (item.key || item.id || '').toLowerCase();
+    // Exclude PDF attachment keys
+    if (key.startsWith('pyt_pdf_') || key.startsWith('pyt_topic_pdf_') || key.includes('_topic_')) return false;
+    // Exclude records that are PDF binary containers
+    if (item.data instanceof ArrayBuffer || item.data?.__type === 'ArrayBuffer') return false;
+    if (item.pdfFileName || item.fileSize || item.isPdfPayload) return false;
+    // Exclude records whose subject name is a PDF key or contains '_topic_'
+    if (typeof item.subject === 'string' && (item.subject.toLowerCase().startsWith('pyt_pdf_') || item.subject.toLowerCase().startsWith('pyt_topic_') || item.subject.toLowerCase().includes('_topic_'))) return false;
+    // Must have a valid subject name
+    if (!item.subject || typeof item.subject !== 'string' || !item.subject.trim()) return false;
+    return true;
+  });
 }
 
 export async function deleteLocalPytTopic(subjectName) {
@@ -1000,7 +1019,7 @@ export async function calculateDetailedStorageBreakdown() {
     getByteSize(timerState);
 
   // 4. Textbook PDFs & Master Materials (stored in PYT_DATA and textbooksMetadata)
-  const allPytItems = (await getAllLocalPytTopics()) || [];
+  const allPytItems = (await getAllLocalItems(STORES.PYT_DATA)) || [];
   const textbooksMetadata = (await getLocalTextbooksMetadata()) || [];
   const pdfItems = [];
   const curriculumTopics = [];
@@ -1298,10 +1317,10 @@ export async function deleteLocalTextbookPdf(keyOrId) {
  */
 export async function clearAllTextbookPdfsLocal() {
   try {
-    const allPytItems = (await getAllLocalPytTopics()) || [];
+    const allPytItems = (await getAllLocalItems(STORES.PYT_DATA)) || [];
     for (const item of allPytItems) {
       const key = item?.id || item?.key || '';
-      if (key.startsWith('pyt_pdf_') || item?.data instanceof ArrayBuffer || item?.data?.__type === 'ArrayBuffer') {
+      if (key.startsWith('pyt_pdf_') || key.startsWith('pyt_topic_pdf_') || item?.data instanceof ArrayBuffer || item?.data?.__type === 'ArrayBuffer') {
         await deleteLocalPytTopic(key);
       }
     }

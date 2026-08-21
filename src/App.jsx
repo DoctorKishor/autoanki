@@ -17592,7 +17592,8 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
 
     if (isPytAware && basePromptContent.includes('{FETCHED_TOPICS}')) {
       if (selectedGenerationSubject) {
-        const pytData = pytTopicsList.find(p => p.subject.toLowerCase() === selectedGenerationSubject.toLowerCase());
+        const pytData = pytTopicsList.find(p => p.subject && p.subject.toLowerCase() === selectedGenerationSubject.toLowerCase() && typeof p.topics === 'string' && p.topics.trim())
+          || pytTopicsList.find(p => p.subject && p.subject.toLowerCase() === selectedGenerationSubject.toLowerCase());
         const topicsText = pytData ? pytData.topics || '' : '';
         return basePromptContent.replace('{FETCHED_TOPICS}', topicsText);
       } else {
@@ -23603,7 +23604,7 @@ Return your response strictly as a JSON object matching this schema:
                       streakLabel={selectedStreakTag}
                       setSelectedStreakTag={setSelectedStreakTag}
                       isStreakAlertEnabled={true}
-                      subjects={Array.from(new Set(pytTopicsList.map(p => p.subject).filter(Boolean)))}
+                      subjects={Array.from(new Set(pytTopicsList.map(p => p.subject).filter(s => s && typeof s === 'string' && !s.toLowerCase().startsWith('pyt_pdf_') && !s.toLowerCase().startsWith('pyt_topic_') && !s.toLowerCase().includes('_topic_'))))}
                       pytTopicsList={pytTopicsList}
                       userPytProgress={userPytProgress}
                       subjectTrackerData={subjectTrackerData}
@@ -23783,7 +23784,7 @@ Return your response strictly as a JSON object matching this schema:
                                 || currentPromptName.toLowerCase().includes('pyt')
                                 || currentPromptName.toLowerCase().includes('high-yield');
                               if (isPytAware) {
-                                const subjects = Array.from(new Set(pytTopicsList.map(p => p.subject).filter(Boolean)));
+                                const subjects = Array.from(new Set(pytTopicsList.map(p => p.subject).filter(s => s && typeof s === 'string' && !s.toLowerCase().startsWith('pyt_pdf_') && !s.toLowerCase().startsWith('pyt_topic_') && !s.toLowerCase().includes('_topic_'))));
                                 return (
                                   <div className="mt-2.5 animate-in slide-in-from-top-2 duration-200">
                                     <label className={`block text-[9px] font-black uppercase tracking-widest mb-1 text-left ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Select Subject</label>
@@ -28856,7 +28857,7 @@ Return your response strictly as a JSON object matching this schema:
                         streakLabel={selectedStreakTag}
                         setSelectedStreakTag={setSelectedStreakTag}
                         isStreakAlertEnabled={true}
-                        subjects={Array.from(new Set(pytTopicsList.map(p => p.subject).filter(Boolean)))}
+                        subjects={Array.from(new Set(pytTopicsList.map(p => p.subject).filter(s => s && typeof s === 'string' && !s.toLowerCase().startsWith('pyt_pdf_') && !s.toLowerCase().startsWith('pyt_topic_') && !s.toLowerCase().includes('_topic_'))))}
                         pytTopicsList={pytTopicsList}
                         userPytProgress={userPytProgress}
                         subjectTrackerData={subjectTrackerData}
