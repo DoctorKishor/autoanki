@@ -78,5 +78,15 @@ All UI components, buttons, color schemes, theme modes (Light: `#e6ecf5`, Dark: 
 - **Strict Read-Only Data Boundary**: The timing engine is **strictly forbidden** from mutating, overwriting, altering, or influencing FSRS memory calculations, interval scheduling, weights, stability adjustments, or retrievability formulas in any way.
 - **Isolating Predictions from Scheduling**: Estimated study durations are exclusively for UI display, workload forecasting, and schedule balancing; FSRS alone governs spaced repetition review intervals.
 
+---
+
+### 4.9 Mandatory Full-Pipeline Backup & Export Integration Standard
+- **Universal Sync & Export Parity Rule**: Whenever ANY state, model property, user preference, metadata field, card attribute (e.g. `isSuspended`, tags, bounding boxes, occlusions), topic metric, review log, or feature is added, modified, or corrected in the application, it **MUST** be explicitly audited and accounted for across ALL backup, sync, and export pipelines:
+  1. **Universal Snapshot & Vault Backup (`exportFullUniversalSnapshot` / `importUniversalSnapshot`)**: Must capture, serialize, validate (FNV-1a checksum), and restore the new/modified data across all relevant IndexedDB stores and `localStorage` snapshot keys.
+  2. **Google Drive Cloud Sync (`extractLocalBundles` / `hydrateLocalBundles`)**: Must partition, serialize (binary-safe), and hydrate the data within the appropriate sync bundle (Cards, Curriculum, Study Logs, FSRS, or CAMP).
+  3. **Multi-Format Deck Exporters (`exportDeck`)**: All export formats (`.apkg`, `.anki` TSV, `.notion` CSV, `.pdf`, `.json`) must accurately map, format, and serialize the new attributes according to target platform specifications (e.g. Anki SQLite schema conventions, tag formatting with space delimiters, queue states, and column headers).
+  4. **Rollback & Restore Integrity**: Ensure importing or restoring from any backup/export preserves 100% of the new fields without data corruption, loss, or silent defaults.
+
+
 
 
