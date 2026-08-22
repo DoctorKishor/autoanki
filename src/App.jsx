@@ -7686,16 +7686,8 @@ export default function App() {
 
       const delta = e.deltaY < 0 ? 0.15 : -0.15;
       const oldScale = libraryZoomScaleRef.current;
-      const newScale = Math.min(5, Math.max(1, parseFloat((oldScale + delta).toFixed(2))));
+      const newScale = Math.min(5, Math.max(0.5, parseFloat((oldScale + delta).toFixed(2))));
       if (newScale === oldScale) return;
-
-      if (newScale === 1) {
-        setLibraryZoomScale(1);
-        setLibraryPanOffset({ x: 0, y: 0 });
-        libraryZoomScaleRef.current = 1;
-        libraryPanOffsetRef.current = { x: 0, y: 0 };
-        return;
-      }
 
       if (libraryImageContainerRef.current && libraryPreviewWorkspaceRef.current) {
         const imgRect = libraryImageContainerRef.current.getBoundingClientRect();
@@ -7721,6 +7713,9 @@ export default function App() {
         setLibraryPanOffset({ x: newPanX, y: newPanY });
         libraryZoomScaleRef.current = newScale;
         libraryPanOffsetRef.current = { x: newPanX, y: newPanY };
+      } else {
+        setLibraryZoomScale(newScale);
+        libraryZoomScaleRef.current = newScale;
       }
     };
 
@@ -7763,15 +7758,8 @@ export default function App() {
 
   const handleLibraryZoomOut = () => {
     const oldScale = libraryZoomScaleRef.current;
-    const newScale = Math.max(1, parseFloat((oldScale - 0.25).toFixed(2)));
+    const newScale = Math.max(0.5, parseFloat((oldScale - 0.25).toFixed(2)));
     if (newScale === oldScale) return;
-    if (newScale === 1) {
-      setLibraryZoomScale(1);
-      setLibraryPanOffset({ x: 0, y: 0 });
-      libraryZoomScaleRef.current = 1;
-      libraryPanOffsetRef.current = { x: 0, y: 0 };
-      return;
-    }
 
     if (libraryImageContainerRef.current && libraryPreviewWorkspaceRef.current) {
       const imgRect = libraryImageContainerRef.current.getBoundingClientRect();
@@ -7808,7 +7796,7 @@ export default function App() {
   };
 
   const handleLibraryPointerDown = (e) => {
-    if (libraryZoomScaleRef.current <= 1 && e.button !== 1) return;
+    if (libraryZoomScaleRef.current <= 1 && e.button !== 1 && libraryPanOffsetRef.current.x === 0 && libraryPanOffsetRef.current.y === 0) return;
     e.preventDefault();
     setIsLibraryPanning(true);
     const clientX = e.clientX || e.touches?.[0]?.clientX || 0;
@@ -30919,12 +30907,13 @@ Return your response strictly as a JSON object matching this schema:
                                         {/* Transformable Image Container */}
                                         <div
                                           ref={libraryImageContainerRef}
-                                          className={`relative shadow-2xl origin-center flex items-center justify-center max-w-full max-h-full transition-transform ${
+                                          className={`relative shadow-2xl inline-block max-w-full max-h-full transition-transform select-none ${
                                             isLibraryPanning ? 'duration-0' : 'duration-75 ease-out'
                                           }`}
                                           style={{
                                             transform: `translate(${libraryPanOffset.x}px, ${libraryPanOffset.y}px) scale(${libraryZoomScale})`,
-                                            cursor: libraryZoomScale > 1 ? (isLibraryPanning ? 'grabbing' : 'grab') : 'default'
+                                            transformOrigin: '0 0',
+                                            cursor: libraryZoomScale > 1 || libraryPanOffset.x !== 0 || libraryPanOffset.y !== 0 ? (isLibraryPanning ? 'grabbing' : 'grab') : 'default'
                                           }}
                                         >
                                           <img
