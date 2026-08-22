@@ -30970,7 +30970,7 @@ Return your response strictly as a JSON object matching this schema:
                                             <button
                                               type="button"
                                               onClick={() => batchSetCardsSuspended(pageCards, true)}
-                                              className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-wider transition ${
+                                              className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider transition ${
                                                 settingsThemeMode === 'dark' ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30' : 'bg-amber-50 text-amber-600 hover:bg-amber-100'
                                               }`}
                                               title="Suspend all cards from this page on export"
@@ -30980,7 +30980,7 @@ Return your response strictly as a JSON object matching this schema:
                                             <button
                                               type="button"
                                               onClick={() => batchSetCardsSuspended(pageCards, false)}
-                                              className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-wider transition ${
+                                              className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider transition ${
                                                 settingsThemeMode === 'dark' ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                               }`}
                                               title="Set all cards from this page to active on export"
@@ -30988,31 +30988,6 @@ Return your response strictly as a JSON object matching this schema:
                                               Active All
                                             </button>
                                           </div>
-                                        )}
-                                        {pageCards.length > 0 && (
-                                          <UiverseButton
-                                            icon={<CheckCircle className="w-3 h-3 text-emerald-500" />}
-                                            onClick={() => saveQueueItemToCloud(activeQueueId)}
-                                            size="sm"
-                                            themeMode={settingsThemeMode}
-                                            isSuccess={isSaving}
-                                            successText="Saved!"
-                                          >
-                                            Save All
-                                          </UiverseButton>
-                                        )}
-
-                                        {activeQueueItem?.status === 'done' && (
-                                          <UiverseButton
-                                            icon={<Save className="w-3 h-3 text-blue-500" />}
-                                            onClick={() => saveQueueItemToCloud(activeQueueId)}
-                                            size="sm"
-                                            themeMode={settingsThemeMode}
-                                            isSuccess={isSaving}
-                                            successText="Saved!"
-                                          >
-                                            Save
-                                          </UiverseButton>
                                         )}
 
                                         {activeImageObj?.isPending && (
@@ -31044,7 +31019,7 @@ Return your response strictly as a JSON object matching this schema:
                                             whileHover={{ scale: 1.04 }}
                                             whileTap={{ scale: 0.96 }}
                                             onClick={() => handleRegenerateLibraryPage(activeImageObj)}
-                                            className="flex items-center gap-1 px-2.5 py-1.5 bg-purple-500/10 text-purple-500 hover:bg-purple-500/20 border border-purple-500/25 rounded-xl text-[9px] font-black uppercase transition-all shadow-sm shrink-0"
+                                            className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/10 text-purple-500 hover:bg-purple-500/20 border border-purple-500/25 rounded-xl text-[9px] font-black uppercase transition-all shadow-sm shrink-0"
                                             title="Send page to Card Generator queue to regenerate flashcards for its folder"
                                           >
                                             <RefreshCw className="w-3 h-3" />
@@ -31055,7 +31030,7 @@ Return your response strictly as a JSON object matching this schema:
                                           whileHover={{ scale: 1.04 }}
                                           whileTap={{ scale: 0.96 }}
                                           onClick={() => setDeleteConfirmDialog({ isOpen: true, pageIds: [activeQueueId], isBulk: false })}
-                                          className="flex items-center gap-1 px-2.5 py-1.5 bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/25 rounded-xl text-[9px] font-black uppercase transition-all shadow-sm shrink-0"
+                                          className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/25 rounded-xl text-[9px] font-black uppercase transition-all shadow-sm shrink-0"
                                           title="Delete Page"
                                         >
                                           <Trash2 className="w-3 h-3" />
