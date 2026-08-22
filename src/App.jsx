@@ -15782,42 +15782,6 @@ const renderTimerHub = (isMobile = false) => {
                   options={medicalSubjectsList}
                   isDark={isDark}
                 />
-
-                {/* Manage Subject PDF Button */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    const existing = textbooksMetadata.find(tb => (tb.subject || '').toLowerCase() === (selectedTrackerSubject || '').toLowerCase());
-                    setSubjectPdfOffsetInput(existing?.pageOffset || 0);
-                    setIsSubjectPdfModalOpen(true);
-                  }}
-                  className={`w-full py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider border flex items-center justify-center gap-2 transition-all mt-2.5 cursor-pointer active:scale-95 shadow-sm ${
-                    isDark
-                      ? 'neu-btn-dark text-amber-400 border-amber-500/40 hover:border-amber-500/80'
-                      : 'neu-btn-light text-amber-700 border-amber-300 hover:border-amber-400'
-                  }`}
-                >
-                  <span className="text-sm">📁</span>
-                  <span>Manage Subject PDF & Offset</span>
-                </button>
-
-                {/* PDF Status Badge */}
-                {(() => {
-                  const existing = textbooksMetadata.find(tb => (tb.subject || '').toLowerCase() === (selectedTrackerSubject || '').toLowerCase());
-                  if (existing) {
-                    return (
-                      <div className="mt-1.5 text-[10px] font-bold text-emerald-400 flex items-center gap-1.5 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/30">
-                        <span>✓ PDF: {existing.fileName || existing.name}</span>
-                        <span className="text-slate-400 font-mono">(Offset: +{existing.pageOffset || 0})</span>
-                      </div>
-                    );
-                  }
-                  return (
-                    <div className="mt-1.5 text-[10px] font-bold text-amber-400 flex items-center gap-1.5 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/30">
-                      <span>⚠️ No Master PDF attached yet</span>
-                    </div>
-                  );
-                })()}
               </div>
             </div>
 
