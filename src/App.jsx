@@ -13965,6 +13965,46 @@ const renderTimerHub = (isMobile = false) => {
     return Array.from(tagsSet).sort();
   }, [cards, hierarchy, selectedTags]);
 
+  const [libraryCardsLimit, setLibraryCardsLimit] = useState(40);
+  const [libraryPagesLimit, setLibraryPagesLimit] = useState(30);
+
+  useEffect(() => {
+    setLibraryCardsLimit(40);
+    setLibraryPagesLimit(30);
+  }, [hierarchy, selectedTags]);
+
+  const libraryDeckTree = useMemo(() => {
+    return buildTree(effectiveDeckPaths, libraryPages, deckCardCounts);
+  }, [effectiveDeckPaths, libraryPages, deckCardCounts]);
+
+  const pageCardCounts = useMemo(() => {
+    const map = new Map();
+    (cards || []).forEach(c => {
+      if (c && c.pageId) {
+        map.set(c.pageId, (map.get(c.pageId) || 0) + 1);
+      }
+    });
+    return map;
+  }, [cards]);
+
+  const tagCounts = useMemo(() => {
+    const activeFolderCards = (cards || []).filter(card => {
+      if (!hierarchy) return true;
+      if (hierarchy === 'PENDING_REVIEW') return card.isPending;
+      return card.deck === hierarchy || (card.deck && card.deck.startsWith(hierarchy + '::'));
+    });
+    const counts = new Map();
+    activeFolderCards.forEach(c => {
+      if (!c.tags || !Array.isArray(c.tags)) return;
+      c.tags.forEach(t => {
+        if (!t || typeof t !== 'string') return;
+        const cleanTag = t.trim().startsWith('#') ? t.trim() : `#${t.trim()}`;
+        counts.set(cleanTag, (counts.get(cleanTag) || 0) + 1);
+      });
+    });
+    return counts;
+  }, [cards, hierarchy]);
+
   // Spaced Repetition Due Queue
   const dueCards = useMemo(() => {
     const now = Date.now();
@@ -21213,19 +21253,25 @@ Return your response strictly as a JSON object matching this schema:
   const activeLibraryPage = libraryPages.find(p => p.id === activeQueueId);
   const activeImageObj = activeQueueItem || activeLibraryPage;
 
-  const pageCards = activeQueueId
-    ? (activeQueueItem?.generatedCards || cards.filter(c => c.pageId === activeQueueId || c.queueId === activeQueueId))
-    : (selectedTags.length > 0
-      ? cards.filter(c => {
+  const pageCards = useMemo(() => {
+    if (activeQueueId) {
+      return activeQueueItem?.generatedCards || (cards || []).filter(c => c.pageId === activeQueueId || c.queueId === activeQueueId);
+    }
+    if (selectedTags.length > 0) {
+      return (cards || []).filter(c => {
         if (!c.tags) return false;
-        const formattedTags = c.tags.map(t => t.trim().startsWith('#') ? t.trim() : `#${t.trim()}`);
+        const formattedTags = c.tags.map(t => typeof t === 'string' && t.trim().startsWith('#') ? t.trim() : `#${String(t || '').trim()}`);
         return selectedTags.every(st => formattedTags.includes(st));
-      })
-      : cards.filter(c => c.deck === hierarchy)
-    );
-  const selectedFolderCardCount = selectedTags.length > 0
-    ? pageCards.length
-    : cards.filter(c => c.deck.startsWith(hierarchy)).length;
+      });
+    }
+    return (cards || []).filter(c => c.deck === hierarchy);
+  }, [activeQueueId, activeQueueItem?.generatedCards, cards, selectedTags, hierarchy]);
+
+  const selectedFolderCardCount = useMemo(() => {
+    if (selectedTags.length > 0) return pageCards.length;
+    if (!hierarchy) return (cards || []).length;
+    return (cards || []).filter(c => c.deck && c.deck.startsWith(hierarchy)).length;
+  }, [selectedTags, pageCards.length, hierarchy, cards]);
 
   const deckCardsForStats = useMemo(() => {
     if (selectedTags.length > 0) {
@@ -24094,7 +24140,7 @@ Return your response strictly as a JSON object matching this schema:
                           {showMobileFolderTree && (
                             <div className={`p-3.5 px-3.5 rounded-2xl mb-4 text-left max-h-[250px] overflow-y-auto custom-scrollbar ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200'}`}>
                               <TreeFolder
-                                node={buildTree(effectiveDeckPaths, libraryPages, deckCardCounts)}
+                                node={libraryDeckTree}
                                 level={0}
                                 selectedPath={hierarchy}
                                 themeMode={settingsThemeMode}
@@ -24563,7 +24609,7 @@ Return your response strictly as a JSON object matching this schema:
                               </div>
                               <div className={`space-y-1 p-2 rounded-2xl ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
                                 <TreeFolder
-                                  node={buildTree(effectiveDeckPaths, libraryPages, deckCardCounts)}
+                                  node={libraryDeckTree}
                                   level={0}
                                   selectedPath={hierarchy}
                                   themeMode={settingsThemeMode}
@@ -29175,7 +29221,7 @@ Return your response strictly as a JSON object matching this schema:
                                 <div className={`min-h-0 flex-grow flex flex-col transition-all duration-300 ${isExpanded ? 'opacity-100 mt-3' : 'opacity-0 h-0 overflow-hidden pointer-events-none'}`}>
                                   <div className={`min-h-0 flex-grow overflow-y-auto rounded-2xl p-3.5 mb-2 custom-scrollbar ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200/60'}`}>
                                     <TreeFolder
-                                      node={buildTree(effectiveDeckPaths, libraryPages, deckCardCounts)}
+                                      node={libraryDeckTree}
                                       level={0}
                                       selectedPath={hierarchy}
                                       onSelect={setHierarchy}
@@ -29959,7 +30005,7 @@ Return your response strictly as a JSON object matching this schema:
                             }`}>
 
                             <TreeFolder
-                              node={buildTree(effectiveDeckPaths, libraryPages, deckCardCounts)}
+                              node={libraryDeckTree}
                               level={0}
                               selectedPath={hierarchy}
                               themeMode={settingsThemeMode}
@@ -30004,18 +30050,7 @@ Return your response strictly as a JSON object matching this schema:
                               ) : (
                                 <div className="space-y-2.5 max-h-[240px] overflow-y-auto p-2 pr-2.5 custom-scrollbar">
                                   {allTags.map(tag => {
-                                    const activeFolderCards = cards.filter(card => {
-                                      if (!hierarchy) return true;
-                                      if (hierarchy === 'PENDING_REVIEW') return card.isPending;
-                                      return card.deck === hierarchy || (card.deck && card.deck.startsWith(hierarchy + '::'));
-                                    });
-                                    const otherSelectedTags = selectedTags.filter(st => st !== tag);
-                                    const tagCardCount = activeFolderCards.filter(c => {
-                                      if (!c.tags) return false;
-                                      const formattedTags = c.tags.map(t => t.trim().startsWith('#') ? t.trim() : `#${t.trim()}`);
-                                      return formattedTags.includes(tag) && otherSelectedTags.every(st => formattedTags.includes(st));
-                                    }).length;
-
+                                    const tagCardCount = tagCounts.get(tag) || 0;
                                     const isSelected = selectedTags.includes(tag);
 
                                     return (
@@ -30815,10 +30850,11 @@ Return your response strictly as a JSON object matching this schema:
                                           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
                                             {/* FOLDERS FIRST */}
                                             {directSubfolders.map(sub => {
-                                              const tree = buildTree(effectiveDeckPaths, libraryPages, deckCardCounts);
-                                              let current = tree;
+                                              let current = libraryDeckTree;
                                               const parts = sub.path.split('::');
-                                              parts.forEach(p => { if (current.children[p]) current = current.children[p]; });
+                                              parts.forEach(p => { if (current && current.children && current.children[p]) current = current.children[p]; });
+                                              const tPCount = current?.tPCount || 0;
+                                              const tCCount = current?.tCCount || 0;
 
                                               return (
                                                 <motion.div
@@ -30836,10 +30872,10 @@ Return your response strictly as a JSON object matching this schema:
                                                     <div className="text-xs font-black truncate group-hover:text-blue-500 transition-colors">{sub.name}</div>
                                                     <div className="flex items-center gap-3 mt-1.5 opacity-60">
                                                       <span className="flex items-center gap-1 text-[8px] font-black uppercase text-gray-400">
-                                                        <ImageIcon className="w-2.5 h-2.5" /> {current.tPCount}
+                                                        <ImageIcon className="w-2.5 h-2.5" /> {tPCount}
                                                       </span>
                                                       <span className="flex items-center gap-1 text-[8px] font-black uppercase text-gray-400">
-                                                        <Layers className="w-2.5 h-2.5" /> {current.tCCount}
+                                                        <Layers className="w-2.5 h-2.5" /> {tCCount}
                                                       </span>
                                                     </div>
                                                   </div>
@@ -30847,7 +30883,7 @@ Return your response strictly as a JSON object matching this schema:
                                               );
                                             })}
 
-                                            {folderPages.map(page => (
+                                            {folderPages.slice(0, libraryPagesLimit).map(page => (
                                               <motion.div
                                                 key={page.id}
                                                 whileHover={{ scale: 1.03, y: -2 }}
@@ -30863,6 +30899,8 @@ Return your response strictly as a JSON object matching this schema:
                                               >
                                                 <img
                                                   src={page.base64 || page.imageUrl}
+                                                  loading="lazy"
+                                                  decoding="async"
                                                   className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
                                                   alt=""
                                                 />
@@ -30882,11 +30920,25 @@ Return your response strictly as a JSON object matching this schema:
                                                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-4 pt-12 flex flex-col justify-end text-left">
                                                   <span className="text-[10px] font-black text-white uppercase truncate tracking-wider">{page.fileName || 'Untitled Page'}</span>
                                                   <span className="text-[8px] text-gray-300 font-bold mt-0.5">
-                                                    {cards.filter(c => c.pageId === page.id).length} Cards
+                                                    {pageCardCounts.get(page.id) || 0} Cards
                                                   </span>
                                                 </div>
                                               </motion.div>
                                             ))}
+
+                                            {folderPages.length > libraryPagesLimit && (
+                                              <div className="col-span-full flex justify-center pt-3 pb-2">
+                                                <button
+                                                  type="button"
+                                                  onClick={() => setLibraryPagesLimit(prev => prev + 30)}
+                                                  className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition shadow-sm cursor-pointer ${
+                                                    settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400 hover:text-white border border-gray-700/50' : 'neu-btn-light text-blue-600 hover:text-blue-700 border border-white/80'
+                                                  }`}
+                                                >
+                                                  Load More Pages ({Math.min(libraryPagesLimit, folderPages.length)} of {folderPages.length})
+                                                </button>
+                                              </div>
+                                            )}
                                           </div>
                                         )}
                                       </div>
@@ -30925,7 +30977,7 @@ Return your response strictly as a JSON object matching this schema:
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5 p-3 pb-14">
                                       <AnimatePresence mode="popLayout">
-                                        {pageCards.map((card, idx) => {
+                                        {pageCards.slice(0, libraryCardsLimit).map((card, idx) => {
                                           const isCardHovered = hoveredCardIdFromImage === card.id;
                                           return (
                                             <motion.div
@@ -30934,7 +30986,7 @@ Return your response strictly as a JSON object matching this schema:
                                               initial={{ opacity: 0, y: 16 }}
                                               animate={{ opacity: 1, y: 0 }}
                                               exit={{ opacity: 0, scale: 0.95, height: 0 }}
-                                              transition={{ duration: 0.25, delay: idx * 0.02, ease: "easeOut" }}
+                                              transition={{ duration: 0.2, delay: Math.min(idx, 8) * 0.015, ease: "easeOut" }}
                                               onMouseEnter={() => setHoveredCardIdFromImage(card.id)}
                                               onMouseLeave={() => setHoveredCardIdFromImage(null)}
                                               className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-white' : 'neu-card-light text-gray-900'} p-5 rounded-2xl space-y-3 cursor-pointer transition-all duration-200 relative group ${isCardHovered ? 'ring-2 ring-blue-500 border-blue-500 shadow-xl' : ''
@@ -31036,6 +31088,21 @@ Return your response strictly as a JSON object matching this schema:
                                           );
                                         })}
                                       </AnimatePresence>
+                                      {pageCards.length > libraryCardsLimit && (
+                                        <div className="col-span-full flex justify-center pt-6 pb-2">
+                                          <button
+                                            type="button"
+                                            onClick={() => setLibraryCardsLimit(prev => prev + 40)}
+                                            className={`px-6 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition shadow-md flex items-center gap-2 cursor-pointer ${
+                                              settingsThemeMode === 'dark'
+                                                ? 'neu-btn-dark text-blue-400 hover:text-white border border-gray-700/50'
+                                                : 'neu-btn-light text-blue-600 hover:text-blue-700 border border-white/80'
+                                            }`}
+                                          >
+                                            <Layers className="w-4 h-4" /> Load More Cards ({Math.min(libraryCardsLimit, pageCards.length)} of {pageCards.length})
+                                          </button>
+                                        </div>
+                                      )}
                                     </div>
                                   </div>
                                 </>
@@ -38378,7 +38445,7 @@ Return your response strictly as a JSON object matching this schema:
                     </div>
                     <div className={`p-6 max-h-[350px] overflow-y-auto custom-scrollbar ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border-y border-gray-800' : 'neu-pressed-light border-y border-gray-200/60'}`}>
                       <TreeFolder
-                        node={buildTree(effectiveDeckPaths, libraryPages, deckCardCounts)}
+                        node={libraryDeckTree}
                         level={0}
                         selectedPath={moveDialog.targetPath}
                         themeMode={settingsThemeMode}
@@ -38860,7 +38927,7 @@ Return your response strictly as a JSON object matching this schema:
                     {/* Scrollable folder tree */}
                     <div className={`flex-grow overflow-y-auto custom-scrollbar pr-2 mb-4 rounded-2xl p-3 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200/60'}`}>
                       <TreeFolder
-                        node={buildTree(effectiveDeckPaths, libraryPages, deckCardCounts)}
+                        node={libraryDeckTree}
                         level={0}
                         selectedPath={pdfFolderPickerTempPath}
                         onSelect={(path) => setPdfFolderPickerTempPath(path)}
