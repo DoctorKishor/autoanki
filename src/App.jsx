@@ -3,7 +3,7 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import {
   UploadCloud, Upload, Play, CheckCircle, AlertCircle, Edit3, Camera, Pause, Bell, Bookmark,
   Trash2, Download, Plus, Minus, Save, X, Server, Database,
-  Folder, FolderOpen, ChevronRight, ChevronDown, Move, Image as ImageIcon,
+  Folder, FolderPlus, FolderOpen, ChevronRight, ChevronDown, Move, Image as ImageIcon,
   RotateCcw, RotateCw, Grid, Layers, Settings, MessageSquare, Home, Library, RefreshCw, LayoutDashboard, Sliders,
   Eye, EyeOff, Menu, ChevronLeft, FileText, Loader2, Monitor, MoreVertical, Search, Send, Tv,
   AlertTriangle, CheckCircle2, Maximize, GraduationCap, BarChart2, Tag, Calendar, TrendingUp, Info, Sparkles, Compass, Share2,
@@ -18391,6 +18391,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       await updateHierarchySetting({ paths: nextPaths });
     }
     setHierarchy(newPath);
+    setActiveQueueId(null);
     setNewFolderDialog({ isOpen: false, basePath: '', input: '' });
   };
 
@@ -24839,20 +24840,71 @@ Return your response strictly as a JSON object matching this schema:
                                 </button>
                               </div>
                             ) : (
-                              /* Normal header */
-                              <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => {
-                                    setMobileLibraryLevel('folders');
-                                    setMobileLibrarySearch('');
-                                    setMobileLibrarySearchOpen(false);
-                                  }}
-                                  className="text-blue-500 flex items-center gap-1 text-xs font-black uppercase tracking-wider bg-blue-500/10 px-3 py-1.5 rounded-xl transition active:scale-95 shrink-0"
-                                >
-                                  <ChevronLeft className="w-4 h-4" /> Folders
-                                </button>
-                                <span className={`text-[10px] font-black uppercase truncate flex-1 min-w-0 ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{hierarchy}</span>
-                              </div>
+                              <>
+                                {/* Normal header */}
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                                    <button
+                                      onClick={() => {
+                                        setMobileLibraryLevel('folders');
+                                        setMobileLibrarySearch('');
+                                        setMobileLibrarySearchOpen(false);
+                                      }}
+                                      className="text-blue-500 flex items-center gap-1 text-xs font-black uppercase tracking-wider bg-blue-500/10 px-3 py-1.5 rounded-xl transition active:scale-95 shrink-0"
+                                    >
+                                      <ChevronLeft className="w-4 h-4" /> Folders
+                                    </button>
+                                    <span className={`text-[10px] font-black uppercase truncate flex-1 min-w-0 ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{hierarchy}</span>
+                                  </div>
+                                  <motion.button
+                                    whileTap={{ scale: 0.94 }}
+                                    onClick={() => setNewFolderDialog({ isOpen: true, basePath: hierarchy || '', input: '' })}
+                                    className={`flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2.5 py-1.5 rounded-xl transition shrink-0 ${
+                                      settingsThemeMode === 'dark' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-200'
+                                    }`}
+                                    title="Create Subfolder"
+                                  >
+                                    <FolderPlus className="w-3.5 h-3.5" /> + Folder
+                                  </motion.button>
+                                </div>
+
+                                {/* ── Direct Subfolders Pills / Grid (Mobile) ── */}
+                                {directSubfolders.length > 0 && (
+                                  <div className="space-y-1.5 pt-1">
+                                    <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                                      <Folder className="w-3 h-3 text-blue-500" /> Subfolders ({directSubfolders.length})
+                                    </div>
+                                    <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+                                      {directSubfolders.map(sub => (
+                                        <motion.button
+                                          key={sub.path}
+                                          whileTap={{ scale: 0.95 }}
+                                          onClick={() => {
+                                            setHierarchy(sub.path);
+                                            setActiveQueueId(null);
+                                          }}
+                                          className={`px-3 py-2 rounded-xl text-xs font-bold shrink-0 flex items-center gap-1.5 transition ${
+                                            settingsThemeMode === 'dark' ? 'neu-item-dark text-gray-200 hover:text-blue-400 border border-gray-800' : 'neu-item-light text-gray-700 hover:text-blue-600 border border-white'
+                                          }`}
+                                        >
+                                          <Folder className="w-3.5 h-3.5 text-blue-500" />
+                                          <span>{sub.name}</span>
+                                        </motion.button>
+                                      ))}
+                                      <motion.button
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={() => setNewFolderDialog({ isOpen: true, basePath: hierarchy || '', input: '' })}
+                                        className={`px-3 py-2 rounded-xl text-xs font-bold shrink-0 flex items-center gap-1.5 border border-dashed transition ${
+                                          settingsThemeMode === 'dark' ? 'border-blue-500/40 text-blue-400 bg-blue-500/10' : 'border-blue-300 text-blue-600 bg-blue-50/50'
+                                        }`}
+                                      >
+                                        <FolderPlus className="w-3.5 h-3.5" />
+                                        <span>+ Subfolder</span>
+                                      </motion.button>
+                                    </div>
+                                  </div>
+                                )}
+                              </>
                             )}
 
                             {/* ── Long-press hint (first time) ── */}
@@ -30350,6 +30402,16 @@ Return your response strictly as a JSON object matching this schema:
                                   </>
                                 )}
                                 <UiverseButton
+                                  icon={<FolderPlus className="w-3.5 h-3.5 text-blue-500" />}
+                                  onClick={() => setNewFolderDialog({ isOpen: true, basePath: hierarchy || '', input: '' })}
+                                  size="sm"
+                                  themeMode={settingsThemeMode}
+                                  variant={settingsThemeMode === 'dark' ? 'dark' : 'default'}
+                                  title={hierarchy ? `Create subfolder inside "${hierarchy.split('::').pop()}"` : "Create new folder"}
+                                >
+                                  {hierarchy ? '+ Subfolder' : '+ Folder'}
+                                </UiverseButton>
+                                <UiverseButton
                                   icon={<Plus className="w-3.5 h-3.5 text-purple-400" />}
                                   onClick={() => openManualCardModal(null)}
                                   size="sm"
@@ -31048,13 +31110,47 @@ Return your response strictly as a JSON object matching this schema:
                                           );
                                         })()}
                                         {(folderPages.length === 0 && directSubfolders.length === 0) ? (
-                                          <div className={`rounded-3xl p-20 text-center text-gray-400 border border-dashed ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-gray-200'}`}>
-                                            <ImageIcon className="w-16 h-16 mx-auto mb-4 opacity-10" />
-                                            <p className="text-sm font-bold uppercase tracking-widest opacity-40">Folder is empty</p>
-                                            <p className="text-[10px] mt-2">Start by uploading a medical PDF or image.</p>
+                                          <div className={`rounded-3xl p-16 text-center text-gray-400 border border-dashed flex flex-col items-center justify-center ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-gray-200'}`}>
+                                            <Folder className="w-14 h-14 mx-auto mb-3 opacity-15" />
+                                            <p className="text-sm font-bold uppercase tracking-widest opacity-60">Folder is empty</p>
+                                            <p className="text-[10px] mt-1 mb-5 max-w-xs text-gray-400">Upload a medical PDF/image, or organize your topics with subfolders.</p>
+                                            <motion.button
+                                              whileHover={{ scale: 1.05 }}
+                                              whileTap={{ scale: 0.95 }}
+                                              onClick={() => setNewFolderDialog({ isOpen: true, basePath: hierarchy || '', input: '' })}
+                                              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-blue-500/20 transition-all cursor-pointer"
+                                            >
+                                              <FolderPlus className="w-4 h-4" />
+                                              {hierarchy ? 'Create Subfolder' : 'Create Folder'}
+                                            </motion.button>
                                           </div>
                                         ) : (
                                           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
+                                            {/* CREATE NEW SUBFOLDER CARD */}
+                                            <motion.div
+                                              whileHover={{ scale: 1.03, y: -2 }}
+                                              whileTap={{ scale: 0.97 }}
+                                              onClick={() => setNewFolderDialog({ isOpen: true, basePath: hierarchy || '', input: '' })}
+                                              className={`aspect-[4/3] rounded-3xl p-5 border-2 border-dashed transition-all cursor-pointer group flex flex-col justify-between ${
+                                                settingsThemeMode === 'dark'
+                                                  ? 'border-blue-500/30 hover:border-blue-500/80 bg-blue-500/5 hover:bg-blue-500/10 text-gray-200'
+                                                  : 'border-blue-400/40 hover:border-blue-500/80 bg-blue-500/5 hover:bg-blue-50/80 text-gray-700'
+                                              }`}
+                                              title={`Create new subfolder in ${hierarchy || 'Root'}`}
+                                            >
+                                              <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-blue-500/15 text-blue-500 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300 shadow-sm">
+                                                <FolderPlus className="w-6 h-6" />
+                                              </div>
+                                              <div className="min-w-0">
+                                                <div className="text-xs font-black truncate group-hover:text-blue-500 transition-colors">
+                                                  {hierarchy ? '+ New Subfolder' : '+ New Folder'}
+                                                </div>
+                                                <div className="text-[8px] font-bold uppercase text-gray-400 mt-1 truncate">
+                                                  In {hierarchy ? hierarchy.split('::').pop() : 'Root'}
+                                                </div>
+                                              </div>
+                                            </motion.div>
+
                                             {/* FOLDERS FIRST */}
                                             {directSubfolders.map(sub => {
                                               let current = libraryDeckTree;
