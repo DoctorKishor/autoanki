@@ -7654,6 +7654,245 @@ export default function App() {
   const dragStartRef = useRef(null);
   const containerRef = useRef(null);
 
+  // --- LIBRARY PREVIEW POINTER-FOCUSED ZOOM & PAN ENGINE ---
+  const [libraryZoomScale, setLibraryZoomScale] = useState(1);
+  const [libraryPanOffset, setLibraryPanOffset] = useState({ x: 0, y: 0 });
+  const [isLibraryPanning, setIsLibraryPanning] = useState(false);
+
+  const libraryZoomScaleRef = useRef(1);
+  const libraryPanOffsetRef = useRef({ x: 0, y: 0 });
+  const libraryPreviewWorkspaceRef = useRef(null);
+  const libraryImageContainerRef = useRef(null);
+  const libraryPanDragStartRef = useRef({ mouseX: 0, mouseY: 0, initialPan: { x: 0, y: 0 } });
+  const libraryTouchDistanceRef = useRef(null);
+  const libraryInitialMidpointRef = useRef({ x: 0, y: 0 });
+
+  // Reset zoom & pan whenever the inspected library page changes
+  useEffect(() => {
+    setLibraryZoomScale(1);
+    setLibraryPanOffset({ x: 0, y: 0 });
+    libraryZoomScaleRef.current = 1;
+    libraryPanOffsetRef.current = { x: 0, y: 0 };
+    setIsLibraryPanning(false);
+  }, [activeQueueId, activeImageObj?.id]);
+
+  // Pointer-focused wheel zoom effect (matching FineTuneCropModal)
+  useEffect(() => {
+    const el = libraryPreviewWorkspaceRef.current;
+    if (!el) return;
+
+    const handleWheelNative = (e) => {
+      e.preventDefault();
+
+      const delta = e.deltaY < 0 ? 0.15 : -0.15;
+      const oldScale = libraryZoomScaleRef.current;
+      const newScale = Math.min(5, Math.max(1, parseFloat((oldScale + delta).toFixed(2))));
+      if (newScale === oldScale) return;
+
+      if (newScale === 1) {
+        setLibraryZoomScale(1);
+        setLibraryPanOffset({ x: 0, y: 0 });
+        libraryZoomScaleRef.current = 1;
+        libraryPanOffsetRef.current = { x: 0, y: 0 };
+        return;
+      }
+
+      if (libraryImageContainerRef.current && libraryPreviewWorkspaceRef.current) {
+        const imgRect = libraryImageContainerRef.current.getBoundingClientRect();
+        const wsRect = libraryPreviewWorkspaceRef.current.getBoundingClientRect();
+
+        // Exact mouse position inside workspace
+        const mouseWsX = e.clientX - wsRect.left;
+        const mouseWsY = e.clientY - wsRect.top;
+
+        // Exact unscaled local image coordinates under mouse cursor
+        const cursorImgX = (e.clientX - imgRect.left) / oldScale;
+        const cursorImgY = (e.clientY - imgRect.top) / oldScale;
+
+        // Initial centered offset of container relative to workspace when panOffset was 0
+        const initialLeft = (imgRect.left - wsRect.left) - libraryPanOffsetRef.current.x;
+        const initialTop = (imgRect.top - wsRect.top) - libraryPanOffsetRef.current.y;
+
+        // Compute new pan offset so cursorImgX, cursorImgY lands EXACTLY under mouseWsX, mouseWsY
+        const newPanX = mouseWsX - initialLeft - cursorImgX * newScale;
+        const newPanY = mouseWsY - initialTop - cursorImgY * newScale;
+
+        setLibraryZoomScale(newScale);
+        setLibraryPanOffset({ x: newPanX, y: newPanY });
+        libraryZoomScaleRef.current = newScale;
+        libraryPanOffsetRef.current = { x: newPanX, y: newPanY };
+      }
+    };
+
+    el.addEventListener('wheel', handleWheelNative, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', handleWheelNative);
+    };
+  }, [activeQueueId, activeImageObj?.id]);
+
+  const handleLibraryZoomIn = () => {
+    const oldScale = libraryZoomScaleRef.current;
+    const newScale = Math.min(5, parseFloat((oldScale + 0.25).toFixed(2)));
+    if (newScale === oldScale) return;
+
+    if (libraryImageContainerRef.current && libraryPreviewWorkspaceRef.current) {
+      const imgRect = libraryImageContainerRef.current.getBoundingClientRect();
+      const wsRect = libraryPreviewWorkspaceRef.current.getBoundingClientRect();
+
+      const mouseWsX = wsRect.width / 2;
+      const mouseWsY = wsRect.height / 2;
+
+      const cursorImgX = (mouseWsX + wsRect.left - imgRect.left) / oldScale;
+      const cursorImgY = (mouseWsY + wsRect.top - imgRect.top) / oldScale;
+
+      const initialLeft = (imgRect.left - wsRect.left) - libraryPanOffsetRef.current.x;
+      const initialTop = (imgRect.top - wsRect.top) - libraryPanOffsetRef.current.y;
+
+      const newPanX = mouseWsX - initialLeft - cursorImgX * newScale;
+      const newPanY = mouseWsY - initialTop - cursorImgY * newScale;
+
+      setLibraryZoomScale(newScale);
+      setLibraryPanOffset({ x: newPanX, y: newPanY });
+      libraryZoomScaleRef.current = newScale;
+      libraryPanOffsetRef.current = { x: newPanX, y: newPanY };
+    } else {
+      setLibraryZoomScale(newScale);
+      libraryZoomScaleRef.current = newScale;
+    }
+  };
+
+  const handleLibraryZoomOut = () => {
+    const oldScale = libraryZoomScaleRef.current;
+    const newScale = Math.max(1, parseFloat((oldScale - 0.25).toFixed(2)));
+    if (newScale === oldScale) return;
+    if (newScale === 1) {
+      setLibraryZoomScale(1);
+      setLibraryPanOffset({ x: 0, y: 0 });
+      libraryZoomScaleRef.current = 1;
+      libraryPanOffsetRef.current = { x: 0, y: 0 };
+      return;
+    }
+
+    if (libraryImageContainerRef.current && libraryPreviewWorkspaceRef.current) {
+      const imgRect = libraryImageContainerRef.current.getBoundingClientRect();
+      const wsRect = libraryPreviewWorkspaceRef.current.getBoundingClientRect();
+
+      const mouseWsX = wsRect.width / 2;
+      const mouseWsY = wsRect.height / 2;
+
+      const cursorImgX = (mouseWsX + wsRect.left - imgRect.left) / oldScale;
+      const cursorImgY = (mouseWsY + wsRect.top - imgRect.top) / oldScale;
+
+      const initialLeft = (imgRect.left - wsRect.left) - libraryPanOffsetRef.current.x;
+      const initialTop = (imgRect.top - wsRect.top) - libraryPanOffsetRef.current.y;
+
+      const newPanX = mouseWsX - initialLeft - cursorImgX * newScale;
+      const newPanY = mouseWsY - initialTop - cursorImgY * newScale;
+
+      setLibraryZoomScale(newScale);
+      setLibraryPanOffset({ x: newPanX, y: newPanY });
+      libraryZoomScaleRef.current = newScale;
+      libraryPanOffsetRef.current = { x: newPanX, y: newPanY };
+    } else {
+      setLibraryZoomScale(newScale);
+      libraryZoomScaleRef.current = newScale;
+    }
+  };
+
+  const handleLibraryResetZoom = () => {
+    setLibraryZoomScale(1);
+    setLibraryPanOffset({ x: 0, y: 0 });
+    libraryZoomScaleRef.current = 1;
+    libraryPanOffsetRef.current = { x: 0, y: 0 };
+    setIsLibraryPanning(false);
+  };
+
+  const handleLibraryPointerDown = (e) => {
+    if (libraryZoomScaleRef.current <= 1 && e.button !== 1) return;
+    e.preventDefault();
+    setIsLibraryPanning(true);
+    const clientX = e.clientX || e.touches?.[0]?.clientX || 0;
+    const clientY = e.clientY || e.touches?.[0]?.clientY || 0;
+    libraryPanDragStartRef.current = {
+      mouseX: clientX,
+      mouseY: clientY,
+      initialPan: { ...libraryPanOffsetRef.current }
+    };
+  };
+
+  const handleLibraryPointerMove = (e) => {
+    if (isLibraryPanning) {
+      const clientX = e.clientX || e.touches?.[0]?.clientX || 0;
+      const clientY = e.clientY || e.touches?.[0]?.clientY || 0;
+      const dx = clientX - libraryPanDragStartRef.current.mouseX;
+      const dy = clientY - libraryPanDragStartRef.current.mouseY;
+      const newPan = {
+        x: libraryPanDragStartRef.current.initialPan.x + dx,
+        y: libraryPanDragStartRef.current.initialPan.y + dy
+      };
+      setLibraryPanOffset(newPan);
+      libraryPanOffsetRef.current = newPan;
+      return;
+    }
+    handleImageMouseMove(e);
+  };
+
+  const handleLibraryPointerUp = () => {
+    setIsLibraryPanning(false);
+  };
+
+  const handleLibraryTouchStart = (e) => {
+    if (e.touches.length === 2) {
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+      libraryTouchDistanceRef.current = dist;
+      const midX = (t1.clientX + t2.clientX) / 2;
+      const midY = (t1.clientY + t2.clientY) / 2;
+      libraryInitialMidpointRef.current = { x: midX, y: midY };
+      libraryPanDragStartRef.current = {
+        mouseX: midX,
+        mouseY: midY,
+        initialPan: { ...libraryPanOffsetRef.current }
+      };
+    }
+  };
+
+  const handleLibraryTouchMove = (e) => {
+    if (e.touches.length === 2 && libraryTouchDistanceRef.current) {
+      e.preventDefault();
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const currentDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+      const ratio = currentDist / libraryTouchDistanceRef.current;
+      const oldScale = libraryZoomScaleRef.current;
+      const newScale = Math.min(5, Math.max(1, parseFloat((oldScale * ratio).toFixed(2))));
+
+      if (libraryImageContainerRef.current && libraryPreviewWorkspaceRef.current) {
+        const midX = (t1.clientX + t2.clientX) / 2;
+        const midY = (t1.clientY + t2.clientY) / 2;
+        const deltaX = midX - libraryInitialMidpointRef.current.x;
+        const deltaY = midY - libraryInitialMidpointRef.current.y;
+
+        const scaleRatio = newScale / oldScale;
+        const newPan = {
+          x: libraryPanOffsetRef.current.x * scaleRatio + deltaX,
+          y: libraryPanOffsetRef.current.y * scaleRatio + deltaY
+        };
+        setLibraryZoomScale(newScale);
+        setLibraryPanOffset(newPan);
+        libraryZoomScaleRef.current = newScale;
+        libraryPanOffsetRef.current = newPan;
+      }
+    }
+  };
+
+  const handleLibraryTouchEnd = (e) => {
+    if (e.touches.length < 2) {
+      libraryTouchDistanceRef.current = null;
+    }
+  };
+
   const resetPreview = (ref) => {
     setZoomLevel(1);
     setPan({ x: 0, y: 0 });
@@ -30615,90 +30854,110 @@ Return your response strictly as a JSON object matching this schema:
                                         <p className="text-[10px] mt-2 max-w-[200px]">The source clinical image for these cards was deleted, but the cards have been preserved in your library.</p>
                                       </div>
                                     ) : (
-                                      <div ref={libraryPreviewRef} className={`w-full h-full flex justify-center p-4 overflow-hidden select-none ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'} ${zoomLevel > 1 ? 'items-start overflow-auto custom-scrollbar' : 'items-center'}`}>
-                                        <>
-                                          <div className="absolute top-4 right-4 z-[20] flex flex-col gap-2">
-                                            <button
-                                              type="button"
-                                              onClick={() => setZoomLevel(prev => Math.min(prev + 0.2, 3))}
-                                              className={`p-2.5 rounded-xl transition shadow-md cursor-pointer ${settingsThemeMode === 'dark'
+                                      <div
+                                        ref={libraryPreviewWorkspaceRef}
+                                        className={`w-full h-full flex items-center justify-center p-4 overflow-hidden select-none relative ${
+                                          settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'
+                                        }`}
+                                        style={{ touchAction: 'none' }}
+                                        onMouseDown={handleLibraryPointerDown}
+                                        onMouseMove={handleLibraryPointerMove}
+                                        onMouseUp={handleLibraryPointerUp}
+                                        onMouseLeave={() => {
+                                          handleLibraryPointerUp();
+                                          setHoveredCardIdFromImage(null);
+                                        }}
+                                        onTouchStart={handleLibraryTouchStart}
+                                        onTouchMove={handleLibraryTouchMove}
+                                        onTouchEnd={handleLibraryTouchEnd}
+                                      >
+                                        {/* Floating Zoom Controls Bar */}
+                                        <div className="absolute top-4 right-4 z-[20] flex flex-col gap-2">
+                                          <button
+                                            type="button"
+                                            onClick={handleLibraryZoomIn}
+                                            className={`p-2.5 rounded-xl transition shadow-md cursor-pointer ${
+                                              settingsThemeMode === 'dark'
                                                 ? 'neu-btn-dark text-gray-200 hover:text-white border border-gray-700/50'
                                                 : 'neu-btn-light text-gray-700 hover:text-gray-900 border border-white/80'
-                                                }`}
-                                              title="Zoom In"
-                                            >
-                                              <Plus className="w-4 h-4" />
-                                            </button>
-                                            <button
-                                              type="button"
-                                              onClick={() => resetPreview(libraryPreviewRef)}
-                                              className={`p-2.5 rounded-xl text-[10px] font-black transition shadow-md cursor-pointer ${settingsThemeMode === 'dark'
-                                                ? 'neu-btn-dark text-gray-200 hover:text-white border border-gray-700/50'
-                                                : 'neu-btn-light text-gray-700 hover:text-gray-900 border border-white/80'
-                                                }`}
-                                              title="Reset"
-                                            >
-                                              1:1
-                                            </button>
-                                            <button
-                                              type="button"
-                                              onClick={() => setZoomLevel(prev => Math.max(prev - 0.2, 0.5))}
-                                              className={`p-2.5 rounded-xl transition shadow-md cursor-pointer ${settingsThemeMode === 'dark'
-                                                ? 'neu-btn-dark text-gray-200 hover:text-white border border-gray-700/50'
-                                                : 'neu-btn-light text-gray-700 hover:text-gray-900 border border-white/80'
-                                                }`}
-                                              title="Zoom Out"
-                                            >
-                                              <Minus className="w-4 h-4" />
-                                            </button>
-                                          </div>
-                                          <div
-                                            className={`relative shadow-2xl transition-all duration-300 origin-top flex-shrink-0 ${isPanning ? 'transition-none' : ''}`}
-                                            style={{
-                                              width: `${zoomLevel * 100}%`,
-                                              transform: `translate(${pan.x}px, ${pan.y}px)`
-                                            }}
+                                            }`}
+                                            title="Zoom In (or scroll wheel)"
                                           >
-                                            <img
-                                              src={activeImageObj.imageUrl || activeImageObj.base64}
-                                              alt="Page Inspection"
-                                              className={`max-w-full max-h-full w-auto h-auto object-contain rounded-2xl ${zoomLevel > 1 ? 'cursor-grab active:cursor-grabbing max-h-none max-w-none w-full' : 'cursor-default'}`}
-                                              onMouseMove={handleImageMouseMove}
-                                              onMouseDown={handleImageMouseDown}
-                                              onMouseUp={handleImageMouseUp}
-                                              onMouseLeave={() => { setHoveredCardIdFromImage(null); setIsPanning(false); }}
+                                            <Plus className="w-4 h-4" />
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={handleLibraryResetZoom}
+                                            className={`px-2 py-1.5 rounded-xl text-[10px] font-black transition shadow-md cursor-pointer flex items-center justify-center min-w-[36px] ${
+                                              settingsThemeMode === 'dark'
+                                                ? 'neu-btn-dark text-gray-200 hover:text-white border border-gray-700/50'
+                                                : 'neu-btn-light text-gray-700 hover:text-gray-900 border border-white/80'
+                                            }`}
+                                            title="Reset Zoom (1:1)"
+                                          >
+                                            {Math.round(libraryZoomScale * 100)}%
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={handleLibraryZoomOut}
+                                            className={`p-2.5 rounded-xl transition shadow-md cursor-pointer ${
+                                              settingsThemeMode === 'dark'
+                                                ? 'neu-btn-dark text-gray-200 hover:text-white border border-gray-700/50'
+                                                : 'neu-btn-light text-gray-700 hover:text-gray-900 border border-white/80'
+                                            }`}
+                                            title="Zoom Out (or scroll wheel)"
+                                          >
+                                            <Minus className="w-4 h-4" />
+                                          </button>
+                                        </div>
+
+                                        {/* Transformable Image Container */}
+                                        <div
+                                          ref={libraryImageContainerRef}
+                                          className={`relative shadow-2xl origin-top-left flex-shrink-0 transition-transform ${
+                                            isLibraryPanning ? 'duration-0' : 'duration-75 ease-out'
+                                          }`}
+                                          style={{
+                                            transform: `translate(${libraryPanOffset.x}px, ${libraryPanOffset.y}px) scale(${libraryZoomScale})`,
+                                            cursor: libraryZoomScale > 1 ? (isLibraryPanning ? 'grabbing' : 'grab') : 'default'
+                                          }}
+                                        >
+                                          <img
+                                            src={activeImageObj.imageUrl || activeImageObj.base64}
+                                            alt="Page Inspection"
+                                            className="max-w-full max-h-[75vh] w-auto h-auto object-contain rounded-2xl pointer-events-auto block select-none"
+                                            draggable={false}
+                                          />
+                                          {/* Highlight from Card Hover */}
+                                          {hoveredCardCoordinates?.ymin !== undefined && (
+                                            <div
+                                              className="absolute border-2 border-yellow-400 bg-yellow-300/40 rounded transition-all duration-200 pointer-events-none shadow-[0_0_12px_rgba(250,204,21,0.6)]"
+                                              style={{
+                                                top: `${(hoveredCardCoordinates?.ymin || 0) / 10}%`,
+                                                left: `${(hoveredCardCoordinates?.xmin || 0) / 10}%`,
+                                                height: `${((hoveredCardCoordinates?.ymax || 0) - (hoveredCardCoordinates?.ymin || 0)) / 10}%`,
+                                                width: `${((hoveredCardCoordinates?.xmax || 0) - (hoveredCardCoordinates?.xmin || 0)) / 10}%`,
+                                              }}
                                             />
-                                            {/* Highlight from Card Hover */}
-                                            {hoveredCardCoordinates?.ymin !== undefined && (
+                                          )}
+                                          {/* Highlight from Image Hover (Inverse) */}
+                                          {(() => {
+                                            if (!hoveredCardIdFromImage || !pageCards) return null;
+                                            const c = pageCards.find(card => card?.id === hoveredCardIdFromImage);
+                                            if (!c || c.ymin === undefined) return null;
+                                            return (
                                               <div
-                                                className="absolute border-2 border-yellow-400 bg-yellow-300/40 rounded transition-all duration-200 pointer-events-none shadow-[0_0_12px_rgba(250,204,21,0.6)]"
+                                                className="absolute border-2 border-blue-400 bg-blue-300/40 rounded pointer-events-none shadow-[0_0_12px_rgba(59,130,246,0.6)]"
                                                 style={{
-                                                  top: `${(hoveredCardCoordinates?.ymin || 0) / 10}%`,
-                                                  left: `${(hoveredCardCoordinates?.xmin || 0) / 10}%`,
-                                                  height: `${((hoveredCardCoordinates?.ymax || 0) - (hoveredCardCoordinates?.ymin || 0)) / 10}%`,
-                                                  width: `${((hoveredCardCoordinates?.xmax || 0) - (hoveredCardCoordinates?.xmin || 0)) / 10}%`,
+                                                  top: `${c.ymin / 10}%`,
+                                                  left: `${c.xmin / 10}%`,
+                                                  height: `${(c.ymax - c.ymin) / 10}%`,
+                                                  width: `${(c.xmax - c.xmin) / 10}%`,
                                                 }}
                                               />
-                                            )}
-                                            {/* Highlight from Image Hover (Inverse) */}
-                                            {(() => {
-                                              if (!hoveredCardIdFromImage || !pageCards) return null;
-                                              const c = pageCards.find(card => card?.id === hoveredCardIdFromImage);
-                                              if (!c || c.ymin === undefined) return null;
-                                              return (
-                                                <div
-                                                  className="absolute border-2 border-blue-400 bg-blue-300/40 rounded pointer-events-none shadow-[0_0_12px_rgba(59,130,246,0.6)]"
-                                                  style={{
-                                                    top: `${c.ymin / 10}%`,
-                                                    left: `${c.xmin / 10}%`,
-                                                    height: `${(c.ymax - c.ymin) / 10}%`,
-                                                    width: `${(c.xmax - c.xmin) / 10}%`,
-                                                  }}
-                                                />
-                                              );
-                                            })()}
-                                          </div>
-                                        </>
+                                            );
+                                          })()}
+                                        </div>
                                       </div>
                                     )}
                                   </div>
