@@ -8194,11 +8194,7 @@ export default function App() {
 
   // --- AUTHENTICATION ---
   const handleImageMouseMove = (e) => {
-    if (isPanning) {
-      const dx = e.clientX - panStart.x;
-      const dy = e.clientY - panStart.y;
-      setPan(prev => ({ x: prev.x + dx, y: prev.y + dy }));
-      setPanStart({ x: e.clientX, y: e.clientY });
+    if (isPanning || isLibraryPanning) {
       return;
     }
 
@@ -8207,7 +8203,6 @@ export default function App() {
     // Extract client coordinates synchronously before async RAF frame
     const clientX = e.clientX;
     const clientY = e.clientY;
-    const currentTarget = e.currentTarget;
 
     if (imageHoverRafRef.current) {
       cancelAnimationFrame(imageHoverRafRef.current);
@@ -8215,10 +8210,13 @@ export default function App() {
 
     imageHoverRafRef.current = requestAnimationFrame(() => {
       try {
-        if (!currentTarget) return;
-        // Dynamically find the rendered <img> element
-        const imgEl = (currentTarget.tagName === 'IMG' ? currentTarget : currentTarget.querySelector('img')) || currentTarget;
-        const rect = imgEl.getBoundingClientRect();
+        // Dynamically find the active rendered <img> element
+        const activeImg = (libraryImageContainerRef.current?.querySelector('img')) || 
+                          (dashboardPreviewRef.current?.querySelector('img')) ||
+                          (e.target?.tagName === 'IMG' ? e.target : e.currentTarget?.querySelector?.('img'));
+
+        if (!activeImg) return;
+        const rect = activeImg.getBoundingClientRect();
         if (!rect.width || !rect.height) return;
         
         // If cursor is outside the actual rendered image boundary on screen, clear hover
@@ -30376,7 +30374,7 @@ Return your response strictly as a JSON object matching this schema:
                                             exit={{ opacity: 0, scale: 0.9, height: 0 }}
                                             transition={{ duration: 0.25, delay: Math.min(idx, 10) * 0.02 }}
                                             id={`card-${card.id}`}
-                                            onMouseEnter={() => card.ymin !== undefined && setHoveredCardCoordinates({ ymin: card.ymin, xmin: card.xmin, ymax: card.ymax, xmax: card.xmax })}
+                                            onMouseEnter={() => { const box = getCardBoundingBox(card); if (box) setHoveredCardCoordinates(box); }}
                                             onMouseLeave={() => setHoveredCardCoordinates(null)}
                                             className={`card ${colorClass} group relative ${
                                               isCardTargetedByImage ? 'ring-2 ring-blue-500 shadow-xl active-from-image' : ''
@@ -30957,55 +30955,61 @@ Return your response strictly as a JSON object matching this schema:
                                         </div>
 
                                         {/* Transformable Image Container */}
-                                        <div
-                                          ref={libraryImageContainerRef}
-                                          className={`relative shadow-2xl inline-block max-w-full max-h-full transition-transform select-none ${
-                                            isLibraryPanning ? 'duration-0' : 'duration-75 ease-out'
-                                          }`}
-                                          style={{
-                                            transform: `translate(${libraryPanOffset.x}px, ${libraryPanOffset.y}px) scale(${libraryZoomScale})`,
-                                            transformOrigin: '0 0',
-                                            cursor: libraryZoomScale > 1 || libraryPanOffset.x !== 0 || libraryPanOffset.y !== 0 ? (isLibraryPanning ? 'grabbing' : 'grab') : 'default'
-                                          }}
-                                        >
-                                          <img
-                                            src={activeImageObj.imageUrl || activeImageObj.base64}
-                                            alt="Page Inspection"
-                                            className="max-w-full max-h-full w-auto h-auto object-contain rounded-2xl pointer-events-auto block select-none"
-                                            style={{ maxHeight: '100%', maxWidth: '100%' }}
-                                            draggable={false}
-                                          />
-                                          {/* Highlight Target Bounding Box from Card Hover (Clean Outline, No Dimming) */}
+                                         <div
+                                           ref={libraryImageContainerRef}
+                                           className={`relative shadow-2xl inline-flex items-center justify-center transition-transform select-none ${
+                                             isLibraryPanning ? 'duration-0' : 'duration-75 ease-out'
+                                           }`}
+                                           style={{
+                                             transform: `translate(${libraryPanOffset.x}px, ${libraryPanOffset.y}px) scale(${libraryZoomScale})`,
+                                             transformOrigin: '0 0',
+                                             cursor: libraryZoomScale > 1 || libraryPanOffset.x !== 0 || libraryPanOffset.y !== 0 ? (isLibraryPanning ? 'grabbing' : 'grab') : 'default'
+                                           }}
+                                         >
+                                           <img
+                                             src={activeImageObj.imageUrl || activeImageObj.base64}
+                                             alt="Page Inspection"
+                                             className="rounded-2xl pointer-events-auto block select-none max-w-full max-h-full"
+                                             style={{
+                                               maxWidth: '100%',
+                                               maxHeight: 'calc(100vh - 280px)',
+                                               width: 'auto',
+                                               height: 'auto',
+                                               display: 'block'
+                                             }}
+                                             draggable={false}
+                                           />
+                                           {/* Highlight Target Bounding Box from Card Hover (Clean Outline, No Dimming) */}
                                            {hoveredCardCoordinates?.ymin !== undefined && (
                                              <div
                                                className="absolute border-2 border-yellow-400 bg-yellow-300/20 rounded-xl transition-all duration-150 pointer-events-none shadow-[0_0_18px_rgba(250,204,21,0.85)] z-10"
                                                style={{
-                                                 top: `${(hoveredCardCoordinates?.ymin || 0) / 10}%`,
-                                                 left: `${(hoveredCardCoordinates?.xmin || 0) / 10}%`,
-                                                 height: `${((hoveredCardCoordinates?.ymax || 0) - (hoveredCardCoordinates?.ymin || 0)) / 10}%`,
-                                                 width: `${((hoveredCardCoordinates?.xmax || 0) - (hoveredCardCoordinates?.xmin || 0)) / 10}%`,
+                                                 top: `${(hoveredCardCoordinates.ymin || 0) / 10}%`,
+                                                 left: `${(hoveredCardCoordinates.xmin || 0) / 10}%`,
+                                                 height: `${((hoveredCardCoordinates.ymax || 0) - (hoveredCardCoordinates.ymin || 0)) / 10}%`,
+                                                 width: `${((hoveredCardCoordinates.xmax || 0) - (hoveredCardCoordinates.xmin || 0)) / 10}%`,
                                                }}
                                              />
                                            )}
                                            {/* Highlight from Image Hover (Inverse) */}
-                                          {(() => {
-                                            if (!hoveredCardIdFromImage || !pageCards) return null;
-                                            const c = pageCards.find(card => card?.id === hoveredCardIdFromImage);
-                                            if (!c || c.ymin === undefined) return null;
-                                            return (
-                                              <div
-                                                className="absolute border-2 border-blue-400 bg-blue-300/40 rounded-xl pointer-events-none shadow-[0_0_14px_rgba(59,130,246,0.7)] z-10"
-                                                style={{
-                                                  top: `${c.ymin / 10}%`,
-                                                  left: `${c.xmin / 10}%`,
-                                                  height: `${(c.ymax - c.ymin) / 10}%`,
-                                                  width: `${(c.xmax - c.xmin) / 10}%`,
-                                                }}
-                                              />
-                                            );
-                                          })()}
-                                        </div>
-                                      </div>
+                                           {(() => {
+                                             if (!hoveredCardIdFromImage || !pageCards) return null;
+                                             const c = pageCards.find(card => card?.id === hoveredCardIdFromImage);
+                                             const activeBox = getCardBoundingBox(c);
+                                             if (!activeBox) return null;
+                                             return (
+                                               <div
+                                                 className="absolute border-2 border-blue-400 bg-blue-300/40 rounded-xl pointer-events-none shadow-[0_0_14px_rgba(59,130,246,0.7)] z-10"
+                                                 style={{
+                                                   top: `${activeBox.ymin / 10}%`,
+                                                   left: `${activeBox.xmin / 10}%`,
+                                                   height: `${(activeBox.ymax - activeBox.ymin) / 10}%`,
+                                                   width: `${(activeBox.xmax - activeBox.xmin) / 10}%`,
+                                                 }}
+                                               />
+                                             );
+                                           })()}
+                                         </div></div>
                                     )}
                                   </div>
                                   <div className="lg:w-1/2 flex flex-col h-full min-h-0 gap-2.5 overflow-hidden p-1">
@@ -31114,7 +31118,7 @@ Return your response strictly as a JSON object matching this schema:
                                                   exit={{ opacity: 0, scale: 0.9, height: 0 }}
                                                   transition={{ duration: 0.25, delay: Math.min(idx, 10) * 0.02 }}
                                                   id={`card-${card.id}`}
-                                                  onMouseEnter={() => card.ymin !== undefined && setHoveredCardCoordinates({ ymin: card.ymin, xmin: card.xmin, ymax: card.ymax, xmax: card.xmax })}
+                                                  onMouseEnter={() => { const box = getCardBoundingBox(card); if (box) setHoveredCardCoordinates(box); }}
                                                   onMouseLeave={() => setHoveredCardCoordinates(null)}
                                                   className={`card ${colorClass} group relative ${
                                                     isCardTargetedByImage ? 'ring-2 ring-blue-500 shadow-xl active-from-image' : ''
