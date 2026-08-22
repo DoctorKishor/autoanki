@@ -30141,7 +30141,7 @@ Return your response strictly as a JSON object matching this schema:
                                                 <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${settingsThemeMode === 'dark' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'bg-purple-50 text-purple-600 border border-purple-100'}`}>Manual</span>
                                               )}
                                             </div>
-                                            <div className="text-[8px] font-black text-gray-400 uppercase tracking-widest bg-gray-500/10 px-2 py-0.5 rounded-full flex items-center gap-1 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                              <div className="text-[8px] font-black text-gray-400 uppercase tracking-widest bg-gray-500/10 px-2 py-0.5 rounded-full flex items-center gap-1 group-hover:bg-blue-600 group-hover:text-white transition-colors">
                                               <Folder className="w-2.5 h-2.5" /> {card.deck?.split('::').pop() || 'Uncategorized'}
                                             </div>
                                           </div>
@@ -30164,30 +30164,63 @@ Return your response strictly as a JSON object matching this schema:
                               ) : activeQueueId && (activeImageObj || pageCards.length > 0) ? (
                                 <div className="flex flex-col lg:flex-row gap-4 h-full flex-1 min-h-0 overflow-hidden">
                                   {/* Side-by-side view for saved page */}
-                                  <div className="lg:w-1/2 flex flex-col h-full min-h-0 bg-gray-950 rounded-3xl overflow-hidden relative border border-gray-800 shadow-2xl">
-                                    <div className="absolute top-4 left-4 z-10">
+                                  <div className={`lg:w-1/2 flex flex-col h-full min-h-0 rounded-3xl overflow-hidden relative border shadow-2xl ${settingsThemeMode === 'dark' ? 'neu-card-dark border-gray-800/80 bg-[#222730]' : 'neu-card-light border-white/80 bg-[#e6ecf5]'}`}>
+                                    <div className="absolute top-4 left-4 z-20">
                                       <motion.button
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
+                                        whileHover={{ scale: 1.04 }}
+                                        whileTap={{ scale: 0.96 }}
                                         onClick={() => setActiveQueueId(null)}
-                                        className="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white px-3 py-2 rounded-xl transition border border-white/10 flex items-center gap-2 text-xs font-bold shadow-lg"
+                                        className={`px-3.5 py-2 rounded-xl transition flex items-center gap-2 text-xs font-bold shadow-md cursor-pointer ${settingsThemeMode === 'dark'
+                                          ? 'neu-btn-dark text-gray-200 hover:text-white border border-gray-700/50'
+                                          : 'neu-btn-light text-gray-700 hover:text-gray-900 border border-white/80'
+                                          }`}
                                       >
-                                        <ChevronLeft className="w-4 h-4" /> Back to Gallery
+                                        <ChevronLeft className="w-4 h-4 text-blue-500" /> Back to Gallery
                                       </motion.button>
                                     </div>
                                     {!activeImageObj ? (
-                                      <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-gray-950 text-gray-500 text-center">
+                                      <div className={`w-full h-full flex flex-col items-center justify-center p-8 text-center ${settingsThemeMode === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
                                         <ImageIcon className="w-16 h-16 mb-4 opacity-10" />
                                         <h3 className="text-sm font-bold uppercase tracking-widest opacity-40">Source Image Removed</h3>
                                         <p className="text-[10px] mt-2 max-w-[200px]">The source clinical image for these cards was deleted, but the cards have been preserved in your library.</p>
                                       </div>
                                     ) : (
-                                      <div ref={libraryPreviewRef} className={`w-full h-full flex justify-center p-4 overflow-hidden bg-gray-950 ${zoomLevel > 1 ? 'items-start overflow-auto custom-scrollbar' : 'items-center'}`}>
+                                      <div ref={libraryPreviewRef} className={`w-full h-full flex justify-center p-4 overflow-hidden select-none ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'} ${zoomLevel > 1 ? 'items-start overflow-auto custom-scrollbar' : 'items-center'}`}>
                                         <>
                                           <div className="absolute top-4 right-4 z-[20] flex flex-col gap-2">
-                                            <button onClick={() => setZoomLevel(prev => Math.min(prev + 0.2, 3))} className="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white p-2 rounded-xl transition border border-white/10 shadow-lg active:scale-90" title="Zoom In"><Plus className="w-4 h-4" /></button>
-                                            <button onClick={() => resetPreview(libraryPreviewRef)} className="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white p-2 rounded-xl transition border border-white/10 shadow-lg text-[10px] font-bold active:scale-90" title="Reset">1:1</button>
-                                            <button onClick={() => setZoomLevel(prev => Math.max(prev - 0.2, 0.5))} className="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white p-2 rounded-xl transition border border-white/10 shadow-lg active:scale-90" title="Zoom Out"><Minus className="w-4 h-4" /></button>
+                                            <button
+                                              type="button"
+                                              onClick={() => setZoomLevel(prev => Math.min(prev + 0.2, 3))}
+                                              className={`p-2.5 rounded-xl transition shadow-md cursor-pointer ${settingsThemeMode === 'dark'
+                                                ? 'neu-btn-dark text-gray-200 hover:text-white border border-gray-700/50'
+                                                : 'neu-btn-light text-gray-700 hover:text-gray-900 border border-white/80'
+                                                }`}
+                                              title="Zoom In"
+                                            >
+                                              <Plus className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => resetPreview(libraryPreviewRef)}
+                                              className={`p-2.5 rounded-xl text-[10px] font-black transition shadow-md cursor-pointer ${settingsThemeMode === 'dark'
+                                                ? 'neu-btn-dark text-gray-200 hover:text-white border border-gray-700/50'
+                                                : 'neu-btn-light text-gray-700 hover:text-gray-900 border border-white/80'
+                                                }`}
+                                              title="Reset"
+                                            >
+                                              1:1
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => setZoomLevel(prev => Math.max(prev - 0.2, 0.5))}
+                                              className={`p-2.5 rounded-xl transition shadow-md cursor-pointer ${settingsThemeMode === 'dark'
+                                                ? 'neu-btn-dark text-gray-200 hover:text-white border border-gray-700/50'
+                                                : 'neu-btn-light text-gray-700 hover:text-gray-900 border border-white/80'
+                                                }`}
+                                              title="Zoom Out"
+                                            >
+                                              <Minus className="w-4 h-4" />
+                                            </button>
                                           </div>
                                           <div
                                             className={`relative shadow-2xl transition-all duration-300 origin-top flex-shrink-0 ${isPanning ? 'transition-none' : ''}`}
