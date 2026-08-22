@@ -36557,20 +36557,20 @@ Return your response strictly as a JSON object matching this schema:
                           initial={{ opacity: 0, y: 16 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-                          className="flex-grow p-6 lg:p-7 flex gap-6 max-w-[1300px] mx-auto w-full h-full overflow-hidden text-left"
+                          className="flex-grow p-4 lg:p-5 flex gap-5 w-full h-full overflow-hidden text-left"
                         >
                           {/* Left Column: Subjects Sidebar */}
                           <motion.div
                             initial={{ opacity: 0, x: -12 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ duration: 0.4, delay: 0.05 }}
-                            className={`w-1/3 rounded-3xl p-6 flex flex-col h-full overflow-y-auto custom-scrollbar transition-all space-y-4 ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'}`}
+                            className={`w-80 lg:w-96 shrink-0 rounded-3xl p-5 flex flex-col h-full overflow-y-auto custom-scrollbar transition-all space-y-3.5 ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'}`}
                           >
-                            <div className="shrink-0 space-y-3.5">
+                            <div className="shrink-0 space-y-3">
                               <div className="flex items-center justify-between">
-                                <h3 className="text-base sm:text-lg font-black tracking-tight flex items-center gap-2.5">
-                                  <div className={`p-2.5 rounded-xl ${isDark ? 'neu-pressed-dark text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
-                                    <ListChecks className="w-5 h-5" />
+                                <h3 className="text-base font-black tracking-tight flex items-center gap-2.5">
+                                  <div className={`p-2 rounded-xl ${isDark ? 'neu-pressed-dark text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
+                                    <ListChecks className="w-4.5 h-4.5" />
                                   </div>
                                   Subject Tracker
                                 </h3>
@@ -36584,7 +36584,7 @@ Return your response strictly as a JSON object matching this schema:
                                   placeholder="Filter subjects..."
                                   value={subjectSearchQuery}
                                   onChange={(e) => setSubjectSearchQuery(e.target.value)}
-                                  className={`w-full pl-10 pr-8 py-2.5 rounded-xl text-xs font-bold outline-none transition ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'}`}
+                                  className={`w-full pl-10 pr-8 py-2 rounded-xl text-xs font-bold outline-none transition ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'neu-pressed-light text-slate-800 placeholder-slate-400'}`}
                                 />
                                 {subjectSearchQuery && (
                                   <button
@@ -36598,9 +36598,9 @@ Return your response strictly as a JSON object matching this schema:
                             </div>
 
                             {/* Subject List Area */}
-                            <div className="space-y-4 flex-grow custom-scrollbar">
+                            <div className="space-y-3.5 flex-grow custom-scrollbar">
                               {filteredSubjects ? (
-                                <div className="space-y-2.5">
+                                <div className="space-y-2">
                                   {filteredSubjects.length > 0 ? (
                                     filteredSubjects.map(sub => renderSubjectCard(sub))
                                   ) : (
@@ -36611,11 +36611,11 @@ Return your response strictly as a JSON object matching this schema:
                                 </div>
                               ) : (
                                 subjectCategories.map(cat => (
-                                  <div key={cat.name} className="space-y-2.5">
+                                  <div key={cat.name} className="space-y-2">
                                     <div className={`text-[9px] sm:text-[10px] font-black uppercase tracking-widest px-1 py-0.5 font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                       {cat.name}
                                     </div>
-                                    <div className="space-y-2.5">
+                                    <div className="space-y-2">
                                       {cat.subjects.map(sub => renderSubjectCard(sub))}
                                     </div>
                                   </div>
@@ -36629,25 +36629,25 @@ Return your response strictly as a JSON object matching this schema:
                             initial={{ opacity: 0, x: 12 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ duration: 0.4, delay: 0.1 }}
-                            className={`w-2/3 rounded-3xl p-6 lg:p-7 flex flex-col h-full overflow-hidden relative transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'}`}
+                            className={`flex-1 min-w-0 rounded-3xl p-5 lg:p-6 flex flex-col h-full overflow-hidden relative transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'}`}
                           >
                             {/* Sticky Header Bar with Title & Stats Summary */}
-                            <div className={`flex justify-between items-center border-b pb-5 mb-6 shrink-0 ${isDark ? 'border-slate-750' : 'border-slate-200/80'}`}>
+                            <div className={`flex justify-between items-center border-b pb-3 mb-3.5 shrink-0 ${isDark ? 'border-slate-750' : 'border-slate-200/80'}`}>
                               <div>
                                 <span className={`text-[9px] sm:text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>Active Workspace</span>
-                                <h2 className="text-xl sm:text-2xl font-black tracking-tight mt-0.5 flex items-center gap-3">
+                                <h2 className="text-lg sm:text-xl font-black tracking-tight mt-0.5 flex items-center gap-3">
                                   <span>{selectedTrackerSubject} Tracking</span>
                                 </h2>
 
                                 {/* Quick Stats Summary Pills */}
-                                <div className="flex items-center gap-2.5 mt-2.5 flex-wrap">
-                                  <span className={`text-[9px] sm:text-[10px] font-black px-3 py-1 rounded-xl border flex items-center gap-1.5 ${isDark ? 'neu-pressed-dark text-blue-300 border-slate-800' : 'neu-pressed-light text-blue-700 border-slate-200'}`}>
+                                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                  <span className={`text-[9px] sm:text-[10px] font-black px-2.5 py-0.5 rounded-lg border flex items-center gap-1 ${isDark ? 'neu-pressed-dark text-blue-300 border-slate-800' : 'neu-pressed-light text-blue-700 border-slate-200'}`}>
                                     📌 {revisedTopicsCount}/{totalTopicsCount} Topics
                                   </span>
-                                  <span className={`text-[9px] sm:text-[10px] font-black px-3 py-1 rounded-xl border flex items-center gap-1.5 ${isDark ? 'neu-pressed-dark text-amber-400 border-slate-800' : 'neu-pressed-light text-amber-700 border-slate-200'}`}>
+                                  <span className={`text-[9px] sm:text-[10px] font-black px-2.5 py-0.5 rounded-lg border flex items-center gap-1 ${isDark ? 'neu-pressed-dark text-amber-400 border-slate-800' : 'neu-pressed-light text-amber-700 border-slate-200'}`}>
                                     🔥 {totalRevsCount} Revs
                                   </span>
-                                  <span className={`text-[9px] sm:text-[10px] font-black px-3 py-1 rounded-xl border flex items-center gap-1.5 ${isDark ? 'neu-pressed-dark text-emerald-400 border-slate-800' : 'neu-pressed-light text-emerald-700 border-slate-200'}`}>
+                                  <span className={`text-[9px] sm:text-[10px] font-black px-2.5 py-0.5 rounded-lg border flex items-center gap-1 ${isDark ? 'neu-pressed-dark text-emerald-400 border-slate-800' : 'neu-pressed-light text-emerald-700 border-slate-200'}`}>
                                     📈 {coveragePercent}% Coverage
                                   </span>
                                 </div>
@@ -36665,35 +36665,35 @@ Return your response strictly as a JSON object matching this schema:
                                 />
                                 <button
                                   onClick={() => setSubjectTrackerSubTab('manager')}
-                                  className={`relative z-10 px-4 py-2 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center gap-2 ${subjectTrackerSubTab === 'manager' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'}`}
+                                  className={`relative z-10 px-3.5 py-1.5 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center gap-1.5 ${subjectTrackerSubTab === 'manager' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'}`}
                                 >
-                                  <ListChecks className="w-4 h-4" />
+                                  <ListChecks className="w-3.5 h-3.5" />
                                   Manager
                                 </button>
                                 <button
                                   onClick={() => setSubjectTrackerSubTab('coverage')}
-                                  className={`relative z-10 px-4 py-2 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center gap-2 ${subjectTrackerSubTab === 'coverage' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'}`}
+                                  className={`relative z-10 px-3.5 py-1.5 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center gap-1.5 ${subjectTrackerSubTab === 'coverage' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'}`}
                                 >
-                                  <Layers className="w-4 h-4" />
+                                  <Layers className="w-3.5 h-3.5" />
                                   Coverage
                                 </button>
                               </div>
                             </div>
 
                             {subjectTrackerSubTab === 'manager' ? (
-                              <div className="flex-grow flex gap-6 min-h-0 p-1">
+                              <div className="flex-grow flex gap-5 min-h-0 p-0.5">
                                 {/* Left Side: Topic Checklist & Actions */}
-                                <div className={`w-7/12 flex flex-col h-full min-h-0 rounded-2xl p-5 lg:p-6 space-y-4.5 ${isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-800 border-slate-200'}`}>
+                                <div className={`w-7/12 flex flex-col h-full min-h-0 rounded-2xl p-4 lg:p-5 space-y-3.5 ${isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-800 border-slate-200'}`}>
                                   <div className="flex justify-between items-center shrink-0">
                                     <label className={`text-[10px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Tracked Topics Checklist</label>
 
                                     {/* Sort Toggle Pill */}
-                                    <div className={`relative grid grid-cols-3 p-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider w-[220px] ${isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'}`}>
+                                    <div className={`relative grid grid-cols-3 p-1 rounded-xl text-[9px] font-black uppercase tracking-wider w-[200px] ${isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'}`}>
                                       <div
-                                        className="absolute top-1.5 bottom-1.5 rounded-lg bg-blue-600 shadow-sm transition-all"
+                                        className="absolute top-1 bottom-1 rounded-lg bg-blue-600 shadow-sm transition-all"
                                         style={{
-                                          width: 'calc(33.333% - 4px)',
-                                          left: trackerSortBy === 'page' ? '6px' : trackerSortBy === 'uncompleted' ? 'calc(33.333% + 2px)' : 'calc(66.666% - 2px)',
+                                          width: 'calc(33.333% - 3px)',
+                                          left: trackerSortBy === 'page' ? '4px' : trackerSortBy === 'uncompleted' ? 'calc(33.333% + 1px)' : 'calc(66.666% - 1px)',
                                           transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
                                         }}
                                       />
@@ -36722,7 +36722,7 @@ Return your response strictly as a JSON object matching this schema:
                                   </div>
 
                                   {/* Add Topic Form Box */}
-                                  <div className={`p-4 rounded-2xl border transition-all ${isDark ? 'bg-slate-900/40 border-slate-800 neu-pressed-dark' : 'bg-slate-50/70 border-slate-200/80 neu-pressed-light'} shrink-0`}>
+                                  <div className={`p-2 sm:p-2.5 rounded-2xl border transition-all ${isDark ? 'bg-slate-900/40 border-slate-800 neu-pressed-dark' : 'bg-slate-50/70 border-slate-200/80 neu-pressed-light'} shrink-0`}>
                                     <form
                                       onSubmit={(e) => {
                                         e.preventDefault();
@@ -36733,30 +36733,30 @@ Return your response strictly as a JSON object matching this schema:
                                         setTrackerNewTopicPage("");
                                         setTrackerNewTopicEndPage("");
                                       }}
-                                      className="flex items-center gap-2.5 w-full"
+                                      className="flex items-center gap-2 w-full"
                                     >
                                       <input
                                         type="text"
                                         placeholder="Add topic (e.g. Cranial Nerves)..."
                                         value={trackerNewTopicInput}
                                         onChange={(e) => setTrackerNewTopicInput(e.target.value)}
-                                        className={`flex-grow min-w-0 px-4 py-3 rounded-xl text-xs font-bold outline-none transition ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'bg-white border border-slate-200 text-slate-800 placeholder-slate-400 shadow-inner'}`}
+                                        className={`flex-grow min-w-0 h-9 px-3.5 rounded-xl text-xs font-bold outline-none transition ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'bg-white border border-slate-200 text-slate-800 placeholder-slate-400 shadow-inner'}`}
                                       />
-                                      <div className="flex items-center gap-2 shrink-0">
+                                      <div className="flex items-center gap-1.5 shrink-0">
                                         <input
                                           type="number"
                                           placeholder="Start"
                                           value={trackerNewTopicPage}
                                           onChange={(e) => setTrackerNewTopicPage(e.target.value)}
-                                          className={`w-20 px-3 py-3 rounded-xl text-xs font-bold outline-none transition text-center ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'bg-white border border-slate-200 text-slate-800 placeholder-slate-400 shadow-inner'}`}
+                                          className={`w-16 h-9 px-2 text-center rounded-xl text-xs font-bold outline-none transition ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'bg-white border border-slate-200 text-slate-800 placeholder-slate-400 shadow-inner'}`}
                                         />
-                                        <span className={`text-xs font-bold ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>-</span>
+                                        <span className={`text-xs font-black ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>–</span>
                                         <input
                                           type="number"
                                           placeholder="End"
                                           value={trackerNewTopicEndPage}
                                           onChange={(e) => setTrackerNewTopicEndPage(e.target.value)}
-                                          className={`w-20 px-3 py-3 rounded-xl text-xs font-bold outline-none transition text-center ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'bg-white border border-slate-200 text-slate-800 placeholder-slate-400 shadow-inner'}`}
+                                          className={`w-16 h-9 px-2 text-center rounded-xl text-xs font-bold outline-none transition ${isDark ? 'neu-pressed-dark text-white placeholder-slate-500' : 'bg-white border border-slate-200 text-slate-800 placeholder-slate-400 shadow-inner'}`}
                                         />
                                       </div>
                                       <motion.button
@@ -36764,9 +36764,9 @@ Return your response strictly as a JSON object matching this schema:
                                         whileTap={{ scale: 0.95 }}
                                         type="submit"
                                         title="Press Enter to Add"
-                                        className={`px-4.5 py-3 rounded-xl text-xs font-black uppercase tracking-wider transition shrink-0 flex items-center gap-2 ${isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-500/20'}`}
+                                        className={`h-9 px-4 rounded-xl text-xs font-black uppercase tracking-wider transition shrink-0 flex items-center justify-center gap-1.5 ${isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-500/20'}`}
                                       >
-                                        <Plus className="w-4 h-4" /> Add
+                                        <Plus className="w-3.5 h-3.5" /> Add
                                       </motion.button>
                                     </form>
                                   </div>
