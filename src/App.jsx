@@ -1069,18 +1069,17 @@ const HierarchicalSunburst = ({ deckPaths, libraryPages, deckCardCounts = {}, on
 
     layoutNode(activeSubtreeRoot, -Math.PI / 2, (3 * Math.PI) / 2, 1);
 
+    const allDecks = [];
     const collectAllPaths = (node) => {
-      let list = [];
       if (node.path) {
-        list.push(node);
+        allDecks.push(node);
       }
       Object.values(node.children).forEach(child => {
-        list = [...list, ...collectAllPaths(child)];
+        collectAllPaths(child);
       });
-      return list;
     };
 
-    const allDecks = collectAllPaths(treeRoot);
+    collectAllPaths(treeRoot);
 
     return allDecks.map(node => {
       if (visibleNodesMap.has(node.path)) {
@@ -1271,23 +1270,21 @@ const HierarchicalSunburst = ({ deckPaths, libraryPages, deckCardCounts = {}, on
   );
 };
 
-const ExportTreeFolder = ({ node, level = 0, selectedDecks, onToggle, themeMode = 'light' }) => {
+const ExportTreeFolder = React.memo(({ node, level = 0, selectedDecks, onToggle, themeMode = 'light' }) => {
   const [isOpen, setIsOpen] = useState(false);
   const hasChildren = Object.keys(node.children).length > 0;
 
   const isChecked = selectedDecks.includes(node.path);
 
+  const getDescendantPaths = (n, acc = []) => {
+    if (n.path) acc.push(n.path);
+    Object.values(n.children).forEach(child => getDescendantPaths(child, acc));
+    return acc;
+  };
+
   const getIndeterminate = () => {
     if (!hasChildren) return false;
-    const getAllDescendantPaths = (n) => {
-      let paths = [];
-      if (n.path) paths.push(n.path);
-      Object.values(n.children).forEach(child => {
-        paths = [...paths, ...getAllDescendantPaths(child)];
-      });
-      return paths;
-    };
-    const descendants = getAllDescendantPaths(node);
+    const descendants = getDescendantPaths(node);
     const checkedCount = descendants.filter(p => selectedDecks.includes(p)).length;
     return checkedCount > 0 && checkedCount < descendants.length;
   };
@@ -1296,16 +1293,7 @@ const ExportTreeFolder = ({ node, level = 0, selectedDecks, onToggle, themeMode 
 
   const handleCheckboxChange = (e) => {
     const checked = e.target.checked;
-    const getPathsToToggle = (n) => {
-      let paths = [];
-      if (n.path) paths.push(n.path);
-      Object.values(n.children).forEach(child => {
-        paths = [...paths, ...getPathsToToggle(child)];
-      });
-      return paths;
-    };
-
-    const targetPaths = getPathsToToggle(node);
+    const targetPaths = getDescendantPaths(node);
     onToggle(targetPaths, checked);
   };
 
@@ -1413,7 +1401,7 @@ const ExportTreeFolder = ({ node, level = 0, selectedDecks, onToggle, themeMode 
       </AnimatePresence>
     </div>
   );
-};
+});
 
 const NeumorphicSelect = ({ value, onChange, options = [], isDark: isDarkProp, themeMode = 'light', placeholder = 'Select...', className = '' }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -1522,7 +1510,7 @@ const OrbitalLoader = ({ themeMode = 'light', size = 'normal' }) => {
   );
 };
 
-const TreeFolder = ({ node, level = 0, selectedPath, onSelect, onAdd, onRename, onDelete, onMoveNode, isMobileMoveMode, onToggleMove, showCounts = true, hideActions = false, themeMode = 'light', activeMenuPath, setActiveMenuPath }) => {
+const TreeFolder = React.memo(({ node, level = 0, selectedPath, onSelect, onAdd, onRename, onDelete, onMoveNode, isMobileMoveMode, onToggleMove, showCounts = true, hideActions = false, themeMode = 'light', activeMenuPath, setActiveMenuPath }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isRootDragOver, setIsRootDragOver] = useState(false);
@@ -1803,7 +1791,7 @@ const TreeFolder = ({ node, level = 0, selectedPath, onSelect, onAdd, onRename, 
       </AnimatePresence>
     </div>
   );
-};
+});
 
 // --- FILE HELPERS ---
 const resizeImage = (base64Str, maxWidth = 2560, maxHeight = 2560) => {
@@ -40842,65 +40830,76 @@ export function TagConceptWeb({ cards, hierarchy, onSelectTags }) {
   const [hoveredInfo, setHoveredInfo] = useState(null);
   const [showAllTags, setShowAllTags] = useState(false);
 
-  // 1. Process database cards and map tags with relationships
+  // 1. Process database cards and map tags with relationships (Linear O(C) inverted index pass)
   const { nodes, edges } = useMemo(() => {
-    const activeFolderCards = cards.filter(card => {
+    const activeFolderCards = (cards || []).filter(card => {
       if (showAllTags) return true;
       if (!hierarchy) return true;
       if (hierarchy === 'PENDING_REVIEW') return card.isPending;
-      return card.deck === hierarchy;
+      return card.deck === hierarchy || (card.deck && card.deck.startsWith(hierarchy + '::'));
     });
 
-    const tagData = {};
+    const tagData = new Map();
+    const coOccur = new Map();
+
     activeFolderCards.forEach(card => {
-      if (Array.isArray(card.tags)) {
-        card.tags.forEach(tag => {
-          if (tag && typeof tag === 'string' && tag.trim()) {
-            const cleanTag = tag.trim().startsWith('#') ? tag.trim() : `#${tag.trim()}`;
-            if (!tagData[cleanTag]) {
-              tagData[cleanTag] = { count: 0, mastered: 0, due: 0, cards: [] };
-            }
-            tagData[cleanTag].count++;
-            tagData[cleanTag].cards.push(card);
-            if (card.reviewState?.repetitions >= 2) {
-              tagData[cleanTag].mastered++;
-            }
-            const nextDue = card.reviewState?.nextReviewDue || 0;
-            if (nextDue <= Date.now() && !card.isPending) {
-              tagData[cleanTag].due++;
-            }
-          }
-        });
+      if (!Array.isArray(card.tags) || card.tags.length === 0) return;
+      const cardTags = [];
+      card.tags.forEach(tag => {
+        if (tag && typeof tag === 'string' && tag.trim()) {
+          const cleanTag = tag.trim().startsWith('#') ? tag.trim() : `#${tag.trim()}`;
+          if (!cardTags.includes(cleanTag)) cardTags.push(cleanTag);
+        }
+      });
+
+      cardTags.forEach(cleanTag => {
+        let entry = tagData.get(cleanTag);
+        if (!entry) {
+          entry = { count: 0, mastered: 0, due: 0 };
+          tagData.set(cleanTag, entry);
+        }
+        entry.count++;
+        if (card.reviewState?.repetitions >= 2) {
+          entry.mastered++;
+        }
+        const nextDue = card.reviewState?.nextReviewDue || 0;
+        if (nextDue <= Date.now() && !card.isPending) {
+          entry.due++;
+        }
+      });
+
+      for (let i = 0; i < cardTags.length; i++) {
+        for (let j = i + 1; j < cardTags.length; j++) {
+          const key = cardTags[i] < cardTags[j] ? `${cardTags[i]}|${cardTags[j]}` : `${cardTags[j]}|${cardTags[i]}`;
+          coOccur.set(key, (coOccur.get(key) || 0) + 1);
+        }
       }
     });
 
-    const nodeList = Object.entries(tagData).map(([tag, data]) => {
+    // Limit to top 50 most relevant tags for smooth 60fps canvas performance
+    const sortedTags = Array.from(tagData.entries())
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, 50);
+
+    const topTagSet = new Set(sortedTags.map(([t]) => t));
+
+    const nodeList = sortedTags.map(([tag, data]) => {
       const mastery = data.count > 0 ? Math.round((data.mastered / data.count) * 100) : 0;
       return {
         tag,
         count: data.count,
         mastery,
-        due: data.due,
-        cardIds: data.cards.map(c => c.id)
+        due: data.due
       };
     });
 
     const edgeList = [];
-    const n = nodeList.length;
-    for (let i = 0; i < n; i++) {
-      for (let j = i + 1; j < n; j++) {
-        const tagA = nodeList[i];
-        const tagB = nodeList[j];
-        const sharedCards = tagA.cardIds.filter(id => tagB.cardIds.includes(id));
-        if (sharedCards.length > 0) {
-          edgeList.push({
-            source: tagA.tag,
-            target: tagB.tag,
-            weight: sharedCards.length
-          });
-        }
+    coOccur.forEach((weight, key) => {
+      const [source, target] = key.split('|');
+      if (topTagSet.has(source) && topTagSet.has(target)) {
+        edgeList.push({ source, target, weight });
       }
-    }
+    });
 
     return { nodes: nodeList, edges: edgeList };
   }, [cards, hierarchy, showAllTags]);
@@ -40948,6 +40947,7 @@ export function TagConceptWeb({ cards, hierarchy, onSelectTags }) {
 
       const simNodes = simulationRef.current.nodes;
       const simEdges = simulationRef.current.edges;
+      const nodeMap = new Map(simNodes.map(n => [n.tag, n]));
 
       // Subtle cursor magnet attraction/repulsion effect (subtle magnet interaction)
       const mx = mousePosRef.current.x;
@@ -40988,8 +40988,8 @@ export function TagConceptWeb({ cards, hierarchy, onSelectTags }) {
 
       // Attraction force (Hooke's Law)
       simEdges.forEach(edge => {
-        const n1 = simNodes.find(n => n.tag === edge.source);
-        const n2 = simNodes.find(n => n.tag === edge.target);
+        const n1 = nodeMap.get(edge.source);
+        const n2 = nodeMap.get(edge.target);
         if (n1 && n2) {
           const dx = n2.x - n1.x;
           const dy = n2.y - n1.y;
@@ -41030,8 +41030,8 @@ export function TagConceptWeb({ cards, hierarchy, onSelectTags }) {
 
       // Draw connection lines
       simEdges.forEach(edge => {
-        const n1 = simNodes.find(n => n.tag === edge.source);
-        const n2 = simNodes.find(n => n.tag === edge.target);
+        const n1 = nodeMap.get(edge.source);
+        const n2 = nodeMap.get(edge.target);
         if (n1 && n2) {
           const isFocused = hoveredInfo && (hoveredInfo.tag === n1.tag || hoveredInfo.tag === n2.tag);
           const opacity = hoveredInfo ? (isFocused ? 0.85 : 0.05) : 0.22;
