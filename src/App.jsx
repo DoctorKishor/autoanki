@@ -7366,20 +7366,71 @@ export default function App() {
   const [isImageVerificationModalOpen, setIsImageVerificationModalOpen] = useState(false);
   const [verificationModalCards, setVerificationModalCards] = useState([]);
 
-  const toggleGeneratedCardSuspended = (queueId, cardId) => {
+  const toggleCardSuspended = async (card, specificQueueId = null) => {
+    if (!card) return;
+    const newSuspended = !Boolean(card.isSuspended);
+    const cardId = card.id;
+    const cardText = card.text;
+    const targetQueueId = specificQueueId || activeQueueId || card.queueId;
+
+    // 1. Update queue if present in memory
     setQueue(prev => prev.map(q => {
-      if (q.id === queueId && q.generatedCards) {
+      if (targetQueueId && q.id === targetQueueId && q.generatedCards) {
         return {
           ...q,
           generatedCards: q.generatedCards.map(c =>
-            (c.id ? c.id === cardId : c.text === cardId)
-              ? { ...c, isSuspended: !c.isSuspended }
+            (cardId && c.id === cardId) || (cardText && c.text === cardText)
+              ? { ...c, isSuspended: newSuspended }
+              : c
+          )
+        };
+      }
+      if (q.generatedCards && q.generatedCards.some(c => (cardId && c.id === cardId) || (cardText && c.text === cardText))) {
+        return {
+          ...q,
+          generatedCards: q.generatedCards.map(c =>
+            (cardId && c.id === cardId) || (cardText && c.text === cardText)
+              ? { ...c, isSuspended: newSuspended }
               : c
           )
         };
       }
       return q;
     }));
+
+    // 2. Persist to LocalDB (IndexedDB) and update cards state if card has an ID
+    if (cardId) {
+      try {
+        const nowTime = Date.now();
+        const updatedCard = { ...card, isSuspended: newSuspended, updatedAt: nowTime };
+        await saveLocalCard(updatedCard);
+        setCards(prev => prev.map(c => c.id === cardId ? { ...c, ...updatedCard } : c));
+      } catch (err) {
+        console.error("[LocalDB] Error toggling card suspension:", err);
+      }
+    }
+  };
+
+  const toggleGeneratedCardSuspended = (queueId, cardId) => {
+    const queueItem = queue.find(q => q.id === queueId);
+    const card = queueItem?.generatedCards?.find(c => (c.id ? c.id === cardId : c.text === cardId)) || cards.find(c => c.id === cardId);
+    if (card) {
+      toggleCardSuspended(card, queueId);
+    } else {
+      setQueue(prev => prev.map(q => {
+        if (q.id === queueId && q.generatedCards) {
+          return {
+            ...q,
+            generatedCards: q.generatedCards.map(c =>
+              (c.id ? c.id === cardId : c.text === cardId)
+                ? { ...c, isSuspended: !c.isSuspended }
+                : c
+            )
+          };
+        }
+        return q;
+      }));
+    }
   };
 
   const setAllGeneratedCardsSuspended = (queueId, isSuspended) => {
@@ -7396,14 +7447,35 @@ export default function App() {
 
   const batchSetCardsSuspended = async (cardsList, isSuspended) => {
     if (!cardsList || cardsList.length === 0) return;
-    if (activeQueueId && queue.some(q => q.id === activeQueueId)) {
-      setAllGeneratedCardsSuspended(activeQueueId, isSuspended);
-    }
+    const targetCards = cardsList.filter(Boolean);
+    if (targetCards.length === 0) return;
+
+    const idSet = new Set(targetCards.map(c => c.id).filter(Boolean));
+    const textSet = new Set(targetCards.map(c => c.text).filter(Boolean));
+
+    // 1. Update matching queue items in memory
+    setQueue(prev => prev.map(q => {
+      if (!q.generatedCards || q.generatedCards.length === 0) return q;
+      const isTargetQueue = activeQueueId && q.id === activeQueueId;
+      const hasCardMatch = q.generatedCards.some(c => (c.id && idSet.has(c.id)) || (c.text && textSet.has(c.text)));
+      if (!isTargetQueue && !hasCardMatch) return q;
+      return {
+        ...q,
+        generatedCards: q.generatedCards.map(c => {
+          if (isTargetQueue || (c.id && idSet.has(c.id)) || (c.text && textSet.has(c.text))) {
+            return { ...c, isSuspended };
+          }
+          return c;
+        })
+      };
+    }));
+
+    // 2. Persist to LocalDB (IndexedDB) and update cards state
     try {
-      const targetCards = cardsList.filter(c => c && c.id);
-      if (targetCards.length > 0) {
+      const cardsWithIds = targetCards.filter(c => c && c.id);
+      if (cardsWithIds.length > 0) {
         const now = Date.now();
-        const updatedCards = targetCards.map(c => ({ ...c, isSuspended, updatedAt: now }));
+        const updatedCards = cardsWithIds.map(c => ({ ...c, isSuspended, updatedAt: now }));
         await saveLocalCards(updatedCards);
         const updatedMap = new Map(updatedCards.map(c => [c.id, c]));
         setCards(prev => prev.map(c => updatedMap.get(c.id) || c));
@@ -19565,29 +19637,32 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       updatedCard.tags = nextTags;
     }
 
-    // 1. Handle Queue Cards (Local)
-    if (editingCard.queueId) {
+    // 1. Handle Queue Cards (Local) if present in queue
+    let wasFoundInQueue = false;
+    if (editingCard.queueId && queue.some(q => q.id === editingCard.queueId)) {
+      wasFoundInQueue = true;
       setQueue(prev => prev.map(q => q.id === editingCard.queueId ? {
         ...q,
         generatedCards: q.generatedCards.map(c => c.id === editingCard.id ? updatedCard : c)
       } : q));
-      setEditingCard(null);
-      return;
     }
 
-    // 2. Handle Saved Cards (Local IndexedDB)
-    try {
-      const nowTime = Date.now();
-      const updatedCardWithTime = { ...updatedCard, updatedAt: nowTime };
-      await saveLocalCard(updatedCardWithTime);
+    // 2. Handle Saved Cards (Local IndexedDB) if saved or not exclusive to queue
+    const existsInSavedCards = cards.some(c => c.id === editingCard.id);
+    if (existsInSavedCards || !wasFoundInQueue) {
+      try {
+        const nowTime = Date.now();
+        const updatedCardWithTime = { ...updatedCard, updatedAt: nowTime };
+        await saveLocalCard(updatedCardWithTime);
 
-      // Optimistic update: patch local state
-      setCards(prev => prev.map(c => c.id === editingCard.id ? { ...c, ...updatedCardWithTime } : c));
-      setEditingCard(null);
-    } catch (err) {
-      console.error('[LocalDB] Failed to save card changes:', err);
-      alert("Failed to save changes: " + err.message);
+        // Optimistic update: patch local state
+        setCards(prev => prev.map(c => c.id === editingCard.id ? { ...c, ...updatedCardWithTime } : c));
+      } catch (err) {
+        console.error('[LocalDB] Failed to save card changes:', err);
+        alert("Failed to save changes: " + err.message);
+      }
     }
+    setEditingCard(null);
   };
 
   const rateCard = async (card, rating) => {
@@ -20802,7 +20877,26 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       fileExtension = 'html';
     }
     else if (format === 'json') {
-      fileContent = JSON.stringify(cardsToUse, null, 2);
+      const mappedCards = cardsToUse.map(card => {
+        const shouldSuspend = exportSuspendedMode === 'force_suspended'
+          ? true
+          : exportSuspendedMode === 'force_active'
+            ? false
+            : Boolean(card.isSuspended);
+        const cardTags = Array.isArray(card.tags) ? [...card.tags] : [];
+        if (shouldSuspend && !cardTags.includes('suspended')) {
+          cardTags.push('suspended');
+        } else if (!shouldSuspend && exportSuspendedMode === 'force_active') {
+          const sIdx = cardTags.indexOf('suspended');
+          if (sIdx > -1) cardTags.splice(sIdx, 1);
+        }
+        return {
+          ...card,
+          isSuspended: shouldSuspend,
+          tags: cardTags
+        };
+      });
+      fileContent = JSON.stringify(mappedCards, null, 2);
       mimeType = 'application/json;charset=utf-8;';
       fileExtension = 'json';
     }
@@ -24458,12 +24552,7 @@ Return your response strictly as a JSON object matching this schema:
                                                 type="button"
                                                 onClick={(e) => {
                                                   e.stopPropagation();
-                                                  if (activeQueueId) {
-                                                    toggleGeneratedCardSuspended(activeQueueId, card.id || card.text);
-                                                  } else if (card.id) {
-                                                    const updated = { ...card, isSuspended: !card.isSuspended };
-                                                    syncCardToLocalDb(updated);
-                                                  }
+                                                  toggleCardSuspended(card);
                                                 }}
                                                 className={`text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1 transition ${
                                                   card.isSuspended
@@ -30027,12 +30116,7 @@ Return your response strictly as a JSON object matching this schema:
                                                   type="button"
                                                   onClick={(e) => {
                                                     e.stopPropagation();
-                                                    if (activeQueueId) {
-                                                      toggleGeneratedCardSuspended(activeQueueId, card.id || card.text);
-                                                    } else if (card.id) {
-                                                      const updated = { ...card, isSuspended: !card.isSuspended };
-                                                      syncCardToLocalDb(updated);
-                                                    }
+                                                    toggleCardSuspended(card);
                                                   }}
                                                   className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1 transition ${
                                                     card.isSuspended
@@ -30763,12 +30847,7 @@ Return your response strictly as a JSON object matching this schema:
                                                         type="button"
                                                         onClick={(e) => {
                                                           e.stopPropagation();
-                                                          if (activeQueueId) {
-                                                            toggleGeneratedCardSuspended(activeQueueId, card.id || card.text);
-                                                          } else if (card.id) {
-                                                            const updated = { ...card, isSuspended: !card.isSuspended };
-                                                            syncCardToLocalDb(updated);
-                                                          }
+                                                          toggleCardSuspended(card);
                                                         }}
                                                         className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1 transition ${
                                                           card.isSuspended
@@ -31309,10 +31388,7 @@ Return your response strictly as a JSON object matching this schema:
                                                     type="button"
                                                     onClick={(e) => {
                                                       e.stopPropagation();
-                                                      if (card.id) {
-                                                        const updated = { ...card, isSuspended: !card.isSuspended };
-                                                        syncCardToLocalDb(updated);
-                                                      }
+                                                      toggleCardSuspended(card);
                                                     }}
                                                     className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1 transition ${
                                                       card.isSuspended

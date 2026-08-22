@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Plus, Layers, Image as ImageIcon, Folder, Tag, Save, ChevronDown,
   BookOpen, Edit3, Scissors, RefreshCw, Check, AlertCircle, Upload, FileImage,
-  Clipboard, Layout, Minimize2, Maximize2, Sparkles, Trash2
+  Clipboard, Layout, Minimize2, Maximize2, Sparkles, Trash2, Pause, Play
 } from 'lucide-react';
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -338,6 +338,7 @@ export default function ManualCardModal({
     imgBox: { ymin: 100, xmin: 100, ymax: 700, xmax: 900 },
     isManual: true,
     source: 'manual',
+    isSuspended: false,
   };
 
   const [form, setForm] = useState(EMPTY);
@@ -360,10 +361,12 @@ export default function ManualCardModal({
   useEffect(() => {
     if (isOpen && !prevIsOpenRef.current) {
       if (initialCard) {
+        const sanitizedInit = { ...initialCard };
         const hasImg = Boolean(initialCard.pageId || initialCard.imageUrl || initialCard.base64 || initialCard.customImage || initialCard.has_image);
         setForm({
           ...EMPTY,
           ...sanitizedInit,
+          isSuspended: Boolean(initialCard.isSuspended),
           imageSide: initialCard.imageSide || initialCard.imageLocation || 'back',
           imgBox: initialCard.imgBox || {
             ymin: initialCard.ymin ?? 100,
@@ -1044,6 +1047,35 @@ export default function ManualCardModal({
                   }}
                   className={inp}
                 />
+              </div>
+
+              {/* Anki Export State: Active vs Suspended */}
+              <div className={`p-3 rounded-2xl flex items-center justify-between transition border ${dark ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-gray-200'}`}>
+                <div>
+                  <div className={`text-[10px] font-black uppercase tracking-wider ${dark ? 'text-gray-300' : 'text-gray-700'}`}>
+                    Anki Export Status
+                  </div>
+                  <div className={`text-[9px] font-medium mt-0.5 ${dark ? 'text-gray-500' : 'text-gray-400'}`}>
+                    {form.isSuspended
+                      ? 'This card will be imported into Anki suspended (yellow).'
+                      : 'This card will be imported into Anki active in the review queue.'}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, isSuspended: !f.isSuspended }))}
+                  className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 transition ${
+                    form.isSuspended
+                      ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-sm'
+                      : dark
+                        ? 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-slate-200'
+                        : 'bg-slate-100 text-slate-500 border border-slate-200 hover:text-slate-700'
+                  }`}
+                  title={form.isSuspended ? "Card is Suspended on export. Click to activate." : "Click to Suspend on export"}
+                >
+                  {form.isSuspended ? <Pause className="w-3 h-3 fill-amber-400/40" /> : <Play className="w-3 h-3 opacity-60" />}
+                  <span>{form.isSuspended ? 'Suspended' : 'Active'}</span>
+                </button>
               </div>
             </div>
 
