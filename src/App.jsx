@@ -1438,7 +1438,7 @@ const NeumorphicSelect = ({ value, onChange, options = [], isDark: isDarkProp, t
           }`}
       >
         <span className="truncate pr-2 font-sans">{selectedOption ? selectedOption.label : placeholder}</span>
-        <ChevronDown className={`w-4 h-4 shrink-0 transition-transform duration-300 ${isOpen ? 'rotate-180 text-blue-500' : (isDark ? 'text-gray-400' : 'text-gray-600')}`} />
+        <ChevronDown className={`w-4 h-4 shrink-0 transition-transform duration-250 ease-[cubic-bezier(0.16,1,0.3,1)] ${isOpen ? 'rotate-180 text-blue-500' : (isDark ? 'text-gray-400' : 'text-gray-600')}`} />
       </button>
 
       <AnimatePresence>
@@ -29217,7 +29217,7 @@ Return your response strictly as a JSON object matching this schema:
                 <aside
                   onMouseEnter={handleSidebarMouseEnter}
                   onMouseLeave={handleSidebarMouseLeave}
-                  className={`flex ${isSidebarExpanded ? 'w-64' : 'w-20'} ${settingsThemeMode === 'dark' ? 'neu-card-dark border-r border-gray-800/80 text-slate-100' : 'neu-card-light border-r border-gray-200/80 text-slate-800'} flex flex-col py-6 shrink-0 transition-all duration-300 shadow-xl z-20 neu-action-sidebar`}
+                  className={`flex ${isSidebarExpanded ? 'w-64' : 'w-20'} ${settingsThemeMode === 'dark' ? 'neu-card-dark border-r border-gray-800/80 text-slate-100' : 'neu-card-light border-r border-gray-200/80 text-slate-800'} flex flex-col py-6 shrink-0 transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] shadow-xl z-20 neu-action-sidebar will-change-[width]`}
                 >
 
                   <div className={`mb-8 flex items-center z-10 transition-all ${isSidebarExpanded ? 'px-5' : 'px-2 justify-center'}`}>
@@ -29286,8 +29286,8 @@ Return your response strictly as a JSON object matching this schema:
                                     initial={{ height: 0, opacity: 0 }}
                                     animate={{ height: 'auto', opacity: 1 }}
                                     exit={{ height: 0, opacity: 0 }}
-                                    transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
-                                    className="space-y-1.5 overflow-hidden p-1"
+                                    transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                                    className="space-y-1 overflow-hidden p-1 will-change-[height,opacity]"
                                   >
                                     {cat.items.map(item => {
                                       const IconComp = item.icon;
