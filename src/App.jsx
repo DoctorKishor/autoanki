@@ -30659,7 +30659,7 @@ Return your response strictly as a JSON object matching this schema:
                         >
                           <div className={`flex-grow flex flex-col overflow-hidden p-6 rounded-3xl shadow-xl ${settingsThemeMode === 'dark' ? 'neu-card-dark border-gray-800/80 text-white' : 'neu-card-light border-white/80 text-gray-900'
                             }`}>
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-4 border-b border-gray-200/40 dark:border-gray-800/60">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-3 pb-3 border-b border-gray-200/40 dark:border-gray-800/60 shrink-0">
                               <div className="flex items-center gap-3">
                                 <motion.button
                                   whileHover={{ scale: 1.05 }}
@@ -30684,11 +30684,11 @@ Return your response strictly as a JSON object matching this schema:
                                   <ChevronLeft className="w-4 h-4 text-blue-500" />
                                 </motion.button>
                                 <div>
-                                  <h2 className={`text-2xl font-black tracking-tight ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>{currentFolderName}</h2>
-                                  <div className="text-xs text-gray-400 font-mono mt-0.5">{hierarchy}</div>
+                                  <h2 className={`text-xl font-black tracking-tight ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>{currentFolderName}</h2>
+                                  <div className="text-[11px] text-gray-400 font-mono mt-0.5">{hierarchy}</div>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-2.5 flex-wrap">
+                              <div className="flex items-center gap-2 flex-wrap md:flex-nowrap shrink-0">
                                 <div className={`relative group flex-grow md:flex-grow-0 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'} rounded-xl`}>
                                   <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
                                   <input
@@ -30696,7 +30696,7 @@ Return your response strictly as a JSON object matching this schema:
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     placeholder="Search cards..."
-                                    className="pl-9 pr-8 py-2.5 bg-transparent border-none text-xs outline-none w-44 lg:w-56 transition-all"
+                                    className="pl-9 pr-8 py-2 bg-transparent border-none text-xs outline-none w-36 lg:w-48 transition-all"
                                   />
                                   {searchQuery && (
                                     <button onClick={() => setSearchQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
@@ -30710,7 +30710,7 @@ Return your response strictly as a JSON object matching this schema:
                                       whileHover={{ scale: 1.04 }}
                                       whileTap={{ scale: 0.96 }}
                                       onClick={handleBulkDelete}
-                                      className="bg-red-500/15 text-red-500 border border-red-500/20 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 hover:bg-red-500/25 transition shadow-sm"
+                                      className="bg-red-500/15 text-red-500 border border-red-500/20 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 hover:bg-red-500/25 transition shadow-sm"
                                     >
                                       <Trash2 className="w-3.5 h-3.5" /> Delete ({selectedPages.size})
                                     </motion.button>
@@ -30718,7 +30718,7 @@ Return your response strictly as a JSON object matching this schema:
                                       whileHover={{ scale: 1.04 }}
                                       whileTap={{ scale: 0.96 }}
                                       onClick={() => setMoveDialog({ isOpen: true, targetPath: '' })}
-                                      className="bg-amber-500/15 text-amber-500 border border-amber-500/20 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 hover:bg-amber-500/25 transition shadow-sm"
+                                      className="bg-amber-500/15 text-amber-500 border border-amber-500/20 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 hover:bg-amber-500/25 transition shadow-sm"
                                     >
                                       <Move className="w-3.5 h-3.5" /> Move ({selectedPages.size})
                                     </motion.button>
@@ -30759,7 +30759,7 @@ Return your response strictly as a JSON object matching this schema:
                               </div>
                             </div>
 
-                            <div className="flex-grow overflow-y-auto p-4 pt-2 pb-16 pr-4 custom-scrollbar">
+                            <div className={`flex-grow ${activeQueueId && (activeImageObj || pageCards.length > 0) ? 'flex flex-col min-h-0 p-0 overflow-hidden' : 'overflow-y-auto p-4 pt-2 pb-16 pr-4 custom-scrollbar'}`}>
                               {searchQuery.trim() ? (
                                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                                   <div className="flex items-center justify-between">
@@ -30925,7 +30925,7 @@ Return your response strictly as a JSON object matching this schema:
                                           <img
                                             src={activeImageObj.imageUrl || activeImageObj.base64}
                                             alt="Page Inspection"
-                                            className="max-w-full max-h-[75vh] w-auto h-auto object-contain rounded-2xl pointer-events-auto block select-none"
+                                            className="max-w-full max-h-[82vh] w-auto h-auto object-contain rounded-2xl pointer-events-auto block select-none"
                                             draggable={false}
                                           />
                                           {/* Highlight from Card Hover */}
@@ -30961,17 +30961,17 @@ Return your response strictly as a JSON object matching this schema:
                                       </div>
                                     )}
                                   </div>
-                                  <div className="lg:w-1/2 flex flex-col h-full min-h-0 gap-3 overflow-hidden">
-                                    <div className="flex justify-between items-center">
-                                      <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">Cards from this page</h3>
-                                      <div className="flex items-center gap-2 flex-wrap">
+                                  <div className="lg:w-1/2 flex flex-col h-full min-h-0 gap-2.5 overflow-hidden">
+                                    <div className="flex justify-between items-center gap-2 flex-nowrap shrink-0 pb-0.5">
+                                      <h3 className="text-[11px] font-black uppercase tracking-wider text-gray-400 shrink-0">Cards from this page</h3>
+                                      <div className="flex items-center gap-1.5 flex-nowrap shrink-0">
                                         {pageCards.length > 0 && (
-                                          <div className="flex items-center gap-1">
+                                          <div className="flex items-center gap-1 p-0.5 rounded-xl border border-gray-500/15">
                                             <button
                                               type="button"
                                               onClick={() => batchSetCardsSuspended(pageCards, true)}
-                                              className={`px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-wider transition ${
-                                                settingsThemeMode === 'dark' ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 border border-amber-500/30' : 'bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200'
+                                              className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-wider transition ${
+                                                settingsThemeMode === 'dark' ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30' : 'bg-amber-50 text-amber-600 hover:bg-amber-100'
                                               }`}
                                               title="Suspend all cards from this page on export"
                                             >
@@ -30980,7 +30980,7 @@ Return your response strictly as a JSON object matching this schema:
                                             <button
                                               type="button"
                                               onClick={() => batchSetCardsSuspended(pageCards, false)}
-                                              className={`px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-wider transition ${
+                                              className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-wider transition ${
                                                 settingsThemeMode === 'dark' ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                               }`}
                                               title="Set all cards from this page to active on export"
@@ -30991,12 +30991,12 @@ Return your response strictly as a JSON object matching this schema:
                                         )}
                                         {pageCards.length > 0 && (
                                           <UiverseButton
-                                            icon={<CheckCircle className="w-3.5 h-3.5 text-emerald-500" />}
+                                            icon={<CheckCircle className="w-3 h-3 text-emerald-500" />}
                                             onClick={() => saveQueueItemToCloud(activeQueueId)}
                                             size="sm"
                                             themeMode={settingsThemeMode}
                                             isSuccess={isSaving}
-                                            successText="Saved All!"
+                                            successText="Saved!"
                                           >
                                             Save All
                                           </UiverseButton>
@@ -31004,7 +31004,7 @@ Return your response strictly as a JSON object matching this schema:
 
                                         {activeQueueItem?.status === 'done' && (
                                           <UiverseButton
-                                            icon={<Save className="w-3.5 h-3.5 text-blue-500" />}
+                                            icon={<Save className="w-3 h-3 text-blue-500" />}
                                             onClick={() => saveQueueItemToCloud(activeQueueId)}
                                             size="sm"
                                             themeMode={settingsThemeMode}
@@ -31018,48 +31018,48 @@ Return your response strictly as a JSON object matching this schema:
                                         {activeImageObj?.isPending && (
                                           <>
                                             <motion.button
-                                              whileHover={{ scale: 1.05 }}
-                                              whileTap={{ scale: 0.95 }}
+                                              whileHover={{ scale: 1.04 }}
+                                              whileTap={{ scale: 0.96 }}
                                               onClick={() => processTriagePage(activeImageObj.id)}
                                               disabled={isProcessing || isSaving}
-                                              className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-blue-600/20 transition-all disabled:opacity-50"
+                                              className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[9px] font-black uppercase shadow-md transition-all disabled:opacity-50"
                                             >
                                               {isProcessing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                                              {pageCards.length === 0 ? 'Process Cards' : 'Reprocess Cards'}
+                                              <span>{pageCards.length === 0 ? 'Process' : 'Reprocess'}</span>
                                             </motion.button>
                                             <motion.button
-                                              whileHover={{ scale: 1.05 }}
-                                              whileTap={{ scale: 0.95 }}
+                                              whileHover={{ scale: 1.04 }}
+                                              whileTap={{ scale: 0.96 }}
                                               onClick={() => setApproveDialog({ isOpen: true, pageId: activeImageObj.id, targetDeck: activeImageObj.deck || hierarchy })}
                                               disabled={isSaving || isProcessing}
-                                              className="flex items-center gap-2 px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-orange-600/20 transition-all disabled:opacity-50"
+                                              className="flex items-center gap-1 px-2.5 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-[9px] font-black uppercase shadow-md transition-all disabled:opacity-50"
                                             >
                                               {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-                                              Approve & Move
+                                              <span>Approve</span>
                                             </motion.button>
                                           </>
                                         )}
                                         {activeImageObj && (
                                           <motion.button
-                                            whileHover={{ scale: 1.05 }}
-                                            whileTap={{ scale: 0.95 }}
+                                            whileHover={{ scale: 1.04 }}
+                                            whileTap={{ scale: 0.96 }}
                                             onClick={() => handleRegenerateLibraryPage(activeImageObj)}
-                                            className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 text-purple-500 hover:bg-purple-500/20 border border-purple-500/20 rounded-xl text-[10px] font-black uppercase transition-all shadow-sm"
+                                            className="flex items-center gap-1 px-2.5 py-1.5 bg-purple-500/10 text-purple-500 hover:bg-purple-500/20 border border-purple-500/25 rounded-xl text-[9px] font-black uppercase transition-all shadow-sm shrink-0"
                                             title="Send page to Card Generator queue to regenerate flashcards for its folder"
                                           >
                                             <RefreshCw className="w-3 h-3" />
-                                            Regenerate Cards
+                                            <span>Regenerate Cards</span>
                                           </motion.button>
                                         )}
                                         <motion.button
-                                          whileHover={{ scale: 1.05 }}
-                                          whileTap={{ scale: 0.95 }}
+                                          whileHover={{ scale: 1.04 }}
+                                          whileTap={{ scale: 0.96 }}
                                           onClick={() => setDeleteConfirmDialog({ isOpen: true, pageIds: [activeQueueId], isBulk: false })}
-                                          className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-xl text-[10px] font-black uppercase transition-all"
+                                          className="flex items-center gap-1 px-2.5 py-1.5 bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/25 rounded-xl text-[9px] font-black uppercase transition-all shadow-sm shrink-0"
                                           title="Delete Page"
                                         >
                                           <Trash2 className="w-3 h-3" />
-                                          Delete Page
+                                          <span>Delete Page</span>
                                         </motion.button>
                                       </div>
                                     </div>
