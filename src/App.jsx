@@ -7689,6 +7689,15 @@ export default function App() {
       const newScale = Math.min(5, Math.max(0.5, parseFloat((oldScale + delta).toFixed(2))));
       if (newScale === oldScale) return;
 
+      if (newScale <= 1) {
+        // Automatically centre when zoomed out to fit within frame
+        setLibraryZoomScale(newScale);
+        setLibraryPanOffset({ x: 0, y: 0 });
+        libraryZoomScaleRef.current = newScale;
+        libraryPanOffsetRef.current = { x: 0, y: 0 };
+        return;
+      }
+
       if (libraryImageContainerRef.current && libraryPreviewWorkspaceRef.current) {
         const imgRect = libraryImageContainerRef.current.getBoundingClientRect();
         const wsRect = libraryPreviewWorkspaceRef.current.getBoundingClientRect();
@@ -7760,6 +7769,15 @@ export default function App() {
     const oldScale = libraryZoomScaleRef.current;
     const newScale = Math.max(0.5, parseFloat((oldScale - 0.25).toFixed(2)));
     if (newScale === oldScale) return;
+
+    if (newScale <= 1) {
+      // Automatically centre when zoomed out to fit within frame
+      setLibraryZoomScale(newScale);
+      setLibraryPanOffset({ x: 0, y: 0 });
+      libraryZoomScaleRef.current = newScale;
+      libraryPanOffsetRef.current = { x: 0, y: 0 };
+      return;
+    }
 
     if (libraryImageContainerRef.current && libraryPreviewWorkspaceRef.current) {
       const imgRect = libraryImageContainerRef.current.getBoundingClientRect();
@@ -8198,10 +8216,21 @@ export default function App() {
     imageHoverRafRef.current = requestAnimationFrame(() => {
       try {
         if (!currentTarget) return;
-        const rect = currentTarget.getBoundingClientRect();
+        // Dynamically find the rendered <img> element
+        const imgEl = (currentTarget.tagName === 'IMG' ? currentTarget : currentTarget.querySelector('img')) || currentTarget;
+        const rect = imgEl.getBoundingClientRect();
         if (!rect.width || !rect.height) return;
         
-        // Adjust coordinates for pan
+        // If cursor is outside the actual rendered image boundary on screen, clear hover
+        if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) {
+          if (hoveredCardIdFromImage) {
+            setHoveredCardIdFromImage(null);
+            setHoveredCardCoordinates(null);
+          }
+          return;
+        }
+
+        // Exact pixel fraction relative to the rendered image (0 to 1000 scale)
         const x = (((clientX - rect.left)) / rect.width) * 1000;
         const y = (((clientY - rect.top)) / rect.height) * 1000;
 
