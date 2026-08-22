@@ -30169,21 +30169,58 @@ Return your response strictly as a JSON object matching this schema:
                                     onMouseUp={handleImageMouseUp}
                                     onMouseLeave={() => { setHoveredCardIdFromImage(null); setIsPanning(false); }}
                                   />
-                                  {/* Bi-Directional Bounding Box Highlight Overlay */}
+                                  {/* Bi-Directional Bounding Box Highlight & Spotlight Overlay */}
                                   {(() => {
-                                    const activeBox = hoveredCardCoordinates || (hoveredCardIdFromImage ? getCardBoundingBox(pageCards?.find(c => c?.id === hoveredCardIdFromImage)) : null);
-                                    if (!activeBox) return null;
-                                    return (
-                                      <div
-                                        className="absolute border-2 border-blue-500 bg-blue-400/35 rounded-lg pointer-events-none shadow-[0_0_15px_rgba(59,130,246,0.7)] z-20 transition-all duration-150"
-                                        style={{
-                                          top: `${activeBox.ymin / 10}%`,
-                                          left: `${activeBox.xmin / 10}%`,
-                                          height: `${(activeBox.ymax - activeBox.ymin) / 10}%`,
-                                          width: `${(activeBox.xmax - activeBox.xmin) / 10}%`,
-                                        }}
-                                      />
-                                    );
+                                    if (hoveredCardCoordinates?.ymin !== undefined) {
+                                      return (
+                                        <>
+                                          <div
+                                            className="absolute inset-0 pointer-events-none rounded-xl transition-all duration-200"
+                                            style={{
+                                              background: 'rgba(0, 0, 0, 0.45)',
+                                              backdropFilter: 'blur(1.5px)',
+                                              WebkitBackdropFilter: 'blur(1.5px)',
+                                              clipPath: `polygon(
+                                                0% 0%, 0% 100%, 
+                                                ${hoveredCardCoordinates.xmin / 10}% 100%, 
+                                                ${hoveredCardCoordinates.xmin / 10}% ${hoveredCardCoordinates.ymin / 10}%, 
+                                                ${hoveredCardCoordinates.xmax / 10}% ${hoveredCardCoordinates.ymin / 10}%, 
+                                                ${hoveredCardCoordinates.xmax / 10}% ${hoveredCardCoordinates.ymax / 10}%, 
+                                                ${hoveredCardCoordinates.xmin / 10}% ${hoveredCardCoordinates.ymax / 10}%, 
+                                                ${hoveredCardCoordinates.xmin / 10}% 100%, 
+                                                100% 100%, 100% 0%
+                                              )`
+                                            }}
+                                          />
+                                          <div
+                                            className="absolute border-2 border-yellow-400 bg-yellow-300/20 rounded-lg pointer-events-none shadow-[0_0_16px_rgba(250,204,21,0.8)] z-20 transition-all duration-150"
+                                            style={{
+                                              top: `${hoveredCardCoordinates.ymin / 10}%`,
+                                              left: `${hoveredCardCoordinates.xmin / 10}%`,
+                                              height: `${(hoveredCardCoordinates.ymax - hoveredCardCoordinates.ymin) / 10}%`,
+                                              width: `${(hoveredCardCoordinates.xmax - hoveredCardCoordinates.xmin) / 10}%`,
+                                            }}
+                                          />
+                                        </>
+                                      );
+                                    }
+                                    if (hoveredCardIdFromImage) {
+                                      const c = pageCards?.find(card => card?.id === hoveredCardIdFromImage);
+                                      const activeBox = getCardBoundingBox(c);
+                                      if (!activeBox) return null;
+                                      return (
+                                        <div
+                                          className="absolute border-2 border-blue-500 bg-blue-400/35 rounded-lg pointer-events-none shadow-[0_0_15px_rgba(59,130,246,0.7)] z-20 transition-all duration-150"
+                                          style={{
+                                            top: `${activeBox.ymin / 10}%`,
+                                            left: `${activeBox.xmin / 10}%`,
+                                            height: `${(activeBox.ymax - activeBox.ymin) / 10}%`,
+                                            width: `${(activeBox.xmax - activeBox.xmin) / 10}%`,
+                                          }}
+                                        />
+                                      );
+                                    }
+                                    return null;
                                   })()}
                                 </div>
                               </>
@@ -30318,6 +30355,10 @@ Return your response strictly as a JSON object matching this schema:
                                         else if (card.type === 'Image Occlusion' || card.has_image || card.include_image) colorClass = 'purple';
                                         else colorClass = 'red';
 
+                                        const isImageHoverActive = Boolean(hoveredCardIdFromImage);
+                                        const isCardTargetedByImage = isImageHoverActive && hoveredCardIdFromImage === card.id;
+                                        const isCardBlurredByImage = isImageHoverActive && hoveredCardIdFromImage !== card.id;
+
                                         return (
                                           <motion.div
                                             key={card.id || idx}
@@ -30328,7 +30369,9 @@ Return your response strictly as a JSON object matching this schema:
                                             id={`card-${card.id}`}
                                             onMouseEnter={() => card.ymin !== undefined && setHoveredCardCoordinates({ ymin: card.ymin, xmin: card.xmin, ymax: card.ymax, xmax: card.xmax })}
                                             onMouseLeave={() => setHoveredCardCoordinates(null)}
-                                            className={`card ${colorClass} group relative ${hoveredCardIdFromImage === card.id ? 'ring-2 ring-blue-500 shadow-lg scale-[0.98]' : ''}`}
+                                            className={`card ${colorClass} group relative ${
+                                              isCardTargetedByImage ? 'ring-2 ring-blue-500 shadow-xl active-from-image' : ''
+                                            } ${isCardBlurredByImage ? 'blurred-by-image' : ''}`}
                                           >
                                             <div className="flex items-center justify-between gap-2 mb-2.5 w-full">
                                               <div className="flex items-center gap-1.5 flex-wrap">
@@ -30923,17 +30966,37 @@ Return your response strictly as a JSON object matching this schema:
                                             style={{ maxHeight: '100%', maxWidth: '100%' }}
                                             draggable={false}
                                           />
-                                          {/* Highlight from Card Hover */}
+                                          {/* Highlight & Spotlight from Card Hover */}
                                           {hoveredCardCoordinates?.ymin !== undefined && (
-                                            <div
-                                              className="absolute border-2 border-yellow-400 bg-yellow-300/40 rounded transition-all duration-200 pointer-events-none shadow-[0_0_12px_rgba(250,204,21,0.6)]"
-                                              style={{
-                                                top: `${(hoveredCardCoordinates?.ymin || 0) / 10}%`,
-                                                left: `${(hoveredCardCoordinates?.xmin || 0) / 10}%`,
-                                                height: `${((hoveredCardCoordinates?.ymax || 0) - (hoveredCardCoordinates?.ymin || 0)) / 10}%`,
-                                                width: `${((hoveredCardCoordinates?.xmax || 0) - (hoveredCardCoordinates?.xmin || 0)) / 10}%`,
-                                              }}
-                                            />
+                                            <>
+                                              <div
+                                                className="absolute inset-0 pointer-events-none rounded-2xl transition-all duration-200"
+                                                style={{
+                                                  background: 'rgba(0, 0, 0, 0.45)',
+                                                  backdropFilter: 'blur(1.5px)',
+                                                  WebkitBackdropFilter: 'blur(1.5px)',
+                                                  clipPath: `polygon(
+                                                    0% 0%, 0% 100%, 
+                                                    ${hoveredCardCoordinates.xmin / 10}% 100%, 
+                                                    ${hoveredCardCoordinates.xmin / 10}% ${hoveredCardCoordinates.ymin / 10}%, 
+                                                    ${hoveredCardCoordinates.xmax / 10}% ${hoveredCardCoordinates.ymin / 10}%, 
+                                                    ${hoveredCardCoordinates.xmax / 10}% ${hoveredCardCoordinates.ymax / 10}%, 
+                                                    ${hoveredCardCoordinates.xmin / 10}% ${hoveredCardCoordinates.ymax / 10}%, 
+                                                    ${hoveredCardCoordinates.xmin / 10}% 100%, 
+                                                    100% 100%, 100% 0%
+                                                  )`
+                                                }}
+                                              />
+                                              <div
+                                                className="absolute border-2 border-yellow-400 bg-yellow-300/20 rounded-xl transition-all duration-200 pointer-events-none shadow-[0_0_18px_rgba(250,204,21,0.8)] z-10"
+                                                style={{
+                                                  top: `${(hoveredCardCoordinates?.ymin || 0) / 10}%`,
+                                                  left: `${(hoveredCardCoordinates?.xmin || 0) / 10}%`,
+                                                  height: `${((hoveredCardCoordinates?.ymax || 0) - (hoveredCardCoordinates?.ymin || 0)) / 10}%`,
+                                                  width: `${((hoveredCardCoordinates?.xmax || 0) - (hoveredCardCoordinates?.xmin || 0)) / 10}%`,
+                                                }}
+                                              />
+                                            </>
                                           )}
                                           {/* Highlight from Image Hover (Inverse) */}
                                           {(() => {
@@ -30942,7 +31005,7 @@ Return your response strictly as a JSON object matching this schema:
                                             if (!c || c.ymin === undefined) return null;
                                             return (
                                               <div
-                                                className="absolute border-2 border-blue-400 bg-blue-300/40 rounded pointer-events-none shadow-[0_0_12px_rgba(59,130,246,0.6)]"
+                                                className="absolute border-2 border-blue-400 bg-blue-300/40 rounded-xl pointer-events-none shadow-[0_0_14px_rgba(59,130,246,0.7)] z-10"
                                                 style={{
                                                   top: `${c.ymin / 10}%`,
                                                   left: `${c.xmin / 10}%`,
@@ -31050,6 +31113,10 @@ Return your response strictly as a JSON object matching this schema:
                                               else if (card.type === 'Image Occlusion' || card.has_image || card.include_image) colorClass = 'purple';
                                               else colorClass = 'red';
 
+                                              const isImageHoverActive = Boolean(hoveredCardIdFromImage);
+                                              const isCardTargetedByImage = isImageHoverActive && hoveredCardIdFromImage === card.id;
+                                              const isCardBlurredByImage = isImageHoverActive && hoveredCardIdFromImage !== card.id;
+
                                               return (
                                                 <motion.div
                                                   key={card.id || idx}
@@ -31060,7 +31127,9 @@ Return your response strictly as a JSON object matching this schema:
                                                   id={`card-${card.id}`}
                                                   onMouseEnter={() => card.ymin !== undefined && setHoveredCardCoordinates({ ymin: card.ymin, xmin: card.xmin, ymax: card.ymax, xmax: card.xmax })}
                                                   onMouseLeave={() => setHoveredCardCoordinates(null)}
-                                                  className={`card ${colorClass} group relative ${hoveredCardIdFromImage === card.id ? 'ring-2 ring-blue-500 shadow-lg scale-[0.98]' : ''}`}
+                                                  className={`card ${colorClass} group relative ${
+                                                    isCardTargetedByImage ? 'ring-2 ring-blue-500 shadow-xl active-from-image' : ''
+                                                  } ${isCardBlurredByImage ? 'blurred-by-image' : ''}`}
                                                 >
                                                   <div className="flex items-center justify-between gap-2 mb-2.5 w-full">
                                                     <div className="flex items-center gap-1.5 flex-wrap">
