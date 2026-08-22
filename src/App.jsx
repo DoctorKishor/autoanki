@@ -30515,7 +30515,7 @@ Return your response strictly as a JSON object matching this schema:
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -15, scale: 0.99 }}
                         transition={{ duration: 2.0, ease: [0.16, 1, 0.3, 1] }}
-                        className="h-full p-4 lg:p-6 flex flex-col lg:flex-row gap-5 max-w-[1600px] mx-auto w-full overflow-hidden shrink-0"
+                        className="h-full p-4 lg:p-6 flex flex-col lg:flex-row gap-5 max-w-[1600px] mx-auto w-full min-h-0 shrink-0"
                       >
                         {/* Left: Folders */}
                         <motion.div
@@ -30655,9 +30655,9 @@ Return your response strictly as a JSON object matching this schema:
                           initial={{ opacity: 0, x: 20 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ duration: 0.4, delay: 0.08 }}
-                          className="w-full lg:w-3/4 flex flex-col h-full overflow-hidden"
+                          className="w-full lg:w-3/4 flex flex-col h-full min-h-0"
                         >
-                          <div className={`flex-grow flex flex-col overflow-hidden p-6 rounded-3xl shadow-xl ${settingsThemeMode === 'dark' ? 'neu-card-dark border-gray-800/80 text-white' : 'neu-card-light border-white/80 text-gray-900'
+                          <div className={`h-full flex flex-col p-6 rounded-3xl shadow-xl ${settingsThemeMode === 'dark' ? 'neu-card-dark border-gray-800/80 text-white' : 'neu-card-light border-white/80 text-gray-900'
                             }`}>
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-3 pb-3 border-b border-gray-200/40 dark:border-gray-800/60 shrink-0">
                               <div className="flex items-center gap-3">
@@ -30831,22 +30831,9 @@ Return your response strictly as a JSON object matching this schema:
                                   )}
                                 </div>
                               ) : activeQueueId && (activeImageObj || pageCards.length > 0) ? (
-                                <div className="flex flex-col lg:flex-row gap-4 h-full flex-1 min-h-0 overflow-hidden">
+                                <div className="flex flex-col lg:flex-row gap-4 h-full flex-1 min-h-0 p-1.5 pb-2">
                                   {/* Side-by-side view for saved page */}
-                                  <div className={`lg:w-1/2 flex flex-col h-full min-h-0 rounded-3xl overflow-hidden relative border shadow-2xl ${settingsThemeMode === 'dark' ? 'neu-card-dark border-gray-800/80 bg-[#222730]' : 'neu-card-light border-white/80 bg-[#e6ecf5]'}`}>
-                                    <div className="absolute top-4 left-4 z-20">
-                                      <motion.button
-                                        whileHover={{ scale: 1.04 }}
-                                        whileTap={{ scale: 0.96 }}
-                                        onClick={() => setActiveQueueId(null)}
-                                        className={`px-3.5 py-2 rounded-xl transition flex items-center gap-2 text-xs font-bold shadow-md cursor-pointer ${settingsThemeMode === 'dark'
-                                          ? 'neu-btn-dark text-gray-200 hover:text-white border border-gray-700/50'
-                                          : 'neu-btn-light text-gray-700 hover:text-gray-900 border border-white/80'
-                                          }`}
-                                      >
-                                        <ChevronLeft className="w-4 h-4 text-blue-500" /> Back to Gallery
-                                      </motion.button>
-                                    </div>
+                                  <div className={`lg:w-1/2 flex flex-col h-full min-h-0 rounded-3xl overflow-hidden relative border shadow-lg ${settingsThemeMode === 'dark' ? 'neu-card-dark border-gray-800/80 bg-[#222730]' : 'neu-card-light border-white/80 bg-[#e6ecf5]'}`}>
                                     {!activeImageObj ? (
                                       <div className={`w-full h-full flex flex-col items-center justify-center p-8 text-center ${settingsThemeMode === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
                                         <ImageIcon className="w-16 h-16 mb-4 opacity-10" />
@@ -30961,35 +30948,34 @@ Return your response strictly as a JSON object matching this schema:
                                       </div>
                                     )}
                                   </div>
-                                  <div className="lg:w-1/2 flex flex-col h-full min-h-0 gap-2.5 overflow-hidden">
-                                    <div className="flex justify-between items-center gap-2 flex-nowrap shrink-0 pb-0.5">
-                                      <h3 className="text-[11px] font-black uppercase tracking-wider text-gray-400 shrink-0">Cards from this page</h3>
-                                      <div className="flex items-center gap-1.5 flex-nowrap shrink-0">
-                                        {pageCards.length > 0 && (
-                                          <div className="flex items-center gap-1 p-0.5 rounded-xl border border-gray-500/15">
-                                            <button
-                                              type="button"
-                                              onClick={() => batchSetCardsSuspended(pageCards, true)}
-                                              className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider transition ${
-                                                settingsThemeMode === 'dark' ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30' : 'bg-amber-50 text-amber-600 hover:bg-amber-100'
-                                              }`}
-                                              title="Suspend all cards from this page on export"
-                                            >
-                                              Suspend All
-                                            </button>
-                                            <button
-                                              type="button"
-                                              onClick={() => batchSetCardsSuspended(pageCards, false)}
-                                              className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider transition ${
-                                                settingsThemeMode === 'dark' ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                              }`}
-                                              title="Set all cards from this page to active on export"
-                                            >
-                                              Active All
-                                            </button>
-                                          </div>
-                                        )}
+                                  <div className="lg:w-1/2 flex flex-col h-full min-h-0 gap-2.5 overflow-hidden p-1">
+                                    <div className="flex items-center justify-between gap-2 shrink-0 pb-1 w-full">
+                                      {pageCards.length > 0 && (
+                                        <div className="flex items-center gap-1 p-0.5 rounded-xl border border-gray-500/15">
+                                          <button
+                                            type="button"
+                                            onClick={() => batchSetCardsSuspended(pageCards, true)}
+                                            className={`px-2.5 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider transition ${
+                                              settingsThemeMode === 'dark' ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30' : 'bg-amber-50 text-amber-600 hover:bg-amber-100'
+                                            }`}
+                                            title="Suspend all cards from this page on export"
+                                          >
+                                            Suspend All
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => batchSetCardsSuspended(pageCards, false)}
+                                            className={`px-2.5 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider transition ${
+                                              settingsThemeMode === 'dark' ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                            }`}
+                                            title="Set all cards from this page to active on export"
+                                          >
+                                            Active All
+                                          </button>
+                                        </div>
+                                      )}
 
+                                      <div className="flex items-center gap-2">
                                         {activeImageObj?.isPending && (
                                           <>
                                             <motion.button
@@ -30997,19 +30983,19 @@ Return your response strictly as a JSON object matching this schema:
                                               whileTap={{ scale: 0.96 }}
                                               onClick={() => processTriagePage(activeImageObj.id)}
                                               disabled={isProcessing || isSaving}
-                                              className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[9px] font-black uppercase shadow-md transition-all disabled:opacity-50"
+                                              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[9px] font-black uppercase shadow-md transition-all disabled:opacity-50"
                                             >
-                                              {isProcessing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                                              <span>{pageCards.length === 0 ? 'Process' : 'Reprocess'}</span>
+                                              {isProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                                              <span>{pageCards.length === 0 ? 'Process Cards' : 'Reprocess'}</span>
                                             </motion.button>
                                             <motion.button
                                               whileHover={{ scale: 1.04 }}
                                               whileTap={{ scale: 0.96 }}
                                               onClick={() => setApproveDialog({ isOpen: true, pageId: activeImageObj.id, targetDeck: activeImageObj.deck || hierarchy })}
                                               disabled={isSaving || isProcessing}
-                                              className="flex items-center gap-1 px-2.5 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-[9px] font-black uppercase shadow-md transition-all disabled:opacity-50"
+                                              className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-[9px] font-black uppercase shadow-md transition-all disabled:opacity-50"
                                             >
-                                              {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                                              {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                                               <span>Approve</span>
                                             </motion.button>
                                           </>
@@ -31038,7 +31024,7 @@ Return your response strictly as a JSON object matching this schema:
                                         </motion.button>
                                       </div>
                                     </div>
-                                    <div className="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar min-h-0">
+                                    <div className="flex-1 overflow-y-auto p-1.5 pr-2 space-y-3.5 custom-scrollbar min-h-0">
                                       {pageCards.length === 0 ? (
                                         <div className={`flex flex-col items-center justify-center p-8 py-16 text-center rounded-3xl border border-dashed ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-gray-200'
                                           }`}>
