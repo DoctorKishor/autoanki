@@ -7349,6 +7349,7 @@ export default function App() {
 
   // --- NEW EXPANSION STATES ---
   const [selectedTags, setSelectedTags] = useState([]);
+  const [showAllSidebarTags, setShowAllSidebarTags] = useState(false);
   const [isAnswerRevealed, setIsAnswerRevealed] = useState(false);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [exportFormat, setExportFormat] = useState('apkg'); // 'apkg' | 'anki' | 'notion' | 'pdf' | 'json'
@@ -7401,12 +7402,10 @@ export default function App() {
     try {
       const targetCards = cardsList.filter(c => c && c.id);
       if (targetCards.length > 0) {
-        const updatedMap = new Map();
-        for (const c of targetCards) {
-          const updated = { ...c, isSuspended, updatedAt: Date.now() };
-          await saveLocalCard(updated);
-          updatedMap.set(c.id, updated);
-        }
+        const now = Date.now();
+        const updatedCards = targetCards.map(c => ({ ...c, isSuspended, updatedAt: now }));
+        await saveLocalCards(updatedCards);
+        const updatedMap = new Map(updatedCards.map(c => [c.id, c]));
         setCards(prev => prev.map(c => updatedMap.get(c.id) || c));
       }
     } catch (err) {
@@ -21343,41 +21342,126 @@ Return your response strictly as a JSON object matching this schema:
 
   const exportCount = deckCardsToExport.length;
 
-  // --- DETECT DUPLICATES AND CONFLICTS ---
+  // --- OPTIMIZED HIGH-PERFORMANCE DETECT DUPLICATES AND CONFLICTS ---
   const activeConflicts = useMemo(() => {
     const list = [];
     const n = deckCardsToExport.length;
+    if (n === 0) return list;
+
+    // Fast tokenization helper
+    const cleanWords = (s) => (s || '').toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 2);
+    const STOP_WORDS = new Set(['the', 'and', 'for', 'that', 'this', 'with', 'from', 'are', 'was', 'were', 'which', 'what', 'when', 'where', 'how', 'who', 'does', 'has', 'have', 'had', 'been', 'not']);
+
+    // Preprocess cards once (O(N))
+    const preprocessed = [];
+    const wordIndex = new Map();
+
     for (let i = 0; i < n; i++) {
-      for (let j = i + 1; j < n; j++) {
-        const c1 = deckCardsToExport[i];
-        const c2 = deckCardsToExport[j];
+      const c = deckCardsToExport[i];
+      const text = c.front || c.text || '';
+      if (!text || /^\[context:/i.test(text) || c.keepBoth) {
+        preprocessed.push(null);
+        continue;
+      }
 
-        // Skip if either card has been ignored/dismissed
-        const pairKey = [c1.id, c2.id].sort().join('_');
-        if (ignoredConflicts.has(pairKey)) continue;
+      const words = cleanWords(text);
+      const wordSet = new Set(words);
 
-        // Skip if either card has been marked as keepBoth in storage
-        if (c1.keepBoth || c2.keepBoth) continue;
+      const trigrams = new Set();
+      for (let wIdx = 0; wIdx < words.length - 2; wIdx++) {
+        trigrams.add(`${words[wIdx]} ${words[wIdx + 1]} ${words[wIdx + 2]}`);
+      }
 
-        // Calculate similarity on fronts (question text or cloze text)
-        const text1 = c1.front || c1.text || '';
-        const text2 = c2.front || c2.text || '';
+      preprocessed.push({
+        card: c,
+        text,
+        words,
+        wordSet,
+        trigrams
+      });
 
-        // Skip if either card has already been differentiated with context prefix
-        if (/^\[context:/i.test(text1) || /^\[context:/i.test(text2)) continue;
-
-        const sim = calculateSimilarity(text1, text2);
-        if (sim >= 0.45) {
-          list.push({
-            cardA: c1,
-            cardB: c2,
-            similarity: sim,
-            key: pairKey
-          });
+      let indexedWords = 0;
+      for (const w of wordSet) {
+        if (!STOP_WORDS.has(w) && w.length >= 3) {
+          let postings = wordIndex.get(w);
+          if (!postings) {
+            postings = [];
+            wordIndex.set(w, postings);
+          }
+          postings.push(i);
+          indexedWords++;
+          if (indexedWords >= 20) break;
         }
       }
     }
-    // Sort by highest similarity first
+
+    // Evaluate candidate pairs with inverted index (O(K) instead of O(N^2))
+    for (let i = 0; i < n; i++) {
+      const p1 = preprocessed[i];
+      if (!p1) continue;
+
+      const matchCounts = new Map();
+      let checkedWords = 0;
+      for (const w of p1.wordSet) {
+        if (STOP_WORDS.has(w)) continue;
+        const postings = wordIndex.get(w);
+        if (postings && postings.length < 100) {
+          for (let k = 0; k < postings.length; k++) {
+            const j = postings[k];
+            if (j > i) {
+              matchCounts.set(j, (matchCounts.get(j) || 0) + 1);
+            }
+          }
+        }
+        checkedWords++;
+        if (checkedWords >= 20) break;
+      }
+
+      for (const [j, count] of matchCounts.entries()) {
+        if (count >= 2) {
+          const p2 = preprocessed[j];
+          if (!p2) continue;
+
+          const c1 = p1.card;
+          const c2 = p2.card;
+
+          const pairKey = [c1.id, c2.id].sort().join('_');
+          if (ignoredConflicts.has(pairKey)) continue;
+
+          const set1 = p1.wordSet;
+          const set2 = p2.wordSet;
+          let intersectionSize = 0;
+          for (const w of set1) {
+            if (set2.has(w)) intersectionSize++;
+          }
+          const unionSize = set1.size + set2.size - intersectionSize;
+          const wordJaccard = unionSize > 0 ? intersectionSize / unionSize : 0;
+
+          let sim = wordJaccard;
+          if (p1.trigrams.size > 0 && p2.trigrams.size > 0) {
+            let triIntersect = 0;
+            for (const t of p1.trigrams) {
+              if (p2.trigrams.has(t)) triIntersect++;
+            }
+            const triUnion = p1.trigrams.size + p2.trigrams.size - triIntersect;
+            const triJaccard = triUnion > 0 ? triIntersect / triUnion : 0;
+            sim = (wordJaccard * 0.4) + (triJaccard * 0.6);
+          }
+
+          if (sim >= 0.45) {
+            list.push({
+              cardA: c1,
+              cardB: c2,
+              similarity: sim,
+              key: pairKey
+            });
+            if (list.length >= 200) break;
+          }
+        }
+      }
+      if (list.length >= 200) break;
+    }
+
     return list.sort((a, b) => b.similarity - a.similarity);
   }, [deckCardsToExport, ignoredConflicts]);
 
@@ -24171,7 +24255,7 @@ Return your response strictly as a JSON object matching this schema:
                                 level={0}
                                 selectedPath={hierarchy}
                                 themeMode={settingsThemeMode}
-                                onSelect={(path) => { setHierarchy(path); setShowMobileFolderTree(false); }}
+                                onSelect={(path) => { setHierarchy(path); setActiveQueueId(null); setShowMobileFolderTree(false); }}
                                 onAdd={(path) => setNewFolderDialog({ isOpen: true, basePath: path, input: '' })}
                                 onRename={(path) => setRenameDialog({ isOpen: true, path, input: path.split('::').pop() })}
                                 onDelete={handleDeleteFolder}
@@ -24347,104 +24431,123 @@ Return your response strictly as a JSON object matching this schema:
                             </div>
 
                             {/* Cards Display */}
-                            <AnimatePresence mode="popLayout">
-                              {(queue.find(q => q.id === activeQueueId)?.generatedCards || pageCards).map((card, idx) => {
-                                const isCardHovered = hoveredCardIdFromImage === card.id || hoveredQueuePageId === activeQueueId;
-                                return (
-                                  <motion.div
-                                    key={card.id || idx}
-                                    layout
-                                    initial={{ opacity: 0, y: 16 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, scale: 0.95, height: 0 }}
-                                    transition={{ duration: 0.25, delay: idx * 0.02, ease: "easeOut" }}
-                                    onMouseEnter={() => setHoveredCardIdFromImage(card.id)}
-                                    onMouseLeave={() => setHoveredCardIdFromImage(null)}
-                                    className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-white' : 'neu-card-light text-gray-900'} p-4 rounded-2xl space-y-2 cursor-pointer transition-colors duration-200 relative group ${isCardHovered ? 'ring-2 ring-blue-500 border-blue-500' : ''
-                                      }`}
-                                  >
-                                    <div className="flex items-center justify-between w-full">
-                                      <div className="flex items-center gap-1.5 flex-wrap">
-                                        <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full inline-block ${settingsThemeMode === 'dark' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}>{card.type}</span>
-                                        <button
-                                          type="button"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            if (activeQueueId) {
-                                              toggleGeneratedCardSuspended(activeQueueId, card.id || card.text);
-                                            } else if (card.id) {
-                                              const updated = { ...card, isSuspended: !card.isSuspended };
-                                              syncCardToLocalDb(updated);
-                                            }
-                                          }}
-                                          className={`text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1 transition ${
-                                            card.isSuspended
-                                              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
-                                              : settingsThemeMode === 'dark'
-                                                ? 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-slate-200'
-                                                : 'bg-slate-100 text-slate-500 border border-slate-200 hover:text-slate-700'
-                                          }`}
-                                          title={card.isSuspended ? "Card is Suspended on export. Click to activate." : "Click to Suspend on export"}
+                            {(() => {
+                              const displayedCards = queue.find(q => q.id === activeQueueId)?.generatedCards || pageCards;
+                              return (
+                                <>
+                                  <AnimatePresence mode="popLayout">
+                                    {displayedCards.slice(0, libraryCardsLimit).map((card, idx) => {
+                                      const isCardHovered = hoveredCardIdFromImage === card.id || hoveredQueuePageId === activeQueueId;
+                                      return (
+                                        <motion.div
+                                          key={card.id || idx}
+                                          initial={{ opacity: 0, y: 16 }}
+                                          animate={{ opacity: 1, y: 0 }}
+                                          exit={{ opacity: 0, scale: 0.95, height: 0 }}
+                                          transition={{ duration: 0.2, delay: Math.min(idx, 8) * 0.015, ease: "easeOut" }}
+                                          onMouseEnter={() => setHoveredCardIdFromImage(card.id)}
+                                          onMouseLeave={() => setHoveredCardIdFromImage(null)}
+                                          className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-white' : 'neu-card-light text-gray-900'} p-4 rounded-2xl space-y-2 cursor-pointer transition-colors duration-200 relative group ${isCardHovered ? 'ring-2 ring-blue-500 border-blue-500' : ''
+                                            }`}
                                         >
-                                          {card.isSuspended ? <Pause className="w-2.5 h-2.5 fill-amber-400/40" /> : <Play className="w-2.5 h-2.5 opacity-60" />}
-                                          <span>{card.isSuspended ? 'Suspended' : 'Active'}</span>
-                                        </button>
-                                      </div>
-
-                                      {/* Mobile Card Edit and Delete Action Buttons */}
-                                      <div className="flex items-center gap-1.5 z-10" onClick={(e) => e.stopPropagation()}>
-                                        <button
-                                          onClick={() => setEditingCard(card)}
-                                          className={`p-1.5 rounded-xl transition-colors ${settingsThemeMode === 'dark' ? 'hover:bg-blue-500/20 text-blue-400' : 'hover:bg-blue-50 text-blue-600'}`}
-                                          title="Edit Card"
-                                        >
-                                          <Edit3 className="w-3.5 h-3.5" />
-                                        </button>
-                                        <button
-                                          onClick={() => {
-                                            if (activeQueueId) {
-                                              const queueItem = queue.find(q => q.id === activeQueueId);
-                                              if (queueItem && queueItem.generatedCards) {
-                                                setQueue(prev => prev.map(q => {
-                                                  if (q.id === activeQueueId) {
-                                                    return {
-                                                      ...q,
-                                                      generatedCards: q.generatedCards.filter(c => (c.id ? c.id !== card.id : c.text !== card.text))
-                                                    };
+                                          <div className="flex items-center justify-between w-full">
+                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                              <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full inline-block ${settingsThemeMode === 'dark' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}>{card.type}</span>
+                                              <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  if (activeQueueId) {
+                                                    toggleGeneratedCardSuspended(activeQueueId, card.id || card.text);
+                                                  } else if (card.id) {
+                                                    const updated = { ...card, isSuspended: !card.isSuspended };
+                                                    syncCardToLocalDb(updated);
                                                   }
-                                                  return q;
-                                                }));
-                                                return;
-                                              }
-                                            }
-                                            if (card.id) {
-                                              deleteCard(card.id);
-                                            }
-                                          }}
-                                          className={`p-1.5 rounded-xl transition-colors ${settingsThemeMode === 'dark' ? 'hover:bg-red-500/20 text-red-400' : 'hover:bg-red-50 text-red-600'}`}
-                                          title="Delete Card"
-                                        >
-                                          <Trash2 className="w-3.5 h-3.5" />
-                                        </button>
-                                      </div>
+                                                }}
+                                                className={`text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1 transition ${
+                                                  card.isSuspended
+                                                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
+                                                    : settingsThemeMode === 'dark'
+                                                      ? 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-slate-200'
+                                                      : 'bg-slate-100 text-slate-500 border border-slate-200 hover:text-slate-700'
+                                                }`}
+                                                title={card.isSuspended ? "Card is Suspended on export. Click to activate." : "Click to Suspend on export"}
+                                              >
+                                                {card.isSuspended ? <Pause className="w-2.5 h-2.5 fill-amber-400/40" /> : <Play className="w-2.5 h-2.5 opacity-60" />}
+                                                <span>{card.isSuspended ? 'Suspended' : 'Active'}</span>
+                                              </button>
+                                            </div>
+
+                                            {/* Mobile Card Edit and Delete Action Buttons */}
+                                            <div className="flex items-center gap-1.5 z-10" onClick={(e) => e.stopPropagation()}>
+                                              <button
+                                                onClick={() => setEditingCard(card)}
+                                                className={`p-1.5 rounded-xl transition-colors ${settingsThemeMode === 'dark' ? 'hover:bg-blue-500/20 text-blue-400' : 'hover:bg-blue-50 text-blue-600'}`}
+                                                title="Edit Card"
+                                              >
+                                                <Edit3 className="w-3.5 h-3.5" />
+                                              </button>
+                                              <button
+                                                onClick={() => {
+                                                  if (activeQueueId) {
+                                                    const queueItem = queue.find(q => q.id === activeQueueId);
+                                                    if (queueItem && queueItem.generatedCards) {
+                                                      setQueue(prev => prev.map(q => {
+                                                        if (q.id === activeQueueId) {
+                                                          return {
+                                                            ...q,
+                                                            generatedCards: q.generatedCards.filter(c => (c.id ? c.id !== card.id : c.text !== card.text))
+                                                          };
+                                                        }
+                                                        return q;
+                                                      }));
+                                                      return;
+                                                    }
+                                                  }
+                                                  if (card.id) {
+                                                    deleteCard(card.id);
+                                                  }
+                                                }}
+                                                className={`p-1.5 rounded-xl transition-colors ${settingsThemeMode === 'dark' ? 'hover:bg-red-500/20 text-red-400' : 'hover:bg-red-50 text-red-600'}`}
+                                                title="Delete Card"
+                                              >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                              </button>
+                                            </div>
+                                          </div>
+                                          {card.type === 'Cloze' ? (
+                                            <div className={`text-sm font-medium leading-relaxed ${settingsThemeMode === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>{renderFormattedCardContent(card.text)}</div>
+                                          ) : (
+                                            <div className="space-y-1">
+                                              <div className={`text-sm font-black leading-tight ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>{renderFormattedCardContent(card.front)}</div>
+                                              <div className={`text-xs font-medium ${settingsThemeMode === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>{renderFormattedCardContent(card.back)}</div>
+                                            </div>
+                                          )}
+                                        </motion.div>
+                                      );
+                                    })}
+                                  </AnimatePresence>
+                                  {displayedCards.length > libraryCardsLimit && (
+                                    <div className="flex justify-center pt-3 pb-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => setLibraryCardsLimit(prev => prev + 40)}
+                                        className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition ${
+                                          settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400' : 'neu-btn-light text-blue-600'
+                                        }`}
+                                      >
+                                        Load More Cards ({Math.min(libraryCardsLimit, displayedCards.length)} of {displayedCards.length})
+                                      </button>
                                     </div>
-                                    {card.type === 'Cloze' ? (
-                                      <div className={`text-sm font-medium leading-relaxed ${settingsThemeMode === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>{renderFormattedCardContent(card.text)}</div>
-                                    ) : (
-                                      <div className="space-y-1">
-                                        <div className={`text-sm font-black leading-tight ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>{renderFormattedCardContent(card.front)}</div>
-                                        <div className={`text-xs font-medium ${settingsThemeMode === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>{renderFormattedCardContent(card.back)}</div>
-                                      </div>
-                                    )}
-                                  </motion.div>
-                                );
-                              })}
-                            </AnimatePresence>
-                            {(queue.find(q => q.id === activeQueueId)?.generatedCards || pageCards).length === 0 && (
-                              <div className={`p-10 text-center italic text-sm ${settingsThemeMode === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                                No cards generated yet for this page.
-                              </div>
-                            )}
+                                  )}
+                                  {displayedCards.length === 0 && (
+                                    <div className={`p-10 text-center italic text-sm ${settingsThemeMode === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                                      No cards generated yet for this page.
+                                    </div>
+                                  )}
+                                </>
+                              );
+                            })()}
 
                             {/* Action Buttons for Queue Items vs Saved Items */}
                             {activeQueueItem ? (
@@ -24600,34 +24703,43 @@ Return your response strictly as a JSON object matching this schema:
                                   <Search className="w-10 h-10 mb-2 opacity-20" />
                                   <p className="text-sm font-bold uppercase tracking-widest opacity-40">No cards found</p>
                                 </div>
-                              ) : searchResults.map(card => (
-                                <motion.div
-                                  key={card.id}
-                                  whileTap={{ scale: 0.98 }}
-                                  onClick={() => {
-                                    setHierarchy(card.deck || hierarchy || (deckPaths[0] || 'General'));
-                                    setActiveQueueId(card.pageId);
-                                    setSearchQuery('');
-                                    setMobileLibraryLevel('cards');
-                                  }}
-                                  className={`p-3.5 rounded-2xl cursor-pointer border transition-all ${settingsThemeMode === 'dark' ? 'neu-item-dark border-gray-800 hover:border-blue-500/40' : 'neu-item-light border-white hover:border-blue-400/40'}`}
-                                >
-                                  <div className="flex items-center justify-between mb-1.5">
-                                    <span className="text-[8px] font-black uppercase tracking-widest bg-blue-500/15 text-blue-500 px-2 py-0.5 rounded-full">{card.type}</span>
-                                    <span className={`text-[8px] font-bold truncate max-w-[110px] ${settingsThemeMode === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                                      {card.deck?.split('::').pop() || 'Uncategorized'}
-                                    </span>
-                                  </div>
-                                  {card.type === 'Cloze' ? (
-                                    <div className={`text-xs font-medium leading-snug line-clamp-2 ${settingsThemeMode === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{renderFormattedCardContent(card.text)}</div>
-                                  ) : (
-                                    <div className="space-y-0.5">
-                                      <div className={`text-xs font-bold leading-snug line-clamp-1 ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>{renderFormattedCardContent(card.front)}</div>
-                                      <div className={`text-[10px] font-medium line-clamp-1 ${settingsThemeMode === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>{renderFormattedCardContent(card.back)}</div>
+                              ) : (
+                                <>
+                                  {searchResults.slice(0, 40).map((card, idx) => (
+                                    <motion.div
+                                      key={card.id || idx}
+                                      whileTap={{ scale: 0.98 }}
+                                      onClick={() => {
+                                        setHierarchy(card.deck || hierarchy || (deckPaths[0] || 'General'));
+                                        setActiveQueueId(card.pageId);
+                                        setSearchQuery('');
+                                        setMobileLibraryLevel('cards');
+                                      }}
+                                      className={`p-3.5 rounded-2xl cursor-pointer border transition-all ${settingsThemeMode === 'dark' ? 'neu-item-dark border-gray-800 hover:border-blue-500/40' : 'neu-item-light border-white hover:border-blue-400/40'}`}
+                                    >
+                                      <div className="flex items-center justify-between mb-1.5">
+                                        <span className="text-[8px] font-black uppercase tracking-widest bg-blue-500/15 text-blue-500 px-2 py-0.5 rounded-full">{card.type}</span>
+                                        <span className={`text-[8px] font-bold truncate max-w-[110px] ${settingsThemeMode === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                                          {card.deck?.split('::').pop() || 'Uncategorized'}
+                                        </span>
+                                      </div>
+                                      {card.type === 'Cloze' ? (
+                                        <div className={`text-xs font-medium leading-snug line-clamp-2 ${settingsThemeMode === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{renderFormattedCardContent(card.text)}</div>
+                                      ) : (
+                                        <div className="space-y-0.5">
+                                          <div className={`text-xs font-bold leading-snug line-clamp-1 ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>{renderFormattedCardContent(card.front)}</div>
+                                          <div className={`text-[10px] font-medium line-clamp-1 ${settingsThemeMode === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>{renderFormattedCardContent(card.back)}</div>
+                                        </div>
+                                      )}
+                                    </motion.div>
+                                  ))}
+                                  {searchResults.length > 40 && (
+                                    <div className="text-center py-2 text-[10px] font-bold text-gray-400">
+                                      Showing 40 of {searchResults.length} results. Refine search for more.
                                     </div>
                                   )}
-                                </motion.div>
-                              ))}
+                                </>
+                              )}
                             </div>
                           ) : (
                             <>
@@ -24642,6 +24754,7 @@ Return your response strictly as a JSON object matching this schema:
                                   themeMode={settingsThemeMode}
                                   onSelect={(path) => {
                                     setHierarchy(path);
+                                    setActiveQueueId(null);
                                     setMobileLibraryLevel('pages');
                                   }}
                                   onAdd={(path) => setNewFolderDialog({ isOpen: true, basePath: path, input: '' })}
@@ -24910,9 +25023,9 @@ Return your response strictly as a JSON object matching this schema:
                             <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1 flex justify-between items-center">
                               <span>Generated Cards ({pageCards.length})</span>
                             </h3>
-                            {pageCards.map(card => (
+                            {pageCards.slice(0, libraryCardsLimit).map((card, idx) => (
                               <motion.div
-                                key={card.id}
+                                key={card.id || idx}
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
                                 className={`p-4 rounded-2xl space-y-2 border-l-4 border-l-blue-500 ${settingsThemeMode === 'dark' ? 'neu-item-dark text-white border-y border-r border-gray-800' : 'neu-item-light text-gray-900 border-y border-r border-white'}`}
@@ -24928,6 +25041,19 @@ Return your response strictly as a JSON object matching this schema:
                                 )}
                               </motion.div>
                             ))}
+                            {pageCards.length > libraryCardsLimit && (
+                              <div className="flex justify-center pt-3 pb-1">
+                                <button
+                                  type="button"
+                                  onClick={() => setLibraryCardsLimit(prev => prev + 40)}
+                                  className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition ${
+                                    settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400' : 'neu-btn-light text-blue-600'
+                                  }`}
+                                >
+                                  Load More Cards ({Math.min(libraryCardsLimit, pageCards.length)} of {pageCards.length})
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </motion.div>
                       )}
@@ -25008,7 +25134,7 @@ Return your response strictly as a JSON object matching this schema:
                             </div>
                           ) : (
                             <div className="space-y-3">
-                              {trashCards.map(card => (
+                              {trashCards.slice(0, 30).map(card => (
                                 <div key={card.id} className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm relative border-l-4 border-l-red-500">
                                   <span className="text-[7px] font-black uppercase tracking-widest bg-red-50 text-red-600 px-2 py-0.5 rounded-full inline-block mb-1">{card.type}</span>
                                   <div className="text-[11px] text-gray-800 font-medium leading-tight mb-2">
@@ -25031,6 +25157,11 @@ Return your response strictly as a JSON object matching this schema:
                                   </div>
                                 </div>
                               ))}
+                              {trashCards.length > 30 && (
+                                <div className="text-center py-2 text-[10px] font-bold text-gray-400">
+                                  Showing 30 of {trashCards.length} deleted cards.
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
@@ -29812,7 +29943,7 @@ Return your response strictly as a JSON object matching this schema:
                                 ) : (
                                   <AnimatePresence mode="popLayout">
                                     <div className="cards">
-                                      {pageCards.map((card, idx) => {
+                                      {pageCards.slice(0, 50).map((card, idx) => {
                                         let colorClass = 'blue';
                                         if (card.type === 'Cloze') colorClass = 'blue';
                                         else if (card.type === 'Q&A' || card.type === 'Front/Back') colorClass = 'green';
@@ -29822,11 +29953,10 @@ Return your response strictly as a JSON object matching this schema:
                                         return (
                                           <motion.div
                                             key={card.id || idx}
-                                            layout
                                             initial={{ opacity: 0, y: 15, scale: 0.96 }}
                                             animate={{ opacity: 1, y: 0, scale: 1 }}
                                             exit={{ opacity: 0, scale: 0.9, height: 0 }}
-                                            transition={{ duration: 0.4, delay: idx * 0.03 }}
+                                            transition={{ duration: 0.25, delay: Math.min(idx, 10) * 0.02 }}
                                             id={`card-${card.id}`}
                                             onMouseEnter={() => card.ymin !== undefined && setHoveredCardCoordinates({ ymin: card.ymin, xmin: card.xmin, ymax: card.ymax, xmax: card.xmax })}
                                             onMouseLeave={() => setHoveredCardCoordinates(null)}
@@ -29891,6 +30021,11 @@ Return your response strictly as a JSON object matching this schema:
                                         );
                                       })}
                                     </div>
+                                    {pageCards.length > 50 && (
+                                      <div className="text-center py-2 text-[10px] font-bold text-gray-400">
+                                        Showing 50 of {pageCards.length} generated cards.
+                                      </div>
+                                    )}
                                   </AnimatePresence>
                                 )}
                               </>
@@ -30054,6 +30189,7 @@ Return your response strictly as a JSON object matching this schema:
                               themeMode={settingsThemeMode}
                               onSelect={(path) => {
                                 setHierarchy(path);
+                                setActiveQueueId(null);
                                 // Clear selected tag filter if clicking a folder
                                 setSelectedTags([]);
                               }}
@@ -30092,7 +30228,7 @@ Return your response strictly as a JSON object matching this schema:
                                 <div className="text-[10px] text-gray-400 italic px-2">No tags created yet. Edit cards to add tags!</div>
                               ) : (
                                 <div className="space-y-2.5 max-h-[240px] overflow-y-auto p-2 pr-2.5 custom-scrollbar">
-                                  {allTags.map(tag => {
+                                  {(showAllSidebarTags ? allTags : allTags.slice(0, 60)).map(tag => {
                                     const tagCardCount = tagCounts.get(tag) || 0;
                                     const isSelected = selectedTags.includes(tag);
 
@@ -30124,6 +30260,15 @@ Return your response strictly as a JSON object matching this schema:
                                       </motion.button>
                                     );
                                   })}
+                                  {allTags.length > 60 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setShowAllSidebarTags(prev => !prev)}
+                                      className="w-full text-center py-1.5 text-[9px] font-black uppercase text-blue-500 hover:underline cursor-pointer"
+                                    >
+                                      {showAllSidebarTags ? 'Show Top 60 Tags' : `Show All (${allTags.length}) Tags`}
+                                    </button>
+                                  )}
                                 </div>
                               )}
                             </div>
@@ -30150,6 +30295,7 @@ Return your response strictly as a JSON object matching this schema:
                                     } else if (hierarchy && hierarchy.includes('::')) {
                                       const parent = hierarchy.substring(0, hierarchy.lastIndexOf('::'));
                                       setHierarchy(parent);
+                                      setActiveQueueId(null);
                                     } else {
                                       setCurrentTab('dashboard');
                                     }
@@ -30241,55 +30387,62 @@ Return your response strictly as a JSON object matching this schema:
                                       <p className="text-sm">No cards matching "{searchQuery}"</p>
                                     </div>
                                   ) : (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 p-2">
-                                      {searchResults.map(card => (
-                                        <motion.div
-                                          key={card.id}
-                                          whileHover={{ scale: 1.025, y: -2 }}
-                                          whileTap={{ scale: 0.98 }}
-                                          transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-                                          onClick={() => {
-                                            setHierarchy(card.deck || hierarchy || (deckPaths[0] || 'General'));
-                                            setActiveQueueId(card.pageId);
-                                            setSearchQuery('');
-                                            setHoveredCardIdFromImage(card.id);
-                                            if (card.ymin !== undefined) {
-                                              setHoveredCardCoordinates({ ymin: card.ymin, xmin: card.xmin, ymax: card.ymax, xmax: card.xmax });
-                                            }
-                                          }}
-                                          className={`p-5 rounded-2xl transition-all duration-200 group cursor-pointer relative ${settingsThemeMode === 'dark' ? 'neu-item-dark border border-gray-800/60 hover:border-blue-500/50' : 'neu-item-light border border-white/80 hover:border-blue-400/50'
-                                            }`}
-                                        >
-                                          <div className="flex justify-between items-start mb-3">
-                                            <div className="flex flex-wrap items-center gap-1.5">
-                                              <span className="text-[9px] font-black uppercase tracking-widest bg-blue-500/15 text-blue-500 px-2 py-0.5 rounded-full">{card.type}</span>
-                                              {Boolean(card.has_image || (card.img_box && (Array.isArray(card.img_box) ? card.img_box.length === 4 : card.img_box.ymin !== undefined)) || card.include_image) && (
-                                                <span className="text-[9px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-500 border border-emerald-500/25 px-2 py-0.5 rounded-full flex items-center gap-1">
-                                                  <ImageIcon className="w-2.5 h-2.5 text-emerald-500" /> Image Attached
-                                                </span>
-                                              )}
-                                              {card.isManual && (
-                                                <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${settingsThemeMode === 'dark' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'bg-purple-50 text-purple-600 border border-purple-100'}`}>Manual</span>
-                                              )}
+                                    <>
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 p-2">
+                                        {searchResults.slice(0, 40).map(card => (
+                                          <motion.div
+                                            key={card.id}
+                                            whileHover={{ scale: 1.025, y: -2 }}
+                                            whileTap={{ scale: 0.98 }}
+                                            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                                            onClick={() => {
+                                              setHierarchy(card.deck || hierarchy || (deckPaths[0] || 'General'));
+                                              setActiveQueueId(card.pageId);
+                                              setSearchQuery('');
+                                              setHoveredCardIdFromImage(card.id);
+                                              if (card.ymin !== undefined) {
+                                                setHoveredCardCoordinates({ ymin: card.ymin, xmin: card.xmin, ymax: card.ymax, xmax: card.xmax });
+                                              }
+                                            }}
+                                            className={`p-5 rounded-2xl transition-all duration-200 group cursor-pointer relative ${settingsThemeMode === 'dark' ? 'neu-item-dark border border-gray-800/60 hover:border-blue-500/50' : 'neu-item-light border border-white/80 hover:border-blue-400/50'
+                                              }`}
+                                          >
+                                            <div className="flex justify-between items-start mb-3">
+                                              <div className="flex flex-wrap items-center gap-1.5">
+                                                <span className="text-[9px] font-black uppercase tracking-widest bg-blue-500/15 text-blue-500 px-2 py-0.5 rounded-full">{card.type}</span>
+                                                {Boolean(card.has_image || (card.img_box && (Array.isArray(card.img_box) ? card.img_box.length === 4 : card.img_box.ymin !== undefined)) || card.include_image) && (
+                                                  <span className="text-[9px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-500 border border-emerald-500/25 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                                    <ImageIcon className="w-2.5 h-2.5 text-emerald-500" /> Image Attached
+                                                  </span>
+                                                )}
+                                                {card.isManual && (
+                                                  <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${settingsThemeMode === 'dark' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'bg-purple-50 text-purple-600 border border-purple-100'}`}>Manual</span>
+                                                )}
+                                              </div>
+                                              <div className="text-[8px] font-black text-gray-400 uppercase tracking-widest bg-gray-500/10 px-2 py-0.5 rounded-full flex items-center gap-1 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                                <Folder className="w-2.5 h-2.5" /> {card.deck?.split('::').pop() || 'Uncategorized'}
+                                              </div>
                                             </div>
-                              <div className="text-[8px] font-black text-gray-400 uppercase tracking-widest bg-gray-500/10 px-2 py-0.5 rounded-full flex items-center gap-1 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                                              <Folder className="w-2.5 h-2.5" /> {card.deck?.split('::').pop() || 'Uncategorized'}
+                                            {card.type === 'Cloze' ? (
+                                              <div className="text-sm leading-relaxed font-medium">{renderFormattedCardContent(card.text)}</div>
+                                            ) : (
+                                              <div className="space-y-2">
+                                                <div className="text-sm font-bold">{renderFormattedCardContent(card.front)}</div>
+                                                <div className="text-xs text-blue-500 font-medium">{renderFormattedCardContent(card.back)}</div>
+                                              </div>
+                                            )}
+                                            <div className="mt-4 pt-3 border-t border-gray-500/10 text-[10px] text-gray-400 font-mono truncate">
+                                              PATH: {card.deck}
                                             </div>
-                                          </div>
-                                          {card.type === 'Cloze' ? (
-                                            <div className="text-sm leading-relaxed font-medium">{renderFormattedCardContent(card.text)}</div>
-                                          ) : (
-                                            <div className="space-y-2">
-                                              <div className="text-sm font-bold">{renderFormattedCardContent(card.front)}</div>
-                                              <div className="text-xs text-blue-500 font-medium">{renderFormattedCardContent(card.back)}</div>
-                                            </div>
-                                          )}
-                                          <div className="mt-4 pt-3 border-t border-gray-500/10 text-[10px] text-gray-400 font-mono truncate">
-                                            PATH: {card.deck}
-                                          </div>
-                                        </motion.div>
-                                      ))}
-                                    </div>
+                                          </motion.div>
+                                        ))}
+                                      </div>
+                                      {searchResults.length > 40 && (
+                                        <div className="text-center py-3 text-xs font-bold text-gray-400">
+                                          Showing 40 of {searchResults.length} search results. Refine your query for more.
+                                        </div>
+                                      )}
+                                    </>
                                   )}
                                 </div>
                               ) : activeQueueId && (activeImageObj || pageCards.length > 0) ? (
@@ -30516,7 +30669,7 @@ Return your response strictly as a JSON object matching this schema:
                                       ) : (
                                         <AnimatePresence mode="popLayout">
                                           <div className="cards">
-                                            {pageCards.map((card, idx) => {
+                                            {pageCards.slice(0, libraryCardsLimit).map((card, idx) => {
                                               let colorClass = 'blue';
                                               if (card.type === 'Cloze') colorClass = 'blue';
                                               else if (card.type === 'Q&A' || card.type === 'Front/Back') colorClass = 'green';
@@ -30526,11 +30679,10 @@ Return your response strictly as a JSON object matching this schema:
                                               return (
                                                 <motion.div
                                                   key={card.id || idx}
-                                                  layout
                                                   initial={{ opacity: 0, y: 15, scale: 0.96 }}
                                                   animate={{ opacity: 1, y: 0, scale: 1 }}
                                                   exit={{ opacity: 0, scale: 0.9, height: 0 }}
-                                                  transition={{ duration: 0.4, delay: idx * 0.03 }}
+                                                  transition={{ duration: 0.25, delay: Math.min(idx, 10) * 0.02 }}
                                                   id={`card-${card.id}`}
                                                   onMouseEnter={() => card.ymin !== undefined && setHoveredCardCoordinates({ ymin: card.ymin, xmin: card.xmin, ymax: card.ymax, xmax: card.xmax })}
                                                   onMouseLeave={() => setHoveredCardCoordinates(null)}
@@ -30595,6 +30747,18 @@ Return your response strictly as a JSON object matching this schema:
                                               );
                                             })}
                                           </div>
+                                          {pageCards.length > libraryCardsLimit && (
+                                            <div className="pt-4 pb-2 text-center">
+                                              <button
+                                                onClick={() => setLibraryCardsLimit(prev => prev + 40)}
+                                                className={`px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition active:scale-95 shadow-sm ${
+                                                  settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400' : 'neu-btn-light text-blue-600'
+                                                }`}
+                                              >
+                                                Load More Cards ({pageCards.length - libraryCardsLimit} remaining)
+                                              </button>
+                                            </div>
+                                          )}
                                         </AnimatePresence>
                                       )}
                                     </div>
@@ -30904,7 +31068,10 @@ Return your response strictly as a JSON object matching this schema:
                                                   key={sub.path}
                                                   whileHover={{ scale: 1.03, y: -2 }}
                                                   whileTap={{ scale: 0.97 }}
-                                                  onClick={() => setHierarchy(sub.path)}
+                                                  onClick={() => {
+                                                    setHierarchy(sub.path);
+                                                    setActiveQueueId(null);
+                                                  }}
                                                   className={`aspect-[4/3] rounded-3xl p-5 shadow-sm hover:shadow-xl transition-all cursor-pointer group flex flex-col justify-between ${settingsThemeMode === 'dark' ? 'neu-item-dark border border-gray-800 hover:border-blue-500/50' : 'neu-item-light border border-white hover:border-blue-400/50'
                                                     }`}
                                                 >
@@ -40875,7 +41042,7 @@ Return your response strictly as a JSON object matching this schema:
 }
 
 // --- HIGH-PERFORMANCE TAG CONCEPT WEB VISUALIZER ---
-export function TagConceptWeb({ cards, hierarchy, onSelectTags }) {
+export const TagConceptWeb = React.memo(function TagConceptWeb({ cards, hierarchy, onSelectTags }) {
   const canvasRef = useRef(null);
   const simulationRef = useRef({ nodes: [], edges: [] });
   const requestRef = useRef(null);
@@ -40922,9 +41089,11 @@ export function TagConceptWeb({ cards, hierarchy, onSelectTags }) {
         }
       });
 
-      for (let i = 0; i < cardTags.length; i++) {
-        for (let j = i + 1; j < cardTags.length; j++) {
-          const key = cardTags[i] < cardTags[j] ? `${cardTags[i]}|${cardTags[j]}` : `${cardTags[j]}|${cardTags[i]}`;
+      // Cap to 12 tags per card to prevent combinatorial explosion on cards with many tags
+      const limitedCardTags = cardTags.slice(0, 12);
+      for (let i = 0; i < limitedCardTags.length; i++) {
+        for (let j = i + 1; j < limitedCardTags.length; j++) {
+          const key = limitedCardTags[i] < limitedCardTags[j] ? `${limitedCardTags[i]}|${limitedCardTags[j]}` : `${limitedCardTags[j]}|${limitedCardTags[i]}`;
           coOccur.set(key, (coOccur.get(key) || 0) + 1);
         }
       }
@@ -41368,7 +41537,7 @@ export function TagConceptWeb({ cards, hierarchy, onSelectTags }) {
       )}
     </div>
   );
-}
+});
 
 const QrScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
   useEffect(() => {
