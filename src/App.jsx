@@ -8711,32 +8711,42 @@ export default function App() {
   const handleSavePrimarySource = async (subject, source) => {
     if (!subject || !subject.trim()) return;
     const docId = subject.trim().toLowerCase();
+    const cleanSource = (source || '').trim();
 
     setSubjectTrackerData(prev => {
-      const exists = prev.find(p => p.id === docId);
-      if (exists) {
-        return prev.map(p => p.id === docId ? { ...p, primarySource: source } : p);
-      } else {
-        return [...prev, { id: docId, subject: subject.trim(), primarySource: source, topics: {} }];
-      }
-    });
-
-    try {
-      await saveLocalSubjectTrackerDoc(docId, {
+      const list = Array.isArray(prev) ? prev : [];
+      const exists = list.find(p => p.id === docId);
+      const updatedDoc = {
+        ...(exists || { id: docId, subject: subject.trim(), topics: {} }),
+        id: docId,
         subject: subject.trim(),
-        primarySource: source
+        primarySource: cleanSource,
+        topics: exists?.topics || {},
+        updatedAt: new Date().toISOString()
+      };
+
+      saveLocalSubjectTrackerDoc(docId, updatedDoc).catch(err => {
+        console.error("[LocalDB] Error saving primary source locally:", err);
       });
-    } catch (err) {
-      console.error("Error saving primary source locally:", err);
-    }
+
+      return exists ? list.map(p => p.id === docId ? updatedDoc : p) : [...list, updatedDoc];
+    });
   };
 
   const handleAddTrackerTopic = async (subject, topicName, pageNumber = "", endPage = "") => {
     if (!subject || !topicName || !topicName.trim()) return;
     const docId = subject.trim().toLowerCase();
     const cleanTopicName = topicName.trim();
-    const cleanPage = String(pageNumber || "").trim();
-    const cleanEndPage = String(endPage || "").trim();
+    let cleanPage = String(pageNumber || "").trim();
+    let cleanEndPage = String(endPage || "").trim();
+
+    const p1 = parseInt(cleanPage, 10);
+    const p2 = parseInt(cleanEndPage, 10);
+    if (!isNaN(p1) && !isNaN(p2) && p1 > p2) {
+      // Auto-correct inverted page ranges
+      cleanPage = String(p2);
+      cleanEndPage = String(p1);
+    }
 
     setSubjectTrackerData(prev => {
       const list = Array.isArray(prev) ? prev : [];
@@ -8754,6 +8764,7 @@ export default function App() {
 
       const updatedDoc = {
         ...(docExists || { id: docId, subject: subject.trim() }),
+        id: docId,
         subject: subject.trim(),
         topics: updatedTopics,
         updatedAt: new Date().toISOString()
@@ -14935,8 +14946,15 @@ const renderTimerHub = (isMobile = false) => {
   const handleUpdateTrackerTopicPages = async (subject, topicName, startPage, endPage) => {
     if (!subject || !topicName) return;
     const docId = subject.trim().toLowerCase();
-    const cleanStart = String(startPage || "").trim();
-    const cleanEnd = String(endPage || "").trim();
+    let cleanStart = String(startPage || "").trim();
+    let cleanEnd = String(endPage || "").trim();
+
+    const p1 = parseInt(cleanStart, 10);
+    const p2 = parseInt(cleanEnd, 10);
+    if (!isNaN(p1) && !isNaN(p2) && p1 > p2) {
+      cleanStart = String(p2);
+      cleanEnd = String(p1);
+    }
 
     setSubjectTrackerData(prev => {
       const list = Array.isArray(prev) ? prev : [];
@@ -15650,15 +15668,41 @@ const renderTimerHub = (isMobile = false) => {
     });
   };
 
-  const handleUpdateSubjectTrackerDoc = (updatedDoc) => {
-    if (!updatedDoc || !updatedDoc.id) return;
+  const handleUpdateSubjectTrackerDoc = (docIdOrUpdatedDoc, maybePartialDoc = null) => {
+    if (!docIdOrUpdatedDoc) return;
+    let targetDocId = null;
+    let docPayload = {};
+
+    if (typeof docIdOrUpdatedDoc === 'string') {
+      targetDocId = docIdOrUpdatedDoc.trim().toLowerCase();
+      docPayload = maybePartialDoc || {};
+    } else if (typeof docIdOrUpdatedDoc === 'object') {
+      targetDocId = docIdOrUpdatedDoc.id ? String(docIdOrUpdatedDoc.id).trim().toLowerCase() : (docIdOrUpdatedDoc.subject ? String(docIdOrUpdatedDoc.subject).trim().toLowerCase() : null);
+      docPayload = docIdOrUpdatedDoc;
+    }
+
+    if (!targetDocId) return;
+
     setSubjectTrackerData(prev => {
       const list = Array.isArray(prev) ? prev : [];
-      const idx = list.findIndex(d => d.id === updatedDoc.id);
-      if (idx >= 0) {
-        return list.map(d => d.id === updatedDoc.id ? { ...d, ...updatedDoc } : d);
+      const idx = list.findIndex(d => d.id === targetDocId || (d.subject && d.subject.trim().toLowerCase() === targetDocId));
+      const existing = idx >= 0 ? list[idx] : null;
+
+      const mergedDoc = {
+        ...(existing || { id: targetDocId, subject: targetDocId }),
+        ...docPayload,
+        id: targetDocId,
+        updatedAt: new Date().toISOString()
+      };
+
+      saveLocalSubjectTrackerDoc(targetDocId, mergedDoc).catch(err => {
+        console.error("[LocalDB] Error updating subject tracker doc:", err);
+      });
+
+      if (existing) {
+        return list.map(d => (d.id === targetDocId || (d.subject && d.subject.trim().toLowerCase() === targetDocId)) ? mergedDoc : d);
       }
-      return [...list, updatedDoc];
+      return [...list, mergedDoc];
     });
   };
 

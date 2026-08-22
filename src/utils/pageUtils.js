@@ -21,9 +21,9 @@ export function parsePageNumbers(topic) {
     if (rangeMatch) {
       const p1 = parseInt(rangeMatch[1], 10);
       const p2 = parseInt(rangeMatch[2], 10);
-      if (!isNaN(p1) && !isNaN(p2) && p2 >= p1) {
-        startPg = p1;
-        endPg = p2;
+      if (!isNaN(p1) && !isNaN(p2)) {
+        startPg = Math.min(p1, p2);
+        endPg = Math.max(p1, p2);
       }
     } else {
       // Try single number match
@@ -36,24 +36,26 @@ export function parsePageNumbers(topic) {
 
   // Fallbacks if object has explicit startPage / endPage props
   if (typeof topic === 'object' && topic !== null) {
-    if (startPg === null) {
-      const s = parseInt(topic.startPage || topic.pageStart, 10);
-      if (!isNaN(s)) startPg = s;
-    }
-    if (endPg === null) {
-      const e = parseInt(topic.endPage || topic.pageEnd, 10);
-      if (!isNaN(e)) endPg = e;
+    let s = startPg !== null ? startPg : parseInt(topic.startPage || topic.pageStart || topic.page, 10);
+    let e = endPg !== null ? endPg : parseInt(topic.endPage || topic.pageEnd, 10);
+    if (!isNaN(s) && !isNaN(e)) {
+      startPg = Math.min(s, e);
+      endPg = Math.max(s, e);
+    } else if (!isNaN(s)) {
+      startPg = s;
+    } else if (!isNaN(e)) {
+      endPg = e;
     }
   }
 
   let pageCount = 1;
-  if (startPg !== null && endPg !== null && endPg >= startPg) {
-    pageCount = (endPg - startPg) + 1;
+  if (startPg !== null && endPg !== null) {
+    pageCount = Math.max(1, (endPg - startPg) + 1);
   } else if (typeof topic === 'object' && topic !== null) {
     if (topic.pageCount && !isNaN(parseInt(topic.pageCount, 10))) {
-      pageCount = parseInt(topic.pageCount, 10);
+      pageCount = Math.max(1, parseInt(topic.pageCount, 10));
     } else if (topic.pages && !isNaN(parseInt(topic.pages, 10))) {
-      pageCount = parseInt(topic.pages, 10);
+      pageCount = Math.max(1, parseInt(topic.pages, 10));
     }
   }
 
