@@ -14268,14 +14268,48 @@ const renderTimerHub = (isMobile = false) => {
       .map(p => ({ name: p.split('::').pop(), path: p }));
   }, [deckPaths, hierarchy]);
 
+  const stripHtmlForSearch = useCallback((htmlString) => {
+    if (!htmlString || typeof htmlString !== 'string') return '';
+    // 1. Extract alt attributes from <img> tags so descriptive alt text remains searchable
+    let text = htmlString.replace(/<img[^>]*alt=["']([^"']*)["'][^>]*>/gi, ' $1 ');
+    // 2. Strip all data URI schemes (base64 image / binary payloads)
+    text = text.replace(/data:[a-zA-Z0-9/+-]+;base64,[A-Za-z0-9+/=]+/gi, ' ');
+    // 3. Strip all other HTML tags and attributes (<div style="...">, <img src="...">, etc.)
+    text = text.replace(/<[^>]+>/g, ' ');
+    // 4. Decode common HTML entities
+    text = text
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&amp;/gi, '&')
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;/gi, "'")
+      .replace(/&apos;/gi, "'");
+    // 5. Normalize whitespace
+    return text.replace(/\s+/g, ' ').trim();
+  }, []);
+
   const searchResults = useMemo(() => {
     if (!searchQuery.trim()) return [];
-    const q = searchQuery.toLowerCase();
+    const q = searchQuery.toLowerCase().trim();
     return cards.filter(card => {
-      const content = `${card.text || ''} ${card.front || ''} ${card.back || ''}`.toLowerCase();
+      if (!card) return false;
+      const parts = [
+        stripHtmlForSearch(card.text),
+        stripHtmlForSearch(card.front),
+        stripHtmlForSearch(card.back),
+        stripHtmlForSearch(card.question),
+        stripHtmlForSearch(card.answer),
+        stripHtmlForSearch(card.notes),
+        stripHtmlForSearch(card.extra),
+        stripHtmlForSearch(card.explanation),
+        Array.isArray(card.tags) ? card.tags.join(' ') : (card.tags || ''),
+        card.deck || ''
+      ];
+      const content = parts.filter(Boolean).join(' ').toLowerCase();
       return content.includes(q);
     });
-  }, [cards, searchQuery]);
+  }, [cards, searchQuery, stripHtmlForSearch]);
 
   // Extract all unique tags in active library
   const allTags = useMemo(() => {
