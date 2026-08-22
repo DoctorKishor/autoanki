@@ -1806,7 +1806,7 @@ const TreeFolder = ({ node, level = 0, selectedPath, onSelect, onAdd, onRename, 
 };
 
 // --- FILE HELPERS ---
-const resizeImage = (base64Str, maxWidth = 1600, maxHeight = 1600) => {
+const resizeImage = (base64Str, maxWidth = 2560, maxHeight = 2560) => {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.src = base64Str;
@@ -1817,12 +1817,12 @@ const resizeImage = (base64Str, maxWidth = 1600, maxHeight = 1600) => {
 
       if (width > height) {
         if (width > maxWidth) {
-          height *= maxWidth / width;
+          height = Math.round(height * (maxWidth / width));
           width = maxWidth;
         }
       } else {
         if (height > maxHeight) {
-          width *= maxHeight / height;
+          width = Math.round(width * (maxHeight / height));
           height = maxHeight;
         }
       }
@@ -1830,8 +1830,11 @@ const resizeImage = (base64Str, maxWidth = 1600, maxHeight = 1600) => {
       canvas.width = width;
       canvas.height = height;
       const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(img, 0, 0, width, height);
-      resolve(canvas.toDataURL('image/jpeg', 0.6)); // 60% quality is perfect for 3,300+ page capacity
+      // High-fidelity 95% JPEG quality to ensure sharp, unblurred diagram crops in card exports
+      resolve(canvas.toDataURL('image/jpeg', 0.95));
     };
     // Bug 2.16 Fix: reject on load error so the upload pipeline does not hang forever on a bad base64 string.
     img.onerror = (err) => reject(new Error(`resizeImage: failed to load image data (${err?.type || 'unknown error'})`));
