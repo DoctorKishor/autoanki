@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback, useDeferredValue } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import {
   UploadCloud, Upload, Play, CheckCircle, AlertCircle, Edit3, Camera, Pause, Bell, Bookmark,
@@ -4807,6 +4807,7 @@ export default function App() {
   const trashLoaded = useRef(false);      // true when trash collections were fetched
   const isFolderMoveInProgress = useRef(false); // suppresses AutoHeal during folder move/rename
   const statsCountInitialized = useRef(false);
+  const imageHoverRafRef = useRef(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDraggingFile, setIsDraggingFile] = useState(false);
@@ -7243,6 +7244,9 @@ export default function App() {
 
   // HIERARCHY STATE
   const [hierarchy, setHierarchy] = useState('');
+  // deferredHierarchy: React defers expensive useMemo recomputations to background frames,
+  // preventing main-thread freezes when switching large folders.
+  const deferredHierarchy = useDeferredValue(hierarchy);
   const [showMobileFolderTree, setShowMobileFolderTree] = useState(false);
   const [deckPaths, setDeckPaths] = useState([]);
 
@@ -7882,39 +7886,54 @@ export default function App() {
       return;
     }
 
-    try {
-      if (!activeImageObj || !pageCards || pageCards.length === 0) return;
-      const rect = e.currentTarget.getBoundingClientRect();
-      // Adjust coordinates for pan
-      const x = (((e.clientX - rect.left)) / rect.width) * 1000;
-      const y = (((e.clientY - rect.top)) / rect.height) * 1000;
+    if (!activeImageObj || !pageCards || pageCards.length === 0) return;
+    
+    // Extract client coordinates synchronously before async RAF frame
+    const clientX = e.clientX;
+    const clientY = e.clientY;
+    const currentTarget = e.currentTarget;
 
-      const found = pageCards.find(c => {
-        const box = getCardBoundingBox(c);
-        if (!box) return false;
-        return x >= box.xmin && x <= box.xmax && y >= box.ymin && y <= box.ymax;
-      });
+    if (imageHoverRafRef.current) {
+      cancelAnimationFrame(imageHoverRafRef.current);
+    }
 
-      if (found) {
-        if (found.id !== hoveredCardIdFromImage) {
-          setHoveredCardIdFromImage(found.id);
-          const box = getCardBoundingBox(found);
-          if (box) setHoveredCardCoordinates(box);
+    imageHoverRafRef.current = requestAnimationFrame(() => {
+      try {
+        if (!currentTarget) return;
+        const rect = currentTarget.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
+        
+        // Adjust coordinates for pan
+        const x = (((clientX - rect.left)) / rect.width) * 1000;
+        const y = (((clientY - rect.top)) / rect.height) * 1000;
 
-          const cardEl = document.getElementById(`card-${found.id}`);
-          if (cardEl) {
-            cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        const found = pageCards.find(c => {
+          const box = getCardBoundingBox(c);
+          if (!box) return false;
+          return x >= box.xmin && x <= box.xmax && y >= box.ymin && y <= box.ymax;
+        });
+
+        if (found) {
+          if (found.id !== hoveredCardIdFromImage) {
+            setHoveredCardIdFromImage(found.id);
+            const box = getCardBoundingBox(found);
+            if (box) setHoveredCardCoordinates(box);
+
+            const cardEl = document.getElementById(`card-${found.id}`);
+            if (cardEl) {
+              cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+          }
+        } else {
+          if (hoveredCardIdFromImage) {
+            setHoveredCardIdFromImage(null);
+            setHoveredCardCoordinates(null);
           }
         }
-      } else {
-        if (hoveredCardIdFromImage) {
-          setHoveredCardIdFromImage(null);
-          setHoveredCardCoordinates(null);
-        }
+      } catch (err) {
+        console.error("Image hover error:", err);
       }
-    } catch (err) {
-      console.error("Image hover error:", err);
-    }
+    });
   };
 
   const handleImageMouseDown = (e) => {
@@ -13860,6 +13879,17 @@ const renderTimerHub = (isMobile = false) => {
     return Array.from(map.values());
   }, [libraryPages]);
 
+  // Lightweight metadata-only view of libraryPages — excludes image blobs.
+  // Used by structural memos like libraryDeckTree so they don't re-run when image data changes.
+  const libraryPagesMeta = useMemo(() =>
+    (libraryPages || []).map(p => ({
+      id: p.id,
+      deck: p.deck,
+      isPending: p.isPending,
+      isCompanionScan: p.isCompanionScan,
+    }))
+  , [libraryPages]);
+
   const folderPages = useMemo(() => {
     if (selectedTags.length > 0) {
       const matchedPageIds = new Set(cards.filter(c => {
@@ -13869,15 +13899,15 @@ const renderTimerHub = (isMobile = false) => {
       }).map(c => c.pageId));
       return uniqueLibraryPages.filter(p => matchedPageIds.has(p.id));
     }
-    if (hierarchy === 'PENDING_REVIEW') {
+    if (deferredHierarchy === 'PENDING_REVIEW') {
       return uniqueLibraryPages.filter(p => p.isPending);
     }
-    if (hierarchy === 'COMPANION_SCANS') {
+    if (deferredHierarchy === 'COMPANION_SCANS') {
       return uniqueLibraryPages.filter(p => p.isCompanionScan);
     }
     // Show only pages belonging directly to this folder (subfolder items appear inside subfolders)
-    return uniqueLibraryPages.filter(p => p.deck === hierarchy);
-  }, [uniqueLibraryPages, hierarchy, selectedTags, cards]);
+    return uniqueLibraryPages.filter(p => p.deck === deferredHierarchy);
+  }, [uniqueLibraryPages, deferredHierarchy, selectedTags, cards]);
 
   // Auto-scroll to card when highlighted from search or image
   useEffect(() => {
@@ -13926,9 +13956,9 @@ const renderTimerHub = (isMobile = false) => {
   const allTags = useMemo(() => {
     // Filter cards belonging directly to the selected folder/deck
     const activeFolderCards = cards.filter(card => {
-      if (!hierarchy) return true;
-      if (hierarchy === 'PENDING_REVIEW') return card.isPending;
-      return card.deck === hierarchy;
+      if (!deferredHierarchy) return true;
+      if (deferredHierarchy === 'PENDING_REVIEW') return card.isPending;
+      return card.deck === deferredHierarchy;
     });
 
     // Further restrict the active cards if there are selectedTags
@@ -13951,7 +13981,7 @@ const renderTimerHub = (isMobile = false) => {
       }
     });
     return Array.from(tagsSet).sort();
-  }, [cards, hierarchy, selectedTags]);
+  }, [cards, deferredHierarchy, selectedTags]);
 
   const [libraryCardsLimit, setLibraryCardsLimit] = useState(40);
   const [libraryPagesLimit, setLibraryPagesLimit] = useState(30);
@@ -13962,8 +13992,8 @@ const renderTimerHub = (isMobile = false) => {
   }, [hierarchy, selectedTags]);
 
   const libraryDeckTree = useMemo(() => {
-    return buildTree(effectiveDeckPaths, libraryPages, deckCardCounts);
-  }, [effectiveDeckPaths, libraryPages, deckCardCounts]);
+    return buildTree(effectiveDeckPaths, libraryPagesMeta, deckCardCounts);
+  }, [effectiveDeckPaths, libraryPagesMeta, deckCardCounts]);
 
   const pageCardCounts = useMemo(() => {
     const map = new Map();
@@ -13977,9 +14007,9 @@ const renderTimerHub = (isMobile = false) => {
 
   const tagCounts = useMemo(() => {
     const activeFolderCards = (cards || []).filter(card => {
-      if (!hierarchy) return true;
-      if (hierarchy === 'PENDING_REVIEW') return card.isPending;
-      return card.deck === hierarchy || (card.deck && card.deck.startsWith(hierarchy + '::'));
+      if (!deferredHierarchy) return true;
+      if (deferredHierarchy === 'PENDING_REVIEW') return card.isPending;
+      return card.deck === deferredHierarchy || (card.deck && card.deck.startsWith(deferredHierarchy + '::'));
     });
     const counts = new Map();
     activeFolderCards.forEach(c => {
@@ -13991,7 +14021,7 @@ const renderTimerHub = (isMobile = false) => {
       });
     });
     return counts;
-  }, [cards, hierarchy]);
+  }, [cards, deferredHierarchy]);
 
   // Spaced Repetition Due Queue
   const dueCards = useMemo(() => {
@@ -14003,15 +14033,15 @@ const renderTimerHub = (isMobile = false) => {
         if (!card.tags) return false;
         const formattedTags = card.tags.map(t => t.trim().startsWith('#') ? t.trim() : `#${t.trim()}`);
         if (!selectedTags.every(st => formattedTags.includes(st))) return false;
-      } else if (hierarchy && hierarchy !== 'Root') {
+      } else if (deferredHierarchy && deferredHierarchy !== 'Root') {
         // If we are in folder mode, filter by folder hierarchy
-        if (!card.deck || !card.deck.startsWith(hierarchy)) return false;
+        if (!card.deck || !card.deck.startsWith(deferredHierarchy)) return false;
       }
 
       const nextDue = card.reviewState?.nextReviewDue || 0;
       return nextDue <= now;
     });
-  }, [cards, hierarchy, selectedTags]);
+  }, [cards, deferredHierarchy, selectedTags]);
 
   // Premium Custom Analytics & Growth Engine
   const analyticsData = useMemo(() => {
@@ -14051,21 +14081,30 @@ const renderTimerHub = (isMobile = false) => {
     });
 
     // Solve cumulative learning growth curve (last 30 calendar days)
+    // FIX: Pre-extract all card timestamps in ONE pass (O(N)), sort once (O(N log N)),
+    // then walk forward with a pointer for each day cutoff — O(30) total vs O(30*N) before.
+    const sortedTimestamps = cards
+      .map(c => getCardTimestamp(c))
+      .filter(t => t > 0)
+      .sort((a, b) => a - b);
+
     const last30Days = [];
     for (let i = 29; i >= 0; i--) {
       const d = new Date();
       d.setDate(now.getDate() - i);
-      const dayStartTimestamp = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+      const dayEndTimestamp = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() + 24 * 60 * 60 * 1000;
 
-      // Count total accumulated cards up to the end of this day using our robust extractor
-      const countUpToDay = cards.filter(c => {
-        const timeVal = getCardTimestamp(c);
-        return timeVal > 0 && timeVal <= dayStartTimestamp + 24 * 60 * 60 * 1000;
-      }).length;
+      // Binary-search upper bound for dayEndTimestamp in the sorted array
+      let lo = 0, hi = sortedTimestamps.length;
+      while (lo < hi) {
+        const mid = (lo + hi) >>> 1;
+        if (sortedTimestamps[mid] <= dayEndTimestamp) lo = mid + 1;
+        else hi = mid;
+      }
 
       last30Days.push({
         dateLabel: formatAppDate(d),
-        count: countUpToDay
+        count: lo  // lo == count of timestamps <= dayEndTimestamp
       });
     }
 
@@ -21252,14 +21291,14 @@ Return your response strictly as a JSON object matching this schema:
         return selectedTags.every(st => formattedTags.includes(st));
       });
     }
-    return (cards || []).filter(c => c.deck === hierarchy);
-  }, [activeQueueId, activeQueueItem?.generatedCards, cards, selectedTags, hierarchy]);
+    return (cards || []).filter(c => c.deck === deferredHierarchy);
+  }, [activeQueueId, activeQueueItem?.generatedCards, cards, selectedTags, deferredHierarchy]);
 
   const selectedFolderCardCount = useMemo(() => {
     if (selectedTags.length > 0) return pageCards.length;
-    if (!hierarchy) return (cards || []).length;
-    return (cards || []).filter(c => c.deck && c.deck.startsWith(hierarchy)).length;
-  }, [selectedTags, pageCards.length, hierarchy, cards]);
+    if (!deferredHierarchy) return (cards || []).length;
+    return (cards || []).filter(c => c.deck && c.deck.startsWith(deferredHierarchy)).length;
+  }, [selectedTags, pageCards.length, deferredHierarchy, cards]);
 
   const deckCardsForStats = useMemo(() => {
     if (selectedTags.length > 0) {
@@ -21269,8 +21308,8 @@ Return your response strictly as a JSON object matching this schema:
         return selectedTags.every(st => formattedTags.includes(st));
       });
     }
-    return cards.filter(c => c.deck && (hierarchy === '' ? true : c.deck.startsWith(hierarchy)));
-  }, [cards, hierarchy, selectedTags]);
+    return cards.filter(c => c.deck && (deferredHierarchy === '' ? true : c.deck.startsWith(deferredHierarchy)));
+  }, [cards, deferredHierarchy, selectedTags]);
 
   const totalInDeck = deckCardsForStats.length;
   const exportedInDeck = deckCardsForStats.filter(c => c.exported).length;
@@ -21281,14 +21320,14 @@ Return your response strictly as a JSON object matching this schema:
     const paths = new Set();
     deckPaths.forEach(p => { if (p) paths.add(p); });
     cards.forEach(c => { if (c.deck) paths.add(c.deck); });
-    if (hierarchy) paths.add(hierarchy);
+    if (deferredHierarchy) paths.add(deferredHierarchy);
     return Array.from(paths).sort();
-  }, [deckPaths, cards, hierarchy]);
+  }, [deckPaths, cards, deferredHierarchy]);
 
   const selectedExportCards = useMemo(() => {
-    const targets = selectedDecksToExport.length > 0 ? selectedDecksToExport : [hierarchy];
+    const targets = selectedDecksToExport.length > 0 ? selectedDecksToExport : [deferredHierarchy];
     return cards.filter(c => c.deck && targets.some(target => target === '' ? true : c.deck.startsWith(target)));
-  }, [cards, selectedDecksToExport, hierarchy]);
+  }, [cards, selectedDecksToExport, deferredHierarchy]);
 
   const totalInExport = selectedExportCards.length;
   const exportedInExport = selectedExportCards.filter(c => c.exported).length;
@@ -24713,13 +24752,12 @@ Return your response strictly as a JSON object matching this schema:
                             {/* ── Pages Grid ── */}
                             <div className="grid grid-cols-2 gap-3">
                               <AnimatePresence>
-                                {folderPages.map(page => {
+                                {folderPages.slice(0, libraryPagesLimit).map(page => {
                                   const isPageSelected = selectedPages.has(page.id);
                                   const lp = makeLongPressProps(page.id);
                                   return (
                                     <motion.div
                                       key={page.id}
-                                      layout
                                       initial={{ opacity: 0, scale: 0.95 }}
                                       animate={{ opacity: 1, scale: 1 }}
                                       exit={{ opacity: 0, scale: 0.9 }}
@@ -24745,6 +24783,8 @@ Return your response strictly as a JSON object matching this schema:
                                     >
                                       <img
                                         src={page.imageUrl || page.base64}
+                                        loading="lazy"
+                                        decoding="async"
                                         className={`w-full h-full object-cover transition-all duration-300 ${isPageSelected ? 'scale-105 brightness-75' : ''}`}
                                         alt=""
                                         draggable={false}
@@ -24776,6 +24816,21 @@ Return your response strictly as a JSON object matching this schema:
                                 })}
                               </AnimatePresence>
                             </div>
+
+                            {/* Mobile Load More Pages button */}
+                            {folderPages.length > libraryPagesLimit && (
+                              <div className="flex justify-center pt-2 pb-1">
+                                <button
+                                  type="button"
+                                  onClick={() => setLibraryPagesLimit(prev => prev + 24)}
+                                  className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition shadow-sm cursor-pointer ${
+                                    settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400 hover:text-white border border-gray-700/50' : 'neu-btn-light text-blue-600 hover:text-blue-700 border border-white/80'
+                                  }`}
+                                >
+                                  Load More Pages ({Math.min(libraryPagesLimit, folderPages.length)} of {folderPages.length})
+                                </button>
+                              </div>
+                            )}
 
                             {/* Empty state */}
                             {folderPages.length === 0 && (
@@ -30970,7 +31025,6 @@ Return your response strictly as a JSON object matching this schema:
                                           return (
                                             <motion.div
                                               key={card.id || idx}
-                                              layout
                                               initial={{ opacity: 0, y: 16 }}
                                               animate={{ opacity: 1, y: 0 }}
                                               exit={{ opacity: 0, scale: 0.95, height: 0 }}
