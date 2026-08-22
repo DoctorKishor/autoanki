@@ -30919,7 +30919,7 @@ Return your response strictly as a JSON object matching this schema:
                                         {/* Transformable Image Container */}
                                         <div
                                           ref={libraryImageContainerRef}
-                                          className={`relative shadow-2xl origin-top-left flex-shrink-0 transition-transform ${
+                                          className={`relative shadow-2xl origin-center flex items-center justify-center max-w-full max-h-full transition-transform ${
                                             isLibraryPanning ? 'duration-0' : 'duration-75 ease-out'
                                           }`}
                                           style={{
@@ -30930,7 +30930,8 @@ Return your response strictly as a JSON object matching this schema:
                                           <img
                                             src={activeImageObj.imageUrl || activeImageObj.base64}
                                             alt="Page Inspection"
-                                            className="max-w-full max-h-[82vh] w-auto h-auto object-contain rounded-2xl pointer-events-auto block select-none"
+                                            className="max-w-full max-h-full w-auto h-auto object-contain rounded-2xl pointer-events-auto block select-none"
+                                            style={{ maxHeight: '100%', maxWidth: '100%' }}
                                             draggable={false}
                                           />
                                           {/* Highlight from Card Hover */}
