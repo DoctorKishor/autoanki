@@ -36681,7 +36681,7 @@ Return your response strictly as a JSON object matching this schema:
                             </div>
 
                             {subjectTrackerSubTab === 'manager' ? (
-                              <div className="flex-grow flex gap-5 min-h-0 p-0.5">
+                              <div className="flex-grow flex gap-5 min-h-0 p-1.5">
                                 {/* Left Side: Topic Checklist & Actions */}
                                 <div className={`w-7/12 flex flex-col h-full min-h-0 rounded-2xl p-4 lg:p-5 space-y-3.5 ${isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-800 border-slate-200'}`}>
                                   <div className="flex justify-between items-center shrink-0">
@@ -36772,7 +36772,7 @@ Return your response strictly as a JSON object matching this schema:
                                   </div>
 
                                   {/* List Scroll Area */}
-                                  <div className="flex-grow overflow-y-auto p-2 custom-scrollbar space-y-3.5 min-h-0">
+                                  <div className="flex-grow overflow-y-auto px-3.5 py-2 custom-scrollbar space-y-3.5 min-h-0">
                                     {(() => {
                                       const docId = selectedTrackerSubject.trim().toLowerCase();
                                       const trackerDoc = subjectTrackerData.find(p => p.id === docId);
@@ -37065,7 +37065,7 @@ Return your response strictly as a JSON object matching this schema:
                                 </div>
 
                                 {/* Right Side: Primary Source & AI Extractor */}
-                                <div className="w-5/12 flex flex-col gap-5 overflow-y-auto p-1 custom-scrollbar shrink-0">
+                                <div className="w-5/12 flex flex-col gap-5 overflow-y-auto px-3.5 py-2.5 custom-scrollbar shrink-0">
                                   {/* Primary Source Card */}
                                   <div className={`p-5 rounded-2xl space-y-3.5 transition-all ${isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-800 border-slate-200'}`}>
                                     <label className={`text-[10px] font-black uppercase tracking-wider block font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Primary Source Material / Textbooks</label>
