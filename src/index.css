@@ -1057,7 +1057,8 @@ body,
 .neu-cat-card {
   border-radius: 1rem;
   transition: all 0.6s cubic-bezier(0, 0, 0, 1);
-  padding: 0.25rem;
+  padding: 0;
+  width: 100%;
 }
 
 .neu-cat-card.light-theme {
@@ -1085,9 +1086,9 @@ body,
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   width: 100%;
-  padding: 0.4rem 0.6rem;
+  height: 48px;
+  padding: 0 6px;
   border-radius: 0.85rem;
   border: none;
   cursor: pointer;
@@ -1139,6 +1140,7 @@ body,
   border-radius: 0.65rem;
   transition: all 0.6s cubic-bezier(0, 0, 0, 1);
   flex-shrink: 0;
+  margin: 0;
 }
 
 .neu-cat-header.light-theme .neu-cat-icon-badge {

@@ -29223,9 +29223,9 @@ Return your response strictly as a JSON object matching this schema:
                   className={`flex ${isSidebarExpanded ? 'w-64' : 'w-20'} ${settingsThemeMode === 'dark' ? 'neu-card-dark border-r border-gray-800/80 text-slate-100' : 'neu-card-light border-r border-gray-200/80 text-slate-800'} flex flex-col py-6 shrink-0 shadow-xl z-20 neu-action-sidebar will-change-[width] overflow-hidden`}
                 >
                   {/* Top Logo & App Title (Perfect Symmetry) */}
-                  <div className="mb-7 flex items-center px-3 h-10 z-10 shrink-0">
+                  <div className="mb-7 flex items-center px-4 h-10 z-10 shrink-0">
                     <div className="flex items-center min-w-0 w-full">
-                      <div className="w-14 shrink-0 flex items-center justify-center">
+                      <div className="w-12 shrink-0 flex items-center justify-center">
                         <img src="/favicon.svg" alt="AutoAnki Logo" className="w-9 h-9 object-contain rounded-xl shadow-md" />
                       </div>
                       <div
@@ -29233,7 +29233,7 @@ Return your response strictly as a JSON object matching this schema:
                           transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
                         }}
                         className={`overflow-hidden ${
-                          isSidebarExpanded ? 'opacity-100 max-w-[140px] ml-1' : 'opacity-0 max-w-0 ml-0 pointer-events-none'
+                          isSidebarExpanded ? 'opacity-100 max-w-[140px] ml-2' : 'opacity-0 max-w-0 ml-0 pointer-events-none'
                         }`}
                       >
                         <span className={`font-black tracking-tight text-xl truncate whitespace-nowrap ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>
@@ -29243,8 +29243,8 @@ Return your response strictly as a JSON object matching this schema:
                     </div>
                   </div>
 
-                  {/* Navigation Categories (100% Equilateral Symmetrical Cards) */}
-                  <nav className="flex-grow space-y-3 overflow-y-auto custom-scrollbar max-h-[calc(100vh-200px)] z-10 px-3">
+                  {/* Navigation Categories (100% Symmetrical Clean Geometry) */}
+                  <nav className="flex-grow space-y-3 overflow-y-auto custom-scrollbar max-h-[calc(100vh-200px)] z-10 px-4">
                     {navCategories.map((cat) => {
                       const CatIcon = cat.icon;
                       const hasActiveItem = cat.items.some(item => item.id === currentTab);
@@ -29257,10 +29257,10 @@ Return your response strictly as a JSON object matching this schema:
                             transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
                           }}
                           className={`neu-cat-card ${settingsThemeMode === 'dark' ? 'dark-theme' : 'light-theme'} ${
-                            isExpanded && isSidebarExpanded ? 'is-expanded' : ''
+                            isExpanded && isSidebarExpanded ? 'is-expanded p-1.5' : ''
                           } space-y-1 w-full overflow-hidden`}
                         >
-                          {/* Symmetrically Centered Category Header */}
+                          {/* Symmetrically Centered Category Header Button */}
                           <button
                             type="button"
                             onClick={() => {
@@ -29287,7 +29287,7 @@ Return your response strictly as a JSON object matching this schema:
                             }}
                             className={`neu-cat-header ${settingsThemeMode === 'dark' ? 'dark-theme' : 'light-theme'} ${
                               isExpanded && isSidebarExpanded ? 'is-expanded' : ''
-                            } ${hasActiveItem ? 'has-active' : ''} group select-none flex items-center justify-between w-full h-11 p-1 rounded-xl`}
+                            } ${hasActiveItem ? 'has-active' : ''} group select-none flex items-center justify-between w-full h-12 px-1.5 rounded-xl`}
                           >
                             <div className="flex items-center min-w-0">
                               {/* 100% Equilateral Symmetrical Icon Box */}
@@ -29325,7 +29325,7 @@ Return your response strictly as a JSON object matching this schema:
                                 transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
                               }}
                               className={`overflow-hidden shrink-0 ${
-                                isSidebarExpanded ? 'opacity-100 max-w-[40px] mr-1' : 'opacity-0 max-w-0 mr-0 pointer-events-none'
+                                isSidebarExpanded ? 'opacity-100 max-w-[40px] mr-0.5' : 'opacity-0 max-w-0 mr-0 pointer-events-none'
                               }`}
                             >
                               <div className="flex items-center gap-1.5">
@@ -29387,14 +29387,14 @@ Return your response strictly as a JSON object matching this schema:
                   </nav>
 
                   {/* Footer Profile Section (Perfect Symmetry) */}
-                  <div className="mt-auto px-3 pt-3 z-10 shrink-0">
+                  <div className="mt-auto px-4 pt-3 z-10 shrink-0">
                     <div
                       style={{
                         transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
                       }}
-                      className={`p-2 rounded-2xl ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200/60'} flex items-center w-full`}
+                      className={`p-1.5 rounded-2xl ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200/60'} flex items-center w-full`}
                     >
-                      <div className="w-10 shrink-0 flex items-center justify-center">
+                      <div className="w-9 shrink-0 flex items-center justify-center">
                         <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-cyan-500 text-white flex items-center justify-center font-black text-xs shadow-md">
                           {user.displayName?.[0] || user.email?.[0] || 'D'}
                         </div>
