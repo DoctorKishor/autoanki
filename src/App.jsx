@@ -24483,6 +24483,22 @@ Return your response strictly as a JSON object matching this schema:
                           transition={{ duration: 0.3 }}
                           className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-white border-gray-800/80' : 'neu-card-light text-gray-900 border-white/80'} rounded-3xl p-5 shadow-xl min-h-[300px] space-y-4`}
                         >
+                          {/* Header with Back button */}
+                          <div className="flex items-center justify-between gap-2 pb-1 border-b border-gray-200/40 dark:border-gray-800/60">
+                            <motion.button
+                              whileTap={{ scale: 0.94 }}
+                              onClick={() => setCurrentTab('dashboard')}
+                              className={`p-2 rounded-xl transition flex items-center justify-center shadow-md cursor-pointer ${settingsThemeMode === 'dark'
+                                  ? 'neu-btn-dark text-gray-200 hover:text-white border border-gray-700/50'
+                                  : 'neu-btn-light text-gray-700 hover:text-gray-900 border border-white/80'
+                                }`}
+                              title="Back to Dashboard"
+                            >
+                              <ChevronLeft className="w-4 h-4 text-blue-500" />
+                            </motion.button>
+                            <h2 className={`font-black text-sm flex-1 ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>Library & Decks</h2>
+                          </div>
+
                           {/* Search bar — same searchQuery/searchResults as desktop */}
                           <div className={`relative flex items-center rounded-2xl ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'}`}>
                             <Search className="w-4 h-4 absolute left-3.5 text-gray-400" />
@@ -29911,9 +29927,23 @@ Return your response strictly as a JSON object matching this schema:
                             }`}
                         >
                           <div className="flex justify-between items-center mb-4">
-                            <h2 className={`font-black flex items-center gap-2 text-sm ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-800'}`}>
-                              <Layers className="w-4 h-4 text-blue-500" /> Deck Hierarchy
-                            </h2>
+                            <div className="flex items-center gap-2">
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => setCurrentTab('dashboard')}
+                                className={`p-2 rounded-xl transition flex items-center justify-center shadow-md cursor-pointer ${settingsThemeMode === 'dark'
+                                    ? 'neu-btn-dark text-gray-200 hover:text-white border border-gray-700/50'
+                                    : 'neu-btn-light text-gray-700 hover:text-gray-900 border border-white/80'
+                                  }`}
+                                title="Back to Dashboard"
+                              >
+                                <ChevronLeft className="w-4 h-4 text-blue-500" />
+                              </motion.button>
+                              <h2 className={`font-black flex items-center gap-2 text-sm ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-800'}`}>
+                                <Layers className="w-4 h-4 text-blue-500" /> Deck Hierarchy
+                              </h2>
+                            </div>
                             <motion.button
                               whileHover={{ scale: 1.08 }}
                               whileTap={{ scale: 0.92 }}
@@ -30032,9 +30062,32 @@ Return your response strictly as a JSON object matching this schema:
                           <div className={`flex-grow flex flex-col overflow-hidden p-6 rounded-3xl shadow-xl ${settingsThemeMode === 'dark' ? 'neu-card-dark border-gray-800/80 text-white' : 'neu-card-light border-white/80 text-gray-900'
                             }`}>
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-4 border-b border-gray-200/40 dark:border-gray-800/60">
-                              <div>
-                                <h2 className={`text-2xl font-black tracking-tight ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>{currentFolderName}</h2>
-                                <div className="text-xs text-gray-400 font-mono mt-0.5">{hierarchy}</div>
+                              <div className="flex items-center gap-3">
+                                <motion.button
+                                  whileHover={{ scale: 1.05 }}
+                                  whileTap={{ scale: 0.95 }}
+                                  onClick={() => {
+                                    if (activeQueueId) {
+                                      setActiveQueueId(null);
+                                    } else if (hierarchy && hierarchy.includes('::')) {
+                                      const parent = hierarchy.substring(0, hierarchy.lastIndexOf('::'));
+                                      setHierarchy(parent);
+                                    } else {
+                                      setCurrentTab('dashboard');
+                                    }
+                                  }}
+                                  className={`p-2.5 rounded-xl transition flex items-center justify-center shadow-md cursor-pointer ${settingsThemeMode === 'dark'
+                                      ? 'neu-btn-dark text-gray-200 hover:text-white border border-gray-700/50'
+                                      : 'neu-btn-light text-gray-700 hover:text-gray-900 border border-white/80'
+                                    }`}
+                                  title={activeQueueId ? "Back to Gallery" : (hierarchy && hierarchy.includes('::')) ? "Up One Level" : "Back to Dashboard"}
+                                >
+                                  <ChevronLeft className="w-4 h-4 text-blue-500" />
+                                </motion.button>
+                                <div>
+                                  <h2 className={`text-2xl font-black tracking-tight ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>{currentFolderName}</h2>
+                                  <div className="text-xs text-gray-400 font-mono mt-0.5">{hierarchy}</div>
+                                </div>
                               </div>
                               <div className="flex items-center gap-2.5 flex-wrap">
                                 <div className={`relative group flex-grow md:flex-grow-0 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'} rounded-xl`}>
