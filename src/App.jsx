@@ -30688,7 +30688,7 @@ Return your response strictly as a JSON object matching this schema:
                                   <div className="text-[11px] text-gray-400 font-mono mt-0.5">{hierarchy}</div>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-2 flex-wrap md:flex-nowrap shrink-0">
+                              <div className="flex items-center gap-3 md:gap-3.5 flex-wrap md:flex-nowrap shrink-0">
                                 <div className={`relative group flex-grow md:flex-grow-0 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'} rounded-xl`}>
                                   <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
                                   <input
@@ -30696,7 +30696,7 @@ Return your response strictly as a JSON object matching this schema:
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     placeholder="Search cards..."
-                                    className="pl-9 pr-8 py-2 bg-transparent border-none text-xs outline-none w-36 lg:w-48 transition-all"
+                                    className="pl-9 pr-8 py-2 bg-transparent border-none text-xs outline-none w-32 lg:w-44 transition-all"
                                   />
                                   {searchQuery && (
                                     <button onClick={() => setSearchQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
@@ -30724,42 +30724,60 @@ Return your response strictly as a JSON object matching this schema:
                                     </motion.button>
                                   </>
                                 )}
-                                <UiverseButton
-                                  icon={<FolderPlus className="w-3.5 h-3.5 text-blue-500" />}
+                                <motion.button
+                                  whileHover={{ scale: 1.03, y: -1 }}
+                                  whileTap={{ scale: 0.97 }}
                                   onClick={() => setNewFolderDialog({ isOpen: true, basePath: hierarchy || '', input: '' })}
-                                  size="sm"
-                                  themeMode={settingsThemeMode}
-                                  variant={settingsThemeMode === 'dark' ? 'dark' : 'default'}
+                                  className={`h-[34px] px-3.5 rounded-xl transition flex items-center gap-1.5 text-xs font-bold shadow-sm cursor-pointer ${
+                                    settingsThemeMode === 'dark'
+                                      ? 'neu-btn-dark text-gray-200 hover:text-white border border-gray-700/50'
+                                      : 'neu-btn-light text-gray-700 hover:text-gray-900 border border-white/80'
+                                  }`}
                                   title={hierarchy ? `Create subfolder inside "${hierarchy.split('::').pop()}"` : "Create new folder"}
                                 >
-                                  {hierarchy ? '+ Subfolder' : '+ Folder'}
-                                </UiverseButton>
-                                <UiverseButton
-                                  icon={<Plus className="w-3.5 h-3.5 text-purple-400" />}
+                                  <FolderPlus className="w-3.5 h-3.5 text-blue-500" />
+                                  <span>{hierarchy ? '+ Subfolder' : '+ Folder'}</span>
+                                </motion.button>
+                                <motion.button
+                                  whileHover={{ scale: 1.03, y: -1 }}
+                                  whileTap={{ scale: 0.97 }}
                                   onClick={() => openManualCardModal(null)}
-                                  size="sm"
-                                  themeMode={settingsThemeMode}
-                                  variant={settingsThemeMode === 'dark' ? 'dark' : 'default'}
+                                  className={`h-[34px] px-3.5 rounded-xl transition flex items-center gap-1.5 text-xs font-bold shadow-sm cursor-pointer ${
+                                    settingsThemeMode === 'dark'
+                                      ? 'neu-btn-dark text-gray-200 hover:text-white border border-gray-700/50'
+                                      : 'neu-btn-light text-gray-700 hover:text-gray-900 border border-white/80'
+                                  }`}
+                                  title="Add Manual Flashcard"
                                 >
-                                  Add Card
-                                </UiverseButton>
-                                <UiverseButton
-                                  icon={<Download className="w-3.5 h-3.5 text-blue-400" />}
+                                  <Plus className="w-3.5 h-3.5 text-purple-400" />
+                                  <span>+ Add Card</span>
+                                </motion.button>
+                                <motion.button
+                                  whileHover={{ scale: selectedFolderCardCount === 0 ? 1 : 1.03, y: selectedFolderCardCount === 0 ? 0 : -1 }}
+                                  whileTap={{ scale: selectedFolderCardCount === 0 ? 1 : 0.97 }}
                                   onClick={() => {
                                     setSelectedDecksToExport([hierarchy]);
                                     setCurrentTab('export');
                                   }}
                                   disabled={selectedFolderCardCount === 0}
-                                  size="sm"
-                                  themeMode={settingsThemeMode}
-                                  variant={settingsThemeMode === 'dark' ? 'dark' : 'default'}
+                                  className={`h-[34px] px-3.5 rounded-xl transition flex items-center gap-1.5 text-xs font-bold shadow-sm ${
+                                    selectedFolderCardCount === 0
+                                      ? 'opacity-40 cursor-not-allowed pointer-events-none'
+                                      : 'cursor-pointer'
+                                  } ${
+                                    settingsThemeMode === 'dark'
+                                      ? 'neu-btn-dark text-gray-200 hover:text-white border border-gray-700/50'
+                                      : 'neu-btn-light text-gray-700 hover:text-gray-900 border border-white/80'
+                                  }`}
+                                  title="Export cards from this folder"
                                 >
-                                  Export ({selectedFolderCardCount})
-                                </UiverseButton>
+                                  <Download className="w-3.5 h-3.5 text-blue-400" />
+                                  <span>Export ({selectedFolderCardCount})</span>
+                                </motion.button>
                               </div>
                             </div>
 
-                            <div className={`flex-grow ${activeQueueId && (activeImageObj || pageCards.length > 0) ? 'flex flex-col min-h-0 p-0 overflow-hidden' : 'overflow-y-auto p-4 pt-2 pb-16 pr-4 custom-scrollbar'}`}>
+                            <div className={`flex-grow ${activeQueueId && (activeImageObj || pageCards.length > 0) ? 'flex flex-col min-h-0 p-1 overflow-hidden' : 'overflow-y-auto p-4 pt-2 pb-16 pr-4 custom-scrollbar'}`}>
                               {searchQuery.trim() ? (
                                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                                   <div className="flex items-center justify-between">
