@@ -29217,17 +29217,25 @@ Return your response strictly as a JSON object matching this schema:
                 <aside
                   onMouseEnter={handleSidebarMouseEnter}
                   onMouseLeave={handleSidebarMouseLeave}
-                  className={`flex ${isSidebarExpanded ? 'w-64' : 'w-20'} ${settingsThemeMode === 'dark' ? 'neu-card-dark border-r border-gray-800/80 text-slate-100' : 'neu-card-light border-r border-gray-200/80 text-slate-800'} flex flex-col py-6 shrink-0 transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] shadow-xl z-20 neu-action-sidebar will-change-[width] overflow-hidden`}
+                  style={{
+                    transition: 'width 0.6s cubic-bezier(0, 0, 0, 1)'
+                  }}
+                  className={`flex ${isSidebarExpanded ? 'w-64' : 'w-20'} ${settingsThemeMode === 'dark' ? 'neu-card-dark border-r border-gray-800/80 text-slate-100' : 'neu-card-light border-r border-gray-200/80 text-slate-800'} flex flex-col py-6 shrink-0 shadow-xl z-20 neu-action-sidebar will-change-[width] overflow-hidden`}
                 >
                   {/* Top Logo & App Title (Perfect Symmetry) */}
-                  <div className="mb-7 flex items-center px-3 h-10 z-10">
+                  <div className="mb-7 flex items-center px-3 h-10 z-10 shrink-0">
                     <div className="flex items-center min-w-0 w-full">
                       <div className="w-14 shrink-0 flex items-center justify-center">
                         <img src="/favicon.svg" alt="AutoAnki Logo" className="w-9 h-9 object-contain rounded-xl shadow-md" />
                       </div>
-                      <div className={`overflow-hidden transition-all duration-250 ${
-                        isSidebarExpanded ? 'opacity-100 max-w-[140px] ml-1' : 'opacity-0 max-w-0 ml-0 pointer-events-none'
-                      }`}>
+                      <div
+                        style={{
+                          transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                        }}
+                        className={`overflow-hidden ${
+                          isSidebarExpanded ? 'opacity-100 max-w-[140px] ml-1' : 'opacity-0 max-w-0 ml-0 pointer-events-none'
+                        }`}
+                      >
                         <span className={`font-black tracking-tight text-xl truncate whitespace-nowrap ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                           AutoAnki
                         </span>
@@ -29245,9 +29253,12 @@ Return your response strictly as a JSON object matching this schema:
                       return (
                         <div
                           key={cat.id}
+                          style={{
+                            transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                          }}
                           className={`neu-cat-card ${settingsThemeMode === 'dark' ? 'dark-theme' : 'light-theme'} ${
                             isExpanded && isSidebarExpanded ? 'is-expanded' : ''
-                          } space-y-1 w-full overflow-hidden transition-colors duration-200`}
+                          } space-y-1 w-full overflow-hidden`}
                         >
                           {/* Symmetrically Centered Category Header */}
                           <button
@@ -29271,20 +29282,33 @@ Return your response strictly as a JSON object matching this schema:
                               }
                             }}
                             onMouseLeave={() => setSidebarTooltip(null)}
+                            style={{
+                              transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                            }}
                             className={`neu-cat-header ${settingsThemeMode === 'dark' ? 'dark-theme' : 'light-theme'} ${
                               isExpanded && isSidebarExpanded ? 'is-expanded' : ''
                             } ${hasActiveItem ? 'has-active' : ''} group select-none flex items-center justify-between w-full h-11 p-1 rounded-xl`}
                           >
                             <div className="flex items-center min-w-0">
                               {/* 100% Equilateral Symmetrical Icon Box */}
-                              <div className="neu-cat-icon-badge w-9 h-9 shrink-0 flex items-center justify-center rounded-xl">
+                              <div
+                                style={{
+                                  transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                                }}
+                                className="neu-cat-icon-badge w-9 h-9 shrink-0 flex items-center justify-center rounded-xl"
+                              >
                                 <CatIcon className="w-4 h-4" />
                               </div>
 
                               {/* Category Text Label */}
-                              <div className={`overflow-hidden transition-all duration-250 ${
-                                isSidebarExpanded ? 'opacity-100 max-w-[140px] ml-2.5' : 'opacity-0 max-w-0 ml-0 pointer-events-none'
-                              }`}>
+                              <div
+                                style={{
+                                  transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                                }}
+                                className={`overflow-hidden ${
+                                  isSidebarExpanded ? 'opacity-100 max-w-[140px] ml-2.5' : 'opacity-0 max-w-0 ml-0 pointer-events-none'
+                                }`}
+                              >
                                 <span className={`text-[10px] font-black uppercase tracking-wider whitespace-nowrap truncate block text-left ${
                                   (isExpanded && isSidebarExpanded) || hasActiveItem
                                     ? (settingsThemeMode === 'dark' ? 'text-sky-400 font-extrabold' : 'text-blue-600 font-extrabold')
@@ -29296,16 +29320,24 @@ Return your response strictly as a JSON object matching this schema:
                             </div>
 
                             {/* Chevron & Active Indicator Dot */}
-                            <div className={`overflow-hidden transition-all duration-250 shrink-0 ${
-                              isSidebarExpanded ? 'opacity-100 max-w-[40px] mr-1' : 'opacity-0 max-w-0 mr-0 pointer-events-none'
-                            }`}>
+                            <div
+                              style={{
+                                transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                              }}
+                              className={`overflow-hidden shrink-0 ${
+                                isSidebarExpanded ? 'opacity-100 max-w-[40px] mr-1' : 'opacity-0 max-w-0 mr-0 pointer-events-none'
+                              }`}
+                            >
                               <div className="flex items-center gap-1.5">
                                 {hasActiveItem && (
                                   <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.8)]" />
                                 )}
                                 <div className="neu-cat-chevron-badge">
                                   <ChevronDown
-                                    className={`w-3.5 h-3.5 transition-transform duration-250 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                                    style={{
+                                      transition: 'transform 0.6s cubic-bezier(0, 0, 0, 1)'
+                                    }}
+                                    className={`w-3.5 h-3.5 ${
                                       isExpanded && isSidebarExpanded ? 'rotate-0 text-sky-400' : '-rotate-90 text-slate-400'
                                     }`}
                                   />
@@ -29322,7 +29354,7 @@ Return your response strictly as a JSON object matching this schema:
                                 initial={{ height: 0, opacity: 0 }}
                                 animate={{ height: 'auto', opacity: 1 }}
                                 exit={{ height: 0, opacity: 0 }}
-                                transition={{ duration: 0.26, ease: [0.16, 1, 0.3, 1] }}
+                                transition={{ duration: 0.45, ease: [0, 0, 0, 1] }}
                                 className="space-y-1 overflow-hidden p-1 will-change-[height,opacity]"
                               >
                                 {cat.items.map(item => {
@@ -29332,6 +29364,9 @@ Return your response strictly as a JSON object matching this schema:
                                     <button
                                       key={item.id}
                                       onClick={item.action}
+                                      style={{
+                                        transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                                      }}
                                       className={`neu-action-item ${settingsThemeMode === 'dark' ? 'dark-theme' : 'light-theme'} ${isActive ? 'active' : ''} w-full flex items-center gap-2.5 px-2 py-1.5 rounded-xl group relative`}
                                     >
                                       <div className="neu-cat-icon-badge shrink-0 w-6 h-6 rounded-lg">
@@ -29352,16 +29387,26 @@ Return your response strictly as a JSON object matching this schema:
                   </nav>
 
                   {/* Footer Profile Section (Perfect Symmetry) */}
-                  <div className="mt-auto px-3 pt-3 z-10">
-                    <div className={`p-2 rounded-2xl transition-all ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200/60'} flex items-center w-full`}>
+                  <div className="mt-auto px-3 pt-3 z-10 shrink-0">
+                    <div
+                      style={{
+                        transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                      }}
+                      className={`p-2 rounded-2xl ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200/60'} flex items-center w-full`}
+                    >
                       <div className="w-10 shrink-0 flex items-center justify-center">
                         <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-cyan-500 text-white flex items-center justify-center font-black text-xs shadow-md">
                           {user.displayName?.[0] || user.email?.[0] || 'D'}
                         </div>
                       </div>
-                      <div className={`overflow-hidden transition-all duration-250 ${
-                        isSidebarExpanded ? 'opacity-100 max-w-[140px] ml-2 text-left' : 'opacity-0 max-w-0 ml-0 pointer-events-none'
-                      }`}>
+                      <div
+                        style={{
+                          transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                        }}
+                        className={`overflow-hidden ${
+                          isSidebarExpanded ? 'opacity-100 max-w-[140px] ml-2 text-left' : 'opacity-0 max-w-0 ml-0 pointer-events-none'
+                        }`}
+                      >
                         <div className="text-[9px] text-blue-500 font-extrabold uppercase tracking-widest truncate">Medical ID</div>
                         <div className={`text-xs font-black truncate ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>{user.displayName || 'Doctor'}</div>
                         <button onClick={logout} className="text-left text-[9px] text-red-500 hover:text-red-600 transition uppercase font-black tracking-wider pt-0.5 border-t border-gray-200/20 block w-full mt-0.5">Sign Out</button>
@@ -29377,7 +29422,7 @@ Return your response strictly as a JSON object matching this schema:
                         initial={{ opacity: 0, x: -14, scale: 0.8 }}
                         animate={{ opacity: 1, x: 0, scale: 1 }}
                         exit={{ opacity: 0, x: -10, scale: 0.85 }}
-                        transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                        transition={{ duration: 0.25, ease: [0, 0, 0, 1] }}
                         className={`fixed z-[99999] pointer-events-none ${settingsThemeMode === 'dark'
                           ? 'bg-[#242832] text-white border-1.5 border-sky-400/40 shadow-[0_6px_22px_rgba(56,189,248,0.35)]'
                           : 'bg-white text-slate-900 border-1.5 border-blue-500/35 shadow-[0_6px_22px_rgba(37,99,235,0.25)]'

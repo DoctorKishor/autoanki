@@ -943,7 +943,8 @@ body,
 /* Neumorphic Action Sidebar */
 .neu-action-sidebar {
   position: relative;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width 0.6s cubic-bezier(0, 0, 0, 1), background-color 0.4s cubic-bezier(0, 0, 0, 1), border-color 0.4s cubic-bezier(0, 0, 0, 1);
+  will-change: width;
 }
 
 .neu-action-item {
@@ -955,7 +956,7 @@ body,
   cursor: pointer;
   outline: none;
   background: transparent;
-  transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: all 0.6s cubic-bezier(0, 0, 0, 1);
 }
 
 .neu-action-icon-box {
@@ -1055,7 +1056,7 @@ body,
 
 .neu-cat-card {
   border-radius: 1rem;
-  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: all 0.6s cubic-bezier(0, 0, 0, 1);
   padding: 0.25rem;
 }
 
@@ -1091,7 +1092,7 @@ body,
   border: none;
   cursor: pointer;
   outline: none;
-  transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: all 0.6s cubic-bezier(0, 0, 0, 1);
 }
 
 .neu-cat-header.light-theme {
@@ -1133,10 +1134,10 @@ body,
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 0.5rem;
-  transition: all 0.25s ease;
+  width: 36px;
+  height: 36px;
+  border-radius: 0.65rem;
+  transition: all 0.6s cubic-bezier(0, 0, 0, 1);
   flex-shrink: 0;
 }
 
