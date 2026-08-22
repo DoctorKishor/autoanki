@@ -29220,21 +29220,19 @@ Return your response strictly as a JSON object matching this schema:
                   className={`flex ${isSidebarExpanded ? 'w-64' : 'w-20'} ${settingsThemeMode === 'dark' ? 'neu-card-dark border-r border-gray-800/80 text-slate-100' : 'neu-card-light border-r border-gray-200/80 text-slate-800'} flex flex-col py-6 shrink-0 transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] shadow-xl z-20 neu-action-sidebar will-change-[width] overflow-hidden`}
                 >
                   {/* Top Logo & App Title */}
-                  <div className="mb-7 flex items-center px-4 z-10">
+                  <div className={`mb-7 flex items-center ${isSidebarExpanded ? 'px-4 justify-start' : 'px-0 justify-center'} z-10`}>
                     <div className="flex items-center gap-3 min-w-0">
                       <img src="/favicon.svg" alt="AutoAnki Logo" className="w-9 h-9 shrink-0 object-contain rounded-xl shadow-md" />
-                      <span className={`font-black tracking-tight text-xl truncate transition-all duration-250 ${
-                        isSidebarExpanded
-                          ? 'opacity-100 max-w-[160px] translate-x-0'
-                          : 'opacity-0 max-w-0 -translate-x-3 pointer-events-none'
-                      } ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                        AutoAnki
-                      </span>
+                      {isSidebarExpanded && (
+                        <span className={`font-black tracking-tight text-xl truncate ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                          AutoAnki
+                        </span>
+                      )}
                     </div>
                   </div>
 
-                  {/* Navigation Categories (Unified Persistent Structure) */}
-                  <nav className="flex-grow space-y-2.5 overflow-y-auto custom-scrollbar max-h-[calc(100vh-200px)] z-10 px-2.5">
+                  {/* Navigation Categories (Symmetric Centered Layout) */}
+                  <nav className="flex-grow space-y-3 overflow-y-auto custom-scrollbar max-h-[calc(100vh-200px)] z-10 px-2.5">
                     {navCategories.map((cat) => {
                       const CatIcon = cat.icon;
                       const hasActiveItem = cat.items.some(item => item.id === currentTab);
@@ -29247,7 +29245,7 @@ Return your response strictly as a JSON object matching this schema:
                             isExpanded && isSidebarExpanded ? 'is-expanded' : ''
                           } space-y-1 w-full overflow-hidden transition-colors duration-200`}
                         >
-                          {/* Persistent Category Header */}
+                          {/* Symmetrically Centered Category Header */}
                           <button
                             type="button"
                             onClick={() => {
@@ -29271,45 +29269,43 @@ Return your response strictly as a JSON object matching this schema:
                             onMouseLeave={() => setSidebarTooltip(null)}
                             className={`neu-cat-header ${settingsThemeMode === 'dark' ? 'dark-theme' : 'light-theme'} ${
                               isExpanded && isSidebarExpanded ? 'is-expanded' : ''
-                            } ${hasActiveItem ? 'has-active' : ''} group select-none flex items-center justify-between w-full p-2 rounded-xl`}
+                            } ${hasActiveItem ? 'has-active' : ''} group select-none flex items-center ${
+                              isSidebarExpanded ? 'justify-between p-2' : 'justify-center p-1.5'
+                            } w-full rounded-xl`}
                           >
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              {/* Persistent Icon Badge (Never unmounts or pops) */}
+                            <div className={`flex items-center gap-2.5 min-w-0 ${!isSidebarExpanded ? 'justify-center w-full' : ''}`}>
+                              {/* Perfectly Centered Icon Badge */}
                               <div className="neu-cat-icon-badge shrink-0">
                                 <CatIcon className="w-4 h-4" />
                               </div>
 
-                              {/* Category Text Label (Smooth fade & slide) */}
-                              <span className={`text-[10px] font-black uppercase tracking-wider truncate transition-all duration-250 ${
-                                isSidebarExpanded
-                                  ? 'opacity-100 max-w-[140px] translate-x-0'
-                                  : 'opacity-0 max-w-0 -translate-x-3 pointer-events-none'
-                              } ${
-                                (isExpanded && isSidebarExpanded) || hasActiveItem
-                                  ? (settingsThemeMode === 'dark' ? 'text-sky-400 font-extrabold' : 'text-blue-600 font-extrabold')
-                                  : (settingsThemeMode === 'dark' ? 'text-slate-400 group-hover:text-slate-200' : 'text-slate-500 group-hover:text-slate-800')
-                              }`}>
-                                {cat.label}
-                              </span>
+                              {/* Category Text Label */}
+                              {isSidebarExpanded && (
+                                <span className={`text-[10px] font-black uppercase tracking-wider truncate transition-colors duration-200 ${
+                                  (isExpanded && isSidebarExpanded) || hasActiveItem
+                                    ? (settingsThemeMode === 'dark' ? 'text-sky-400 font-extrabold' : 'text-blue-600 font-extrabold')
+                                    : (settingsThemeMode === 'dark' ? 'text-slate-400 group-hover:text-slate-200' : 'text-slate-500 group-hover:text-slate-800')
+                                }`}>
+                                  {cat.label}
+                                </span>
+                              )}
                             </div>
 
                             {/* Chevron & Active Indicator Dot */}
-                            <div className={`flex items-center gap-1.5 shrink-0 transition-all duration-250 ${
-                              isSidebarExpanded
-                                ? 'opacity-100 scale-100 translate-x-0'
-                                : 'opacity-0 scale-75 translate-x-2 pointer-events-none'
-                            }`}>
-                              {hasActiveItem && (
-                                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.8)]" />
-                              )}
-                              <div className="neu-cat-chevron-badge">
-                                <ChevronDown
-                                  className={`w-3.5 h-3.5 transition-transform duration-250 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                                    isExpanded && isSidebarExpanded ? 'rotate-0 text-sky-400' : '-rotate-90 text-slate-400'
-                                  }`}
-                                />
+                            {isSidebarExpanded && (
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                {hasActiveItem && (
+                                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.8)]" />
+                                )}
+                                <div className="neu-cat-chevron-badge">
+                                  <ChevronDown
+                                    className={`w-3.5 h-3.5 transition-transform duration-250 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                                      isExpanded && isSidebarExpanded ? 'rotate-0 text-sky-400' : '-rotate-90 text-slate-400'
+                                    }`}
+                                  />
+                                </div>
                               </div>
-                            </div>
+                            )}
                           </button>
 
                           {/* Sub-Items Accordion */}
@@ -29351,19 +29347,17 @@ Return your response strictly as a JSON object matching this schema:
 
                   {/* Footer Profile Section */}
                   <div className="mt-auto px-2.5 pt-3 z-10">
-                    <div className={`p-2.5 rounded-2xl transition-all ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200/60'} flex items-center ${isSidebarExpanded ? 'gap-3' : 'justify-center'}`}>
+                    <div className={`p-2.5 rounded-2xl transition-all ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200/60'} flex items-center ${isSidebarExpanded ? 'gap-3 justify-start' : 'justify-center'}`}>
                       <div className="w-8 h-8 shrink-0 rounded-xl bg-gradient-to-tr from-blue-600 to-cyan-500 text-white flex items-center justify-center font-black text-xs shadow-md">
                         {user.displayName?.[0] || user.email?.[0] || 'D'}
                       </div>
-                      <div className={`truncate flex-grow text-left transition-all duration-250 ${
-                        isSidebarExpanded
-                          ? 'opacity-100 max-w-[140px] translate-x-0'
-                          : 'opacity-0 max-w-0 -translate-x-2 pointer-events-none'
-                      }`}>
-                        <div className="text-[9px] text-blue-500 font-extrabold uppercase tracking-widest">Medical ID</div>
-                        <div className={`text-xs font-black truncate ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>{user.displayName || 'Doctor'}</div>
-                        <button onClick={logout} className="text-left text-[9px] text-red-500 hover:text-red-600 transition uppercase font-black tracking-wider pt-0.5 border-t border-gray-200/20 block w-full mt-0.5">Sign Out</button>
-                      </div>
+                      {isSidebarExpanded && (
+                        <div className="truncate flex-grow text-left">
+                          <div className="text-[9px] text-blue-500 font-extrabold uppercase tracking-widest">Medical ID</div>
+                          <div className={`text-xs font-black truncate ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>{user.displayName || 'Doctor'}</div>
+                          <button onClick={logout} className="text-left text-[9px] text-red-500 hover:text-red-600 transition uppercase font-black tracking-wider pt-0.5 border-t border-gray-200/20 block w-full mt-0.5">Sign Out</button>
+                        </div>
+                      )}
                     </div>
                   </div>
 
