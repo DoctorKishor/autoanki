@@ -7674,7 +7674,7 @@ export default function App() {
     libraryZoomScaleRef.current = 1;
     libraryPanOffsetRef.current = { x: 0, y: 0 };
     setIsLibraryPanning(false);
-  }, [activeQueueId, activeImageObj?.id]);
+  }, [activeQueueId]);
 
   // Pointer-focused wheel zoom effect (matching FineTuneCropModal)
   useEffect(() => {
@@ -7728,7 +7728,7 @@ export default function App() {
     return () => {
       el.removeEventListener('wheel', handleWheelNative);
     };
-  }, [activeQueueId, activeImageObj?.id]);
+  }, [activeQueueId]);
 
   const handleLibraryZoomIn = () => {
     const oldScale = libraryZoomScaleRef.current;
