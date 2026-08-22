@@ -30169,42 +30169,19 @@ Return your response strictly as a JSON object matching this schema:
                                     onMouseUp={handleImageMouseUp}
                                     onMouseLeave={() => { setHoveredCardIdFromImage(null); setIsPanning(false); }}
                                   />
-                                  {/* Bi-Directional Bounding Box Highlight & Dimming Overlay (No Image Blur) */}
+                                  {/* Bi-Directional Bounding Box Highlight (Clean Outline, No Dimming) */}
                                   {(() => {
                                     if (hoveredCardCoordinates?.ymin !== undefined) {
-                                      const boxX = (hoveredCardCoordinates.xmin || 0) / 10;
-                                      const boxY = (hoveredCardCoordinates.ymin || 0) / 10;
-                                      const boxW = ((hoveredCardCoordinates.xmax || 0) - (hoveredCardCoordinates.xmin || 0)) / 10;
-                                      const boxH = ((hoveredCardCoordinates.ymax || 0) - (hoveredCardCoordinates.ymin || 0)) / 10;
                                       return (
-                                        <>
-                                          <svg className="absolute inset-0 w-full h-full pointer-events-none rounded-xl z-10 transition-opacity duration-150">
-                                            <defs>
-                                              <mask id="genSpotlightMask">
-                                                <rect width="100%" height="100%" fill="white" />
-                                                <rect
-                                                  x={`${boxX}%`}
-                                                  y={`${boxY}%`}
-                                                  width={`${boxW}%`}
-                                                  height={`${boxH}%`}
-                                                  rx="6"
-                                                  ry="6"
-                                                  fill="black"
-                                                />
-                                              </mask>
-                                            </defs>
-                                            <rect width="100%" height="100%" fill="rgba(0, 0, 0, 0.45)" mask="url(#genSpotlightMask)" />
-                                          </svg>
-                                          <div
-                                            className="absolute border-2 border-yellow-400 bg-yellow-300/15 rounded-lg pointer-events-none shadow-[0_0_16px_rgba(250,204,21,0.85)] z-20 transition-all duration-150"
-                                            style={{
-                                              top: `${hoveredCardCoordinates.ymin / 10}%`,
-                                              left: `${hoveredCardCoordinates.xmin / 10}%`,
-                                              height: `${(hoveredCardCoordinates.ymax - hoveredCardCoordinates.ymin) / 10}%`,
-                                              width: `${(hoveredCardCoordinates.xmax - hoveredCardCoordinates.xmin) / 10}%`,
-                                            }}
-                                          />
-                                        </>
+                                        <div
+                                          className="absolute border-2 border-yellow-400 bg-yellow-300/20 rounded-lg pointer-events-none shadow-[0_0_18px_rgba(250,204,21,0.85)] z-20 transition-all duration-150"
+                                          style={{
+                                            top: `${hoveredCardCoordinates.ymin / 10}%`,
+                                            left: `${hoveredCardCoordinates.xmin / 10}%`,
+                                            height: `${(hoveredCardCoordinates.ymax - hoveredCardCoordinates.ymin) / 10}%`,
+                                            width: `${(hoveredCardCoordinates.xmax - hoveredCardCoordinates.xmin) / 10}%`,
+                                          }}
+                                        />
                                       );
                                     }
                                     if (hoveredCardIdFromImage) {
@@ -30969,43 +30946,18 @@ Return your response strictly as a JSON object matching this schema:
                                             style={{ maxHeight: '100%', maxWidth: '100%' }}
                                             draggable={false}
                                           />
-                                          {/* Highlight & Dimming Spotlight from Card Hover (No Image Blur) */}
-                                           {hoveredCardCoordinates?.ymin !== undefined && (() => {
-                                             const boxX = (hoveredCardCoordinates.xmin || 0) / 10;
-                                             const boxY = (hoveredCardCoordinates.ymin || 0) / 10;
-                                             const boxW = ((hoveredCardCoordinates.xmax || 0) - (hoveredCardCoordinates.xmin || 0)) / 10;
-                                             const boxH = ((hoveredCardCoordinates.ymax || 0) - (hoveredCardCoordinates.ymin || 0)) / 10;
-                                             return (
-                                               <>
-                                                 <svg className="absolute inset-0 w-full h-full pointer-events-none rounded-2xl z-[5] transition-opacity duration-150">
-                                                   <defs>
-                                                     <mask id="libSpotlightMask">
-                                                       <rect width="100%" height="100%" fill="white" />
-                                                       <rect
-                                                         x={`${boxX}%`}
-                                                         y={`${boxY}%`}
-                                                         width={`${boxW}%`}
-                                                         height={`${boxH}%`}
-                                                         rx="6"
-                                                         ry="6"
-                                                         fill="black"
-                                                       />
-                                                     </mask>
-                                                   </defs>
-                                                   <rect width="100%" height="100%" fill="rgba(0, 0, 0, 0.45)" mask="url(#libSpotlightMask)" />
-                                                 </svg>
-                                                 <div
-                                                   className="absolute border-2 border-yellow-400 bg-yellow-300/15 rounded-xl transition-all duration-150 pointer-events-none shadow-[0_0_18px_rgba(250,204,21,0.85)] z-10"
-                                                   style={{
-                                                     top: `${boxY}%`,
-                                                     left: `${boxX}%`,
-                                                     height: `${boxH}%`,
-                                                     width: `${boxW}%`,
-                                                   }}
-                                                 />
-                                               </>
-                                             );
-                                           })()}
+                                          {/* Highlight Target Bounding Box from Card Hover (Clean Outline, No Dimming) */}
+                                           {hoveredCardCoordinates?.ymin !== undefined && (
+                                             <div
+                                               className="absolute border-2 border-yellow-400 bg-yellow-300/20 rounded-xl transition-all duration-150 pointer-events-none shadow-[0_0_18px_rgba(250,204,21,0.85)] z-10"
+                                               style={{
+                                                 top: `${(hoveredCardCoordinates?.ymin || 0) / 10}%`,
+                                                 left: `${(hoveredCardCoordinates?.xmin || 0) / 10}%`,
+                                                 height: `${((hoveredCardCoordinates?.ymax || 0) - (hoveredCardCoordinates?.ymin || 0)) / 10}%`,
+                                                 width: `${((hoveredCardCoordinates?.xmax || 0) - (hoveredCardCoordinates?.xmin || 0)) / 10}%`,
+                                               }}
+                                             />
+                                           )}
                                            {/* Highlight from Image Hover (Inverse) */}
                                           {(() => {
                                             if (!hoveredCardIdFromImage || !pageCards) return null;
