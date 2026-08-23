@@ -27776,189 +27776,452 @@ Return your response strictly as a JSON object matching this schema:
                         initial={{ opacity: 0, y: 16 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-                        className="space-y-4 text-left pb-32 p-4 sm:p-5"
+                        className="space-y-4 text-left pb-32 px-2 sm:px-4 py-3 sm:py-4"
                       >
-                        {/* 1. Header & 7-Day Week Strip Card */}
+                        {/* 1. Interactive Month Calendar Card (Mobile) */}
                         <motion.div
                           initial={{ opacity: 0, y: 12 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.4, delay: 0.05 }}
                           className={`p-4 sm:p-5 rounded-3xl space-y-3.5 transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'}`}
                         >
-                          <div className={`flex items-center justify-between pb-3 border-b flex-wrap gap-2 ${isDark ? 'border-slate-750' : 'border-slate-200/80'}`}>
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <div className={`p-2.5 rounded-xl shrink-0 ${isDark ? 'neu-pressed-dark text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
-                                <Calendar className="w-5 h-5" />
-                              </div>
-                              <div className="min-w-0">
-                                <h2 className="text-sm sm:text-base font-black tracking-tight truncate">Study Scheduler</h2>
-                                <p className={`text-[9px] sm:text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Plan & track daily targets</p>
-                              </div>
+                          <div className={`flex justify-between items-center pb-3 border-b ${isDark ? 'border-slate-750' : 'border-slate-200/80'}`}>
+                            <div className="min-w-0 pr-2">
+                              <h3 className="text-sm sm:text-base font-black tracking-tight truncate">Interactive Calendar</h3>
+                              <p className={`text-[9px] sm:text-[10px] font-bold uppercase tracking-wider truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                Select a date to plan and revise
+                              </p>
                             </div>
-                            <div className="flex items-center gap-2 shrink-0">
+                            <div className="flex items-center gap-1.5 shrink-0">
                               <button
-                                onClick={() => setIsTemplateModalOpen(true)}
-                                className={`px-3 py-1.5 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-wider border transition-all flex items-center gap-1.5 shrink-0 ${isDark ? 'neu-btn-dark text-slate-300 border-slate-700' : 'neu-btn-light text-slate-700 border-slate-200'
-                                  }`}
-                                title="Study Routines"
+                                onClick={() => {
+                                  if (schedulerCalMonth === 0) {
+                                    setSchedulerCalMonth(11);
+                                    setSchedulerCalYear(prev => prev - 1);
+                                  } else {
+                                    setSchedulerCalMonth(prev => prev - 1);
+                                  }
+                                }}
+                                className={`p-1.5 sm:p-2 rounded-xl transition active:scale-95 border ${isDark ? 'neu-btn-dark text-slate-300 border-slate-700' : 'neu-btn-light text-slate-700 border-slate-200'}`}
                               >
-                                <Bookmark className="w-3.5 h-3.5 text-blue-500" /> Routines
+                                <ChevronLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                              </button>
+                              <span className={`text-[11px] sm:text-xs font-black uppercase tracking-wider min-w-[90px] sm:min-w-[110px] text-center ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                                {new Date(schedulerCalYear, schedulerCalMonth).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                              </span>
+                              <button
+                                onClick={() => {
+                                  if (schedulerCalMonth === 11) {
+                                    setSchedulerCalMonth(0);
+                                    setSchedulerCalYear(prev => prev + 1);
+                                  } else {
+                                    setSchedulerCalMonth(prev => prev + 1);
+                                  }
+                                }}
+                                className={`p-1.5 sm:p-2 rounded-xl transition active:scale-95 border ${isDark ? 'neu-btn-dark text-slate-300 border-slate-700' : 'neu-btn-light text-slate-700 border-slate-200'}`}
+                              >
+                                <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                               </button>
                             </div>
                           </div>
 
-                          {/* 7-Day Week Strip */}
-                          <div className="flex justify-between gap-1.5 overflow-x-auto pb-1 custom-scrollbar scrollbar-none">
-                            {weekDays.map(d => {
-                              const isSelected = d.dateStr === schedulerSelectedDate;
-                              return (
-                                <button
-                                  key={d.dateStr}
-                                  onClick={() => setSchedulerSelectedDate(d.dateStr)}
-                                  className={`flex-1 min-w-[42px] py-2.5 rounded-2xl flex flex-col items-center gap-1 transition-all active:scale-95 border ${isSelected
-                                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-blue-500 shadow-md shadow-blue-900/30 font-bold scale-[1.02]'
-                                    : d.isToday
-                                      ? isDark ? 'bg-blue-950/60 border-blue-800 text-blue-400 font-bold' : 'bg-blue-50 border-blue-200 text-blue-700 font-bold'
-                                      : isDark ? 'neu-pressed-dark text-slate-300 border-slate-800 hover:text-white' : 'neu-pressed-light text-slate-600 border-slate-200 hover:bg-slate-50'
-                                    }`}
-                                >
-                                  <span className={`text-[9px] font-bold uppercase ${isSelected ? 'text-blue-100' : isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                    {d.dayName}
-                                  </span>
-                                  <span className="text-xs font-black">
-                                    {d.dayNum}
-                                  </span>
-                                  {d.hasTasks && (
-                                    <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-blue-500 animate-pulse'}`} />
-                                  )}
-                                </button>
-                              );
-                            })}
+                          {/* Weekday Headers */}
+                          <div className={`grid grid-cols-7 gap-1.5 sm:gap-2 text-center text-[9px] sm:text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+                              <div key={d} className="py-0.5">{d}</div>
+                            ))}
+                          </div>
+
+                          {/* Calendar Grid */}
+                          <div className="grid grid-cols-7 gap-1.5 sm:gap-2 select-none">
+                            {(() => {
+                              const days = getDaysInMonth(schedulerCalMonth, schedulerCalYear);
+                              return days.map((day, idx) => {
+                                if (!day) return <div key={`empty-${idx}`} className="aspect-square" />;
+                                const dateStr = day.toLocaleDateString('en-CA');
+                                const isSelected = dateStr === schedulerSelectedDate;
+                                const isToday = dateStr === todayStr;
+                                const hasTasks = (studySchedule[dateStr]?.tasks?.length || 0) > 0;
+
+                                return (
+                                  <button
+                                    key={dateStr}
+                                    onClick={() => setSchedulerSelectedDate(dateStr)}
+                                    className={`aspect-square rounded-2xl flex flex-col items-center justify-between p-1.5 sm:p-2.5 transition-all relative active:scale-95 border ${isSelected
+                                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-blue-500 shadow-md shadow-blue-900/30 font-black scale-[1.02]'
+                                      : isToday
+                                        ? isDark ? 'bg-blue-950/60 border-blue-800 text-blue-400 font-black' : 'bg-blue-50 border-blue-200 text-blue-700 font-black'
+                                        : isDark ? 'neu-pressed-dark text-slate-300 border-slate-800/80 hover:text-white' : 'neu-pressed-light text-slate-700 border-slate-200 hover:text-slate-900'
+                                      }`}
+                                  >
+                                    <span className="text-[11px] sm:text-xs font-black">{day.getDate()}</span>
+                                    {hasTasks && (
+                                      <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-blue-500'} shrink-0`} />
+                                    )}
+                                  </button>
+                                );
+                              });
+                            })()}
                           </div>
                         </motion.div>
 
-                        {/* 2. Daily Notes Card (Mobile) */}
+                        {/* 2. Selected Day Detail Panel (Mobile) */}
                         <motion.div
                           initial={{ opacity: 0, y: 12 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.4, delay: 0.1 }}
-                          className={`p-4 sm:p-5 rounded-3xl space-y-2 transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'}`}
+                          className={`p-4 sm:p-5 rounded-3xl space-y-4 transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'}`}
                         >
-                          <span className={`text-[9px] font-black uppercase tracking-wider block ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                            Notes for {formatAppDate(schedulerSelectedDate)}
-                          </span>
-                          <textarea
-                            value={studySchedule[schedulerSelectedDate]?.notes || ''}
-                            onChange={(e) => {
-                              const newNotes = e.target.value;
-                              setStudySchedule(prev => ({
-                                ...prev,
-                                [schedulerSelectedDate]: {
-                                  ...(prev[schedulerSelectedDate] || { date: schedulerSelectedDate, tasks: [] }),
-                                  notes: newNotes
-                                }
-                              }));
-                            }}
-                            onBlur={async () => {
-                              const entry = studySchedule[schedulerSelectedDate] || { date: schedulerSelectedDate, tasks: [] };
-                              const updatedSchedule = await saveLocalScheduleEntry(schedulerSelectedDate, { date: schedulerSelectedDate, notes: entry.notes || '', tasks: entry.tasks || [] });
-                              setStudySchedule(updatedSchedule);
-                            }}
-                            placeholder="Tap to add notes, targets, or Grand Test topics..."
-                            className={`w-full h-16 p-3 rounded-xl text-xs outline-none resize-none font-medium transition ${isDark ? 'neu-pressed-dark text-slate-100 placeholder-slate-500 border border-slate-800' : 'neu-pressed-light text-slate-800 placeholder-slate-400 border border-slate-200'
-                              }`}
-                          />
-                        </motion.div>
+                          {/* Header with Date & Action Buttons */}
+                          <div className={`space-y-3 pb-3 border-b ${isDark ? 'border-slate-750' : 'border-slate-200/80'}`}>
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <span className={`text-[9px] font-black uppercase tracking-wider block ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>Plan for Selected Date</span>
+                                <h2 className={`text-lg sm:text-xl font-black tracking-tight font-mono mt-0.5 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                                  {formatAppDate(schedulerSelectedDate)}
+                                </h2>
+                              </div>
+                            </div>
 
-                        {/* 3. Daily Agenda Tasks Card (Mobile) */}
-                        <motion.div
-                          initial={{ opacity: 0, y: 12 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.4, delay: 0.15 }}
-                          className="space-y-2.5"
-                        >
-                          <span className={`text-[9px] font-black uppercase tracking-wider px-1 block ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                            Scheduled Topics Checklist
-                          </span>
-                          <div className="space-y-2">
-                            {((studySchedule[schedulerSelectedDate]?.tasks || []).length === 0) ? (
-                              <div className={`p-8 rounded-3xl border text-center space-y-2 ${isDark ? 'neu-pressed-dark border-slate-800 text-slate-400' : 'neu-pressed-light border-slate-200 text-slate-500'
-                                }`}>
-                                <p className="text-xs font-bold">No topics scheduled for today.</p>
+                            {/* Action Buttons Row */}
+                            <div className="grid grid-cols-3 gap-2 w-full">
+                              {/* Notification Alerts Toggle */}
+                              {typeof window !== 'undefined' && window.Notification && (
                                 <button
-                                  onClick={() => {
-                                    setSchedulerManualDate(schedulerSelectedDate);
-                                    setIsSchedulerModalOpen(true);
-                                  }}
-                                  className="text-[10px] text-blue-500 font-bold underline"
+                                  onClick={handleRequestNotificationPermission}
+                                  className={`px-2 py-2 rounded-xl border flex items-center justify-center gap-1 transition text-[9px] sm:text-[10px] font-black uppercase tracking-wider truncate ${notificationPermissionStatus === 'granted'
+                                    ? isDark ? 'neu-pressed-dark border-emerald-800 text-emerald-400' : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                                    : isDark ? 'neu-pressed-dark border-amber-800 text-amber-400 animate-pulse' : 'border-amber-200 bg-amber-50 text-amber-700 animate-pulse'
+                                    }`}
+                                  title="Study Shift Alerts"
                                 >
-                                  Schedule a Topic
+                                  <Bell className="w-3.5 h-3.5 shrink-0" />
+                                  <span className="truncate">{notificationPermissionStatus === 'granted' ? 'Alerts On' : 'Alerts'}</span>
+                                </button>
+                              )}
+
+                              {/* Templates Routine Button */}
+                              <button
+                                onClick={() => setIsTemplateModalOpen(true)}
+                                className={`px-2 py-2 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1 transition active:scale-95 border ${isDark ? 'neu-btn-dark text-slate-300 border-slate-700' : 'neu-btn-light text-slate-700 border-slate-200'}`}
+                              >
+                                <Bookmark className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                                <span className="truncate">Routines</span>
+                              </button>
+
+                              {/* Add Topics Button */}
+                              <button
+                                onClick={() => {
+                                  setSchedulerManualDate(schedulerSelectedDate);
+                                  setIsSchedulerModalOpen(true);
+                                }}
+                                className={`px-2 py-2 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-wider transition active:scale-95 flex items-center justify-center gap-1 text-white shadow-md ${isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'}`}
+                              >
+                                <Plus className="w-3.5 h-3.5 shrink-0" />
+                                <span className="truncate">Add Topics</span>
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Daily Notes */}
+                          <div className="space-y-1.5">
+                            <label className={`text-[9px] sm:text-[10px] font-black uppercase tracking-wider block ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Daily Notes</label>
+                            <textarea
+                              value={studySchedule[schedulerSelectedDate]?.notes || ''}
+                              onChange={(e) => {
+                                const newNotes = e.target.value;
+                                setStudySchedule(prev => ({
+                                  ...prev,
+                                  [schedulerSelectedDate]: {
+                                    ...(prev[schedulerSelectedDate] || { date: schedulerSelectedDate, tasks: [] }),
+                                    notes: newNotes
+                                  }
+                                }));
+                              }}
+                              onBlur={async () => {
+                                const entry = studySchedule[schedulerSelectedDate] || { date: schedulerSelectedDate, tasks: [] };
+                                const updatedSchedule = await saveLocalScheduleEntry(schedulerSelectedDate, { date: schedulerSelectedDate, notes: entry.notes || '', tasks: entry.tasks || [] });
+                                setStudySchedule(updatedSchedule);
+                              }}
+                              placeholder="Type any reference notes, focus areas, or reminders for this day..."
+                              className={`w-full h-16 p-3 rounded-2xl text-xs outline-none resize-none leading-relaxed transition ${isDark ? 'neu-pressed-dark text-slate-100 placeholder-slate-500 border border-slate-800' : 'neu-pressed-light text-slate-800 placeholder-slate-400 border border-slate-200'}`}
+                            />
+                          </div>
+
+                          {/* Topics Checklist Section with Sliding Pill Switcher */}
+                          <div className="space-y-3">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                              <label className={`text-[9px] sm:text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Topics Checklist</label>
+                              {/* Sliding Pill Indicator Switcher */}
+                              <div className={`relative flex items-center p-1 rounded-2xl gap-1 w-full sm:w-auto sm:min-w-[240px] shrink-0 select-none ${isDark ? 'neu-pressed-dark border border-slate-800' : 'neu-pressed-light border border-slate-200'}`}>
+                                <div
+                                  className={`absolute top-1 bottom-1 rounded-xl shadow-md ${isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'}`}
+                                  style={{
+                                    width: 'calc(50% - 4px)',
+                                    left: timelineViewMode === 'timeline' ? '4px' : 'calc(50%)',
+                                    transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                                  }}
+                                />
+                                <button
+                                  onClick={() => setTimelineViewMode('timeline')}
+                                  className={`relative flex-1 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${timelineViewMode === 'timeline'
+                                    ? 'text-white font-extrabold'
+                                    : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                                    }`}
+                                >
+                                  Timeline View
+                                </button>
+                                <button
+                                  onClick={() => setTimelineViewMode('list')}
+                                  className={`relative flex-1 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${timelineViewMode === 'list'
+                                    ? 'text-white font-extrabold'
+                                    : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                                    }`}
+                                >
+                                  List Agenda
                                 </button>
                               </div>
-                            ) : (
-                              (studySchedule[schedulerSelectedDate]?.tasks || []).map(task => {
-                                const color = task.color || 'blue';
-                                return (
-                                  <div
-                                    key={task.id}
-                                    className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all ${task.completed
-                                        ? isDark ? 'neu-pressed-dark border-emerald-900/40 bg-emerald-950/20' : 'border-emerald-200 bg-emerald-50/40'
-                                        : isDark ? 'neu-card-dark border-slate-800 hover:border-slate-700' : 'neu-card-light border-slate-200 hover:border-slate-300'
-                                      }`}
-                                  >
-                                    <div className="flex flex-col min-w-0 pr-3 select-none flex-grow">
-                                      <label className="flex items-center gap-3 cursor-pointer min-w-0">
-                                        <input
-                                          type="checkbox"
-                                          checked={task.completed}
-                                          onChange={() => handleSchedulerTaskToggle(schedulerSelectedDate, task.id)}
-                                          className="w-4.5 h-4.5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 shrink-0"
-                                        />
-                                        <span className={`w-2 h-2 rounded-full shrink-0 ${task.color === 'blue' ? 'bg-blue-500' :
-                                            task.color === 'purple' ? 'bg-purple-500' :
-                                              task.color === 'emerald' ? 'bg-emerald-500' :
-                                                task.color === 'amber' ? 'bg-amber-500' :
-                                                  task.color === 'rose' ? 'bg-rose-500' :
-                                                    task.color === 'violet' ? 'bg-violet-500' : 'bg-blue-500'
-                                          }`} />
-                                        <span className={`text-xs font-bold truncate ${task.completed ? 'line-through opacity-50 font-medium' : isDark ? 'text-slate-100' : 'text-slate-800'}`}>
-                                          {task.topic}
-                                        </span>
-                                      </label>
-                                      {task.startTime && (
-                                        <span className={`text-[10px] font-bold ml-7.5 flex items-center gap-1 mt-0.5 font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                          ⏱️ {formatTime12(task.startTime)} {task.endTime ? ` - ${formatTime12(task.endTime)}` : ''}
-                                        </span>
-                                      )}
-                                    </div>
-                                    <div className="flex items-center gap-1 shrink-0">
-                                      <button
-                                        onClick={() => setSchedulerEditingTask({
-                                          date: schedulerSelectedDate,
-                                          id: task.id,
-                                          topic: task.topic,
-                                          startTime: task.startTime || "09:00",
-                                          endTime: task.endTime || "10:00",
-                                          color: task.color || "blue",
-                                          completed: task.completed || false,
-                                          notes: task.notes || ""
-                                        })}
-                                        className={`p-2 rounded-xl transition active:scale-90 ${isDark ? 'neu-btn-dark text-slate-400 hover:text-blue-400' : 'neu-btn-light text-slate-500 hover:text-blue-600'}`}
-                                        title="Edit topic/time"
-                                      >
-                                        <Edit3 className="w-3.5 h-3.5" />
-                                      </button>
-                                      <button
-                                        onClick={() => handleSchedulerDeleteTask(schedulerSelectedDate, task.id)}
-                                        className={`p-2 rounded-xl transition active:scale-90 ${isDark ? 'neu-btn-dark text-slate-400 hover:text-red-400' : 'neu-btn-light text-slate-500 hover:text-red-600'}`}
-                                        title="Remove topic"
-                                      >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                      </button>
-                                    </div>
+                            </div>
+
+                            {/* Timeline or List Display */}
+                            {timelineViewMode === 'timeline' ? (
+                              <div className={`flex flex-col h-[380px] sm:h-[460px] rounded-2xl overflow-hidden relative border ${isDark ? 'neu-pressed-dark border-slate-800' : 'neu-pressed-light border-slate-200'}`}>
+                                {/* Timeline Hour Grid */}
+                                <div className="overflow-y-auto pr-1 custom-scrollbar relative h-full">
+                                  <div className="relative w-full h-[1440px]">
+                                    {/* 24 Hour Rows */}
+                                    {Array.from({ length: 24 }).map((_, hour) => {
+                                      const label = hour === 0 ? "12 AM" : hour === 12 ? "12 PM" : hour > 12 ? `${hour - 12} PM` : `${hour} AM`;
+                                      return (
+                                        <div
+                                          key={hour}
+                                          style={{
+                                            position: 'absolute',
+                                            top: `${hour * 60}px`,
+                                            height: '60px',
+                                            left: 0,
+                                            right: 0
+                                          }}
+                                          className={`flex items-start border-t select-none group cursor-pointer transition ${isDark ? 'border-slate-800/60 hover:bg-slate-800/30' : 'border-slate-200/60 hover:bg-slate-100/50'}`}
+                                          onClick={() => {
+                                            const hh = String(hour).padStart(2, '0');
+                                            const hhEnd = String((hour + 1) % 24).padStart(2, '0');
+                                            setSchedulerEditingTask({
+                                              date: schedulerSelectedDate,
+                                              id: null,
+                                              topic: "",
+                                              startTime: `${hh}:00`,
+                                              endTime: `${hhEnd}:00`,
+                                              color: "blue",
+                                              completed: false,
+                                              notes: ""
+                                            });
+                                          }}
+                                        >
+                                          <span className={`w-10 sm:w-12 text-[8.5px] sm:text-[9px] font-bold font-mono text-right pr-1.5 sm:pr-2 select-none -mt-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                            {label}
+                                          </span>
+                                          <div className={`flex-grow h-full relative border-l ${isDark ? 'border-slate-800/60' : 'border-slate-200/60'}`}>
+                                            <span className="absolute left-2 top-1.5 opacity-0 group-hover:opacity-100 text-[8.5px] text-blue-500 font-black tracking-wider uppercase transition">
+                                              + Add Slot
+                                            </span>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+
+                                    {/* Absolute task cards */}
+                                    {(() => {
+                                      const tasks = (studySchedule[schedulerSelectedDate]?.tasks || []).filter(t => t.startTime);
+                                      const styles = computeTimelineLayouts(tasks);
+                                      return tasks.map(task => {
+                                        const startMin = parseTimeToMinutes(task.startTime);
+                                        const endMin = parseTimeToMinutes(task.endTime || formatMinutesToTime(startMin + 60));
+                                        const duration = Math.max(endMin - startMin, 30);
+
+                                        const color = task.color || 'blue';
+                                        const colorClasses = isDark
+                                          ? (color === 'blue' ? 'bg-blue-950/80 border-blue-700/70 text-blue-200 hover:bg-blue-900/80 shadow-blue-950/40' :
+                                            color === 'purple' ? 'bg-purple-950/80 border-purple-700/70 text-purple-200 hover:bg-purple-900/80 shadow-purple-950/40' :
+                                              color === 'emerald' ? 'bg-emerald-950/80 border-emerald-700/70 text-emerald-200 hover:bg-emerald-900/80 shadow-emerald-950/40' :
+                                                color === 'amber' ? 'bg-amber-950/80 border-amber-700/70 text-amber-200 hover:bg-amber-900/80 shadow-amber-950/40' :
+                                                  color === 'rose' ? 'bg-rose-950/80 border-rose-700/70 text-rose-200 hover:bg-rose-900/80 shadow-rose-950/40' :
+                                                    'bg-violet-950/80 border-violet-700/70 text-violet-200 hover:bg-violet-900/80 shadow-violet-950/40')
+                                          : (color === 'blue' ? 'bg-blue-50/95 border-blue-200 text-blue-800 hover:bg-blue-100/95 shadow-blue-500/5' :
+                                            color === 'purple' ? 'bg-purple-50/95 border-purple-200 text-purple-800 hover:bg-purple-100/95 shadow-purple-500/5' :
+                                              color === 'emerald' ? 'bg-emerald-50/95 border-emerald-200 text-emerald-800 hover:bg-emerald-100/95 shadow-emerald-500/5' :
+                                                color === 'amber' ? 'bg-amber-50/95 border-amber-200 text-amber-800 hover:bg-amber-100/95 shadow-amber-500/5' :
+                                                  color === 'rose' ? 'bg-rose-50/95 border-rose-200 text-rose-800 hover:bg-rose-100/95 shadow-rose-500/5' :
+                                                    'bg-violet-50/95 border-violet-200 text-violet-800 hover:bg-violet-100/95 shadow-violet-500/5');
+
+                                        const layout = styles[task.id] || { left: '0%', width: '100%' };
+
+                                        return (
+                                          <div
+                                            key={task.id}
+                                            style={{
+                                              position: 'absolute',
+                                              top: `${startMin}px`,
+                                              height: `${duration}px`,
+                                              left: `calc(40px + ${layout.left})`,
+                                              width: `calc(${layout.width} - 44px)`
+                                            }}
+                                            className={`rounded-xl border p-1.5 sm:p-2 flex flex-col justify-between overflow-hidden transition-all hover:scale-[1.01] active:scale-95 cursor-pointer shadow-sm ${colorClasses} ${task.completed ? 'opacity-60' : ''}`}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setSchedulerEditingTask({
+                                                date: schedulerSelectedDate,
+                                                id: task.id,
+                                                topic: task.topic,
+                                                startTime: task.startTime,
+                                                endTime: task.endTime || formatMinutesToTime(startMin + 60),
+                                                color: task.color || "blue",
+                                                completed: task.completed || false,
+                                                notes: task.notes || ""
+                                              });
+                                            }}
+                                          >
+                                            <div className="flex items-start gap-1.5 min-w-0 h-full">
+                                              <input
+                                                type="checkbox"
+                                                checked={task.completed || false}
+                                                onChange={(e) => {
+                                                  e.stopPropagation();
+                                                  handleSchedulerTaskToggle(schedulerSelectedDate, task.id);
+                                                }}
+                                                className="w-3.5 h-3.5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer shrink-0 mt-0.5"
+                                              />
+                                              <div className="flex flex-col min-w-0 h-full justify-between">
+                                                <div>
+                                                  <span className={`text-[10px] sm:text-[11px] font-bold leading-tight truncate block ${task.completed ? 'line-through opacity-70 font-medium' : ''}`}>
+                                                    {task.topic}
+                                                  </span>
+                                                  {task.notes && duration >= 60 && (
+                                                    <span className="text-[8.5px] opacity-75 truncate block mt-0.5 leading-snug">
+                                                      📝 {task.notes}
+                                                    </span>
+                                                  )}
+                                                </div>
+                                                <span className="text-[8px] font-bold opacity-80 mt-0.5 font-mono select-none">
+                                                  ⏱️ {formatTime12(task.startTime)} - {formatTime12(task.endTime || formatMinutesToTime(startMin + 60))}
+                                                </span>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        );
+                                      });
+                                    })()}
+
+                                    {/* Red Current Time Line */}
+                                    {schedulerSelectedDate === todayStr && (() => {
+                                      const now = new Date();
+                                      const currentMin = now.getHours() * 60 + now.getMinutes();
+                                      return (
+                                        <div
+                                          style={{
+                                            position: 'absolute',
+                                            top: `${currentMin}px`,
+                                            left: '40px',
+                                            right: '4px',
+                                            height: '2px',
+                                            backgroundColor: 'rgb(239, 68, 68)',
+                                            zIndex: 10,
+                                            pointerEvents: 'none'
+                                          }}
+                                        >
+                                          <div className="w-2.5 h-2.5 rounded-full bg-red-500 -ml-1.5 -mt-1 shadow" />
+                                        </div>
+                                      );
+                                    })()}
                                   </div>
-                                );
-                              })
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="space-y-2">
+                                {((studySchedule[schedulerSelectedDate]?.tasks || []).length === 0) ? (
+                                  <div className={`p-8 rounded-3xl border text-center space-y-2 ${isDark ? 'neu-pressed-dark border-slate-800 text-slate-400' : 'neu-pressed-light border-slate-200 text-slate-500'}`}>
+                                    <Calendar className="w-7 h-7 opacity-40 mx-auto mb-1" />
+                                    <p className="text-xs font-bold">No scheduled topics for this date.</p>
+                                    <button
+                                      onClick={() => {
+                                        setSchedulerManualDate(schedulerSelectedDate);
+                                        setIsSchedulerModalOpen(true);
+                                      }}
+                                      className="text-[10px] text-blue-500 font-bold underline"
+                                    >
+                                      Schedule a Topic
+                                    </button>
+                                  </div>
+                                ) : (
+                                  (studySchedule[schedulerSelectedDate]?.tasks || []).map(task => {
+                                    return (
+                                      <div
+                                        key={task.id}
+                                        className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all ${task.completed
+                                          ? isDark ? 'neu-pressed-dark border-emerald-900/40 bg-emerald-950/20' : 'border-emerald-200 bg-emerald-50/40'
+                                          : isDark ? 'neu-card-dark border-slate-800 hover:border-slate-700' : 'neu-card-light border-slate-200 hover:border-slate-300'
+                                          }`}
+                                      >
+                                        <div className="flex flex-col min-w-0 pr-3 select-none flex-grow">
+                                          <label className="flex items-center gap-3 cursor-pointer min-w-0">
+                                            <input
+                                              type="checkbox"
+                                              checked={task.completed}
+                                              onChange={() => handleSchedulerTaskToggle(schedulerSelectedDate, task.id)}
+                                              className="w-4.5 h-4.5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 shrink-0"
+                                            />
+                                            <span className={`w-2 h-2 rounded-full shrink-0 ${task.color === 'blue' ? 'bg-blue-500' :
+                                              task.color === 'purple' ? 'bg-purple-500' :
+                                                task.color === 'emerald' ? 'bg-emerald-500' :
+                                                  task.color === 'amber' ? 'bg-amber-500' :
+                                                    task.color === 'rose' ? 'bg-rose-500' :
+                                                      task.color === 'violet' ? 'bg-violet-500' : 'bg-blue-500'
+                                              }`} />
+                                            <span className={`text-xs font-bold truncate ${task.completed ? 'line-through opacity-50 font-medium' : isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+                                              {task.topic}
+                                            </span>
+                                          </label>
+                                          {task.startTime && (
+                                            <span className={`text-[10px] font-bold ml-7.5 flex items-center gap-1 mt-0.5 font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                              ⏱️ {formatTime12(task.startTime)} {task.endTime ? ` - ${formatTime12(task.endTime)}` : ''}
+                                            </span>
+                                          )}
+                                          {task.notes && (
+                                            <p className={`text-[10px] font-medium ml-7.5 mt-1 line-clamp-2 max-w-lg leading-relaxed whitespace-pre-wrap ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                              📝 {task.notes}
+                                            </p>
+                                          )}
+                                        </div>
+                                        <div className="flex items-center gap-1 shrink-0">
+                                          <button
+                                            onClick={() => setSchedulerEditingTask({
+                                              date: schedulerSelectedDate,
+                                              id: task.id,
+                                              topic: task.topic,
+                                              startTime: task.startTime || "09:00",
+                                              endTime: task.endTime || "10:00",
+                                              color: task.color || "blue",
+                                              completed: task.completed || false,
+                                              notes: task.notes || ""
+                                            })}
+                                            className={`p-2 rounded-xl transition active:scale-90 ${isDark ? 'neu-btn-dark text-slate-400 hover:text-blue-400' : 'neu-btn-light text-slate-500 hover:text-blue-600'}`}
+                                            title="Edit topic/time"
+                                          >
+                                            <Edit3 className="w-3.5 h-3.5" />
+                                          </button>
+                                          <button
+                                            onClick={() => handleSchedulerDeleteTask(schedulerSelectedDate, task.id)}
+                                            className={`p-2 rounded-xl transition active:scale-90 ${isDark ? 'neu-btn-dark text-slate-400 hover:text-red-400' : 'neu-btn-light text-slate-500 hover:text-red-600'}`}
+                                            title="Remove topic"
+                                          >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    );
+                                  })
+                                )}
+                              </div>
                             )}
                           </div>
                         </motion.div>
