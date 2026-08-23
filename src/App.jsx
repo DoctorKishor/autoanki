@@ -29254,22 +29254,9 @@ Return your response strictly as a JSON object matching this schema:
             );
           } else {
             mainContent = (
-              <div className={`h-screen w-screen font-sans flex overflow-hidden relative transition-colors duration-500 ${
-                settingsThemeMode === 'dark' ? 'bg-[#181b22] text-slate-100' : 'bg-[#d8e2ef] text-slate-800'
+              <div className={`h-screen w-screen font-sans flex overflow-hidden transition-colors duration-300 ${
+                settingsThemeMode === 'dark' ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'
               }`}>
-
-                {/* AMBIENT LIQUID GLASS MESH ORBS (Refracted through frosted glass) */}
-                <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-                  <div className={`absolute -top-24 -left-24 w-96 h-96 rounded-full blur-[100px] opacity-45 transition-colors duration-700 ${
-                    settingsThemeMode === 'dark' ? 'bg-gradient-to-tr from-cyan-600/50 to-blue-600/50' : 'bg-gradient-to-tr from-sky-400/40 to-blue-400/40'
-                  }`} />
-                  <div className={`absolute top-0 right-1/4 w-80 h-80 rounded-full blur-[110px] opacity-35 transition-colors duration-700 ${
-                    settingsThemeMode === 'dark' ? 'bg-gradient-to-br from-indigo-600/50 to-purple-800/50' : 'bg-gradient-to-br from-blue-300/50 to-indigo-300/50'
-                  }`} />
-                  <div className={`absolute -bottom-24 left-1/3 w-96 h-96 rounded-full blur-[120px] opacity-30 transition-colors duration-700 ${
-                    settingsThemeMode === 'dark' ? 'bg-gradient-to-tr from-purple-700/40 to-pink-700/40' : 'bg-gradient-to-tr from-teal-300/40 to-emerald-300/40'
-                  }`} />
-                </div>
 
                 {/* SIDEBAR NAVIGATION (Hidden on Mobile) */}
                 <aside
@@ -29278,9 +29265,7 @@ Return your response strictly as a JSON object matching this schema:
                   style={{
                     transition: 'width 0.6s cubic-bezier(0, 0, 0, 1)'
                   }}
-                  className={`flex ${isSidebarExpanded ? 'w-64' : 'w-20'} flex flex-col shrink-0 z-20 will-change-[width] overflow-hidden ${
-                    settingsThemeMode === 'dark' ? 'liquid-glass-shell-dark border-r-0 border-t-0 border-l-0 border-b-0' : 'liquid-glass-shell-light border-r-0 border-t-0 border-l-0 border-b-0'
-                  }`}
+                  className={`flex ${isSidebarExpanded ? 'w-64' : 'w-20'} flex flex-col shrink-0 z-20 will-change-[width] overflow-hidden`}
                 >
                   {/* Top Logo & App Title (Perfect Symmetry, Aligned h-16) */}
                   <div className="h-16 flex items-center px-4 z-10 shrink-0">
@@ -29502,11 +29487,9 @@ Return your response strictly as a JSON object matching this schema:
                 {/* MAIN CONTENT AREA */}
                 <div className="flex-grow flex flex-col relative overflow-hidden z-10">
 
-                  {/* TOP BAR - SEAMLESS LIQUID GLASS WITH SIDEBAR */}
+                  {/* TOP BAR - FLUSH & BORDERLESS WITH SIDEBAR */}
                   <header className={`h-16 flex items-center justify-between px-6 shrink-0 z-30 transition-all duration-300 relative ${
-                    settingsThemeMode === 'dark'
-                      ? 'liquid-glass-shell-dark border-none text-white'
-                      : 'liquid-glass-shell-light border-none text-gray-800'
+                    settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'
                   }`}>
                     
                     {/* LEFT: Contextual Title & Actions */}
@@ -29785,11 +29768,9 @@ Return your response strictly as a JSON object matching this schema:
                     </div>
                   </header>
 
-                  {/* TAB VIEWS - CANVAS WITH SMOOTH CURVED CORNER */}
-                  <div className={`flex-grow flex flex-col overflow-hidden relative transition-all duration-300 rounded-tl-[32px] border-t border-l shadow-2xl ${
-                    settingsThemeMode === 'dark'
-                      ? 'bg-[#222730]/95 text-slate-100 border-white/[0.08] shadow-[inset_0_4px_24px_rgba(0,0,0,0.4)]'
-                      : 'bg-[#e6ecf5]/95 text-slate-800 border-white/90 shadow-[inset_0_4px_24px_rgba(37,99,235,0.04)]'
+                  {/* TAB VIEWS - FLUSH & SEAMLESS CANVAS */}
+                  <div className={`flex-grow flex flex-col overflow-hidden relative transition-colors duration-300 ${
+                    settingsThemeMode === 'dark' ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'
                   }`}>
 
                     {currentTab === 'campTracker' && (

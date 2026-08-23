@@ -1857,23 +1857,17 @@ body,
    LIQUID GLASS DESIGN SYSTEM (VisionOS & High Refraction)
    ========================================================== */
 .liquid-glass-shell-light {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0.25) 100%);
-  backdrop-filter: blur(28px) saturate(190%);
-  -webkit-backdrop-filter: blur(28px) saturate(190%);
-  border: 1px solid rgba(255, 255, 255, 0.7);
-  box-shadow: 
-    0 8px 32px 0 rgba(31, 38, 135, 0.08),
-    inset 0 1px 1px 0 rgba(255, 255, 255, 0.9);
+  background: transparent;
+  border: none !important;
+  box-shadow: none !important;
+  margin: 0 !important;
 }
 
 .liquid-glass-shell-dark {
-  background: linear-gradient(135deg, rgba(34, 39, 48, 0.6) 0%, rgba(20, 24, 33, 0.45) 100%);
-  backdrop-filter: blur(28px) saturate(190%);
-  -webkit-backdrop-filter: blur(28px) saturate(190%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 
-    0 8px 32px 0 rgba(0, 0, 0, 0.4),
-    inset 0 1px 1px 0 rgba(255, 255, 255, 0.15);
+  background: transparent;
+  border: none !important;
+  box-shadow: none !important;
+  margin: 0 !important;
 }
 
 .liquid-glass-pill-light {
