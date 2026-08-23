@@ -22746,37 +22746,46 @@ Return your response strictly as a JSON object matching this schema:
       <div className="fixed inset-0 z-[300] flex items-center justify-center text-white select-none overflow-hidden transition-all duration-300"
         style={{ ...bgStyle, cursor: showTimerUi ? (fsCustomizingWidgets ? 'grab' : 'default') : 'none' }} onClick={closePanel}>
 
-        {/* YouTube background */}
+        {/* YouTube background (scaled to crop cover on mobile portrait and landscape) */}
         {fsYoutubeVideoId && (
-          <iframe
-            ref={bgIframeRef}
-            src={`https://www.youtube.com/embed/${fsYoutubeVideoId}?autoplay=1&loop=1&playlist=${fsYoutubeVideoId}&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&mute=${fsBgVideoVolume > 0 ? 0 : 1}&origin=${window.location.origin}${fsBgVideoStartTime ? `&start=${parseTimeToSeconds(fsBgVideoStartTime)}` : ''}`}
-            allow="autoplay; encrypted-media" className="absolute inset-0 pointer-events-none"
-            style={{
-              width: '100%',
-              height: '100%',
-              transform: `scale(${1.08 + (fsBgVideoBlur / 100)})`,
-              filter: `blur(${fsBgVideoBlur}px)`
-            }} frameBorder="0"
-            onLoad={() => {
-              const vol = fsBgVideoVolume;
-              // Send initial volume/mute settings multiple times as player initializes
-              [100, 500, 1000, 2000].forEach(delay => {
-                setTimeout(() => {
-                  const iframe = bgIframeRef.current;
-                  if (iframe && iframe.contentWindow) {
-                    iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'setVolume', args: [vol] }), 'https://www.youtube.com');
-                    if (vol === 0) {
-                      iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'mute', args: [] }), 'https://www.youtube.com');
-                    } else {
-                      iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'unmute', args: [] }), 'https://www.youtube.com');
+          <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+            <iframe
+              ref={bgIframeRef}
+              src={`https://www.youtube.com/embed/${fsYoutubeVideoId}?autoplay=1&loop=1&playlist=${fsYoutubeVideoId}&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&mute=${fsBgVideoVolume > 0 ? 0 : 1}&origin=${window.location.origin}${fsBgVideoStartTime ? `&start=${parseTimeToSeconds(fsBgVideoStartTime)}` : ''}`}
+              allow="autoplay; encrypted-media"
+              className="absolute pointer-events-none"
+              style={{
+                top: '50%',
+                left: '50%',
+                width: 'max(100vw, 177.78vh)',
+                height: 'max(100vh, 56.25vw)',
+                minWidth: '100%',
+                minHeight: '100%',
+                transform: `translate(-50%, -50%) scale(${1.08 + (fsBgVideoBlur / 100)})`,
+                filter: `blur(${fsBgVideoBlur}px)`
+              }}
+              frameBorder="0"
+              onLoad={() => {
+                const vol = fsBgVideoVolume;
+                // Send initial volume/mute settings multiple times as player initializes
+                [100, 500, 1000, 2000].forEach(delay => {
+                  setTimeout(() => {
+                    const iframe = bgIframeRef.current;
+                    if (iframe && iframe.contentWindow) {
+                      iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'setVolume', args: [vol] }), 'https://www.youtube.com');
+                      if (vol === 0) {
+                        iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'mute', args: [] }), 'https://www.youtube.com');
+                      } else {
+                        iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'unmute', args: [] }), 'https://www.youtube.com');
+                      }
                     }
-                  }
-                }, delay);
-              });
-            }} />
+                  }, delay);
+                });
+              }}
+            />
+          </div>
         )}
-        <div className="absolute inset-0 bg-black/35 pointer-events-none" />
+        <div className="absolute inset-0 bg-black/35 pointer-events-none z-0" />
 
         {/* Hidden sound players */}
         {SOUND_TRACKS.map(track => {
