@@ -5138,6 +5138,7 @@ export default function App() {
   const [isDailyMetricsOpen, setIsDailyMetricsOpen] = useState(false);
   const [islandMobileState, setIsIslandMobileState] = useState('hole'); // 'hole' | 'pill' | 'mini' | 'semi'
   const islandTouchRef = useRef({ startX: 0, startY: 0, startTime: 0, isSwiping: false });
+  const islandExpandedTimeRef = useRef(0);
 
   // --- GOOGLE DRIVE CLOUD SYNC STATE ---
   const [gdriveAuthState, setGdriveAuthState] = useState(null);
@@ -24289,6 +24290,8 @@ Return your response strictly as a JSON object matching this schema:
                         startY: touch.clientY,
                         startTime: Date.now(),
                         isSwiping: false,
+                        wasAlreadyOpenAtTouchStart: isDailyMetricsOpen,
+                        wasAlreadyTimerSemiAtTouchStart: (islandMobileState === 'semi'),
                         lastTouchTime: islandTouchRef.current.lastTouchTime || 0
                       };
                     }}
@@ -24302,7 +24305,7 @@ Return your response strictly as a JSON object matching this schema:
                       }
                     }}
                     onTouchEnd={(e) => {
-                      const { startX, startY, startTime, isSwiping } = islandTouchRef.current;
+                      const { startX, startY, startTime, isSwiping, wasAlreadyOpenAtTouchStart, wasAlreadyTimerSemiAtTouchStart } = islandTouchRef.current;
                       const touch = e.changedTouches ? e.changedTouches[0] : null;
                       const now = Date.now();
                       islandTouchRef.current.lastTouchTime = now;
@@ -24341,21 +24344,29 @@ Return your response strictly as a JSON object matching this schema:
 
                       // 2. TAP GESTURE (Low movement & quick release)
                       if (!isSwiping && Math.abs(diffX) < 10 && Math.abs(diffY) < 10 && duration < 600) {
-                        if (isDailyMetricsOpen) {
+                        if (wasAlreadyOpenAtTouchStart && isDailyMetricsOpen) {
+                          // ONLY if the card was ALREADY expanded before touch began:
                           // Clicking expanded stats card takes the user to Study Room Manual Log page
-                          setCurrentTab('study');
-                          setStudyActiveTab('manual');
-                          setIsDailyMetricsOpen(false);
-                        } else if (islandMobileState === 'semi') {
-                          // ONLY clicking the expanded card of the timer must take the user to fullscreen timer page
-                          setIsTimerFullscreen(true);
+                          if (now - (islandExpandedTimeRef.current || 0) > 400) {
+                            setCurrentTab('study');
+                            setStudyActiveTab('manual');
+                            setIsDailyMetricsOpen(false);
+                          }
+                        } else if (wasAlreadyTimerSemiAtTouchStart && islandMobileState === 'semi') {
+                          // ONLY if the timer card was ALREADY expanded before touch began:
+                          if (now - (islandExpandedTimeRef.current || 0) > 400) {
+                            setIsTimerFullscreen(true);
+                          }
                         } else if (islandMobileState === 'mini') {
-                          // Clicking Timer (small) opens the expanded timer card
+                          // Clicking Timer (small) ONLY opens the expanded timer card
+                          islandExpandedTimeRef.current = now;
                           setIsIslandMobileState('semi');
                         } else if (islandMobileState === 'pill') {
-                          // Clicking Stats (small) opens the expanded stats card
+                          // Clicking Stats (small) ONLY opens the expanded stats card
+                          islandExpandedTimeRef.current = now;
                           setIsDailyMetricsOpen(true);
                         } else if (islandMobileState === 'hole') {
+                          islandExpandedTimeRef.current = now;
                           if (isTimerActive) {
                             setIsIslandMobileState('semi');
                           } else {
@@ -24376,16 +24387,23 @@ Return your response strictly as a JSON object matching this schema:
                         (timerState.stopwatchStatus && timerState.stopwatchStatus !== 'idle')
                       );
                       if (isDailyMetricsOpen) {
-                        setCurrentTab('study');
-                        setStudyActiveTab('manual');
-                        setIsDailyMetricsOpen(false);
+                        if (Date.now() - (islandExpandedTimeRef.current || 0) > 400) {
+                          setCurrentTab('study');
+                          setStudyActiveTab('manual');
+                          setIsDailyMetricsOpen(false);
+                        }
                       } else if (islandMobileState === 'semi') {
-                        setIsTimerFullscreen(true);
+                        if (Date.now() - (islandExpandedTimeRef.current || 0) > 400) {
+                          setIsTimerFullscreen(true);
+                        }
                       } else if (islandMobileState === 'mini') {
+                        islandExpandedTimeRef.current = Date.now();
                         setIsIslandMobileState('semi');
                       } else if (islandMobileState === 'pill') {
+                        islandExpandedTimeRef.current = Date.now();
                         setIsDailyMetricsOpen(true);
                       } else {
+                        islandExpandedTimeRef.current = Date.now();
                         if (isTimerActive) {
                           setIsIslandMobileState('semi');
                         } else {
@@ -24413,6 +24431,7 @@ Return your response strictly as a JSON object matching this schema:
                       className="compact-content cursor-pointer"
                       onClick={(e) => {
                         e.stopPropagation();
+                        islandExpandedTimeRef.current = Date.now();
                         setIsDailyMetricsOpen(true);
                       }}
                     >
@@ -24447,6 +24466,7 @@ Return your response strictly as a JSON object matching this schema:
                       className="compact-timer-mini flex items-center justify-between w-full px-3 cursor-pointer"
                       onClick={(e) => {
                         e.stopPropagation();
+                        islandExpandedTimeRef.current = Date.now();
                         setIsIslandMobileState('semi');
                       }}
                     >
@@ -24458,7 +24478,9 @@ Return your response strictly as a JSON object matching this schema:
                     <div 
                       className="compact-timer-semi flex flex-col justify-between w-full h-full cursor-pointer select-none"
                       onClick={() => {
-                        setIsTimerFullscreen(true);
+                        if (Date.now() - (islandExpandedTimeRef.current || 0) > 400) {
+                          setIsTimerFullscreen(true);
+                        }
                       }}
                       title="Click to open Fullscreen Timer"
                     >
@@ -24576,9 +24598,11 @@ Return your response strictly as a JSON object matching this schema:
                     <div 
                       className="expanded-content cursor-pointer"
                       onClick={() => {
-                        setCurrentTab('study');
-                        setStudyActiveTab('manual');
-                        setIsDailyMetricsOpen(false);
+                        if (Date.now() - (islandExpandedTimeRef.current || 0) > 400) {
+                          setCurrentTab('study');
+                          setStudyActiveTab('manual');
+                          setIsDailyMetricsOpen(false);
+                        }
                       }}
                       title="Click to open Study Room Manual Log"
                     >
@@ -30284,7 +30308,15 @@ Return your response strictly as a JSON object matching this schema:
                       </div>
 
                       {/* Expanded Content */}
-                      <div className="expanded-content">
+                      <div 
+                        className="expanded-content cursor-pointer"
+                        onClick={() => {
+                          setCurrentTab('study');
+                          setStudyActiveTab('manual');
+                          setIsDailyMetricsOpen(false);
+                        }}
+                        title="Click to open Study Room Manual Log"
+                      >
                         {/* Header Strip */}
                         <div className="flex items-center justify-between pb-2 border-b border-white/10">
                           <div className="flex items-center gap-2">
