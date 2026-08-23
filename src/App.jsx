@@ -24222,14 +24222,8 @@ Return your response strictly as a JSON object matching this schema:
           } else if (isMobile) {
             mainContent = (
               <div className={`flex flex-col h-screen h-[100dvh] w-screen overflow-hidden select-none transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'}`}>
-                {/* MOBILE HEADER - Sleek Neumorphic Top Bar with iOS Dynamic Island */}
-                <header className={`relative h-14 px-3 sm:px-4 flex items-center justify-between shrink-0 z-40 transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-card-dark border-b border-gray-800 text-white' : 'neu-card-light border-b border-gray-200/80 text-slate-900'}`}>
-                  {/* LEFT: App Brand Logo & Icon */}
-                  <div className="flex items-center gap-2 z-10 shrink-0">
-                    <img src="/favicon.svg" alt="AutoAnki Logo" className="w-7 h-7 shrink-0 object-contain rounded-xl shadow-md" />
-                    <span className={`font-black tracking-tight text-sm hidden min-[410px]:inline ${settingsThemeMode === 'dark' ? 'text-white' : 'text-slate-900'}`}>AutoAnki</span>
-                  </div>
-
+                {/* MOBILE FLOATING HEADER - Minimalist Dynamic Island & Sync */}
+                <header className="relative h-12 pt-2 px-3 sm:px-4 flex items-center justify-end shrink-0 z-40 bg-transparent">
                   {/* CENTER: iOS Dynamic Island Study Momentum */}
                   {isDailyMetricsOpen && (
                     <div
@@ -24354,16 +24348,6 @@ Return your response strictly as a JSON object matching this schema:
                       >
                         <Clock className={`w-3 h-3 ${timerState.status === 'running' ? 'animate-spin duration-10000' : ''}`} />
                         <span className="font-mono">{formatMinutesToTime(localTimerTimeLeft)}</span>
-                      </button>
-                    )}
-                    {currentTab === 'dashboard' && (
-                      <button
-                        onClick={() => setIsWidgetCustomizerOpen(true)}
-                        className={`w-8 h-8 rounded-xl flex items-center justify-center transition active:scale-95 cursor-pointer ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300 hover:text-white' : 'neu-btn-light text-slate-700 hover:text-slate-950'
-                          }`}
-                        title="Customize widgets"
-                      >
-                        <Settings className="w-4 h-4" />
                       </button>
                     )}
                     <button
