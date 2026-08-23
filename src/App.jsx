@@ -12177,12 +12177,12 @@ JSON Format:
 
         {/* STUDY LOGGER DETAILED MODAL DIALOG (MANUAL METRIC ENTRY FOR DATES & GTS) */}
         {isStudyLoggerModalOpen && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
-            <div className={`rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col animate-in zoom-in duration-300 transition-colors ${isDark ? 'neu-card-dark border border-white/10 bg-[#222730] text-slate-100' : 'neu-card-light border border-white/80 bg-[#e6ecf5] text-slate-900 shadow-2xl'
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-[200]">
+            <div className={`rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col animate-in zoom-in duration-300 transition-colors max-h-[92vh] ${isDark ? 'neu-card-dark border border-white/10 bg-[#222730] text-slate-100' : 'neu-card-light border border-white/80 bg-[#e6ecf5] text-slate-900 shadow-2xl'
               }`}>
 
               {/* Modal Header */}
-              <div className={`p-6 border-b flex justify-between items-center ${isDark ? 'border-white/10 bg-[#1c2128]' : 'bg-[#e6ecf5] border-slate-300/60'}`}>
+              <div className={`px-4 py-3 sm:px-6 sm:py-4 border-b flex justify-between items-center ${isDark ? 'border-white/10 bg-[#1c2128]' : 'bg-[#e6ecf5] border-slate-300/60'}`}>
                 <div className="text-left">
                   <h3 className={`font-black uppercase tracking-widest text-xs ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>Manual Study Report</h3>
                   <span className={`text-[9px] font-bold font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{formatAppDate(loggerDate)}</span>
@@ -12190,14 +12190,14 @@ JSON Format:
 
                 <button
                   onClick={() => setIsStudyLoggerModalOpen(false)}
-                  className={`p-1.5 rounded-xl transition ${isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-white/10' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
+                  className={`p-1.5 rounded-xl transition cursor-pointer ${isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-white/10' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
               {/* Modal Body */}
-              <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto text-left">
+              <div className="p-3.5 sm:p-6 space-y-4 sm:space-y-6 overflow-y-auto text-left">
 
                 {/* Date Select Input */}
                 <div>
@@ -12352,7 +12352,7 @@ JSON Format:
 
                   {/* Inline sub-form to add a new Grand Test */}
                   {isAddingGt && (
-                    <div className={`p-5 rounded-3xl space-y-4 animate-in slide-in-from-top duration-200 ${isDark ? 'neu-card-dark border border-orange-500/20 bg-orange-500/5' : 'bg-orange-50/40 border border-orange-100/70'
+                    <div className={`p-3 sm:p-4.5 rounded-2xl sm:rounded-3xl space-y-3.5 animate-in slide-in-from-top duration-200 ${isDark ? 'neu-card-dark border border-orange-500/20 bg-orange-500/5' : 'bg-orange-50/40 border border-orange-100/70'
                       }`}>
                       <span className="text-[9px] font-black uppercase text-orange-500 tracking-wider">New Grand Test Details</span>
 
@@ -12460,16 +12460,16 @@ JSON Format:
                         </div>
 
                         {/* Live Preview metrics breakdown */}
-                        <div className={`p-3 rounded-2xl border flex items-center justify-between text-[10px] col-span-2 ${isDark ? 'bg-orange-500/10 border-orange-500/20 text-slate-300' : 'bg-orange-50/50 border-orange-100/50 text-gray-500'
+                        <div className={`p-2.5 sm:p-3 rounded-2xl border grid grid-cols-3 gap-1 sm:flex sm:items-center sm:justify-between text-[9px] sm:text-[10px] col-span-2 text-center sm:text-left ${isDark ? 'bg-orange-500/10 border-orange-500/20 text-slate-300' : 'bg-orange-50/50 border-orange-100/50 text-gray-500'
                           }`}>
-                          <span className="font-bold">Attended: <strong className="text-orange-500 font-black">{(Number(loggerGtCorrect) || 0) + (Number(loggerGtIncorrect) || 0)} / {loggerGtType === 'NEETPG' ? (loggerNeetPattern === '180' ? 180 : 200) : 200}</strong></span>
-                          <span className="font-bold">Unattempted: <strong className={`font-black ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>{Math.max(0, (loggerGtType === 'NEETPG' ? (loggerNeetPattern === '180' ? 180 : 200) : 200) - ((Number(loggerGtCorrect) || 0) + (Number(loggerGtIncorrect) || 0)))}</strong></span>
-                          <span className="font-bold">Score Preview: <strong className="text-orange-500 font-black">
+                          <span className="font-bold flex flex-col sm:inline"><span className="text-slate-400 sm:hidden text-[8px] uppercase">Attended</span><span><span className="hidden sm:inline">Attended: </span><strong className="text-orange-500 font-black">{(Number(loggerGtCorrect) || 0) + (Number(loggerGtIncorrect) || 0)} / {loggerGtType === 'NEETPG' ? (loggerNeetPattern === '180' ? 180 : 200) : 200}</strong></span></span>
+                          <span className="font-bold flex flex-col sm:inline"><span className="text-slate-400 sm:hidden text-[8px] uppercase">Unattempted</span><span><span className="hidden sm:inline">Unattempted: </span><strong className={`font-black ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>{Math.max(0, (loggerGtType === 'NEETPG' ? (loggerNeetPattern === '180' ? 180 : 200) : 200) - ((Number(loggerGtCorrect) || 0) + (Number(loggerGtIncorrect) || 0)))}</strong></span></span>
+                          <span className="font-bold flex flex-col sm:inline"><span className="text-slate-400 sm:hidden text-[8px] uppercase">Score Preview</span><span><span className="hidden sm:inline">Score Preview: </span><strong className="text-orange-500 font-black">
                             {loggerGtType === 'NEETPG'
                               ? `${(Number(loggerGtCorrect) || 0) * 4 - (Number(loggerGtIncorrect) || 0) * 1} / ${loggerNeetPattern === '180' ? 720 : 800}`
                               : `${((Number(loggerGtCorrect) || 0) * 1 - (Number(loggerGtIncorrect) || 0) * (1 / 3)).toFixed(2)} / 200`
                             }
-                          </strong></span>
+                          </strong></span></span>
                         </div>
 
                         {/* Percentile, Rank and Rank Total */}
@@ -12670,32 +12670,34 @@ JSON Format:
               </div>
 
               {/* Modal Footer Controls */}
-              <div className={`p-6 border-t flex justify-end gap-4 ${isDark ? 'border-white/10 bg-[#1c2128]' : 'bg-gray-50 border-slate-200'}`}>
-                <button
-                  onClick={() => setIsStudyLoggerModalOpen(false)}
-                  className={`px-8 py-3 text-xs font-bold rounded-2xl transition ${isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
-                    }`}
-                >
-                  Cancel
-                </button>
+              <div className={`px-4 py-3 sm:px-6 sm:py-4 border-t flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2.5 sm:gap-4 ${isDark ? 'border-white/10 bg-[#1c2128]' : 'bg-gray-50 border-slate-200'}`}>
+                <div className="grid grid-cols-2 sm:flex items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
+                  <button
+                    onClick={() => setIsStudyLoggerModalOpen(false)}
+                    className={`px-4 sm:px-8 py-2.5 sm:py-3 text-xs font-bold rounded-2xl transition cursor-pointer text-center ${isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
+                      }`}
+                  >
+                    Cancel
+                  </button>
 
-                <button
-                  onClick={saveStudyLog}
-                  disabled={isSaving}
-                  className="px-10 py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-xs font-black rounded-2xl hover:shadow-lg shadow-orange-500/20 flex items-center gap-2 active:scale-95 transition-all disabled:opacity-50"
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      Saving Report...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-3.5 h-3.5" />
-                      Save Report
-                    </>
-                  )}
-                </button>
+                  <button
+                    onClick={saveStudyLog}
+                    disabled={isSaving}
+                    className="px-4 sm:px-10 py-2.5 sm:py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-xs font-black rounded-2xl hover:shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50 cursor-pointer text-center"
+                  >
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-3.5 h-3.5" />
+                        Save Report
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
 
             </div>
@@ -12704,12 +12706,12 @@ JSON Format:
 
         {/* EDIT GRAND TEST MODAL DIALOG (TARGETED SCORE & SUBJECT-WISE BREAKDOWN ADJUSTER) */}
         {isEditGtModalOpen && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
-            <div className={`rounded-3xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col animate-in zoom-in duration-300 transition-colors ${isDark ? 'neu-card-dark border border-white/10 bg-[#222730] text-slate-100' : 'neu-card-light border border-white/80 bg-[#e6ecf5] text-slate-900 shadow-2xl'
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-[200]">
+            <div className={`rounded-3xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col animate-in zoom-in duration-300 transition-colors max-h-[92vh] ${isDark ? 'neu-card-dark border border-white/10 bg-[#222730] text-slate-100' : 'neu-card-light border border-white/80 bg-[#e6ecf5] text-slate-900 shadow-2xl'
               }`}>
 
               {/* Modal Header */}
-              <div className={`p-6 border-b flex justify-between items-center ${isDark ? 'border-white/10 bg-[#1c2128]' : 'bg-[#e6ecf5] border-slate-300/60'}`}>
+              <div className={`px-4 py-3 sm:px-6 sm:py-4 border-b flex justify-between items-center ${isDark ? 'border-white/10 bg-[#1c2128]' : 'bg-[#e6ecf5] border-slate-300/60'}`}>
                 <div className="text-left">
                   <h3 className={`font-black uppercase tracking-widest text-xs flex items-center gap-1.5 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
                     <Award className="w-4 h-4 text-orange-500 animate-pulse" />
@@ -12722,14 +12724,14 @@ JSON Format:
 
                 <button
                   onClick={() => setIsEditGtModalOpen(false)}
-                  className={`p-1.5 rounded-xl transition ${isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-white/10' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/60'}`}
+                  className={`p-1.5 rounded-xl transition cursor-pointer ${isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-white/10' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/60'}`}
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
               {/* Modal Body */}
-              <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto text-left">
+              <div className="p-3.5 sm:p-6 space-y-4 sm:space-y-6 overflow-y-auto text-left">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
                   {/* Left Column: Core Fields */}
@@ -13109,32 +13111,34 @@ JSON Format:
               </div>
 
               {/* Modal Footer */}
-              <div className={`p-6 border-t flex justify-end gap-4 ${isDark ? 'border-white/10 bg-[#1c2128]' : 'bg-[#e6ecf5] border-slate-300/60'}`}>
-                <button
-                  onClick={() => setIsEditGtModalOpen(false)}
-                  className={`px-8 py-3 text-xs font-bold rounded-2xl transition ${isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
-                    }`}
-                >
-                  Cancel
-                </button>
+              <div className={`px-4 py-3 sm:px-6 sm:py-4 border-t flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2.5 sm:gap-4 ${isDark ? 'border-white/10 bg-[#1c2128]' : 'bg-[#e6ecf5] border-slate-300/60'}`}>
+                <div className="grid grid-cols-2 sm:flex items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
+                  <button
+                    onClick={() => setIsEditGtModalOpen(false)}
+                    className={`px-4 sm:px-8 py-2.5 sm:py-3 text-xs font-bold rounded-2xl transition cursor-pointer text-center ${isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
+                      }`}
+                  >
+                    Cancel
+                  </button>
 
-                <button
-                  onClick={handleSaveEditedGt}
-                  disabled={isSaving}
-                  className="px-10 py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-xs font-black rounded-2xl hover:shadow-lg shadow-orange-500/20 flex items-center gap-2 active:scale-95 transition-all disabled:opacity-50"
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      Updating Scorecard...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-3.5 h-3.5" />
-                      Save Scorecard Changes
-                    </>
-                  )}
-                </button>
+                  <button
+                    onClick={handleSaveEditedGt}
+                    disabled={isSaving}
+                    className="px-4 sm:px-10 py-2.5 sm:py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-xs font-black rounded-2xl hover:shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50 cursor-pointer text-center"
+                  >
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        Updating GT...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-3.5 h-3.5" />
+                        Update GT Log
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
 
             </div>
