@@ -28001,16 +28001,16 @@ Return your response strictly as a JSON object matching this schema:
                         initial={{ opacity: 0, y: 16 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-                        className="space-y-5 text-left pb-28 p-4 sm:p-5"
+                        className="space-y-4 text-left pb-28 px-1.5 sm:px-4 py-2"
                       >
                         {/* Mobile Top Workspace Header */}
                         <motion.div
                           initial={{ opacity: 0, y: 12 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.4, delay: 0.05 }}
-                          className={`p-5 sm:p-6 rounded-3xl transition-all space-y-4 ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'}`}
+                          className={`p-4 sm:p-6 rounded-3xl transition-all space-y-3.5 ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'}`}
                         >
-                          <div className={`flex items-center justify-between pb-3 border-b flex-wrap gap-2.5 ${isDark ? 'border-slate-750' : 'border-slate-200/80'}`}>
+                          <div className={`flex items-center justify-between pb-3 border-b gap-2.5 ${isDark ? 'border-slate-750' : 'border-slate-200/80'}`}>
                             <div className="flex items-center gap-3 min-w-0">
                               <div className={`p-2.5 rounded-xl shrink-0 ${isDark ? 'neu-pressed-dark text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
                                 <ListChecks className="w-5 h-5" />
@@ -28020,15 +28020,6 @@ Return your response strictly as a JSON object matching this schema:
                                 <p className={`text-[9px] sm:text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Subject Tracker</p>
                               </div>
                             </div>
-
-                            <button
-                              type="button"
-                              onClick={() => setIsSubjectPdfModalOpen(true)}
-                              className={`px-3 py-1.5 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-wider border transition-all flex items-center gap-1.5 shrink-0 ${isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300 border-slate-700' : 'neu-btn-light text-blue-600 border-slate-300'
-                                }`}
-                            >
-                              📁 Upload PDF & Offset
-                            </button>
 
                             {/* Subtab Switcher Pill */}
                             <div className={`relative flex items-center p-1.5 rounded-2xl shrink-0 ${isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'}`}>
@@ -28058,7 +28049,7 @@ Return your response strictly as a JSON object matching this schema:
                           </div>
 
                           {/* Quick Metrics Bar */}
-                          <div className="grid grid-cols-3 gap-2.5">
+                          <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
                             <div className={`p-3 rounded-2xl text-center border ${isDark ? 'neu-pressed-dark border-slate-800' : 'neu-pressed-light border-slate-200/80'}`}>
                               <span className={`block text-[8px] sm:text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Topics</span>
                               <span className="text-xs sm:text-sm font-black text-blue-500">{revisedTopicsCount}/{totalTopicsCount}</span>
@@ -28465,9 +28456,9 @@ Return your response strictly as a JSON object matching this schema:
                               </>
                             ) : (
                               /* Mobile Source & AI Tools Tab */
-                              <div className="space-y-5">
+                              <div className="space-y-4">
                                 {/* Primary Source Card */}
-                                <div className={`p-5 rounded-3xl space-y-3.5 transition-all ${isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-800 border-slate-200'}`}>
+                                <div className={`p-4 sm:p-5 rounded-3xl space-y-3.5 transition-all border ${isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-800 border-slate-200'}`}>
                                   <label className={`block text-[9px] sm:text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Primary Source Material</label>
                                   <div className="flex gap-2.5 items-center w-full">
                                     <input
@@ -28509,6 +28500,24 @@ Return your response strictly as a JSON object matching this schema:
                                   </div>
                                 </div>
 
+                                {/* PDF & Page Offset Configuration Card */}
+                                <div className={`p-4 sm:p-5 rounded-3xl space-y-3 transition-all border ${isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-800 border-slate-200'}`}>
+                                  <div className="flex items-center justify-between gap-2.5 flex-wrap">
+                                    <div>
+                                      <label className={`block text-[9px] sm:text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Digital PDF & Offset</label>
+                                      <p className={`text-[10px] font-medium mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Attach PDF textbook to auto-jump to exact page numbers.</p>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => setIsSubjectPdfModalOpen(true)}
+                                      className={`px-3.5 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider border transition-all flex items-center gap-1.5 shrink-0 ${isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300 border-slate-700' : 'neu-btn-light text-blue-600 border-slate-300'
+                                        }`}
+                                    >
+                                      📁 Upload PDF & Offset
+                                    </button>
+                                  </div>
+                                </div>
+
                                 {/* AI Book Index Extractor */}
                                 <div
                                   tabIndex={0}
@@ -28530,7 +28539,7 @@ Return your response strictly as a JSON object matching this schema:
                                       processIndexFiles(e.clipboardData.files, selectedTrackerSubject);
                                     }
                                   }}
-                                  className={`flex flex-col gap-4 rounded-3xl p-5 sm:p-6 outline-none transition-all duration-300 ${isDark
+                                  className={`flex flex-col gap-4 rounded-3xl p-4 sm:p-6 outline-none transition-all duration-300 ${isDark
                                     ? 'neu-card-dark bg-gradient-to-br from-slate-900 via-indigo-950/40 to-slate-900 border border-indigo-900/40 text-white'
                                     : 'neu-card-light bg-gradient-to-br from-violet-50/70 via-white to-indigo-50/70 border border-indigo-100 text-slate-800'
                                     }`}
