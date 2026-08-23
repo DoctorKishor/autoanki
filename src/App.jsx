@@ -4461,33 +4461,35 @@ export default function App() {
                   transition={{ duration: 0.3, ease: 'easeInOut' }}
                   className="overflow-hidden space-y-4 sm:space-y-6 pt-3 sm:pt-4 pb-2 sm:pb-3 px-0.5 sm:px-1.5 border-t border-gray-500/10"
                 >
-                  <div className="grid grid-cols-2 gap-2 sm:gap-4 max-w-xl mx-auto w-full">
-                    <div className="w-full">
-                      <UiverseButton
-                        icon={<Download className="w-4 h-4 text-blue-500 shrink-0" />}
-                        onClick={handleExportBackup}
-                        fullWidth
-                        size="md"
-                        themeMode={settingsThemeMode}
-                        isSuccess={exportBackupState}
-                        successText="Exported!"
-                      >
-                        Export (.json)
-                      </UiverseButton>
-                    </div>
+                  <div className="py-2.5 px-2 sm:px-4">
+                    <div className="grid grid-cols-2 gap-3 sm:gap-4 max-w-md mx-auto w-full">
+                      <div className="w-full flex justify-center">
+                        <UiverseButton
+                          icon={<Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-500 shrink-0" />}
+                          onClick={handleExportBackup}
+                          fullWidth
+                          size="sm"
+                          themeMode={settingsThemeMode}
+                          isSuccess={exportBackupState}
+                          successText="Exported!"
+                        >
+                          Export (.json)
+                        </UiverseButton>
+                      </div>
 
-                    <div className="w-full">
-                      <UiverseButton
-                        icon={<Upload className="w-4 h-4 text-emerald-500 shrink-0" />}
-                        onClick={handleImportBackup}
-                        fullWidth
-                        size="md"
-                        themeMode={settingsThemeMode}
-                        isSuccess={importBackupState}
-                        successText="Imported!"
-                      >
-                        Import (.json)
-                      </UiverseButton>
+                      <div className="w-full flex justify-center">
+                        <UiverseButton
+                          icon={<Upload className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-500 shrink-0" />}
+                          onClick={handleImportBackup}
+                          fullWidth
+                          size="sm"
+                          themeMode={settingsThemeMode}
+                          isSuccess={importBackupState}
+                          successText="Imported!"
+                        >
+                          Import (.json)
+                        </UiverseButton>
+                      </div>
                     </div>
                   </div>
 
