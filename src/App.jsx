@@ -29254,7 +29254,7 @@ Return your response strictly as a JSON object matching this schema:
             );
           } else {
             mainContent = (
-              <div className={`h-screen w-screen font-sans flex overflow-hidden transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'}`}>
+              <div className={`h-screen w-screen font-sans flex overflow-hidden transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'}`}>
 
                 {/* SIDEBAR NAVIGATION (Hidden on Mobile) */}
                 <aside
@@ -29263,10 +29263,10 @@ Return your response strictly as a JSON object matching this schema:
                   style={{
                     transition: 'width 0.6s cubic-bezier(0, 0, 0, 1)'
                   }}
-                  className={`flex ${isSidebarExpanded ? 'w-64' : 'w-20'} ${settingsThemeMode === 'dark' ? 'neu-card-dark border-r border-gray-800/80 text-slate-100' : 'neu-card-light border-r border-gray-200/80 text-slate-800'} flex flex-col py-6 shrink-0 shadow-xl z-20 neu-action-sidebar will-change-[width] overflow-hidden`}
+                  className={`flex ${isSidebarExpanded ? 'w-64' : 'w-20'} flex flex-col shrink-0 z-20 neu-action-sidebar will-change-[width] overflow-hidden`}
                 >
-                  {/* Top Logo & App Title (Perfect Symmetry) */}
-                  <div className="mb-7 flex items-center px-4 h-10 z-10 shrink-0">
+                  {/* Top Logo & App Title (Perfect Symmetry, Aligned h-16) */}
+                  <div className="h-16 flex items-center px-4 z-10 shrink-0">
                     <div className="flex items-center min-w-0 w-full">
                       <div className="w-12 shrink-0 flex items-center justify-center">
                         <img src="/favicon.svg" alt="AutoAnki Logo" className="w-9 h-9 object-contain rounded-xl shadow-md" />
@@ -29287,7 +29287,7 @@ Return your response strictly as a JSON object matching this schema:
                   </div>
 
                   {/* Navigation Categories (100% Symmetrical Clean Geometry) */}
-                  <nav className="flex-grow space-y-3 overflow-y-auto custom-scrollbar max-h-[calc(100vh-200px)] z-10 px-4">
+                  <nav className="flex-grow space-y-3 overflow-y-auto custom-scrollbar max-h-[calc(100vh-160px)] z-10 px-4 py-1">
                     {navCategories.map((cat) => {
                       const CatIcon = cat.icon;
                       const hasActiveItem = cat.items.some(item => item.id === currentTab);
@@ -29430,7 +29430,7 @@ Return your response strictly as a JSON object matching this schema:
                   </nav>
 
                   {/* Footer Profile Section (Perfect Symmetry) */}
-                  <div className="mt-auto px-4 pt-3 z-10 shrink-0">
+                  <div className="mt-auto px-4 py-3 z-10 shrink-0">
                     <div
                       style={{
                         transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
@@ -29483,13 +29483,11 @@ Return your response strictly as a JSON object matching this schema:
                 </aside>
 
                 {/* MAIN CONTENT AREA */}
-                <div className={`flex-grow flex flex-col relative overflow-hidden transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'}`}>
+                <div className="flex-grow flex flex-col relative overflow-hidden">
 
-                  {/* TOP BAR - EDGE-TO-EDGE FROSTED LIQUID GLASS */}
-                  <header className={`h-16 flex items-center justify-between px-6 shrink-0 z-30 transition-all duration-300 relative backdrop-blur-2xl ${
-                    settingsThemeMode === 'dark'
-                      ? 'bg-[#222730]/75 border-b border-white/[0.08] text-white shadow-[0_4px_30px_rgba(0,0,0,0.35)] before:absolute before:inset-x-0 before:top-0 before:h-[1px] before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent'
-                      : 'bg-[#e6ecf5]/75 border-b border-white/80 text-gray-800 shadow-[0_4px_30px_rgba(37,99,235,0.06)] before:absolute before:inset-x-0 before:top-0 before:h-[1px] before:bg-gradient-to-r before:from-transparent before:via-white/90 before:to-transparent'
+                  {/* TOP BAR - SEAMLESS LIQUID GLASS WITH SIDEBAR */}
+                  <header className={`h-16 flex items-center justify-between px-6 shrink-0 z-30 transition-all duration-300 relative ${
+                    settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'
                   }`}>
                     
                     {/* LEFT: Contextual Title & Actions */}
@@ -29522,19 +29520,6 @@ Return your response strictly as a JSON object matching this schema:
                           <span>Customize</span>
                         </button>
                       )}
-
-                      <button
-                        type="button"
-                        onClick={resetLayout}
-                        className={`p-2 rounded-xl transition cursor-pointer active:scale-95 border ${
-                          settingsThemeMode === 'dark'
-                            ? 'bg-white/[0.03] hover:bg-white/[0.08] border-white/[0.06] text-slate-400 hover:text-blue-400'
-                            : 'bg-white/50 hover:bg-white/80 border-white/70 text-slate-400 hover:text-blue-600'
-                        }`}
-                        title="Reset Layout"
-                      >
-                        <Maximize className="w-4 h-4" />
-                      </button>
                     </div>
 
                     {/* CENTER: Liquid Glass Summary Capsule with Expandable Drawer */}
@@ -29783,8 +29768,12 @@ Return your response strictly as a JSON object matching this schema:
                     </div>
                   </header>
 
-                  {/* TAB VIEWS */}
-                  <div className={`flex-grow flex flex-col overflow-hidden relative transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'}`}>
+                  {/* TAB VIEWS - CANVAS WITH SMOOTH CURVED CORNER */}
+                  <div className={`flex-grow flex flex-col overflow-hidden relative transition-all duration-300 rounded-tl-[32px] border-t border-l shadow-2xl ${
+                    settingsThemeMode === 'dark'
+                      ? 'neu-bg-dark text-slate-100 border-white/[0.08] shadow-[inset_0_4px_24px_rgba(0,0,0,0.4)]'
+                      : 'neu-bg-light text-slate-800 border-white/90 shadow-[inset_0_4px_24px_rgba(37,99,235,0.04)]'
+                  }`}>
 
                     {currentTab === 'campTracker' && (
                       <CampDashboard
