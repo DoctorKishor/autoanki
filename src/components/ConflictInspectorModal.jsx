@@ -187,16 +187,16 @@ export default function ConflictInspectorModal({
             </div>
           </div>
           <div className="relative w-11 h-11 sm:w-14 sm:h-14 flex items-center justify-center shrink-0">
-            <svg className="w-full h-full transform -rotate-90">
-              <circle cx="28" cy="28" r="22" stroke={isDark ? '#2e3542' : '#f3f4f6'} strokeWidth="4" fill="transparent" className="scale-75 sm:scale-100 origin-center" />
+            <svg viewBox="0 0 56 56" className="w-full h-full transform -rotate-90">
+              <circle cx="28" cy="28" r="22" stroke={isDark ? '#2e3542' : '#f3f4f6'} strokeWidth="4" fill="transparent" />
               <circle cx="28" cy="28" r="22" stroke="#3b82f6" strokeWidth="4" fill="transparent"
                 strokeDasharray={2 * Math.PI * 22}
                 strokeDashoffset={2 * Math.PI * 22 * (1 - integrityScore / 100)}
                 strokeLinecap="round"
-                className="transition-all duration-500 scale-75 sm:scale-100 origin-center"
+                className="transition-all duration-500"
               />
             </svg>
-            <span className={`absolute text-[9px] sm:text-[10px] font-black ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{integrityScore}%</span>
+            <span className={`absolute inset-0 flex items-center justify-center text-[10px] sm:text-xs font-black ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{integrityScore}%</span>
           </div>
         </div>
 
