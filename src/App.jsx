@@ -6075,7 +6075,7 @@ export default function App() {
       (timerState.stopwatchStatus && timerState.stopwatchStatus !== 'idle')
     );
     if (isAnyActive) {
-      setIslandMobileState(prev => (prev === 'hole' || prev === 'pill' ? 'mini' : prev));
+      setIsIslandMobileState(prev => (prev === 'hole' || prev === 'pill' ? 'mini' : prev));
     }
   }, [timerState.pomodoroStatus, timerState.timerStatus, timerState.stopwatchStatus]);
 
@@ -24320,7 +24320,7 @@ Return your response strictly as a JSON object matching this schema:
                         } else if (isTimerActive) {
                           // Cycle between: punch hole -> timer mini capsule -> timer semi card
                           const timerStates = ['hole', 'mini', 'semi'];
-                          setIslandMobileState(prev => {
+                          setIsIslandMobileState(prev => {
                             const currentIdx = timerStates.indexOf(prev);
                             const safeIdx = currentIdx === -1 ? 1 : currentIdx;
                             const step = diffX > 0 ? 1 : -1;
@@ -24329,7 +24329,7 @@ Return your response strictly as a JSON object matching this schema:
                           });
                         } else {
                           // Normal mode: toggle between punch hole and stats pill
-                          setIslandMobileState(prev => (prev === 'hole' ? 'pill' : 'hole'));
+                          setIsIslandMobileState(prev => (prev === 'hole' ? 'pill' : 'hole'));
                         }
                         islandTouchRef.current = { startX: 0, startY: 0, startTime: 0, isSwiping: false, lastTouchTime: now };
                         return;
