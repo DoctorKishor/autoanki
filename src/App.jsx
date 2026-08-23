@@ -6119,40 +6119,6 @@ export default function App() {
   const [fsStatsTimeframe, setFsStatsTimeframe] = useState('today');
   const [loadedSoundIds, setLoadedSoundIds] = useState([]);
 
-  // Hides control buttons after 3 seconds of mouse or keyboard inactivity in fullscreen mode
-  useEffect(() => {
-    if (!isTimerFullscreen) {
-      setIsTimerUiVisible(true);
-      return;
-    }
-
-    const resetTimer = () => {
-      setIsTimerUiVisible(true);
-      if (timerUiTimeoutRef.current) {
-        clearTimeout(timerUiTimeoutRef.current);
-      }
-      timerUiTimeoutRef.current = setTimeout(() => {
-        setIsTimerUiVisible(false);
-      }, 3000);
-    };
-
-    resetTimer();
-
-    const handleMouseMove = () => resetTimer();
-    const handleKeyDown = () => resetTimer();
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('keydown', handleKeyDown);
-      if (timerUiTimeoutRef.current) {
-        clearTimeout(timerUiTimeoutRef.current);
-      }
-    };
-  }, [isTimerFullscreen]);
-
   // Load custom backgrounds from Local DB (Item 16.4)
   useEffect(() => {
     getLocalSetting('studyRoomBackgrounds').then(data => {
@@ -6509,8 +6475,17 @@ export default function App() {
     }
   }, [showMilliseconds]);
 
+  // Inactivity auto-hide timer for fullscreen mode: keep controls visible when any panel or modal is open
   useEffect(() => {
     if (!isTimerFullscreen) {
+      setIsTimerUiVisible(true);
+      if (timerUiTimeoutRef.current) clearTimeout(timerUiTimeoutRef.current);
+      return;
+    }
+
+    // If any popover panel, widget customizer, CSS editor, or notes dropdown is open, keep UI visible permanently!
+    const isAnyPanelOpen = Boolean(activeFullscreenPanel || fsCustomizingWidgets || fsEditingWidgetId || fsActiveTaskNotesExpanded);
+    if (isAnyPanelOpen) {
       setIsTimerUiVisible(true);
       if (timerUiTimeoutRef.current) clearTimeout(timerUiTimeoutRef.current);
       return;
@@ -6524,6 +6499,8 @@ export default function App() {
       }, 3000);
     };
 
+    setIsTimerUiVisible(true);
+    if (timerUiTimeoutRef.current) clearTimeout(timerUiTimeoutRef.current);
     timerUiTimeoutRef.current = setTimeout(() => {
       setIsTimerUiVisible(false);
     }, 3000);
@@ -6531,14 +6508,16 @@ export default function App() {
     window.addEventListener('mousemove', handleActivity);
     window.addEventListener('mousedown', handleActivity);
     window.addEventListener('keydown', handleActivity);
+    window.addEventListener('touchstart', handleActivity);
 
     return () => {
       if (timerUiTimeoutRef.current) clearTimeout(timerUiTimeoutRef.current);
       window.removeEventListener('mousemove', handleActivity);
       window.removeEventListener('mousedown', handleActivity);
       window.removeEventListener('keydown', handleActivity);
+      window.removeEventListener('touchstart', handleActivity);
     };
-  }, [isTimerFullscreen]);
+  }, [isTimerFullscreen, activeFullscreenPanel, fsCustomizingWidgets, fsEditingWidgetId, fsActiveTaskNotesExpanded]);
 
   // Handle HTML5 Fullscreen API Integration
   useEffect(() => {
@@ -22760,9 +22739,12 @@ Return your response strictly as a JSON object matching this schema:
       setFsTimerOpacity(100);
     };
 
+    const isAnyPanelOpen = Boolean(activeFullscreenPanel || fsCustomizingWidgets || fsEditingWidgetId || fsActiveTaskNotesExpanded);
+    const showTimerUi = isTimerUiVisible || isAnyPanelOpen;
+
     return (
       <div className="fixed inset-0 z-[300] flex items-center justify-center text-white select-none overflow-hidden transition-all duration-300"
-        style={{ ...bgStyle, cursor: isTimerUiVisible ? (fsCustomizingWidgets ? 'grab' : 'default') : 'none' }} onClick={closePanel}>
+        style={{ ...bgStyle, cursor: showTimerUi ? (fsCustomizingWidgets ? 'grab' : 'default') : 'none' }} onClick={closePanel}>
 
         {/* YouTube background */}
         {fsYoutubeVideoId && (
@@ -22902,7 +22884,7 @@ Return your response strictly as a JSON object matching this schema:
           </div>
 
           {/* Control buttons + popovers */}
-          <div className={`relative flex items-center gap-1 sm:gap-2 transition-all duration-700 pointer-events-auto shrink-0 ${isTimerUiVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'
+          <div className={`relative flex items-center gap-1 sm:gap-2 transition-all duration-700 pointer-events-auto shrink-0 ${showTimerUi ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'
             }`} onClick={e => e.stopPropagation()}>
             <CtrlBtn panelId="background" activePanel={activeFullscreenPanel} icon={ImageIcon} label="Background" onToggle={togglePanel} />
             <CtrlBtn panelId="sounds" activePanel={activeFullscreenPanel} icon={Music} label="Sounds" onToggle={togglePanel} />
@@ -23029,7 +23011,7 @@ Return your response strictly as a JSON object matching this schema:
 
           {/* Glassmorphic timer controls button panel */}
           <div
-            className={`mt-4 sm:mt-6 flex items-center justify-center gap-1.5 sm:gap-2 bg-white/5 backdrop-blur-md border border-white/10 p-1.5 sm:p-2 rounded-xl sm:rounded-2xl shadow-2xl pointer-events-auto select-none transition-all duration-700 max-w-[95vw] flex-wrap sm:flex-nowrap ${isTimerUiVisible
+            className={`mt-4 sm:mt-6 flex items-center justify-center gap-1.5 sm:gap-2 bg-white/5 backdrop-blur-md border border-white/10 p-1.5 sm:p-2 rounded-xl sm:rounded-2xl shadow-2xl pointer-events-auto select-none transition-all duration-700 max-w-[95vw] flex-wrap sm:flex-nowrap ${showTimerUi
               ? 'opacity-100 scale-100 translate-y-0'
               : 'opacity-0 scale-95 translate-y-2 pointer-events-none'
               }`}
