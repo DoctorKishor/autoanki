@@ -29522,126 +29522,154 @@ Return your response strictly as a JSON object matching this schema:
                       )}
                     </div>
 
-                    {/* CENTER: Liquid Glass Summary Capsule with Expandable Drawer */}
-                    <div className="relative">
-                      <motion.button
-                        type="button"
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => setIsDailyMetricsOpen(!isDailyMetricsOpen)}
-                        className={`flex items-center gap-2.5 sm:gap-3.5 px-3.5 sm:px-4 py-2 rounded-2xl cursor-pointer transition-all select-none ${
-                          settingsThemeMode === 'dark' ? 'liquid-glass-pill-dark text-slate-100' : 'liquid-glass-pill-light text-slate-800'
-                        } ${isDailyMetricsOpen ? (settingsThemeMode === 'dark' ? 'ring-2 ring-blue-400/50 border-blue-400/40' : 'ring-2 ring-blue-500/40 border-blue-400/40') : ''}`}
-                        title="Click to view full study momentum"
-                      >
-                        {/* Study Time */}
-                        <div className="flex items-center gap-1.5">
-                          <Clock className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                          <span className="text-xs font-black tracking-tight">{getLiveTodayHours().toFixed(1)}h</span>
-                        </div>
+                    {/* CENTER: iOS Dynamic Island Study Momentum */}
+                    {isDailyMetricsOpen && (
+                      <div
+                        className="fixed inset-0 z-40"
+                        onClick={() => setIsDailyMetricsOpen(false)}
+                      />
+                    )}
 
-                        <span className="opacity-30 text-xs font-bold">•</span>
+                    <motion.div
+                      layout
+                      initial={false}
+                      animate={{
+                        width: isDailyMetricsOpen ? 540 : 'auto',
+                        borderRadius: isDailyMetricsOpen ? 24 : 16,
+                      }}
+                      transition={{
+                        type: 'spring',
+                        stiffness: 380,
+                        damping: 28,
+                        mass: 0.8,
+                      }}
+                      onClick={() => !isDailyMetricsOpen && setIsDailyMetricsOpen(true)}
+                      className={`absolute left-1/2 -translate-x-1/2 top-2.5 z-50 cursor-pointer overflow-hidden backdrop-blur-3xl transition-colors duration-300 select-none ${
+                        settingsThemeMode === 'dark'
+                          ? 'bg-[#222730]/95 text-slate-100 border border-white/[0.14] shadow-[0_16px_40px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.12)]'
+                          : 'bg-[#e6ecf5]/95 text-slate-800 border border-white/90 shadow-[0_16px_40px_rgba(37,99,235,0.14),inset_0_1px_1px_rgba(255,255,255,0.9)]'
+                      } ${!isDailyMetricsOpen ? (settingsThemeMode === 'dark' ? 'hover:border-blue-400/40 hover:shadow-[0_8px_24px_rgba(56,189,248,0.2)]' : 'hover:border-blue-400/50 hover:shadow-[0_8px_24px_rgba(37,99,235,0.15)]') : 'max-w-[92vw]'}`}
+                    >
+                      <AnimatePresence mode="wait" initial={false}>
+                        {!isDailyMetricsOpen ? (
+                          /* Compact iOS Island Pill */
+                          <motion.div
+                            key="compact"
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            transition={{ duration: 0.15 }}
+                            className="flex items-center gap-2.5 sm:gap-3.5 px-4 py-2"
+                          >
+                            {/* Study Time */}
+                            <div className="flex items-center gap-1.5">
+                              <Clock className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                              <span className="text-xs font-black tracking-tight">{getLiveTodayHours().toFixed(1)}h</span>
+                            </div>
 
-                        {/* Cards Reviewed */}
-                        <div className="flex items-center gap-1.5">
-                          <Layers className="w-3.5 h-3.5 text-purple-500 shrink-0" />
-                          <span className="text-xs font-black tracking-tight">{studyLogs[todayStr]?.cards || 0} cards</span>
-                        </div>
+                            <span className="opacity-30 text-xs font-bold">•</span>
 
-                        <span className="opacity-30 text-xs font-bold">•</span>
+                            {/* Cards Reviewed */}
+                            <div className="flex items-center gap-1.5">
+                              <Layers className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                              <span className="text-xs font-black tracking-tight">{studyLogs[todayStr]?.cards || 0} cards</span>
+                            </div>
 
-                        {/* Current Streak */}
-                        <div className="flex items-center gap-1.5">
-                          <Flame className="w-3.5 h-3.5 text-orange-500 shrink-0" />
-                          <span className="text-xs font-black tracking-tight text-orange-500">{streakStats.currentStreak}d</span>
-                        </div>
+                            <span className="opacity-30 text-xs font-bold">•</span>
 
-                        {/* Dropdown Chevron */}
-                        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 opacity-60 ${isDailyMetricsOpen ? 'rotate-180 text-blue-500 opacity-100' : ''}`} />
-                      </motion.button>
+                            {/* Current Streak */}
+                            <div className="flex items-center gap-1.5">
+                              <Flame className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                              <span className="text-xs font-black tracking-tight text-orange-500">{streakStats.currentStreak}d</span>
+                            </div>
 
-                      {/* Expandable Daily Metrics Liquid Glass Horizontal Drawer */}
-                      <AnimatePresence>
-                        {isDailyMetricsOpen && (
-                          <>
-                            {/* Invisible Backdrop */}
-                            <div className="fixed inset-0 z-40" onClick={() => setIsDailyMetricsOpen(false)} />
-                            
-                            <motion.div
-                              initial={{ opacity: 0, y: -6, scale: 0.96 }}
-                              animate={{ opacity: 1, y: 0, scale: 1 }}
-                              exit={{ opacity: 0, y: -6, scale: 0.96 }}
-                              transition={{ duration: 0.2, ease: [0, 0, 0, 1] }}
-                              className={`absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 w-[540px] max-w-[92vw] rounded-2xl p-3 border shadow-2xl backdrop-blur-3xl ${
-                                settingsThemeMode === 'dark'
-                                  ? 'bg-[#222730]/95 border-white/[0.12] text-slate-100 shadow-[0_16px_40px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.1)]'
-                                  : 'bg-[#e6ecf5]/95 border-white/90 text-slate-800 shadow-[0_16px_40px_rgba(37,99,235,0.12),inset_0_1px_1px_rgba(255,255,255,0.9)]'
-                              }`}
-                            >
-                              {/* Header Strip */}
-                              <div className="flex items-center justify-between pb-2 border-b border-white/10 mb-2">
-                                <div className="flex items-center gap-2">
-                                  <h4 className="text-[11px] font-black uppercase tracking-wider">Today's Momentum</h4>
-                                  <span className="text-[10px] font-bold opacity-50">•</span>
-                                  <span className="text-[10px] font-bold opacity-60">{todayStr}</span>
+                            {/* Chevron */}
+                            <ChevronDown className="w-3.5 h-3.5 opacity-60 ml-0.5 text-blue-500" />
+                          </motion.div>
+                        ) : (
+                          /* Expanded iOS Island Drawer */
+                          <motion.div
+                            key="expanded"
+                            initial={{ opacity: 0, y: -4 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -4 }}
+                            transition={{ duration: 0.22, delay: 0.05 }}
+                            className="p-3.5"
+                          >
+                            {/* Header Strip */}
+                            <div className="flex items-center justify-between pb-2 border-b border-white/10 mb-2.5">
+                              <div className="flex items-center gap-2">
+                                <h4 className="text-[11px] font-black uppercase tracking-wider">Today's Momentum</h4>
+                                <span className="text-[10px] font-bold opacity-40">•</span>
+                                <span className="text-[10px] font-bold opacity-60">{todayStr}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border flex items-center gap-1 ${
+                                  settingsThemeMode === 'dark' ? 'bg-orange-500/15 text-orange-400 border-orange-500/30' : 'bg-orange-50 text-orange-700 border-orange-200'
+                                }`}>
+                                  <Flame className="w-2.5 h-2.5" /> {streakStats.currentStreak}d Streak
+                                </span>
+                                <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border ${
+                                  settingsThemeMode === 'dark' ? 'bg-blue-500/15 text-blue-300 border-blue-500/30' : 'bg-blue-50 text-blue-700 border-blue-200'
+                                }`}>
+                                  ⚡ Active
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setIsDailyMetricsOpen(false);
+                                  }}
+                                  className="p-1 hover:bg-white/10 rounded-lg opacity-60 hover:opacity-100 transition cursor-pointer"
+                                  title="Close Momentum Drawer"
+                                >
+                                  <ChevronDown className="w-3.5 h-3.5 rotate-180 text-blue-500" />
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Single-Row 4-Metric Grid */}
+                            <div className="grid grid-cols-4 gap-2">
+                              {/* Study Time */}
+                              <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'}`}>
+                                <div className="flex items-center gap-1 mb-0.5">
+                                  <Clock className="w-3 h-3 text-blue-500 shrink-0" />
+                                  <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Time</span>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                  <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border flex items-center gap-1 ${
-                                    settingsThemeMode === 'dark' ? 'bg-orange-500/15 text-orange-400 border-orange-500/30' : 'bg-orange-50 text-orange-700 border-orange-200'
-                                  }`}>
-                                    <Flame className="w-2.5 h-2.5" /> {streakStats.currentStreak}d Streak
-                                  </span>
-                                  <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border ${
-                                    settingsThemeMode === 'dark' ? 'bg-blue-500/15 text-blue-300 border-blue-500/30' : 'bg-blue-50 text-blue-700 border-blue-200'
-                                  }`}>
-                                    ⚡ Active
-                                  </span>
-                                </div>
+                                <div className="text-xs font-black">{getLiveTodayHours().toFixed(2)}h</div>
                               </div>
 
-                              {/* Single-Row 4-Metric Grid */}
-                              <div className="grid grid-cols-4 gap-2">
-                                {/* Study Time */}
-                                <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'}`}>
-                                  <div className="flex items-center gap-1 mb-0.5">
-                                    <Clock className="w-3 h-3 text-blue-500 shrink-0" />
-                                    <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Time</span>
-                                  </div>
-                                  <div className="text-xs font-black">{getLiveTodayHours().toFixed(2)}h</div>
+                              {/* Cards Reviewed */}
+                              <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'}`}>
+                                <div className="flex items-center gap-1 mb-0.5">
+                                  <Layers className="w-3 h-3 text-purple-500 shrink-0" />
+                                  <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Cards</span>
                                 </div>
-
-                                {/* Cards Reviewed */}
-                                <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'}`}>
-                                  <div className="flex items-center gap-1 mb-0.5">
-                                    <Layers className="w-3 h-3 text-purple-500 shrink-0" />
-                                    <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Cards</span>
-                                  </div>
-                                  <div className="text-xs font-black">{studyLogs[todayStr]?.cards || 0}</div>
-                                </div>
-
-                                {/* Questions Solved */}
-                                <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'}`}>
-                                  <div className="flex items-center gap-1 mb-0.5">
-                                    <HelpCircle className="w-3 h-3 text-indigo-500 shrink-0" />
-                                    <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Qs</span>
-                                  </div>
-                                  <div className="text-xs font-black">{studyLogs[todayStr]?.questions || 0}</div>
-                                </div>
-
-                                {/* Pages Read */}
-                                <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'}`}>
-                                  <div className="flex items-center gap-1 mb-0.5">
-                                    <FileText className="w-3 h-3 text-teal-500 shrink-0" />
-                                    <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Pages</span>
-                                  </div>
-                                  <div className="text-xs font-black">{studyLogs[todayStr]?.pages || 0}</div>
-                                </div>
+                                <div className="text-xs font-black">{studyLogs[todayStr]?.cards || 0}</div>
                               </div>
-                            </motion.div>
-                          </>
+
+                              {/* Questions Solved */}
+                              <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'}`}>
+                                <div className="flex items-center gap-1 mb-0.5">
+                                  <HelpCircle className="w-3 h-3 text-indigo-500 shrink-0" />
+                                  <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Qs</span>
+                                </div>
+                                <div className="text-xs font-black">{studyLogs[todayStr]?.questions || 0}</div>
+                              </div>
+
+                              {/* Pages Read */}
+                              <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'}`}>
+                                <div className="flex items-center gap-1 mb-0.5">
+                                  <FileText className="w-3 h-3 text-teal-500 shrink-0" />
+                                  <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Pages</span>
+                                </div>
+                                <div className="text-xs font-black">{studyLogs[todayStr]?.pages || 0}</div>
+                              </div>
+                            </div>
+                          </motion.div>
                         )}
                       </AnimatePresence>
-                    </div>
+                    </motion.div>
 
                     {/* RIGHT: Floating Focus Island & Cloud Vault Sync */}
                     <div className="flex items-center gap-3">
