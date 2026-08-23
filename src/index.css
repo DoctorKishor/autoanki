@@ -1988,3 +1988,26 @@ body,
   pointer-events: auto;
   transition: opacity 0.4s ease 0.15s; /* Delays fade-in until island expands */
 }
+
+@media (max-width: 640px) {
+  .ios-dynamic-island {
+    width: 195px;
+    height: 34px;
+    top: 10px;
+    border-radius: 17px;
+  }
+  .ios-dynamic-island .compact-content {
+    padding: 0 8px;
+  }
+  .ios-dynamic-island.active {
+    width: calc(100vw - 20px);
+    height: 124px;
+    border-radius: 20px;
+    max-width: 95vw;
+  }
+  .ios-dynamic-island .expanded-content {
+    width: 100%;
+    height: 100%;
+    padding: 10px 12px;
+  }
+}

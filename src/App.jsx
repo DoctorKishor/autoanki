@@ -24222,32 +24222,159 @@ Return your response strictly as a JSON object matching this schema:
           } else if (isMobile) {
             mainContent = (
               <div className={`flex flex-col h-screen h-[100dvh] w-screen overflow-hidden select-none transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'}`}>
-                {/* MOBILE HEADER - Clean Neumorphic AppBar */}
-                <header className={`px-5 py-3.5 flex items-center justify-between border-b shrink-0 z-40 transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-card-dark border-gray-800 text-white' : 'neu-card-light border-gray-200/80 text-slate-900'}`}>
-                  <div className="flex items-center gap-3">
-                    <img src="/favicon.svg" alt="AutoAnki Logo" className="w-8 h-8 shrink-0 object-contain rounded-xl shadow-md" />
-                    <span className={`font-black tracking-tight text-xl ${settingsThemeMode === 'dark' ? 'text-white' : 'text-slate-900'}`}>AutoAnki</span>
+                {/* MOBILE HEADER - Sleek Neumorphic Top Bar with iOS Dynamic Island */}
+                <header className={`relative h-14 px-3 sm:px-4 flex items-center justify-between shrink-0 z-40 transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-card-dark border-b border-gray-800 text-white' : 'neu-card-light border-b border-gray-200/80 text-slate-900'}`}>
+                  {/* LEFT: App Brand Logo & Icon */}
+                  <div className="flex items-center gap-2 z-10 shrink-0">
+                    <img src="/favicon.svg" alt="AutoAnki Logo" className="w-7 h-7 shrink-0 object-contain rounded-xl shadow-md" />
+                    <span className={`font-black tracking-tight text-sm hidden min-[410px]:inline ${settingsThemeMode === 'dark' ? 'text-white' : 'text-slate-900'}`}>AutoAnki</span>
                   </div>
-                  <div className="flex items-center gap-2">
+
+                  {/* CENTER: iOS Dynamic Island Study Momentum */}
+                  {isDailyMetricsOpen && (
+                    <div
+                      className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[2px]"
+                      onClick={() => setIsDailyMetricsOpen(false)}
+                    />
+                  )}
+
+                  <div
+                    onClick={() => !isDailyMetricsOpen && setIsDailyMetricsOpen(true)}
+                    className={`ios-dynamic-island ${settingsThemeMode === 'dark' ? 'dark' : 'light'} ${isDailyMetricsOpen ? 'active' : ''}`}
+                    title={!isDailyMetricsOpen ? "Click to view full study momentum" : ""}
+                  >
+                    {/* Compact Content */}
+                    <div className="compact-content">
+                      {/* Study Time */}
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-500 shrink-0" />
+                        <span className="text-[11px] sm:text-xs font-black tracking-tight">{getLiveTodayHours().toFixed(1)}h</span>
+                      </div>
+
+                      <span className="opacity-30 text-[10px] sm:text-xs font-bold">•</span>
+
+                      {/* Cards Reviewed */}
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Layers className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-purple-500 shrink-0" />
+                        <span className="text-[11px] sm:text-xs font-black tracking-tight">{studyLogs[todayStr]?.cards || 0}c</span>
+                      </div>
+
+                      <span className="opacity-30 text-[10px] sm:text-xs font-bold">•</span>
+
+                      {/* Current Streak */}
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Flame className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-orange-500 shrink-0" />
+                        <span className="text-[11px] sm:text-xs font-black tracking-tight text-orange-500">{streakStats.currentStreak}d</span>
+                      </div>
+
+                      {/* Chevron */}
+                      <ChevronDown className="w-3 h-3 opacity-60 text-blue-500 shrink-0" />
+                    </div>
+
+                    {/* Expanded Content */}
+                    <div className="expanded-content">
+                      {/* Header Strip */}
+                      <div className="flex items-center justify-between pb-1.5 border-b border-white/10">
+                        <div className="flex items-center gap-1.5">
+                          <h4 className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider">Today's Momentum</h4>
+                          <span className="text-[9px] sm:text-[10px] font-bold opacity-40">•</span>
+                          <span className="text-[9px] sm:text-[10px] font-bold opacity-60">{todayStr}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className={`px-1.5 py-0.5 rounded-lg text-[8px] sm:text-[9px] font-black uppercase tracking-wider border flex items-center gap-1 ${
+                            settingsThemeMode === 'dark' ? 'bg-orange-500/15 text-orange-400 border-orange-500/30' : 'bg-orange-50 text-orange-700 border-orange-200'
+                          }`}>
+                            <Flame className="w-2.5 h-2.5" /> {streakStats.currentStreak}d Streak
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setIsDailyMetricsOpen(false);
+                            }}
+                            className="p-1 hover:bg-white/10 rounded-lg opacity-60 hover:opacity-100 transition cursor-pointer"
+                            title="Close Momentum Drawer"
+                          >
+                            <ChevronDown className="w-3.5 h-3.5 rotate-180 text-blue-500" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Single-Row 4-Metric Grid */}
+                      <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+                        {/* Study Time */}
+                        <div className={`p-1.5 sm:p-2 rounded-xl border text-center flex flex-col items-center justify-center ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'}`}>
+                          <div className="flex items-center gap-0.5 sm:gap-1 mb-0.5">
+                            <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-blue-500 shrink-0" />
+                            <span className="text-[7.5px] sm:text-[8px] font-black uppercase tracking-wider opacity-60">Time</span>
+                          </div>
+                          <div className="text-[11px] sm:text-xs font-black">{getLiveTodayHours().toFixed(2)}h</div>
+                        </div>
+
+                        {/* Cards Reviewed */}
+                        <div className={`p-1.5 sm:p-2 rounded-xl border text-center flex flex-col items-center justify-center ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'}`}>
+                          <div className="flex items-center gap-0.5 sm:gap-1 mb-0.5">
+                            <Layers className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-purple-500 shrink-0" />
+                            <span className="text-[7.5px] sm:text-[8px] font-black uppercase tracking-wider opacity-60">Cards</span>
+                          </div>
+                          <div className="text-[11px] sm:text-xs font-black">{studyLogs[todayStr]?.cards || 0}</div>
+                        </div>
+
+                        {/* Questions Solved */}
+                        <div className={`p-1.5 sm:p-2 rounded-xl border text-center flex flex-col items-center justify-center ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'}`}>
+                          <div className="flex items-center gap-0.5 sm:gap-1 mb-0.5">
+                            <HelpCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-indigo-500 shrink-0" />
+                            <span className="text-[7.5px] sm:text-[8px] font-black uppercase tracking-wider opacity-60">Qs</span>
+                          </div>
+                          <div className="text-[11px] sm:text-xs font-black">{studyLogs[todayStr]?.questions || 0}</div>
+                        </div>
+
+                        {/* Pages Read */}
+                        <div className={`p-1.5 sm:p-2 rounded-xl border text-center flex flex-col items-center justify-center ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'}`}>
+                          <div className="flex items-center gap-0.5 sm:gap-1 mb-0.5">
+                            <FileText className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-teal-500 shrink-0" />
+                            <span className="text-[7.5px] sm:text-[8px] font-black uppercase tracking-wider opacity-60">Pages</span>
+                          </div>
+                          <div className="text-[11px] sm:text-xs font-black">{studyLogs[todayStr]?.pages || 0}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* RIGHT: Actions */}
+                  <div className="flex items-center gap-1.5 sm:gap-2 z-10 shrink-0">
+                    {/* Active Timer Pill if running */}
+                    {timerState.status !== 'idle' && (
+                      <button
+                        onClick={() => setIsTimerFullscreen(true)}
+                        className={`flex items-center gap-1 px-2 py-1 rounded-xl text-[10px] font-black border transition active:scale-95 cursor-pointer ${
+                          settingsThemeMode === 'dark' ? 'neu-btn-dark text-orange-400 border-orange-500/30' : 'neu-btn-light text-orange-600 border-orange-200'
+                        }`}
+                        title="Open Study Room"
+                      >
+                        <Clock className={`w-3 h-3 ${timerState.status === 'running' ? 'animate-spin duration-10000' : ''}`} />
+                        <span className="font-mono">{formatMinutesToTime(localTimerTimeLeft)}</span>
+                      </button>
+                    )}
                     {currentTab === 'dashboard' && (
                       <button
                         onClick={() => setIsWidgetCustomizerOpen(true)}
-                        className={`w-9 h-9 rounded-xl flex items-center justify-center transition active:scale-95 cursor-pointer ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300 hover:text-white' : 'neu-btn-light text-slate-700 hover:text-slate-950'
+                        className={`w-8 h-8 rounded-xl flex items-center justify-center transition active:scale-95 cursor-pointer ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300 hover:text-white' : 'neu-btn-light text-slate-700 hover:text-slate-950'
                           }`}
                         title="Customize widgets"
                       >
-                        <Settings className="w-4.5 h-4.5" />
+                        <Settings className="w-4 h-4" />
                       </button>
                     )}
                     <button
                       onClick={handleHeaderSync}
                       disabled={isSyncing || gdriveSyncState.isSyncing}
-                      className={`relative w-9 h-9 rounded-xl flex items-center justify-center transition active:scale-95 cursor-pointer ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300 hover:text-white' : 'neu-btn-light text-slate-700 hover:text-slate-950'
+                      className={`relative w-8 h-8 rounded-xl flex items-center justify-center transition active:scale-95 cursor-pointer ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300 hover:text-white' : 'neu-btn-light text-slate-700 hover:text-slate-950'
                         } ${(isSyncing || gdriveSyncState.isSyncing) ? 'opacity-75' : ''}`}
                       title={gdriveSyncState.isSyncing ? gdriveSyncState.message : (gdriveAuthState ? 'Sync with Google Drive & LocalDB' : 'Sync current page data')}
                     >
-                      <RefreshCw className={`w-4 h-4 ${(isSyncing || gdriveSyncState.isSyncing) ? 'animate-spin text-blue-500' : ''}`} />
-                      <span className={`absolute top-1.5 right-1.5 w-2 h-2 rounded-full ${gdriveSyncState.isSyncing ? 'bg-amber-500 animate-ping' : (gdriveAuthState ? 'bg-green-500 shadow-xs shadow-green-500/50' : 'bg-slate-400')
+                      <RefreshCw className={`w-3.5 h-3.5 ${(isSyncing || gdriveSyncState.isSyncing) ? 'animate-spin text-blue-500' : ''}`} />
+                      <span className={`absolute top-1 right-1 w-2 h-2 rounded-full ${gdriveSyncState.isSyncing ? 'bg-amber-500 animate-ping' : (gdriveAuthState ? 'bg-green-500 shadow-xs shadow-green-500/50' : 'bg-slate-400')
                         }`} />
                     </button>
                   </div>
