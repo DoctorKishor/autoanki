@@ -1021,23 +1021,17 @@ export default function CampDashboard({
           ? 'neu-pressed-dark border-slate-750' 
           : 'neu-pressed-light border-slate-200/80'
       }`}>
+        {/* Header: Title & Action */}
         <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-200/60 dark:border-slate-750">
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <h4 className={`text-xs font-black uppercase tracking-wide ${
-                isDark ? 'text-blue-400' : 'text-blue-700'
-              }`}>
-                {label}
-              </h4>
-              <span className={`text-[9px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                ({timeRange})
-              </span>
-            </div>
-            <div className={`flex items-center gap-2 mt-0.5 text-[9px] sm:text-[10px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              <span>⏱️ {totalHrs.toFixed(2)}h total</span>
-              <span>•</span>
-              <span>🎯 Avg Focus: {agg.concentration}/10</span>
-            </div>
+          <div>
+            <h4 className={`text-xs font-black uppercase tracking-wide ${
+              isDark ? 'text-blue-400' : 'text-blue-700'
+            }`}>
+              {label}
+            </h4>
+            <p className={`text-[9px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              ({timeRange})
+            </p>
           </div>
           <button
             type="button"
@@ -1051,7 +1045,20 @@ export default function CampDashboard({
           </button>
         </div>
 
-        <div className="space-y-2">
+        {/* Stats Row - GUARANTEED SINGLE LINE */}
+        <div className={`flex items-center gap-2 text-[10px] font-bold whitespace-nowrap overflow-x-auto custom-scrollbar py-0.5 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+          <span className="flex items-center gap-1">
+            <span>⏱️</span>
+            <span>{totalHrs.toFixed(2)}h total</span>
+          </span>
+          <span className="opacity-40">•</span>
+          <span className="flex items-center gap-1">
+            <span>🎯</span>
+            <span>Avg Focus: {agg.concentration}/10</span>
+          </span>
+        </div>
+
+        <div className="space-y-2.5">
           {list.length === 0 ? (
             <div className={`flex flex-col items-center justify-center py-6 text-center space-y-2 rounded-xl ${isDark ? 'bg-white/[0.02]' : 'bg-black/[0.02]'}`}>
               <BookOpen className={`w-5 h-5 opacity-30 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
@@ -1085,48 +1092,65 @@ export default function CampDashboard({
               return (
                 <div 
                   key={sess.id} 
-                  className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl border transition-all ${
+                  className={`p-3 rounded-2xl border transition-all space-y-2.5 ${
                     isRunning 
                       ? (isDark ? 'neu-card-dark border-blue-500/50 ring-2 ring-blue-500/30 animate-pulse' : 'neu-card-light border-blue-400 ring-2 ring-blue-500/20 animate-pulse')
                       : (isDark ? 'neu-card-dark border-slate-750' : 'neu-card-light border-slate-200/60')
                   }`}
                 >
-                  <div className="flex items-center gap-2">
-                    {isRunning ? (
-                      <span className="flex h-2 w-2 relative shrink-0">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                  {/* Top row of session card: Type badge + Delete button */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      {isRunning ? (
+                        <span className="flex h-2 w-2 relative shrink-0">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                        </span>
+                      ) : null}
+                      <span className={`text-[10px] font-black uppercase tracking-wider truncate ${
+                        isRunning 
+                          ? (isDark ? 'text-blue-400' : 'text-blue-600') 
+                          : (isDark ? 'text-slate-200' : 'text-slate-800')
+                      }`}>
+                        {isRunning ? '⚡ Running Timer' : typeLabel}
                       </span>
-                    ) : null}
-                    <span className={`text-[10px] font-black uppercase tracking-wider ${
-                      isRunning 
-                        ? (isDark ? 'text-blue-400' : 'text-blue-600') 
-                        : (isDark ? 'text-slate-200' : 'text-slate-800')
-                    }`}>
-                      {isRunning ? '⚡ Running Timer' : typeLabel}
-                    </span>
-                    {isPrecise && (
-                      <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md ${
-                        isDark ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-200'
-                      }`} title="Precise timer-accumulated duration">
-                        Precise
-                      </span>
+                      {isPrecise && (
+                        <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md shrink-0 ${
+                          isDark ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-200'
+                        }`} title="Precise timer-accumulated duration">
+                          Precise
+                        </span>
+                      )}
+                    </div>
+
+                    {!isRunning && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteSession(catKey, sess.id)}
+                        className={`p-1.5 rounded-xl transition cursor-pointer shrink-0 ${
+                          isDark ? 'text-slate-400 hover:text-red-400 hover:bg-red-500/10' : 'text-slate-400 hover:text-red-600 hover:bg-red-50'
+                        }`}
+                        title="Delete session"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     )}
                   </div>
 
-                  <div className="flex items-center gap-3.5 justify-end">
-                    {/* Hours dropdown */}
-                    <div className="flex items-center gap-1.5">
-                      <span className={`text-[9px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Hours:</span>
+                  {/* Bottom row of session card: Hours and Focus inputs */}
+                  <div className="grid grid-cols-2 gap-2.5 pt-0.5">
+                    {/* Hours */}
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className={`text-[10px] font-bold shrink-0 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Hours:</span>
                       {isRunning ? (
-                        <span className={`text-xs font-black min-w-[50px] text-center ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
+                        <span className={`text-xs font-black min-w-[40px] text-center ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
                           {parseFloat(sess.hours).toFixed(2)}h
                         </span>
                       ) : (
                         <select
                           value={getNearestHalfHour(sess.hours)}
                           onChange={(e) => handleSessionChange(catKey, sess.id, 'hours', e.target.value)}
-                          className={`rounded-xl px-2.5 py-1 text-[11px] font-black cursor-pointer focus:outline-none transition ${
+                          className={`w-full rounded-xl px-2.5 py-1 text-[11px] font-black cursor-pointer focus:outline-none transition ${
                             isDark 
                               ? 'neu-pressed-dark text-slate-150 border-slate-750 bg-[#222730]' 
                               : 'neu-pressed-light text-slate-800 border-slate-200 bg-[#e6ecf5]'
@@ -1141,14 +1165,14 @@ export default function CampDashboard({
                       )}
                     </div>
 
-                    {/* Focus dropdown */}
-                    <div className="flex items-center gap-1.5">
-                      <span className={`text-[9px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Focus:</span>
+                    {/* Focus */}
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className={`text-[10px] font-bold shrink-0 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Focus:</span>
                       <select
                         value={getNearestInteger(sess.concentration)}
                         disabled={isRunning}
                         onChange={(e) => handleSessionChange(catKey, sess.id, 'concentration', e.target.value)}
-                        className={`rounded-xl px-2.5 py-1 text-[11px] font-black cursor-pointer focus:outline-none transition disabled:opacity-60 disabled:cursor-not-allowed ${
+                        className={`w-full rounded-xl px-2.5 py-1 text-[11px] font-black cursor-pointer focus:outline-none transition disabled:opacity-60 disabled:cursor-not-allowed ${
                           isDark 
                             ? 'neu-pressed-dark text-slate-150 border-slate-750 bg-[#222730]' 
                             : 'neu-pressed-light text-slate-800 border-slate-200 bg-[#e6ecf5]'
@@ -1161,20 +1185,6 @@ export default function CampDashboard({
                         ))}
                       </select>
                     </div>
-
-                    {/* Delete button */}
-                    {!isRunning && (
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteSession(catKey, sess.id)}
-                        className={`p-1.5 rounded-xl transition cursor-pointer ${
-                          isDark ? 'text-slate-400 hover:text-red-400 hover:bg-red-500/10' : 'text-slate-400 hover:text-red-600 hover:bg-red-50'
-                        }`}
-                        title="Delete session"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
                   </div>
                 </div>
               );
@@ -1571,12 +1581,14 @@ export default function CampDashboard({
                           key={slot.key}
                           type="button"
                           onClick={() => setActiveSessionSlot(slot.key)}
-                          className={`relative z-10 py-2 px-1 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center justify-center gap-1 cursor-pointer ${
+                          className={`relative z-10 py-1.5 px-0.5 text-[9px] sm:text-xs font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 cursor-pointer ${
                             isActive ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
                           }`}
                         >
-                          <span>{slot.icon}</span>
-                          <span className="truncate">{slot.label}</span>
+                          <span className="flex items-center gap-1">
+                            <span className="text-xs">{slot.icon}</span>
+                            <span className="truncate">{slot.label}</span>
+                          </span>
                           {hrs > 0 && (
                             <span className={`text-[8px] px-1.5 py-0.2 rounded-full font-black ${
                               isActive ? 'bg-white/20 text-white' : isDark ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-700'
