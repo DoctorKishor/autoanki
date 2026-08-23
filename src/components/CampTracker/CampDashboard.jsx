@@ -115,6 +115,7 @@ export default function CampDashboard({
   });
 
   const [selectedCell, setSelectedCell] = useState(null);
+  const [activeSessionSlot, setActiveSessionSlot] = useState('preLunch');
   const [showOverviewModal, setShowOverviewModal] = useState(false);
   const [saveStatus, setSaveStatus] = useState('');
   const [hasLoadedLocalDb, setHasLoadedLocalDb] = useState(false);
@@ -1015,23 +1016,24 @@ export default function CampDashboard({
     const totalHrs = parseFloat(agg.hours) || 0;
 
     return (
-      <div className={`rounded-2xl p-4.5 space-y-4 text-left border ${
+      <div className={`rounded-2xl p-3.5 sm:p-4.5 space-y-3.5 text-left border ${
         isDark 
           ? 'neu-pressed-dark border-slate-750' 
           : 'neu-pressed-light border-slate-200/80'
       }`}>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 flex-wrap">
-            <h4 className={`text-xs font-black uppercase tracking-wide flex items-center gap-1.5 ${
-              isDark ? 'text-blue-400' : 'text-blue-700'
-            }`}>
-              {label}
-              <span className={`text-[9px] font-bold normal-case ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+        <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-200/60 dark:border-slate-750">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <h4 className={`text-xs font-black uppercase tracking-wide ${
+                isDark ? 'text-blue-400' : 'text-blue-700'
+              }`}>
+                {label}
+              </h4>
+              <span className={`text-[9px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                 ({timeRange})
               </span>
-            </h4>
-            <div className={`flex items-center gap-2 text-[9px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              <span className="hidden sm:inline opacity-40">•</span>
+            </div>
+            <div className={`flex items-center gap-2 mt-0.5 text-[9px] sm:text-[10px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
               <span>⏱️ {totalHrs.toFixed(2)}h total</span>
               <span>•</span>
               <span>🎯 Avg Focus: {agg.concentration}/10</span>
@@ -1040,7 +1042,7 @@ export default function CampDashboard({
           <button
             type="button"
             onClick={() => handleAddManualSession(catKey)}
-            className={`self-start sm:self-auto px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition active:scale-95 flex items-center gap-1.5 shrink-0 cursor-pointer ${
+            className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition active:scale-95 flex items-center gap-1.5 shrink-0 cursor-pointer ${
               isDark ? 'neu-btn-dark text-blue-400 hover:text-white' : 'neu-btn-light text-blue-600 hover:text-blue-800'
             }`}
           >
@@ -1049,10 +1051,22 @@ export default function CampDashboard({
           </button>
         </div>
 
-        <div className="space-y-2.5">
+        <div className="space-y-2">
           {list.length === 0 ? (
-            <div className={`text-center py-4 text-[10px] italic font-bold ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-              No study sessions logged for this slot.
+            <div className={`flex flex-col items-center justify-center py-6 text-center space-y-2 rounded-xl ${isDark ? 'bg-white/[0.02]' : 'bg-black/[0.02]'}`}>
+              <BookOpen className={`w-5 h-5 opacity-30 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+              <p className={`text-[10px] sm:text-[11px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                No study sessions logged for this slot yet.
+              </p>
+              <button
+                type="button"
+                onClick={() => handleAddManualSession(catKey)}
+                className={`text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-lg transition ${
+                  isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'
+                }`}
+              >
+                + Log Study Session
+              </button>
             </div>
           ) : (
             list.map((sess) => {
@@ -1533,10 +1547,62 @@ export default function CampDashboard({
               transition={{ duration: 0.5, delay: 0.3 }}
             >
               <CollapsibleCard title="Study Sessions & Concentration" icon={BookOpen} defaultOpen={true} themeMode={themeMode}>
-                <div className="py-2 space-y-4">
-                  {renderCategoryBlock('preLunch', 'Pre Lunch', 'Midnight to 1:00 PM')}
-                  {renderCategoryBlock('midDay', 'Midday', '1:00 PM to 7:00 PM')}
-                  {renderCategoryBlock('postDinner', 'Post Dinner', '7:00 PM to Midnight')}
+                <div className="py-2 space-y-3.5">
+                  {/* Slot Switcher Pill */}
+                  <div className={`relative grid grid-cols-3 p-1 rounded-2xl ${isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'}`}>
+                    <div
+                      className="absolute top-1 bottom-1 rounded-xl bg-blue-600 shadow-md transition-all"
+                      style={{
+                        width: 'calc(33.333% - 3px)',
+                        left: activeSessionSlot === 'preLunch' ? '2px' : activeSessionSlot === 'midDay' ? 'calc(33.333% + 1px)' : 'calc(66.666%)',
+                        transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                      }}
+                    />
+                    {[
+                      { key: 'preLunch', label: 'Pre Lunch', icon: '🌅' },
+                      { key: 'midDay', label: 'Midday', icon: '☀️' },
+                      { key: 'postDinner', label: 'Post Dinner', icon: '🌙' },
+                    ].map((slot) => {
+                      const isActive = activeSessionSlot === slot.key;
+                      const agg = aggregatedSessions[slot.key] || { hours: '0' };
+                      const hrs = parseFloat(agg.hours) || 0;
+                      return (
+                        <button
+                          key={slot.key}
+                          type="button"
+                          onClick={() => setActiveSessionSlot(slot.key)}
+                          className={`relative z-10 py-2 px-1 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center justify-center gap-1 cursor-pointer ${
+                            isActive ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
+                          }`}
+                        >
+                          <span>{slot.icon}</span>
+                          <span className="truncate">{slot.label}</span>
+                          {hrs > 0 && (
+                            <span className={`text-[8px] px-1.5 py-0.2 rounded-full font-black ${
+                              isActive ? 'bg-white/20 text-white' : isDark ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-700'
+                            }`}>
+                              {hrs.toFixed(1)}h
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Active Slot Content */}
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={activeSessionSlot}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      {activeSessionSlot === 'preLunch' && renderCategoryBlock('preLunch', 'Pre Lunch', 'Midnight to 1:00 PM')}
+                      {activeSessionSlot === 'midDay' && renderCategoryBlock('midDay', 'Midday', '1:00 PM to 7:00 PM')}
+                      {activeSessionSlot === 'postDinner' && renderCategoryBlock('postDinner', 'Post Dinner', '7:00 PM to Midnight')}
+                    </motion.div>
+                  </AnimatePresence>
                 </div>
               </CollapsibleCard>
             </motion.div>
