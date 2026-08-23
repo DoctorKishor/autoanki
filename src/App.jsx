@@ -28010,42 +28010,42 @@ Return your response strictly as a JSON object matching this schema:
                           transition={{ duration: 0.4, delay: 0.05 }}
                           className={`p-4 sm:p-6 rounded-3xl transition-all space-y-3.5 ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'}`}
                         >
-                          <div className={`flex items-center justify-between pb-3 border-b gap-2.5 ${isDark ? 'border-slate-750' : 'border-slate-200/80'}`}>
-                            <div className="flex items-center gap-3 min-w-0">
+                          <div className={`flex items-center justify-between pb-3 border-b gap-3 ${isDark ? 'border-slate-750' : 'border-slate-200/80'}`}>
+                            <div className="flex items-center gap-3">
                               <div className={`p-2.5 rounded-xl shrink-0 ${isDark ? 'neu-pressed-dark text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
                                 <ListChecks className="w-5 h-5" />
                               </div>
-                              <div className="min-w-0">
-                                <h2 className="text-sm sm:text-base font-black tracking-tight truncate">{selectedTrackerSubject}</h2>
+                              <div>
+                                <h2 className="text-sm sm:text-base font-black tracking-tight">{selectedTrackerSubject}</h2>
                                 <p className={`text-[9px] sm:text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Subject Tracker</p>
                               </div>
                             </div>
+                          </div>
 
-                            {/* Subtab Switcher Pill */}
-                            <div className={`relative flex items-center p-1.5 rounded-2xl shrink-0 ${isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'}`}>
-                              <div
-                                className="absolute top-1.5 bottom-1.5 rounded-xl bg-blue-600 shadow-md transition-all"
-                                style={{
-                                  width: 'calc(50% - 6px)',
-                                  left: subjectTrackerSubTab === 'manager' ? '6px' : 'calc(50%)',
-                                  transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
-                                }}
-                              />
-                              <button
-                                onClick={() => setSubjectTrackerSubTab('manager')}
-                                className={`relative z-10 px-3.5 py-1.5 text-[9px] sm:text-[10px] font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center gap-1.5 ${subjectTrackerSubTab === 'manager' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'}`}
-                              >
-                                <ListChecks className="w-3.5 h-3.5" />
-                                Manager
-                              </button>
-                              <button
-                                onClick={() => setSubjectTrackerSubTab('coverage')}
-                                className={`relative z-10 px-3.5 py-1.5 text-[9px] sm:text-[10px] font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center gap-1.5 ${subjectTrackerSubTab === 'coverage' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'}`}
-                              >
-                                <Layers className="w-3.5 h-3.5" />
-                                Coverage
-                              </button>
-                            </div>
+                          {/* Subtab Switcher Pill (Dedicated Segmented Row) */}
+                          <div className={`relative grid grid-cols-2 p-1.5 rounded-2xl ${isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'}`}>
+                            <div
+                              className="absolute top-1.5 bottom-1.5 rounded-xl bg-blue-600 shadow-md transition-all"
+                              style={{
+                                width: 'calc(50% - 6px)',
+                                left: subjectTrackerSubTab === 'manager' ? '6px' : 'calc(50%)',
+                                transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                              }}
+                            />
+                            <button
+                              onClick={() => setSubjectTrackerSubTab('manager')}
+                              className={`relative z-10 py-2 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center justify-center gap-1.5 ${subjectTrackerSubTab === 'manager' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'}`}
+                            >
+                              <ListChecks className="w-3.5 h-3.5" />
+                              Manager
+                            </button>
+                            <button
+                              onClick={() => setSubjectTrackerSubTab('coverage')}
+                              className={`relative z-10 py-2 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex items-center justify-center gap-1.5 ${subjectTrackerSubTab === 'coverage' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'}`}
+                            >
+                              <Layers className="w-3.5 h-3.5" />
+                              Coverage
+                            </button>
                           </div>
 
                           {/* Quick Metrics Bar */}
