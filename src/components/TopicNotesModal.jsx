@@ -339,16 +339,16 @@ export default function TopicNotesModal({
           </div>
 
           {/* Footer Action Bar */}
-          <div className="pt-4 border-t border-slate-700/40 flex items-center justify-between shrink-0 mt-2">
-            <span className={`text-[11px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+          <div className="pt-3 sm:pt-4 border-t border-slate-700/40 flex items-center justify-between shrink-0 mt-2">
+            <span className={`hidden sm:inline text-[11px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
               💡 Press Enter for new line • Ctrl+B Bold • Ctrl+I Italic • Ctrl+H Highlight • Ctrl+S Save
             </span>
 
-            <div className="flex items-center gap-3">
+            <div className="grid grid-cols-2 sm:flex items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
               <button
                 type="button"
                 onClick={handleClose}
-                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer text-center ${
                   isDark ? 'neu-pressed-dark text-slate-400 hover:text-white' : 'neu-pressed-light text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -360,7 +360,7 @@ export default function TopicNotesModal({
                 whileTap={{ scale: 0.96 }}
                 type="button"
                 onClick={handleSave}
-                className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 cursor-pointer transition shadow-md ${
+                className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition shadow-md ${
                   isSaved
                     ? 'bg-emerald-600 text-white'
                     : isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/20'
@@ -368,11 +368,13 @@ export default function TopicNotesModal({
               >
                 {isSaved ? (
                   <>
-                    <Check className="w-4 h-4" /> Saved!
+                    <Check className="w-4 h-4" />
+                    <span>Saved!</span>
                   </>
                 ) : (
                   <>
-                    <Save className="w-4 h-4" /> Save Notes
+                    <Save className="w-4 h-4" />
+                    <span>Save Notes</span>
                   </>
                 )}
               </motion.button>
