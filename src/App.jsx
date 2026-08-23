@@ -24265,6 +24265,10 @@ Return your response strictly as a JSON object matching this schema:
                     <div
                       className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[2px]"
                       onClick={() => setIsDailyMetricsOpen(false)}
+                      onTouchEnd={(e) => {
+                        e.stopPropagation();
+                        setIsDailyMetricsOpen(false);
+                      }}
                     />
                   )}
 
@@ -24275,7 +24279,8 @@ Return your response strictly as a JSON object matching this schema:
                         startX: touch.clientX,
                         startY: touch.clientY,
                         startTime: Date.now(),
-                        isSwiping: false
+                        isSwiping: false,
+                        lastTouchTime: islandTouchRef.current.lastTouchTime || 0
                       };
                     }}
                     onTouchMove={(e) => {
@@ -24283,68 +24288,64 @@ Return your response strictly as a JSON object matching this schema:
                       const touch = e.touches[0];
                       const diffX = touch.clientX - islandTouchRef.current.startX;
                       const diffY = touch.clientY - islandTouchRef.current.startY;
-                      if (Math.abs(diffX) > 12 && Math.abs(diffX) > Math.abs(diffY)) {
+                      if (Math.abs(diffX) > 8 && Math.abs(diffX) > Math.abs(diffY)) {
                         islandTouchRef.current.isSwiping = true;
                       }
                     }}
                     onTouchEnd={(e) => {
                       const { startX, startY, startTime, isSwiping } = islandTouchRef.current;
                       const touch = e.changedTouches ? e.changedTouches[0] : null;
+                      const now = Date.now();
+                      islandTouchRef.current.lastTouchTime = now;
                       if (!touch || !startX) return;
+
                       const diffX = touch.clientX - startX;
                       const diffY = touch.clientY - startY;
-                      const duration = Date.now() - startTime;
+                      const duration = now - startTime;
+                      const isTimerActive = timerState.status !== 'idle';
 
-                      // Horizontal swipe detected (OnePlus OxygenOS style cycle between punch-hole, mini capsule, and semi-expanded card)
-                      if (Math.abs(diffX) > 18 && Math.abs(diffX) > Math.abs(diffY)) {
+                      // 1. SWIPE GESTURE (Horizontal move > 14px)
+                      if (isSwiping || (Math.abs(diffX) > 14 && Math.abs(diffX) > Math.abs(diffY))) {
                         if (isDailyMetricsOpen) {
                           setIsDailyMetricsOpen(false);
+                        } else if (isTimerActive) {
+                          // Cycle between: punch hole -> timer mini capsule -> timer semi card
+                          const timerStates = ['hole', 'mini', 'semi'];
+                          setIslandMobileState(prev => {
+                            const idx = timerStates.indexOf(prev);
+                            const currentIdx = idx === -1 ? 0 : idx;
+                            const step = diffX > 0 ? 1 : -1;
+                            const nextIdx = (currentIdx + step + timerStates.length) % timerStates.length;
+                            return timerStates[nextIdx];
+                          });
                         } else {
-                          const isTimerActive = timerState.status !== 'idle';
-                          const dir = diffX > 0 ? 1 : -1;
-                          if (isTimerActive) {
-                            const states = ['hole', 'mini', 'semi'];
-                            setIslandMobileState(prev => {
-                              let idx = states.indexOf(prev);
-                              if (idx === -1) idx = 0;
-                              let nextIdx = (idx + dir + states.length) % states.length;
-                              return states[nextIdx];
-                            });
-                          } else {
-                            const states = ['hole', 'pill'];
-                            setIslandMobileState(prev => {
-                              let idx = states.indexOf(prev);
-                              if (idx === -1) idx = 0;
-                              let nextIdx = (idx + dir + states.length) % states.length;
-                              return states[nextIdx];
-                            });
-                          }
+                          // Normal mode: toggle between punch hole and stats pill
+                          setIslandMobileState(prev => (prev === 'pill' ? 'hole' : 'pill'));
                         }
-                        islandTouchRef.current = { startX: 0, startY: 0, startTime: 0, isSwiping: false };
+                        islandTouchRef.current = { startX: 0, startY: 0, startTime: 0, isSwiping: false, lastTouchTime: now };
                         return;
                       }
 
-                      // Tap detected
-                      if (!isSwiping && Math.abs(diffX) < 15 && Math.abs(diffY) < 15 && duration < 600) {
-                        const isTimerActive = timerState.status !== 'idle';
-                        if (isTimerActive) {
+                      // 2. TAP GESTURE (Low movement & quick release)
+                      if (!isSwiping && Math.abs(diffX) < 14 && Math.abs(diffY) < 14 && duration < 500) {
+                        if (isDailyMetricsOpen) {
+                          setIsDailyMetricsOpen(false);
+                        } else if (isTimerActive) {
                           setIsTimerFullscreen(true);
                         } else {
-                          if (!isDailyMetricsOpen) {
-                            setIsDailyMetricsOpen(true);
-                          }
-                        }
-                      }
-                      islandTouchRef.current = { startX: 0, startY: 0, startTime: 0, isSwiping: false };
-                    }}
-                    onClick={() => {
-                      if (!islandTouchRef.current.isSwiping) {
-                        const isTimerActive = timerState.status !== 'idle';
-                        if (isTimerActive) {
-                          setIsTimerFullscreen(true);
-                        } else if (!isDailyMetricsOpen) {
                           setIsDailyMetricsOpen(true);
                         }
+                      }
+                      islandTouchRef.current = { startX: 0, startY: 0, startTime: 0, isSwiping: false, lastTouchTime: now };
+                    }}
+                    onClick={(e) => {
+                      // Suppress synthetic mobile click dispatched after touch events
+                      if (Date.now() - (islandTouchRef.current.lastTouchTime || 0) < 700) {
+                        return;
+                      }
+                      // Desktop mouse click: toggle or expand
+                      if (!isDailyMetricsOpen) {
+                        setIsDailyMetricsOpen(true);
                       }
                     }}
                     className={`ios-dynamic-island ${settingsThemeMode === 'dark' ? 'dark' : 'light'} ${
@@ -24402,7 +24403,12 @@ Return your response strictly as a JSON object matching this schema:
                       </div>
 
                       {/* Right: Quick Action Controls */}
-                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                      <div
+                        className="flex items-center gap-2"
+                        onClick={(e) => e.stopPropagation()}
+                        onTouchStart={(e) => e.stopPropagation()}
+                        onTouchEnd={(e) => e.stopPropagation()}
+                      >
                         {/* Play / Pause circular button */}
                         <button
                           type="button"
@@ -24457,6 +24463,10 @@ Return your response strictly as a JSON object matching this schema:
                           <button
                             type="button"
                             onClick={(e) => {
+                              e.stopPropagation();
+                              setIsDailyMetricsOpen(false);
+                            }}
+                            onTouchEnd={(e) => {
                               e.stopPropagation();
                               setIsDailyMetricsOpen(false);
                             }}

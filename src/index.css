@@ -1955,6 +1955,11 @@ body,
   transition: opacity 0.2s ease;
 }
 
+.ios-dynamic-island .compact-timer-mini,
+.ios-dynamic-island .compact-timer-semi {
+  display: none;
+}
+
 /* Expanded State Configuration */
 .ios-dynamic-island .expanded-content {
   position: absolute;
@@ -1980,9 +1985,12 @@ body,
   max-width: 92vw;
 }
 
-.ios-dynamic-island.active .compact-content {
-  opacity: 0;
-  pointer-events: none;
+.ios-dynamic-island.active .compact-content,
+.ios-dynamic-island.active .compact-timer-mini,
+.ios-dynamic-island.active .compact-timer-semi {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
 .ios-dynamic-island.active .expanded-content {
@@ -2108,6 +2116,14 @@ body,
     border-radius: 22px !important;
     max-width: 95vw !important;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.55), inset 0 1px 1px rgba(255, 255, 255, 0.15) !important;
+  }
+
+  .ios-dynamic-island.active .compact-content,
+  .ios-dynamic-island.active .compact-timer-mini,
+  .ios-dynamic-island.active .compact-timer-semi {
+    display: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
   }
 
   .ios-dynamic-island.active.light {
