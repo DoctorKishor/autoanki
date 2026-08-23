@@ -24266,13 +24266,17 @@ Return your response strictly as a JSON object matching this schema:
                 {/* MOBILE FLOATING HEADER - Minimalist Dynamic Island & Sync */}
                 <header className="relative h-12 pt-2 px-3 sm:px-4 flex items-center justify-end shrink-0 z-40 bg-transparent">
                   {/* CENTER: iOS Dynamic Island Study Momentum */}
-                  {isDailyMetricsOpen && (
+                  {(isDailyMetricsOpen || islandMobileState === 'semi') && (
                     <div
                       className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[2px]"
-                      onClick={() => setIsDailyMetricsOpen(false)}
+                      onClick={() => {
+                        setIsDailyMetricsOpen(false);
+                        if (islandMobileState === 'semi') setIsIslandMobileState('mini');
+                      }}
                       onTouchEnd={(e) => {
                         e.stopPropagation();
                         setIsDailyMetricsOpen(false);
+                        if (islandMobileState === 'semi') setIsIslandMobileState('mini');
                       }}
                     />
                   )}
@@ -24318,13 +24322,13 @@ Return your response strictly as a JSON object matching this schema:
                         if (isDailyMetricsOpen) {
                           setIsDailyMetricsOpen(false);
                         } else if (isTimerActive) {
-                          // Cycle between: punch hole -> timer mini capsule -> timer semi card
-                          const timerStates = ['hole', 'mini', 'semi'];
+                          // When timer is running: cycle between hole -> stats (small) -> Timer (small)
+                          const timerStates = ['hole', 'pill', 'mini'];
                           setIsIslandMobileState(prev => {
-                            const currentIdx = timerStates.indexOf(prev);
-                            const safeIdx = currentIdx === -1 ? 1 : currentIdx;
+                            let currentIdx = timerStates.indexOf(prev);
+                            if (currentIdx === -1) currentIdx = 2; // if 'semi', default to 'mini'
                             const step = diffX > 0 ? 1 : -1;
-                            const nextIdx = (safeIdx + step + timerStates.length) % timerStates.length;
+                            const nextIdx = (currentIdx + step + timerStates.length) % timerStates.length;
                             return timerStates[nextIdx];
                           });
                         } else {
@@ -24339,10 +24343,21 @@ Return your response strictly as a JSON object matching this schema:
                       if (!isSwiping && Math.abs(diffX) < 10 && Math.abs(diffY) < 10 && duration < 600) {
                         if (isDailyMetricsOpen) {
                           setIsDailyMetricsOpen(false);
-                        } else if (isTimerActive) {
+                        } else if (islandMobileState === 'semi') {
+                          // ONLY clicking the expanded card of the timer must take the user to fullscreen timer page
                           setIsTimerFullscreen(true);
-                        } else {
+                        } else if (islandMobileState === 'mini') {
+                          // Clicking Timer (small) opens the expanded timer card
+                          setIsIslandMobileState('semi');
+                        } else if (islandMobileState === 'pill') {
+                          // Clicking Stats (small) opens the expanded stats card
                           setIsDailyMetricsOpen(true);
+                        } else if (islandMobileState === 'hole') {
+                          if (isTimerActive) {
+                            setIsIslandMobileState('semi');
+                          } else {
+                            setIsDailyMetricsOpen(true);
+                          }
                         }
                       }
                       islandTouchRef.current = { startX: 0, startY: 0, startTime: 0, isSwiping: false, lastTouchTime: now };
@@ -24352,9 +24367,25 @@ Return your response strictly as a JSON object matching this schema:
                       if (Date.now() - (islandTouchRef.current.lastTouchTime || 0) < 700) {
                         return;
                       }
-                      // Desktop mouse click: toggle or expand
-                      if (!isDailyMetricsOpen) {
+                      const isTimerActive = Boolean(
+                        (timerState.pomodoroStatus && timerState.pomodoroStatus !== 'idle') ||
+                        (timerState.timerStatus && timerState.timerStatus !== 'idle') ||
+                        (timerState.stopwatchStatus && timerState.stopwatchStatus !== 'idle')
+                      );
+                      if (isDailyMetricsOpen) {
+                        setIsDailyMetricsOpen(false);
+                      } else if (islandMobileState === 'semi') {
+                        setIsTimerFullscreen(true);
+                      } else if (islandMobileState === 'mini') {
+                        setIsIslandMobileState('semi');
+                      } else if (islandMobileState === 'pill') {
                         setIsDailyMetricsOpen(true);
+                      } else {
+                        if (isTimerActive) {
+                          setIsIslandMobileState('semi');
+                        } else {
+                          setIsDailyMetricsOpen(true);
+                        }
                       }
                     }}
                     className={`ios-dynamic-island ${settingsThemeMode === 'dark' ? 'dark' : 'light'} ${
@@ -24363,17 +24394,23 @@ Return your response strictly as a JSON object matching this schema:
                         : ((timerState.pomodoroStatus && timerState.pomodoroStatus !== 'idle') ||
                            (timerState.timerStatus && timerState.timerStatus !== 'idle') ||
                            (timerState.stopwatchStatus && timerState.stopwatchStatus !== 'idle'))
-                          ? (islandMobileState === 'semi' ? 'mobile-timer-semi' : (islandMobileState === 'mini' ? 'mobile-timer-mini' : 'mobile-hole'))
+                          ? (islandMobileState === 'semi' ? 'mobile-timer-semi' : (islandMobileState === 'mini' ? 'mobile-timer-mini' : (islandMobileState === 'pill' ? 'mobile-pill' : 'mobile-hole')))
                           : (islandMobileState === 'pill' ? 'mobile-pill' : 'mobile-hole')
                     }`}
                     title={isDailyMetricsOpen ? "" : (((timerState.pomodoroStatus && timerState.pomodoroStatus !== 'idle') ||
                                                        (timerState.timerStatus && timerState.timerStatus !== 'idle') ||
                                                        (timerState.stopwatchStatus && timerState.stopwatchStatus !== 'idle'))
-                      ? "Swipe to cycle timer view, tap to open Study Room"
+                      ? "Swipe to cycle (Hole / Stats / Timer), tap to expand"
                       : "Swipe to reveal mini stats, tap to open Momentum Drawer")}
                   >
                     {/* STATS COMPACT PILL */}
-                    <div className="compact-content">
+                    <div 
+                      className="compact-content cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsDailyMetricsOpen(true);
+                      }}
+                    >
                       {/* Study Time */}
                       <div className="flex items-center gap-1 shrink-0">
                         <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-500 shrink-0" />
@@ -24401,13 +24438,24 @@ Return your response strictly as a JSON object matching this schema:
                     </div>
 
                     {/* TIMER MINI CAPSULE (Image 1) */}
-                    <div className="compact-timer-mini flex items-center justify-between w-full px-3">
+                    <div 
+                      className="compact-timer-mini flex items-center justify-between w-full px-3 cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsIslandMobileState('semi');
+                      }}
+                    >
                       <Hourglass className={`w-3.5 h-3.5 text-blue-400 shrink-0 ${activeTimerInfo.isRunning ? 'animate-pulse' : ''}`} />
                       <span className="font-mono text-xs font-black text-blue-400 tracking-tight">{activeTimerInfo.timeStr}</span>
                     </div>
 
                     {/* TIMER SEMI-EXPANDED CARD (Image 2) */}
-                    <div className="compact-timer-semi flex items-center justify-between w-full px-3.5 py-1.5">
+                    <div 
+                      className="compact-timer-semi flex items-center justify-between w-full px-3.5 py-1.5 cursor-pointer"
+                      onClick={() => {
+                        setIsTimerFullscreen(true);
+                      }}
+                    >
                       {/* Left: Hourglass + Time & Subtitle */}
                       <div className="flex items-center gap-2.5">
                         <Hourglass className={`w-6 h-6 text-blue-500 shrink-0 ${activeTimerInfo.isRunning ? 'animate-pulse' : ''}`} />
