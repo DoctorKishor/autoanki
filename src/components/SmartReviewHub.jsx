@@ -485,13 +485,13 @@ export default function SmartReviewHub({
         </div>
 
         {/* Action Buttons Toolbar */}
-        <div className="flex items-center gap-2.5 w-full md:w-auto flex-wrap">
+        <div className="grid grid-cols-2 sm:grid-cols-4 md:flex items-center gap-2 w-full md:w-auto">
           {/* Permanent Undo Button */}
           <button
             onClick={onUndoRating}
             disabled={!canUndo}
             title="Undo last rating"
-            className={`px-3.5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-1.5 ${
+            className={`px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-2xl text-[11px] sm:text-xs font-black uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-1.5 h-[42px] ${
               canUndo
                 ? isDark
                   ? 'neu-btn-dark text-amber-300 border border-amber-500/40 shadow-md active:scale-95 cursor-pointer'
@@ -510,7 +510,7 @@ export default function SmartReviewHub({
             onClick={onRedoRating}
             disabled={!canRedo}
             title="Redo rating"
-            className={`px-3.5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-1.5 ${
+            className={`px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-2xl text-[11px] sm:text-xs font-black uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-1.5 h-[42px] ${
               canRedo
                 ? isDark
                   ? 'neu-btn-dark text-sky-300 border border-sky-500/40 shadow-md active:scale-95 cursor-pointer'
@@ -524,19 +524,11 @@ export default function SmartReviewHub({
             <span>Redo</span>
           </button>
 
-          {/* Auto-Sync Badge */}
-          <div className={`px-3.5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-sm border ${
-            isDark ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-emerald-50 border-emerald-200 text-emerald-700'
-          }`}>
-            <Zap className="w-3.5 h-3.5 text-emerald-500 animate-pulse" />
-            <span>Auto-Synced</span>
-          </div>
-
           {/* Ad-Hoc / Early Review Button */}
           <button
             type="button"
             onClick={() => setIsAdHocModalOpen(true)}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider shadow-sm transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer border active:scale-95 ${
+            className={`px-3 py-2 sm:px-4 sm:py-2.5 rounded-2xl text-[11px] sm:text-xs font-black uppercase tracking-wider shadow-sm transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer border active:scale-95 h-[42px] ${
               isDark
                 ? 'neu-btn-dark text-amber-400 border-amber-500/40 hover:border-amber-500/80'
                 : 'neu-btn-light text-amber-700 border-amber-300 hover:border-amber-400'
@@ -550,7 +542,7 @@ export default function SmartReviewHub({
           <button
             type="button"
             onClick={() => setIsSettingsOpen(true)}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-bold uppercase tracking-wider shadow-sm transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer border active:scale-95 ${
+            className={`px-3 py-2 sm:px-4 sm:py-2.5 rounded-2xl text-[11px] sm:text-xs font-bold uppercase tracking-wider shadow-sm transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer border active:scale-95 h-[42px] ${
               isDark ? 'neu-btn-dark text-white border-slate-700' : 'neu-btn-light text-slate-800 border-slate-300'
             }`}
           >
