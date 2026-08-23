@@ -17,7 +17,8 @@ import {
   Flame,
   Sparkles,
   Zap,
-  ChevronDown
+  ChevronDown,
+  Plus
 } from 'lucide-react';
 import {
   getLocalCampData,
@@ -1019,8 +1020,8 @@ export default function CampDashboard({
           ? 'neu-pressed-dark border-slate-750' 
           : 'neu-pressed-light border-slate-200/80'
       }`}>
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 flex-wrap">
             <h4 className={`text-xs font-black uppercase tracking-wide flex items-center gap-1.5 ${
               isDark ? 'text-blue-400' : 'text-blue-700'
             }`}>
@@ -1029,7 +1030,8 @@ export default function CampDashboard({
                 ({timeRange})
               </span>
             </h4>
-            <div className={`flex items-center gap-2 mt-0.5 text-[9px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            <div className={`flex items-center gap-2 text-[9px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              <span className="hidden sm:inline opacity-40">•</span>
               <span>⏱️ {totalHrs.toFixed(2)}h total</span>
               <span>•</span>
               <span>🎯 Avg Focus: {agg.concentration}/10</span>
@@ -1038,11 +1040,12 @@ export default function CampDashboard({
           <button
             type="button"
             onClick={() => handleAddManualSession(catKey)}
-            className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition active:scale-95 flex items-center gap-1 cursor-pointer ${
+            className={`self-start sm:self-auto px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition active:scale-95 flex items-center gap-1.5 shrink-0 cursor-pointer ${
               isDark ? 'neu-btn-dark text-blue-400 hover:text-white' : 'neu-btn-light text-blue-600 hover:text-blue-800'
             }`}
           >
-            + Add Session
+            <Plus className="w-3.5 h-3.5" />
+            <span>Add Session</span>
           </button>
         </div>
 
@@ -1172,7 +1175,7 @@ export default function CampDashboard({
     <div className={`flex-grow overflow-y-auto p-4 md:p-6 custom-scrollbar transition-colors duration-300 ${
       isDark ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'
     }`}>
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="w-full space-y-6">
 
         {/* Header Title */}
         <motion.div 
