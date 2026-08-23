@@ -29534,14 +29534,14 @@ Return your response strictly as a JSON object matching this schema:
                       layout
                       initial={false}
                       animate={{
-                        width: isDailyMetricsOpen ? 540 : 'auto',
-                        borderRadius: isDailyMetricsOpen ? 24 : 16,
+                        width: isDailyMetricsOpen ? 540 : 268,
+                        borderRadius: isDailyMetricsOpen ? 24 : 20,
                       }}
                       transition={{
                         type: 'spring',
-                        stiffness: 380,
-                        damping: 28,
-                        mass: 0.8,
+                        stiffness: 190,
+                        damping: 22,
+                        mass: 0.85,
                       }}
                       onClick={() => !isDailyMetricsOpen && setIsDailyMetricsOpen(true)}
                       className={`absolute left-1/2 -translate-x-1/2 top-2.5 z-50 cursor-pointer overflow-hidden backdrop-blur-3xl transition-colors duration-300 select-none ${
@@ -29550,16 +29550,16 @@ Return your response strictly as a JSON object matching this schema:
                           : 'bg-[#e6ecf5]/95 text-slate-800 border border-white/90 shadow-[0_16px_40px_rgba(37,99,235,0.14),inset_0_1px_1px_rgba(255,255,255,0.9)]'
                       } ${!isDailyMetricsOpen ? (settingsThemeMode === 'dark' ? 'hover:border-blue-400/40 hover:shadow-[0_8px_24px_rgba(56,189,248,0.2)]' : 'hover:border-blue-400/50 hover:shadow-[0_8px_24px_rgba(37,99,235,0.15)]') : 'max-w-[92vw]'}`}
                     >
-                      <AnimatePresence mode="wait" initial={false}>
+                      <AnimatePresence initial={false}>
                         {!isDailyMetricsOpen ? (
                           /* Compact iOS Island Pill */
                           <motion.div
                             key="compact"
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            transition={{ duration: 0.15 }}
-                            className="flex items-center gap-2.5 sm:gap-3.5 px-4 py-2"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.18 }}
+                            className="flex items-center justify-between px-3.5 py-2 w-[268px]"
                           >
                             {/* Study Time */}
                             <div className="flex items-center gap-1.5">
@@ -29590,11 +29590,11 @@ Return your response strictly as a JSON object matching this schema:
                           /* Expanded iOS Island Drawer */
                           <motion.div
                             key="expanded"
-                            initial={{ opacity: 0, y: -4 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -4 }}
-                            transition={{ duration: 0.22, delay: 0.05 }}
-                            className="p-3.5"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.28, delay: 0.08 }}
+                            className="p-3.5 w-full"
                           >
                             {/* Header Strip */}
                             <div className="flex items-center justify-between pb-2 border-b border-white/10 mb-2.5">
