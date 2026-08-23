@@ -25469,9 +25469,61 @@ Return your response strictly as a JSON object matching this schema:
                                 key={card.id || idx}
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
-                                className={`p-4 rounded-2xl space-y-2 border-l-4 border-l-blue-500 ${settingsThemeMode === 'dark' ? 'neu-item-dark text-white border-y border-r border-gray-800' : 'neu-item-light text-gray-900 border-y border-r border-white'}`}
+                                onClick={() => card.isManual ? openManualCardModal(card) : setEditingCard(card)}
+                                className={`p-4 rounded-2xl space-y-2 border-l-4 border-l-blue-500 cursor-pointer transition-colors duration-200 relative group ${settingsThemeMode === 'dark' ? 'neu-item-dark text-white border-y border-r border-gray-800' : 'neu-item-light text-gray-900 border-y border-r border-white'}`}
                               >
-                                <span className="text-[8px] font-black uppercase tracking-widest bg-blue-500/15 text-blue-500 px-2 py-0.5 rounded-full inline-block">{card.type}</span>
+                                <div className="flex items-center justify-between w-full">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full inline-block ${settingsThemeMode === 'dark' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}>{card.type}</span>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        toggleCardSuspended(card);
+                                      }}
+                                      className={`text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1 transition ${card.isSuspended
+                                          ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-sm'
+                                          : settingsThemeMode === 'dark'
+                                            ? 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-slate-200'
+                                            : 'bg-slate-100 text-slate-500 border border-slate-200 hover:text-slate-700'
+                                        }`}
+                                      title={card.isSuspended ? "Card is Suspended on export. Click to activate." : "Click to Suspend on export"}
+                                    >
+                                      {card.isSuspended ? <Pause className="w-2.5 h-2.5 fill-amber-400/40" /> : <Play className="w-2.5 h-2.5 opacity-60" />}
+                                      <span>{card.isSuspended ? 'Suspended' : 'Active'}</span>
+                                    </button>
+                                    {Boolean(card.has_image || (card.img_box && (Array.isArray(card.img_box) ? card.img_box.length === 4 : card.img_box.ymin !== undefined)) || card.include_image || card.attachedImages?.length || card.customImage) && (
+                                      <span className="text-[8px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-500 border border-emerald-500/25 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                        <ImageIcon className="w-2.5 h-2.5 text-emerald-500" /> Image
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {/* Mobile Card Edit and Delete Action Buttons */}
+                                  <div className="flex items-center gap-1.5 z-10" onClick={(e) => e.stopPropagation()}>
+                                    <button
+                                      type="button"
+                                      onClick={() => card.isManual ? openManualCardModal(card) : setEditingCard(card)}
+                                      className={`p-1.5 rounded-xl transition-colors ${settingsThemeMode === 'dark' ? 'hover:bg-blue-500/20 text-blue-400' : 'hover:bg-blue-50 text-blue-600'}`}
+                                      title="Edit Card"
+                                    >
+                                      <Edit3 className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        if (card.id) {
+                                          deleteCard(card.id);
+                                        }
+                                      }}
+                                      className={`p-1.5 rounded-xl transition-colors ${settingsThemeMode === 'dark' ? 'hover:bg-red-500/20 text-red-400' : 'hover:bg-red-50 text-red-600'}`}
+                                      title="Delete Card"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </div>
+
                                 {card.type === 'Cloze' ? (
                                   <div className="text-sm leading-relaxed font-medium">{renderFormattedCardContent(card.text)}</div>
                                 ) : (
