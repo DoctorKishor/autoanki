@@ -1911,6 +1911,7 @@ body,
   justify-content: center;
   overflow: hidden;
   user-select: none;
+  touch-action: none;
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
 
@@ -2009,6 +2010,18 @@ body,
     background-color: #07090e !important;
     border: 2px solid rgba(255, 255, 255, 0.22) !important;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45), inset 0 0 4px rgba(0, 0, 0, 0.9) !important;
+    touch-action: none !important;
+  }
+
+  .ios-dynamic-island.mobile-hole:not(.active)::before {
+    content: '';
+    position: absolute;
+    top: -14px;
+    bottom: -14px;
+    left: -24px;
+    right: -24px;
+    background: transparent;
+    z-index: 10;
   }
 
   .ios-dynamic-island.mobile-hole:not(.active)::after {

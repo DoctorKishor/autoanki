@@ -6069,10 +6069,15 @@ export default function App() {
   }, [timerState.timerType, timerState.pomodoroMode, timerState.pomodoroStatus, timerState.timerStatus, timerState.stopwatchStatus, localTimerTimeLeft, localCustomTimerTimeLeft, localStopwatchTime]);
 
   useEffect(() => {
-    if (timerState.status !== 'idle') {
+    const isAnyActive = Boolean(
+      (timerState.pomodoroStatus && timerState.pomodoroStatus !== 'idle') ||
+      (timerState.timerStatus && timerState.timerStatus !== 'idle') ||
+      (timerState.stopwatchStatus && timerState.stopwatchStatus !== 'idle')
+    );
+    if (isAnyActive) {
       setIslandMobileState(prev => (prev === 'hole' || prev === 'pill' ? 'mini' : prev));
     }
-  }, [timerState.status]);
+  }, [timerState.pomodoroStatus, timerState.timerStatus, timerState.stopwatchStatus]);
 
   // Timer custom configurations input state (local)
   const [activeTimerTab, setActiveTimerTab] = useState('pomodoro'); // 'pomodoro' | 'timer' | 'stopwatch'
@@ -24302,32 +24307,36 @@ Return your response strictly as a JSON object matching this schema:
                       const diffX = touch.clientX - startX;
                       const diffY = touch.clientY - startY;
                       const duration = now - startTime;
-                      const isTimerActive = timerState.status !== 'idle';
+                      const isTimerActive = Boolean(
+                        (timerState.pomodoroStatus && timerState.pomodoroStatus !== 'idle') ||
+                        (timerState.timerStatus && timerState.timerStatus !== 'idle') ||
+                        (timerState.stopwatchStatus && timerState.stopwatchStatus !== 'idle')
+                      );
 
-                      // 1. SWIPE GESTURE (Horizontal move > 14px)
-                      if (isSwiping || (Math.abs(diffX) > 14 && Math.abs(diffX) > Math.abs(diffY))) {
+                      // 1. SWIPE GESTURE (Horizontal swipe with >= 10px movement)
+                      if (isSwiping || (Math.abs(diffX) >= 10 && Math.abs(diffX) > Math.abs(diffY))) {
                         if (isDailyMetricsOpen) {
                           setIsDailyMetricsOpen(false);
                         } else if (isTimerActive) {
                           // Cycle between: punch hole -> timer mini capsule -> timer semi card
                           const timerStates = ['hole', 'mini', 'semi'];
                           setIslandMobileState(prev => {
-                            const idx = timerStates.indexOf(prev);
-                            const currentIdx = idx === -1 ? 0 : idx;
+                            const currentIdx = timerStates.indexOf(prev);
+                            const safeIdx = currentIdx === -1 ? 1 : currentIdx;
                             const step = diffX > 0 ? 1 : -1;
-                            const nextIdx = (currentIdx + step + timerStates.length) % timerStates.length;
+                            const nextIdx = (safeIdx + step + timerStates.length) % timerStates.length;
                             return timerStates[nextIdx];
                           });
                         } else {
                           // Normal mode: toggle between punch hole and stats pill
-                          setIslandMobileState(prev => (prev === 'pill' ? 'hole' : 'pill'));
+                          setIslandMobileState(prev => (prev === 'hole' ? 'pill' : 'hole'));
                         }
                         islandTouchRef.current = { startX: 0, startY: 0, startTime: 0, isSwiping: false, lastTouchTime: now };
                         return;
                       }
 
                       // 2. TAP GESTURE (Low movement & quick release)
-                      if (!isSwiping && Math.abs(diffX) < 14 && Math.abs(diffY) < 14 && duration < 500) {
+                      if (!isSwiping && Math.abs(diffX) < 10 && Math.abs(diffY) < 10 && duration < 600) {
                         if (isDailyMetricsOpen) {
                           setIsDailyMetricsOpen(false);
                         } else if (isTimerActive) {
@@ -24351,11 +24360,17 @@ Return your response strictly as a JSON object matching this schema:
                     className={`ios-dynamic-island ${settingsThemeMode === 'dark' ? 'dark' : 'light'} ${
                       isDailyMetricsOpen
                         ? 'active'
-                        : timerState.status !== 'idle'
+                        : ((timerState.pomodoroStatus && timerState.pomodoroStatus !== 'idle') ||
+                           (timerState.timerStatus && timerState.timerStatus !== 'idle') ||
+                           (timerState.stopwatchStatus && timerState.stopwatchStatus !== 'idle'))
                           ? (islandMobileState === 'semi' ? 'mobile-timer-semi' : (islandMobileState === 'mini' ? 'mobile-timer-mini' : 'mobile-hole'))
                           : (islandMobileState === 'pill' ? 'mobile-pill' : 'mobile-hole')
                     }`}
-                    title={isDailyMetricsOpen ? "" : (timerState.status !== 'idle' ? "Swipe to cycle timer view, tap to open Study Room" : "Swipe to reveal mini stats, tap to open Momentum Drawer")}
+                    title={isDailyMetricsOpen ? "" : (((timerState.pomodoroStatus && timerState.pomodoroStatus !== 'idle') ||
+                                                       (timerState.timerStatus && timerState.timerStatus !== 'idle') ||
+                                                       (timerState.stopwatchStatus && timerState.stopwatchStatus !== 'idle'))
+                      ? "Swipe to cycle timer view, tap to open Study Room"
+                      : "Swipe to reveal mini stats, tap to open Momentum Drawer")}
                   >
                     {/* STATS COMPACT PILL */}
                     <div className="compact-content">
