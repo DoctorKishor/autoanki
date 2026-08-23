@@ -38450,15 +38450,15 @@ Return your response strictly as a JSON object matching this schema:
               />
 
               {editingCard && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-[200]">
                   <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-white border border-gray-800' : 'neu-card-light text-gray-900 border border-white'} rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col animate-in zoom-in duration-300`}>
-                    <div className={`p-6 border-b flex justify-between items-center ${settingsThemeMode === 'dark' ? 'border-gray-800' : 'border-gray-200/60'}`}>
+                    <div className={`p-4 sm:p-6 border-b flex justify-between items-center ${settingsThemeMode === 'dark' ? 'border-gray-800' : 'border-gray-200/60'}`}>
                       <h3 className={`font-black uppercase tracking-widest text-xs ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>Edit Card</h3>
                       <button onClick={() => setEditingCard(null)} className={`p-1 rounded-lg transition ${settingsThemeMode === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-400 hover:text-gray-600'}`}>
                         <X className="w-5 h-5" />
                       </button>
                     </div>
-                    <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+                    <div className="p-4 sm:p-8 space-y-4 sm:space-y-6 max-h-[75vh] overflow-y-auto custom-scrollbar">
                       <div>
                         <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Target Deck</label>
                         <input
@@ -38479,7 +38479,7 @@ Return your response strictly as a JSON object matching this schema:
                           />
                         </div>
                       ) : (
-                        <div className="space-y-6">
+                        <div className="space-y-4 sm:space-y-6">
                           <div>
                             <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Front (Question)</label>
                             <RichInputField
@@ -38582,9 +38582,9 @@ Return your response strictly as a JSON object matching this schema:
                         </div>
                       </div>
                     </div>
-                    <div className={`p-6 border-t flex justify-end gap-4 ${settingsThemeMode === 'dark' ? 'border-gray-800' : 'border-gray-200/60'}`}>
-                      <button onClick={() => setEditingCard(null)} className={`px-8 py-3 text-xs font-bold transition ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-gray-300' : 'neu-btn-light text-gray-600'}`}>Discard</button>
-                      <button onClick={saveEditedCard} className={`px-10 py-3 text-xs font-black uppercase tracking-wider flex items-center gap-2 transition ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'}`}>
+                    <div className={`p-4 sm:p-6 border-t flex items-center justify-end gap-3 sm:gap-4 ${settingsThemeMode === 'dark' ? 'border-gray-800' : 'border-gray-200/60'}`}>
+                      <button onClick={() => setEditingCard(null)} className={`flex-1 sm:flex-initial px-5 sm:px-8 py-2.5 sm:py-3 text-xs font-bold transition ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-gray-300' : 'neu-btn-light text-gray-600'}`}>Discard</button>
+                      <button onClick={saveEditedCard} className={`flex-1 sm:flex-initial px-6 sm:px-10 py-2.5 sm:py-3 text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition ${settingsThemeMode === 'dark' ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'}`}>
                         <Save className="w-4 h-4" /> Update Card
                       </button>
                     </div>
