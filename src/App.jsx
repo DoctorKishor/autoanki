@@ -143,11 +143,11 @@ const getMentorActionPlan = (targetRank, logsCount, cardsCount) => {
 
 // --- USAGE TRACKER (OFFLINE / LOCAL) ---
 const fbTracker = {
-  read: () => {},
-  write: () => {},
-  delete: () => {},
+  read: () => { },
+  write: () => { },
+  delete: () => { },
   getUsage: () => ({ reads: 0, writes: 0, deletes: 0 }),
-  reset: () => {}
+  reset: () => { }
 };
 
 // =============================================================================
@@ -1938,9 +1938,8 @@ export const renderPytBadge = (card, isCompact = false) => {
   const topic = getCardPytTopic(card);
   return (
     <span
-      className={`font-black uppercase tracking-wider bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-400 border border-amber-500/35 rounded-full flex items-center gap-1 shadow-sm shrink-0 ${
-        isCompact ? 'text-[8px] px-1.5 py-0.5' : 'text-[9px] px-2 py-0.5'
-      }`}
+      className={`font-black uppercase tracking-wider bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-400 border border-amber-500/35 rounded-full flex items-center gap-1 shadow-sm shrink-0 ${isCompact ? 'text-[8px] px-1.5 py-0.5' : 'text-[9px] px-2 py-0.5'
+        }`}
       title={topic ? `High-Yield PYT: ${topic}` : 'High-Yield Previous Year Topic'}
     >
       <Sparkles className="w-2.5 h-2.5 text-amber-400 fill-amber-400/40" />
@@ -3477,50 +3476,44 @@ const QuickLogger = ({ todayLog, todayStr, setStudyLogs, isDark: isDarkProp }) =
   };
 
   return (
-    <div className={`p-6 rounded-3xl flex flex-col transition-colors duration-300 w-full text-left ${
-      isDark ? 'neu-card-dark border border-white/5 shadow-xl' : 'neu-card-light border border-white/70 shadow-md'
-    }`}>
+    <div className={`p-6 rounded-3xl flex flex-col transition-colors duration-300 w-full text-left ${isDark ? 'neu-card-dark border border-white/5 shadow-xl' : 'neu-card-light border border-white/70 shadow-md'
+      }`}>
       <span className={`text-[10px] font-black uppercase tracking-widest mb-4 flex items-center gap-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
         📝 Quick Session Logger (Today)
       </span>
 
       <div className="grid grid-cols-2 gap-4 mb-4">
         {/* Solved Qs */}
-        <div className={`p-4 rounded-2xl flex flex-col transition ${
-          isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'
-        }`}>
+        <div className={`p-4 rounded-2xl flex flex-col transition ${isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'
+          }`}>
           <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Solved Qs</span>
           <input
             type="number"
             value={qsVal}
             onChange={(e) => setQsVal(e.target.value)}
-            className={`bg-transparent text-xl font-black focus:outline-none mt-1 border-b border-transparent focus:border-orange-500 font-mono w-full ${
-              isDark ? 'text-slate-100 placeholder-slate-600' : 'text-slate-800 placeholder-slate-400'
-            }`}
+            className={`bg-transparent text-xl font-black focus:outline-none mt-1 border-b border-transparent focus:border-orange-500 font-mono w-full ${isDark ? 'text-slate-100 placeholder-slate-600' : 'text-slate-800 placeholder-slate-400'
+              }`}
             placeholder="0"
           />
         </div>
 
         {/* Studied Cards */}
-        <div className={`p-4 rounded-2xl flex flex-col transition ${
-          isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'
-        }`}>
+        <div className={`p-4 rounded-2xl flex flex-col transition ${isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'
+          }`}>
           <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Studied Cards</span>
           <input
             type="number"
             value={cardsVal}
             onChange={(e) => setCardsVal(e.target.value)}
-            className={`bg-transparent text-xl font-black focus:outline-none mt-1 border-b border-transparent focus:border-orange-500 font-mono w-full ${
-              isDark ? 'text-slate-100 placeholder-slate-600' : 'text-slate-800 placeholder-slate-400'
-            }`}
+            className={`bg-transparent text-xl font-black focus:outline-none mt-1 border-b border-transparent focus:border-orange-500 font-mono w-full ${isDark ? 'text-slate-100 placeholder-slate-600' : 'text-slate-800 placeholder-slate-400'
+              }`}
             placeholder="0"
           />
         </div>
 
         {/* Hours Focus */}
-        <div className={`p-4 rounded-2xl flex flex-col transition ${
-          isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'
-        }`}>
+        <div className={`p-4 rounded-2xl flex flex-col transition ${isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'
+          }`}>
           <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Hours Focus</span>
           <div className="flex items-center gap-2 mt-1">
             <div className="flex-1 min-w-0">
@@ -3528,9 +3521,8 @@ const QuickLogger = ({ todayLog, todayStr, setStudyLogs, isDark: isDarkProp }) =
                 type="number"
                 value={hoursVal}
                 onChange={(e) => setHoursVal(e.target.value)}
-                className={`bg-transparent text-xl font-black focus:outline-none border-b border-transparent focus:border-orange-500 font-mono w-full text-center ${
-                  isDark ? 'text-slate-100 placeholder-slate-600' : 'text-slate-800 placeholder-slate-400'
-                }`}
+                className={`bg-transparent text-xl font-black focus:outline-none border-b border-transparent focus:border-orange-500 font-mono w-full text-center ${isDark ? 'text-slate-100 placeholder-slate-600' : 'text-slate-800 placeholder-slate-400'
+                  }`}
                 placeholder="0"
                 min="0"
               />
@@ -3541,9 +3533,8 @@ const QuickLogger = ({ todayLog, todayStr, setStudyLogs, isDark: isDarkProp }) =
                 type="number"
                 value={minsVal}
                 onChange={(e) => setMinsVal(e.target.value)}
-                className={`bg-transparent text-xl font-black focus:outline-none border-b border-transparent focus:border-orange-500 font-mono w-full text-center ${
-                  isDark ? 'text-slate-100 placeholder-slate-600' : 'text-slate-800 placeholder-slate-400'
-                }`}
+                className={`bg-transparent text-xl font-black focus:outline-none border-b border-transparent focus:border-orange-500 font-mono w-full text-center ${isDark ? 'text-slate-100 placeholder-slate-600' : 'text-slate-800 placeholder-slate-400'
+                  }`}
                 placeholder="00"
                 min="0"
                 max="59"
@@ -3553,17 +3544,15 @@ const QuickLogger = ({ todayLog, todayStr, setStudyLogs, isDark: isDarkProp }) =
         </div>
 
         {/* Pages Read */}
-        <div className={`p-4 rounded-2xl flex flex-col transition ${
-          isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'
-        }`}>
+        <div className={`p-4 rounded-2xl flex flex-col transition ${isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'
+          }`}>
           <span className={`text-[8px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Pages Read</span>
           <input
             type="number"
             value={pagesVal}
             onChange={(e) => setPagesVal(e.target.value)}
-            className={`bg-transparent text-xl font-black focus:outline-none mt-1 border-b border-transparent focus:border-orange-500 font-mono w-full ${
-              isDark ? 'text-slate-100 placeholder-slate-600' : 'text-slate-800 placeholder-slate-400'
-            }`}
+            className={`bg-transparent text-xl font-black focus:outline-none mt-1 border-b border-transparent focus:border-orange-500 font-mono w-full ${isDark ? 'text-slate-100 placeholder-slate-600' : 'text-slate-800 placeholder-slate-400'
+              }`}
             placeholder="0"
           />
         </div>
@@ -3872,8 +3861,8 @@ export default function App() {
     });
   };
 
-  const handleSettingsSectionMouseEnter = () => {};
-  const handleSettingsSectionMouseLeave = () => {};
+  const handleSettingsSectionMouseEnter = () => { };
+  const handleSettingsSectionMouseLeave = () => { };
 
   const isSettingsSectionOpen = (key) => {
     return openSettingsSections.has(key);
@@ -4739,13 +4728,12 @@ export default function App() {
                                 onClick={() => handleRestoreSnapshot(snap)}
                                 disabled={!!op}
                                 title="Restore this snapshot (replaces all current data)"
-                                className={`px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition disabled:opacity-40 ${
-                                  op === 'done'
+                                className={`px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition disabled:opacity-40 ${op === 'done'
                                     ? 'bg-emerald-500/20 text-emerald-400'
                                     : settingsThemeMode === 'dark'
                                       ? 'bg-blue-500/15 text-blue-400 hover:bg-blue-500/25'
                                       : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
-                                }`}
+                                  }`}
                               >
                                 {op === 'restoring' ? <Loader2 className="w-3 h-3 animate-spin" /> : op === 'done' ? <CheckCircle2 className="w-3 h-3" /> : <RotateCcw className="w-3 h-3" />}
                               </button>
@@ -4753,11 +4741,10 @@ export default function App() {
                                 onClick={() => handleDeleteSnapshot(snap.id)}
                                 disabled={!!op}
                                 title="Delete this snapshot"
-                                className={`px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition disabled:opacity-40 ${
-                                  settingsThemeMode === 'dark'
+                                className={`px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition disabled:opacity-40 ${settingsThemeMode === 'dark'
                                     ? 'bg-red-500/12 text-red-400 hover:bg-red-500/25'
                                     : 'bg-red-50 text-red-500 hover:bg-red-100'
-                                }`}
+                                  }`}
                               >
                                 {op === 'deleting' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
                               </button>
@@ -5065,7 +5052,7 @@ export default function App() {
             syncWithGoogleDrive({
               force: false,
               onConflict: (conflict) => setGdriveConflictData(conflict)
-            }).catch(() => {});
+            }).catch(() => { });
           }
         });
       }
@@ -5702,7 +5689,7 @@ export default function App() {
       try {
         if (next) localStorage.setItem('auto_anki_expanded_nav_category', next);
         else localStorage.removeItem('auto_anki_expanded_nav_category');
-      } catch (_) {}
+      } catch (_) { }
       return next;
     });
   };
@@ -6355,7 +6342,7 @@ export default function App() {
             iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'unmute', args: [] }), 'https://www.youtube.com');
             iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), 'https://www.youtube.com');
           }
-        } catch (_) {}
+        } catch (_) { }
       }
     };
     initBgVol();
@@ -6372,13 +6359,13 @@ export default function App() {
           try {
             iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'pauseVideo', args: [] }), 'https://www.youtube.com');
             iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'stopVideo', args: [] }), 'https://www.youtube.com');
-          } catch (_) {}
+          } catch (_) { }
         }
       });
       if (bgIframeRef.current && bgIframeRef.current.contentWindow) {
         try {
           bgIframeRef.current.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'pauseVideo', args: [] }), 'https://www.youtube.com');
-        } catch (_) {}
+        } catch (_) { }
       }
     }
   }, [isTimerFullscreen]);
@@ -8200,7 +8187,7 @@ export default function App() {
     }
 
     if (!activeImageObj || !pageCards || pageCards.length === 0) return;
-    
+
     // Extract client coordinates synchronously before async RAF frame
     const clientX = e.clientX;
     const clientY = e.clientY;
@@ -8212,14 +8199,14 @@ export default function App() {
     imageHoverRafRef.current = requestAnimationFrame(() => {
       try {
         // Dynamically find the active rendered <img> element
-        const activeImg = (libraryImageContainerRef.current?.querySelector('img')) || 
-                          (dashboardPreviewRef.current?.querySelector('img')) ||
-                          (e.target?.tagName === 'IMG' ? e.target : e.currentTarget?.querySelector?.('img'));
+        const activeImg = (libraryImageContainerRef.current?.querySelector('img')) ||
+          (dashboardPreviewRef.current?.querySelector('img')) ||
+          (e.target?.tagName === 'IMG' ? e.target : e.currentTarget?.querySelector?.('img'));
 
         if (!activeImg) return;
         const rect = activeImg.getBoundingClientRect();
         if (!rect.width || !rect.height) return;
-        
+
         // If cursor is outside the actual rendered image boundary on screen, clear hover
         if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) {
           if (hoveredCardIdFromImage) {
@@ -11396,1737 +11383,1646 @@ JSON Format:
     }
   };
 
-    const renderStudyRoomDashboard = () => {
-      const isDark = settingsThemeMode === 'dark';
-      return (
-        <motion.div
-                        key="study-unified-tab"
-                        initial={{ opacity: 0, y: 16, scale: 0.98 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: -12, scale: 0.98 }}
-                        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                        className={`flex-grow p-4 lg:p-6 flex flex-col gap-6 max-w-[1200px] mx-auto w-full overflow-y-auto pb-24 lg:pb-6 transition-colors duration-300 ${
-                          isDark ? 'text-slate-100' : 'text-slate-800'
-                        }`}
-                      >
+  const renderStudyRoomDashboard = () => {
+    const isDark = settingsThemeMode === 'dark';
+    return (
+      <motion.div
+        key="study-unified-tab"
+        initial={{ opacity: 0, y: 16, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: -12, scale: 0.98 }}
+        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+        className={`flex-grow p-4 lg:p-6 flex flex-col gap-6 max-w-[1200px] mx-auto w-full overflow-y-auto pb-24 lg:pb-6 transition-colors duration-300 ${isDark ? 'text-slate-100' : 'text-slate-800'
+          }`}
+      >
 
-                        {/* Header section with high-contrast glassmorphic detailing */}
-                        <div className={`flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-3xl backdrop-blur-md transition-colors duration-300 ${
-                          isDark ? 'neu-card-dark border border-white/5 bg-[#222730]/90' : 'neu-card-light border border-white/80 bg-white/70 shadow-md'
+        {/* Header section with high-contrast glassmorphic detailing */}
+        <div className={`flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-3xl backdrop-blur-md transition-colors duration-300 ${isDark ? 'neu-card-dark border border-white/5 bg-[#222730]/90' : 'neu-card-light border border-white/80 bg-white/70 shadow-md'
+          }`}>
+          <div className="flex items-center gap-3.5">
+            <div className="bg-gradient-to-r from-orange-500 to-amber-500 text-white p-3 rounded-2xl shadow-lg shadow-orange-500/20 animate-pulse">
+              <Flame className="w-6 h-6 fill-current" />
+            </div>
+            <div>
+              <h2 className={`text-xl font-black tracking-tight leading-none ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>Study Room & Streak Tracker</h2>
+              <p className={`text-[10px] font-bold uppercase tracking-widest mt-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                Log mock tests, hours, cards, and solve targets to maintain consecutive streaks
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => {
+              const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+              const localToday = (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10);
+              const log = studyLogs[localToday] || { questions: '', cards: '', pages: '', hours: '', gts: [] };
+
+              setLoggerDate(localToday);
+              setLoggerQuestions(log.questions || '');
+              setLoggerCards(log.cards || '');
+              setLoggerPages(log.pages || '');
+              setLoggerHours(log.hours || '');
+              const hoursVal = Number(log.hours) || 0;
+              const hPart = Math.floor(hoursVal);
+              const mPart = Math.round((hoursVal - hPart) * 60);
+              setLoggerHoursPart(hPart > 0 ? String(hPart) : '');
+              setLoggerMinutesPart(mPart > 0 ? String(mPart) : '');
+              setLoggerGtsList(log.gts || []);
+              setIsAddingGt(false);
+              setIsStudyLoggerModalOpen(true);
+            }}
+            className="w-full sm:w-auto px-5 sm:px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-xs font-black uppercase tracking-wider rounded-2xl shadow-xl shadow-orange-500/10 flex items-center justify-center gap-2 active:scale-95 transition-all duration-150 shrink-0"
+          >
+            <Plus className="w-4 h-4 stroke-[3]" />
+            Log Daily Progress
+          </button>
+        </div>
+
+        {/* Dual Tab Selector */}
+        <div className={`relative flex items-center p-1 rounded-2xl max-w-full sm:max-w-[280px] w-full self-start select-none transition-colors duration-300 ${isDark ? 'neu-pressed-dark border border-white/5 bg-[#181c22]' : 'neu-pressed-light border border-white/70 bg-slate-200/60 shadow-inner'
+          }`}>
+          {/* Single Sliding Pill Indicator */}
+          <div
+            className="absolute top-1 bottom-1 w-[calc(50%-0.25rem)] rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 shadow-md shadow-orange-500/20"
+            style={{
+              left: studyActiveTab === 'record' ? '0.25rem' : 'calc(50% + 0.125rem)',
+              transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+            }}
+          />
+
+          <button
+            type="button"
+            onClick={() => setStudyActiveTab('record')}
+            className={`relative flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 z-10 transition-colors duration-300 ${studyActiveTab === 'record'
+                ? 'text-white font-black'
+                : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+              }`}
+          >
+            <Activity className="w-3.5 h-3.5" />
+            Record
+          </button>
+          <button
+            type="button"
+            onClick={() => setStudyActiveTab('manual')}
+            className={`relative flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 z-10 transition-colors duration-300 ${studyActiveTab === 'manual'
+                ? 'text-white font-black'
+                : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+              }`}
+          >
+            <Edit3 className="w-3.5 h-3.5" />
+            Manual Log
+          </button>
+        </div>
+
+        {/* Main Responsive Grid Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full items-start text-left">
+
+          {/* Left Column */}
+          <div className="lg:col-span-5 flex flex-col gap-6 w-full">
+            {studyActiveTab === 'record' ? (
+              <>
+                {/* Streaks Counters summary cards (2-column side-by-side on mobile) */}
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                  <div className={`p-4 sm:p-5 rounded-2xl sm:rounded-3xl flex flex-col justify-between transition-colors duration-300 ${isDark
+                      ? 'neu-card-dark bg-gradient-to-br from-[#27201c] to-[#222730] border border-orange-500/20 shadow-xl'
+                      : 'neu-card-light bg-gradient-to-br from-orange-50 to-amber-50/40 border border-orange-200/60 shadow-md'
+                    }`}>
+                    <div>
+                      <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center mb-2.5 ${isDark ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-orange-100 text-orange-600'
                         }`}>
-                          <div className="flex items-center gap-3.5">
-                            <div className="bg-gradient-to-r from-orange-500 to-amber-500 text-white p-3 rounded-2xl shadow-lg shadow-orange-500/20 animate-pulse">
-                              <Flame className="w-6 h-6 fill-current" />
+                        <Flame className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" />
+                      </div>
+                      <span className="text-[8px] sm:text-[9px] font-black text-orange-500 uppercase tracking-widest">Current Streak</span>
+                      <h4 className={`text-lg sm:text-xl font-black mt-0.5 leading-none ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+                        {streakStats.currentStreak} {streakStats.currentStreak === 1 ? 'day' : 'days'}
+                      </h4>
+                    </div>
+                    <p className={`text-[8px] font-bold mt-2 sm:mt-3 ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>Keep logging to stay hot!</p>
+                  </div>
+
+                  <div className={`p-4 sm:p-5 rounded-2xl sm:rounded-3xl flex flex-col justify-between transition-colors duration-300 ${isDark
+                      ? 'neu-card-dark bg-gradient-to-br from-[#27241c] to-[#222730] border border-amber-500/20 shadow-xl'
+                      : 'neu-card-light bg-gradient-to-br from-amber-50 to-yellow-50/40 border border-amber-200/60 shadow-md'
+                    }`}>
+                    <div>
+                      <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center mb-2.5 ${isDark ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-amber-100 text-amber-600'
+                        }`}>
+                        <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      </div>
+                      <span className="text-[8px] sm:text-[9px] font-black text-amber-500 uppercase tracking-widest">Longest Streak</span>
+                      <h4 className={`text-lg sm:text-xl font-black mt-0.5 leading-none ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+                        {streakStats.longestStreak} {streakStats.longestStreak === 1 ? 'day' : 'days'}
+                      </h4>
+                    </div>
+                    <p className={`text-[8px] font-bold mt-2 sm:mt-3 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>Your absolute personal best</p>
+                  </div>
+                </div>
+
+                {/* Desk Timer & Focus Hub */}
+                {renderTimerHub(isMobile)}
+              </>
+            ) : (
+              <>
+                {/* Direct Manually Edit Quick Logs Panel (Desktop Specific UX) */}
+                {(() => {
+                  const todayStr = (() => {
+                    const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+                    return (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10);
+                  })();
+                  const todayLog = studyLogs[todayStr] || { questions: 0, cards: 0, hours: 0, pages: 0, gts: [] };
+
+                  return (
+                    <QuickLogger
+                      todayLog={todayLog}
+                      todayStr={todayStr}
+                      setStudyLogs={setStudyLogs}
+                      isDark={isDark}
+                    />
+                  );
+                })()}
+
+                {/* Grand Tests Timeline / Mock Results */}
+                <div className={`p-6 rounded-3xl shadow-sm flex flex-col transition-colors duration-300 w-full ${isDark ? 'neu-card-dark border border-white/5' : 'neu-card-light border border-white/70 shadow-md'
+                  }`}>
+                  <div className={`flex items-center justify-between mb-4 pb-3 border-b ${isDark ? 'border-white/5' : 'border-slate-100'}`}>
+                    <span className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      <Award className="w-4 h-4 text-orange-500 animate-bounce" />
+                      Grand Tests History
+                    </span>
+                    {(() => {
+                      const gtsList = [];
+                      Object.keys(studyLogs).forEach(d => {
+                        const log = studyLogs[d];
+                        if (log && Array.isArray(log.gts)) {
+                          log.gts.forEach(gt => gtsList.push(gt));
+                        }
+                      });
+                      return (
+                        <span className="text-[9px] text-gray-400 font-black uppercase">
+                          {gtsList.length} Attended
+                        </span>
+                      );
+                    })()}
+                  </div>
+
+                  {(() => {
+                    const list = [];
+                    Object.keys(studyLogs).forEach(dateStr => {
+                      const log = studyLogs[dateStr];
+                      if (log && Array.isArray(log.gts)) {
+                        log.gts.forEach((gt, idx) => {
+                          list.push({
+                            ...gt,
+                            date: dateStr,
+                            index: idx,
+                            uniqueId: `${dateStr}_${idx}`
+                          });
+                        });
+                      }
+                    });
+                    const sortedGts = list.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+                    if (sortedGts.length === 0) {
+                      return (
+                        <div className="text-center py-6">
+                          <Award className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                          <span className="text-xs font-bold text-gray-400">No Grand Tests logged yet</span>
+                          <p className="text-[9px] text-gray-400 max-w-[200px] mx-auto mt-1">
+                            Log a daily report and add your mock test scores to track percentiles!
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
+                        {sortedGts.map((gt) => {
+                          const dateFmt = formatAppDate(gt.date);
+                          return (
+                            <div
+                              key={gt.uniqueId}
+                              onClick={() => {
+                                setCurrentTab('analytics');
+                                setAnalyticsSubTab('study');
+                                if (gt.type === 'NEETPG') {
+                                  setGtFilter('NEETPG');
+                                } else if (gt.type === 'INICET') {
+                                  setGtFilter('INICET');
+                                } else {
+                                  setGtFilter('All');
+                                }
+                                setSelectedGtForAnalysisId(gt.uniqueId);
+                              }}
+                              className={`p-3 rounded-2xl flex flex-col gap-1 cursor-pointer transition select-none group ${isDark ? 'neu-pressed-dark border border-white/5 hover:border-orange-500/30 hover:bg-orange-500/5' : 'neu-pressed-light border border-white/70 hover:border-orange-300 hover:bg-orange-50/10'
+                                }`}
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="text-left">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    {gt.platform && (
+                                      <span className={`text-[7.5px] font-black uppercase px-1 py-0.5 rounded font-mono tracking-wider shrink-0 ${isDark ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-orange-100 text-orange-600'
+                                        }`}>
+                                        {gt.platform}
+                                      </span>
+                                    )}
+                                    <h5 className={`text-xs font-black leading-tight ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{gt.name}</h5>
+                                  </div>
+                                  <span className={`text-[8px] font-mono font-bold block mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{dateFmt}</span>
+                                </div>
+                                <div className="text-right flex items-center gap-2 shrink-0">
+                                  <div>
+                                    <span className="text-xs font-black text-orange-500">{gt.score || 'Logged'}</span>
+                                    {gt.percentage && (
+                                      <span className={`block text-[8px] font-bold font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>({gt.percentage})</span>
+                                    )}
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleOpenEditGtModal(gt.date, gt.index, gt);
+                                    }}
+                                    className={`p-1.5 rounded-xl transition duration-150 shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 ${isDark ? 'text-slate-400 hover:text-orange-400 hover:bg-orange-500/20' : 'text-slate-500 hover:text-orange-600 hover:bg-orange-50'
+                                      }`}
+                                    title="Edit Mock Test Score"
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                              {gt.notes && (
+                                <p className={`text-[9px] p-1.5 rounded-lg border mt-1 italic leading-relaxed ${isDark ? 'bg-[#161a20] border-white/5 text-slate-300' : 'bg-white/60 border-slate-200/60 text-slate-600'
+                                  }`}>
+                                  "{gt.notes}"
+                                </p>
+                              )}
                             </div>
-                            <div>
-                              <h2 className={`text-xl font-black tracking-tight leading-none ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>Study Room & Streak Tracker</h2>
-                              <p className={`text-[10px] font-bold uppercase tracking-widest mt-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                Log mock tests, hours, cards, and solve targets to maintain consecutive streaks
-                              </p>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Right Column */}
+          <div className="lg:col-span-7 flex flex-col gap-6 w-full">
+            {studyActiveTab === 'record' ? (
+              <>
+                {/* Today's Goal Ring Gauge */}
+                <div className={`p-6 rounded-3xl flex flex-col items-center text-center relative overflow-hidden transition-colors duration-300 ${isDark ? 'neu-card-dark border border-white/5 shadow-xl' : 'neu-card-light border border-white/70 shadow-md'
+                  }`}>
+                  <span className={`text-[10px] font-black uppercase tracking-widest mb-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Today's Progress Gauge</span>
+
+                  {/* Circle SVG progress indicator */}
+                  {(() => {
+                    const todayStr = (() => {
+                      const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+                      return (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10);
+                    })();
+                    const todayLog = studyLogs[todayStr] || { questions: 0, cards: 0, hours: 0, gts: [] };
+
+                    const archetypeGoals = {
+                      Rookie: { hours: 2, questions: 20, cards: 30 },
+                      Consistent: { hours: 4, questions: 50, cards: 80 },
+                      Topper: { hours: 6, questions: 100, cards: 150 },
+                      Legend: { hours: 8, questions: 150, cards: 250 }
+                    };
+                    const activeGoal = archetypeGoals[selectedStreakTag] || archetypeGoals.Topper;
+
+                    const hoursProgress = Math.min(1, (Number(todayLog.hours) || 0) / activeGoal.hours);
+                    const questionsProgress = Math.min(1, (Number(todayLog.questions) || 0) / activeGoal.questions);
+                    const cardsProgress = Math.min(1, (Number(todayLog.cards) || 0) / activeGoal.cards);
+                    const totalProgressPercent = Math.round(((hoursProgress + questionsProgress + cardsProgress) / 3) * 100);
+
+                    return (
+                      <>
+                        <div className="relative w-36 h-36 flex items-center justify-center">
+                          <svg className="w-full h-full transform -rotate-90">
+                            <circle cx="72" cy="72" r="58" stroke={isDark ? "#1a1f26" : "#f1f5f9"} strokeWidth="8" fill="transparent" />
+                            <circle cx="72" cy="72" r="58" stroke="url(#orangeGradient)" strokeWidth="10" fill="transparent"
+                              strokeDasharray={2 * Math.PI * 58}
+                              strokeDashoffset={2 * Math.PI * 58 * (1 - Math.min(100, Math.max(0, totalProgressPercent)) / 100)}
+                              strokeLinecap="round"
+                              className="transition-all duration-1000"
+                            />
+                            <defs>
+                              <linearGradient id="orangeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor="#f97316" />
+                                <stop offset="100%" stopColor="#f59e0b" />
+                              </linearGradient>
+                            </defs>
+                          </svg>
+
+                          {/* Inner glowing center representing milestone achievements */}
+                          <div className={`absolute w-24 h-24 !rounded-full flex flex-col items-center justify-center transition-all duration-300 ${totalProgressPercent >= 100
+                              ? isDark ? 'bg-orange-500/20 text-orange-400 scale-105 shadow-inner border border-orange-500/30 !rounded-full' : 'bg-orange-50 text-orange-500 scale-105 shadow-inner !rounded-full'
+                              : isDark ? 'neu-pressed-dark text-slate-300 !rounded-full' : 'neu-pressed-light text-slate-700 !rounded-full'
+                            }`}>
+                            <Flame className={`w-8 h-8 ${totalProgressPercent >= 100 ? 'animate-bounce fill-current' : ''}`} />
+                            <span className={`text-xl font-black mt-1 ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{totalProgressPercent}%</span>
+                          </div>
+                        </div>
+
+                        {/* Target Selector Dropdown */}
+                        <div className={`mt-6 w-full p-4 rounded-2xl flex items-center justify-between transition ${isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'
+                          }`}>
+                          <div className="text-left">
+                            <span className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Target Level</span>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span className={`text-xs font-black ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{selectedStreakTag}</span>
+                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded animate-pulse ${isDark ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-orange-50 text-orange-500'
+                                }`}>Goal</span>
                             </div>
                           </div>
 
-                          <button
-                            onClick={() => {
-                              const tzoffset = (new Date()).getTimezoneOffset() * 60000;
-                              const localToday = (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10);
-                              const log = studyLogs[localToday] || { questions: '', cards: '', pages: '', hours: '', gts: [] };
+                          <select
+                            value={selectedStreakTag}
+                            onChange={(e) => setSelectedStreakTag(e.target.value)}
+                            className={`text-xs font-bold px-3 py-1.5 rounded-xl outline-none cursor-pointer transition ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-800'
+                              }`}
+                          >
+                            <option value="Rookie">Rookie (2h/20q/30c)</option>
+                            <option value="Consistent">Consistent (4h/50q/80c)</option>
+                            <option value="Topper">Topper (6h/100q/150c)</option>
+                            <option value="Legend">Legend (8h/150q/250c)</option>
+                          </select>
+                        </div>
 
-                              setLoggerDate(localToday);
-                              setLoggerQuestions(log.questions || '');
-                              setLoggerCards(log.cards || '');
-                              setLoggerPages(log.pages || '');
-                              setLoggerHours(log.hours || '');
-                              const hoursVal = Number(log.hours) || 0;
+                        <p className={`text-[10px] font-bold mt-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                          {totalProgressPercent >= 100 ? "🎉 Congratulations! Daily quota unlocked." : "Study, solve, and log daily stats to fill the gauge!"}
+                        </p>
+                      </>
+                    );
+                  })()}
+                </div>
+
+                {/* Desktop Study Sprints Timeline Card */}
+                {(() => {
+                  const todayStr = (() => {
+                    const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+                    return (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10);
+                  })();
+                  const todayLog = studyLogs[todayStr] || { questions: 0, cards: 0, hours: 0, gts: [], sessions: [] };
+                  const sessions = todayLog.sessions || [];
+
+                  return (
+                    <div className={`p-6 rounded-3xl shadow-sm flex flex-col transition-colors duration-300 w-full text-left ${isDark ? 'neu-card-dark border border-white/5' : 'neu-card-light border border-white/70 shadow-md'
+                      }`}>
+                      <div className={`flex items-center justify-between pb-3 border-b mb-4 ${isDark ? 'border-white/5' : 'border-slate-100'}`}>
+                        <span className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                          <Clock className="w-4 h-4 text-orange-500 animate-pulse" />
+                          Study Sprints Timeline (Today)
+                        </span>
+                        <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase font-mono tracking-wider ${isDark ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20' : 'bg-orange-50 text-orange-600 border border-orange-200'
+                          }`}>
+                          Real-time Timeline
+                        </span>
+                      </div>
+
+                      {sessions.length === 0 ? (
+                        <div className="py-8 text-center space-y-1">
+                          <Clock className={`w-8 h-8 mx-auto mb-2 ${isDark ? 'text-slate-600' : 'text-slate-300'}`} />
+                          <span className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>No active study sprints logged today</span>
+                          <p className={`text-[9px] max-w-[220px] mx-auto mt-1 leading-relaxed ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                            Log study sprints on mobile or companion to track detailed focus blocks in real-time here!
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3.5 max-h-[260px] overflow-y-auto pr-1">
+                          {sessions.map((sess, idx) => (
+                            <div key={sess.id || idx} className={`p-4 rounded-2xl flex flex-col gap-2.5 group transition ${isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'
+                              }`}>
+                              <div className="flex items-center justify-between text-xs">
+                                <div className="flex items-center gap-2">
+                                  <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
+                                  <span className={`font-mono font-black text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{sess.timestamp}</span>
+                                </div>
+                                <div className="flex items-center gap-3.5 font-mono font-extrabold text-[10px]">
+                                  {sess.hours > 0 && <span className="text-orange-500">+{sess.hours}h</span>}
+                                  {sess.questions > 0 && <span className="text-emerald-500">+{sess.questions} Qs</span>}
+                                  {sess.cards > 0 && <span className="text-blue-500">+{sess.cards} Cds</span>}
+                                  {sess.pages > 0 && <span className="text-indigo-500">+{sess.pages} Pgs</span>}
+                                </div>
+                              </div>
+
+                              {/* Inline Edit Form when editing this session on desktop */}
+                              {editingSessionId === sess.id ? (
+                                <div className={`p-3 rounded-xl border space-y-3 mt-1 text-left ${isDark ? 'neu-card-dark border-white/10' : 'bg-white border-slate-200'}`}>
+                                  <div className="grid grid-cols-4 gap-2.5 text-[10px]">
+                                    <div>
+                                      <label className={`text-[8px] font-bold block mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Hours</label>
+                                      <input
+                                        type="number"
+                                        step="0.1"
+                                        value={editingSessionHours}
+                                        onChange={(e) => setEditingSessionHours(e.target.value)}
+                                        className={`w-full p-2 rounded-lg text-xs font-mono font-bold outline-none ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                                          }`}
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className={`text-[8px] font-bold block mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Questions</label>
+                                      <input
+                                        type="number"
+                                        value={editingSessionQuestions}
+                                        onChange={(e) => setEditingSessionQuestions(e.target.value)}
+                                        className={`w-full p-2 rounded-lg text-xs font-mono font-bold outline-none ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                                          }`}
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className={`text-[8px] font-bold block mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Cards</label>
+                                      <input
+                                        type="number"
+                                        value={editingSessionCards}
+                                        onChange={(e) => setEditingSessionCards(e.target.value)}
+                                        className={`w-full p-2 rounded-lg text-xs font-mono font-bold outline-none ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                                          }`}
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className={`text-[8px] font-bold block mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Pages</label>
+                                      <input
+                                        type="number"
+                                        value={editingSessionPages}
+                                        onChange={(e) => setEditingSessionPages(e.target.value)}
+                                        className={`w-full p-2 rounded-lg text-xs font-mono font-bold outline-none ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                                          }`}
+                                      />
+                                    </div>
+                                  </div>
+                                  <div className="flex justify-end gap-2 text-[9px] pt-1">
+                                    <button
+                                      onClick={() => setEditingSessionId(null)}
+                                      className={`px-3 py-1.5 rounded-lg font-extrabold uppercase transition active:scale-95 ${isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
+                                        }`}
+                                    >
+                                      Cancel
+                                    </button>
+                                    <button
+                                      onClick={handleUpdateMobileSession}
+                                      className="px-3 py-1.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-lg font-extrabold uppercase hover:shadow active:scale-95 transition"
+                                    >
+                                      Save
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className={`flex justify-end gap-3.5 pt-2 border-t opacity-0 group-hover:opacity-100 transition focus-within:opacity-100 ${isDark ? 'border-white/5' : 'border-slate-200/40'
+                                  }`}>
+                                  <button
+                                    onClick={() => {
+                                      setEditingSessionId(sess.id);
+                                      setEditingSessionTargetDate(todayStr);
+                                      setEditingSessionHours(String(sess.hours || 0));
+                                      setEditingSessionQuestions(String(sess.questions || 0));
+                                      setEditingSessionCards(String(sess.cards || 0));
+                                      setEditingSessionPages(String(sess.pages || 0));
+                                    }}
+                                    className="text-[9px] font-black uppercase text-blue-500 hover:text-blue-600 flex items-center gap-1 active:scale-95 transition"
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5" /> Edit
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteMobileSession(sess.id, todayStr)}
+                                    className="text-[9px] font-black uppercase text-red-500 hover:text-red-600 flex items-center gap-1 active:scale-95 transition"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" /> Delete
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </>
+            ) : (
+              <>
+                {/* Streak Tracker Calendar Card */}
+                <div className={`p-6 rounded-3xl shadow-sm flex flex-col transition-colors duration-300 w-full ${isDark ? 'neu-card-dark border border-white/5' : 'neu-card-light border border-white/70 shadow-md'
+                  }`}>
+
+                  {/* Calendar Month Selector Header */}
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="text-left">
+                      <span className="text-[9px] font-black uppercase text-orange-500 tracking-widest block">Your Streak Tracker</span>
+                      <h3 className={`text-base font-black leading-none mt-1 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                        {monthNames[calendarMonth]} {calendarYear}
+                      </h3>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          if (calendarMonth === 0) {
+                            setCalendarMonth(11);
+                            setCalendarYear(prev => prev - 1);
+                          } else {
+                            setCalendarMonth(prev => prev - 1);
+                          }
+                        }}
+                        className={`p-2 rounded-xl active:scale-95 transition ${isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
+                          }`}
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          if (calendarMonth === 11) {
+                            setCalendarMonth(0);
+                            setCalendarYear(prev => prev + 1);
+                          } else {
+                            setCalendarMonth(prev => prev + 1);
+                          }
+                        }}
+                        className={`p-2 rounded-xl active:scale-95 transition ${isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
+                          }`}
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Calendar grid wrapper */}
+                  <div className="w-full">
+                    {/* Week headers */}
+                    <div className="grid grid-cols-7 gap-2 mb-2 text-center">
+                      {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, idx) => (
+                        <span key={idx} className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                          {day}
+                        </span>
+                      ))}
+                    </div>
+
+                    {/* Days cells */}
+                    <div className="grid grid-cols-7 gap-2 text-center">
+                      {daysList.map((dayNum, idx) => {
+                        if (dayNum === null) {
+                          return <div key={`empty-${idx}`} />;
+                        }
+
+                        const mmStr = String(calendarMonth + 1).padStart(2, '0');
+                        const ddStr = String(dayNum).padStart(2, '0');
+                        const cellDateStr = `${calendarYear}-${mmStr}-${ddStr}`;
+                        const isDayActive = streakStats.activeDates.includes(cellDateStr);
+
+                        // Current date highlight
+                        const isTodayCell = (() => {
+                          const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+                          return (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10) === cellDateStr;
+                        })();
+
+                        const cellLog = studyLogs[cellDateStr] || { questions: 0, cards: 0, pages: 0, hours: 0, gts: [] };
+
+                        return (
+                          <button
+                            key={`day-${dayNum}`}
+                            onClick={() => {
+                              setLoggerDate(cellDateStr);
+                              setLoggerQuestions(cellLog.questions || '');
+                              setLoggerCards(cellLog.cards || '');
+                              setLoggerPages(cellLog.pages || '');
+                              setLoggerHours(cellLog.hours || '');
+                              const hoursVal = Number(cellLog.hours) || 0;
                               const hPart = Math.floor(hoursVal);
                               const mPart = Math.round((hoursVal - hPart) * 60);
                               setLoggerHoursPart(hPart > 0 ? String(hPart) : '');
                               setLoggerMinutesPart(mPart > 0 ? String(mPart) : '');
-                              setLoggerGtsList(log.gts || []);
+                              setLoggerGtsList(cellLog.gts || []);
                               setIsAddingGt(false);
                               setIsStudyLoggerModalOpen(true);
                             }}
-                            className="w-full sm:w-auto px-5 sm:px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-xs font-black uppercase tracking-wider rounded-2xl shadow-xl shadow-orange-500/10 flex items-center justify-center gap-2 active:scale-95 transition-all duration-150 shrink-0"
-                          >
-                            <Plus className="w-4 h-4 stroke-[3]" />
-                            Log Daily Progress
-                          </button>
-                        </div>
-
-                        {/* Dual Tab Selector */}
-                        <div className={`relative flex items-center p-1 rounded-2xl max-w-full sm:max-w-[280px] w-full self-start select-none transition-colors duration-300 ${
-                          isDark ? 'neu-pressed-dark border border-white/5 bg-[#181c22]' : 'neu-pressed-light border border-white/70 bg-slate-200/60 shadow-inner'
-                        }`}>
-                          {/* Single Sliding Pill Indicator */}
-                          <div
-                            className="absolute top-1 bottom-1 w-[calc(50%-0.25rem)] rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 shadow-md shadow-orange-500/20"
-                            style={{
-                              left: studyActiveTab === 'record' ? '0.25rem' : 'calc(50% + 0.125rem)',
-                              transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
-                            }}
-                          />
-
-                          <button
-                            type="button"
-                            onClick={() => setStudyActiveTab('record')}
-                            className={`relative flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 z-10 transition-colors duration-300 ${
-                              studyActiveTab === 'record'
-                                ? 'text-white font-black'
-                                : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
-                            }`}
-                          >
-                            <Activity className="w-3.5 h-3.5" />
-                            Record
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setStudyActiveTab('manual')}
-                            className={`relative flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 z-10 transition-colors duration-300 ${
-                              studyActiveTab === 'manual'
-                                ? 'text-white font-black'
-                                : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
-                            }`}
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                            Manual Log
-                          </button>
-                        </div>
-
-                        {/* Main Responsive Grid Layout */}
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full items-start text-left">
-
-                          {/* Left Column */}
-                          <div className="lg:col-span-5 flex flex-col gap-6 w-full">
-                            {studyActiveTab === 'record' ? (
-                              <>
-                                {/* Streaks Counters summary cards (2-column side-by-side on mobile) */}
-                                <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                                  <div className={`p-4 sm:p-5 rounded-2xl sm:rounded-3xl flex flex-col justify-between transition-colors duration-300 ${
-                                    isDark
-                                      ? 'neu-card-dark bg-gradient-to-br from-[#27201c] to-[#222730] border border-orange-500/20 shadow-xl'
-                                      : 'neu-card-light bg-gradient-to-br from-orange-50 to-amber-50/40 border border-orange-200/60 shadow-md'
-                                  }`}>
-                                    <div>
-                                      <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center mb-2.5 ${
-                                        isDark ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-orange-100 text-orange-600'
-                                      }`}>
-                                        <Flame className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" />
-                                      </div>
-                                      <span className="text-[8px] sm:text-[9px] font-black text-orange-500 uppercase tracking-widest">Current Streak</span>
-                                      <h4 className={`text-lg sm:text-xl font-black mt-0.5 leading-none ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
-                                        {streakStats.currentStreak} {streakStats.currentStreak === 1 ? 'day' : 'days'}
-                                      </h4>
-                                    </div>
-                                    <p className={`text-[8px] font-bold mt-2 sm:mt-3 ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>Keep logging to stay hot!</p>
-                                  </div>
-
-                                  <div className={`p-4 sm:p-5 rounded-2xl sm:rounded-3xl flex flex-col justify-between transition-colors duration-300 ${
-                                    isDark
-                                      ? 'neu-card-dark bg-gradient-to-br from-[#27241c] to-[#222730] border border-amber-500/20 shadow-xl'
-                                      : 'neu-card-light bg-gradient-to-br from-amber-50 to-yellow-50/40 border border-amber-200/60 shadow-md'
-                                  }`}>
-                                    <div>
-                                      <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center mb-2.5 ${
-                                        isDark ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-amber-100 text-amber-600'
-                                      }`}>
-                                        <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                                      </div>
-                                      <span className="text-[8px] sm:text-[9px] font-black text-amber-500 uppercase tracking-widest">Longest Streak</span>
-                                      <h4 className={`text-lg sm:text-xl font-black mt-0.5 leading-none ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
-                                        {streakStats.longestStreak} {streakStats.longestStreak === 1 ? 'day' : 'days'}
-                                      </h4>
-                                    </div>
-                                    <p className={`text-[8px] font-bold mt-2 sm:mt-3 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>Your absolute personal best</p>
-                                  </div>
-                                </div>
-
-                                {/* Desk Timer & Focus Hub */}
-                                {renderTimerHub(isMobile)}
-                              </>
-                            ) : (
-                              <>
-                                {/* Direct Manually Edit Quick Logs Panel (Desktop Specific UX) */}
-                                {(() => {
-                                  const todayStr = (() => {
-                                    const tzoffset = (new Date()).getTimezoneOffset() * 60000;
-                                    return (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10);
-                                  })();
-                                  const todayLog = studyLogs[todayStr] || { questions: 0, cards: 0, hours: 0, pages: 0, gts: [] };
-
-                                  return (
-                                    <QuickLogger
-                                      todayLog={todayLog}
-                                      todayStr={todayStr}
-                                      setStudyLogs={setStudyLogs}
-                                      isDark={isDark}
-                                    />
-                                  );
-                                })()}
-
-                                {/* Grand Tests Timeline / Mock Results */}
-                                <div className={`p-6 rounded-3xl shadow-sm flex flex-col transition-colors duration-300 w-full ${
-                                  isDark ? 'neu-card-dark border border-white/5' : 'neu-card-light border border-white/70 shadow-md'
-                                }`}>
-                                  <div className={`flex items-center justify-between mb-4 pb-3 border-b ${isDark ? 'border-white/5' : 'border-slate-100'}`}>
-                                    <span className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                      <Award className="w-4 h-4 text-orange-500 animate-bounce" />
-                                      Grand Tests History
-                                    </span>
-                                    {(() => {
-                                      const gtsList = [];
-                                      Object.keys(studyLogs).forEach(d => {
-                                        const log = studyLogs[d];
-                                        if (log && Array.isArray(log.gts)) {
-                                          log.gts.forEach(gt => gtsList.push(gt));
-                                        }
-                                      });
-                                      return (
-                                        <span className="text-[9px] text-gray-400 font-black uppercase">
-                                          {gtsList.length} Attended
-                                        </span>
-                                      );
-                                    })()}
-                                  </div>
-
-                                  {(() => {
-                                    const list = [];
-                                    Object.keys(studyLogs).forEach(dateStr => {
-                                      const log = studyLogs[dateStr];
-                                      if (log && Array.isArray(log.gts)) {
-                                        log.gts.forEach((gt, idx) => {
-                                          list.push({
-                                            ...gt,
-                                            date: dateStr,
-                                            index: idx,
-                                            uniqueId: `${dateStr}_${idx}`
-                                          });
-                                        });
-                                      }
-                                    });
-                                    const sortedGts = list.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-                                    if (sortedGts.length === 0) {
-                                      return (
-                                        <div className="text-center py-6">
-                                          <Award className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-                                          <span className="text-xs font-bold text-gray-400">No Grand Tests logged yet</span>
-                                          <p className="text-[9px] text-gray-400 max-w-[200px] mx-auto mt-1">
-                                            Log a daily report and add your mock test scores to track percentiles!
-                                          </p>
-                                        </div>
-                                      );
-                                    }
-
-                                    return (
-                                      <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
-                                        {sortedGts.map((gt) => {
-                                          const dateFmt = formatAppDate(gt.date);
-                                          return (
-                                            <div
-                                              key={gt.uniqueId}
-                                              onClick={() => {
-                                                setCurrentTab('analytics');
-                                                setAnalyticsSubTab('study');
-                                                if (gt.type === 'NEETPG') {
-                                                  setGtFilter('NEETPG');
-                                                } else if (gt.type === 'INICET') {
-                                                  setGtFilter('INICET');
-                                                } else {
-                                                  setGtFilter('All');
-                                                }
-                                                setSelectedGtForAnalysisId(gt.uniqueId);
-                                              }}
-                                              className={`p-3 rounded-2xl flex flex-col gap-1 cursor-pointer transition select-none group ${
-                                                isDark ? 'neu-pressed-dark border border-white/5 hover:border-orange-500/30 hover:bg-orange-500/5' : 'neu-pressed-light border border-white/70 hover:border-orange-300 hover:bg-orange-50/10'
-                                              }`}
-                                            >
-                                              <div className="flex items-start justify-between">
-                                                <div className="text-left">
-                                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                                    {gt.platform && (
-                                                      <span className={`text-[7.5px] font-black uppercase px-1 py-0.5 rounded font-mono tracking-wider shrink-0 ${
-                                                        isDark ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-orange-100 text-orange-600'
-                                                      }`}>
-                                                        {gt.platform}
-                                                      </span>
-                                                    )}
-                                                    <h5 className={`text-xs font-black leading-tight ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{gt.name}</h5>
-                                                  </div>
-                                                  <span className={`text-[8px] font-mono font-bold block mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{dateFmt}</span>
-                                                </div>
-                                                <div className="text-right flex items-center gap-2 shrink-0">
-                                                  <div>
-                                                    <span className="text-xs font-black text-orange-500">{gt.score || 'Logged'}</span>
-                                                    {gt.percentage && (
-                                                      <span className={`block text-[8px] font-bold font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>({gt.percentage})</span>
-                                                    )}
-                                                  </div>
-                                                  <button
-                                                    type="button"
-                                                    onClick={(e) => {
-                                                      e.stopPropagation();
-                                                      handleOpenEditGtModal(gt.date, gt.index, gt);
-                                                    }}
-                                                    className={`p-1.5 rounded-xl transition duration-150 shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 ${
-                                                      isDark ? 'text-slate-400 hover:text-orange-400 hover:bg-orange-500/20' : 'text-slate-500 hover:text-orange-600 hover:bg-orange-50'
-                                                    }`}
-                                                    title="Edit Mock Test Score"
-                                                  >
-                                                    <Edit3 className="w-3.5 h-3.5" />
-                                                  </button>
-                                                </div>
-                                              </div>
-                                              {gt.notes && (
-                                                <p className={`text-[9px] p-1.5 rounded-lg border mt-1 italic leading-relaxed ${
-                                                  isDark ? 'bg-[#161a20] border-white/5 text-slate-300' : 'bg-white/60 border-slate-200/60 text-slate-600'
-                                                }`}>
-                                                  "{gt.notes}"
-                                                </p>
-                                              )}
-                                            </div>
-                                          );
-                                        })}
-                                      </div>
-                                    );
-                                  })()}
-                                </div>
-                              </>
-                            )}
-                          </div>
-
-                          {/* Right Column */}
-                          <div className="lg:col-span-7 flex flex-col gap-6 w-full">
-                            {studyActiveTab === 'record' ? (
-                              <>
-                                {/* Today's Goal Ring Gauge */}
-                                <div className={`p-6 rounded-3xl flex flex-col items-center text-center relative overflow-hidden transition-colors duration-300 ${
-                                  isDark ? 'neu-card-dark border border-white/5 shadow-xl' : 'neu-card-light border border-white/70 shadow-md'
-                                }`}>
-                                  <span className={`text-[10px] font-black uppercase tracking-widest mb-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Today's Progress Gauge</span>
-
-                                  {/* Circle SVG progress indicator */}
-                                  {(() => {
-                                    const todayStr = (() => {
-                                      const tzoffset = (new Date()).getTimezoneOffset() * 60000;
-                                      return (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10);
-                                    })();
-                                    const todayLog = studyLogs[todayStr] || { questions: 0, cards: 0, hours: 0, gts: [] };
-
-                                    const archetypeGoals = {
-                                      Rookie: { hours: 2, questions: 20, cards: 30 },
-                                      Consistent: { hours: 4, questions: 50, cards: 80 },
-                                      Topper: { hours: 6, questions: 100, cards: 150 },
-                                      Legend: { hours: 8, questions: 150, cards: 250 }
-                                    };
-                                    const activeGoal = archetypeGoals[selectedStreakTag] || archetypeGoals.Topper;
-
-                                    const hoursProgress = Math.min(1, (Number(todayLog.hours) || 0) / activeGoal.hours);
-                                    const questionsProgress = Math.min(1, (Number(todayLog.questions) || 0) / activeGoal.questions);
-                                    const cardsProgress = Math.min(1, (Number(todayLog.cards) || 0) / activeGoal.cards);
-                                    const totalProgressPercent = Math.round(((hoursProgress + questionsProgress + cardsProgress) / 3) * 100);
-
-                                    return (
-                                      <>
-                                        <div className="relative w-36 h-36 flex items-center justify-center">
-                                          <svg className="w-full h-full transform -rotate-90">
-                                            <circle cx="72" cy="72" r="58" stroke={isDark ? "#1a1f26" : "#f1f5f9"} strokeWidth="8" fill="transparent" />
-                                            <circle cx="72" cy="72" r="58" stroke="url(#orangeGradient)" strokeWidth="10" fill="transparent"
-                                              strokeDasharray={2 * Math.PI * 58}
-                                              strokeDashoffset={2 * Math.PI * 58 * (1 - Math.min(100, Math.max(0, totalProgressPercent)) / 100)}
-                                              strokeLinecap="round"
-                                              className="transition-all duration-1000"
-                                            />
-                                            <defs>
-                                              <linearGradient id="orangeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                                                <stop offset="0%" stopColor="#f97316" />
-                                                <stop offset="100%" stopColor="#f59e0b" />
-                                              </linearGradient>
-                                            </defs>
-                                          </svg>
-
-                                          {/* Inner glowing center representing milestone achievements */}
-                                          <div className={`absolute w-24 h-24 !rounded-full flex flex-col items-center justify-center transition-all duration-300 ${
-                                            totalProgressPercent >= 100
-                                              ? isDark ? 'bg-orange-500/20 text-orange-400 scale-105 shadow-inner border border-orange-500/30 !rounded-full' : 'bg-orange-50 text-orange-500 scale-105 shadow-inner !rounded-full'
-                                              : isDark ? 'neu-pressed-dark text-slate-300 !rounded-full' : 'neu-pressed-light text-slate-700 !rounded-full'
-                                          }`}>
-                                            <Flame className={`w-8 h-8 ${totalProgressPercent >= 100 ? 'animate-bounce fill-current' : ''}`} />
-                                            <span className={`text-xl font-black mt-1 ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{totalProgressPercent}%</span>
-                                          </div>
-                                        </div>
-
-                                        {/* Target Selector Dropdown */}
-                                        <div className={`mt-6 w-full p-4 rounded-2xl flex items-center justify-between transition ${
-                                          isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'
-                                        }`}>
-                                          <div className="text-left">
-                                            <span className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Target Level</span>
-                                            <div className="flex items-center gap-1.5 mt-0.5">
-                                              <span className={`text-xs font-black ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{selectedStreakTag}</span>
-                                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded animate-pulse ${
-                                                isDark ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-orange-50 text-orange-500'
-                                              }`}>Goal</span>
-                                            </div>
-                                          </div>
-
-                                          <select
-                                            value={selectedStreakTag}
-                                            onChange={(e) => setSelectedStreakTag(e.target.value)}
-                                            className={`text-xs font-bold px-3 py-1.5 rounded-xl outline-none cursor-pointer transition ${
-                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-800'
-                                            }`}
-                                          >
-                                            <option value="Rookie">Rookie (2h/20q/30c)</option>
-                                            <option value="Consistent">Consistent (4h/50q/80c)</option>
-                                            <option value="Topper">Topper (6h/100q/150c)</option>
-                                            <option value="Legend">Legend (8h/150q/250c)</option>
-                                          </select>
-                                        </div>
-
-                                        <p className={`text-[10px] font-bold mt-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                          {totalProgressPercent >= 100 ? "🎉 Congratulations! Daily quota unlocked." : "Study, solve, and log daily stats to fill the gauge!"}
-                                        </p>
-                                      </>
-                                    );
-                                  })()}
-                                </div>
-
-                                {/* Desktop Study Sprints Timeline Card */}
-                                {(() => {
-                                  const todayStr = (() => {
-                                    const tzoffset = (new Date()).getTimezoneOffset() * 60000;
-                                    return (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10);
-                                  })();
-                                  const todayLog = studyLogs[todayStr] || { questions: 0, cards: 0, hours: 0, gts: [], sessions: [] };
-                                  const sessions = todayLog.sessions || [];
-
-                                  return (
-                                    <div className={`p-6 rounded-3xl shadow-sm flex flex-col transition-colors duration-300 w-full text-left ${
-                                      isDark ? 'neu-card-dark border border-white/5' : 'neu-card-light border border-white/70 shadow-md'
-                                    }`}>
-                                      <div className={`flex items-center justify-between pb-3 border-b mb-4 ${isDark ? 'border-white/5' : 'border-slate-100'}`}>
-                                        <span className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                          <Clock className="w-4 h-4 text-orange-500 animate-pulse" />
-                                          Study Sprints Timeline (Today)
-                                        </span>
-                                        <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase font-mono tracking-wider ${
-                                          isDark ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20' : 'bg-orange-50 text-orange-600 border border-orange-200'
-                                        }`}>
-                                          Real-time Timeline
-                                        </span>
-                                      </div>
-
-                                      {sessions.length === 0 ? (
-                                        <div className="py-8 text-center space-y-1">
-                                          <Clock className={`w-8 h-8 mx-auto mb-2 ${isDark ? 'text-slate-600' : 'text-slate-300'}`} />
-                                          <span className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>No active study sprints logged today</span>
-                                          <p className={`text-[9px] max-w-[220px] mx-auto mt-1 leading-relaxed ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                                            Log study sprints on mobile or companion to track detailed focus blocks in real-time here!
-                                          </p>
-                                        </div>
-                                      ) : (
-                                        <div className="space-y-3.5 max-h-[260px] overflow-y-auto pr-1">
-                                          {sessions.map((sess, idx) => (
-                                            <div key={sess.id || idx} className={`p-4 rounded-2xl flex flex-col gap-2.5 group transition ${
-                                              isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'
-                                            }`}>
-                                              <div className="flex items-center justify-between text-xs">
-                                                <div className="flex items-center gap-2">
-                                                  <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
-                                                  <span className={`font-mono font-black text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{sess.timestamp}</span>
-                                                </div>
-                                                <div className="flex items-center gap-3.5 font-mono font-extrabold text-[10px]">
-                                                  {sess.hours > 0 && <span className="text-orange-500">+{sess.hours}h</span>}
-                                                  {sess.questions > 0 && <span className="text-emerald-500">+{sess.questions} Qs</span>}
-                                                  {sess.cards > 0 && <span className="text-blue-500">+{sess.cards} Cds</span>}
-                                                  {sess.pages > 0 && <span className="text-indigo-500">+{sess.pages} Pgs</span>}
-                                                </div>
-                                              </div>
-
-                                              {/* Inline Edit Form when editing this session on desktop */}
-                                              {editingSessionId === sess.id ? (
-                                                <div className={`p-3 rounded-xl border space-y-3 mt-1 text-left ${isDark ? 'neu-card-dark border-white/10' : 'bg-white border-slate-200'}`}>
-                                                  <div className="grid grid-cols-4 gap-2.5 text-[10px]">
-                                                    <div>
-                                                      <label className={`text-[8px] font-bold block mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Hours</label>
-                                                      <input
-                                                        type="number"
-                                                        step="0.1"
-                                                        value={editingSessionHours}
-                                                        onChange={(e) => setEditingSessionHours(e.target.value)}
-                                                        className={`w-full p-2 rounded-lg text-xs font-mono font-bold outline-none ${
-                                                          isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
-                                                        }`}
-                                                      />
-                                                    </div>
-                                                    <div>
-                                                      <label className={`text-[8px] font-bold block mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Questions</label>
-                                                      <input
-                                                        type="number"
-                                                        value={editingSessionQuestions}
-                                                        onChange={(e) => setEditingSessionQuestions(e.target.value)}
-                                                        className={`w-full p-2 rounded-lg text-xs font-mono font-bold outline-none ${
-                                                          isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
-                                                        }`}
-                                                      />
-                                                    </div>
-                                                    <div>
-                                                      <label className={`text-[8px] font-bold block mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Cards</label>
-                                                      <input
-                                                        type="number"
-                                                        value={editingSessionCards}
-                                                        onChange={(e) => setEditingSessionCards(e.target.value)}
-                                                        className={`w-full p-2 rounded-lg text-xs font-mono font-bold outline-none ${
-                                                          isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
-                                                        }`}
-                                                      />
-                                                    </div>
-                                                    <div>
-                                                      <label className={`text-[8px] font-bold block mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Pages</label>
-                                                      <input
-                                                        type="number"
-                                                        value={editingSessionPages}
-                                                        onChange={(e) => setEditingSessionPages(e.target.value)}
-                                                        className={`w-full p-2 rounded-lg text-xs font-mono font-bold outline-none ${
-                                                          isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
-                                                        }`}
-                                                      />
-                                                    </div>
-                                                  </div>
-                                                  <div className="flex justify-end gap-2 text-[9px] pt-1">
-                                                    <button
-                                                      onClick={() => setEditingSessionId(null)}
-                                                      className={`px-3 py-1.5 rounded-lg font-extrabold uppercase transition active:scale-95 ${
-                                                        isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
-                                                      }`}
-                                                    >
-                                                      Cancel
-                                                    </button>
-                                                    <button
-                                                      onClick={handleUpdateMobileSession}
-                                                      className="px-3 py-1.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-lg font-extrabold uppercase hover:shadow active:scale-95 transition"
-                                                    >
-                                                      Save
-                                                    </button>
-                                                  </div>
-                                                </div>
-                                              ) : (
-                                                <div className={`flex justify-end gap-3.5 pt-2 border-t opacity-0 group-hover:opacity-100 transition focus-within:opacity-100 ${
-                                                  isDark ? 'border-white/5' : 'border-slate-200/40'
-                                                }`}>
-                                                  <button
-                                                    onClick={() => {
-                                                      setEditingSessionId(sess.id);
-                                                      setEditingSessionTargetDate(todayStr);
-                                                      setEditingSessionHours(String(sess.hours || 0));
-                                                      setEditingSessionQuestions(String(sess.questions || 0));
-                                                      setEditingSessionCards(String(sess.cards || 0));
-                                                      setEditingSessionPages(String(sess.pages || 0));
-                                                    }}
-                                                    className="text-[9px] font-black uppercase text-blue-500 hover:text-blue-600 flex items-center gap-1 active:scale-95 transition"
-                                                  >
-                                                    <Edit3 className="w-3.5 h-3.5" /> Edit
-                                                  </button>
-                                                  <button
-                                                    onClick={() => handleDeleteMobileSession(sess.id, todayStr)}
-                                                    className="text-[9px] font-black uppercase text-red-500 hover:text-red-600 flex items-center gap-1 active:scale-95 transition"
-                                                  >
-                                                    <Trash2 className="w-3.5 h-3.5" /> Delete
-                                                  </button>
-                                                </div>
-                                              )}
-                                            </div>
-                                          ))}
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })()}
-                              </>
-                            ) : (
-                              <>
-                                {/* Streak Tracker Calendar Card */}
-                                <div className={`p-6 rounded-3xl shadow-sm flex flex-col transition-colors duration-300 w-full ${
-                                  isDark ? 'neu-card-dark border border-white/5' : 'neu-card-light border border-white/70 shadow-md'
-                                }`}>
-
-                                  {/* Calendar Month Selector Header */}
-                                  <div className="flex items-center justify-between mb-6">
-                                    <div className="text-left">
-                                      <span className="text-[9px] font-black uppercase text-orange-500 tracking-widest block">Your Streak Tracker</span>
-                                      <h3 className={`text-base font-black leading-none mt-1 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                                        {monthNames[calendarMonth]} {calendarYear}
-                                      </h3>
-                                    </div>
-
-                                    <div className="flex items-center gap-2">
-                                      <button
-                                        onClick={() => {
-                                          if (calendarMonth === 0) {
-                                            setCalendarMonth(11);
-                                            setCalendarYear(prev => prev - 1);
-                                          } else {
-                                            setCalendarMonth(prev => prev - 1);
-                                          }
-                                        }}
-                                        className={`p-2 rounded-xl active:scale-95 transition ${
-                                          isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
-                                        }`}
-                                      >
-                                        <ChevronLeft className="w-4 h-4" />
-                                      </button>
-
-                                      <button
-                                        onClick={() => {
-                                          if (calendarMonth === 11) {
-                                            setCalendarMonth(0);
-                                            setCalendarYear(prev => prev + 1);
-                                          } else {
-                                            setCalendarMonth(prev => prev + 1);
-                                          }
-                                        }}
-                                        className={`p-2 rounded-xl active:scale-95 transition ${
-                                          isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
-                                        }`}
-                                      >
-                                        <ChevronRight className="w-4 h-4" />
-                                      </button>
-                                    </div>
-                                  </div>
-
-                                  {/* Calendar grid wrapper */}
-                                  <div className="w-full">
-                                    {/* Week headers */}
-                                    <div className="grid grid-cols-7 gap-2 mb-2 text-center">
-                                      {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, idx) => (
-                                        <span key={idx} className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                          {day}
-                                        </span>
-                                      ))}
-                                    </div>
-
-                                    {/* Days cells */}
-                                    <div className="grid grid-cols-7 gap-2 text-center">
-                                      {daysList.map((dayNum, idx) => {
-                                        if (dayNum === null) {
-                                          return <div key={`empty-${idx}`} />;
-                                        }
-
-                                        const mmStr = String(calendarMonth + 1).padStart(2, '0');
-                                        const ddStr = String(dayNum).padStart(2, '0');
-                                        const cellDateStr = `${calendarYear}-${mmStr}-${ddStr}`;
-                                        const isDayActive = streakStats.activeDates.includes(cellDateStr);
-
-                                        // Current date highlight
-                                        const isTodayCell = (() => {
-                                          const tzoffset = (new Date()).getTimezoneOffset() * 60000;
-                                          return (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10) === cellDateStr;
-                                        })();
-
-                                        const cellLog = studyLogs[cellDateStr] || { questions: 0, cards: 0, pages: 0, hours: 0, gts: [] };
-
-                                        return (
-                                          <button
-                                            key={`day-${dayNum}`}
-                                            onClick={() => {
-                                              setLoggerDate(cellDateStr);
-                                              setLoggerQuestions(cellLog.questions || '');
-                                              setLoggerCards(cellLog.cards || '');
-                                              setLoggerPages(cellLog.pages || '');
-                                              setLoggerHours(cellLog.hours || '');
-                                              const hoursVal = Number(cellLog.hours) || 0;
-                                              const hPart = Math.floor(hoursVal);
-                                              const mPart = Math.round((hoursVal - hPart) * 60);
-                                              setLoggerHoursPart(hPart > 0 ? String(hPart) : '');
-                                              setLoggerMinutesPart(mPart > 0 ? String(mPart) : '');
-                                              setLoggerGtsList(cellLog.gts || []);
-                                              setIsAddingGt(false);
-                                              setIsStudyLoggerModalOpen(true);
-                                            }}
-                                            className={`
+                            className={`
                                     aspect-square w-full rounded-2xl flex flex-col items-center justify-center relative active:scale-90 transition duration-150 outline-none
                                     ${isDayActive
-                                                ? 'border-2 border-emerald-500 text-emerald-500 bg-emerald-500/10 shadow-sm font-black'
-                                                : isDark ? 'neu-pressed-dark border border-white/5 text-slate-300 hover:bg-white/5' : 'neu-pressed-light border border-slate-200/80 text-slate-600 hover:bg-slate-50'
-                                              }
+                                ? 'border-2 border-emerald-500 text-emerald-500 bg-emerald-500/10 shadow-sm font-black'
+                                : isDark ? 'neu-pressed-dark border border-white/5 text-slate-300 hover:bg-white/5' : 'neu-pressed-light border border-slate-200/80 text-slate-600 hover:bg-slate-50'
+                              }
                                     ${isTodayCell ? 'ring-2 ring-orange-500 ring-offset-2 ring-offset-transparent' : ''}
                                   `}
-                                            title={cellDateStr}
-                                          >
-                                            <span className="text-xs font-bold leading-none">{dayNum}</span>
-                                            {isDayActive && (
-                                              <span className="absolute bottom-1.5 w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                                            )}
-
-                                            {/* Hover indicators of studied metrics */}
-                                            {(cellLog.hours > 0 || cellLog.questions > 0) && (
-                                              <div className="absolute top-1 right-1 flex gap-0.5">
-                                                {cellLog.hours > 0 && <span className="w-1 h-1 bg-amber-500 rounded-full" />}
-                                                {cellLog.questions > 0 && <span className="w-1 h-1 bg-blue-500 rounded-full" />}
-                                              </div>
-                                            )}
-                                          </button>
-                                        );
-                                      })}
-                                    </div>
-                                  </div>
-
-                                  <div className={`flex flex-wrap gap-4 mt-6 justify-center text-[10px] font-bold border-t pt-4 ${isDark ? 'border-white/5 text-slate-400' : 'border-slate-100 text-slate-500'}`}>
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="w-2.5 h-2.5 rounded-full border-2 border-emerald-500 bg-emerald-500/20" />
-                                      <span>Active Study Day</span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="w-2.5 h-2.5 rounded-full ring-2 ring-orange-500" />
-                                      <span>Today</span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="w-1 h-1 bg-amber-500 rounded-full" />
-                                      <span>Hours Logged</span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="w-1 h-1 bg-blue-500 rounded-full" />
-                                      <span>Questions Logged</span>
-                                    </div>
-                                  </div>
-                                </div>
-                              </>
+                            title={cellDateStr}
+                          >
+                            <span className="text-xs font-bold leading-none">{dayNum}</span>
+                            {isDayActive && (
+                              <span className="absolute bottom-1.5 w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
                             )}
-                          </div>
 
+                            {/* Hover indicators of studied metrics */}
+                            {(cellLog.hours > 0 || cellLog.questions > 0) && (
+                              <div className="absolute top-1 right-1 flex gap-0.5">
+                                {cellLog.hours > 0 && <span className="w-1 h-1 bg-amber-500 rounded-full" />}
+                                {cellLog.questions > 0 && <span className="w-1 h-1 bg-blue-500 rounded-full" />}
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className={`flex flex-wrap gap-4 mt-6 justify-center text-[10px] font-bold border-t pt-4 ${isDark ? 'border-white/5 text-slate-400' : 'border-slate-100 text-slate-500'}`}>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full border-2 border-emerald-500 bg-emerald-500/20" />
+                      <span>Active Study Day</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full ring-2 ring-orange-500" />
+                      <span>Today</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-1 h-1 bg-amber-500 rounded-full" />
+                      <span>Hours Logged</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-1 h-1 bg-blue-500 rounded-full" />
+                      <span>Questions Logged</span>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+        </div>
+
+        {/* STUDY LOGGER DETAILED MODAL DIALOG (MANUAL METRIC ENTRY FOR DATES & GTS) */}
+        {isStudyLoggerModalOpen && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
+            <div className={`rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col animate-in zoom-in duration-300 transition-colors ${isDark ? 'neu-card-dark border border-white/10 bg-[#222730] text-slate-100' : 'neu-card-light border border-white/80 bg-[#e6ecf5] text-slate-900 shadow-2xl'
+              }`}>
+
+              {/* Modal Header */}
+              <div className={`p-6 border-b flex justify-between items-center ${isDark ? 'border-white/10 bg-[#1c2128]' : 'bg-[#e6ecf5] border-slate-300/60'}`}>
+                <div className="text-left">
+                  <h3 className={`font-black uppercase tracking-widest text-xs ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>Manual Study Report</h3>
+                  <span className={`text-[9px] font-bold font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{formatAppDate(loggerDate)}</span>
+                </div>
+
+                <button
+                  onClick={() => setIsStudyLoggerModalOpen(false)}
+                  className={`p-1.5 rounded-xl transition ${isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-white/10' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto text-left">
+
+                {/* Date Select Input */}
+                <div>
+                  <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Report Date</label>
+                  <input
+                    type="date"
+                    value={loggerDate}
+                    onChange={(e) => {
+                      setLoggerDate(e.target.value);
+                      const log = studyLogs[e.target.value] || { questions: '', cards: '', pages: '', hours: '', gts: [] };
+                      setLoggerQuestions(log.questions || '');
+                      setLoggerCards(log.cards || '');
+                      setLoggerPages(log.pages || '');
+                      setLoggerHours(log.hours || '');
+                      const hoursVal = Number(log.hours) || 0;
+                      const hPart = Math.floor(hoursVal);
+                      const mPart = Math.round((hoursVal - hPart) * 60);
+                      setLoggerHoursPart(hPart > 0 ? String(hPart) : '');
+                      setLoggerMinutesPart(mPart > 0 ? String(mPart) : '');
+                      setLoggerGtsList(log.gts || []);
+                      setIsAddingGt(false);
+                    }}
+                    className={`w-full p-3 rounded-xl outline-none text-xs font-semibold ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                      }`}
+                  />
+                </div>
+
+                {/* Main Metric Inputs */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Questions Solved</label>
+                    <input
+                      type="number"
+                      value={loggerQuestions}
+                      onChange={(e) => setLoggerQuestions(e.target.value)}
+                      placeholder="e.g. 50"
+                      className={`w-full p-3 rounded-xl outline-none text-xs font-mono ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-200 text-slate-900 placeholder-slate-400'
+                        }`}
+                    />
+                  </div>
+
+                  <div>
+                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Cards Studied</label>
+                    <input
+                      type="number"
+                      value={loggerCards}
+                      onChange={(e) => setLoggerCards(e.target.value)}
+                      placeholder="e.g. 80"
+                      className={`w-full p-3 rounded-xl outline-none text-xs font-mono ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-200 text-slate-900 placeholder-slate-400'
+                        }`}
+                    />
+                  </div>
+
+                  <div>
+                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Pages Read</label>
+                    <input
+                      type="number"
+                      value={loggerPages}
+                      onChange={(e) => setLoggerPages(e.target.value)}
+                      placeholder="e.g. 15"
+                      className={`w-full p-3 rounded-xl outline-none text-xs font-mono ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-200 text-slate-900 placeholder-slate-400'
+                        }`}
+                    />
+                  </div>
+
+                  <div>
+                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Focused Time</label>
+                    <div className="flex items-center gap-2">
+                      <div className={`flex-1 flex items-center rounded-xl px-3 py-2.5 ${isDark ? 'neu-pressed-dark border border-white/10' : 'neu-pressed-light border border-slate-200'
+                        }`}>
+                        <input
+                          type="number"
+                          value={loggerHoursPart}
+                          onChange={(e) => setLoggerHoursPart(e.target.value)}
+                          placeholder="h"
+                          className={`bg-transparent w-full focus:outline-none text-xs font-mono font-bold ${isDark ? 'text-slate-100' : 'text-gray-800'}`}
+                          min="0"
+                        />
+                        <span className={`text-[10px] font-bold font-mono ml-1 shrink-0 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>hr</span>
+                      </div>
+                      <div className={`flex-1 flex items-center rounded-xl px-3 py-2.5 ${isDark ? 'neu-pressed-dark border border-white/10' : 'neu-pressed-light border border-slate-200'
+                        }`}>
+                        <input
+                          type="number"
+                          value={loggerMinutesPart}
+                          onChange={(e) => setLoggerMinutesPart(e.target.value)}
+                          placeholder="m"
+                          className={`bg-transparent w-full focus:outline-none text-xs font-mono font-bold ${isDark ? 'text-slate-100' : 'text-gray-800'}`}
+                          min="0"
+                          max="59"
+                        />
+                        <span className={`text-[10px] font-bold font-mono ml-1 shrink-0 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>min</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Grand Tests Section */}
+                <div className={`pt-6 border-t ${isDark ? 'border-white/10' : 'border-gray-100'}`}>
+                  <div className="flex items-center justify-between mb-4">
+                    <label className={`block text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Grand Tests (GTs) Attended</label>
+                    {!isAddingGt && (
+                      <button
+                        type="button"
+                        onClick={() => setIsAddingGt(true)}
+                        className={`text-[10px] font-black px-2.5 py-1 rounded-lg transition active:scale-95 ${isDark ? 'neu-btn-dark text-orange-400 border border-orange-500/20 hover:bg-orange-500/20' : 'neu-btn-light text-orange-600 border border-orange-200 hover:bg-orange-100'
+                          }`}
+                      >
+                        + Add Mock Test
+                      </button>
+                    )}
+                  </div>
+                  {/* List of GTs currently in log */}
+                  <div className="space-y-3.5 mb-4">
+                    {loggerGtsList.map((gt, idx) => (
+                      <div key={idx} className={`p-4 rounded-2xl flex items-start justify-between ${isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-slate-200/80'
+                        }`}>
+                        <div className="text-left space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {gt.platform && (
+                              <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded font-mono tracking-wider ${isDark ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-orange-100 text-orange-600'
+                                }`}>
+                                {gt.platform}
+                              </span>
+                            )}
+                            <h4 className={`text-xs font-black leading-tight ${isDark ? 'text-slate-100' : 'text-gray-800'}`}>{gt.name}</h4>
+                            <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${isDark ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600'
+                              }`}>
+                              {gt.type === 'NEETPG' ? 'NEET PG' : 'INI CET'}
+                            </span>
+                          </div>
+                          <div className={`text-[10px] font-bold flex flex-wrap gap-x-3 gap-y-1 font-mono ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+                            <span>Marks: <strong className="text-orange-500">{gt.score} / {gt.maxMarks}</strong></span>
+                            <span>Correct: <strong className="text-emerald-500">{gt.correct}</strong></span>
+                            <span>Incorrect: <strong className="text-red-500">{gt.incorrect}</strong></span>
+                            {gt.percentile !== null && <span>%ile: <strong className="text-blue-500">{gt.percentile}%</strong></span>}
+                            {gt.rank && <span>Rank: <strong className="text-indigo-400">#{gt.rank}</strong></span>}
+                          </div>
+                          {gt.notes && <p className={`text-[9px] italic leading-relaxed ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>"{gt.notes}"</p>}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteGt(idx)}
+                          className={`p-2 rounded-xl transition shrink-0 ${isDark ? 'text-red-400 hover:bg-red-500/20' : 'text-red-500 hover:bg-red-50'}`}
+                          title="Delete Mock Test"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Inline sub-form to add a new Grand Test */}
+                  {isAddingGt && (
+                    <div className={`p-5 rounded-3xl space-y-4 animate-in slide-in-from-top duration-200 ${isDark ? 'neu-card-dark border border-orange-500/20 bg-orange-500/5' : 'bg-orange-50/40 border border-orange-100/70'
+                      }`}>
+                      <span className="text-[9px] font-black uppercase text-orange-500 tracking-wider">New Grand Test Details</span>
+
+                      <div className="grid grid-cols-2 gap-3.5">
+                        {/* GT Platform */}
+                        <div className="col-span-2">
+                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Exam Platform</label>
+                          <input
+                            type="text"
+                            value={loggerGtPlatform}
+                            onChange={(e) => setLoggerGtPlatform(e.target.value)}
+                            placeholder="e.g. Marrow, PrepLadder, Cerebellum, eGurukul"
+                            className={`w-full p-2.5 rounded-xl text-xs font-semibold focus:outline-none ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-200 text-slate-900 placeholder-slate-400'
+                              }`}
+                          />
                         </div>
 
-                        {/* STUDY LOGGER DETAILED MODAL DIALOG (MANUAL METRIC ENTRY FOR DATES & GTS) */}
-                        {isStudyLoggerModalOpen && (
-                          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
-                            <div className={`rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col animate-in zoom-in duration-300 transition-colors ${
-                              isDark ? 'neu-card-dark border border-white/10 bg-[#222730] text-slate-100' : 'neu-card-light border border-white/80 bg-[#e6ecf5] text-slate-900 shadow-2xl'
+                        {/* GT Name */}
+                        <div className="col-span-2">
+                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Test Name</label>
+                          <input
+                            type="text"
+                            value={loggerGtName}
+                            onChange={(e) => setLoggerGtName(e.target.value)}
+                            placeholder="Test Name (e.g. Marrow Grand Test 14)"
+                            className={`w-full p-2.5 rounded-xl text-xs font-semibold focus:outline-none ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-200 text-slate-900 placeholder-slate-400'
+                              }`}
+                          />
+                        </div>
+
+                        {/* GT Type Selector Pills */}
+                        <div className="col-span-2 space-y-2">
+                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>GT Scoring Model</label>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setLoggerGtType('NEETPG')}
+                              className={`flex-1 py-2 text-xs font-black rounded-xl border transition ${loggerGtType === 'NEETPG'
+                                  ? 'bg-orange-500 text-white border-transparent shadow-sm'
+                                  : isDark ? 'neu-btn-dark text-slate-300 border-white/10' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                }`}
+                            >
+                              NEET PG (+4, -1)
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setLoggerGtType('INICET')}
+                              className={`flex-1 py-2 text-xs font-black rounded-xl border transition ${loggerGtType === 'INICET'
+                                  ? 'bg-orange-500 text-white border-transparent shadow-sm'
+                                  : isDark ? 'neu-btn-dark text-slate-300 border-white/10' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                }`}
+                            >
+                              INI CET (+1, -1/3)
+                            </button>
+                          </div>
+
+                          {loggerGtType === 'NEETPG' && (
+                            <div className="flex gap-2 p-1 rounded-xl bg-orange-500/5 border border-orange-500/20">
+                              <button
+                                type="button"
+                                onClick={() => setLoggerNeetPattern('200')}
+                                className={`flex-1 py-1 text-[10px] font-extrabold rounded-lg transition ${loggerNeetPattern === '200'
+                                    ? 'bg-orange-500 text-white shadow-sm'
+                                    : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
+                                  }`}
+                              >
+                                200 Qs / 800 Marks (Old Pattern)
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setLoggerNeetPattern('180')}
+                                className={`flex-1 py-1 text-[10px] font-extrabold rounded-lg transition ${loggerNeetPattern === '180'
+                                    ? 'bg-orange-500 text-white shadow-sm'
+                                    : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
+                                  }`}
+                              >
+                                180 Qs / 720 Marks (New Pattern)
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Questions Correct & Incorrect */}
+                        <div>
+                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Correct Qs</label>
+                          <input
+                            type="number"
+                            value={loggerGtCorrect}
+                            onChange={(e) => setLoggerGtCorrect(e.target.value)}
+                            placeholder="e.g. 130"
+                            className={`w-full p-2.5 rounded-xl text-xs font-mono font-bold focus:outline-none ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                              }`}
+                          />
+                        </div>
+                        <div>
+                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Incorrect Qs</label>
+                          <input
+                            type="number"
+                            value={loggerGtIncorrect}
+                            onChange={(e) => setLoggerGtIncorrect(e.target.value)}
+                            placeholder="e.g. 50"
+                            className={`w-full p-2.5 rounded-xl text-xs font-mono font-bold focus:outline-none ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                              }`}
+                          />
+                        </div>
+
+                        {/* Live Preview metrics breakdown */}
+                        <div className={`p-3 rounded-2xl border flex items-center justify-between text-[10px] col-span-2 ${isDark ? 'bg-orange-500/10 border-orange-500/20 text-slate-300' : 'bg-orange-50/50 border-orange-100/50 text-gray-500'
+                          }`}>
+                          <span className="font-bold">Attended: <strong className="text-orange-500 font-black">{(Number(loggerGtCorrect) || 0) + (Number(loggerGtIncorrect) || 0)} / {loggerGtType === 'NEETPG' ? (loggerNeetPattern === '180' ? 180 : 200) : 200}</strong></span>
+                          <span className="font-bold">Unattempted: <strong className={`font-black ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>{Math.max(0, (loggerGtType === 'NEETPG' ? (loggerNeetPattern === '180' ? 180 : 200) : 200) - ((Number(loggerGtCorrect) || 0) + (Number(loggerGtIncorrect) || 0)))}</strong></span>
+                          <span className="font-bold">Score Preview: <strong className="text-orange-500 font-black">
+                            {loggerGtType === 'NEETPG'
+                              ? `${(Number(loggerGtCorrect) || 0) * 4 - (Number(loggerGtIncorrect) || 0) * 1} / ${loggerNeetPattern === '180' ? 720 : 800}`
+                              : `${((Number(loggerGtCorrect) || 0) * 1 - (Number(loggerGtIncorrect) || 0) * (1 / 3)).toFixed(2)} / 200`
+                            }
+                          </strong></span>
+                        </div>
+
+                        {/* Percentile, Rank and Rank Total */}
+                        <div>
+                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Percentile (%ile)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={loggerGtPercentage}
+                            onChange={(e) => setLoggerGtPercentage(e.target.value)}
+                            placeholder="e.g. 98.7"
+                            className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                              }`}
+                          />
+                        </div>
+
+                        <div>
+                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>All India Rank (AIR)</label>
+                          <input
+                            type="number"
+                            value={loggerGtRank}
+                            onChange={(e) => setLoggerGtRank(e.target.value)}
+                            placeholder="e.g. 1414"
+                            className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                              }`}
+                          />
+                        </div>
+
+                        <div>
+                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Total Participants</label>
+                          <input
+                            type="number"
+                            value={loggerGtRankTotal}
+                            onChange={(e) => setLoggerGtRankTotal(e.target.value)}
+                            placeholder="e.g. 8757"
+                            className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                              }`}
+                          />
+                        </div>
+
+                        {/* State Rank and State Selector */}
+                        <div>
+                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>State Rank</label>
+                          <input
+                            type="number"
+                            value={loggerGtStateRank}
+                            onChange={(e) => setLoggerGtStateRank(e.target.value)}
+                            placeholder="e.g. 82"
+                            className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                              }`}
+                          />
+                        </div>
+
+                        <div className="col-span-2">
+                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Home State</label>
+                          <select
+                            value={loggerGtState}
+                            onChange={(e) => setLoggerGtState(e.target.value)}
+                            className={`w-full p-2.5 rounded-xl text-xs font-semibold focus:outline-none ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
+                              }`}
+                          >
+                            <option value="">Select Home State...</option>
+                            {INDIAN_STATES.map((st) => (
+                              <option key={st} value={st}>{st}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Notes */}
+                        <div className="col-span-2">
+                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Weaknesses / Strengths / Notes</label>
+                          <textarea
+                            rows={2}
+                            value={loggerGtNotes}
+                            onChange={(e) => setLoggerGtNotes(e.target.value)}
+                            placeholder="Notes / Weak points to focus on..."
+                            className={`w-full p-3 rounded-xl text-xs focus:outline-none ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-200 text-slate-900 placeholder-slate-400'
+                              }`}
+                          />
+                        </div>
+
+                        {/* Subject Breakdown Toggle */}
+                        <div className="col-span-2 pt-2">
+                          <button
+                            type="button"
+                            onClick={() => setLoggerGtShowSubjects(!loggerGtShowSubjects)}
+                            className={`w-full py-2.5 px-4 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-between transition ${isDark ? 'neu-btn-dark text-orange-400 border border-orange-500/20 hover:bg-orange-500/20' : 'bg-orange-50/80 hover:bg-orange-100 text-orange-600'
+                              }`}
+                          >
+                            <span>{loggerGtShowSubjects ? "▲ Hide" : "▼ Enter"} Subject-wise Breakdown (19 Subjects)</span>
+                            <span className="text-[8px] bg-orange-500 text-white px-2 py-0.5 rounded-full font-extrabold uppercase">Optional</span>
+                          </button>
+                        </div>
+
+                        {/* Subject breakdown edit grid */}
+                        {loggerGtShowSubjects && (
+                          <div className={`col-span-2 border rounded-2xl p-4 space-y-3.5 max-h-[300px] overflow-y-auto scrollbar-thin ${isDark ? 'neu-pressed-dark border-orange-500/20 bg-[#161a20]' : 'border-orange-100 bg-white/70 shadow-inner'
                             }`}>
+                            <span className={`text-[9px] font-black uppercase tracking-wider block mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Enter correct / incorrect per subject</span>
+                            <div className="space-y-3.5">
+                              {SYSTEM_SUBJECTS.map((sub) => {
+                                const subData = loggerGtSubjects[sub.name] || { correct: '', incorrect: '', total: sub.weight };
+                                return (
+                                  <div key={sub.name} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-2 text-xs ${isDark ? 'border-white/5' : 'border-gray-50'}`}>
+                                    <span className={`font-extrabold min-w-[130px] ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{sub.name}</span>
+                                    <div className="flex items-center gap-3">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="text-[9px] text-emerald-500 font-extrabold uppercase">Correct</span>
+                                        <input
+                                          type="number"
+                                          value={subData.correct}
+                                          onChange={(e) => {
+                                            setLoggerGtSubjects(prev => ({
+                                              ...prev,
+                                              [sub.name]: {
+                                                ...subData,
+                                                correct: e.target.value,
+                                                total: subData.total || sub.weight
+                                              }
+                                            }));
+                                          }}
+                                          placeholder="0"
+                                          className={`w-11 p-1 rounded text-center text-xs font-mono font-bold outline-none ${isDark ? 'bg-[#1e232b] border border-white/10 text-slate-100' : 'bg-white border border-gray-200 text-slate-900'
+                                            }`}
+                                        />
+                                      </div>
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="text-[9px] text-red-500 font-extrabold uppercase">Incorrect</span>
+                                        <input
+                                          type="number"
+                                          value={subData.incorrect}
+                                          onChange={(e) => {
+                                            setLoggerGtSubjects(prev => ({
+                                              ...prev,
+                                              [sub.name]: {
+                                                ...subData,
+                                                incorrect: e.target.value,
+                                                total: subData.total || sub.weight
+                                              }
+                                            }));
+                                          }}
+                                          placeholder="0"
+                                          className={`w-11 p-1 rounded text-center text-xs font-mono font-bold outline-none ${isDark ? 'bg-[#1e232b] border border-white/10 text-slate-100' : 'bg-white border border-gray-200 text-slate-900'
+                                            }`}
+                                        />
+                                      </div>
+                                      <div className="flex items-center gap-1.5">
+                                        <span className={`text-[9px] font-extrabold uppercase ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Total</span>
+                                        <input
+                                          type="number"
+                                          value={subData.total}
+                                          onChange={(e) => {
+                                            setLoggerGtSubjects(prev => ({
+                                              ...prev,
+                                              [sub.name]: {
+                                                ...subData,
+                                                total: e.target.value
+                                              }
+                                            }));
+                                          }}
+                                          placeholder={sub.weight}
+                                          className={`w-11 p-1 rounded text-center text-xs font-mono outline-none ${isDark ? 'bg-[#1e232b] border border-white/10 text-slate-100' : 'bg-white border border-gray-200 text-slate-900'
+                                            }`}
+                                        />
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
 
-                              {/* Modal Header */}
-                              <div className={`p-6 border-b flex justify-between items-center ${isDark ? 'border-white/10 bg-[#1c2128]' : 'bg-[#e6ecf5] border-slate-300/60'}`}>
-                                <div className="text-left">
-                                  <h3 className={`font-black uppercase tracking-widest text-xs ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>Manual Study Report</h3>
-                                  <span className={`text-[9px] font-bold font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{formatAppDate(loggerDate)}</span>
-                                </div>
+                      </div>
 
-                                <button
-                                  onClick={() => setIsStudyLoggerModalOpen(false)}
-                                  className={`p-1.5 rounded-xl transition ${isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-white/10' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
-                                >
-                                  <X className="w-5 h-5" />
-                                </button>
-                              </div>
+                      <div className="flex justify-end gap-2 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setIsAddingGt(false)}
+                          className={`px-4 py-2 text-[10px] font-bold rounded-xl transition ${isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
+                            }`}
+                        >
+                          Cancel
+                        </button>
 
-                              {/* Modal Body */}
-                              <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto text-left">
+                        <button
+                          type="button"
+                          onClick={handleAddGt}
+                          className="px-5 py-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-[10px] font-black uppercase rounded-xl hover:shadow active:scale-95 transition"
+                        >
+                          Add Mock
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
-                                {/* Date Select Input */}
-                                <div>
-                                  <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Report Date</label>
+              </div>
+
+              {/* Modal Footer Controls */}
+              <div className={`p-6 border-t flex justify-end gap-4 ${isDark ? 'border-white/10 bg-[#1c2128]' : 'bg-gray-50 border-slate-200'}`}>
+                <button
+                  onClick={() => setIsStudyLoggerModalOpen(false)}
+                  className={`px-8 py-3 text-xs font-bold rounded-2xl transition ${isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
+                    }`}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  onClick={saveStudyLog}
+                  disabled={isSaving}
+                  className="px-10 py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-xs font-black rounded-2xl hover:shadow-lg shadow-orange-500/20 flex items-center gap-2 active:scale-95 transition-all disabled:opacity-50"
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      Saving Report...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-3.5 h-3.5" />
+                      Save Report
+                    </>
+                  )}
+                </button>
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        {/* EDIT GRAND TEST MODAL DIALOG (TARGETED SCORE & SUBJECT-WISE BREAKDOWN ADJUSTER) */}
+        {isEditGtModalOpen && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
+            <div className={`rounded-3xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col animate-in zoom-in duration-300 transition-colors ${isDark ? 'neu-card-dark border border-white/10 bg-[#222730] text-slate-100' : 'neu-card-light border border-white/80 bg-[#e6ecf5] text-slate-900 shadow-2xl'
+              }`}>
+
+              {/* Modal Header */}
+              <div className={`p-6 border-b flex justify-between items-center ${isDark ? 'border-white/10 bg-[#1c2128]' : 'bg-[#e6ecf5] border-slate-300/60'}`}>
+                <div className="text-left">
+                  <h3 className={`font-black uppercase tracking-widest text-xs flex items-center gap-1.5 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                    <Award className="w-4 h-4 text-orange-500 animate-pulse" />
+                    Edit Grand Test Entry
+                  </h3>
+                  <span className={`text-[9px] font-bold font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Logged on {formatAppDate(editGtTargetDate)}
+                  </span>
+                </div>
+
+                <button
+                  onClick={() => setIsEditGtModalOpen(false)}
+                  className={`p-1.5 rounded-xl transition ${isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-white/10' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/60'}`}
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto text-left">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+                  {/* Left Column: Core Fields */}
+                  <div className="lg:col-span-6 space-y-4">
+                    <span className="text-[10px] font-black uppercase text-orange-500 tracking-wider block border-b pb-1.5">Core Test Details</span>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Test Name</label>
+                        <input
+                          type="text"
+                          value={editGtName}
+                          onChange={(e) => setEditGtName(e.target.value)}
+                          placeholder="e.g. Grand Test 14"
+                          className={`w-full p-2.5 rounded-xl text-xs font-semibold focus:outline-none ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-300/80 text-slate-900 placeholder-slate-400'
+                            }`}
+                        />
+                      </div>
+
+                      <div>
+                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Platform</label>
+                        <input
+                          type="text"
+                          value={editGtPlatform}
+                          onChange={(e) => setEditGtPlatform(e.target.value)}
+                          placeholder="e.g. Marrow"
+                          className={`w-full p-2.5 rounded-xl text-xs font-semibold focus:outline-none ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-300/80 text-slate-900 placeholder-slate-400'
+                            }`}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>GT Scoring Model</label>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setEditGtType('NEETPG')}
+                          className={`flex-1 py-2 text-xs font-black rounded-xl border transition ${editGtType === 'NEETPG'
+                              ? 'bg-orange-500 text-white border-transparent shadow-sm'
+                              : isDark ? 'neu-btn-dark text-slate-300 border-white/10' : 'neu-btn-light text-slate-700 border-white/70'
+                            }`}
+                        >
+                          NEET PG (+4, -1)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditGtType('INICET')}
+                          className={`flex-1 py-2 text-xs font-black rounded-xl border transition ${editGtType === 'INICET'
+                              ? 'bg-orange-500 text-white border-transparent shadow-sm'
+                              : isDark ? 'neu-btn-dark text-slate-300 border-white/10' : 'neu-btn-light text-slate-700 border-white/70'
+                            }`}
+                        >
+                          INI CET (+1, -1/3)
+                        </button>
+                      </div>
+
+                      {editGtType === 'NEETPG' && (
+                        <div className="flex gap-2 p-1 rounded-xl bg-orange-500/5 border border-orange-500/20">
+                          <button
+                            type="button"
+                            onClick={() => setEditNeetPattern('200')}
+                            className={`flex-1 py-1 text-[10px] font-extrabold rounded-lg transition ${editNeetPattern === '200'
+                                ? 'bg-orange-500 text-white shadow-sm'
+                                : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
+                              }`}
+                          >
+                            200 Qs / 800 Marks (Pre-2025)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditNeetPattern('180')}
+                            className={`flex-1 py-1 text-[10px] font-extrabold rounded-lg transition ${editNeetPattern === '180'
+                                ? 'bg-orange-500 text-white shadow-sm'
+                                : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
+                              }`}
+                          >
+                            180 Qs / 720 Marks (2025+)
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Correct Qs</label>
+                        <input
+                          type="number"
+                          value={editGtCorrect}
+                          onChange={(e) => setEditGtCorrect(e.target.value)}
+                          placeholder="e.g. 130"
+                          className={`w-full p-2.5 rounded-xl text-xs font-mono font-bold focus:outline-none ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
+                            }`}
+                        />
+                      </div>
+
+                      <div>
+                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Incorrect Qs</label>
+                        <input
+                          type="number"
+                          value={editGtIncorrect}
+                          onChange={(e) => setEditGtIncorrect(e.target.value)}
+                          placeholder="e.g. 50"
+                          className={`w-full p-2.5 rounded-xl text-xs font-mono font-bold focus:outline-none ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
+                            }`}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Live Score/Metrics Panel */}
+                    {(() => {
+                      const correct = Number(editGtCorrect) || 0;
+                      const incorrect = Number(editGtIncorrect) || 0;
+                      const attended = correct + incorrect;
+                      const totalQs = editGtType === 'NEETPG' ? (editNeetPattern === '180' ? 180 : 200) : 200;
+                      const maxMarks = editGtType === 'NEETPG' ? (editNeetPattern === '180' ? 720 : 800) : 200;
+                      let score = 0;
+                      if (editGtType === 'NEETPG') {
+                        score = (correct * 4) - incorrect;
+                      } else {
+                        score = Number((correct - (incorrect * (1 / 3))).toFixed(8));
+                      }
+                      const accuracy = attended > 0 ? ((correct / attended) * 100).toFixed(1) : '100';
+
+                      return (
+                        <div className={`p-4 rounded-2xl border space-y-2 text-xs ${isDark ? 'bg-orange-500/10 border-orange-500/20 text-slate-300' : 'bg-orange-50/60 border-orange-200/60 text-slate-700'
+                          }`}>
+                          <div className="flex items-center justify-between">
+                            <span>Attended: <strong className="text-orange-500 font-mono">{attended} / {totalQs}</strong></span>
+                            <span>Unattempted: <strong className={`font-mono ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{Math.max(0, totalQs - attended)}</strong></span>
+                          </div>
+                          <div className={`h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-white/10' : 'bg-slate-200'}`}>
+                            <div className="h-full bg-orange-500 transition-all duration-300" style={{ width: `${Math.min(100, (attended / totalQs) * 100)}%` }} />
+                          </div>
+                          <div className="flex items-center justify-between pt-1 font-bold">
+                            <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>Calculated Score:</span>
+                            <span className="text-sm text-orange-500 font-black font-mono">
+                              {editGtType === 'INICET' ? score.toFixed(4) : score} / {maxMarks}
+                            </span>
+                          </div>
+                          <div className={`flex items-center justify-between text-[10px] italic ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                            <span>Accuracy Rate: <strong>{accuracy}%</strong></span>
+                            <span>{editGtType === 'NEETPG' ? 'Score = Correct * 4 - Incorrect' : 'Score = Correct - Incorrect * (1/3)'}</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Percentile (%ile)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={editGtPercentage}
+                          onChange={(e) => setEditGtPercentage(e.target.value)}
+                          placeholder="e.g. 98.7"
+                          className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
+                            }`}
+                        />
+                      </div>
+
+                      <div>
+                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>National AIR</label>
+                        <input
+                          type="number"
+                          value={editGtRank}
+                          onChange={(e) => setEditGtRank(e.target.value)}
+                          placeholder="e.g. 1414"
+                          className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
+                            }`}
+                        />
+                      </div>
+
+                      <div>
+                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Contestants</label>
+                        <input
+                          type="number"
+                          value={editGtRankTotal}
+                          onChange={(e) => setEditGtRankTotal(e.target.value)}
+                          placeholder="e.g. 8757"
+                          className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
+                            }`}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>State Rank</label>
+                        <input
+                          type="number"
+                          value={editGtStateRank}
+                          onChange={(e) => setEditGtStateRank(e.target.value)}
+                          placeholder="e.g. 82"
+                          className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
+                            }`}
+                        />
+                      </div>
+
+                      <div className="col-span-2">
+                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Home State</label>
+                        <select
+                          value={editGtState}
+                          onChange={(e) => setEditGtState(e.target.value)}
+                          className={`w-full p-2.5 rounded-xl text-xs font-semibold focus:outline-none ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
+                            }`}
+                        >
+                          <option value="">Select Home State...</option>
+                          {INDIAN_STATES.map((st) => (
+                            <option key={st} value={st}>{st}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Weaknesses / Strengths / Strategy Notes</label>
+                      <textarea
+                        rows={3}
+                        value={editGtNotes}
+                        onChange={(e) => setEditGtNotes(e.target.value)}
+                        placeholder="Notes / Weak points to focus on..."
+                        className={`w-full p-3 rounded-xl text-xs focus:outline-none ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-300/80 text-slate-900 placeholder-slate-400'
+                          }`}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Right Column: 19 Subjects Breakdown */}
+                  <div className="lg:col-span-6 space-y-4">
+                    <div className="flex items-center justify-between border-b pb-1.5">
+                      <span className="text-[10px] font-black uppercase text-orange-500 tracking-wider block">Clinical 19 Subjects Breakdown</span>
+                      <button
+                        type="button"
+                        onClick={() => setEditGtShowSubjects(!editGtShowSubjects)}
+                        className={`px-2 py-0.5 rounded text-[9px] font-black uppercase transition ${isDark ? 'bg-orange-500/20 text-orange-400 hover:bg-orange-500/30' : 'bg-orange-100 text-orange-600 hover:bg-orange-200'
+                          }`}
+                      >
+                        {editGtShowSubjects ? "Collapse View" : "Expand View"}
+                      </button>
+                    </div>
+
+                    {/* Math Consistency Check Banner */}
+                    {(() => {
+                      let correctSum = 0;
+                      let incorrectSum = 0;
+                      let totalSum = 0;
+                      Object.keys(editGtSubjects).forEach(subKey => {
+                        const sub = editGtSubjects[subKey];
+                        correctSum += Number(sub.correct) || 0;
+                        incorrectSum += Number(sub.incorrect) || 0;
+                        totalSum += Number(sub.total) || 0;
+                      });
+
+                      const targetCorrect = Number(editGtCorrect) || 0;
+                      const targetIncorrect = Number(editGtIncorrect) || 0;
+                      const isCorrectMatch = correctSum === targetCorrect;
+                      const isIncorrectMatch = incorrectSum === targetIncorrect;
+                      const isTotalMatch = totalSum === 200;
+
+                      const isPristine = isCorrectMatch && isIncorrectMatch && isTotalMatch;
+
+                      if (!isPristine && (correctSum > 0 || incorrectSum > 0 || totalSum > 0)) {
+                        return (
+                          <div className={`p-3 border rounded-2xl text-[10px] space-y-1 text-left leading-normal animate-pulse ${isDark ? 'bg-rose-500/10 border-rose-500/20 text-rose-300' : 'bg-rose-50 border-rose-100 text-rose-700'
+                            }`}>
+                            <span className="font-black uppercase tracking-wider block">⚠️ Math Consistency Warning</span>
+                            <div className="grid grid-cols-3 gap-2 text-[9px] font-bold font-mono">
+                              <span className={isCorrectMatch ? 'text-emerald-500' : 'text-rose-500'}>
+                                Correct: {correctSum} vs {targetCorrect}
+                              </span>
+                              <span className={isIncorrectMatch ? 'text-emerald-500' : 'text-rose-500'}>
+                                Incorrect: {incorrectSum} vs {targetIncorrect}
+                              </span>
+                              <span className={isTotalMatch ? 'text-emerald-500' : 'text-rose-500'}>
+                                Total Qs: {totalSum} / 200
+                              </span>
+                            </div>
+                            <p className={`text-[8.5px] italic font-medium pt-1 ${isDark ? 'text-rose-400' : 'text-rose-500'}`}>
+                              Adjust subject entries below to match overall stats for perfectly calibrated analytics.
+                            </p>
+                          </div>
+                        );
+                      } else if (isPristine && correctSum > 0) {
+                        return (
+                          <div className={`p-3 border rounded-2xl text-[9px] font-bold flex items-center gap-1 ${isDark ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-emerald-50 border-emerald-100 text-emerald-700'
+                            }`}>
+                            <span>✅ Subject counts sum up to exactly 200 questions with perfect scoring alignment!</span>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+
+                    <div className={`border rounded-2xl p-4 space-y-3.5 overflow-y-auto transition-all duration-300 ${editGtShowSubjects ? 'max-h-[500px]' : 'max-h-[250px]'
+                      } ${isDark ? 'neu-pressed-dark border-white/5' : 'neu-pressed-light border-white/70'
+                      }`}>
+                      <div className="space-y-3">
+                        {SYSTEM_SUBJECTS.map((sub) => {
+                          const subData = editGtSubjects[sub.name] || { correct: '', incorrect: '', total: sub.weight };
+                          return (
+                            <div key={sub.name} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-2.5 text-xs ${isDark ? 'border-white/5' : 'border-slate-200/60'
+                              }`}>
+                              <span className={`font-extrabold min-w-[130px] text-left ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{sub.name}</span>
+                              <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-1">
+                                  <span className="text-[9px] text-emerald-500 font-extrabold uppercase font-mono">C:</span>
                                   <input
-                                    type="date"
-                                    value={loggerDate}
+                                    type="number"
+                                    value={subData.correct}
                                     onChange={(e) => {
-                                      setLoggerDate(e.target.value);
-                                      const log = studyLogs[e.target.value] || { questions: '', cards: '', pages: '', hours: '', gts: [] };
-                                      setLoggerQuestions(log.questions || '');
-                                      setLoggerCards(log.cards || '');
-                                      setLoggerPages(log.pages || '');
-                                      setLoggerHours(log.hours || '');
-                                      const hoursVal = Number(log.hours) || 0;
-                                      const hPart = Math.floor(hoursVal);
-                                      const mPart = Math.round((hoursVal - hPart) * 60);
-                                      setLoggerHoursPart(hPart > 0 ? String(hPart) : '');
-                                      setLoggerMinutesPart(mPart > 0 ? String(mPart) : '');
-                                      setLoggerGtsList(log.gts || []);
-                                      setIsAddingGt(false);
+                                      setEditGtSubjects(prev => ({
+                                        ...prev,
+                                        [sub.name]: {
+                                          ...subData,
+                                          correct: e.target.value,
+                                          total: subData.total || sub.weight
+                                        }
+                                      }));
                                     }}
-                                    className={`w-full p-3 rounded-xl outline-none text-xs font-semibold ${
-                                      isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
-                                    }`}
+                                    placeholder="0"
+                                    className={`w-11 p-1 rounded text-center text-xs font-mono font-bold outline-none ${isDark ? 'bg-[#1e232b] border border-white/10 text-slate-100' : 'bg-white border border-slate-200 text-slate-900'
+                                      }`}
                                   />
                                 </div>
 
-                                {/* Main Metric Inputs */}
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                  <div>
-                                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Questions Solved</label>
-                                    <input
-                                      type="number"
-                                      value={loggerQuestions}
-                                      onChange={(e) => setLoggerQuestions(e.target.value)}
-                                      placeholder="e.g. 50"
-                                      className={`w-full p-3 rounded-xl outline-none text-xs font-mono ${
-                                        isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-200 text-slate-900 placeholder-slate-400'
+                                <div className="flex items-center gap-1">
+                                  <span className="text-[9px] text-rose-500 font-extrabold uppercase font-mono">I:</span>
+                                  <input
+                                    type="number"
+                                    value={subData.incorrect}
+                                    onChange={(e) => {
+                                      setEditGtSubjects(prev => ({
+                                        ...prev,
+                                        [sub.name]: {
+                                          ...subData,
+                                          incorrect: e.target.value,
+                                          total: subData.total || sub.weight
+                                        }
+                                      }));
+                                    }}
+                                    placeholder="0"
+                                    className={`w-11 p-1 rounded text-center text-xs font-mono font-bold outline-none ${isDark ? 'bg-[#1e232b] border border-white/10 text-slate-100' : 'bg-white border border-slate-200 text-slate-900'
                                       }`}
-                                    />
-                                  </div>
-
-                                  <div>
-                                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Cards Studied</label>
-                                    <input
-                                      type="number"
-                                      value={loggerCards}
-                                      onChange={(e) => setLoggerCards(e.target.value)}
-                                      placeholder="e.g. 80"
-                                      className={`w-full p-3 rounded-xl outline-none text-xs font-mono ${
-                                        isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-200 text-slate-900 placeholder-slate-400'
-                                      }`}
-                                    />
-                                  </div>
-
-                                  <div>
-                                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Pages Read</label>
-                                    <input
-                                      type="number"
-                                      value={loggerPages}
-                                      onChange={(e) => setLoggerPages(e.target.value)}
-                                      placeholder="e.g. 15"
-                                      className={`w-full p-3 rounded-xl outline-none text-xs font-mono ${
-                                        isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-200 text-slate-900 placeholder-slate-400'
-                                      }`}
-                                    />
-                                  </div>
-
-                                  <div>
-                                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Focused Time</label>
-                                    <div className="flex items-center gap-2">
-                                      <div className={`flex-1 flex items-center rounded-xl px-3 py-2.5 ${
-                                        isDark ? 'neu-pressed-dark border border-white/10' : 'neu-pressed-light border border-slate-200'
-                                      }`}>
-                                        <input
-                                          type="number"
-                                          value={loggerHoursPart}
-                                          onChange={(e) => setLoggerHoursPart(e.target.value)}
-                                          placeholder="h"
-                                          className={`bg-transparent w-full focus:outline-none text-xs font-mono font-bold ${isDark ? 'text-slate-100' : 'text-gray-800'}`}
-                                          min="0"
-                                        />
-                                        <span className={`text-[10px] font-bold font-mono ml-1 shrink-0 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>hr</span>
-                                      </div>
-                                      <div className={`flex-1 flex items-center rounded-xl px-3 py-2.5 ${
-                                        isDark ? 'neu-pressed-dark border border-white/10' : 'neu-pressed-light border border-slate-200'
-                                      }`}>
-                                        <input
-                                          type="number"
-                                          value={loggerMinutesPart}
-                                          onChange={(e) => setLoggerMinutesPart(e.target.value)}
-                                          placeholder="m"
-                                          className={`bg-transparent w-full focus:outline-none text-xs font-mono font-bold ${isDark ? 'text-slate-100' : 'text-gray-800'}`}
-                                          min="0"
-                                          max="59"
-                                        />
-                                        <span className={`text-[10px] font-bold font-mono ml-1 shrink-0 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>min</span>
-                                      </div>
-                                    </div>
-                                  </div>
+                                  />
                                 </div>
 
-                                {/* Grand Tests Section */}
-                                <div className={`pt-6 border-t ${isDark ? 'border-white/10' : 'border-gray-100'}`}>
-                                  <div className="flex items-center justify-between mb-4">
-                                    <label className={`block text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Grand Tests (GTs) Attended</label>
-                                    {!isAddingGt && (
-                                      <button
-                                        type="button"
-                                        onClick={() => setIsAddingGt(true)}
-                                        className={`text-[10px] font-black px-2.5 py-1 rounded-lg transition active:scale-95 ${
-                                          isDark ? 'neu-btn-dark text-orange-400 border border-orange-500/20 hover:bg-orange-500/20' : 'neu-btn-light text-orange-600 border border-orange-200 hover:bg-orange-100'
-                                        }`}
-                                      >
-                                        + Add Mock Test
-                                      </button>
-                                    )}
-                                  </div>
-                                  {/* List of GTs currently in log */}
-                                  <div className="space-y-3.5 mb-4">
-                                    {loggerGtsList.map((gt, idx) => (
-                                      <div key={idx} className={`p-4 rounded-2xl flex items-start justify-between ${
-                                        isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-slate-200/80'
-                                      }`}>
-                                        <div className="text-left space-y-1">
-                                          <div className="flex items-center gap-2 flex-wrap">
-                                            {gt.platform && (
-                                              <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded font-mono tracking-wider ${
-                                                isDark ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-orange-100 text-orange-600'
-                                              }`}>
-                                                {gt.platform}
-                                              </span>
-                                            )}
-                                            <h4 className={`text-xs font-black leading-tight ${isDark ? 'text-slate-100' : 'text-gray-800'}`}>{gt.name}</h4>
-                                            <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${
-                                              isDark ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600'
-                                            }`}>
-                                              {gt.type === 'NEETPG' ? 'NEET PG' : 'INI CET'}
-                                            </span>
-                                          </div>
-                                          <div className={`text-[10px] font-bold flex flex-wrap gap-x-3 gap-y-1 font-mono ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
-                                            <span>Marks: <strong className="text-orange-500">{gt.score} / {gt.maxMarks}</strong></span>
-                                            <span>Correct: <strong className="text-emerald-500">{gt.correct}</strong></span>
-                                            <span>Incorrect: <strong className="text-red-500">{gt.incorrect}</strong></span>
-                                            {gt.percentile !== null && <span>%ile: <strong className="text-blue-500">{gt.percentile}%</strong></span>}
-                                            {gt.rank && <span>Rank: <strong className="text-indigo-400">#{gt.rank}</strong></span>}
-                                          </div>
-                                          {gt.notes && <p className={`text-[9px] italic leading-relaxed ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>"{gt.notes}"</p>}
-                                        </div>
-                                        <button
-                                          type="button"
-                                          onClick={() => handleDeleteGt(idx)}
-                                          className={`p-2 rounded-xl transition shrink-0 ${isDark ? 'text-red-400 hover:bg-red-500/20' : 'text-red-500 hover:bg-red-50'}`}
-                                          title="Delete Mock Test"
-                                        >
-                                          <Trash2 className="w-3.5 h-3.5" />
-                                        </button>
-                                      </div>
-                                    ))}
-                                  </div>
-
-                                  {/* Inline sub-form to add a new Grand Test */}
-                                  {isAddingGt && (
-                                    <div className={`p-5 rounded-3xl space-y-4 animate-in slide-in-from-top duration-200 ${
-                                      isDark ? 'neu-card-dark border border-orange-500/20 bg-orange-500/5' : 'bg-orange-50/40 border border-orange-100/70'
-                                    }`}>
-                                      <span className="text-[9px] font-black uppercase text-orange-500 tracking-wider">New Grand Test Details</span>
-
-                                      <div className="grid grid-cols-2 gap-3.5">
-                                        {/* GT Platform */}
-                                        <div className="col-span-2">
-                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Exam Platform</label>
-                                          <input
-                                            type="text"
-                                            value={loggerGtPlatform}
-                                            onChange={(e) => setLoggerGtPlatform(e.target.value)}
-                                            placeholder="e.g. Marrow, PrepLadder, Cerebellum, eGurukul"
-                                            className={`w-full p-2.5 rounded-xl text-xs font-semibold focus:outline-none ${
-                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-200 text-slate-900 placeholder-slate-400'
-                                            }`}
-                                          />
-                                        </div>
-
-                                        {/* GT Name */}
-                                        <div className="col-span-2">
-                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Test Name</label>
-                                          <input
-                                            type="text"
-                                            value={loggerGtName}
-                                            onChange={(e) => setLoggerGtName(e.target.value)}
-                                            placeholder="Test Name (e.g. Marrow Grand Test 14)"
-                                            className={`w-full p-2.5 rounded-xl text-xs font-semibold focus:outline-none ${
-                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-200 text-slate-900 placeholder-slate-400'
-                                            }`}
-                                          />
-                                        </div>
-
-                                        {/* GT Type Selector Pills */}
-                                        <div className="col-span-2 space-y-2">
-                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>GT Scoring Model</label>
-                                          <div className="flex gap-2">
-                                            <button
-                                              type="button"
-                                              onClick={() => setLoggerGtType('NEETPG')}
-                                              className={`flex-1 py-2 text-xs font-black rounded-xl border transition ${
-                                                loggerGtType === 'NEETPG'
-                                                  ? 'bg-orange-500 text-white border-transparent shadow-sm'
-                                                  : isDark ? 'neu-btn-dark text-slate-300 border-white/10' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-                                              }`}
-                                            >
-                                              NEET PG (+4, -1)
-                                            </button>
-                                            <button
-                                              type="button"
-                                              onClick={() => setLoggerGtType('INICET')}
-                                              className={`flex-1 py-2 text-xs font-black rounded-xl border transition ${
-                                                loggerGtType === 'INICET'
-                                                  ? 'bg-orange-500 text-white border-transparent shadow-sm'
-                                                  : isDark ? 'neu-btn-dark text-slate-300 border-white/10' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-                                              }`}
-                                            >
-                                              INI CET (+1, -1/3)
-                                            </button>
-                                          </div>
-
-                                          {loggerGtType === 'NEETPG' && (
-                                            <div className="flex gap-2 p-1 rounded-xl bg-orange-500/5 border border-orange-500/20">
-                                              <button
-                                                type="button"
-                                                onClick={() => setLoggerNeetPattern('200')}
-                                                className={`flex-1 py-1 text-[10px] font-extrabold rounded-lg transition ${
-                                                  loggerNeetPattern === '200'
-                                                    ? 'bg-orange-500 text-white shadow-sm'
-                                                    : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
-                                                }`}
-                                              >
-                                                200 Qs / 800 Marks (Old Pattern)
-                                              </button>
-                                              <button
-                                                type="button"
-                                                onClick={() => setLoggerNeetPattern('180')}
-                                                className={`flex-1 py-1 text-[10px] font-extrabold rounded-lg transition ${
-                                                  loggerNeetPattern === '180'
-                                                    ? 'bg-orange-500 text-white shadow-sm'
-                                                    : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
-                                                }`}
-                                              >
-                                                180 Qs / 720 Marks (New Pattern)
-                                              </button>
-                                            </div>
-                                          )}
-                                        </div>
-
-                                        {/* Questions Correct & Incorrect */}
-                                        <div>
-                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Correct Qs</label>
-                                          <input
-                                            type="number"
-                                            value={loggerGtCorrect}
-                                            onChange={(e) => setLoggerGtCorrect(e.target.value)}
-                                            placeholder="e.g. 130"
-                                            className={`w-full p-2.5 rounded-xl text-xs font-mono font-bold focus:outline-none ${
-                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
-                                            }`}
-                                          />
-                                        </div>
-                                        <div>
-                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Incorrect Qs</label>
-                                          <input
-                                            type="number"
-                                            value={loggerGtIncorrect}
-                                            onChange={(e) => setLoggerGtIncorrect(e.target.value)}
-                                            placeholder="e.g. 50"
-                                            className={`w-full p-2.5 rounded-xl text-xs font-mono font-bold focus:outline-none ${
-                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
-                                            }`}
-                                          />
-                                        </div>
-
-                                        {/* Live Preview metrics breakdown */}
-                                        <div className={`p-3 rounded-2xl border flex items-center justify-between text-[10px] col-span-2 ${
-                                          isDark ? 'bg-orange-500/10 border-orange-500/20 text-slate-300' : 'bg-orange-50/50 border-orange-100/50 text-gray-500'
-                                        }`}>
-                                           <span className="font-bold">Attended: <strong className="text-orange-500 font-black">{(Number(loggerGtCorrect) || 0) + (Number(loggerGtIncorrect) || 0)} / {loggerGtType === 'NEETPG' ? (loggerNeetPattern === '180' ? 180 : 200) : 200}</strong></span>
-                                           <span className="font-bold">Unattempted: <strong className={`font-black ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>{Math.max(0, (loggerGtType === 'NEETPG' ? (loggerNeetPattern === '180' ? 180 : 200) : 200) - ((Number(loggerGtCorrect) || 0) + (Number(loggerGtIncorrect) || 0)))}</strong></span>
-                                           <span className="font-bold">Score Preview: <strong className="text-orange-500 font-black">
-                                             {loggerGtType === 'NEETPG'
-                                               ? `${(Number(loggerGtCorrect) || 0) * 4 - (Number(loggerGtIncorrect) || 0) * 1} / ${loggerNeetPattern === '180' ? 720 : 800}`
-                                               : `${((Number(loggerGtCorrect) || 0) * 1 - (Number(loggerGtIncorrect) || 0) * (1 / 3)).toFixed(2)} / 200`
-                                             }
-                                           </strong></span>
-                                        </div>
-
-                                        {/* Percentile, Rank and Rank Total */}
-                                        <div>
-                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Percentile (%ile)</label>
-                                          <input
-                                            type="number"
-                                            step="0.01"
-                                            value={loggerGtPercentage}
-                                            onChange={(e) => setLoggerGtPercentage(e.target.value)}
-                                            placeholder="e.g. 98.7"
-                                            className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${
-                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
-                                            }`}
-                                          />
-                                        </div>
-
-                                        <div>
-                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>All India Rank (AIR)</label>
-                                          <input
-                                            type="number"
-                                            value={loggerGtRank}
-                                            onChange={(e) => setLoggerGtRank(e.target.value)}
-                                            placeholder="e.g. 1414"
-                                            className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${
-                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
-                                            }`}
-                                          />
-                                        </div>
-
-                                        <div>
-                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Total Participants</label>
-                                          <input
-                                            type="number"
-                                            value={loggerGtRankTotal}
-                                            onChange={(e) => setLoggerGtRankTotal(e.target.value)}
-                                            placeholder="e.g. 8757"
-                                            className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${
-                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
-                                            }`}
-                                          />
-                                        </div>
-
-                                        {/* State Rank and State Selector */}
-                                        <div>
-                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>State Rank</label>
-                                          <input
-                                            type="number"
-                                            value={loggerGtStateRank}
-                                            onChange={(e) => setLoggerGtStateRank(e.target.value)}
-                                            placeholder="e.g. 82"
-                                            className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${
-                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
-                                            }`}
-                                          />
-                                        </div>
-
-                                        <div className="col-span-2">
-                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Home State</label>
-                                          <select
-                                            value={loggerGtState}
-                                            onChange={(e) => setLoggerGtState(e.target.value)}
-                                            className={`w-full p-2.5 rounded-xl text-xs font-semibold focus:outline-none ${
-                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
-                                            }`}
-                                          >
-                                            <option value="">Select Home State...</option>
-                                            {INDIAN_STATES.map((st) => (
-                                              <option key={st} value={st}>{st}</option>
-                                            ))}
-                                          </select>
-                                        </div>
-
-                                        {/* Notes */}
-                                        <div className="col-span-2">
-                                          <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Weaknesses / Strengths / Notes</label>
-                                          <textarea
-                                            rows={2}
-                                            value={loggerGtNotes}
-                                            onChange={(e) => setLoggerGtNotes(e.target.value)}
-                                            placeholder="Notes / Weak points to focus on..."
-                                            className={`w-full p-3 rounded-xl text-xs focus:outline-none ${
-                                              isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-200 text-slate-900 placeholder-slate-400'
-                                            }`}
-                                          />
-                                        </div>
-
-                                        {/* Subject Breakdown Toggle */}
-                                        <div className="col-span-2 pt-2">
-                                          <button
-                                            type="button"
-                                            onClick={() => setLoggerGtShowSubjects(!loggerGtShowSubjects)}
-                                            className={`w-full py-2.5 px-4 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-between transition ${
-                                              isDark ? 'neu-btn-dark text-orange-400 border border-orange-500/20 hover:bg-orange-500/20' : 'bg-orange-50/80 hover:bg-orange-100 text-orange-600'
-                                            }`}
-                                          >
-                                            <span>{loggerGtShowSubjects ? "▲ Hide" : "▼ Enter"} Subject-wise Breakdown (19 Subjects)</span>
-                                            <span className="text-[8px] bg-orange-500 text-white px-2 py-0.5 rounded-full font-extrabold uppercase">Optional</span>
-                                          </button>
-                                        </div>
-
-                                        {/* Subject breakdown edit grid */}
-                                        {loggerGtShowSubjects && (
-                                          <div className={`col-span-2 border rounded-2xl p-4 space-y-3.5 max-h-[300px] overflow-y-auto scrollbar-thin ${
-                                            isDark ? 'neu-pressed-dark border-orange-500/20 bg-[#161a20]' : 'border-orange-100 bg-white/70 shadow-inner'
-                                          }`}>
-                                            <span className={`text-[9px] font-black uppercase tracking-wider block mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Enter correct / incorrect per subject</span>
-                                            <div className="space-y-3.5">
-                                              {SYSTEM_SUBJECTS.map((sub) => {
-                                                const subData = loggerGtSubjects[sub.name] || { correct: '', incorrect: '', total: sub.weight };
-                                                return (
-                                                  <div key={sub.name} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-2 text-xs ${isDark ? 'border-white/5' : 'border-gray-50'}`}>
-                                                    <span className={`font-extrabold min-w-[130px] ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{sub.name}</span>
-                                                    <div className="flex items-center gap-3">
-                                                      <div className="flex items-center gap-1.5">
-                                                        <span className="text-[9px] text-emerald-500 font-extrabold uppercase">Correct</span>
-                                                        <input
-                                                          type="number"
-                                                          value={subData.correct}
-                                                          onChange={(e) => {
-                                                            setLoggerGtSubjects(prev => ({
-                                                              ...prev,
-                                                              [sub.name]: {
-                                                                ...subData,
-                                                                correct: e.target.value,
-                                                                total: subData.total || sub.weight
-                                                              }
-                                                            }));
-                                                          }}
-                                                          placeholder="0"
-                                                          className={`w-11 p-1 rounded text-center text-xs font-mono font-bold outline-none ${
-                                                            isDark ? 'bg-[#1e232b] border border-white/10 text-slate-100' : 'bg-white border border-gray-200 text-slate-900'
-                                                          }`}
-                                                        />
-                                                      </div>
-                                                      <div className="flex items-center gap-1.5">
-                                                        <span className="text-[9px] text-red-500 font-extrabold uppercase">Incorrect</span>
-                                                        <input
-                                                          type="number"
-                                                          value={subData.incorrect}
-                                                          onChange={(e) => {
-                                                            setLoggerGtSubjects(prev => ({
-                                                              ...prev,
-                                                              [sub.name]: {
-                                                                ...subData,
-                                                                incorrect: e.target.value,
-                                                                total: subData.total || sub.weight
-                                                              }
-                                                            }));
-                                                          }}
-                                                          placeholder="0"
-                                                          className={`w-11 p-1 rounded text-center text-xs font-mono font-bold outline-none ${
-                                                            isDark ? 'bg-[#1e232b] border border-white/10 text-slate-100' : 'bg-white border border-gray-200 text-slate-900'
-                                                          }`}
-                                                        />
-                                                      </div>
-                                                      <div className="flex items-center gap-1.5">
-                                                        <span className={`text-[9px] font-extrabold uppercase ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Total</span>
-                                                        <input
-                                                          type="number"
-                                                          value={subData.total}
-                                                          onChange={(e) => {
-                                                            setLoggerGtSubjects(prev => ({
-                                                              ...prev,
-                                                              [sub.name]: {
-                                                                ...subData,
-                                                                total: e.target.value
-                                                              }
-                                                            }));
-                                                          }}
-                                                          placeholder={sub.weight}
-                                                          className={`w-11 p-1 rounded text-center text-xs font-mono outline-none ${
-                                                            isDark ? 'bg-[#1e232b] border border-white/10 text-slate-100' : 'bg-white border border-gray-200 text-slate-900'
-                                                          }`}
-                                                        />
-                                                      </div>
-                                                    </div>
-                                                  </div>
-                                                );
-                                              })}
-                                            </div>
-                                          </div>
-                                        )}
-
-                                      </div>
-
-                                      <div className="flex justify-end gap-2 pt-2">
-                                        <button
-                                          type="button"
-                                          onClick={() => setIsAddingGt(false)}
-                                          className={`px-4 py-2 text-[10px] font-bold rounded-xl transition ${
-                                            isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
-                                          }`}
-                                        >
-                                          Cancel
-                                        </button>
-
-                                        <button
-                                          type="button"
-                                          onClick={handleAddGt}
-                                          className="px-5 py-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-[10px] font-black uppercase rounded-xl hover:shadow active:scale-95 transition"
-                                        >
-                                          Add Mock
-                                        </button>
-                                      </div>
-                                    </div>
-                                  )}
+                                <div className="flex items-center gap-1">
+                                  <span className={`text-[9px] font-extrabold uppercase font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>T:</span>
+                                  <input
+                                    type="number"
+                                    value={subData.total}
+                                    onChange={(e) => {
+                                      setEditGtSubjects(prev => ({
+                                        ...prev,
+                                        [sub.name]: {
+                                          ...subData,
+                                          total: e.target.value
+                                        }
+                                      }));
+                                    }}
+                                    placeholder={sub.weight}
+                                    className={`w-11 p-1 rounded text-center text-xs font-mono outline-none ${isDark ? 'bg-[#1e232b] border border-white/10 text-slate-100' : 'bg-white border border-slate-200 text-slate-900'
+                                      }`}
+                                  />
                                 </div>
-
                               </div>
-
-                              {/* Modal Footer Controls */}
-                              <div className={`p-6 border-t flex justify-end gap-4 ${isDark ? 'border-white/10 bg-[#1c2128]' : 'bg-gray-50 border-slate-200'}`}>
-                                <button
-                                  onClick={() => setIsStudyLoggerModalOpen(false)}
-                                  className={`px-8 py-3 text-xs font-bold rounded-2xl transition ${
-                                    isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
-                                  }`}
-                                >
-                                  Cancel
-                                </button>
-
-                                <button
-                                  onClick={saveStudyLog}
-                                  disabled={isSaving}
-                                  className="px-10 py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-xs font-black rounded-2xl hover:shadow-lg shadow-orange-500/20 flex items-center gap-2 active:scale-95 transition-all disabled:opacity-50"
-                                >
-                                  {isSaving ? (
-                                    <>
-                                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                      Saving Report...
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Save className="w-3.5 h-3.5" />
-                                      Save Report
-                                    </>
-                                  )}
-                                </button>
-                              </div>
-
                             </div>
-                          </div>
-                        )}
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
 
-                        {/* EDIT GRAND TEST MODAL DIALOG (TARGETED SCORE & SUBJECT-WISE BREAKDOWN ADJUSTER) */}
-                        {isEditGtModalOpen && (
-                          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
-                            <div className={`rounded-3xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col animate-in zoom-in duration-300 transition-colors ${
-                              isDark ? 'neu-card-dark border border-white/10 bg-[#222730] text-slate-100' : 'neu-card-light border border-white/80 bg-[#e6ecf5] text-slate-900 shadow-2xl'
-                            }`}>
+                </div>
+              </div>
 
-                              {/* Modal Header */}
-                              <div className={`p-6 border-b flex justify-between items-center ${isDark ? 'border-white/10 bg-[#1c2128]' : 'bg-[#e6ecf5] border-slate-300/60'}`}>
-                                <div className="text-left">
-                                  <h3 className={`font-black uppercase tracking-widest text-xs flex items-center gap-1.5 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                                    <Award className="w-4 h-4 text-orange-500 animate-pulse" />
-                                    Edit Grand Test Entry
-                                  </h3>
-                                  <span className={`text-[9px] font-bold font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                    Logged on {formatAppDate(editGtTargetDate)}
-                                  </span>
-                                </div>
+              {/* Modal Footer */}
+              <div className={`p-6 border-t flex justify-end gap-4 ${isDark ? 'border-white/10 bg-[#1c2128]' : 'bg-[#e6ecf5] border-slate-300/60'}`}>
+                <button
+                  onClick={() => setIsEditGtModalOpen(false)}
+                  className={`px-8 py-3 text-xs font-bold rounded-2xl transition ${isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
+                    }`}
+                >
+                  Cancel
+                </button>
 
-                                <button
-                                  onClick={() => setIsEditGtModalOpen(false)}
-                                  className={`p-1.5 rounded-xl transition ${isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-white/10' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/60'}`}
-                                >
-                                  <X className="w-5 h-5" />
-                                </button>
-                              </div>
+                <button
+                  onClick={handleSaveEditedGt}
+                  disabled={isSaving}
+                  className="px-10 py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-xs font-black rounded-2xl hover:shadow-lg shadow-orange-500/20 flex items-center gap-2 active:scale-95 transition-all disabled:opacity-50"
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      Updating Scorecard...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-3.5 h-3.5" />
+                      Save Scorecard Changes
+                    </>
+                  )}
+                </button>
+              </div>
 
-                              {/* Modal Body */}
-                              <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto text-left">
-                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            </div>
+          </div>
+        )}
 
-                                  {/* Left Column: Core Fields */}
-                                  <div className="lg:col-span-6 space-y-4">
-                                    <span className="text-[10px] font-black uppercase text-orange-500 tracking-wider block border-b pb-1.5">Core Test Details</span>
+      </motion.div>
+    );
+  };
 
-                                    <div className="grid grid-cols-2 gap-4">
-                                      <div>
-                                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Test Name</label>
-                                        <input
-                                          type="text"
-                                          value={editGtName}
-                                          onChange={(e) => setEditGtName(e.target.value)}
-                                          placeholder="e.g. Grand Test 14"
-                                          className={`w-full p-2.5 rounded-xl text-xs font-semibold focus:outline-none ${
-                                            isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-300/80 text-slate-900 placeholder-slate-400'
-                                          }`}
-                                        />
-                                      </div>
-
-                                      <div>
-                                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Platform</label>
-                                        <input
-                                          type="text"
-                                          value={editGtPlatform}
-                                          onChange={(e) => setEditGtPlatform(e.target.value)}
-                                          placeholder="e.g. Marrow"
-                                          className={`w-full p-2.5 rounded-xl text-xs font-semibold focus:outline-none ${
-                                            isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-300/80 text-slate-900 placeholder-slate-400'
-                                          }`}
-                                        />
-                                      </div>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                      <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>GT Scoring Model</label>
-                                      <div className="flex gap-2">
-                                        <button
-                                          type="button"
-                                          onClick={() => setEditGtType('NEETPG')}
-                                          className={`flex-1 py-2 text-xs font-black rounded-xl border transition ${
-                                            editGtType === 'NEETPG'
-                                              ? 'bg-orange-500 text-white border-transparent shadow-sm'
-                                              : isDark ? 'neu-btn-dark text-slate-300 border-white/10' : 'neu-btn-light text-slate-700 border-white/70'
-                                          }`}
-                                        >
-                                          NEET PG (+4, -1)
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => setEditGtType('INICET')}
-                                          className={`flex-1 py-2 text-xs font-black rounded-xl border transition ${
-                                            editGtType === 'INICET'
-                                              ? 'bg-orange-500 text-white border-transparent shadow-sm'
-                                              : isDark ? 'neu-btn-dark text-slate-300 border-white/10' : 'neu-btn-light text-slate-700 border-white/70'
-                                          }`}
-                                        >
-                                          INI CET (+1, -1/3)
-                                        </button>
-                                      </div>
-
-                                      {editGtType === 'NEETPG' && (
-                                        <div className="flex gap-2 p-1 rounded-xl bg-orange-500/5 border border-orange-500/20">
-                                          <button
-                                            type="button"
-                                            onClick={() => setEditNeetPattern('200')}
-                                            className={`flex-1 py-1 text-[10px] font-extrabold rounded-lg transition ${
-                                              editNeetPattern === '200'
-                                                ? 'bg-orange-500 text-white shadow-sm'
-                                                : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
-                                            }`}
-                                          >
-                                            200 Qs / 800 Marks (Pre-2025)
-                                          </button>
-                                          <button
-                                            type="button"
-                                            onClick={() => setEditNeetPattern('180')}
-                                            className={`flex-1 py-1 text-[10px] font-extrabold rounded-lg transition ${
-                                              editNeetPattern === '180'
-                                                ? 'bg-orange-500 text-white shadow-sm'
-                                                : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
-                                            }`}
-                                          >
-                                            180 Qs / 720 Marks (2025+)
-                                          </button>
-                                        </div>
-                                      )}
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-4">
-                                      <div>
-                                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Correct Qs</label>
-                                        <input
-                                          type="number"
-                                          value={editGtCorrect}
-                                          onChange={(e) => setEditGtCorrect(e.target.value)}
-                                          placeholder="e.g. 130"
-                                          className={`w-full p-2.5 rounded-xl text-xs font-mono font-bold focus:outline-none ${
-                                            isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
-                                          }`}
-                                        />
-                                      </div>
-
-                                      <div>
-                                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Incorrect Qs</label>
-                                        <input
-                                          type="number"
-                                          value={editGtIncorrect}
-                                          onChange={(e) => setEditGtIncorrect(e.target.value)}
-                                          placeholder="e.g. 50"
-                                          className={`w-full p-2.5 rounded-xl text-xs font-mono font-bold focus:outline-none ${
-                                            isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
-                                          }`}
-                                        />
-                                      </div>
-                                    </div>
-
-                                    {/* Live Score/Metrics Panel */}
-                                    {(() => {
-                                      const correct = Number(editGtCorrect) || 0;
-                                      const incorrect = Number(editGtIncorrect) || 0;
-                                      const attended = correct + incorrect;
-                                      const totalQs = editGtType === 'NEETPG' ? (editNeetPattern === '180' ? 180 : 200) : 200;
-                                      const maxMarks = editGtType === 'NEETPG' ? (editNeetPattern === '180' ? 720 : 800) : 200;
-                                      let score = 0;
-                                      if (editGtType === 'NEETPG') {
-                                        score = (correct * 4) - incorrect;
-                                      } else {
-                                        score = Number((correct - (incorrect * (1 / 3))).toFixed(8));
-                                      }
-                                      const accuracy = attended > 0 ? ((correct / attended) * 100).toFixed(1) : '100';
-
-                                      return (
-                                        <div className={`p-4 rounded-2xl border space-y-2 text-xs ${
-                                          isDark ? 'bg-orange-500/10 border-orange-500/20 text-slate-300' : 'bg-orange-50/60 border-orange-200/60 text-slate-700'
-                                        }`}>
-                                          <div className="flex items-center justify-between">
-                                            <span>Attended: <strong className="text-orange-500 font-mono">{attended} / {totalQs}</strong></span>
-                                            <span>Unattempted: <strong className={`font-mono ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{Math.max(0, totalQs - attended)}</strong></span>
-                                          </div>
-                                          <div className={`h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-white/10' : 'bg-slate-200'}`}>
-                                            <div className="h-full bg-orange-500 transition-all duration-300" style={{ width: `${Math.min(100, (attended / totalQs) * 100)}%` }} />
-                                          </div>
-                                          <div className="flex items-center justify-between pt-1 font-bold">
-                                            <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>Calculated Score:</span>
-                                            <span className="text-sm text-orange-500 font-black font-mono">
-                                              {editGtType === 'INICET' ? score.toFixed(4) : score} / {maxMarks}
-                                            </span>
-                                          </div>
-                                          <div className={`flex items-center justify-between text-[10px] italic ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                            <span>Accuracy Rate: <strong>{accuracy}%</strong></span>
-                                            <span>{editGtType === 'NEETPG' ? 'Score = Correct * 4 - Incorrect' : 'Score = Correct - Incorrect * (1/3)'}</span>
-                                          </div>
-                                        </div>
-                                      );
-                                    })()}
-
-                                    <div className="grid grid-cols-3 gap-3">
-                                      <div>
-                                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Percentile (%ile)</label>
-                                        <input
-                                          type="number"
-                                          step="0.01"
-                                          value={editGtPercentage}
-                                          onChange={(e) => setEditGtPercentage(e.target.value)}
-                                          placeholder="e.g. 98.7"
-                                          className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${
-                                            isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
-                                          }`}
-                                        />
-                                      </div>
-
-                                      <div>
-                                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>National AIR</label>
-                                        <input
-                                          type="number"
-                                          value={editGtRank}
-                                          onChange={(e) => setEditGtRank(e.target.value)}
-                                          placeholder="e.g. 1414"
-                                          className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${
-                                            isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
-                                          }`}
-                                        />
-                                      </div>
-
-                                      <div>
-                                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Contestants</label>
-                                        <input
-                                          type="number"
-                                          value={editGtRankTotal}
-                                          onChange={(e) => setEditGtRankTotal(e.target.value)}
-                                          placeholder="e.g. 8757"
-                                          className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${
-                                            isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
-                                          }`}
-                                        />
-                                      </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-3 gap-3">
-                                      <div>
-                                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>State Rank</label>
-                                        <input
-                                          type="number"
-                                          value={editGtStateRank}
-                                          onChange={(e) => setEditGtStateRank(e.target.value)}
-                                          placeholder="e.g. 82"
-                                          className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none ${
-                                            isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
-                                          }`}
-                                        />
-                                      </div>
-
-                                      <div className="col-span-2">
-                                        <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Home State</label>
-                                        <select
-                                          value={editGtState}
-                                          onChange={(e) => setEditGtState(e.target.value)}
-                                          className={`w-full p-2.5 rounded-xl text-xs font-semibold focus:outline-none ${
-                                            isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-300/80 text-slate-900'
-                                          }`}
-                                        >
-                                          <option value="">Select Home State...</option>
-                                          {INDIAN_STATES.map((st) => (
-                                            <option key={st} value={st}>{st}</option>
-                                          ))}
-                                        </select>
-                                      </div>
-                                    </div>
-
-                                    <div>
-                                      <label className={`block text-[9px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Weaknesses / Strengths / Strategy Notes</label>
-                                      <textarea
-                                        rows={3}
-                                        value={editGtNotes}
-                                        onChange={(e) => setEditGtNotes(e.target.value)}
-                                        placeholder="Notes / Weak points to focus on..."
-                                        className={`w-full p-3 rounded-xl text-xs focus:outline-none ${
-                                          isDark ? 'neu-pressed-dark border border-white/10 text-slate-100 placeholder-slate-500' : 'neu-pressed-light border border-slate-300/80 text-slate-900 placeholder-slate-400'
-                                        }`}
-                                      />
-                                    </div>
-                                  </div>
-
-                                  {/* Right Column: 19 Subjects Breakdown */}
-                                  <div className="lg:col-span-6 space-y-4">
-                                    <div className="flex items-center justify-between border-b pb-1.5">
-                                      <span className="text-[10px] font-black uppercase text-orange-500 tracking-wider block">Clinical 19 Subjects Breakdown</span>
-                                      <button
-                                        type="button"
-                                        onClick={() => setEditGtShowSubjects(!editGtShowSubjects)}
-                                        className={`px-2 py-0.5 rounded text-[9px] font-black uppercase transition ${
-                                          isDark ? 'bg-orange-500/20 text-orange-400 hover:bg-orange-500/30' : 'bg-orange-100 text-orange-600 hover:bg-orange-200'
-                                        }`}
-                                      >
-                                        {editGtShowSubjects ? "Collapse View" : "Expand View"}
-                                      </button>
-                                    </div>
-
-                                    {/* Math Consistency Check Banner */}
-                                    {(() => {
-                                      let correctSum = 0;
-                                      let incorrectSum = 0;
-                                      let totalSum = 0;
-                                      Object.keys(editGtSubjects).forEach(subKey => {
-                                        const sub = editGtSubjects[subKey];
-                                        correctSum += Number(sub.correct) || 0;
-                                        incorrectSum += Number(sub.incorrect) || 0;
-                                        totalSum += Number(sub.total) || 0;
-                                      });
-
-                                      const targetCorrect = Number(editGtCorrect) || 0;
-                                      const targetIncorrect = Number(editGtIncorrect) || 0;
-                                      const isCorrectMatch = correctSum === targetCorrect;
-                                      const isIncorrectMatch = incorrectSum === targetIncorrect;
-                                      const isTotalMatch = totalSum === 200;
-
-                                      const isPristine = isCorrectMatch && isIncorrectMatch && isTotalMatch;
-
-                                      if (!isPristine && (correctSum > 0 || incorrectSum > 0 || totalSum > 0)) {
-                                        return (
-                                          <div className={`p-3 border rounded-2xl text-[10px] space-y-1 text-left leading-normal animate-pulse ${
-                                            isDark ? 'bg-rose-500/10 border-rose-500/20 text-rose-300' : 'bg-rose-50 border-rose-100 text-rose-700'
-                                          }`}>
-                                            <span className="font-black uppercase tracking-wider block">⚠️ Math Consistency Warning</span>
-                                            <div className="grid grid-cols-3 gap-2 text-[9px] font-bold font-mono">
-                                              <span className={isCorrectMatch ? 'text-emerald-500' : 'text-rose-500'}>
-                                                Correct: {correctSum} vs {targetCorrect}
-                                              </span>
-                                              <span className={isIncorrectMatch ? 'text-emerald-500' : 'text-rose-500'}>
-                                                Incorrect: {incorrectSum} vs {targetIncorrect}
-                                              </span>
-                                              <span className={isTotalMatch ? 'text-emerald-500' : 'text-rose-500'}>
-                                                Total Qs: {totalSum} / 200
-                                              </span>
-                                            </div>
-                                            <p className={`text-[8.5px] italic font-medium pt-1 ${isDark ? 'text-rose-400' : 'text-rose-500'}`}>
-                                              Adjust subject entries below to match overall stats for perfectly calibrated analytics.
-                                            </p>
-                                          </div>
-                                        );
-                                      } else if (isPristine && correctSum > 0) {
-                                        return (
-                                          <div className={`p-3 border rounded-2xl text-[9px] font-bold flex items-center gap-1 ${
-                                            isDark ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-emerald-50 border-emerald-100 text-emerald-700'
-                                          }`}>
-                                            <span>✅ Subject counts sum up to exactly 200 questions with perfect scoring alignment!</span>
-                                          </div>
-                                        );
-                                      }
-                                      return null;
-                                    })()}
-
-                                    <div className={`border rounded-2xl p-4 space-y-3.5 overflow-y-auto transition-all duration-300 ${
-                                      editGtShowSubjects ? 'max-h-[500px]' : 'max-h-[250px]'
-                                    } ${
-                                      isDark ? 'neu-pressed-dark border-white/5' : 'neu-pressed-light border-white/70'
-                                    }`}>
-                                      <div className="space-y-3">
-                                        {SYSTEM_SUBJECTS.map((sub) => {
-                                          const subData = editGtSubjects[sub.name] || { correct: '', incorrect: '', total: sub.weight };
-                                          return (
-                                            <div key={sub.name} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-2.5 text-xs ${
-                                              isDark ? 'border-white/5' : 'border-slate-200/60'
-                                            }`}>
-                                              <span className={`font-extrabold min-w-[130px] text-left ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{sub.name}</span>
-                                              <div className="flex items-center gap-3">
-                                                <div className="flex items-center gap-1">
-                                                  <span className="text-[9px] text-emerald-500 font-extrabold uppercase font-mono">C:</span>
-                                                  <input
-                                                    type="number"
-                                                    value={subData.correct}
-                                                    onChange={(e) => {
-                                                      setEditGtSubjects(prev => ({
-                                                        ...prev,
-                                                        [sub.name]: {
-                                                          ...subData,
-                                                          correct: e.target.value,
-                                                          total: subData.total || sub.weight
-                                                        }
-                                                      }));
-                                                    }}
-                                                    placeholder="0"
-                                                    className={`w-11 p-1 rounded text-center text-xs font-mono font-bold outline-none ${
-                                                      isDark ? 'bg-[#1e232b] border border-white/10 text-slate-100' : 'bg-white border border-slate-200 text-slate-900'
-                                                    }`}
-                                                  />
-                                                </div>
-
-                                                <div className="flex items-center gap-1">
-                                                  <span className="text-[9px] text-rose-500 font-extrabold uppercase font-mono">I:</span>
-                                                  <input
-                                                    type="number"
-                                                    value={subData.incorrect}
-                                                    onChange={(e) => {
-                                                      setEditGtSubjects(prev => ({
-                                                        ...prev,
-                                                        [sub.name]: {
-                                                          ...subData,
-                                                          incorrect: e.target.value,
-                                                          total: subData.total || sub.weight
-                                                        }
-                                                      }));
-                                                    }}
-                                                    placeholder="0"
-                                                    className={`w-11 p-1 rounded text-center text-xs font-mono font-bold outline-none ${
-                                                      isDark ? 'bg-[#1e232b] border border-white/10 text-slate-100' : 'bg-white border border-slate-200 text-slate-900'
-                                                    }`}
-                                                  />
-                                                </div>
-
-                                                <div className="flex items-center gap-1">
-                                                  <span className={`text-[9px] font-extrabold uppercase font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>T:</span>
-                                                  <input
-                                                    type="number"
-                                                    value={subData.total}
-                                                    onChange={(e) => {
-                                                      setEditGtSubjects(prev => ({
-                                                        ...prev,
-                                                        [sub.name]: {
-                                                          ...subData,
-                                                          total: e.target.value
-                                                        }
-                                                      }));
-                                                    }}
-                                                    placeholder={sub.weight}
-                                                    className={`w-11 p-1 rounded text-center text-xs font-mono outline-none ${
-                                                      isDark ? 'bg-[#1e232b] border border-white/10 text-slate-100' : 'bg-white border border-slate-200 text-slate-900'
-                                                    }`}
-                                                  />
-                                                </div>
-                                              </div>
-                                            </div>
-                                          );
-                                        })}
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                </div>
-                              </div>
-
-                              {/* Modal Footer */}
-                              <div className={`p-6 border-t flex justify-end gap-4 ${isDark ? 'border-white/10 bg-[#1c2128]' : 'bg-[#e6ecf5] border-slate-300/60'}`}>
-                                <button
-                                  onClick={() => setIsEditGtModalOpen(false)}
-                                  className={`px-8 py-3 text-xs font-bold rounded-2xl transition ${
-                                    isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
-                                  }`}
-                                >
-                                  Cancel
-                                </button>
-
-                                <button
-                                  onClick={handleSaveEditedGt}
-                                  disabled={isSaving}
-                                  className="px-10 py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-xs font-black rounded-2xl hover:shadow-lg shadow-orange-500/20 flex items-center gap-2 active:scale-95 transition-all disabled:opacity-50"
-                                >
-                                  {isSaving ? (
-                                    <>
-                                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                      Updating Scorecard...
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Save className="w-3.5 h-3.5" />
-                                      Save Scorecard Changes
-                                    </>
-                                  )}
-                                </button>
-                              </div>
-
-                            </div>
-                          </div>
-                        )}
-
-                      </motion.div>
-      );
-    };
-
-const renderTimerHub = (isMobile = false) => {
+  const renderTimerHub = (isMobile = false) => {
     const activeType = timerState.timerType || 'pomodoro';
     const isRunning = timerState.status === 'running';
     const isPaused = timerState.status === 'paused';
@@ -13238,9 +13134,8 @@ const renderTimerHub = (isMobile = false) => {
     const currentTheme = getThemeClasses(activeType);
 
     return (
-      <div className={`p-6 rounded-3xl flex flex-col transition-colors duration-300 w-full text-left ${
-        isDark ? 'neu-card-dark border border-white/5 shadow-xl' : 'neu-card-light border border-white/70 shadow-md'
-      }`}>
+      <div className={`p-6 rounded-3xl flex flex-col transition-colors duration-300 w-full text-left ${isDark ? 'neu-card-dark border border-white/5 shadow-xl' : 'neu-card-light border border-white/70 shadow-md'
+        }`}>
         {/* Tab Header */}
         <div className={`flex items-center justify-between pb-3 border-b mb-5 ${isDark ? 'border-white/5' : 'border-slate-200/60'}`}>
           <div className="flex items-center gap-2">
@@ -13255,22 +13150,19 @@ const renderTimerHub = (isMobile = false) => {
               <Maximize className="w-3.5 h-3.5" />
             </button>
           </div>
-          <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase font-mono tracking-wider ${
-            isRunning ? 'bg-emerald-500/20 text-emerald-500 animate-pulse border border-emerald-500/30' : isPaused ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30' : isDark ? 'bg-white/5 text-slate-400' : 'bg-slate-200/60 text-slate-500'
-          }`}>
+          <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase font-mono tracking-wider ${isRunning ? 'bg-emerald-500/20 text-emerald-500 animate-pulse border border-emerald-500/30' : isPaused ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30' : isDark ? 'bg-white/5 text-slate-400' : 'bg-slate-200/60 text-slate-500'
+            }`}>
             {isRunning ? 'Running' : isPaused ? 'Paused' : 'Ready'}
           </span>
         </div>
 
         {/* Tab Selector */}
-        <div className={`relative flex items-center p-1.5 rounded-2xl mb-6 select-none ${
-          isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'
-        }`}>
+        <div className={`relative flex items-center p-1.5 rounded-2xl mb-6 select-none ${isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'
+          }`}>
           {/* Single Sliding Pill Indicator */}
           <div
-            className={`absolute top-1.5 bottom-1.5 w-[calc((100%-0.75rem)/3)] rounded-xl shadow-md ${
-              isDark ? 'neu-btn-dark border border-white/10' : 'neu-btn-light border border-white/80'
-            }`}
+            className={`absolute top-1.5 bottom-1.5 w-[calc((100%-0.75rem)/3)] rounded-xl shadow-md ${isDark ? 'neu-btn-dark border border-white/10' : 'neu-btn-light border border-white/80'
+              }`}
             style={{
               left: `calc(0.375rem + ${activeType === 'pomodoro' ? 0 : activeType === 'timer' ? 1 : 2} * ((100% - 0.75rem) / 3))`,
               transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
@@ -13280,11 +13172,10 @@ const renderTimerHub = (isMobile = false) => {
           <button
             type="button"
             onClick={() => handleSwitchTimerType('pomodoro')}
-            className={`relative flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer flex items-center justify-center gap-1.5 z-10 transition-colors duration-300 ${
-              activeType === 'pomodoro'
+            className={`relative flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer flex items-center justify-center gap-1.5 z-10 transition-colors duration-300 ${activeType === 'pomodoro'
                 ? (isDark ? 'text-orange-400 font-extrabold' : 'text-orange-600 font-extrabold')
                 : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800')
-            }`}
+              }`}
           >
             <Clock className="w-3.5 h-3.5" />
             Pomodoro
@@ -13292,11 +13183,10 @@ const renderTimerHub = (isMobile = false) => {
           <button
             type="button"
             onClick={() => handleSwitchTimerType('timer')}
-            className={`relative flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer flex items-center justify-center gap-1.5 z-10 transition-colors duration-300 ${
-              activeType === 'timer'
+            className={`relative flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer flex items-center justify-center gap-1.5 z-10 transition-colors duration-300 ${activeType === 'timer'
                 ? (isDark ? 'text-indigo-400 font-extrabold' : 'text-indigo-600 font-extrabold')
                 : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800')
-            }`}
+              }`}
           >
             <Hourglass className="w-3.5 h-3.5" />
             Timer
@@ -13304,11 +13194,10 @@ const renderTimerHub = (isMobile = false) => {
           <button
             type="button"
             onClick={() => handleSwitchTimerType('stopwatch')}
-            className={`relative flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer flex items-center justify-center gap-1.5 z-10 transition-colors duration-300 ${
-              activeType === 'stopwatch'
+            className={`relative flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer flex items-center justify-center gap-1.5 z-10 transition-colors duration-300 ${activeType === 'stopwatch'
                 ? (isDark ? 'text-emerald-400 font-extrabold' : 'text-emerald-600 font-extrabold')
                 : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800')
-            }`}
+              }`}
           >
             <Timer className="w-3.5 h-3.5" />
             Stopwatch
@@ -13367,9 +13256,8 @@ const renderTimerHub = (isMobile = false) => {
                         <button
                           key={mins}
                           onClick={() => handleStartPomodoro(mins, pomodoroBreakMins, pomodoroLongBreakMins, pomodoroTargetRounds, false)}
-                          className={`px-3 py-1.5 text-xs font-bold rounded-xl border transition ${
-                            isDark ? 'neu-btn-dark text-slate-200 border-white/5' : 'neu-btn-light text-slate-700 border-white/70'
-                          }`}
+                          className={`px-3 py-1.5 text-xs font-bold rounded-xl border transition ${isDark ? 'neu-btn-dark text-slate-200 border-white/5' : 'neu-btn-light text-slate-700 border-white/70'
+                            }`}
                         >
                           {mins}m
                         </button>
@@ -13384,9 +13272,8 @@ const renderTimerHub = (isMobile = false) => {
                         <button
                           key={mins}
                           onClick={() => handleStartPomodoro(pomodoroFocusMins, mins, pomodoroLongBreakMins, pomodoroTargetRounds, false)}
-                          className={`px-3 py-1.5 text-xs font-bold rounded-xl border transition ${
-                            isDark ? 'neu-btn-dark text-slate-200 border-white/5' : 'neu-btn-light text-slate-700 border-white/70'
-                          }`}
+                          className={`px-3 py-1.5 text-xs font-bold rounded-xl border transition ${isDark ? 'neu-btn-dark text-slate-200 border-white/5' : 'neu-btn-light text-slate-700 border-white/70'
+                            }`}
                         >
                           {mins}m
                         </button>
@@ -13404,9 +13291,8 @@ const renderTimerHub = (isMobile = false) => {
                           type="number"
                           value={pomodoroFocusMins}
                           onChange={e => setPomodoroFocusMins(Math.max(1, Number(e.target.value) || 25))}
-                          className={`bg-transparent text-sm font-black focus:outline-none mt-1 border-b border-transparent focus:border-orange-500 font-mono w-full ${
-                            isDark ? 'text-slate-100 placeholder-slate-600' : 'text-slate-800 placeholder-slate-400'
-                          }`}
+                          className={`bg-transparent text-sm font-black focus:outline-none mt-1 border-b border-transparent focus:border-orange-500 font-mono w-full ${isDark ? 'text-slate-100 placeholder-slate-600' : 'text-slate-800 placeholder-slate-400'
+                            }`}
                           placeholder="25"
                         />
                       </div>
@@ -13416,9 +13302,8 @@ const renderTimerHub = (isMobile = false) => {
                           type="number"
                           value={pomodoroBreakMins}
                           onChange={e => setPomodoroBreakMins(Math.max(1, Number(e.target.value) || 5))}
-                          className={`bg-transparent text-sm font-black focus:outline-none mt-1 border-b border-transparent focus:border-orange-500 font-mono w-full ${
-                            isDark ? 'text-slate-100 placeholder-slate-600' : 'text-slate-800 placeholder-slate-400'
-                          }`}
+                          className={`bg-transparent text-sm font-black focus:outline-none mt-1 border-b border-transparent focus:border-orange-500 font-mono w-full ${isDark ? 'text-slate-100 placeholder-slate-600' : 'text-slate-800 placeholder-slate-400'
+                            }`}
                           placeholder="5"
                         />
                       </div>
@@ -13428,9 +13313,8 @@ const renderTimerHub = (isMobile = false) => {
                           type="number"
                           value={pomodoroLongBreakMins}
                           onChange={e => setPomodoroLongBreakMins(Math.max(1, Number(e.target.value) || 20))}
-                          className={`bg-transparent text-sm font-black focus:outline-none mt-1 border-b border-transparent focus:border-orange-500 font-mono w-full ${
-                            isDark ? 'text-slate-100 placeholder-slate-600' : 'text-slate-800 placeholder-slate-400'
-                          }`}
+                          className={`bg-transparent text-sm font-black focus:outline-none mt-1 border-b border-transparent focus:border-orange-500 font-mono w-full ${isDark ? 'text-slate-100 placeholder-slate-600' : 'text-slate-800 placeholder-slate-400'
+                            }`}
                           placeholder="20"
                         />
                       </div>
@@ -13440,18 +13324,16 @@ const renderTimerHub = (isMobile = false) => {
                           type="number"
                           value={pomodoroTargetRounds}
                           onChange={e => setPomodoroTargetRounds(Math.max(1, Number(e.target.value) || 4))}
-                          className={`bg-transparent text-sm font-black focus:outline-none mt-1 border-b border-transparent focus:border-orange-500 font-mono w-full ${
-                            isDark ? 'text-slate-100 placeholder-slate-600' : 'text-slate-800 placeholder-slate-400'
-                          }`}
+                          className={`bg-transparent text-sm font-black focus:outline-none mt-1 border-b border-transparent focus:border-orange-500 font-mono w-full ${isDark ? 'text-slate-100 placeholder-slate-600' : 'text-slate-800 placeholder-slate-400'
+                            }`}
                           placeholder="4"
                         />
                       </div>
                     </div>
                     <button
                       onClick={() => handleStartPomodoro(pomodoroFocusMins, pomodoroBreakMins, pomodoroLongBreakMins, pomodoroTargetRounds, false)}
-                      className={`w-full py-2.5 font-black text-xs uppercase tracking-wider rounded-xl active:scale-95 transition text-center ${
-                        isDark ? 'neu-btn-dark text-slate-200 hover:text-white' : 'neu-btn-light text-slate-800 hover:text-black'
-                      }`}
+                      className={`w-full py-2.5 font-black text-xs uppercase tracking-wider rounded-xl active:scale-95 transition text-center ${isDark ? 'neu-btn-dark text-slate-200 hover:text-white' : 'neu-btn-light text-slate-800 hover:text-black'
+                        }`}
                     >
                       Apply Custom Cycles
                     </button>
@@ -13511,9 +13393,8 @@ const renderTimerHub = (isMobile = false) => {
                         <button
                           key={mins}
                           onClick={() => handleStartCountdownTimer(mins * 60)}
-                          className={`px-2.5 py-1.5 text-xs font-bold rounded-xl border transition ${
-                            isDark ? 'neu-btn-dark text-slate-200 border-white/5' : 'neu-btn-light text-slate-700 border-white/70'
-                          }`}
+                          className={`px-2.5 py-1.5 text-xs font-bold rounded-xl border transition ${isDark ? 'neu-btn-dark text-slate-200 border-white/5' : 'neu-btn-light text-slate-700 border-white/70'
+                            }`}
                         >
                           {mins}m
                         </button>
@@ -13531,9 +13412,8 @@ const renderTimerHub = (isMobile = false) => {
                           type="number"
                           value={customTimerHours}
                           onChange={e => setCustomTimerHours(Math.max(0, Math.min(23, Number(e.target.value) || 0)))}
-                          className={`bg-transparent text-sm font-black focus:outline-none mt-1 border-b border-transparent focus:border-indigo-500 font-mono w-full ${
-                            isDark ? 'text-slate-100 placeholder-slate-600' : 'text-slate-800 placeholder-slate-400'
-                          }`}
+                          className={`bg-transparent text-sm font-black focus:outline-none mt-1 border-b border-transparent focus:border-indigo-500 font-mono w-full ${isDark ? 'text-slate-100 placeholder-slate-600' : 'text-slate-800 placeholder-slate-400'
+                            }`}
                           placeholder="0"
                         />
                       </div>
@@ -13543,9 +13423,8 @@ const renderTimerHub = (isMobile = false) => {
                           type="number"
                           value={customTimerMins}
                           onChange={e => setCustomTimerMins(Math.max(0, Math.min(59, Number(e.target.value) || 0)))}
-                          className={`bg-transparent text-sm font-black focus:outline-none mt-1 border-b border-transparent focus:border-indigo-500 font-mono w-full ${
-                            isDark ? 'text-slate-100 placeholder-slate-600' : 'text-slate-800 placeholder-slate-400'
-                          }`}
+                          className={`bg-transparent text-sm font-black focus:outline-none mt-1 border-b border-transparent focus:border-indigo-500 font-mono w-full ${isDark ? 'text-slate-100 placeholder-slate-600' : 'text-slate-800 placeholder-slate-400'
+                            }`}
                           placeholder="10"
                         />
                       </div>
@@ -13555,9 +13434,8 @@ const renderTimerHub = (isMobile = false) => {
                           type="number"
                           value={customTimerSecs}
                           onChange={e => setCustomTimerSecs(Math.max(0, Math.min(59, Number(e.target.value) || 0)))}
-                          className={`bg-transparent text-sm font-black focus:outline-none mt-1 border-b border-transparent focus:border-indigo-500 font-mono w-full ${
-                            isDark ? 'text-slate-100 placeholder-slate-600' : 'text-slate-800 placeholder-slate-400'
-                          }`}
+                          className={`bg-transparent text-sm font-black focus:outline-none mt-1 border-b border-transparent focus:border-indigo-500 font-mono w-full ${isDark ? 'text-slate-100 placeholder-slate-600' : 'text-slate-800 placeholder-slate-400'
+                            }`}
                           placeholder="0"
                         />
                       </div>
@@ -13570,9 +13448,8 @@ const renderTimerHub = (isMobile = false) => {
                             alert("Please enter a duration greater than 0.");
                           }
                         }}
-                        className={`h-full px-4 py-3.5 font-black text-xs uppercase tracking-wider rounded-2xl active:scale-95 transition ${
-                          isDark ? 'neu-btn-dark text-indigo-400 hover:text-indigo-300' : 'neu-btn-light text-indigo-600 hover:text-indigo-700'
-                        }`}
+                        className={`h-full px-4 py-3.5 font-black text-xs uppercase tracking-wider rounded-2xl active:scale-95 transition ${isDark ? 'neu-btn-dark text-indigo-400 hover:text-indigo-300' : 'neu-btn-light text-indigo-600 hover:text-indigo-700'
+                          }`}
                       >
                         Set
                       </button>
@@ -13606,9 +13483,8 @@ const renderTimerHub = (isMobile = false) => {
 
               {/* Laps List */}
               {((timerState.stopwatchLaps && timerState.stopwatchLaps.length > 0) || !isIdle) && (
-                <div className={`w-full rounded-2xl p-4 mt-4 text-left max-h-[140px] overflow-y-auto ${
-                  isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'
-                }`}>
+                <div className={`w-full rounded-2xl p-4 mt-4 text-left max-h-[140px] overflow-y-auto ${isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'
+                  }`}>
                   <span className={`text-[9px] font-black uppercase tracking-wider block mb-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Laps ({timerState.stopwatchLaps?.length || 0})</span>
                   {(!timerState.stopwatchLaps || timerState.stopwatchLaps.length === 0) ? (
                     <span className={`text-[10px] font-bold block py-2 text-center ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>No laps recorded yet.</span>
@@ -14225,7 +14101,7 @@ const renderTimerHub = (isMobile = false) => {
       isPending: p.isPending,
       isCompanionScan: p.isCompanionScan,
     }))
-  , [libraryPages]);
+    , [libraryPages]);
 
   const folderPages = useMemo(() => {
     if (selectedTags.length > 0) {
@@ -15439,7 +15315,7 @@ const renderTimerHub = (isMobile = false) => {
         let changed = false;
         const updatedTasks = entry.tasks.map(t => {
           if ((schedulerContext?.taskId && t.id === schedulerContext.taskId) ||
-              (t.completed && (t.topicName?.toLowerCase() === (topicName || '').toLowerCase() || t.topic?.toLowerCase().includes((topicName || '').toLowerCase())))) {
+            (t.completed && (t.topicName?.toLowerCase() === (topicName || '').toLowerCase() || t.topic?.toLowerCase().includes((topicName || '').toLowerCase())))) {
             changed = true;
             return { ...t, completed: false, rating: undefined };
           }
@@ -15648,7 +15524,7 @@ const renderTimerHub = (isMobile = false) => {
         let changed = false;
         const updatedTasks = entry.tasks.map(t => {
           if ((schedulerContext?.taskId && t.id === schedulerContext.taskId) ||
-              (!t.completed && (t.topicName?.toLowerCase() === topicName.toLowerCase() || t.topic?.toLowerCase().includes(topicName.toLowerCase())))) {
+            (!t.completed && (t.topicName?.toLowerCase() === topicName.toLowerCase() || t.topic?.toLowerCase().includes(topicName.toLowerCase())))) {
             changed = true;
             return { ...t, completed: true, rating: logEntry?.rating };
           }
@@ -16220,9 +16096,8 @@ const renderTimerHub = (isMobile = false) => {
                 initial={{ opacity: 0, scale: 0.95, y: 15 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 15 }}
-                className={`w-full max-w-lg p-6 rounded-3xl border shadow-2xl space-y-5 ${
-                  isDark ? 'bg-[#222730] border-slate-700/80 text-white' : 'bg-[#e6ecf5] border-slate-300 text-slate-900'
-                }`}
+                className={`w-full max-w-lg p-6 rounded-3xl border shadow-2xl space-y-5 ${isDark ? 'bg-[#222730] border-slate-700/80 text-white' : 'bg-[#e6ecf5] border-slate-300 text-slate-900'
+                  }`}
               >
                 {/* Modal Header */}
                 <div className="flex items-center justify-between border-b pb-3 border-slate-700/40">
@@ -16238,9 +16113,8 @@ const renderTimerHub = (isMobile = false) => {
                   <button
                     type="button"
                     onClick={() => setIsSubjectPdfModalOpen(false)}
-                    className={`p-1.5 rounded-xl border transition-all ${
-                      isDark ? 'neu-btn-dark text-slate-400 hover:text-white' : 'neu-btn-light text-slate-600 hover:text-slate-900'
-                    }`}
+                    className={`p-1.5 rounded-xl border transition-all ${isDark ? 'neu-btn-dark text-slate-400 hover:text-white' : 'neu-btn-light text-slate-600 hover:text-slate-900'
+                      }`}
                   >
                     ✕
                   </button>
@@ -16250,11 +16124,10 @@ const renderTimerHub = (isMobile = false) => {
                 {(() => {
                   const existing = textbooksMetadata.find(tb => (tb.subject || '').toLowerCase() === (selectedSubjectTrackerSubject || '').toLowerCase());
                   return (
-                    <div className={`p-4 rounded-2xl border text-xs space-y-1.5 ${
-                      existing
+                    <div className={`p-4 rounded-2xl border text-xs space-y-1.5 ${existing
                         ? isDark ? 'bg-emerald-950/20 border-emerald-500/30 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-800'
                         : isDark ? 'bg-amber-950/20 border-amber-500/30 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'
-                    }`}>
+                      }`}>
                       <div className="font-bold flex items-center justify-between">
                         <span>{existing ? '✓ Attached Master PDF:' : '⚠️ Status:'}</span>
                         {existing && <span className="font-mono text-[10px]">{(existing.size ? (existing.size / 1024 / 1024).toFixed(1) : 0)} MB</span>}
@@ -16312,9 +16185,8 @@ const renderTimerHub = (isMobile = false) => {
                         setSubjectPdfUploading(false);
                       }
                     }}
-                    className={`w-full p-2.5 rounded-2xl text-xs font-semibold border outline-none cursor-pointer ${
-                      isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
-                    }`}
+                    className={`w-full p-2.5 rounded-2xl text-xs font-semibold border outline-none cursor-pointer ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                      }`}
                   />
                   {subjectPdfUploading && (
                     <p className="text-[10px] font-bold text-emerald-400 animate-pulse">
@@ -16333,9 +16205,8 @@ const renderTimerHub = (isMobile = false) => {
                     value={subjectPdfOffsetInput}
                     onChange={(e) => setSubjectPdfOffsetInput(e.target.value)}
                     placeholder="0"
-                    className={`w-full p-2.5 rounded-2xl text-xs font-mono font-bold border outline-none ${
-                      isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
-                    }`}
+                    className={`w-full p-2.5 rounded-2xl text-xs font-mono font-bold border outline-none ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                      }`}
                   />
                   <p className="text-[10px] text-slate-400 italic">
                     💡 <strong>Helper</strong>: If your textbook PDF has 15 front-matter/preface pages before Page 1, set Page Offset to <strong>+15</strong>.
@@ -16347,9 +16218,8 @@ const renderTimerHub = (isMobile = false) => {
                   <button
                     type="button"
                     onClick={() => setIsSubjectPdfModalOpen(false)}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold border ${
-                      isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-700'
-                    }`}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold border ${isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-700'
+                      }`}
                   >
                     Close
                   </button>
@@ -16625,8 +16495,8 @@ const renderTimerHub = (isMobile = false) => {
     try {
       const payload = await exportFullUniversalSnapshot();
       const ts = new Date();
-      const dateStr = `${ts.getFullYear()}-${String(ts.getMonth()+1).padStart(2,'0')}-${String(ts.getDate()).padStart(2,'0')}`;
-      const timeStr = `${String(ts.getHours()).padStart(2,'0')}-${String(ts.getMinutes()).padStart(2,'0')}`;
+      const dateStr = `${ts.getFullYear()}-${String(ts.getMonth() + 1).padStart(2, '0')}-${String(ts.getDate()).padStart(2, '0')}`;
+      const timeStr = `${String(ts.getHours()).padStart(2, '0')}-${String(ts.getMinutes()).padStart(2, '0')}`;
       const fileName = `AutoAnki_Vault_Backup_${dateStr}_${timeStr}.json`;
       const jsonStr = JSON.stringify(payload, null, 2);
       const blob = new Blob([jsonStr], { type: 'application/json' });
@@ -16643,7 +16513,7 @@ const renderTimerHub = (isMobile = false) => {
       // Update last backup timestamp
       const nowStr = new Date().toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
       setLastBackupTime(nowStr);
-      try { localStorage.setItem('auto_anki_last_manual_backup', new Date().toISOString()); } catch (_) {}
+      try { localStorage.setItem('auto_anki_last_manual_backup', new Date().toISOString()); } catch (_) { }
     } catch (err) {
       console.error('[AutoAnki] Export backup failed:', err);
       alert('Failed to export backup: ' + (err?.message || String(err)));
@@ -16750,7 +16620,7 @@ const renderTimerHub = (isMobile = false) => {
   useEffect(() => {
     if (!autoBackupEnabled) return;
     const freqMs = {
-      daily:  1 * 24 * 60 * 60 * 1000,
+      daily: 1 * 24 * 60 * 60 * 1000,
       '3days': 3 * 24 * 60 * 60 * 1000,
       weekly: 7 * 24 * 60 * 60 * 1000,
       onEdit: null, // Handled per-mutation; not time-based
@@ -22807,7 +22677,7 @@ Return your response strictly as a JSON object matching this schema:
                         iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'setVolume', args: [vol] }), 'https://www.youtube.com');
                         iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'unmute', args: [] }), 'https://www.youtube.com');
                         iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), 'https://www.youtube.com');
-                      } catch (_) {}
+                      } catch (_) { }
                     }
                   }, delay);
                   soundIframeTimeoutsRef.current[track.id].push(t);
@@ -24220,9 +24090,8 @@ Return your response strictly as a JSON object matching this schema:
                     {currentTab === 'dashboard' && (
                       <button
                         onClick={() => setIsWidgetCustomizerOpen(true)}
-                        className={`w-9 h-9 rounded-xl flex items-center justify-center transition active:scale-95 cursor-pointer ${
-                          settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300 hover:text-white' : 'neu-btn-light text-slate-700 hover:text-slate-950'
-                        }`}
+                        className={`w-9 h-9 rounded-xl flex items-center justify-center transition active:scale-95 cursor-pointer ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300 hover:text-white' : 'neu-btn-light text-slate-700 hover:text-slate-950'
+                          }`}
                         title="Customize widgets"
                       >
                         <Settings className="w-4.5 h-4.5" />
@@ -24231,15 +24100,13 @@ Return your response strictly as a JSON object matching this schema:
                     <button
                       onClick={handleHeaderSync}
                       disabled={isSyncing || gdriveSyncState.isSyncing}
-                      className={`relative w-9 h-9 rounded-xl flex items-center justify-center transition active:scale-95 cursor-pointer ${
-                        settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300 hover:text-white' : 'neu-btn-light text-slate-700 hover:text-slate-950'
-                      } ${(isSyncing || gdriveSyncState.isSyncing) ? 'opacity-75' : ''}`}
+                      className={`relative w-9 h-9 rounded-xl flex items-center justify-center transition active:scale-95 cursor-pointer ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300 hover:text-white' : 'neu-btn-light text-slate-700 hover:text-slate-950'
+                        } ${(isSyncing || gdriveSyncState.isSyncing) ? 'opacity-75' : ''}`}
                       title={gdriveSyncState.isSyncing ? gdriveSyncState.message : (gdriveAuthState ? 'Sync with Google Drive & LocalDB' : 'Sync current page data')}
                     >
                       <RefreshCw className={`w-4 h-4 ${(isSyncing || gdriveSyncState.isSyncing) ? 'animate-spin text-blue-500' : ''}`} />
-                      <span className={`absolute top-1.5 right-1.5 w-2 h-2 rounded-full ${
-                        gdriveSyncState.isSyncing ? 'bg-amber-500 animate-ping' : (gdriveAuthState ? 'bg-green-500 shadow-xs shadow-green-500/50' : 'bg-slate-400')
-                      }`} />
+                      <span className={`absolute top-1.5 right-1.5 w-2 h-2 rounded-full ${gdriveSyncState.isSyncing ? 'bg-amber-500 animate-ping' : (gdriveAuthState ? 'bg-green-500 shadow-xs shadow-green-500/50' : 'bg-slate-400')
+                        }`} />
                     </button>
                   </div>
                 </header>
@@ -24799,9 +24666,8 @@ Return your response strictly as a JSON object matching this schema:
                                     <button
                                       type="button"
                                       onClick={() => batchSetCardsSuspended(queue.find(q => q.id === activeQueueId)?.generatedCards || pageCards, true)}
-                                      className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-wider transition ${
-                                        settingsThemeMode === 'dark' ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 border border-amber-500/30' : 'bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200'
-                                      }`}
+                                      className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-wider transition ${settingsThemeMode === 'dark' ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 border border-amber-500/30' : 'bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200'
+                                        }`}
                                       title="Suspend all cards in this view on export"
                                     >
                                       Suspend All
@@ -24809,9 +24675,8 @@ Return your response strictly as a JSON object matching this schema:
                                     <button
                                       type="button"
                                       onClick={() => batchSetCardsSuspended(queue.find(q => q.id === activeQueueId)?.generatedCards || pageCards, false)}
-                                      className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-wider transition ${
-                                        settingsThemeMode === 'dark' ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                      }`}
+                                      className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-wider transition ${settingsThemeMode === 'dark' ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        }`}
                                       title="Set all cards in this view to active on export"
                                     >
                                       Active All
@@ -24851,13 +24716,12 @@ Return your response strictly as a JSON object matching this schema:
                                                   e.stopPropagation();
                                                   toggleCardSuspended(card);
                                                 }}
-                                                className={`text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1 transition ${
-                                                  card.isSuspended
+                                                className={`text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1 transition ${card.isSuspended
                                                     ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
                                                     : settingsThemeMode === 'dark'
                                                       ? 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-slate-200'
                                                       : 'bg-slate-100 text-slate-500 border border-slate-200 hover:text-slate-700'
-                                                }`}
+                                                  }`}
                                                 title={card.isSuspended ? "Card is Suspended on export. Click to activate." : "Click to Suspend on export"}
                                               >
                                                 {card.isSuspended ? <Pause className="w-2.5 h-2.5 fill-amber-400/40" /> : <Play className="w-2.5 h-2.5 opacity-60" />}
@@ -24919,9 +24783,8 @@ Return your response strictly as a JSON object matching this schema:
                                       <button
                                         type="button"
                                         onClick={() => setLibraryCardsLimit(prev => prev + 40)}
-                                        className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition ${
-                                          settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400' : 'neu-btn-light text-blue-600'
-                                        }`}
+                                        className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400' : 'neu-btn-light text-blue-600'
+                                          }`}
                                       >
                                         Load More Cards ({Math.min(libraryCardsLimit, displayedCards.length)} of {displayedCards.length})
                                       </button>
@@ -25052,8 +24915,8 @@ Return your response strictly as a JSON object matching this schema:
                               whileTap={{ scale: 0.94 }}
                               onClick={() => setCurrentTab('dashboard')}
                               className={`p-2 rounded-xl transition flex items-center justify-center shadow-md cursor-pointer ${settingsThemeMode === 'dark'
-                                  ? 'neu-btn-dark text-gray-200 hover:text-white border border-gray-700/50'
-                                  : 'neu-btn-light text-gray-700 hover:text-gray-900 border border-white/80'
+                                ? 'neu-btn-dark text-gray-200 hover:text-white border border-gray-700/50'
+                                : 'neu-btn-light text-gray-700 hover:text-gray-900 border border-white/80'
                                 }`}
                               title="Back to Dashboard"
                             >
@@ -25245,9 +25108,8 @@ Return your response strictly as a JSON object matching this schema:
                                   <motion.button
                                     whileTap={{ scale: 0.94 }}
                                     onClick={() => setNewFolderDialog({ isOpen: true, basePath: hierarchy || '', input: '' })}
-                                    className={`flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2.5 py-1.5 rounded-xl transition shrink-0 ${
-                                      settingsThemeMode === 'dark' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-200'
-                                    }`}
+                                    className={`flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2.5 py-1.5 rounded-xl transition shrink-0 ${settingsThemeMode === 'dark' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-200'
+                                      }`}
                                     title="Create Subfolder"
                                   >
                                     <FolderPlus className="w-3.5 h-3.5" /> + Folder
@@ -25269,9 +25131,8 @@ Return your response strictly as a JSON object matching this schema:
                                             setHierarchy(sub.path);
                                             setActiveQueueId(null);
                                           }}
-                                          className={`px-3 py-2 rounded-xl text-xs font-bold shrink-0 flex items-center gap-1.5 transition ${
-                                            settingsThemeMode === 'dark' ? 'neu-item-dark text-gray-200 hover:text-blue-400 border border-gray-800' : 'neu-item-light text-gray-700 hover:text-blue-600 border border-white'
-                                          }`}
+                                          className={`px-3 py-2 rounded-xl text-xs font-bold shrink-0 flex items-center gap-1.5 transition ${settingsThemeMode === 'dark' ? 'neu-item-dark text-gray-200 hover:text-blue-400 border border-gray-800' : 'neu-item-light text-gray-700 hover:text-blue-600 border border-white'
+                                            }`}
                                         >
                                           <Folder className="w-3.5 h-3.5 text-blue-500" />
                                           <span>{sub.name}</span>
@@ -25280,9 +25141,8 @@ Return your response strictly as a JSON object matching this schema:
                                       <motion.button
                                         whileTap={{ scale: 0.95 }}
                                         onClick={() => setNewFolderDialog({ isOpen: true, basePath: hierarchy || '', input: '' })}
-                                        className={`px-3 py-2 rounded-xl text-xs font-bold shrink-0 flex items-center gap-1.5 border border-dashed transition ${
-                                          settingsThemeMode === 'dark' ? 'border-blue-500/40 text-blue-400 bg-blue-500/10' : 'border-blue-300 text-blue-600 bg-blue-50/50'
-                                        }`}
+                                        className={`px-3 py-2 rounded-xl text-xs font-bold shrink-0 flex items-center gap-1.5 border border-dashed transition ${settingsThemeMode === 'dark' ? 'border-blue-500/40 text-blue-400 bg-blue-500/10' : 'border-blue-300 text-blue-600 bg-blue-50/50'
+                                          }`}
                                       >
                                         <FolderPlus className="w-3.5 h-3.5" />
                                         <span>+ Subfolder</span>
@@ -25374,9 +25234,8 @@ Return your response strictly as a JSON object matching this schema:
                                 <button
                                   type="button"
                                   onClick={() => setLibraryPagesLimit(prev => prev + 24)}
-                                  className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition shadow-sm cursor-pointer ${
-                                    settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400 hover:text-white border border-gray-700/50' : 'neu-btn-light text-blue-600 hover:text-blue-700 border border-white/80'
-                                  }`}
+                                  className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition shadow-sm cursor-pointer ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400 hover:text-white border border-gray-700/50' : 'neu-btn-light text-blue-600 hover:text-blue-700 border border-white/80'
+                                    }`}
                                 >
                                   Load More Pages ({Math.min(libraryPagesLimit, folderPages.length)} of {folderPages.length})
                                 </button>
@@ -25484,9 +25343,8 @@ Return your response strictly as a JSON object matching this schema:
                                 <button
                                   type="button"
                                   onClick={() => setLibraryCardsLimit(prev => prev + 40)}
-                                  className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition ${
-                                    settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400' : 'neu-btn-light text-blue-600'
-                                  }`}
+                                  className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400' : 'neu-btn-light text-blue-600'
+                                    }`}
                                 >
                                   Load More Cards ({Math.min(libraryCardsLimit, pageCards.length)} of {pageCards.length})
                                 </button>
@@ -27724,9 +27582,8 @@ Return your response strictly as a JSON object matching this schema:
                             <div className="flex items-center gap-2 shrink-0">
                               <button
                                 onClick={() => setIsTemplateModalOpen(true)}
-                                className={`px-3 py-1.5 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-wider border transition-all flex items-center gap-1.5 shrink-0 ${
-                                  isDark ? 'neu-btn-dark text-slate-300 border-slate-700' : 'neu-btn-light text-slate-700 border-slate-200'
-                                }`}
+                                className={`px-3 py-1.5 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-wider border transition-all flex items-center gap-1.5 shrink-0 ${isDark ? 'neu-btn-dark text-slate-300 border-slate-700' : 'neu-btn-light text-slate-700 border-slate-200'
+                                  }`}
                                 title="Study Routines"
                               >
                                 <Bookmark className="w-3.5 h-3.5 text-blue-500" /> Routines
@@ -27792,9 +27649,8 @@ Return your response strictly as a JSON object matching this schema:
                               setStudySchedule(updatedSchedule);
                             }}
                             placeholder="Tap to add notes, targets, or Grand Test topics..."
-                            className={`w-full h-16 p-3 rounded-xl text-xs outline-none resize-none font-medium transition ${
-                              isDark ? 'neu-pressed-dark text-slate-100 placeholder-slate-500 border border-slate-800' : 'neu-pressed-light text-slate-800 placeholder-slate-400 border border-slate-200'
-                            }`}
+                            className={`w-full h-16 p-3 rounded-xl text-xs outline-none resize-none font-medium transition ${isDark ? 'neu-pressed-dark text-slate-100 placeholder-slate-500 border border-slate-800' : 'neu-pressed-light text-slate-800 placeholder-slate-400 border border-slate-200'
+                              }`}
                           />
                         </motion.div>
 
@@ -27810,9 +27666,8 @@ Return your response strictly as a JSON object matching this schema:
                           </span>
                           <div className="space-y-2">
                             {((studySchedule[schedulerSelectedDate]?.tasks || []).length === 0) ? (
-                              <div className={`p-8 rounded-3xl border text-center space-y-2 ${
-                                isDark ? 'neu-pressed-dark border-slate-800 text-slate-400' : 'neu-pressed-light border-slate-200 text-slate-500'
-                              }`}>
+                              <div className={`p-8 rounded-3xl border text-center space-y-2 ${isDark ? 'neu-pressed-dark border-slate-800 text-slate-400' : 'neu-pressed-light border-slate-200 text-slate-500'
+                                }`}>
                                 <p className="text-xs font-bold">No topics scheduled for today.</p>
                                 <button
                                   onClick={() => {
@@ -27830,11 +27685,10 @@ Return your response strictly as a JSON object matching this schema:
                                 return (
                                   <div
                                     key={task.id}
-                                    className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all ${
-                                      task.completed
+                                    className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all ${task.completed
                                         ? isDark ? 'neu-pressed-dark border-emerald-900/40 bg-emerald-950/20' : 'border-emerald-200 bg-emerald-50/40'
                                         : isDark ? 'neu-card-dark border-slate-800 hover:border-slate-700' : 'neu-card-light border-slate-200 hover:border-slate-300'
-                                    }`}
+                                      }`}
                                   >
                                     <div className="flex flex-col min-w-0 pr-3 select-none flex-grow">
                                       <label className="flex items-center gap-3 cursor-pointer min-w-0">
@@ -27844,14 +27698,13 @@ Return your response strictly as a JSON object matching this schema:
                                           onChange={() => handleSchedulerTaskToggle(schedulerSelectedDate, task.id)}
                                           className="w-4.5 h-4.5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 shrink-0"
                                         />
-                                        <span className={`w-2 h-2 rounded-full shrink-0 ${
-                                          task.color === 'blue' ? 'bg-blue-500' :
-                                          task.color === 'purple' ? 'bg-purple-500' :
-                                          task.color === 'emerald' ? 'bg-emerald-500' :
-                                          task.color === 'amber' ? 'bg-amber-500' :
-                                          task.color === 'rose' ? 'bg-rose-500' :
-                                          task.color === 'violet' ? 'bg-violet-500' : 'bg-blue-500'
-                                        }`} />
+                                        <span className={`w-2 h-2 rounded-full shrink-0 ${task.color === 'blue' ? 'bg-blue-500' :
+                                            task.color === 'purple' ? 'bg-purple-500' :
+                                              task.color === 'emerald' ? 'bg-emerald-500' :
+                                                task.color === 'amber' ? 'bg-amber-500' :
+                                                  task.color === 'rose' ? 'bg-rose-500' :
+                                                    task.color === 'violet' ? 'bg-violet-500' : 'bg-blue-500'
+                                          }`} />
                                         <span className={`text-xs font-bold truncate ${task.completed ? 'line-through opacity-50 font-medium' : isDark ? 'text-slate-100' : 'text-slate-800'}`}>
                                           {task.topic}
                                         </span>
@@ -27901,9 +27754,8 @@ Return your response strictly as a JSON object matching this schema:
                               setSchedulerManualDate(schedulerSelectedDate);
                               setIsSchedulerModalOpen(true);
                             }}
-                            className={`w-13 h-13 rounded-full flex items-center justify-center shadow-xl transition-all active:scale-95 ${
-                              isDark ? 'neu-btn-accent-dark text-white' : 'neu-btn-accent-light text-white'
-                            }`}
+                            className={`w-13 h-13 rounded-full flex items-center justify-center shadow-xl transition-all active:scale-95 ${isDark ? 'neu-btn-accent-dark text-white' : 'neu-btn-accent-light text-white'
+                              }`}
                             style={{ width: '52px', height: '52px' }}
                           >
                             <Plus className="w-6 h-6" />
@@ -27917,7 +27769,7 @@ Return your response strictly as a JSON object matching this schema:
                   {currentTab === 'subjectTracker' && (() => {
                     const isDark = settingsThemeMode === 'dark';
                     const allSubjectsList = ["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"];
-                    
+
                     const activeDocId = selectedTrackerSubject.trim().toLowerCase();
                     const activeDoc = subjectTrackerData.find(p => p.id === activeDocId);
                     const activeTopicsMap = activeDoc?.topics || {};
@@ -27955,9 +27807,8 @@ Return your response strictly as a JSON object matching this schema:
                             <button
                               type="button"
                               onClick={() => setIsSubjectPdfModalOpen(true)}
-                              className={`px-3 py-1.5 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-wider border transition-all flex items-center gap-1.5 shrink-0 ${
-                                isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300 border-slate-700' : 'neu-btn-light text-blue-600 border-slate-300'
-                              }`}
+                              className={`px-3 py-1.5 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-wider border transition-all flex items-center gap-1.5 shrink-0 ${isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300 border-slate-700' : 'neu-btn-light text-blue-600 border-slate-300'
+                                }`}
                             >
                               📁 Upload PDF & Offset
                             </button>
@@ -28027,7 +27878,7 @@ Return your response strictly as a JSON object matching this schema:
                                       : isDark
                                         ? 'neu-card-dark text-slate-300 border-slate-800'
                                         : 'neu-card-light text-slate-700 border-slate-200'
-                                    }`}
+                                      }`}
                                   >
                                     <span>{sub}</span>
                                     <span className={`text-[9px] font-black px-2 py-0.5 rounded-md ${isSelected ? 'bg-blue-700/60 text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>
@@ -28465,7 +28316,7 @@ Return your response strictly as a JSON object matching this schema:
                                   className={`flex flex-col gap-4 rounded-3xl p-5 sm:p-6 outline-none transition-all duration-300 ${isDark
                                     ? 'neu-card-dark bg-gradient-to-br from-slate-900 via-indigo-950/40 to-slate-900 border border-indigo-900/40 text-white'
                                     : 'neu-card-light bg-gradient-to-br from-violet-50/70 via-white to-indigo-50/70 border border-indigo-100 text-slate-800'
-                                  }`}
+                                    }`}
                                 >
                                   <div className="text-left">
                                     <h4 className={`text-xs sm:text-sm font-black flex items-center gap-2 ${isDark ? 'text-indigo-300' : 'text-indigo-950'}`}>
@@ -28514,9 +28365,8 @@ Return your response strictly as a JSON object matching this schema:
                                 initial={{ opacity: 0, scale: 0.95, y: 15 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.95, y: 15 }}
-                                className={`w-full max-w-lg p-6 rounded-3xl border shadow-2xl space-y-5 ${
-                                  isDark ? 'bg-[#222730] border-slate-700/80 text-white' : 'bg-[#e6ecf5] border-slate-300 text-slate-900'
-                                }`}
+                                className={`w-full max-w-lg p-6 rounded-3xl border shadow-2xl space-y-5 ${isDark ? 'bg-[#222730] border-slate-700/80 text-white' : 'bg-[#e6ecf5] border-slate-300 text-slate-900'
+                                  }`}
                               >
                                 {/* Modal Header */}
                                 <div className="flex items-center justify-between border-b pb-3 border-slate-700/40">
@@ -28532,9 +28382,8 @@ Return your response strictly as a JSON object matching this schema:
                                   <button
                                     type="button"
                                     onClick={() => setIsSubjectPdfModalOpen(false)}
-                                    className={`p-1.5 rounded-xl border transition-all ${
-                                      isDark ? 'neu-btn-dark text-slate-400 hover:text-white border-slate-700' : 'neu-btn-light text-slate-500 hover:text-slate-900 border-slate-300'
-                                    }`}
+                                    className={`p-1.5 rounded-xl border transition-all ${isDark ? 'neu-btn-dark text-slate-400 hover:text-white border-slate-700' : 'neu-btn-light text-slate-500 hover:text-slate-900 border-slate-300'
+                                      }`}
                                   >
                                     <X className="w-4 h-4" />
                                   </button>
@@ -28572,11 +28421,10 @@ Return your response strictly as a JSON object matching this schema:
                                       const activeSubName = selectedTrackerSubject || selectedSubjectTrackerSubject;
                                       const meta = textbooksMetadata.find(tb => (tb.subject || '').toLowerCase() === activeSubName.toLowerCase());
                                       return (
-                                        <div className={`p-3.5 rounded-2xl border text-xs flex items-center justify-between gap-3 ${
-                                          meta
+                                        <div className={`p-3.5 rounded-2xl border text-xs flex items-center justify-between gap-3 ${meta
                                             ? isDark ? 'bg-emerald-950/20 border-emerald-500/30 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-800'
                                             : isDark ? 'bg-amber-950/20 border-amber-500/30 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'
-                                        }`}>
+                                          }`}>
                                           <div className="flex items-center gap-2">
                                             <span>{meta ? '✓' : '⚠️'}</span>
                                             <div>
@@ -28591,13 +28439,12 @@ Return your response strictly as a JSON object matching this schema:
                                     {/* Section 1: Upload Master Subject PDF */}
                                     <div className="space-y-2">
                                       <label className="text-xs font-black uppercase tracking-wider text-slate-400">1. Master Subject PDF File</label>
-                                      <label className={`w-full p-4 rounded-2xl border border-dashed flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all ${
-                                        subjectPdfUploading
+                                      <label className={`w-full p-4 rounded-2xl border border-dashed flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all ${subjectPdfUploading
                                           ? 'opacity-50 pointer-events-none'
                                           : isDark
                                             ? 'bg-slate-900/60 border-slate-700 hover:border-blue-400 text-slate-300'
                                             : 'bg-white/80 border-slate-300 hover:border-blue-500 text-slate-700'
-                                      }`}>
+                                        }`}>
                                         <input
                                           type="file"
                                           accept="application/pdf"
@@ -28667,9 +28514,8 @@ Return your response strictly as a JSON object matching this schema:
                                           min="0"
                                           value={subjectPdfOffsetInput}
                                           onChange={(e) => setSubjectPdfOffsetInput(e.target.value)}
-                                          className={`w-28 p-3 rounded-2xl text-sm font-mono font-bold outline-none border transition ${
-                                            isDark ? 'neu-pressed-dark text-white border-slate-700' : 'neu-pressed-light text-slate-900 border-slate-300'
-                                          }`}
+                                          className={`w-28 p-3 rounded-2xl text-sm font-mono font-bold outline-none border transition ${isDark ? 'neu-pressed-dark text-white border-slate-700' : 'neu-pressed-light text-slate-900 border-slate-300'
+                                            }`}
                                           placeholder="e.g. 15"
                                         />
                                         <button
@@ -28699,9 +28545,8 @@ Return your response strictly as a JSON object matching this schema:
                                               alert("Failed to save offset: " + err.message);
                                             }
                                           }}
-                                          className={`px-4 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition ${
-                                            isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300 border-slate-700' : 'neu-btn-light text-blue-600 border-slate-300'
-                                          }`}
+                                          className={`px-4 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition ${isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300 border-slate-700' : 'neu-btn-light text-blue-600 border-slate-300'
+                                            }`}
                                         >
                                           Save Offset
                                         </button>
@@ -28732,9 +28577,8 @@ Return your response strictly as a JSON object matching this schema:
                                         return topicsList.map((tItem, tIdx) => (
                                           <div
                                             key={tIdx}
-                                            className={`p-3 rounded-2xl border flex items-center justify-between gap-3 ${
-                                              isDark ? 'neu-card-dark border-slate-800' : 'neu-card-light border-slate-200'
-                                            }`}
+                                            className={`p-3 rounded-2xl border flex items-center justify-between gap-3 ${isDark ? 'neu-card-dark border-slate-800' : 'neu-card-light border-slate-200'
+                                              }`}
                                           >
                                             <div className="min-w-0 flex-1">
                                               <p className="text-xs font-bold truncate">{tItem.name}</p>
@@ -28742,9 +28586,8 @@ Return your response strictly as a JSON object matching this schema:
                                                 {tItem.page ? `Page ${tItem.page}${tItem.endPage ? `-${tItem.endPage}` : ''}` : 'No page range'}
                                               </p>
                                             </div>
-                                            <label className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider border cursor-pointer transition shrink-0 flex items-center gap-1 ${
-                                              isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300 border-slate-700' : 'neu-btn-light text-blue-600 border-slate-300'
-                                            }`}>
+                                            <label className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider border cursor-pointer transition shrink-0 flex items-center gap-1 ${isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300 border-slate-700' : 'neu-btn-light text-blue-600 border-slate-300'
+                                              }`}>
                                               <input
                                                 type="file"
                                                 accept="application/pdf"
@@ -28807,9 +28650,8 @@ Return your response strictly as a JSON object matching this schema:
                           initial={{ opacity: 0, y: 12, scale: 0.98 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
                           transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                          className={`p-5 rounded-3xl border shadow-xl space-y-4 ${
-                            isDark ? 'neu-card-dark border-gray-800 text-slate-100' : 'neu-card-light border-gray-200/80 text-gray-900'
-                          }`}
+                          className={`p-5 rounded-3xl border shadow-xl space-y-4 ${isDark ? 'neu-card-dark border-gray-800 text-slate-100' : 'neu-card-light border-gray-200/80 text-gray-900'
+                            }`}
                         >
                           <div className={`flex items-center gap-2.5 pb-3 border-b ${isDark ? 'border-gray-800' : 'border-gray-100'}`}>
                             <div className={`p-2.5 rounded-2xl ${isDark ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'}`}>
@@ -28849,9 +28691,8 @@ Return your response strictly as a JSON object matching this schema:
                               <select
                                 value={obsSelectedWidget}
                                 onChange={(e) => setObsSelectedWidget(e.target.value)}
-                                className={`w-full p-3 rounded-2xl text-xs font-bold outline-none border transition-all ${
-                                  isDark ? 'neu-pressed-dark text-white border-slate-700 bg-[#1c2128]' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white'
-                                }`}
+                                className={`w-full p-3 rounded-2xl text-xs font-bold outline-none border transition-all ${isDark ? 'neu-pressed-dark text-white border-slate-700 bg-[#1c2128]' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white'
+                                  }`}
                               >
                                 <option value="todayAgenda">📅 Today's Agenda</option>
                                 <option value="dailyNotes">📝 Daily Notes</option>
@@ -28872,9 +28713,8 @@ Return your response strictly as a JSON object matching this schema:
                               <select
                                 value={obsTheme}
                                 onChange={(e) => setObsTheme(e.target.value)}
-                                className={`w-full p-3 rounded-2xl text-xs font-bold outline-none border transition-all ${
-                                  isDark ? 'neu-pressed-dark text-white border-slate-700 bg-[#1c2128]' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white'
-                                }`}
+                                className={`w-full p-3 rounded-2xl text-xs font-bold outline-none border transition-all ${isDark ? 'neu-pressed-dark text-white border-slate-700 bg-[#1c2128]' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white'
+                                  }`}
                               >
                                 <option value="transparent">👻 Transparent (Glass)</option>
                                 <option value="dark">🌑 Dark Card</option>
@@ -28888,9 +28728,8 @@ Return your response strictly as a JSON object matching this schema:
                                 initial={{ opacity: 0, height: 0 }}
                                 animate={{ opacity: 1, height: 'auto' }}
                                 exit={{ opacity: 0, height: 0 }}
-                                className={`p-4 rounded-2xl border space-y-4 ${
-                                  isDark ? 'neu-card-dark border-gray-750 bg-[#1c2128]/50' : 'neu-card-light border-gray-150 bg-gray-50'
-                                }`}
+                                className={`p-4 rounded-2xl border space-y-4 ${isDark ? 'neu-card-dark border-gray-750 bg-[#1c2128]/50' : 'neu-card-light border-gray-150 bg-gray-50'
+                                  }`}
                               >
                                 <h4 className="text-[10px] font-black uppercase tracking-wider text-blue-500">Custom Colors</h4>
 
@@ -28942,9 +28781,8 @@ Return your response strictly as a JSON object matching this schema:
                                     <select
                                       value={obsFontSize}
                                       onChange={(e) => setObsFontSize(e.target.value)}
-                                      className={`w-full p-2 rounded-xl text-[10px] font-bold outline-none border ${
-                                        isDark ? 'neu-pressed-dark text-white border-gray-750 bg-[#1c2128]' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white'
-                                      }`}
+                                      className={`w-full p-2 rounded-xl text-[10px] font-bold outline-none border ${isDark ? 'neu-pressed-dark text-white border-gray-750 bg-[#1c2128]' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white'
+                                        }`}
                                     >
                                       <option value="small">Small</option>
                                       <option value="medium">Medium</option>
@@ -28957,9 +28795,8 @@ Return your response strictly as a JSON object matching this schema:
                                     <select
                                       value={obsBorderRadius}
                                       onChange={(e) => setObsBorderRadius(e.target.value)}
-                                      className={`w-full p-2 rounded-xl text-[10px] font-bold outline-none border ${
-                                        isDark ? 'neu-pressed-dark text-white border-gray-750 bg-[#1c2128]' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white'
-                                      }`}
+                                      className={`w-full p-2 rounded-xl text-[10px] font-bold outline-none border ${isDark ? 'neu-pressed-dark text-white border-gray-750 bg-[#1c2128]' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white'
+                                        }`}
                                     >
                                       <option value="none">None</option>
                                       <option value="md">Medium</option>
@@ -28973,9 +28810,8 @@ Return your response strictly as a JSON object matching this schema:
                             )}
 
                             {/* Widget Specific Options */}
-                            <div className={`p-4 rounded-2xl border space-y-3 ${
-                              isDark ? 'neu-card-dark border-gray-750 bg-[#1c2128]/30' : 'neu-card-light border-gray-200 bg-gray-50/50'
-                            }`}>
+                            <div className={`p-4 rounded-2xl border space-y-3 ${isDark ? 'neu-card-dark border-gray-750 bg-[#1c2128]/30' : 'neu-card-light border-gray-200 bg-gray-50/50'
+                              }`}>
                               <h4 className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Widget Settings</h4>
 
                               {obsSelectedWidget === 'todayAgenda' && (
@@ -28999,9 +28835,8 @@ Return your response strictly as a JSON object matching this schema:
                                     <select
                                       value={obsTimerBgTheme}
                                       onChange={(e) => setObsTimerBgTheme(e.target.value)}
-                                      className={`w-full p-2 rounded-xl text-xs font-bold outline-none border ${
-                                        isDark ? 'neu-pressed-dark text-white border-gray-750 bg-[#1c2128]' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white'
-                                      }`}
+                                      className={`w-full p-2 rounded-xl text-xs font-bold outline-none border ${isDark ? 'neu-pressed-dark text-white border-gray-750 bg-[#1c2128]' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white'
+                                        }`}
                                     >
                                       <option value="gradient">Linear Gradient</option>
                                       <option value="animated">Animated Shifting</option>
@@ -29014,9 +28849,8 @@ Return your response strictly as a JSON object matching this schema:
                                       <select
                                         value={obsTimerBackground}
                                         onChange={(e) => setObsTimerBackground(e.target.value)}
-                                        className={`w-full p-2 rounded-xl text-xs font-bold outline-none border ${
-                                          isDark ? 'neu-pressed-dark text-white border-gray-750 bg-[#1c2128]' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white'
-                                        }`}
+                                        className={`w-full p-2 rounded-xl text-xs font-bold outline-none border ${isDark ? 'neu-pressed-dark text-white border-gray-750 bg-[#1c2128]' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white'
+                                          }`}
                                       >
                                         <option value="sunset">🌅 Sunset Glow</option>
                                         <option value="cyberpunk">🌃 Cyberpunk</option>
@@ -29043,9 +28877,8 @@ Return your response strictly as a JSON object matching this schema:
                               initial={{ opacity: 0, y: 8 }}
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ delay: 0.2, duration: 0.3 }}
-                              className={`p-4 rounded-2xl border space-y-3 ${
-                                isDark ? 'neu-card-dark border-blue-900/40 bg-blue-950/20' : 'neu-card-light border-blue-100 bg-blue-50/50'
-                              }`}
+                              className={`p-4 rounded-2xl border space-y-3 ${isDark ? 'neu-card-dark border-blue-900/40 bg-blue-950/20' : 'neu-card-light border-blue-100 bg-blue-50/50'
+                                }`}
                             >
                               <div className="flex justify-between items-center">
                                 <span className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>Stream Link</span>
@@ -29060,9 +28893,8 @@ Return your response strictly as a JSON object matching this schema:
                                   type="text"
                                   readOnly
                                   value={generateObsOverlayUrl()}
-                                  className={`flex-grow p-2.5 rounded-xl text-[10px] font-mono outline-none select-all border ${
-                                    isDark ? 'neu-pressed-dark text-gray-200 border-gray-750 bg-[#1c2128]' : 'neu-pressed-light text-gray-700 border-blue-200 bg-white'
-                                  }`}
+                                  className={`flex-grow p-2.5 rounded-xl text-[10px] font-mono outline-none select-all border ${isDark ? 'neu-pressed-dark text-gray-200 border-gray-750 bg-[#1c2128]' : 'neu-pressed-light text-gray-700 border-blue-200 bg-white'
+                                    }`}
                                 />
                                 <button
                                   onClick={handleCopyLink}
@@ -29132,11 +28964,10 @@ Return your response strictly as a JSON object matching this schema:
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 20, scale: 0.96 }}
                         transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-                        className={`fixed left-3 right-3 sm:left-auto sm:right-6 sm:w-[380px] bottom-[78px] z-50 p-4 sm:p-5 rounded-3xl border shadow-2xl overflow-hidden ${
-                          settingsThemeMode === 'dark'
+                        className={`fixed left-3 right-3 sm:left-auto sm:right-6 sm:w-[380px] bottom-[78px] z-50 p-4 sm:p-5 rounded-3xl border shadow-2xl overflow-hidden ${settingsThemeMode === 'dark'
                             ? 'neu-card-dark border-gray-800 text-slate-100'
                             : 'neu-card-light border-gray-200/90 text-slate-800'
-                        }`}
+                          }`}
                       >
                         {/* Drawer Category Header */}
                         <div className="flex items-center justify-between pb-3.5 border-b border-gray-500/15 mb-3">
@@ -29144,18 +28975,16 @@ Return your response strictly as a JSON object matching this schema:
                             <div className="neu-cat-icon-badge">
                               <ActiveCatIcon className="w-4.5 h-4.5" />
                             </div>
-                            <span className={`text-xs sm:text-sm font-black uppercase tracking-wider ${
-                              settingsThemeMode === 'dark' ? 'text-sky-400 font-extrabold' : 'text-blue-600 font-extrabold'
-                            }`}>
+                            <span className={`text-xs sm:text-sm font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-sky-400 font-extrabold' : 'text-blue-600 font-extrabold'
+                              }`}>
                               {activeCat.label}
                             </span>
                           </div>
                           <button
                             type="button"
                             onClick={() => setActiveMobileCategory(null)}
-                            className={`p-2 rounded-xl transition-all cursor-pointer active:scale-95 ${
-                              settingsThemeMode === 'dark' ? 'neu-btn-dark text-gray-400 hover:text-white' : 'neu-btn-light text-gray-600 hover:text-gray-900'
-                            }`}
+                            className={`p-2 rounded-xl transition-all cursor-pointer active:scale-95 ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-gray-400 hover:text-white' : 'neu-btn-light text-gray-600 hover:text-gray-900'
+                              }`}
                             title="Close menu"
                           >
                             <X className="w-4 h-4" />
@@ -29174,19 +29003,17 @@ Return your response strictly as a JSON object matching this schema:
                                   item.action();
                                   setActiveMobileCategory(null);
                                 }}
-                                className={`neu-action-item ${settingsThemeMode === 'dark' ? 'dark-theme' : 'light-theme'} ${
-                                  isActive ? 'active' : ''
-                                } w-full flex items-center justify-between gap-3 px-3.5 py-3 rounded-2xl group relative text-left transition-all active:scale-[0.98] min-h-[50px]`}
+                                className={`neu-action-item ${settingsThemeMode === 'dark' ? 'dark-theme' : 'light-theme'} ${isActive ? 'active' : ''
+                                  } w-full flex items-center justify-between gap-3 px-3.5 py-3 rounded-2xl group relative text-left transition-all active:scale-[0.98] min-h-[50px]`}
                               >
                                 <div className="flex items-center gap-3 min-w-0 flex-grow">
                                   <div className="neu-action-icon-box shrink-0">
                                     <ItemIcon className="w-4.5 h-4.5" />
                                   </div>
-                                  <span className={`text-xs sm:text-sm font-bold tracking-wide break-words whitespace-normal leading-snug transition-colors ${
-                                    isActive
+                                  <span className={`text-xs sm:text-sm font-bold tracking-wide break-words whitespace-normal leading-snug transition-colors ${isActive
                                       ? (settingsThemeMode === 'dark' ? 'text-blue-400 font-extrabold' : 'text-blue-600 font-extrabold')
                                       : (settingsThemeMode === 'dark' ? 'text-gray-200 group-hover:text-white' : 'text-gray-800 group-hover:text-gray-950')
-                                  }`}>
+                                    }`}>
                                     {item.label}
                                   </span>
                                 </div>
@@ -29206,9 +29033,8 @@ Return your response strictly as a JSON object matching this schema:
 
                 {/* CATEGORY MOBILE NAVIGATION BAR */}
                 <nav
-                  className={`fixed bottom-0 left-0 right-0 border-t flex items-center justify-around z-40 transition-colors duration-300 ${
-                    settingsThemeMode === 'dark' ? 'neu-card-dark border-gray-800 text-gray-200' : 'neu-card-light border-gray-200/80 text-gray-700'
-                  }`}
+                  className={`fixed bottom-0 left-0 right-0 border-t flex items-center justify-around z-40 transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-card-dark border-gray-800 text-gray-200' : 'neu-card-light border-gray-200/80 text-gray-700'
+                    }`}
                   style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 8px) + 6px)', paddingTop: '8px', paddingLeft: '8px', paddingRight: '8px' }}
                 >
                   {navCategories.map(cat => {
@@ -29223,18 +29049,16 @@ Return your response strictly as a JSON object matching this schema:
                         onClick={() => {
                           setActiveMobileCategory(prev => prev === cat.id ? null : cat.id);
                         }}
-                        className={`flex flex-col items-center justify-center gap-1 min-w-0 flex-1 py-1 transition-all active:scale-95 select-none ${
-                          isDrawerOpen || hasActiveItem
+                        className={`flex flex-col items-center justify-center gap-1 min-w-0 flex-1 py-1 transition-all active:scale-95 select-none ${isDrawerOpen || hasActiveItem
                             ? (settingsThemeMode === 'dark' ? 'text-sky-400' : 'text-blue-600')
                             : 'text-gray-400'
-                        }`}
+                          }`}
                       >
                         <div
-                          className={`w-10 h-10 flex items-center justify-center rounded-2xl transition-all duration-300 ${
-                            isDrawerOpen || hasActiveItem
+                          className={`w-10 h-10 flex items-center justify-center rounded-2xl transition-all duration-300 ${isDrawerOpen || hasActiveItem
                               ? (settingsThemeMode === 'dark' ? 'neu-pressed-dark shadow-[inset_0_2px_4px_rgba(0,0,0,0.6),0_0_12px_rgba(56,189,248,0.25)]' : 'neu-pressed-light shadow-[inset_0_2px_4px_rgba(0,0,0,0.1),0_0_12px_rgba(37,99,235,0.2)]')
                               : (settingsThemeMode === 'dark' ? 'neu-btn-dark' : 'neu-btn-light')
-                          }`}
+                            }`}
                         >
                           <CatIcon className="w-5 h-5" />
                         </div>
@@ -29254,9 +29078,8 @@ Return your response strictly as a JSON object matching this schema:
             );
           } else {
             mainContent = (
-              <div className={`h-screen w-screen font-sans flex overflow-hidden transition-colors duration-300 ${
-                settingsThemeMode === 'dark' ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'
-              }`}>
+              <div className={`h-screen w-screen font-sans flex overflow-hidden transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'
+                }`}>
 
                 {/* SIDEBAR NAVIGATION (Hidden on Mobile) */}
                 <aside
@@ -29277,9 +29100,8 @@ Return your response strictly as a JSON object matching this schema:
                         style={{
                           transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
                         }}
-                        className={`overflow-hidden ${
-                          isSidebarExpanded ? 'opacity-100 max-w-[140px] ml-2' : 'opacity-0 max-w-0 ml-0 pointer-events-none'
-                        }`}
+                        className={`overflow-hidden ${isSidebarExpanded ? 'opacity-100 max-w-[140px] ml-2' : 'opacity-0 max-w-0 ml-0 pointer-events-none'
+                          }`}
                       >
                         <span className={`font-black tracking-tight text-xl truncate whitespace-nowrap ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                           AutoAnki
@@ -29301,9 +29123,8 @@ Return your response strictly as a JSON object matching this schema:
                           style={{
                             transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
                           }}
-                          className={`neu-cat-card ${settingsThemeMode === 'dark' ? 'dark-theme' : 'light-theme'} ${
-                            isExpanded && isSidebarExpanded ? 'is-expanded p-1.5' : ''
-                          } space-y-1 w-full overflow-hidden`}
+                          className={`neu-cat-card ${settingsThemeMode === 'dark' ? 'dark-theme' : 'light-theme'} ${isExpanded && isSidebarExpanded ? 'is-expanded p-1.5' : ''
+                            } space-y-1 w-full overflow-hidden`}
                         >
                           {/* Symmetrically Centered Category Header Button */}
                           <button
@@ -29330,9 +29151,8 @@ Return your response strictly as a JSON object matching this schema:
                             style={{
                               transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
                             }}
-                            className={`neu-cat-header ${settingsThemeMode === 'dark' ? 'dark-theme' : 'light-theme'} ${
-                              isExpanded && isSidebarExpanded ? 'is-expanded' : ''
-                            } ${hasActiveItem ? 'has-active' : ''} group select-none flex items-center justify-between w-full h-12 px-1.5 rounded-xl`}
+                            className={`neu-cat-header ${settingsThemeMode === 'dark' ? 'dark-theme' : 'light-theme'} ${isExpanded && isSidebarExpanded ? 'is-expanded' : ''
+                              } ${hasActiveItem ? 'has-active' : ''} group select-none flex items-center justify-between w-full h-12 px-1.5 rounded-xl`}
                           >
                             <div className="flex items-center min-w-0">
                               {/* 100% Equilateral Symmetrical Icon Box */}
@@ -29350,15 +29170,13 @@ Return your response strictly as a JSON object matching this schema:
                                 style={{
                                   transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
                                 }}
-                                className={`overflow-hidden ${
-                                  isSidebarExpanded ? 'opacity-100 max-w-[140px] ml-2.5' : 'opacity-0 max-w-0 ml-0 pointer-events-none'
-                                }`}
+                                className={`overflow-hidden ${isSidebarExpanded ? 'opacity-100 max-w-[140px] ml-2.5' : 'opacity-0 max-w-0 ml-0 pointer-events-none'
+                                  }`}
                               >
-                                <span className={`text-[10px] font-black uppercase tracking-wider whitespace-nowrap truncate block text-left ${
-                                  (isExpanded && isSidebarExpanded) || hasActiveItem
+                                <span className={`text-[10px] font-black uppercase tracking-wider whitespace-nowrap truncate block text-left ${(isExpanded && isSidebarExpanded) || hasActiveItem
                                     ? (settingsThemeMode === 'dark' ? 'text-sky-400 font-extrabold' : 'text-blue-600 font-extrabold')
                                     : (settingsThemeMode === 'dark' ? 'text-slate-400 group-hover:text-slate-200' : 'text-slate-500 group-hover:text-slate-800')
-                                }`}>
+                                  }`}>
                                   {cat.label}
                                 </span>
                               </div>
@@ -29369,9 +29187,8 @@ Return your response strictly as a JSON object matching this schema:
                               style={{
                                 transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
                               }}
-                              className={`overflow-hidden shrink-0 ${
-                                isSidebarExpanded ? 'opacity-100 max-w-[40px] mr-0.5' : 'opacity-0 max-w-0 mr-0 pointer-events-none'
-                              }`}
+                              className={`overflow-hidden shrink-0 ${isSidebarExpanded ? 'opacity-100 max-w-[40px] mr-0.5' : 'opacity-0 max-w-0 mr-0 pointer-events-none'
+                                }`}
                             >
                               <div className="flex items-center gap-1.5">
                                 {hasActiveItem && (
@@ -29382,9 +29199,8 @@ Return your response strictly as a JSON object matching this schema:
                                     style={{
                                       transition: 'transform 0.6s cubic-bezier(0, 0, 0, 1)'
                                     }}
-                                    className={`w-3.5 h-3.5 ${
-                                      isExpanded && isSidebarExpanded ? 'rotate-0 text-sky-400' : '-rotate-90 text-slate-400'
-                                    }`}
+                                    className={`w-3.5 h-3.5 ${isExpanded && isSidebarExpanded ? 'rotate-0 text-sky-400' : '-rotate-90 text-slate-400'
+                                      }`}
                                   />
                                 </div>
                               </div>
@@ -29448,9 +29264,8 @@ Return your response strictly as a JSON object matching this schema:
                         style={{
                           transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
                         }}
-                        className={`overflow-hidden ${
-                          isSidebarExpanded ? 'opacity-100 max-w-[140px] ml-2 text-left' : 'opacity-0 max-w-0 ml-0 pointer-events-none'
-                        }`}
+                        className={`overflow-hidden ${isSidebarExpanded ? 'opacity-100 max-w-[140px] ml-2 text-left' : 'opacity-0 max-w-0 ml-0 pointer-events-none'
+                          }`}
                       >
                         <div className="text-[9px] text-blue-500 font-extrabold uppercase tracking-widest truncate">Medical ID</div>
                         <div className={`text-xs font-black truncate ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>{user.displayName || 'Doctor'}</div>
@@ -29488,15 +29303,13 @@ Return your response strictly as a JSON object matching this schema:
                 <div className="flex-grow flex flex-col relative overflow-hidden z-10">
 
                   {/* TOP BAR - FLUSH & BORDERLESS WITH SIDEBAR */}
-                  <header className={`h-16 flex items-center justify-between px-6 shrink-0 z-30 transition-all duration-300 relative ${
-                    settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'
-                  }`}>
-                    
+                  <header className={`h-16 flex items-center justify-between px-6 shrink-0 z-30 transition-all duration-300 relative ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'
+                    }`}>
+
                     {/* LEFT: Contextual Title & Actions */}
                     <div className="flex items-center gap-3">
-                      <div className={`px-3.5 py-1.5 rounded-2xl flex items-center gap-2.5 transition-all ${
-                        settingsThemeMode === 'dark' ? 'liquid-glass-pill-dark' : 'liquid-glass-pill-light'
-                      }`}>
+                      <div className={`px-3.5 py-1.5 rounded-2xl flex items-center gap-2.5 transition-all ${settingsThemeMode === 'dark' ? 'liquid-glass-pill-dark' : 'liquid-glass-pill-light'
+                        }`}>
                         <span className="text-base select-none">
                           {currentTab === 'campTracker' ? '🏕️' : currentTab === 'about' ? '💡' : currentTab === 'smartReview' ? '🧠' : currentTab === 'pytManager' ? '🎯' : currentTab === 'pytLogger' ? '📝' : currentTab === 'obsOverlay' ? '🎥' : currentTab === 'studyScheduler' ? '📅' : currentTab === 'subjectTracker' ? '📑' : currentTab === 'dashboard' ? '📊' : currentTab === 'studyRoom' ? '🎧' : '📚'}
                         </span>
@@ -29509,11 +29322,10 @@ Return your response strictly as a JSON object matching this schema:
                         <button
                           type="button"
                           onClick={() => setIsWidgetCustomizerOpen(true)}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition font-black text-[10px] uppercase tracking-wider active:scale-95 cursor-pointer ${
-                            settingsThemeMode === 'dark'
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition font-black text-[10px] uppercase tracking-wider active:scale-95 cursor-pointer ${settingsThemeMode === 'dark'
                               ? 'liquid-glass-pill-dark text-blue-400 hover:text-white'
                               : 'liquid-glass-pill-light text-blue-600 hover:text-blue-800'
-                          }`}
+                            }`}
                           title="Customize Dashboard Widgets"
                         >
                           <Settings className="w-3.5 h-3.5" />
@@ -29530,146 +29342,113 @@ Return your response strictly as a JSON object matching this schema:
                       />
                     )}
 
-                    <motion.div
-                      layout
-                      initial={false}
-                      animate={{
-                        width: isDailyMetricsOpen ? 540 : 268,
-                        borderRadius: isDailyMetricsOpen ? 24 : 20,
-                      }}
-                      transition={{
-                        type: 'spring',
-                        stiffness: 190,
-                        damping: 22,
-                        mass: 0.85,
-                      }}
+                    <div
                       onClick={() => !isDailyMetricsOpen && setIsDailyMetricsOpen(true)}
-                      className={`absolute left-1/2 -translate-x-1/2 top-2.5 z-50 cursor-pointer overflow-hidden backdrop-blur-3xl transition-colors duration-300 select-none ${
-                        settingsThemeMode === 'dark'
-                          ? 'bg-[#222730]/95 text-slate-100 border border-white/[0.14] shadow-[0_16px_40px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.12)]'
-                          : 'bg-[#e6ecf5]/95 text-slate-800 border border-white/90 shadow-[0_16px_40px_rgba(37,99,235,0.14),inset_0_1px_1px_rgba(255,255,255,0.9)]'
-                      } ${!isDailyMetricsOpen ? (settingsThemeMode === 'dark' ? 'hover:border-blue-400/40 hover:shadow-[0_8px_24px_rgba(56,189,248,0.2)]' : 'hover:border-blue-400/50 hover:shadow-[0_8px_24px_rgba(37,99,235,0.15)]') : 'max-w-[92vw]'}`}
+                      className={`ios-dynamic-island ${settingsThemeMode === 'dark' ? 'dark' : 'light'} ${isDailyMetricsOpen ? 'active' : ''}`}
+                      title={!isDailyMetricsOpen ? "Click to view full study momentum" : ""}
                     >
-                      <AnimatePresence initial={false}>
-                        {!isDailyMetricsOpen ? (
-                          /* Compact iOS Island Pill */
-                          <motion.div
-                            key="compact"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.18 }}
-                            className="flex items-center justify-between px-3.5 py-2 w-[268px]"
-                          >
-                            {/* Study Time */}
-                            <div className="flex items-center gap-1.5">
-                              <Clock className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                              <span className="text-xs font-black tracking-tight">{getLiveTodayHours().toFixed(1)}h</span>
+                      {/* Compact Content */}
+                      <div className="compact-content">
+                        {/* Study Time */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <Clock className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                          <span className="text-xs font-black tracking-tight">{getLiveTodayHours().toFixed(1)}h</span>
+                        </div>
+
+                        <span className="opacity-30 text-xs font-bold">•</span>
+
+                        {/* Cards Reviewed */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <Layers className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                          <span className="text-xs font-black tracking-tight">{studyLogs[todayStr]?.cards || 0} cards</span>
+                        </div>
+
+                        <span className="opacity-30 text-xs font-bold">•</span>
+
+                        {/* Current Streak */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <Flame className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                          <span className="text-xs font-black tracking-tight text-orange-500">{streakStats.currentStreak}d</span>
+                        </div>
+
+                        {/* Chevron */}
+                        <ChevronDown className="w-3.5 h-3.5 opacity-60 ml-0.5 text-blue-500 shrink-0" />
+                      </div>
+
+                      {/* Expanded Content */}
+                      <div className="expanded-content">
+                        {/* Header Strip */}
+                        <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-[11px] font-black uppercase tracking-wider">Today's Momentum</h4>
+                            <span className="text-[10px] font-bold opacity-40">•</span>
+                            <span className="text-[10px] font-bold opacity-60">{todayStr}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border flex items-center gap-1 ${
+                              settingsThemeMode === 'dark' ? 'bg-orange-500/15 text-orange-400 border-orange-500/30' : 'bg-orange-50 text-orange-700 border-orange-200'
+                            }`}>
+                              <Flame className="w-2.5 h-2.5" /> {streakStats.currentStreak}d Streak
+                            </span>
+                            <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border ${
+                              settingsThemeMode === 'dark' ? 'bg-blue-500/15 text-blue-300 border-blue-500/30' : 'bg-blue-50 text-blue-700 border-blue-200'
+                            }`}>
+                              ⚡ Active
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setIsDailyMetricsOpen(false);
+                              }}
+                              className="p-1 hover:bg-white/10 rounded-lg opacity-60 hover:opacity-100 transition cursor-pointer"
+                              title="Close Momentum Drawer"
+                            >
+                              <ChevronDown className="w-3.5 h-3.5 rotate-180 text-blue-500" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Single-Row 4-Metric Grid */}
+                        <div className="grid grid-cols-4 gap-2">
+                          {/* Study Time */}
+                          <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'}`}>
+                            <div className="flex items-center gap-1 mb-0.5">
+                              <Clock className="w-3 h-3 text-blue-500 shrink-0" />
+                              <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Time</span>
                             </div>
+                            <div className="text-xs font-black">{getLiveTodayHours().toFixed(2)}h</div>
+                          </div>
 
-                            <span className="opacity-30 text-xs font-bold">•</span>
-
-                            {/* Cards Reviewed */}
-                            <div className="flex items-center gap-1.5">
-                              <Layers className="w-3.5 h-3.5 text-purple-500 shrink-0" />
-                              <span className="text-xs font-black tracking-tight">{studyLogs[todayStr]?.cards || 0} cards</span>
+                          {/* Cards Reviewed */}
+                          <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'}`}>
+                            <div className="flex items-center gap-1 mb-0.5">
+                              <Layers className="w-3 h-3 text-purple-500 shrink-0" />
+                              <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Cards</span>
                             </div>
+                            <div className="text-xs font-black">{studyLogs[todayStr]?.cards || 0}</div>
+                          </div>
 
-                            <span className="opacity-30 text-xs font-bold">•</span>
-
-                            {/* Current Streak */}
-                            <div className="flex items-center gap-1.5">
-                              <Flame className="w-3.5 h-3.5 text-orange-500 shrink-0" />
-                              <span className="text-xs font-black tracking-tight text-orange-500">{streakStats.currentStreak}d</span>
+                          {/* Questions Solved */}
+                          <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'}`}>
+                            <div className="flex items-center gap-1 mb-0.5">
+                              <HelpCircle className="w-3 h-3 text-indigo-500 shrink-0" />
+                              <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Qs</span>
                             </div>
+                            <div className="text-xs font-black">{studyLogs[todayStr]?.questions || 0}</div>
+                          </div>
 
-                            {/* Chevron */}
-                            <ChevronDown className="w-3.5 h-3.5 opacity-60 ml-0.5 text-blue-500" />
-                          </motion.div>
-                        ) : (
-                          /* Expanded iOS Island Drawer */
-                          <motion.div
-                            key="expanded"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.28, delay: 0.08 }}
-                            className="p-3.5 w-full"
-                          >
-                            {/* Header Strip */}
-                            <div className="flex items-center justify-between pb-2 border-b border-white/10 mb-2.5">
-                              <div className="flex items-center gap-2">
-                                <h4 className="text-[11px] font-black uppercase tracking-wider">Today's Momentum</h4>
-                                <span className="text-[10px] font-bold opacity-40">•</span>
-                                <span className="text-[10px] font-bold opacity-60">{todayStr}</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border flex items-center gap-1 ${
-                                  settingsThemeMode === 'dark' ? 'bg-orange-500/15 text-orange-400 border-orange-500/30' : 'bg-orange-50 text-orange-700 border-orange-200'
-                                }`}>
-                                  <Flame className="w-2.5 h-2.5" /> {streakStats.currentStreak}d Streak
-                                </span>
-                                <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border ${
-                                  settingsThemeMode === 'dark' ? 'bg-blue-500/15 text-blue-300 border-blue-500/30' : 'bg-blue-50 text-blue-700 border-blue-200'
-                                }`}>
-                                  ⚡ Active
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setIsDailyMetricsOpen(false);
-                                  }}
-                                  className="p-1 hover:bg-white/10 rounded-lg opacity-60 hover:opacity-100 transition cursor-pointer"
-                                  title="Close Momentum Drawer"
-                                >
-                                  <ChevronDown className="w-3.5 h-3.5 rotate-180 text-blue-500" />
-                                </button>
-                              </div>
+                          {/* Pages Read */}
+                          <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'}`}>
+                            <div className="flex items-center gap-1 mb-0.5">
+                              <FileText className="w-3 h-3 text-teal-500 shrink-0" />
+                              <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Pages</span>
                             </div>
-
-                            {/* Single-Row 4-Metric Grid */}
-                            <div className="grid grid-cols-4 gap-2">
-                              {/* Study Time */}
-                              <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'}`}>
-                                <div className="flex items-center gap-1 mb-0.5">
-                                  <Clock className="w-3 h-3 text-blue-500 shrink-0" />
-                                  <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Time</span>
-                                </div>
-                                <div className="text-xs font-black">{getLiveTodayHours().toFixed(2)}h</div>
-                              </div>
-
-                              {/* Cards Reviewed */}
-                              <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'}`}>
-                                <div className="flex items-center gap-1 mb-0.5">
-                                  <Layers className="w-3 h-3 text-purple-500 shrink-0" />
-                                  <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Cards</span>
-                                </div>
-                                <div className="text-xs font-black">{studyLogs[todayStr]?.cards || 0}</div>
-                              </div>
-
-                              {/* Questions Solved */}
-                              <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'}`}>
-                                <div className="flex items-center gap-1 mb-0.5">
-                                  <HelpCircle className="w-3 h-3 text-indigo-500 shrink-0" />
-                                  <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Qs</span>
-                                </div>
-                                <div className="text-xs font-black">{studyLogs[todayStr]?.questions || 0}</div>
-                              </div>
-
-                              {/* Pages Read */}
-                              <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'}`}>
-                                <div className="flex items-center gap-1 mb-0.5">
-                                  <FileText className="w-3 h-3 text-teal-500 shrink-0" />
-                                  <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Pages</span>
-                                </div>
-                                <div className="text-xs font-black">{studyLogs[todayStr]?.pages || 0}</div>
-                              </div>
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </motion.div>
+                            <div className="text-xs font-black">{studyLogs[todayStr]?.pages || 0}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
 
                     {/* RIGHT: Floating Focus Island & Cloud Vault Sync */}
                     <div className="flex items-center gap-3">
@@ -29678,11 +29457,10 @@ Return your response strictly as a JSON object matching this schema:
                       {timerState.status !== 'idle' && (
                         <div
                           onClick={() => setIsTimerFullscreen(true)}
-                          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-2xl text-xs font-black shadow-sm font-mono tracking-tight animate-in slide-in-from-right-2 border cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all ${
-                            settingsThemeMode === 'dark'
+                          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-2xl text-xs font-black shadow-sm font-mono tracking-tight animate-in slide-in-from-right-2 border cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all ${settingsThemeMode === 'dark'
                               ? 'liquid-glass-pill-dark text-white shadow-[0_4px_20px_rgba(59,130,246,0.2)]'
                               : 'liquid-glass-pill-light text-slate-800 shadow-[0_4px_20px_rgba(59,130,246,0.1)]'
-                          }`}
+                            }`}
                           title="Click to open Fullscreen Study Room"
                         >
                           {timerState.timerType === 'stopwatch' ? (
@@ -29693,13 +29471,12 @@ Return your response strictly as a JSON object matching this schema:
                             <Clock className={`w-3.5 h-3.5 text-orange-400 ${timerState.status === 'running' ? 'animate-spin duration-10000' : ''}`} />
                           )}
 
-                          <span className={`text-[9px] uppercase tracking-wider font-extrabold ${
-                            timerState.timerType === 'stopwatch'
+                          <span className={`text-[9px] uppercase tracking-wider font-extrabold ${timerState.timerType === 'stopwatch'
                               ? 'text-emerald-400'
                               : timerState.timerType === 'timer'
                                 ? 'text-indigo-400'
                                 : 'text-orange-400'
-                          }`}>
+                            }`}>
                             {timerState.timerType === 'stopwatch'
                               ? 'Stopwatch'
                               : timerState.timerType === 'timer'
@@ -29756,13 +29533,12 @@ Return your response strictly as a JSON object matching this schema:
                         type="button"
                         onClick={handleHeaderSync}
                         disabled={isSyncing || gdriveSyncState.isSyncing}
-                        className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer active:scale-95 ${
-                          (isSyncing || gdriveSyncState.isSyncing)
+                        className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer active:scale-95 ${(isSyncing || gdriveSyncState.isSyncing)
                             ? 'bg-blue-500/20 text-blue-400 border-blue-500/30 shadow-sm cursor-wait'
                             : (settingsThemeMode === 'dark'
-                                ? 'liquid-glass-pill-dark text-slate-200 hover:text-white'
-                                : 'liquid-glass-pill-light text-blue-600 hover:text-blue-800')
-                        }`}
+                              ? 'liquid-glass-pill-dark text-slate-200 hover:text-white'
+                              : 'liquid-glass-pill-light text-blue-600 hover:text-blue-800')
+                          }`}
                         title={gdriveSyncState.isSyncing ? gdriveSyncState.message : (gdriveAuthState ? 'Sync with Google Drive & LocalDB' : `Sync ${currentTab} data from Local Database`)}
                       >
                         <RefreshCw className={`w-3.5 h-3.5 ${(isSyncing || gdriveSyncState.isSyncing) ? 'animate-spin text-blue-400' : 'transition-transform duration-500 hover:rotate-180'}`} />
@@ -29774,20 +29550,18 @@ Return your response strictly as a JSON object matching this schema:
                       </button>
 
                       {/* Status Badge */}
-                      <div className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 ${
-                        settingsThemeMode === 'dark' ? 'liquid-glass-pill-dark' : 'liquid-glass-pill-light'
-                      }`}>
-                        <div className={`w-1.5 h-1.5 rounded-full ${
-                          gdriveSyncState.isSyncing
+                      <div className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 ${settingsThemeMode === 'dark' ? 'liquid-glass-pill-dark' : 'liquid-glass-pill-light'
+                        }`}>
+                        <div className={`w-1.5 h-1.5 rounded-full ${gdriveSyncState.isSyncing
                             ? 'bg-amber-400 animate-pulse'
                             : (gdriveAuthState ? 'bg-emerald-400 animate-pulse' : 'bg-blue-400')
-                        }`} />
+                          }`} />
                         <span className={
                           gdriveAuthState
                             ? (settingsThemeMode === 'dark' ? 'text-emerald-400 font-black' : 'text-emerald-700 font-black')
                             : (user
-                                ? (settingsThemeMode === 'dark' ? 'text-blue-400 font-black' : 'text-blue-700 font-black')
-                                : (settingsThemeMode === 'dark' ? 'text-amber-400 font-black' : 'text-amber-700 font-black'))
+                              ? (settingsThemeMode === 'dark' ? 'text-blue-400 font-black' : 'text-blue-700 font-black')
+                              : (settingsThemeMode === 'dark' ? 'text-amber-400 font-black' : 'text-amber-700 font-black'))
                         }>
                           {gdriveSyncState.isSyncing
                             ? 'Syncing'
@@ -29798,9 +29572,8 @@ Return your response strictly as a JSON object matching this schema:
                   </header>
 
                   {/* TAB VIEWS - FLUSH & SEAMLESS CANVAS */}
-                  <div className={`flex-grow flex flex-col overflow-hidden relative transition-colors duration-300 ${
-                    settingsThemeMode === 'dark' ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'
-                  }`}>
+                  <div className={`flex-grow flex flex-col overflow-hidden relative transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'
+                    }`}>
 
                     {currentTab === 'campTracker' && (
                       <CampDashboard
@@ -30100,7 +29873,7 @@ Return your response strictly as a JSON object matching this schema:
 
                           {/* PROMPT SELECTORS - Shown for Image Mode OR (Raw Text Mode -> AI Extractor) */}
                           {(cardGenerationInputMode === 'image' || (cardGenerationInputMode === 'text' && rawTextSubMode === 'ai')) && (
-<div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-4 shrink-0`}>
+                            <div className={`${settingsThemeMode === 'dark' ? 'neu-card-dark' : 'neu-card-light'} p-4 shrink-0`}>
                               <div className="space-y-3">
                                 {cardGenerationInputMode === 'image' ? (
                                   <div>
@@ -30466,9 +30239,8 @@ Return your response strictly as a JSON object matching this schema:
                                     <button
                                       type="button"
                                       onClick={() => setAllGeneratedCardsSuspended(activeQueueId, true)}
-                                      className={`px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-wider transition ${
-                                        settingsThemeMode === 'dark' ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 border border-amber-500/30' : 'bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200'
-                                      }`}
+                                      className={`px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-wider transition ${settingsThemeMode === 'dark' ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 border border-amber-500/30' : 'bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200'
+                                        }`}
                                       title="Suspend all cards in this batch on export"
                                     >
                                       Suspend All
@@ -30476,9 +30248,8 @@ Return your response strictly as a JSON object matching this schema:
                                     <button
                                       type="button"
                                       onClick={() => setAllGeneratedCardsSuspended(activeQueueId, false)}
-                                      className={`px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-wider transition ${
-                                        settingsThemeMode === 'dark' ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                      }`}
+                                      className={`px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-wider transition ${settingsThemeMode === 'dark' ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        }`}
                                       title="Set all cards in this batch to active on export"
                                     >
                                       Active All
@@ -30584,9 +30355,8 @@ Return your response strictly as a JSON object matching this schema:
                                             id={`card-${card.id}`}
                                             onMouseEnter={() => { const box = getCardBoundingBox(card); if (box) setHoveredCardCoordinates(box); }}
                                             onMouseLeave={() => setHoveredCardCoordinates(null)}
-                                            className={`card ${colorClass} group relative ${
-                                              isCardTargetedByImage ? 'ring-2 ring-blue-500 shadow-xl active-from-image' : ''
-                                            } ${isCardBlurredByImage ? 'blurred-by-image' : ''}`}
+                                            className={`card ${colorClass} group relative ${isCardTargetedByImage ? 'ring-2 ring-blue-500 shadow-xl active-from-image' : ''
+                                              } ${isCardBlurredByImage ? 'blurred-by-image' : ''}`}
                                           >
                                             <div className="flex items-center justify-between gap-2 mb-2.5 w-full">
                                               <div className="flex items-center gap-1.5 flex-wrap">
@@ -30603,13 +30373,12 @@ Return your response strictly as a JSON object matching this schema:
                                                     e.stopPropagation();
                                                     toggleCardSuspended(card);
                                                   }}
-                                                  className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1 transition ${
-                                                    card.isSuspended
+                                                  className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1 transition ${card.isSuspended
                                                       ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-sm'
                                                       : settingsThemeMode === 'dark'
                                                         ? 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-slate-200'
                                                         : 'bg-slate-100 text-slate-500 border border-slate-200 hover:text-slate-700'
-                                                  }`}
+                                                    }`}
                                                   title={card.isSuspended ? "Card is Suspended on export. Click to activate." : "Click to Suspend on export"}
                                                 >
                                                   {card.isSuspended ? <Pause className="w-2.5 h-2.5 fill-amber-400/40" /> : <Play className="w-2.5 h-2.5 opacity-60" />}
@@ -30778,8 +30547,8 @@ Return your response strictly as a JSON object matching this schema:
                                 whileTap={{ scale: 0.95 }}
                                 onClick={() => setCurrentTab('dashboard')}
                                 className={`p-2 rounded-xl transition flex items-center justify-center shadow-md cursor-pointer ${settingsThemeMode === 'dark'
-                                    ? 'neu-btn-dark text-gray-200 hover:text-white border border-gray-700/50'
-                                    : 'neu-btn-light text-gray-700 hover:text-gray-900 border border-white/80'
+                                  ? 'neu-btn-dark text-gray-200 hover:text-white border border-gray-700/50'
+                                  : 'neu-btn-light text-gray-700 hover:text-gray-900 border border-white/80'
                                   }`}
                                 title="Back to Dashboard"
                               >
@@ -30922,8 +30691,8 @@ Return your response strictly as a JSON object matching this schema:
                                     }
                                   }}
                                   className={`p-2.5 rounded-xl transition flex items-center justify-center shadow-md cursor-pointer ${settingsThemeMode === 'dark'
-                                      ? 'neu-btn-dark text-gray-200 hover:text-white border border-gray-700/50'
-                                      : 'neu-btn-light text-gray-700 hover:text-gray-900 border border-white/80'
+                                    ? 'neu-btn-dark text-gray-200 hover:text-white border border-gray-700/50'
+                                    : 'neu-btn-light text-gray-700 hover:text-gray-900 border border-white/80'
                                     }`}
                                   title={activeQueueId ? "Back to Gallery" : (hierarchy && hierarchy.includes('::')) ? "Up One Level" : "Back to Dashboard"}
                                 >
@@ -30974,11 +30743,10 @@ Return your response strictly as a JSON object matching this schema:
                                   whileHover={{ scale: 1.03, y: -1 }}
                                   whileTap={{ scale: 0.97 }}
                                   onClick={() => setNewFolderDialog({ isOpen: true, basePath: hierarchy || '', input: '' })}
-                                  className={`h-[34px] px-3.5 rounded-xl transition flex items-center gap-1.5 text-xs font-bold shadow-sm cursor-pointer ${
-                                    settingsThemeMode === 'dark'
+                                  className={`h-[34px] px-3.5 rounded-xl transition flex items-center gap-1.5 text-xs font-bold shadow-sm cursor-pointer ${settingsThemeMode === 'dark'
                                       ? 'neu-btn-dark text-gray-200 hover:text-white border border-gray-700/50'
                                       : 'neu-btn-light text-gray-700 hover:text-gray-900 border border-white/80'
-                                  }`}
+                                    }`}
                                   title={hierarchy ? `Create subfolder inside "${hierarchy.split('::').pop()}"` : "Create new folder"}
                                 >
                                   <FolderPlus className="w-3.5 h-3.5 text-blue-500" />
@@ -30988,11 +30756,10 @@ Return your response strictly as a JSON object matching this schema:
                                   whileHover={{ scale: 1.03, y: -1 }}
                                   whileTap={{ scale: 0.97 }}
                                   onClick={() => openManualCardModal(null)}
-                                  className={`h-[34px] px-3.5 rounded-xl transition flex items-center gap-1.5 text-xs font-bold shadow-sm cursor-pointer ${
-                                    settingsThemeMode === 'dark'
+                                  className={`h-[34px] px-3.5 rounded-xl transition flex items-center gap-1.5 text-xs font-bold shadow-sm cursor-pointer ${settingsThemeMode === 'dark'
                                       ? 'neu-btn-dark text-gray-200 hover:text-white border border-gray-700/50'
                                       : 'neu-btn-light text-gray-700 hover:text-gray-900 border border-white/80'
-                                  }`}
+                                    }`}
                                   title="Add Manual Flashcard"
                                 >
                                   <Plus className="w-3.5 h-3.5 text-purple-400" />
@@ -31006,15 +30773,13 @@ Return your response strictly as a JSON object matching this schema:
                                     setCurrentTab('export');
                                   }}
                                   disabled={selectedFolderCardCount === 0}
-                                  className={`h-[34px] px-3.5 rounded-xl transition flex items-center gap-1.5 text-xs font-bold shadow-sm ${
-                                    selectedFolderCardCount === 0
+                                  className={`h-[34px] px-3.5 rounded-xl transition flex items-center gap-1.5 text-xs font-bold shadow-sm ${selectedFolderCardCount === 0
                                       ? 'opacity-40 cursor-not-allowed pointer-events-none'
                                       : 'cursor-pointer'
-                                  } ${
-                                    settingsThemeMode === 'dark'
+                                    } ${settingsThemeMode === 'dark'
                                       ? 'neu-btn-dark text-gray-200 hover:text-white border border-gray-700/50'
                                       : 'neu-btn-light text-gray-700 hover:text-gray-900 border border-white/80'
-                                  }`}
+                                    }`}
                                   title="Export cards from this folder"
                                 >
                                   <Download className="w-3.5 h-3.5 text-blue-400" />
@@ -31107,9 +30872,8 @@ Return your response strictly as a JSON object matching this schema:
                                     ) : (
                                       <div
                                         ref={libraryPreviewWorkspaceRef}
-                                        className={`w-full h-full flex items-center justify-center p-4 overflow-hidden select-none relative ${
-                                          settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'
-                                        }`}
+                                        className={`w-full h-full flex items-center justify-center p-4 overflow-hidden select-none relative ${settingsThemeMode === 'dark' ? 'neu-pressed-dark' : 'neu-pressed-light'
+                                          }`}
                                         style={{ touchAction: 'none' }}
                                         onMouseDown={handleLibraryPointerDown}
                                         onMouseMove={handleLibraryPointerMove}
@@ -31127,11 +30891,10 @@ Return your response strictly as a JSON object matching this schema:
                                           <button
                                             type="button"
                                             onClick={handleLibraryZoomIn}
-                                            className={`p-2.5 rounded-xl transition shadow-md cursor-pointer ${
-                                              settingsThemeMode === 'dark'
+                                            className={`p-2.5 rounded-xl transition shadow-md cursor-pointer ${settingsThemeMode === 'dark'
                                                 ? 'neu-btn-dark text-gray-200 hover:text-white border border-gray-700/50'
                                                 : 'neu-btn-light text-gray-700 hover:text-gray-900 border border-white/80'
-                                            }`}
+                                              }`}
                                             title="Zoom In (or scroll wheel)"
                                           >
                                             <Plus className="w-4 h-4" />
@@ -31139,11 +30902,10 @@ Return your response strictly as a JSON object matching this schema:
                                           <button
                                             type="button"
                                             onClick={handleLibraryResetZoom}
-                                            className={`px-2 py-1.5 rounded-xl text-[10px] font-black transition shadow-md cursor-pointer flex items-center justify-center min-w-[36px] ${
-                                              settingsThemeMode === 'dark'
+                                            className={`px-2 py-1.5 rounded-xl text-[10px] font-black transition shadow-md cursor-pointer flex items-center justify-center min-w-[36px] ${settingsThemeMode === 'dark'
                                                 ? 'neu-btn-dark text-gray-200 hover:text-white border border-gray-700/50'
                                                 : 'neu-btn-light text-gray-700 hover:text-gray-900 border border-white/80'
-                                            }`}
+                                              }`}
                                             title="Reset Zoom (1:1)"
                                           >
                                             {Math.round(libraryZoomScale * 100)}%
@@ -31151,11 +30913,10 @@ Return your response strictly as a JSON object matching this schema:
                                           <button
                                             type="button"
                                             onClick={handleLibraryZoomOut}
-                                            className={`p-2.5 rounded-xl transition shadow-md cursor-pointer ${
-                                              settingsThemeMode === 'dark'
+                                            className={`p-2.5 rounded-xl transition shadow-md cursor-pointer ${settingsThemeMode === 'dark'
                                                 ? 'neu-btn-dark text-gray-200 hover:text-white border border-gray-700/50'
                                                 : 'neu-btn-light text-gray-700 hover:text-gray-900 border border-white/80'
-                                            }`}
+                                              }`}
                                             title="Zoom Out (or scroll wheel)"
                                           >
                                             <Minus className="w-4 h-4" />
@@ -31163,61 +30924,60 @@ Return your response strictly as a JSON object matching this schema:
                                         </div>
 
                                         {/* Transformable Image Container */}
-                                         <div
-                                           ref={libraryImageContainerRef}
-                                           className={`relative shadow-2xl inline-flex items-center justify-center transition-transform select-none ${
-                                             isLibraryPanning ? 'duration-0' : 'duration-75 ease-out'
-                                           }`}
-                                           style={{
-                                             transform: `translate(${libraryPanOffset.x}px, ${libraryPanOffset.y}px) scale(${libraryZoomScale})`,
-                                             transformOrigin: '0 0',
-                                             cursor: libraryZoomScale > 1 || libraryPanOffset.x !== 0 || libraryPanOffset.y !== 0 ? (isLibraryPanning ? 'grabbing' : 'grab') : 'default'
-                                           }}
-                                         >
-                                           <img
-                                             src={activeImageObj.imageUrl || activeImageObj.base64}
-                                             alt="Page Inspection"
-                                             className="rounded-2xl pointer-events-auto block select-none max-w-full max-h-full"
-                                             style={{
-                                               maxWidth: '100%',
-                                               maxHeight: 'calc(100vh - 280px)',
-                                               width: 'auto',
-                                               height: 'auto',
-                                               display: 'block'
-                                             }}
-                                             draggable={false}
-                                           />
-                                           {/* Highlight Target Bounding Box from Card Hover (Clean Outline, No Dimming) */}
-                                           {hoveredCardCoordinates?.ymin !== undefined && (
-                                             <div
-                                               className="absolute border-2 border-yellow-400 bg-yellow-300/20 rounded-xl transition-all duration-150 pointer-events-none shadow-[0_0_18px_rgba(250,204,21,0.85)] z-10"
-                                               style={{
-                                                 top: `${(hoveredCardCoordinates.ymin || 0) / 10}%`,
-                                                 left: `${(hoveredCardCoordinates.xmin || 0) / 10}%`,
-                                                 height: `${((hoveredCardCoordinates.ymax || 0) - (hoveredCardCoordinates.ymin || 0)) / 10}%`,
-                                                 width: `${((hoveredCardCoordinates.xmax || 0) - (hoveredCardCoordinates.xmin || 0)) / 10}%`,
-                                               }}
-                                             />
-                                           )}
-                                           {/* Highlight from Image Hover (Inverse) */}
-                                           {(() => {
-                                             if (!hoveredCardIdFromImage || !pageCards) return null;
-                                             const c = pageCards.find(card => card?.id === hoveredCardIdFromImage);
-                                             const activeBox = getCardBoundingBox(c);
-                                             if (!activeBox) return null;
-                                             return (
-                                               <div
-                                                 className="absolute border-2 border-blue-400 bg-blue-300/40 rounded-xl pointer-events-none shadow-[0_0_14px_rgba(59,130,246,0.7)] z-10"
-                                                 style={{
-                                                   top: `${activeBox.ymin / 10}%`,
-                                                   left: `${activeBox.xmin / 10}%`,
-                                                   height: `${(activeBox.ymax - activeBox.ymin) / 10}%`,
-                                                   width: `${(activeBox.xmax - activeBox.xmin) / 10}%`,
-                                                 }}
-                                               />
-                                             );
-                                           })()}
-                                         </div></div>
+                                        <div
+                                          ref={libraryImageContainerRef}
+                                          className={`relative shadow-2xl inline-flex items-center justify-center transition-transform select-none ${isLibraryPanning ? 'duration-0' : 'duration-75 ease-out'
+                                            }`}
+                                          style={{
+                                            transform: `translate(${libraryPanOffset.x}px, ${libraryPanOffset.y}px) scale(${libraryZoomScale})`,
+                                            transformOrigin: '0 0',
+                                            cursor: libraryZoomScale > 1 || libraryPanOffset.x !== 0 || libraryPanOffset.y !== 0 ? (isLibraryPanning ? 'grabbing' : 'grab') : 'default'
+                                          }}
+                                        >
+                                          <img
+                                            src={activeImageObj.imageUrl || activeImageObj.base64}
+                                            alt="Page Inspection"
+                                            className="rounded-2xl pointer-events-auto block select-none max-w-full max-h-full"
+                                            style={{
+                                              maxWidth: '100%',
+                                              maxHeight: 'calc(100vh - 280px)',
+                                              width: 'auto',
+                                              height: 'auto',
+                                              display: 'block'
+                                            }}
+                                            draggable={false}
+                                          />
+                                          {/* Highlight Target Bounding Box from Card Hover (Clean Outline, No Dimming) */}
+                                          {hoveredCardCoordinates?.ymin !== undefined && (
+                                            <div
+                                              className="absolute border-2 border-yellow-400 bg-yellow-300/20 rounded-xl transition-all duration-150 pointer-events-none shadow-[0_0_18px_rgba(250,204,21,0.85)] z-10"
+                                              style={{
+                                                top: `${(hoveredCardCoordinates.ymin || 0) / 10}%`,
+                                                left: `${(hoveredCardCoordinates.xmin || 0) / 10}%`,
+                                                height: `${((hoveredCardCoordinates.ymax || 0) - (hoveredCardCoordinates.ymin || 0)) / 10}%`,
+                                                width: `${((hoveredCardCoordinates.xmax || 0) - (hoveredCardCoordinates.xmin || 0)) / 10}%`,
+                                              }}
+                                            />
+                                          )}
+                                          {/* Highlight from Image Hover (Inverse) */}
+                                          {(() => {
+                                            if (!hoveredCardIdFromImage || !pageCards) return null;
+                                            const c = pageCards.find(card => card?.id === hoveredCardIdFromImage);
+                                            const activeBox = getCardBoundingBox(c);
+                                            if (!activeBox) return null;
+                                            return (
+                                              <div
+                                                className="absolute border-2 border-blue-400 bg-blue-300/40 rounded-xl pointer-events-none shadow-[0_0_14px_rgba(59,130,246,0.7)] z-10"
+                                                style={{
+                                                  top: `${activeBox.ymin / 10}%`,
+                                                  left: `${activeBox.xmin / 10}%`,
+                                                  height: `${(activeBox.ymax - activeBox.ymin) / 10}%`,
+                                                  width: `${(activeBox.xmax - activeBox.xmin) / 10}%`,
+                                                }}
+                                              />
+                                            );
+                                          })()}
+                                        </div></div>
                                     )}
                                   </div>
                                   <div className="lg:w-1/2 flex flex-col h-full min-h-0 gap-2.5 overflow-hidden p-1">
@@ -31227,9 +30987,8 @@ Return your response strictly as a JSON object matching this schema:
                                           <button
                                             type="button"
                                             onClick={() => batchSetCardsSuspended(pageCards, true)}
-                                            className={`px-2.5 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider transition ${
-                                              settingsThemeMode === 'dark' ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30' : 'bg-amber-50 text-amber-600 hover:bg-amber-100'
-                                            }`}
+                                            className={`px-2.5 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider transition ${settingsThemeMode === 'dark' ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30' : 'bg-amber-50 text-amber-600 hover:bg-amber-100'
+                                              }`}
                                             title="Suspend all cards from this page on export"
                                           >
                                             Suspend All
@@ -31237,9 +30996,8 @@ Return your response strictly as a JSON object matching this schema:
                                           <button
                                             type="button"
                                             onClick={() => batchSetCardsSuspended(pageCards, false)}
-                                            className={`px-2.5 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider transition ${
-                                              settingsThemeMode === 'dark' ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                            }`}
+                                            className={`px-2.5 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider transition ${settingsThemeMode === 'dark' ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                              }`}
                                             title="Set all cards from this page to active on export"
                                           >
                                             Active All
@@ -31328,9 +31086,8 @@ Return your response strictly as a JSON object matching this schema:
                                                   id={`card-${card.id}`}
                                                   onMouseEnter={() => { const box = getCardBoundingBox(card); if (box) setHoveredCardCoordinates(box); }}
                                                   onMouseLeave={() => setHoveredCardCoordinates(null)}
-                                                  className={`card ${colorClass} group relative ${
-                                                    isCardTargetedByImage ? 'ring-2 ring-blue-500 shadow-xl active-from-image' : ''
-                                                  } ${isCardBlurredByImage ? 'blurred-by-image' : ''}`}
+                                                  className={`card ${colorClass} group relative ${isCardTargetedByImage ? 'ring-2 ring-blue-500 shadow-xl active-from-image' : ''
+                                                    } ${isCardBlurredByImage ? 'blurred-by-image' : ''}`}
                                                 >
                                                   <div className="flex items-center justify-between gap-2 mb-2.5 w-full">
                                                     <div className="flex items-center gap-1.5 flex-wrap">
@@ -31347,13 +31104,12 @@ Return your response strictly as a JSON object matching this schema:
                                                           e.stopPropagation();
                                                           toggleCardSuspended(card);
                                                         }}
-                                                        className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1 transition ${
-                                                          card.isSuspended
+                                                        className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1 transition ${card.isSuspended
                                                             ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-sm'
                                                             : settingsThemeMode === 'dark'
                                                               ? 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-slate-200'
                                                               : 'bg-slate-100 text-slate-500 border border-slate-200 hover:text-slate-700'
-                                                        }`}
+                                                          }`}
                                                         title={card.isSuspended ? "Card is Suspended on export. Click to activate." : "Click to Suspend on export"}
                                                       >
                                                         {card.isSuspended ? <Pause className="w-2.5 h-2.5 fill-amber-400/40" /> : <Play className="w-2.5 h-2.5 opacity-60" />}
@@ -31390,9 +31146,8 @@ Return your response strictly as a JSON object matching this schema:
                                             <div className="pt-4 pb-2 text-center">
                                               <button
                                                 onClick={() => setLibraryCardsLimit(prev => prev + 40)}
-                                                className={`px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition active:scale-95 shadow-sm ${
-                                                  settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400' : 'neu-btn-light text-blue-600'
-                                                }`}
+                                                className={`px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition active:scale-95 shadow-sm ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400' : 'neu-btn-light text-blue-600'
+                                                  }`}
                                               >
                                                 Load More Cards ({pageCards.length - libraryCardsLimit} remaining)
                                               </button>
@@ -31708,11 +31463,10 @@ Return your response strictly as a JSON object matching this schema:
                                               whileHover={{ scale: 1.03, y: -2 }}
                                               whileTap={{ scale: 0.97 }}
                                               onClick={() => setNewFolderDialog({ isOpen: true, basePath: hierarchy || '', input: '' })}
-                                              className={`aspect-[4/3] rounded-3xl p-5 border-2 border-dashed transition-all cursor-pointer group flex flex-col justify-between ${
-                                                settingsThemeMode === 'dark'
+                                              className={`aspect-[4/3] rounded-3xl p-5 border-2 border-dashed transition-all cursor-pointer group flex flex-col justify-between ${settingsThemeMode === 'dark'
                                                   ? 'border-blue-500/30 hover:border-blue-500/80 bg-blue-500/5 hover:bg-blue-500/10 text-gray-200'
                                                   : 'border-blue-400/40 hover:border-blue-500/80 bg-blue-500/5 hover:bg-blue-50/80 text-gray-700'
-                                              }`}
+                                                }`}
                                               title={`Create new subfolder in ${hierarchy || 'Root'}`}
                                             >
                                               <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-blue-500/15 text-blue-500 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300 shadow-sm">
@@ -31814,9 +31568,8 @@ Return your response strictly as a JSON object matching this schema:
                                                 <button
                                                   type="button"
                                                   onClick={() => setLibraryPagesLimit(prev => prev + 30)}
-                                                  className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition shadow-sm cursor-pointer ${
-                                                    settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400 hover:text-white border border-gray-700/50' : 'neu-btn-light text-blue-600 hover:text-blue-700 border border-white/80'
-                                                  }`}
+                                                  className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition shadow-sm cursor-pointer ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-blue-400 hover:text-white border border-gray-700/50' : 'neu-btn-light text-blue-600 hover:text-blue-700 border border-white/80'
+                                                    }`}
                                                 >
                                                   Load More Pages ({Math.min(libraryPagesLimit, folderPages.length)} of {folderPages.length})
                                                 </button>
@@ -31838,9 +31591,8 @@ Return your response strictly as a JSON object matching this schema:
                                           <button
                                             type="button"
                                             onClick={() => batchSetCardsSuspended(pageCards, true)}
-                                            className={`px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider transition ${
-                                              settingsThemeMode === 'dark' ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 border border-amber-500/30' : 'bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200'
-                                            }`}
+                                            className={`px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider transition ${settingsThemeMode === 'dark' ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 border border-amber-500/30' : 'bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200'
+                                              }`}
                                             title="Suspend all cards in this folder on export"
                                           >
                                             Suspend All
@@ -31848,9 +31600,8 @@ Return your response strictly as a JSON object matching this schema:
                                           <button
                                             type="button"
                                             onClick={() => batchSetCardsSuspended(pageCards, false)}
-                                            className={`px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider transition ${
-                                              settingsThemeMode === 'dark' ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                            }`}
+                                            className={`px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider transition ${settingsThemeMode === 'dark' ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                              }`}
                                             title="Set all cards in this folder to active on export"
                                           >
                                             Active All
@@ -31888,13 +31639,12 @@ Return your response strictly as a JSON object matching this schema:
                                                       e.stopPropagation();
                                                       toggleCardSuspended(card);
                                                     }}
-                                                    className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1 transition ${
-                                                      card.isSuspended
+                                                    className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1 transition ${card.isSuspended
                                                         ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-sm'
                                                         : settingsThemeMode === 'dark'
                                                           ? 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-slate-200'
                                                           : 'bg-slate-100 text-slate-500 border border-slate-200 hover:text-slate-700'
-                                                    }`}
+                                                      }`}
                                                     title={card.isSuspended ? "Card is Suspended on export. Click to activate." : "Click to Suspend on export"}
                                                   >
                                                     {card.isSuspended ? <Pause className="w-2.5 h-2.5 fill-amber-400/40" /> : <Play className="w-2.5 h-2.5 opacity-60" />}
@@ -31972,11 +31722,10 @@ Return your response strictly as a JSON object matching this schema:
                                           <button
                                             type="button"
                                             onClick={() => setLibraryCardsLimit(prev => prev + 40)}
-                                            className={`px-6 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition shadow-md flex items-center gap-2 cursor-pointer ${
-                                              settingsThemeMode === 'dark'
+                                            className={`px-6 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition shadow-md flex items-center gap-2 cursor-pointer ${settingsThemeMode === 'dark'
                                                 ? 'neu-btn-dark text-blue-400 hover:text-white border border-gray-700/50'
                                                 : 'neu-btn-light text-blue-600 hover:text-blue-700 border border-white/80'
-                                            }`}
+                                              }`}
                                           >
                                             <Layers className="w-4 h-4" /> Load More Cards ({Math.min(libraryCardsLimit, pageCards.length)} of {pageCards.length})
                                           </button>
@@ -34152,27 +33901,22 @@ Return your response strictly as a JSON object matching this schema:
                             return (
                               <div className="space-y-6 w-full text-left">
                                 {/* SVG Trend Chart & Metric Selectors */}
-                                <div className={`p-6 rounded-3xl border shadow-sm flex flex-col hover:shadow-md transition w-full space-y-4 ${
-                                  isDark ? 'neu-card-dark border-slate-750 text-white' : 'neu-card-light border-slate-200 bg-white text-slate-800'
-                                }`}>
-                                  <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-3 ${
-                                    isDark ? 'border-slate-800' : 'border-gray-100'
+                                <div className={`p-6 rounded-3xl border shadow-sm flex flex-col hover:shadow-md transition w-full space-y-4 ${isDark ? 'neu-card-dark border-slate-750 text-white' : 'neu-card-light border-slate-200 bg-white text-slate-800'
                                   }`}>
+                                  <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-3 ${isDark ? 'border-slate-800' : 'border-gray-100'
+                                    }`}>
                                     <div className="text-left">
-                                      <span className={`text-[9px] font-black uppercase tracking-wider font-mono ${
-                                        isDark ? 'text-slate-400' : 'text-gray-400'
-                                      }`}>Interactive Performance Trend Chart</span>
-                                      <h4 className={`text-xs font-black uppercase tracking-widest mt-0.5 font-mono ${
-                                        isDark ? 'text-white' : 'text-gray-800'
-                                      }`}>
+                                      <span className={`text-[9px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-gray-400'
+                                        }`}>Interactive Performance Trend Chart</span>
+                                      <h4 className={`text-xs font-black uppercase tracking-widest mt-0.5 font-mono ${isDark ? 'text-white' : 'text-gray-800'
+                                        }`}>
                                         Y-Axis: {loggerGtYAxisMetric === 'percentile' ? 'Percentile (%ile)' : loggerGtYAxisMetric === 'accuracy' ? 'Accuracy Rate (%)' : 'Correct Questions (Qs)'}
                                       </h4>
                                     </div>
                                     <div className="flex items-center gap-3 shrink-0 flex-wrap">
                                       {/* NEETPG/INICET filter */}
-                                      <div className={`flex p-0.5 rounded-xl border select-none font-mono ${
-                                        isDark ? 'neu-pressed-dark border-slate-800' : 'bg-gray-100 border-gray-200 shadow-inner'
-                                      }`}>
+                                      <div className={`flex p-0.5 rounded-xl border select-none font-mono ${isDark ? 'neu-pressed-dark border-slate-800' : 'bg-gray-100 border-gray-200 shadow-inner'
+                                        }`}>
                                         {['All', 'NEETPG', 'INICET'].map(e => (
                                           <button
                                             key={e}
@@ -34186,9 +33930,8 @@ Return your response strictly as a JSON object matching this schema:
                                       </div>
 
                                       {/* Y Axis Metric Selector */}
-                                      <div className={`flex p-0.5 rounded-xl border select-none font-mono ${
-                                        isDark ? 'neu-pressed-dark border-slate-800' : 'bg-white border-gray-200 shadow-sm'
-                                      }`}>
+                                      <div className={`flex p-0.5 rounded-xl border select-none font-mono ${isDark ? 'neu-pressed-dark border-slate-800' : 'bg-white border-gray-200 shadow-sm'
+                                        }`}>
                                         {[{ id: 'percentile', label: 'Percentile' }, { id: 'accuracy', label: 'Accuracy' }, { id: 'correct', label: 'Correct Qs' }].map(e => (
                                           <button
                                             key={e.id}
@@ -34248,9 +33991,8 @@ Return your response strictly as a JSON object matching this schema:
                                     </svg>
                                   </div>
 
-                                  <div className={`flex justify-between items-center px-2 mt-2 text-[8.5px] font-bold select-none font-mono ${
-                                    isDark ? 'text-slate-400' : 'text-gray-400'
-                                  }`}>
+                                  <div className={`flex justify-between items-center px-2 mt-2 text-[8.5px] font-bold select-none font-mono ${isDark ? 'text-slate-400' : 'text-gray-400'
+                                    }`}>
                                     <span className="truncate max-w-[40%] text-left">
                                       Attempt {chartPoints[0]?.name} ({formatChartDate(chartPoints[0]?.date)})
                                     </span>
@@ -34264,35 +34006,30 @@ Return your response strictly as a JSON object matching this schema:
                                 </div>
 
                                 {/* Active Mock detailed report */}
-                                <div className={`border rounded-3xl p-6 shadow-sm space-y-6 ${
-                                  isDark ? 'neu-card-dark border-slate-750 text-white' : 'bg-gradient-to-br from-white to-gray-50/20 border-gray-200/80 text-slate-800'
-                                }`}>
-                                  <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-5 ${
-                                    isDark ? 'border-slate-800' : 'border-gray-100'
+                                <div className={`border rounded-3xl p-6 shadow-sm space-y-6 ${isDark ? 'neu-card-dark border-slate-750 text-white' : 'bg-gradient-to-br from-white to-gray-50/20 border-gray-200/80 text-slate-800'
                                   }`}>
+                                  <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-5 ${isDark ? 'border-slate-800' : 'border-gray-100'
+                                    }`}>
                                     <div className="flex items-center gap-4.5">
                                       <div className="bg-orange-500 text-white p-3 rounded-2xl shadow-lg shadow-orange-500/20 shrink-0">
                                         <Activity className="w-6 h-6 animate-pulse" />
                                       </div>
                                       <div className="text-left">
                                         {activeGt.platform && (
-                                          <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded font-mono tracking-wider inline-block mb-1.5 ${
-                                            isDark ? 'bg-indigo-950/80 text-indigo-300 border border-indigo-800/60' : 'bg-indigo-50 text-indigo-600 border border-indigo-100/50'
-                                          }`}>
+                                          <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded font-mono tracking-wider inline-block mb-1.5 ${isDark ? 'bg-indigo-950/80 text-indigo-300 border border-indigo-800/60' : 'bg-indigo-50 text-indigo-600 border border-indigo-100/50'
+                                            }`}>
                                             {activeGt.platform}
                                           </span>
                                         )}
                                         <div className="flex items-center gap-2">
-                                          <h4 className={`text-base font-black leading-tight ${
-                                            isDark ? 'text-white' : 'text-gray-900'
-                                          }`}>{activeGt.name}</h4>
+                                          <h4 className={`text-base font-black leading-tight ${isDark ? 'text-white' : 'text-gray-900'
+                                            }`}>{activeGt.name}</h4>
                                           <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-orange-100 text-orange-600 font-mono tracking-wider">
                                             {activeGt.type === 'NEETPG' ? 'NEET PG' : 'INI CET'}
                                           </span>
                                         </div>
-                                        <span className={`text-[10px] font-bold uppercase tracking-wider block mt-1 ${
-                                          isDark ? 'text-slate-400' : 'text-gray-400'
-                                        }`}>
+                                        <span className={`text-[10px] font-bold uppercase tracking-wider block mt-1 ${isDark ? 'text-slate-400' : 'text-gray-400'
+                                          }`}>
                                           Submitted on {formatChartDate(activeGt.date)}
                                         </span>
                                       </div>
@@ -34319,11 +34056,10 @@ Return your response strictly as a JSON object matching this schema:
                                         setEditGtShowSubjects(Object.keys(activeGt.subjects || {}).length > 0);
                                         setIsEditGtModalOpen(true);
                                       }}
-                                      className={`px-4 py-2 border text-xs font-black uppercase tracking-wider rounded-xl shadow-sm transition duration-150 flex items-center gap-1.5 active:scale-95 shrink-0 font-mono ${
-                                        isDark
+                                      className={`px-4 py-2 border text-xs font-black uppercase tracking-wider rounded-xl shadow-sm transition duration-150 flex items-center gap-1.5 active:scale-95 shrink-0 font-mono ${isDark
                                           ? 'neu-btn-dark text-slate-200 border-slate-750 hover:text-white'
                                           : 'bg-white border-gray-200 text-gray-700 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200'
-                                      }`}
+                                        }`}
                                     >
                                       <Edit3 className="w-3.5 h-3.5" />
                                       Edit Test Data
@@ -34332,18 +34068,15 @@ Return your response strictly as a JSON object matching this schema:
 
                                   {/* Score metrics grid */}
                                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4.5">
-                                    <div className={`p-5 rounded-2xl border flex flex-col justify-between shadow-sm transition ${
-                                      isDark ? 'neu-pressed-dark border-slate-800 text-white' : 'bg-white border-gray-150 text-slate-800'
-                                    }`}>
-                                      <span className={`text-[9px] font-black uppercase tracking-wider font-mono ${
-                                        isDark ? 'text-slate-400' : 'text-gray-400'
-                                      }`}>All India Rank (AIR)</span>
+                                    <div className={`p-5 rounded-2xl border flex flex-col justify-between shadow-sm transition ${isDark ? 'neu-pressed-dark border-slate-800 text-white' : 'bg-white border-gray-150 text-slate-800'
+                                      }`}>
+                                      <span className={`text-[9px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-gray-400'
+                                        }`}>All India Rank (AIR)</span>
                                       <div className="flex items-baseline gap-1 mt-2 text-indigo-400">
                                         <span className="text-2xl font-black font-mono">#{activeGt.rank || 'N/A'}</span>
                                       </div>
-                                      <p className={`text-[9.5px] font-semibold mt-2.5 leading-snug ${
-                                        isDark ? 'text-slate-400' : 'text-gray-400'
-                                      }`}>
+                                      <p className={`text-[9.5px] font-semibold mt-2.5 leading-snug ${isDark ? 'text-slate-400' : 'text-gray-400'
+                                        }`}>
                                         {activeGt.rankTotal ? `Out of ${activeGt.rankTotal.toLocaleString()} candidates` : 'National rank index'}
                                         {activeGt.stateRank && (
                                           <span className="block text-orange-400 font-bold mt-0.5 font-mono">
@@ -34353,12 +34086,10 @@ Return your response strictly as a JSON object matching this schema:
                                       </p>
                                     </div>
 
-                                    <div className={`p-5 rounded-2xl border flex flex-col justify-between shadow-sm transition ${
-                                      isDark ? 'neu-pressed-dark border-slate-800 text-white' : 'bg-white border-gray-150 text-slate-800'
-                                    }`}>
-                                      <span className={`text-[9px] font-black uppercase tracking-wider font-mono ${
-                                        isDark ? 'text-slate-400' : 'text-gray-400'
-                                      }`}>Your Marks</span>
+                                    <div className={`p-5 rounded-2xl border flex flex-col justify-between shadow-sm transition ${isDark ? 'neu-pressed-dark border-slate-800 text-white' : 'bg-white border-gray-150 text-slate-800'
+                                      }`}>
+                                      <span className={`text-[9px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-gray-400'
+                                        }`}>Your Marks</span>
                                       <div className="flex items-baseline gap-1 mt-2 text-orange-400">
                                         <span className="text-2xl font-black font-mono">{activeGt.score}</span>
                                         <span className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>/ {activeGt.maxMarks}</span>
@@ -34368,12 +34099,10 @@ Return your response strictly as a JSON object matching this schema:
                                       </p>
                                     </div>
 
-                                    <div className={`p-5 rounded-2xl border flex flex-col justify-between shadow-sm transition ${
-                                      isDark ? 'neu-pressed-dark border-slate-800 text-white' : 'bg-white border-gray-150 text-slate-800'
-                                    }`}>
-                                      <span className={`text-[9px] font-black uppercase tracking-wider font-mono ${
-                                        isDark ? 'text-slate-400' : 'text-gray-400'
-                                      }`}>Percentile</span>
+                                    <div className={`p-5 rounded-2xl border flex flex-col justify-between shadow-sm transition ${isDark ? 'neu-pressed-dark border-slate-800 text-white' : 'bg-white border-gray-150 text-slate-800'
+                                      }`}>
+                                      <span className={`text-[9px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-gray-400'
+                                        }`}>Percentile</span>
                                       <div className="flex items-baseline gap-1 mt-2 text-blue-400">
                                         <span className="text-2xl font-black font-mono">{activeGt.percentile === null ? 'N/A' : activeGt.percentile.toFixed(2)}</span>
                                         <span className="text-xs text-blue-300 font-bold">%ile</span>
@@ -34383,12 +34112,10 @@ Return your response strictly as a JSON object matching this schema:
                                       </p>
                                     </div>
 
-                                    <div className={`p-5 rounded-2xl border flex flex-col justify-between shadow-sm transition ${
-                                      isDark ? 'neu-pressed-dark border-slate-800 text-white' : 'bg-white border-gray-150 text-slate-800'
-                                    }`}>
-                                      <span className={`text-[9px] font-black uppercase tracking-wider font-mono ${
-                                        isDark ? 'text-slate-400' : 'text-gray-400'
-                                      }`}>Accuracy Rate</span>
+                                    <div className={`p-5 rounded-2xl border flex flex-col justify-between shadow-sm transition ${isDark ? 'neu-pressed-dark border-slate-800 text-white' : 'bg-white border-gray-150 text-slate-800'
+                                      }`}>
+                                      <span className={`text-[9px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-gray-400'
+                                        }`}>Accuracy Rate</span>
                                       <div className="flex items-baseline gap-1 mt-2 text-emerald-400">
                                         <span className="text-2xl font-black font-mono">{activeGt.accuracy}%</span>
                                       </div>
@@ -34399,20 +34126,17 @@ Return your response strictly as a JSON object matching this schema:
                                   </div>
 
                                   {/* Attended vs Incorrect vs Unattempted Progress Bar */}
-                                  <div className={`p-4.5 rounded-2xl space-y-3.5 border ${
-                                    isDark ? 'neu-pressed-dark border-slate-800' : 'bg-gray-50 border-gray-150'
-                                  }`}>
-                                    <div className={`flex items-center justify-between text-[10px] font-black uppercase tracking-wider font-mono ${
-                                      isDark ? 'text-slate-400' : 'text-gray-500'
+                                  <div className={`p-4.5 rounded-2xl space-y-3.5 border ${isDark ? 'neu-pressed-dark border-slate-800' : 'bg-gray-50 border-gray-150'
                                     }`}>
+                                    <div className={`flex items-center justify-between text-[10px] font-black uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-gray-500'
+                                      }`}>
                                       <span>Simulated Paper Completion</span>
                                       <span className={`font-bold font-sans ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>
                                         {activeGt.correct + activeGt.incorrect} / {activeGt.maxMarks === 800 ? 200 : 200} Questions Attempted
                                       </span>
                                     </div>
-                                    <div className={`relative w-full rounded-full h-3 flex overflow-hidden ${
-                                      isDark ? 'bg-slate-700' : 'bg-gray-200'
-                                    }`}>
+                                    <div className={`relative w-full rounded-full h-3 flex overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-gray-200'
+                                      }`}>
                                       <div
                                         style={{ width: `${(activeGt.correct / (activeGt.maxMarks === 800 ? 200 : 200)) * 100}%` }}
                                         className="bg-emerald-500 h-full transition-all duration-300"
@@ -34448,20 +34172,16 @@ Return your response strictly as a JSON object matching this schema:
                                   {/* Detailed Subject Accuracy Table */}
                                   {Object.keys(activeGt.subjects || {}).length > 0 && (
                                     <div className="space-y-3">
-                                      <h5 className={`text-[10px] font-black uppercase tracking-wider font-mono text-left ${
-                                        isDark ? 'text-slate-400' : 'text-gray-400'
-                                      }`}>Subject-wise Performance Scorecard</h5>
-                                      <div className={`border rounded-2xl overflow-hidden shadow-sm ${
-                                        isDark ? 'neu-pressed-dark border-slate-800' : 'border-gray-150 bg-white'
-                                      }`}>
+                                      <h5 className={`text-[10px] font-black uppercase tracking-wider font-mono text-left ${isDark ? 'text-slate-400' : 'text-gray-400'
+                                        }`}>Subject-wise Performance Scorecard</h5>
+                                      <div className={`border rounded-2xl overflow-hidden shadow-sm ${isDark ? 'neu-pressed-dark border-slate-800' : 'border-gray-150 bg-white'
+                                        }`}>
                                         <div className="overflow-x-auto">
-                                          <table className={`w-full border-collapse text-left text-xs ${
-                                            isDark ? 'text-slate-300' : 'text-gray-600'
-                                          }`}>
+                                          <table className={`w-full border-collapse text-left text-xs ${isDark ? 'text-slate-300' : 'text-gray-600'
+                                            }`}>
                                             <thead>
-                                              <tr className={`border-b font-mono text-[9px] font-black uppercase tracking-wider ${
-                                                isDark ? 'bg-[#181c22] border-slate-800 text-slate-400' : 'bg-gray-50 border-gray-150 text-gray-400'
-                                              }`}>
+                                              <tr className={`border-b font-mono text-[9px] font-black uppercase tracking-wider ${isDark ? 'bg-[#181c22] border-slate-800 text-slate-400' : 'bg-gray-50 border-gray-150 text-gray-400'
+                                                }`}>
                                                 <th className="px-4 py-2.5">Subject Name</th>
                                                 <th className="px-4 py-2.5">Correct Qs</th>
                                                 <th className="px-4 py-2.5">Total Qs</th>
@@ -36116,9 +35836,8 @@ Return your response strictly as a JSON object matching this schema:
                             initial={{ opacity: 0, x: -12 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ duration: 0.4, delay: 0.05 }}
-                            className={`w-5/12 rounded-3xl p-6 flex flex-col h-full overflow-hidden transition-all ${
-                              isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
-                            }`}
+                            className={`w-5/12 rounded-3xl p-6 flex flex-col h-full overflow-hidden transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                              }`}
                           >
                             <div className="flex justify-between items-center mb-6 shrink-0">
                               <div className="text-left">
@@ -36137,9 +35856,8 @@ Return your response strictly as a JSON object matching this schema:
                                       setSchedulerCalMonth(prev => prev - 1);
                                     }
                                   }}
-                                  className={`p-2 rounded-xl transition active:scale-95 border ${
-                                    isDark ? 'neu-btn-dark text-slate-300 border-slate-700' : 'neu-btn-light text-slate-700 border-slate-200'
-                                  }`}
+                                  className={`p-2 rounded-xl transition active:scale-95 border ${isDark ? 'neu-btn-dark text-slate-300 border-slate-700' : 'neu-btn-light text-slate-700 border-slate-200'
+                                    }`}
                                 >
                                   <ChevronLeft className="w-4 h-4" />
                                 </button>
@@ -36155,9 +35873,8 @@ Return your response strictly as a JSON object matching this schema:
                                       setSchedulerCalMonth(prev => prev + 1);
                                     }
                                   }}
-                                  className={`p-2 rounded-xl transition active:scale-95 border ${
-                                    isDark ? 'neu-btn-dark text-slate-300 border-slate-700' : 'neu-btn-light text-slate-700 border-slate-200'
-                                  }`}
+                                  className={`p-2 rounded-xl transition active:scale-95 border ${isDark ? 'neu-btn-dark text-slate-300 border-slate-700' : 'neu-btn-light text-slate-700 border-slate-200'
+                                    }`}
                                 >
                                   <ChevronRight className="w-4 h-4" />
                                 </button>
@@ -36209,9 +35926,8 @@ Return your response strictly as a JSON object matching this schema:
                             initial={{ opacity: 0, x: 12 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ duration: 0.4, delay: 0.1 }}
-                            className={`w-7/12 rounded-3xl p-6 flex flex-col h-full overflow-hidden text-left relative transition-all ${
-                              isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
-                            }`}
+                            className={`w-7/12 rounded-3xl p-6 flex flex-col h-full overflow-hidden text-left relative transition-all ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'
+                              }`}
                           >
                             <div className={`flex justify-between items-center border-b pb-4 mb-6 shrink-0 ${isDark ? 'border-slate-750' : 'border-slate-200/80'}`}>
                               <div>
@@ -36239,9 +35955,8 @@ Return your response strictly as a JSON object matching this schema:
                                 {/* Templates Routine Button */}
                                 <button
                                   onClick={() => setIsTemplateModalOpen(true)}
-                                  className={`px-3.5 py-2 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition active:scale-95 border ${
-                                    isDark ? 'neu-btn-dark text-slate-300 border-slate-700' : 'neu-btn-light text-slate-700 border-slate-200'
-                                  }`}
+                                  className={`px-3.5 py-2 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition active:scale-95 border ${isDark ? 'neu-btn-dark text-slate-300 border-slate-700' : 'neu-btn-light text-slate-700 border-slate-200'
+                                    }`}
                                 >
                                   <Bookmark className="w-4 h-4 text-blue-500" /> Routines
                                 </button>
@@ -36251,9 +35966,8 @@ Return your response strictly as a JSON object matching this schema:
                                     setSchedulerManualDate(schedulerSelectedDate);
                                     setIsSchedulerModalOpen(true);
                                   }}
-                                  className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition active:scale-95 flex items-center gap-2 text-white shadow-md ${
-                                    isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
-                                  }`}
+                                  className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition active:scale-95 flex items-center gap-2 text-white shadow-md ${isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+                                    }`}
                                 >
                                   <Plus className="w-4 h-4" /> Add Topics
                                 </button>
@@ -36283,9 +35997,8 @@ Return your response strictly as a JSON object matching this schema:
                                     setStudySchedule(updatedSchedule);
                                   }}
                                   placeholder="Type any reference notes, focus areas, or reminders for this day..."
-                                  className={`w-full h-16 p-3 rounded-2xl text-xs outline-none resize-none leading-relaxed transition ${
-                                    isDark ? 'neu-pressed-dark text-slate-100 placeholder-slate-500 border border-slate-800' : 'neu-pressed-light text-slate-800 placeholder-slate-400 border border-slate-200'
-                                  }`}
+                                  className={`w-full h-16 p-3 rounded-2xl text-xs outline-none resize-none leading-relaxed transition ${isDark ? 'neu-pressed-dark text-slate-100 placeholder-slate-500 border border-slate-800' : 'neu-pressed-light text-slate-800 placeholder-slate-400 border border-slate-200'
+                                    }`}
                                 />
                               </div>
 
@@ -36295,13 +36008,11 @@ Return your response strictly as a JSON object matching this schema:
                                 <div className="flex justify-between items-center shrink-0">
                                   <label className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Topics Checklist</label>
                                   {/* Sliding Pill Indicator Switcher */}
-                                  <div className={`relative flex items-center p-1 rounded-2xl gap-1 shrink-0 select-none ${
-                                    isDark ? 'neu-pressed-dark border border-slate-800' : 'neu-pressed-light border border-slate-200'
-                                  }`}>
+                                  <div className={`relative flex items-center p-1 rounded-2xl gap-1 shrink-0 select-none ${isDark ? 'neu-pressed-dark border border-slate-800' : 'neu-pressed-light border border-slate-200'
+                                    }`}>
                                     <div
-                                      className={`absolute top-1 bottom-1 w-28 rounded-xl shadow-md ${
-                                        isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
-                                      }`}
+                                      className={`absolute top-1 bottom-1 w-28 rounded-xl shadow-md ${isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+                                        }`}
                                       style={{
                                         left: timelineViewMode === 'timeline' ? '0.25rem' : 'calc(0.25rem + 7rem + 0.25rem)',
                                         transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
@@ -36309,21 +36020,19 @@ Return your response strictly as a JSON object matching this schema:
                                     />
                                     <button
                                       onClick={() => setTimelineViewMode('timeline')}
-                                      className={`relative w-28 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${
-                                        timelineViewMode === 'timeline'
+                                      className={`relative w-28 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${timelineViewMode === 'timeline'
                                           ? 'text-white font-extrabold'
                                           : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
-                                      }`}
+                                        }`}
                                     >
                                       Timeline View
                                     </button>
                                     <button
                                       onClick={() => setTimelineViewMode('list')}
-                                      className={`relative w-28 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${
-                                        timelineViewMode === 'list'
+                                      className={`relative w-28 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${timelineViewMode === 'list'
                                           ? 'text-white font-extrabold'
                                           : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
-                                      }`}
+                                        }`}
                                     >
                                       List Agenda
                                     </button>
@@ -36331,9 +36040,8 @@ Return your response strictly as a JSON object matching this schema:
                                 </div>
 
                                 {timelineViewMode === 'timeline' ? (
-                                  <div className={`flex-grow flex flex-col min-h-[300px] rounded-2xl overflow-hidden relative border ${
-                                    isDark ? 'neu-pressed-dark border-slate-800' : 'neu-pressed-light border-slate-200'
-                                  }`}>
+                                  <div className={`flex-grow flex flex-col min-h-[300px] rounded-2xl overflow-hidden relative border ${isDark ? 'neu-pressed-dark border-slate-800' : 'neu-pressed-light border-slate-200'
+                                    }`}>
                                     {/* Timeline Hour Grid */}
                                     <div className="flex-grow overflow-y-auto pr-1 custom-scrollbar relative h-full">
                                       <div className="relative w-full h-[1440px]">
@@ -36350,9 +36058,8 @@ Return your response strictly as a JSON object matching this schema:
                                                 left: 0,
                                                 right: 0
                                               }}
-                                              className={`flex items-start border-t select-none group cursor-pointer transition ${
-                                                isDark ? 'border-slate-800/60 hover:bg-slate-800/30' : 'border-slate-200/60 hover:bg-slate-100/50'
-                                              }`}
+                                              className={`flex items-start border-t select-none group cursor-pointer transition ${isDark ? 'border-slate-800/60 hover:bg-slate-800/30' : 'border-slate-200/60 hover:bg-slate-100/50'
+                                                }`}
                                               onClick={() => {
                                                 const hh = String(hour).padStart(2, '0');
                                                 const hhEnd = String((hour + 1) % 24).padStart(2, '0');
@@ -36392,17 +36099,17 @@ Return your response strictly as a JSON object matching this schema:
                                             const color = task.color || 'blue';
                                             const colorClasses = isDark
                                               ? (color === 'blue' ? 'bg-blue-950/80 border-blue-700/70 text-blue-200 hover:bg-blue-900/80 shadow-blue-950/40' :
-                                                 color === 'purple' ? 'bg-purple-950/80 border-purple-700/70 text-purple-200 hover:bg-purple-900/80 shadow-purple-950/40' :
-                                                 color === 'emerald' ? 'bg-emerald-950/80 border-emerald-700/70 text-emerald-200 hover:bg-emerald-900/80 shadow-emerald-950/40' :
-                                                 color === 'amber' ? 'bg-amber-950/80 border-amber-700/70 text-amber-200 hover:bg-amber-900/80 shadow-amber-950/40' :
-                                                 color === 'rose' ? 'bg-rose-950/80 border-rose-700/70 text-rose-200 hover:bg-rose-900/80 shadow-rose-950/40' :
-                                                 'bg-violet-950/80 border-violet-700/70 text-violet-200 hover:bg-violet-900/80 shadow-violet-950/40')
+                                                color === 'purple' ? 'bg-purple-950/80 border-purple-700/70 text-purple-200 hover:bg-purple-900/80 shadow-purple-950/40' :
+                                                  color === 'emerald' ? 'bg-emerald-950/80 border-emerald-700/70 text-emerald-200 hover:bg-emerald-900/80 shadow-emerald-950/40' :
+                                                    color === 'amber' ? 'bg-amber-950/80 border-amber-700/70 text-amber-200 hover:bg-amber-900/80 shadow-amber-950/40' :
+                                                      color === 'rose' ? 'bg-rose-950/80 border-rose-700/70 text-rose-200 hover:bg-rose-900/80 shadow-rose-950/40' :
+                                                        'bg-violet-950/80 border-violet-700/70 text-violet-200 hover:bg-violet-900/80 shadow-violet-950/40')
                                               : (color === 'blue' ? 'bg-blue-50/95 border-blue-200 text-blue-800 hover:bg-blue-100/95 shadow-blue-500/5' :
-                                                 color === 'purple' ? 'bg-purple-50/95 border-purple-200 text-purple-800 hover:bg-purple-100/95 shadow-purple-500/5' :
-                                                 color === 'emerald' ? 'bg-emerald-50/95 border-emerald-200 text-emerald-800 hover:bg-emerald-100/95 shadow-emerald-500/5' :
-                                                 color === 'amber' ? 'bg-amber-50/95 border-amber-200 text-amber-800 hover:bg-amber-100/95 shadow-amber-500/5' :
-                                                 color === 'rose' ? 'bg-rose-50/95 border-rose-200 text-rose-800 hover:bg-rose-100/95 shadow-rose-500/5' :
-                                                 'bg-violet-50/95 border-violet-200 text-violet-800 hover:bg-violet-100/95 shadow-violet-500/5');
+                                                color === 'purple' ? 'bg-purple-50/95 border-purple-200 text-purple-800 hover:bg-purple-100/95 shadow-purple-500/5' :
+                                                  color === 'emerald' ? 'bg-emerald-50/95 border-emerald-200 text-emerald-800 hover:bg-emerald-100/95 shadow-emerald-500/5' :
+                                                    color === 'amber' ? 'bg-amber-50/95 border-amber-200 text-amber-800 hover:bg-amber-100/95 shadow-amber-500/5' :
+                                                      color === 'rose' ? 'bg-rose-50/95 border-rose-200 text-rose-800 hover:bg-rose-100/95 shadow-rose-500/5' :
+                                                        'bg-violet-50/95 border-violet-200 text-violet-800 hover:bg-violet-100/95 shadow-violet-500/5');
 
                                             const layout = styles[task.id] || { left: '0%', width: '100%' };
 
@@ -36489,9 +36196,8 @@ Return your response strictly as a JSON object matching this schema:
                                 ) : (
                                   <div className="flex-grow space-y-2 overflow-y-auto pr-1 custom-scrollbar min-h-[300px]">
                                     {((studySchedule[schedulerSelectedDate]?.tasks || []).length === 0) ? (
-                                      <div className={`h-full flex flex-col items-center justify-center p-8 text-center rounded-2xl py-12 border ${
-                                        isDark ? 'neu-pressed-dark border-slate-800 text-slate-400' : 'neu-pressed-light border-slate-200 text-slate-500'
-                                      }`}>
+                                      <div className={`h-full flex flex-col items-center justify-center p-8 text-center rounded-2xl py-12 border ${isDark ? 'neu-pressed-dark border-slate-800 text-slate-400' : 'neu-pressed-light border-slate-200 text-slate-500'
+                                        }`}>
                                         <Calendar className="w-8 h-8 opacity-40 mb-3" />
                                         <p className="text-xs font-bold">No scheduled topics for this date.</p>
                                         <p className="text-[10px] opacity-75 mt-1">Click the "Add Topics" button to schedule your revision plan.</p>
@@ -36501,11 +36207,10 @@ Return your response strictly as a JSON object matching this schema:
                                         return (
                                           <div
                                             key={task.id}
-                                            className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${
-                                              task.completed
+                                            className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${task.completed
                                                 ? isDark ? 'neu-pressed-dark border-emerald-900/40 bg-emerald-950/20' : 'border-emerald-200 bg-emerald-50/40'
                                                 : isDark ? 'neu-card-dark border-slate-800 hover:border-slate-700' : 'neu-card-light border-slate-200 hover:border-slate-300'
-                                            }`}
+                                              }`}
                                           >
                                             <div className="flex flex-col min-w-0 pr-4 select-none flex-grow">
                                               <label className="flex items-center gap-3.5 cursor-pointer min-w-0">
@@ -36515,14 +36220,13 @@ Return your response strictly as a JSON object matching this schema:
                                                   onChange={() => handleSchedulerTaskToggle(schedulerSelectedDate, task.id)}
                                                   className="w-4.5 h-4.5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer shrink-0"
                                                 />
-                                                <span className={`w-2 h-2 rounded-full shrink-0 ${
-                                                  task.color === 'blue' ? 'bg-blue-500' :
-                                                  task.color === 'purple' ? 'bg-purple-500' :
-                                                  task.color === 'emerald' ? 'bg-emerald-500' :
-                                                  task.color === 'amber' ? 'bg-amber-500' :
-                                                  task.color === 'rose' ? 'bg-rose-500' :
-                                                  task.color === 'violet' ? 'bg-violet-500' : 'bg-blue-500'
-                                                }`} />
+                                                <span className={`w-2 h-2 rounded-full shrink-0 ${task.color === 'blue' ? 'bg-blue-500' :
+                                                    task.color === 'purple' ? 'bg-purple-500' :
+                                                      task.color === 'emerald' ? 'bg-emerald-500' :
+                                                        task.color === 'amber' ? 'bg-amber-500' :
+                                                          task.color === 'rose' ? 'bg-rose-500' :
+                                                            task.color === 'violet' ? 'bg-violet-500' : 'bg-blue-500'
+                                                  }`} />
                                                 <span className={`text-xs font-black truncate ${task.completed ? 'line-through opacity-50 font-medium' : isDark ? 'text-slate-100' : 'text-slate-800'}`}>
                                                   {task.topic}
                                                 </span>
@@ -36581,7 +36285,7 @@ Return your response strictly as a JSON object matching this schema:
                     {currentTab === 'subjectTracker' && (() => {
                       const isDark = settingsThemeMode === 'dark';
                       const allSubjects = ["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"];
-                      
+
                       const subjectCategories = [
                         { name: "Pre-Clinical", subjects: ["Anatomy", "Physiology", "Biochemistry"] },
                         { name: "Para-Clinical", subjects: ["Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine"] },
@@ -37091,9 +36795,8 @@ Return your response strictly as a JSON object matching this schema:
                                                           <span className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Notes</span>
                                                           <button
                                                             onClick={() => setNotesModalTopic({ subject: selectedTrackerSubject, ...topicItem })}
-                                                            className={`text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg border transition flex items-center gap-1 ${
-                                                              isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300 border-slate-700' : 'neu-btn-light text-blue-600 border-slate-300'
-                                                            }`}
+                                                            className={`text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg border transition flex items-center gap-1 ${isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300 border-slate-700' : 'neu-btn-light text-blue-600 border-slate-300'
+                                                              }`}
                                                           >
                                                             <FileText className="w-3 h-3" /> Edit Notes
                                                           </button>
@@ -37101,17 +36804,15 @@ Return your response strictly as a JSON object matching this schema:
                                                         {topicItem.notes ? (
                                                           <div
                                                             onClick={() => setNotesModalTopic({ subject: selectedTrackerSubject, ...topicItem })}
-                                                            className={`p-3 rounded-xl text-xs leading-relaxed max-h-32 overflow-y-auto cursor-pointer transition border ${
-                                                              isDark ? 'neu-pressed-dark text-slate-200 border-slate-800 hover:border-blue-500/40' : 'neu-pressed-light text-slate-800 border-slate-200 hover:border-blue-400'
-                                                            }`}
+                                                            className={`p-3 rounded-xl text-xs leading-relaxed max-h-32 overflow-y-auto cursor-pointer transition border ${isDark ? 'neu-pressed-dark text-slate-200 border-slate-800 hover:border-blue-500/40' : 'neu-pressed-light text-slate-800 border-slate-200 hover:border-blue-400'
+                                                              }`}
                                                             dangerouslySetInnerHTML={{ __html: topicItem.notes }}
                                                           />
                                                         ) : (
                                                           <p
                                                             onClick={() => setNotesModalTopic({ subject: selectedTrackerSubject, ...topicItem })}
-                                                            className={`text-[10px] italic py-2 px-3 rounded-xl border border-dashed cursor-pointer transition ${
-                                                              isDark ? 'text-slate-500 border-slate-800 hover:text-slate-300' : 'text-slate-400 border-slate-200 hover:text-slate-600'
-                                                            }`}
+                                                            className={`text-[10px] italic py-2 px-3 rounded-xl border border-dashed cursor-pointer transition ${isDark ? 'text-slate-500 border-slate-800 hover:text-slate-300' : 'text-slate-400 border-slate-200 hover:text-slate-600'
+                                                              }`}
                                                           >
                                                             No rich notes added yet. Click to add mnemonics, clinical pearls, or bullet points...
                                                           </p>
@@ -37234,11 +36935,10 @@ Return your response strictly as a JSON object matching this schema:
                                             setSubjectPdfOffsetInput(String(offset));
                                             setIsSubjectPdfModalOpen(true);
                                           }}
-                                          className={`w-full py-2.5 px-4 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider border transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md active:scale-95 ${
-                                            attachedPdf
+                                          className={`w-full py-2.5 px-4 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider border transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md active:scale-95 ${attachedPdf
                                               ? isDark ? 'neu-btn-dark text-emerald-300 border-emerald-500/40 hover:border-emerald-400' : 'neu-btn-light text-emerald-800 border-emerald-300 hover:border-emerald-400'
                                               : isDark ? 'neu-btn-dark text-amber-300 border-amber-500/50 hover:border-amber-400 ring-2 ring-amber-500/30' : 'neu-btn-light text-amber-800 border-amber-400 hover:border-amber-500 ring-2 ring-amber-400/30'
-                                          }`}
+                                            }`}
                                         >
                                           <span>📁 {attachedPdf ? `Master PDF (+${attachedPdf.pageOffset || 0} p. offset)` : 'Upload Master Subject PDF & Offset'}</span>
                                         </button>
@@ -37321,245 +37021,94 @@ Return your response strictly as a JSON object matching this schema:
                               </div>
                             )}
                           </motion.div>
-                    {/* SUBJECT PDF MANAGER MODAL (Location A - Always Rendered in Subject Tracker) */}
-                    <AnimatePresence>
-                      {isSubjectPdfModalOpen && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                          <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: 15 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: 15 }}
-                            className={`w-full max-w-lg p-6 rounded-3xl border shadow-2xl space-y-5 ${
-                              isDark ? 'bg-[#222730] border-slate-700/80 text-white' : 'bg-[#e6ecf5] border-slate-300 text-slate-900'
-                            }`}
-                          >
-                            {/* Modal Header */}
-                            <div className="flex items-center justify-between border-b pb-3 border-slate-700/40">
-                              <div className="flex items-center gap-2.5">
-                                <span className="text-xl">📁</span>
-                                <div>
-                                  <h3 className="text-base font-black tracking-wide">
-                                    {selectedTrackerSubject || selectedSubjectTrackerSubject} Textbook Manager
-                                  </h3>
-                                  <p className="text-[11px] text-slate-400">Upload Master Subject PDF or Pre-Split Topic PDFs for AI hints</p>
-                                </div>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => setIsSubjectPdfModalOpen(false)}
-                                className={`p-1.5 rounded-xl border transition-all ${
-                                  isDark ? 'neu-btn-dark text-slate-400 hover:text-white border-slate-700' : 'neu-btn-light text-slate-500 hover:text-slate-900 border-slate-300'
-                                }`}
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
-                            </div>
-
-                            {/* Mode Switcher Pill: Master PDF (Scenario 1) vs Pre-Split Topic PDFs (Scenario 2) */}
-                            <div className={`relative grid grid-cols-2 p-1.5 rounded-2xl text-xs font-black uppercase tracking-wider ${isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'}`}>
-                              <div
-                                className="absolute top-1.5 bottom-1.5 rounded-xl bg-blue-600 shadow-md transition-all duration-300"
-                                style={{
-                                  width: 'calc(50% - 6px)',
-                                  left: subjectPdfMode === 'master' ? '6px' : 'calc(50%)'
-                                }}
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setSubjectPdfMode('master')}
-                                className={`relative z-10 py-2 text-center rounded-xl transition-colors duration-200 ${subjectPdfMode === 'master' ? 'text-white font-black' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'}`}
-                              >
-                                📚 Master Subject PDF
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setSubjectPdfMode('topic')}
-                                className={`relative z-10 py-2 text-center rounded-xl transition-colors duration-200 ${subjectPdfMode === 'topic' ? 'text-white font-black' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'}`}
-                              >
-                                📄 Pre-Split Topic PDFs
-                              </button>
-                            </div>
-
-                            {subjectPdfMode === 'master' ? (
-                              <>
-                                {/* Current PDF Attachment Status Badge */}
-                                {(() => {
-                                  const activeSubName = selectedSubjectTrackerSubject || selectedTrackerSubject;
-                                  const meta = textbooksMetadata.find(tb => (tb.subject || '').toLowerCase() === activeSubName.toLowerCase());
-                                  return (
-                                    <div className={`p-3.5 rounded-2xl border text-xs flex items-center justify-between gap-3 ${
-                                      meta
-                                        ? isDark ? 'bg-emerald-950/20 border-emerald-500/30 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                                        : isDark ? 'bg-amber-950/20 border-amber-500/30 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'
-                                    }`}>
-                                      <div className="flex items-center gap-2">
-                                        <span>{meta ? '✓' : '⚠️'}</span>
-                                        <div>
-                                          <p className="font-bold">{meta ? `Master PDF: ${meta.pdfFileName || 'Attached'}` : 'No Master Subject PDF attached yet'}</p>
-                                          <p className="text-[10px] opacity-80">{meta ? `Current Offset: +${meta.pageOffset || 0} front-matter pages` : 'Upload a PDF to enable automated active-recall AI hint slicing'}</p>
-                                        </div>
+                          {/* SUBJECT PDF MANAGER MODAL (Location A - Always Rendered in Subject Tracker) */}
+                          <AnimatePresence>
+                            {isSubjectPdfModalOpen && (
+                              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                                <motion.div
+                                  initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                                  exit={{ opacity: 0, scale: 0.95, y: 15 }}
+                                  className={`w-full max-w-lg p-6 rounded-3xl border shadow-2xl space-y-5 ${isDark ? 'bg-[#222730] border-slate-700/80 text-white' : 'bg-[#e6ecf5] border-slate-300 text-slate-900'
+                                    }`}
+                                >
+                                  {/* Modal Header */}
+                                  <div className="flex items-center justify-between border-b pb-3 border-slate-700/40">
+                                    <div className="flex items-center gap-2.5">
+                                      <span className="text-xl">📁</span>
+                                      <div>
+                                        <h3 className="text-base font-black tracking-wide">
+                                          {selectedTrackerSubject || selectedSubjectTrackerSubject} Textbook Manager
+                                        </h3>
+                                        <p className="text-[11px] text-slate-400">Upload Master Subject PDF or Pre-Split Topic PDFs for AI hints</p>
                                       </div>
                                     </div>
-                                  );
-                                })()}
-
-                                {/* Section 1: Upload Master Subject PDF */}
-                                <div className="space-y-2">
-                                  <label className="text-xs font-black uppercase tracking-wider text-slate-400">1. Master Subject PDF File</label>
-                                  <label className={`w-full p-4 rounded-2xl border border-dashed flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all ${
-                                    subjectPdfUploading
-                                      ? 'opacity-50 pointer-events-none'
-                                      : isDark
-                                        ? 'bg-slate-900/60 border-slate-700 hover:border-blue-400 text-slate-300'
-                                        : 'bg-white/80 border-slate-300 hover:border-blue-500 text-slate-700'
-                                  }`}>
-                                    <input
-                                      type="file"
-                                      accept="application/pdf"
-                                      className="hidden"
-                                      onChange={async (e) => {
-                                        const file = e.target.files?.[0];
-                                        if (!file) return;
-
-                                        try {
-                                          setSubjectPdfUploading(true);
-                                          const activeSubName = selectedSubjectTrackerSubject || selectedTrackerSubject;
-                                          const arrayBuffer = await file.arrayBuffer();
-                                          const pdfKey = `pyt_pdf_${activeSubName.toLowerCase().replace(/\s+/g, '_')}`;
-
-                                          await saveLocalPytTopic(pdfKey, {
-                                            subject: activeSubName,
-                                            pdfFileName: file.name,
-                                            fileSize: file.size,
-                                            uploadedAt: new Date().toISOString(),
-                                            data: arrayBuffer
-                                          });
-
-                                          const existing = (await getLocalTextbooksMetadata()) || [];
-                                          const filtered = existing.filter(tb => (tb.subject || '').toLowerCase() !== activeSubName.toLowerCase());
-                                          const currentOffset = parseInt(subjectPdfOffsetInput, 10) || 0;
-                                          const updatedList = [
-                                            ...filtered,
-                                            {
-                                              subject: activeSubName,
-                                              pdfFileName: file.name,
-                                              pageOffset: currentOffset,
-                                              updatedAt: new Date().toISOString()
-                                            }
-                                          ];
-
-                                          await saveLocalTextbooksMetadata(updatedList);
-                                          setTextbooksMetadata(updatedList);
-                                          alert(`✓ Master PDF "${file.name}" attached to ${activeSubName} successfully!`);
-                                        } catch (err) {
-                                          console.error("Error saving subject PDF:", err);
-                                          alert("Failed to save PDF to IndexedDB: " + err.message);
-                                        } finally {
-                                          setSubjectPdfUploading(false);
-                                        }
-                                      }}
-                                    />
-                                    <span className="text-2xl">📄</span>
-                                    <span className="text-xs font-bold">
-                                      {subjectPdfUploading ? 'Saving PDF Payload to LocalDB...' : 'Click to Select & Upload Master PDF'}
-                                    </span>
-                                    <span className="text-[10px] text-slate-500">Supports full textbook PDFs</span>
-                                  </label>
-                                </div>
-
-                                {/* Section 2: Page Offset Calibration (+N Pages) */}
-                                <div className="space-y-2">
-                                  <div className="flex items-center justify-between">
-                                    <label className="text-xs font-black uppercase tracking-wider text-slate-400">2. Page Offset Calibration (+N Pages)</label>
-                                    <span className="text-[10px] font-mono font-bold text-amber-400">Front Matter Adjustment</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => setIsSubjectPdfModalOpen(false)}
+                                      className={`p-1.5 rounded-xl border transition-all ${isDark ? 'neu-btn-dark text-slate-400 hover:text-white border-slate-700' : 'neu-btn-light text-slate-500 hover:text-slate-900 border-slate-300'
+                                        }`}
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </button>
                                   </div>
-                                  <p className="text-[11px] text-slate-400 leading-tight">
-                                    Number of front-matter pages (cover, preface, TOC) before Page 1 of the textbook content begins.
-                                  </p>
-                                  <div className="flex items-center gap-3">
-                                    <input
-                                      type="number"
-                                      min="0"
-                                      value={subjectPdfOffsetInput}
-                                      onChange={(e) => setSubjectPdfOffsetInput(e.target.value)}
-                                      className={`w-28 p-3 rounded-2xl text-sm font-mono font-bold outline-none border transition ${
-                                        isDark ? 'neu-pressed-dark text-white border-slate-700' : 'neu-pressed-light text-slate-900 border-slate-300'
-                                      }`}
-                                      placeholder="e.g. 15"
+
+                                  {/* Mode Switcher Pill: Master PDF (Scenario 1) vs Pre-Split Topic PDFs (Scenario 2) */}
+                                  <div className={`relative grid grid-cols-2 p-1.5 rounded-2xl text-xs font-black uppercase tracking-wider ${isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'}`}>
+                                    <div
+                                      className="absolute top-1.5 bottom-1.5 rounded-xl bg-blue-600 shadow-md transition-all duration-300"
+                                      style={{
+                                        width: 'calc(50% - 6px)',
+                                        left: subjectPdfMode === 'master' ? '6px' : 'calc(50%)'
+                                      }}
                                     />
                                     <button
                                       type="button"
-                                      onClick={async () => {
-                                        try {
-                                          const activeSubName = selectedTrackerSubject || selectedSubjectTrackerSubject;
-                                          const newOffset = parseInt(subjectPdfOffsetInput, 10) || 0;
-                                          const existing = (await getLocalTextbooksMetadata()) || [];
-                                          const found = existing.find(tb => (tb.subject || '').toLowerCase() === activeSubName.toLowerCase());
-
-                                          const updatedList = [
-                                            ...existing.filter(tb => (tb.subject || '').toLowerCase() !== activeSubName.toLowerCase()),
-                                            {
-                                              subject: activeSubName,
-                                              pdfFileName: found?.pdfFileName || 'Master Textbook',
-                                              pageOffset: newOffset,
-                                              updatedAt: new Date().toISOString()
-                                            }
-                                          ];
-
-                                          await saveLocalTextbooksMetadata(updatedList);
-                                          setTextbooksMetadata(updatedList);
-                                          alert(`✓ Page offset (+${newOffset}) saved for ${activeSubName}!`);
-                                        } catch (err) {
-                                          console.error("Error updating offset:", err);
-                                          alert("Failed to save offset: " + err.message);
-                                        }
-                                      }}
-                                      className={`px-4 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition ${
-                                        isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300 border-slate-700' : 'neu-btn-light text-blue-600 border-slate-300'
-                                      }`}
+                                      onClick={() => setSubjectPdfMode('master')}
+                                      className={`relative z-10 py-2 text-center rounded-xl transition-colors duration-200 ${subjectPdfMode === 'master' ? 'text-white font-black' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'}`}
                                     >
-                                      Save Offset
+                                      📚 Master Subject PDF
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setSubjectPdfMode('topic')}
+                                      className={`relative z-10 py-2 text-center rounded-xl transition-colors duration-200 ${subjectPdfMode === 'topic' ? 'text-white font-black' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'}`}
+                                    >
+                                      📄 Pre-Split Topic PDFs
                                     </button>
                                   </div>
-                                </div>
-                              </>
-                            ) : (
-                              /* Scenario 2: Pre-Split Topic PDF Uploads List */
-                              <div className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                  <label className="text-xs font-black uppercase tracking-wider text-slate-400">Upload Topic-Wise Split PDFs</label>
-                                  <span className="text-[10px] text-slate-400">Pre-split standalone PDFs</span>
-                                </div>
-                                <div className="max-h-64 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-                                  {(() => {
-                                    const activeSubName = selectedTrackerSubject || selectedSubjectTrackerSubject;
-                                    const docId = activeSubName.trim().toLowerCase();
-                                    const trackerDoc = subjectTrackerData.find(p => p.id === docId);
-                                    const topicsMap = trackerDoc?.topics || {};
-                                    const topicsList = Object.values(topicsMap);
 
-                                    if (topicsList.length === 0) {
-                                      return (
-                                        <p className="text-xs text-slate-400 italic text-center py-4">No topics created in {activeSubName} yet.</p>
-                                      );
-                                    }
+                                  {subjectPdfMode === 'master' ? (
+                                    <>
+                                      {/* Current PDF Attachment Status Badge */}
+                                      {(() => {
+                                        const activeSubName = selectedSubjectTrackerSubject || selectedTrackerSubject;
+                                        const meta = textbooksMetadata.find(tb => (tb.subject || '').toLowerCase() === activeSubName.toLowerCase());
+                                        return (
+                                          <div className={`p-3.5 rounded-2xl border text-xs flex items-center justify-between gap-3 ${meta
+                                              ? isDark ? 'bg-emerald-950/20 border-emerald-500/30 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                                              : isDark ? 'bg-amber-950/20 border-amber-500/30 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'
+                                            }`}>
+                                            <div className="flex items-center gap-2">
+                                              <span>{meta ? '✓' : '⚠️'}</span>
+                                              <div>
+                                                <p className="font-bold">{meta ? `Master PDF: ${meta.pdfFileName || 'Attached'}` : 'No Master Subject PDF attached yet'}</p>
+                                                <p className="text-[10px] opacity-80">{meta ? `Current Offset: +${meta.pageOffset || 0} front-matter pages` : 'Upload a PDF to enable automated active-recall AI hint slicing'}</p>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        );
+                                      })()}
 
-                                    return topicsList.map((tItem, tIdx) => (
-                                      <div
-                                        key={tIdx}
-                                        className={`p-3 rounded-2xl border flex items-center justify-between gap-3 ${
-                                          isDark ? 'neu-card-dark border-slate-800' : 'neu-card-light border-slate-200'
-                                        }`}
-                                      >
-                                        <div className="min-w-0 flex-1">
-                                          <p className="text-xs font-bold truncate">{tItem.name}</p>
-                                          <p className="text-[10px] text-slate-400 font-mono">
-                                            {tItem.page ? `Page ${tItem.page}${tItem.endPage ? `-${tItem.endPage}` : ''}` : 'No page range'}
-                                          </p>
-                                        </div>
-                                        <label className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider border cursor-pointer transition shrink-0 flex items-center gap-1 ${
-                                          isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300 border-slate-700' : 'neu-btn-light text-blue-600 border-slate-300'
-                                        }`}>
+                                      {/* Section 1: Upload Master Subject PDF */}
+                                      <div className="space-y-2">
+                                        <label className="text-xs font-black uppercase tracking-wider text-slate-400">1. Master Subject PDF File</label>
+                                        <label className={`w-full p-4 rounded-2xl border border-dashed flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all ${subjectPdfUploading
+                                            ? 'opacity-50 pointer-events-none'
+                                            : isDark
+                                              ? 'bg-slate-900/60 border-slate-700 hover:border-blue-400 text-slate-300'
+                                              : 'bg-white/80 border-slate-300 hover:border-blue-500 text-slate-700'
+                                          }`}>
                                           <input
                                             type="file"
                                             accept="application/pdf"
@@ -37567,49 +37116,192 @@ Return your response strictly as a JSON object matching this schema:
                                             onChange={async (e) => {
                                               const file = e.target.files?.[0];
                                               if (!file) return;
+
                                               try {
-                                                const topicPdfKey = `pyt_pdf_${activeSubName.toLowerCase().replace(/\s+/g, '_')}_topic_${tItem.name.toLowerCase().replace(/\s+/g, '_')}`;
+                                                setSubjectPdfUploading(true);
+                                                const activeSubName = selectedSubjectTrackerSubject || selectedTrackerSubject;
                                                 const arrayBuffer = await file.arrayBuffer();
-                                                await saveLocalPytTopic(topicPdfKey, {
+                                                const pdfKey = `pyt_pdf_${activeSubName.toLowerCase().replace(/\s+/g, '_')}`;
+
+                                                await saveLocalPytTopic(pdfKey, {
                                                   subject: activeSubName,
-                                                  topicName: tItem.name,
                                                   pdfFileName: file.name,
                                                   fileSize: file.size,
                                                   uploadedAt: new Date().toISOString(),
-                                                  isPreSplit: true,
                                                   data: arrayBuffer
                                                 });
-                                                alert(`✓ Pre-split topic PDF "${file.name}" uploaded for "${tItem.name}"!`);
-                                                setSubjectPdfUploading(prev => !prev);
+
+                                                const existing = (await getLocalTextbooksMetadata()) || [];
+                                                const filtered = existing.filter(tb => (tb.subject || '').toLowerCase() !== activeSubName.toLowerCase());
+                                                const currentOffset = parseInt(subjectPdfOffsetInput, 10) || 0;
+                                                const updatedList = [
+                                                  ...filtered,
+                                                  {
+                                                    subject: activeSubName,
+                                                    pdfFileName: file.name,
+                                                    pageOffset: currentOffset,
+                                                    updatedAt: new Date().toISOString()
+                                                  }
+                                                ];
+
+                                                await saveLocalTextbooksMetadata(updatedList);
+                                                setTextbooksMetadata(updatedList);
+                                                alert(`✓ Master PDF "${file.name}" attached to ${activeSubName} successfully!`);
                                               } catch (err) {
-                                                console.error("Error uploading topic PDF:", err);
-                                                alert("Failed to save topic PDF: " + err.message);
+                                                console.error("Error saving subject PDF:", err);
+                                                alert("Failed to save PDF to IndexedDB: " + err.message);
+                                              } finally {
+                                                setSubjectPdfUploading(false);
                                               }
                                             }}
                                           />
-                                          📄 Upload Topic PDF
+                                          <span className="text-2xl">📄</span>
+                                          <span className="text-xs font-bold">
+                                            {subjectPdfUploading ? 'Saving PDF Payload to LocalDB...' : 'Click to Select & Upload Master PDF'}
+                                          </span>
+                                          <span className="text-[10px] text-slate-500">Supports full textbook PDFs</span>
                                         </label>
                                       </div>
-                                    ));
-                                  })()}
-                                </div>
+
+                                      {/* Section 2: Page Offset Calibration (+N Pages) */}
+                                      <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                          <label className="text-xs font-black uppercase tracking-wider text-slate-400">2. Page Offset Calibration (+N Pages)</label>
+                                          <span className="text-[10px] font-mono font-bold text-amber-400">Front Matter Adjustment</span>
+                                        </div>
+                                        <p className="text-[11px] text-slate-400 leading-tight">
+                                          Number of front-matter pages (cover, preface, TOC) before Page 1 of the textbook content begins.
+                                        </p>
+                                        <div className="flex items-center gap-3">
+                                          <input
+                                            type="number"
+                                            min="0"
+                                            value={subjectPdfOffsetInput}
+                                            onChange={(e) => setSubjectPdfOffsetInput(e.target.value)}
+                                            className={`w-28 p-3 rounded-2xl text-sm font-mono font-bold outline-none border transition ${isDark ? 'neu-pressed-dark text-white border-slate-700' : 'neu-pressed-light text-slate-900 border-slate-300'
+                                              }`}
+                                            placeholder="e.g. 15"
+                                          />
+                                          <button
+                                            type="button"
+                                            onClick={async () => {
+                                              try {
+                                                const activeSubName = selectedTrackerSubject || selectedSubjectTrackerSubject;
+                                                const newOffset = parseInt(subjectPdfOffsetInput, 10) || 0;
+                                                const existing = (await getLocalTextbooksMetadata()) || [];
+                                                const found = existing.find(tb => (tb.subject || '').toLowerCase() === activeSubName.toLowerCase());
+
+                                                const updatedList = [
+                                                  ...existing.filter(tb => (tb.subject || '').toLowerCase() !== activeSubName.toLowerCase()),
+                                                  {
+                                                    subject: activeSubName,
+                                                    pdfFileName: found?.pdfFileName || 'Master Textbook',
+                                                    pageOffset: newOffset,
+                                                    updatedAt: new Date().toISOString()
+                                                  }
+                                                ];
+
+                                                await saveLocalTextbooksMetadata(updatedList);
+                                                setTextbooksMetadata(updatedList);
+                                                alert(`✓ Page offset (+${newOffset}) saved for ${activeSubName}!`);
+                                              } catch (err) {
+                                                console.error("Error updating offset:", err);
+                                                alert("Failed to save offset: " + err.message);
+                                              }
+                                            }}
+                                            className={`px-4 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition ${isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300 border-slate-700' : 'neu-btn-light text-blue-600 border-slate-300'
+                                              }`}
+                                          >
+                                            Save Offset
+                                          </button>
+                                        </div>
+                                      </div>
+                                    </>
+                                  ) : (
+                                    /* Scenario 2: Pre-Split Topic PDF Uploads List */
+                                    <div className="space-y-3">
+                                      <div className="flex items-center justify-between">
+                                        <label className="text-xs font-black uppercase tracking-wider text-slate-400">Upload Topic-Wise Split PDFs</label>
+                                        <span className="text-[10px] text-slate-400">Pre-split standalone PDFs</span>
+                                      </div>
+                                      <div className="max-h-64 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                                        {(() => {
+                                          const activeSubName = selectedTrackerSubject || selectedSubjectTrackerSubject;
+                                          const docId = activeSubName.trim().toLowerCase();
+                                          const trackerDoc = subjectTrackerData.find(p => p.id === docId);
+                                          const topicsMap = trackerDoc?.topics || {};
+                                          const topicsList = Object.values(topicsMap);
+
+                                          if (topicsList.length === 0) {
+                                            return (
+                                              <p className="text-xs text-slate-400 italic text-center py-4">No topics created in {activeSubName} yet.</p>
+                                            );
+                                          }
+
+                                          return topicsList.map((tItem, tIdx) => (
+                                            <div
+                                              key={tIdx}
+                                              className={`p-3 rounded-2xl border flex items-center justify-between gap-3 ${isDark ? 'neu-card-dark border-slate-800' : 'neu-card-light border-slate-200'
+                                                }`}
+                                            >
+                                              <div className="min-w-0 flex-1">
+                                                <p className="text-xs font-bold truncate">{tItem.name}</p>
+                                                <p className="text-[10px] text-slate-400 font-mono">
+                                                  {tItem.page ? `Page ${tItem.page}${tItem.endPage ? `-${tItem.endPage}` : ''}` : 'No page range'}
+                                                </p>
+                                              </div>
+                                              <label className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider border cursor-pointer transition shrink-0 flex items-center gap-1 ${isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300 border-slate-700' : 'neu-btn-light text-blue-600 border-slate-300'
+                                                }`}>
+                                                <input
+                                                  type="file"
+                                                  accept="application/pdf"
+                                                  className="hidden"
+                                                  onChange={async (e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (!file) return;
+                                                    try {
+                                                      const topicPdfKey = `pyt_pdf_${activeSubName.toLowerCase().replace(/\s+/g, '_')}_topic_${tItem.name.toLowerCase().replace(/\s+/g, '_')}`;
+                                                      const arrayBuffer = await file.arrayBuffer();
+                                                      await saveLocalPytTopic(topicPdfKey, {
+                                                        subject: activeSubName,
+                                                        topicName: tItem.name,
+                                                        pdfFileName: file.name,
+                                                        fileSize: file.size,
+                                                        uploadedAt: new Date().toISOString(),
+                                                        isPreSplit: true,
+                                                        data: arrayBuffer
+                                                      });
+                                                      alert(`✓ Pre-split topic PDF "${file.name}" uploaded for "${tItem.name}"!`);
+                                                      setSubjectPdfUploading(prev => !prev);
+                                                    } catch (err) {
+                                                      console.error("Error uploading topic PDF:", err);
+                                                      alert("Failed to save topic PDF: " + err.message);
+                                                    }
+                                                  }}
+                                                />
+                                                📄 Upload Topic PDF
+                                              </label>
+                                            </div>
+                                          ));
+                                        })()}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Modal Footer */}
+                                  <div className="flex justify-end pt-2 border-t border-slate-700/40">
+                                    <button
+                                      type="button"
+                                      onClick={() => setIsSubjectPdfModalOpen(false)}
+                                      className="px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider bg-blue-600 hover:bg-blue-500 text-white shadow-md transition-all active:scale-95 cursor-pointer"
+                                    >
+                                      Done
+                                    </button>
+                                  </div>
+                                </motion.div>
                               </div>
                             )}
-
-                            {/* Modal Footer */}
-                            <div className="flex justify-end pt-2 border-t border-slate-700/40">
-                              <button
-                                type="button"
-                                onClick={() => setIsSubjectPdfModalOpen(false)}
-                                className="px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider bg-blue-600 hover:bg-blue-500 text-white shadow-md transition-all active:scale-95 cursor-pointer"
-                              >
-                                Done
-                              </button>
-                            </div>
-                          </motion.div>
-                        </div>
-                      )}
-                    </AnimatePresence>
+                          </AnimatePresence>
                         </motion.div>
                       );
                     })()}
@@ -37624,17 +37316,15 @@ Return your response strictly as a JSON object matching this schema:
                     {currentTab === 'obsOverlay' && (() => {
                       const isDark = settingsThemeMode === 'dark';
                       return (
-                        <div className={`flex-grow p-6 flex gap-6 max-w-[1600px] mx-auto w-full h-full overflow-hidden text-left transition-colors duration-300 ${
-                          isDark ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'
-                        }`}>
+                        <div className={`flex-grow p-6 flex gap-6 max-w-[1600px] mx-auto w-full h-full overflow-hidden text-left transition-colors duration-300 ${isDark ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'
+                          }`}>
                           {/* Left Column: Form Controls */}
                           <motion.div
                             initial={{ opacity: 0, x: -16 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                            className={`w-5/12 rounded-3xl border shadow-sm p-6 flex flex-col h-full overflow-y-auto custom-scrollbar ${
-                              isDark ? 'neu-card-dark border-gray-800' : 'neu-card-light border-gray-200'
-                            }`}
+                            className={`w-5/12 rounded-3xl border shadow-sm p-6 flex flex-col h-full overflow-y-auto custom-scrollbar ${isDark ? 'neu-card-dark border-gray-800' : 'neu-card-light border-gray-200'
+                              }`}
                           >
                             <div className="mb-6 shrink-0 flex items-center justify-between">
                               <div>
@@ -37664,9 +37354,8 @@ Return your response strictly as a JSON object matching this schema:
                                 <select
                                   value={obsSelectedWidget}
                                   onChange={(e) => setObsSelectedWidget(e.target.value)}
-                                  className={`w-full p-3 rounded-2xl text-xs font-bold outline-none border transition-all cursor-pointer ${
-                                    isDark ? 'neu-pressed-dark text-white border-slate-700 bg-[#1c2128] focus:border-blue-500' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white focus:border-blue-500'
-                                  }`}
+                                  className={`w-full p-3 rounded-2xl text-xs font-bold outline-none border transition-all cursor-pointer ${isDark ? 'neu-pressed-dark text-white border-slate-700 bg-[#1c2128] focus:border-blue-500' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white focus:border-blue-500'
+                                    }`}
                                 >
                                   <option value="todayAgenda">📅 Today's Agenda Checklist</option>
                                   <option value="dailyNotes">📝 Daily Notes & Subjects</option>
@@ -37695,9 +37384,8 @@ Return your response strictly as a JSON object matching this schema:
                                 <select
                                   value={obsTheme}
                                   onChange={(e) => setObsTheme(e.target.value)}
-                                  className={`w-full p-3 rounded-2xl text-xs font-bold outline-none border transition-all cursor-pointer ${
-                                    isDark ? 'neu-pressed-dark text-white border-slate-700 bg-[#1c2128] focus:border-blue-500' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white focus:border-blue-500'
-                                  }`}
+                                  className={`w-full p-3 rounded-2xl text-xs font-bold outline-none border transition-all cursor-pointer ${isDark ? 'neu-pressed-dark text-white border-slate-700 bg-[#1c2128] focus:border-blue-500' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white focus:border-blue-500'
+                                    }`}
                                 >
                                   <option value="transparent">👻 Transparent (Glass Panel - Recommended for streams)</option>
                                   <option value="dark">🌘 Sleek Dark Card</option>
@@ -37712,9 +37400,8 @@ Return your response strictly as a JSON object matching this schema:
                                   initial={{ opacity: 0, height: 0 }}
                                   animate={{ opacity: 1, height: 'auto' }}
                                   exit={{ opacity: 0, height: 0 }}
-                                  className={`p-4 rounded-2xl border space-y-4 ${
-                                    isDark ? 'neu-card-dark border-gray-750 bg-[#1c2128]/50' : 'neu-card-light border-gray-150 bg-gray-50'
-                                  }`}
+                                  className={`p-4 rounded-2xl border space-y-4 ${isDark ? 'neu-card-dark border-gray-750 bg-[#1c2128]/50' : 'neu-card-light border-gray-150 bg-gray-50'
+                                    }`}
                                 >
                                   <h4 className="text-[10px] font-black uppercase tracking-wider text-blue-500 mb-1">Color & Frame Customisation</h4>
 
@@ -37766,9 +37453,8 @@ Return your response strictly as a JSON object matching this schema:
                                       <select
                                         value={obsFontSize}
                                         onChange={(e) => setObsFontSize(e.target.value)}
-                                        className={`w-full p-2 rounded-xl text-[10px] font-bold outline-none border ${
-                                          isDark ? 'neu-pressed-dark text-white border-gray-750 bg-[#1c2128]' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white'
-                                        }`}
+                                        className={`w-full p-2 rounded-xl text-[10px] font-bold outline-none border ${isDark ? 'neu-pressed-dark text-white border-gray-750 bg-[#1c2128]' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white'
+                                          }`}
                                       >
                                         <option value="small">Small</option>
                                         <option value="medium">Medium</option>
@@ -37781,9 +37467,8 @@ Return your response strictly as a JSON object matching this schema:
                                       <select
                                         value={obsBorderRadius}
                                         onChange={(e) => setObsBorderRadius(e.target.value)}
-                                        className={`w-full p-2 rounded-xl text-[10px] font-bold outline-none border ${
-                                          isDark ? 'neu-pressed-dark text-white border-gray-750 bg-[#1c2128]' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white'
-                                        }`}
+                                        className={`w-full p-2 rounded-xl text-[10px] font-bold outline-none border ${isDark ? 'neu-pressed-dark text-white border-gray-750 bg-[#1c2128]' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white'
+                                          }`}
                                       >
                                         <option value="none">None</option>
                                         <option value="md">Medium</option>
@@ -37832,9 +37517,8 @@ Return your response strictly as a JSON object matching this schema:
                                 initial={{ opacity: 0, y: 8 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: 0.15, duration: 0.3 }}
-                                className={`p-4 rounded-2xl border space-y-3 ${
-                                  isDark ? 'neu-card-dark border-gray-750 bg-[#1c2128]/30' : 'neu-card-light border-gray-200 bg-gray-50/50'
-                                }`}
+                                className={`p-4 rounded-2xl border space-y-3 ${isDark ? 'neu-card-dark border-gray-750 bg-[#1c2128]/30' : 'neu-card-light border-gray-200 bg-gray-50/50'
+                                  }`}
                               >
                                 <h4 className={`text-[10px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Widget Settings</h4>
 
@@ -37859,9 +37543,8 @@ Return your response strictly as a JSON object matching this schema:
                                       <select
                                         value={obsTimerBgTheme}
                                         onChange={(e) => setObsTimerBgTheme(e.target.value)}
-                                        className={`w-full p-2 rounded-xl text-xs font-bold outline-none border ${
-                                          isDark ? 'neu-pressed-dark text-white border-gray-750 bg-[#1c2128]' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white'
-                                        }`}
+                                        className={`w-full p-2 rounded-xl text-xs font-bold outline-none border ${isDark ? 'neu-pressed-dark text-white border-gray-750 bg-[#1c2128]' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white'
+                                          }`}
                                       >
                                         <option value="gradient">Linear Gradient</option>
                                         <option value="animated">Animated Shifting</option>
@@ -37874,9 +37557,8 @@ Return your response strictly as a JSON object matching this schema:
                                         <select
                                           value={obsTimerBackground}
                                           onChange={(e) => setObsTimerBackground(e.target.value)}
-                                          className={`w-full p-2 rounded-xl text-xs font-bold outline-none border ${
-                                            isDark ? 'neu-pressed-dark text-white border-gray-750 bg-[#1c2128]' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white'
-                                          }`}
+                                          className={`w-full p-2 rounded-xl text-xs font-bold outline-none border ${isDark ? 'neu-pressed-dark text-white border-gray-750 bg-[#1c2128]' : 'neu-pressed-light text-gray-800 border-gray-200 bg-white'
+                                            }`}
                                         >
                                           <option value="sunset">🌅 Sunset Glow</option>
                                           <option value="cyberpunk">🌃 Cyberpunk</option>
@@ -37903,9 +37585,8 @@ Return your response strictly as a JSON object matching this schema:
                                 initial={{ opacity: 0, y: 8 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: 0.2, duration: 0.3 }}
-                                className={`p-5 rounded-3xl border space-y-3 shrink-0 ${
-                                  isDark ? 'neu-card-dark border-blue-900/40 bg-blue-950/20' : 'neu-card-light border-blue-100 bg-blue-50/50'
-                                }`}
+                                className={`p-5 rounded-3xl border space-y-3 shrink-0 ${isDark ? 'neu-card-dark border-blue-900/40 bg-blue-950/20' : 'neu-card-light border-blue-100 bg-blue-50/50'
+                                  }`}
                               >
                                 <div className="flex justify-between items-center">
                                   <span className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>Your OBS Stream Link</span>
@@ -37920,9 +37601,8 @@ Return your response strictly as a JSON object matching this schema:
                                     type="text"
                                     readOnly
                                     value={generateObsOverlayUrl()}
-                                    className={`flex-grow p-2.5 rounded-xl text-xs font-mono outline-none select-all border ${
-                                      isDark ? 'neu-pressed-dark text-gray-200 border-gray-750 bg-[#1c2128]' : 'neu-pressed-light text-gray-700 border-blue-200 bg-white'
-                                    }`}
+                                    className={`flex-grow p-2.5 rounded-xl text-xs font-mono outline-none select-all border ${isDark ? 'neu-pressed-dark text-gray-200 border-gray-750 bg-[#1c2128]' : 'neu-pressed-light text-gray-700 border-blue-200 bg-white'
+                                      }`}
                                   />
                                   <button
                                     onClick={handleCopyLink}
@@ -38149,9 +37829,8 @@ Return your response strictly as a JSON object matching this schema:
                 const isDark = settingsThemeMode === 'dark';
                 return (
                   <div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                    <div className={`rounded-3xl p-6 w-full max-w-sm border shadow-2xl text-left transform scale-100 transition-all ${
-                      isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-900 border-slate-200'
-                    }`}>
+                    <div className={`rounded-3xl p-6 w-full max-w-sm border shadow-2xl text-left transform scale-100 transition-all ${isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-900 border-slate-200'
+                      }`}>
                       <div className={`flex justify-between items-center mb-4 pb-2 border-b ${isDark ? 'border-slate-750' : 'border-slate-200/80'}`}>
                         <h3 className="text-base font-black tracking-tight">
                           {schedulerEditingTask.id ? 'Edit Study Slot' : 'Add Study Slot'}
@@ -38180,9 +37859,8 @@ Return your response strictly as a JSON object matching this schema:
                             }}
                             onFocus={() => setSchedulerAutocompleteOpen(true)}
                             onBlur={() => setTimeout(() => setSchedulerAutocompleteOpen(false), 150)}
-                            className={`w-full p-3 rounded-xl text-xs font-bold outline-none transition ${
-                              isDark ? 'neu-pressed-dark text-slate-100 placeholder-slate-500 border border-slate-800' : 'neu-pressed-light text-slate-800 placeholder-slate-400 border border-slate-200'
-                            }`}
+                            className={`w-full p-3 rounded-xl text-xs font-bold outline-none transition ${isDark ? 'neu-pressed-dark text-slate-100 placeholder-slate-500 border border-slate-800' : 'neu-pressed-light text-slate-800 placeholder-slate-400 border border-slate-200'
+                              }`}
                           />
                           {/* Autocomplete dropdown */}
                           {schedulerAutocompleteOpen && schedulerEditingTask.topic.trim().length >= 1 && (() => {
@@ -38193,9 +37871,8 @@ Return your response strictly as a JSON object matching this schema:
                               s.subject.toLowerCase().includes(q)
                             ).slice(0, 8);
                             return matches.length > 0 ? (
-                              <div className={`absolute top-full left-0 right-0 z-50 mt-1.5 rounded-2xl shadow-2xl overflow-hidden border ${
-                                isDark ? 'neu-card-dark border-slate-800 text-slate-200' : 'neu-card-light border-slate-200 text-slate-800'
-                              }`}>
+                              <div className={`absolute top-full left-0 right-0 z-50 mt-1.5 rounded-2xl shadow-2xl overflow-hidden border ${isDark ? 'neu-card-dark border-slate-800 text-slate-200' : 'neu-card-light border-slate-200 text-slate-800'
+                                }`}>
                                 <div className="p-1.5 max-h-52 overflow-y-auto custom-scrollbar">
                                   {matches.map((s, idx) => (
                                     <button
@@ -38205,9 +37882,8 @@ Return your response strictly as a JSON object matching this schema:
                                         setSchedulerEditingTask(prev => ({ ...prev, topic: s.display }));
                                         setSchedulerAutocompleteOpen(false);
                                       }}
-                                      className={`w-full text-left px-3 py-2 rounded-xl transition flex items-center gap-2 group ${
-                                        isDark ? 'hover:bg-slate-800/80 text-slate-200' : 'hover:bg-blue-50 text-slate-800'
-                                      }`}
+                                      className={`w-full text-left px-3 py-2 rounded-xl transition flex items-center gap-2 group ${isDark ? 'hover:bg-slate-800/80 text-slate-200' : 'hover:bg-blue-50 text-slate-800'
+                                        }`}
                                     >
                                       <span className="text-[9px] font-black uppercase tracking-wider text-blue-500 bg-blue-500/10 px-1.5 py-0.5 rounded-md shrink-0">
                                         {s.subject.slice(0, 4).toUpperCase()}
@@ -38232,9 +37908,8 @@ Return your response strictly as a JSON object matching this schema:
                               type="time"
                               value={schedulerEditingTask.startTime}
                               onChange={(e) => setSchedulerEditingTask(prev => ({ ...prev, startTime: e.target.value }))}
-                              className={`w-full p-2.5 rounded-xl text-xs font-bold outline-none transition ${
-                                isDark ? 'neu-pressed-dark text-slate-100 border border-slate-800' : 'neu-pressed-light text-slate-800 border border-slate-200'
-                              }`}
+                              className={`w-full p-2.5 rounded-xl text-xs font-bold outline-none transition ${isDark ? 'neu-pressed-dark text-slate-100 border border-slate-800' : 'neu-pressed-light text-slate-800 border border-slate-200'
+                                }`}
                             />
                           </div>
                           <div>
@@ -38245,9 +37920,8 @@ Return your response strictly as a JSON object matching this schema:
                               type="time"
                               value={schedulerEditingTask.endTime}
                               onChange={(e) => setSchedulerEditingTask(prev => ({ ...prev, endTime: e.target.value }))}
-                              className={`w-full p-2.5 rounded-xl text-xs font-bold outline-none transition ${
-                                isDark ? 'neu-pressed-dark text-slate-100 border border-slate-800' : 'neu-pressed-light text-slate-800 border border-slate-200'
-                              }`}
+                              className={`w-full p-2.5 rounded-xl text-xs font-bold outline-none transition ${isDark ? 'neu-pressed-dark text-slate-100 border border-slate-800' : 'neu-pressed-light text-slate-800 border border-slate-200'
+                                }`}
                             />
                           </div>
                         </div>
@@ -38270,9 +37944,8 @@ Return your response strictly as a JSON object matching this schema:
                                   key={color}
                                   type="button"
                                   onClick={() => setSchedulerEditingTask(prev => ({ ...prev, color }))}
-                                  className={`w-6 h-6 rounded-full ${bgClass} transition flex items-center justify-center relative active:scale-90 ${
-                                    isSelected ? 'ring-2 ring-offset-2 ring-blue-500 scale-110' : 'opacity-80 hover:opacity-100'
-                                  }`}
+                                  className={`w-6 h-6 rounded-full ${bgClass} transition flex items-center justify-center relative active:scale-90 ${isSelected ? 'ring-2 ring-offset-2 ring-blue-500 scale-110' : 'opacity-80 hover:opacity-100'
+                                    }`}
                                   title={color}
                                 >
                                   {isSelected && (
@@ -38294,9 +37967,8 @@ Return your response strictly as a JSON object matching this schema:
                             value={schedulerEditingTask.notes || ""}
                             onChange={(e) => setSchedulerEditingTask(prev => ({ ...prev, notes: e.target.value }))}
                             rows={3}
-                            className={`w-full p-3 rounded-xl text-xs font-medium outline-none resize-none font-sans transition ${
-                              isDark ? 'neu-pressed-dark text-slate-100 placeholder-slate-500 border border-slate-800' : 'neu-pressed-light text-slate-800 placeholder-slate-400 border border-slate-200'
-                            }`}
+                            className={`w-full p-3 rounded-xl text-xs font-medium outline-none resize-none font-sans transition ${isDark ? 'neu-pressed-dark text-slate-100 placeholder-slate-500 border border-slate-800' : 'neu-pressed-light text-slate-800 placeholder-slate-400 border border-slate-200'
+                              }`}
                           />
                         </div>
 
@@ -38324,9 +37996,8 @@ Return your response strictly as a JSON object matching this schema:
                                   setSchedulerEditingTask(null);
                                 }
                               }}
-                              className={`px-4 py-2 rounded-xl transition text-xs font-black uppercase tracking-wider border ${
-                                isDark ? 'neu-btn-dark text-rose-400 hover:text-rose-300 border-rose-900/40' : 'neu-btn-light text-rose-600 border-rose-200'
-                              }`}
+                              className={`px-4 py-2 rounded-xl transition text-xs font-black uppercase tracking-wider border ${isDark ? 'neu-btn-dark text-rose-400 hover:text-rose-300 border-rose-900/40' : 'neu-btn-light text-rose-600 border-rose-200'
+                                }`}
                             >
                               Delete
                             </button>
@@ -38335,9 +38006,8 @@ Return your response strictly as a JSON object matching this schema:
                         <div className="flex gap-2">
                           <button
                             onClick={() => setSchedulerEditingTask(null)}
-                            className={`px-4 py-2 rounded-xl transition text-xs font-black uppercase tracking-wider border ${
-                              isDark ? 'neu-btn-dark text-slate-300 border-slate-700' : 'neu-btn-light text-slate-700 border-slate-200'
-                            }`}
+                            className={`px-4 py-2 rounded-xl transition text-xs font-black uppercase tracking-wider border ${isDark ? 'neu-btn-dark text-slate-300 border-slate-700' : 'neu-btn-light text-slate-700 border-slate-200'
+                              }`}
                           >
                             Cancel
                           </button>
@@ -38354,9 +38024,8 @@ Return your response strictly as a JSON object matching this schema:
                                 schedulerEditingTask.notes
                               );
                             }}
-                            className={`px-5 py-2 rounded-xl transition text-xs font-black uppercase tracking-wider text-white shadow-md ${
-                              isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
-                            }`}
+                            className={`px-5 py-2 rounded-xl transition text-xs font-black uppercase tracking-wider text-white shadow-md ${isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+                              }`}
                           >
                             Save
                           </button>
@@ -38372,9 +38041,8 @@ Return your response strictly as a JSON object matching this schema:
                 const isDark = settingsThemeMode === 'dark';
                 return (
                   <div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                    <div className={`rounded-3xl p-6 w-full max-w-md border shadow-2xl text-left ${
-                      isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-900 border-slate-200'
-                    }`}>
+                    <div className={`rounded-3xl p-6 w-full max-w-md border shadow-2xl text-left ${isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-900 border-slate-200'
+                      }`}>
                       <div className={`flex justify-between items-center mb-4 pb-2 border-b ${isDark ? 'border-slate-750' : 'border-slate-200/80'}`}>
                         <h3 className="text-base font-black tracking-tight flex items-center gap-2">
                           <Bookmark className="w-5 h-5 text-blue-500" /> Study Routines & Templates
@@ -38389,9 +38057,8 @@ Return your response strictly as a JSON object matching this schema:
 
                       <div className="space-y-4">
                         {/* Create Template from Current Day */}
-                        <div className={`p-4 rounded-2xl border space-y-2 ${
-                          isDark ? 'neu-pressed-dark border-slate-800' : 'neu-pressed-light border-slate-200'
-                        }`}>
+                        <div className={`p-4 rounded-2xl border space-y-2 ${isDark ? 'neu-pressed-dark border-slate-800' : 'neu-pressed-light border-slate-200'
+                          }`}>
                           <h4 className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
                             Save Current Day as Template
                           </h4>
@@ -38414,15 +38081,13 @@ Return your response strictly as a JSON object matching this schema:
                               type="text"
                               placeholder="e.g. Weekday Revision Routine"
                               required
-                              className={`flex-grow p-2.5 rounded-xl text-xs font-bold outline-none transition ${
-                                isDark ? 'neu-pressed-dark text-slate-100 placeholder-slate-500 border border-slate-800' : 'neu-pressed-light text-slate-800 placeholder-slate-400 border border-slate-200'
-                              }`}
+                              className={`flex-grow p-2.5 rounded-xl text-xs font-bold outline-none transition ${isDark ? 'neu-pressed-dark text-slate-100 placeholder-slate-500 border border-slate-800' : 'neu-pressed-light text-slate-800 placeholder-slate-400 border border-slate-200'
+                                }`}
                             />
                             <button
                               type="submit"
-                              className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider text-white transition active:scale-95 shrink-0 shadow-md ${
-                                isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
-                              }`}
+                              className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider text-white transition active:scale-95 shrink-0 shadow-md ${isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+                                }`}
                             >
                               Save
                             </button>
@@ -38435,17 +38100,15 @@ Return your response strictly as a JSON object matching this schema:
                             Your Saved Templates
                           </h4>
                           {scheduleTemplates.length === 0 ? (
-                            <p className={`text-xs font-bold text-center py-4 border border-dashed rounded-2xl ${
-                              isDark ? 'neu-pressed-dark border-slate-800 text-slate-400' : 'neu-pressed-light border-slate-200 text-slate-500'
-                            }`}>
+                            <p className={`text-xs font-bold text-center py-4 border border-dashed rounded-2xl ${isDark ? 'neu-pressed-dark border-slate-800 text-slate-400' : 'neu-pressed-light border-slate-200 text-slate-500'
+                              }`}>
                               No templates saved yet. Create one above!
                             </p>
                           ) : (
                             <div className="max-h-48 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
                               {scheduleTemplates.map(tpl => (
-                                <div key={tpl.id} className={`flex items-center justify-between p-3.5 rounded-xl border transition ${
-                                  isDark ? 'neu-card-dark border-slate-800 text-slate-200' : 'neu-card-light border-slate-200 text-slate-800'
-                                }`}>
+                                <div key={tpl.id} className={`flex items-center justify-between p-3.5 rounded-xl border transition ${isDark ? 'neu-card-dark border-slate-800 text-slate-200' : 'neu-card-light border-slate-200 text-slate-800'
+                                  }`}>
                                   <div className="min-w-0 pr-3">
                                     <span className="text-xs font-bold block truncate">{tpl.name}</span>
                                     <span className={`text-[9px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
@@ -38471,9 +38134,8 @@ Return your response strictly as a JSON object matching this schema:
                                           await handleSchedulerDeleteTemplate(tpl.id);
                                         }
                                       }}
-                                      className={`p-1.5 rounded-xl border transition active:scale-95 ${
-                                        isDark ? 'neu-btn-dark text-slate-400 hover:text-rose-400 border-slate-700' : 'neu-btn-light text-slate-400 hover:text-rose-600 border-slate-200'
-                                      }`}
+                                      className={`p-1.5 rounded-xl border transition active:scale-95 ${isDark ? 'neu-btn-dark text-slate-400 hover:text-rose-400 border-slate-700' : 'neu-btn-light text-slate-400 hover:text-rose-600 border-slate-200'
+                                        }`}
                                       title="Delete Template"
                                     >
                                       <Trash2 className="w-3.5 h-3.5" />
@@ -38489,9 +38151,8 @@ Return your response strictly as a JSON object matching this schema:
                       <div className={`flex justify-end gap-2 mt-6 pt-4 border-t ${isDark ? 'border-slate-750' : 'border-slate-200/80'}`}>
                         <button
                           onClick={() => setIsTemplateModalOpen(false)}
-                          className={`px-4 py-2 rounded-xl transition text-xs font-black uppercase tracking-wider border ${
-                            isDark ? 'neu-btn-dark text-slate-300 border-slate-700' : 'neu-btn-light text-slate-700 border-slate-200'
-                          }`}
+                          className={`px-4 py-2 rounded-xl transition text-xs font-black uppercase tracking-wider border ${isDark ? 'neu-btn-dark text-slate-300 border-slate-700' : 'neu-btn-light text-slate-700 border-slate-200'
+                            }`}
                         >
                           Close
                         </button>
@@ -38658,13 +38319,12 @@ Return your response strictly as a JSON object matching this schema:
                           <button
                             type="button"
                             onClick={() => setEditingCard({ ...editingCard, isSuspended: !editingCard.isSuspended })}
-                            className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all shrink-0 ${
-                              editingCard.isSuspended
+                            className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all shrink-0 ${editingCard.isSuspended
                                 ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-sm'
                                 : settingsThemeMode === 'dark'
                                   ? 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'
                                   : 'bg-slate-200 text-slate-600 hover:text-slate-900 border border-slate-300'
-                            }`}
+                              }`}
                           >
                             {editingCard.isSuspended ? (
                               <>
@@ -39028,19 +38688,17 @@ Return your response strictly as a JSON object matching this schema:
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.92, y: 20 }}
                       transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                      className={`relative w-full max-w-md rounded-3xl p-6 shadow-2xl border text-left space-y-5 ${
-                        settingsThemeMode === 'dark'
+                      className={`relative w-full max-w-md rounded-3xl p-6 shadow-2xl border text-left space-y-5 ${settingsThemeMode === 'dark'
                           ? 'neu-card-dark text-white border-slate-700/80 bg-[#222730]'
                           : 'neu-card-light text-slate-800 border-slate-200 bg-white'
-                      }`}
+                        }`}
                     >
                       <div className="flex justify-between items-start">
                         <div>
-                          <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-lg border ${
-                            settingsThemeMode === 'dark'
+                          <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-lg border ${settingsThemeMode === 'dark'
                               ? 'bg-slate-800/80 text-blue-400 border-blue-500/30'
                               : 'bg-blue-50 text-blue-700 border-blue-200'
-                          }`}>
+                            }`}>
                             {ratingPopoverTopic.subject}
                           </span>
                           <h4 className="text-base font-black tracking-tight mt-2 text-inherit">{ratingPopoverTopic.topicName}</h4>
@@ -39050,18 +38708,16 @@ Return your response strictly as a JSON object matching this schema:
                         </div>
                         <button
                           onClick={() => setRatingPopoverTopic(null)}
-                          className={`p-1.5 rounded-xl transition cursor-pointer ${
-                            settingsThemeMode === 'dark' ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-400 hover:text-slate-800 hover:bg-slate-100'
-                          }`}
+                          className={`p-1.5 rounded-xl transition cursor-pointer ${settingsThemeMode === 'dark' ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-400 hover:text-slate-800 hover:bg-slate-100'
+                            }`}
                         >
                           <X className="w-5 h-5" />
                         </button>
                       </div>
 
                       <div className="space-y-2.5">
-                        <label className={`text-[10px] font-black uppercase tracking-wider block ${
-                          settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'
-                        }`}>
+                        <label className={`text-[10px] font-black uppercase tracking-wider block ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'
+                          }`}>
                           Rate FSRS Recall Quality
                         </label>
                         <div className="grid grid-cols-2 gap-2.5">
@@ -39860,19 +39516,16 @@ Return your response strictly as a JSON object matching this schema:
               {/* MANUAL CROP & REVIEW WORKSPACE MODAL */}
               {isCustomCropModalOpen && (
                 <div className="fixed inset-0 bg-[#090d16]/75 backdrop-blur-md z-[230] flex items-center justify-center p-4 lg:p-6 animate-in fade-in duration-300">
-                  <div className={`w-full max-w-7xl h-[94vh] rounded-[2.5rem] shadow-2xl border overflow-hidden flex flex-col lg:flex-row animate-in zoom-in-95 duration-300 relative ${
-                    settingsThemeMode === 'dark' ? 'neu-card-dark text-white border-gray-800 bg-[#222730]' : 'bg-white text-gray-900 border-gray-150'
-                  }`}>
+                  <div className={`w-full max-w-7xl h-[94vh] rounded-[2.5rem] shadow-2xl border overflow-hidden flex flex-col lg:flex-row animate-in zoom-in-95 duration-300 relative ${settingsThemeMode === 'dark' ? 'neu-card-dark text-white border-gray-800 bg-[#222730]' : 'bg-white text-gray-900 border-gray-150'
+                    }`}>
 
                     {/* Left Sidebar Queue */}
-                    <div className={`w-full lg:w-80 border-r flex flex-col h-full shrink-0 text-left ${
-                      settingsThemeMode === 'dark' ? 'border-gray-800 bg-[#1e232b]' : 'border-gray-100 bg-gray-50/50'
-                    }`}>
+                    <div className={`w-full lg:w-80 border-r flex flex-col h-full shrink-0 text-left ${settingsThemeMode === 'dark' ? 'border-gray-800 bg-[#1e232b]' : 'border-gray-100 bg-gray-50/50'
+                      }`}>
                       <div className={`p-6 border-b ${settingsThemeMode === 'dark' ? 'border-gray-800 bg-[#222730]' : 'border-gray-100 bg-white'}`}>
                         <div className="flex items-center gap-2">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-inner ${
-                            settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400' : 'bg-blue-100 text-blue-600'
-                          }`}>
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-inner ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-blue-400' : 'bg-blue-100 text-blue-600'
+                            }`}>
                             <ImageIcon className="w-4 h-4" />
                           </div>
                           <div>
@@ -39941,21 +39594,18 @@ Return your response strictly as a JSON object matching this schema:
                       const isCloze = card.type === 'Cloze';
 
                       return (
-                        <div className={`flex-1 flex flex-col h-full overflow-hidden text-left ${
-                          settingsThemeMode === 'dark' ? 'bg-[#222730] text-white' : 'bg-white text-slate-800'
-                        }`}>
-                          {/* Workspace Header */}
-                          <div className={`p-6 border-b flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shrink-0 ${
-                            settingsThemeMode === 'dark' ? 'border-gray-800 bg-[#222730]' : 'border-gray-100 bg-white'
+                        <div className={`flex-1 flex flex-col h-full overflow-hidden text-left ${settingsThemeMode === 'dark' ? 'bg-[#222730] text-white' : 'bg-white text-slate-800'
                           }`}>
+                          {/* Workspace Header */}
+                          <div className={`p-6 border-b flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shrink-0 ${settingsThemeMode === 'dark' ? 'border-gray-800 bg-[#222730]' : 'border-gray-100 bg-white'
+                            }`}>
                             <div>
                               <div className="flex items-center gap-2">
                                 <span className={`text-xs font-black ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                                   Card {currentCropIndex + 1} of {customCropCards.length}
                                 </span>
-                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
-                                  settingsThemeMode === 'dark' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-100'
-                                }`}>
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${settingsThemeMode === 'dark' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-100'
+                                  }`}>
                                   {card.deck || hierarchy || (deckPaths[0] || 'General')}
                                 </span>
                               </div>
@@ -40001,22 +39651,20 @@ Return your response strictly as a JSON object matching this schema:
                                 <button
                                   onClick={() => setCurrentCropIndex(prev => Math.max(0, prev - 1))}
                                   disabled={currentCropIndex === 0}
-                                  className={`w-9 h-9 border rounded-xl flex items-center justify-center transition active:scale-95 shrink-0 cursor-pointer ${
-                                    settingsThemeMode === 'dark'
+                                  className={`w-9 h-9 border rounded-xl flex items-center justify-center transition active:scale-95 shrink-0 cursor-pointer ${settingsThemeMode === 'dark'
                                       ? 'border-gray-700 bg-slate-800 hover:bg-slate-700 text-white disabled:opacity-30'
                                       : 'border-gray-250 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-40'
-                                  }`}
+                                    }`}
                                 >
                                   <ChevronLeft className="w-5 h-5" />
                                 </button>
                                 <button
                                   onClick={() => setCurrentCropIndex(prev => Math.min(customCropCards.length - 1, prev + 1))}
                                   disabled={currentCropIndex === customCropCards.length - 1}
-                                  className={`w-9 h-9 border rounded-xl flex items-center justify-center transition active:scale-95 shrink-0 cursor-pointer ${
-                                    settingsThemeMode === 'dark'
+                                  className={`w-9 h-9 border rounded-xl flex items-center justify-center transition active:scale-95 shrink-0 cursor-pointer ${settingsThemeMode === 'dark'
                                       ? 'border-gray-700 bg-slate-800 hover:bg-slate-700 text-white disabled:opacity-30'
                                       : 'border-gray-250 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-40'
-                                  }`}
+                                    }`}
                                 >
                                   <ChevronRight className="w-5 h-5" />
                                 </button>
@@ -40025,14 +39673,12 @@ Return your response strictly as a JSON object matching this schema:
                           </div>
 
                           {/* Beautiful Full Card Text Panel (Shows Full Card Question & Answer) */}
-                          <div className={`px-6 py-4 border-b flex flex-col gap-3 shrink-0 text-xs ${
-                            settingsThemeMode === 'dark' ? 'bg-[#1e232b] border-gray-800' : 'bg-gray-50/60 border-gray-100'
-                          }`}>
+                          <div className={`px-6 py-4 border-b flex flex-col gap-3 shrink-0 text-xs ${settingsThemeMode === 'dark' ? 'bg-[#1e232b] border-gray-800' : 'bg-gray-50/60 border-gray-100'
+                            }`}>
                             {isCloze ? (
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className={`p-3 rounded-xl border shadow-sm flex flex-col focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-400 transition-all duration-200 ${
-                                  settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-700 bg-[#222730]' : 'bg-white border-gray-200/60'
-                                }`}>
+                                <div className={`p-3 rounded-xl border shadow-sm flex flex-col focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-400 transition-all duration-200 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-700 bg-[#222730]' : 'bg-white border-gray-200/60'
+                                  }`}>
                                   <span className="text-[9px] font-black uppercase text-blue-500 tracking-wider block mb-1">Cloze Text (Question)</span>
                                   <textarea
                                     value={card.text || ""}
@@ -40046,15 +39692,13 @@ Return your response strictly as a JSON object matching this schema:
                                       });
                                       await syncCardToLocalDb(updatedCard);
                                     }}
-                                    className={`w-full font-medium text-xs bg-transparent border-0 p-0 focus:ring-0 focus:outline-none resize-none leading-relaxed h-[80px] select-text custom-scrollbar ${
-                                      settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'
-                                    }`}
+                                    className={`w-full font-medium text-xs bg-transparent border-0 p-0 focus:ring-0 focus:outline-none resize-none leading-relaxed h-[80px] select-text custom-scrollbar ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'
+                                      }`}
                                     placeholder="Edit Cloze text..."
                                   />
                                 </div>
-                                <div className={`p-3 rounded-xl border shadow-sm flex flex-col focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-400 transition-all duration-200 ${
-                                  settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-700 bg-[#222730]' : 'bg-white border-gray-200/60'
-                                }`}>
+                                <div className={`p-3 rounded-xl border shadow-sm flex flex-col focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-400 transition-all duration-200 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-700 bg-[#222730]' : 'bg-white border-gray-200/60'
+                                  }`}>
                                   <span className="text-[9px] font-black uppercase text-purple-500 tracking-wider block mb-1">Extra Info (Answer)</span>
                                   <textarea
                                     value={card.extra || ""}
@@ -40068,18 +39712,16 @@ Return your response strictly as a JSON object matching this schema:
                                       });
                                       await syncCardToLocalDb(updatedCard);
                                     }}
-                                    className={`w-full font-medium text-xs bg-transparent border-0 p-0 focus:ring-0 focus:outline-none resize-none leading-relaxed h-[80px] select-text custom-scrollbar ${
-                                      settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'
-                                    }`}
+                                    className={`w-full font-medium text-xs bg-transparent border-0 p-0 focus:ring-0 focus:outline-none resize-none leading-relaxed h-[80px] select-text custom-scrollbar ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'
+                                      }`}
                                     placeholder="Edit Extra info..."
                                   />
                                 </div>
                               </div>
                             ) : (
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className={`p-3 rounded-xl border shadow-sm flex flex-col focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-400 transition-all duration-200 ${
-                                  settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-700 bg-[#222730]' : 'bg-white border-gray-200/60'
-                                }`}>
+                                <div className={`p-3 rounded-xl border shadow-sm flex flex-col focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-400 transition-all duration-200 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-700 bg-[#222730]' : 'bg-white border-gray-200/60'
+                                  }`}>
                                   <span className="text-[9px] font-black uppercase text-blue-500 tracking-wider block mb-1">Front (Question)</span>
                                   <textarea
                                     value={card.front || ""}
@@ -40093,15 +39735,13 @@ Return your response strictly as a JSON object matching this schema:
                                       });
                                       await syncCardToLocalDb(updatedCard);
                                     }}
-                                    className={`w-full font-medium text-xs bg-transparent border-0 p-0 focus:ring-0 focus:outline-none resize-none leading-relaxed h-[80px] select-text custom-scrollbar ${
-                                      settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'
-                                    }`}
+                                    className={`w-full font-medium text-xs bg-transparent border-0 p-0 focus:ring-0 focus:outline-none resize-none leading-relaxed h-[80px] select-text custom-scrollbar ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'
+                                      }`}
                                     placeholder="Edit Front question..."
                                   />
                                 </div>
-                                <div className={`p-3 rounded-xl border shadow-sm flex flex-col focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-400 transition-all duration-200 ${
-                                  settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-700 bg-[#222730]' : 'bg-white border-gray-200/60'
-                                }`}>
+                                <div className={`p-3 rounded-xl border shadow-sm flex flex-col focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-400 transition-all duration-200 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-700 bg-[#222730]' : 'bg-white border-gray-200/60'
+                                  }`}>
                                   <span className="text-[9px] font-black uppercase text-purple-500 tracking-wider block mb-1">Back (Answer)</span>
                                   <textarea
                                     value={card.back || ""}
@@ -40115,9 +39755,8 @@ Return your response strictly as a JSON object matching this schema:
                                       });
                                       await syncCardToLocalDb(updatedCard);
                                     }}
-                                    className={`w-full font-medium text-xs bg-transparent border-0 p-0 focus:ring-0 focus:outline-none resize-none leading-relaxed h-[80px] select-text custom-scrollbar ${
-                                      settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'
-                                    }`}
+                                    className={`w-full font-medium text-xs bg-transparent border-0 p-0 focus:ring-0 focus:outline-none resize-none leading-relaxed h-[80px] select-text custom-scrollbar ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'
+                                      }`}
                                     placeholder="Edit Back answer..."
                                   />
                                 </div>
@@ -40126,13 +39765,11 @@ Return your response strictly as a JSON object matching this schema:
                           </div>
 
                           {/* Interactive Board */}
-                          <div className={`flex-grow p-6 flex flex-col items-center justify-center overflow-hidden relative border-b ${
-                            settingsThemeMode === 'dark' ? 'bg-[#181c22] border-gray-800' : 'bg-gray-50/50 border-gray-100'
-                          }`}>
+                          <div className={`flex-grow p-6 flex flex-col items-center justify-center overflow-hidden relative border-b ${settingsThemeMode === 'dark' ? 'bg-[#181c22] border-gray-800' : 'bg-gray-50/50 border-gray-100'
+                            }`}>
                             {card.excludeImage ? (
-                              <div className={`flex flex-col items-center justify-center text-center p-8 border rounded-[2rem] shadow-inner max-w-sm ${
-                                settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-800 text-white' : 'bg-white border-gray-205'
-                              }`}>
+                              <div className={`flex flex-col items-center justify-center text-center p-8 border rounded-[2rem] shadow-inner max-w-sm ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-800 text-white' : 'bg-white border-gray-205'
+                                }`}>
                                 <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mb-4 text-red-500 shadow-sm">
                                   <XCircle className="w-8 h-8" />
                                 </div>
@@ -40157,9 +39794,8 @@ Return your response strictly as a JSON object matching this schema:
                                 </button>
                               </div>
                             ) : !rawSrc ? (
-                              <div className={`flex flex-col items-center justify-center text-center p-8 border rounded-[2rem] shadow-inner max-w-sm ${
-                                settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-800 text-white' : 'bg-white border-gray-250'
-                              }`}>
+                              <div className={`flex flex-col items-center justify-center text-center p-8 border rounded-[2rem] shadow-inner max-w-sm ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-800 text-white' : 'bg-white border-gray-250'
+                                }`}>
                                 <div className="w-16 h-16 bg-gray-500/10 rounded-2xl flex items-center justify-center mb-4 text-gray-400 shadow-sm">
                                   <HelpCircle className="w-8 h-8" />
                                 </div>
@@ -40175,9 +39811,8 @@ Return your response strictly as a JSON object matching this schema:
                                 </div>
 
                                 {/* Floating Zoom Control Bar */}
-                                <div className={`absolute top-8 right-4 z-20 backdrop-blur border rounded-2xl p-1 shadow-lg flex items-center gap-1 select-none ${
-                                  settingsThemeMode === 'dark' ? 'bg-[#222730]/95 border-gray-700 text-white' : 'bg-white/95 border-gray-200/80 text-gray-700'
-                                }`}>
+                                <div className={`absolute top-8 right-4 z-20 backdrop-blur border rounded-2xl p-1 shadow-lg flex items-center gap-1 select-none ${settingsThemeMode === 'dark' ? 'bg-[#222730]/95 border-gray-700 text-white' : 'bg-white/95 border-gray-200/80 text-gray-700'
+                                  }`}>
                                   <button
                                     onClick={() => setCropZoom(prev => Math.max(0.5, Math.round((prev - 0.1) * 10) / 10))}
                                     className="w-7 h-7 rounded-xl hover:bg-white/10 flex items-center justify-center font-bold transition active:scale-90 cursor-pointer"
@@ -40209,18 +39844,16 @@ Return your response strictly as a JSON object matching this schema:
                                 <div
                                   ref={zoomWindowRef}
                                   onMouseDown={handlePanMouseDown}
-                                  className={`w-full flex-grow overflow-auto p-8 flex custom-scrollbar select-none ${
-                                    settingsThemeMode === 'dark' ? 'bg-[#181c22]' : 'bg-gray-50/50'
-                                  }`}
+                                  className={`w-full flex-grow overflow-auto p-8 flex custom-scrollbar select-none ${settingsThemeMode === 'dark' ? 'bg-[#181c22]' : 'bg-gray-50/50'
+                                    }`}
                                   style={{
                                     cursor: isCropPanning ? 'grabbing' : cropZoom > 1.0 ? 'grab' : 'default'
                                   }}
                                 >
                                   <div
                                     ref={containerRef}
-                                    className={`relative select-none border-2 rounded-xl shadow-xl inline-block ${
-                                      settingsThemeMode === 'dark' ? 'border-gray-700 bg-gray-900' : 'border-gray-300 bg-white'
-                                    }`}
+                                    className={`relative select-none border-2 rounded-xl shadow-xl inline-block ${settingsThemeMode === 'dark' ? 'border-gray-700 bg-gray-900' : 'border-gray-300 bg-white'
+                                      }`}
                                     style={{
                                       margin: 'auto'
                                     }}
@@ -40278,14 +39911,12 @@ Return your response strictly as a JSON object matching this schema:
                           </div>
 
                           {/* Footer Controls */}
-                          <div className={`p-6 flex items-center justify-between shrink-0 ${
-                            settingsThemeMode === 'dark' ? 'bg-[#222730] border-t border-gray-800' : 'bg-white'
-                          }`}>
+                          <div className={`p-6 flex items-center justify-between shrink-0 ${settingsThemeMode === 'dark' ? 'bg-[#222730] border-t border-gray-800' : 'bg-white'
+                            }`}>
                             <button
                               onClick={() => setIsCustomCropModalOpen(false)}
-                              className={`px-6 py-3.5 border rounded-2xl text-xs font-black uppercase tracking-widest transition active:scale-95 cursor-pointer ${
-                                settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-800 text-gray-400 hover:text-white' : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'
-                              }`}
+                              className={`px-6 py-3.5 border rounded-2xl text-xs font-black uppercase tracking-widest transition active:scale-95 cursor-pointer ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-800 text-gray-400 hover:text-white' : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'
+                                }`}
                             >
                               Cancel Review
                             </button>
@@ -40433,9 +40064,8 @@ Return your response strictly as a JSON object matching this schema:
                 const isDark = settingsThemeMode === 'dark';
                 return (
                   <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300 text-left">
-                    <div className={`w-full max-w-2xl rounded-[2.5rem] shadow-2xl border overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200 relative ${
-                      isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-900 border-slate-200'
-                    }`}>
+                    <div className={`w-full max-w-2xl rounded-[2.5rem] shadow-2xl border overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200 relative ${isDark ? 'neu-card-dark text-white border-slate-800' : 'neu-card-light text-slate-900 border-slate-200'
+                      }`}>
 
                       {/* Header */}
                       <div className={`p-6 border-b flex items-center justify-between shrink-0 ${isDark ? 'border-slate-750' : 'border-slate-200/80'}`}>
@@ -40466,13 +40096,11 @@ Return your response strictly as a JSON object matching this schema:
 
                       {/* Sliding Pill Tab Switcher */}
                       <div className={`flex border-b p-3 shrink-0 ${isDark ? 'border-slate-750' : 'border-slate-200/80'}`}>
-                        <div className={`relative flex items-center p-1 rounded-2xl gap-1 w-full select-none ${
-                          isDark ? 'neu-pressed-dark border border-slate-800' : 'neu-pressed-light border border-slate-200'
-                        }`}>
+                        <div className={`relative flex items-center p-1 rounded-2xl gap-1 w-full select-none ${isDark ? 'neu-pressed-dark border border-slate-800' : 'neu-pressed-light border border-slate-200'
+                          }`}>
                           <div
-                            className={`absolute top-1 bottom-1 rounded-xl shadow-md ${
-                              isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
-                            }`}
+                            className={`absolute top-1 bottom-1 rounded-xl shadow-md ${isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+                              }`}
                             style={{
                               width: 'calc(50% - 6px)',
                               left: schedulerModalTab === 'manual' ? '4px' : 'calc(50% + 2px)',
@@ -40481,21 +40109,19 @@ Return your response strictly as a JSON object matching this schema:
                           />
                           <button
                             onClick={() => setSchedulerModalTab('manual')}
-                            className={`relative flex-1 py-2 text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${
-                              schedulerModalTab === 'manual'
+                            className={`relative flex-1 py-2 text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${schedulerModalTab === 'manual'
                                 ? 'text-white font-extrabold'
                                 : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
-                            }`}
+                              }`}
                           >
                             Manual Entry
                           </button>
                           <button
                             onClick={() => setSchedulerModalTab('ai')}
-                            className={`relative flex-1 py-2 text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${
-                              schedulerModalTab === 'ai'
+                            className={`relative flex-1 py-2 text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${schedulerModalTab === 'ai'
                                 ? 'text-white font-extrabold'
                                 : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
-                            }`}
+                              }`}
                           >
                             AI Schedule Extractor
                           </button>
@@ -40514,9 +40140,8 @@ Return your response strictly as a JSON object matching this schema:
                                 type="date"
                                 value={schedulerManualDate}
                                 onChange={(e) => setSchedulerManualDate(e.target.value)}
-                                className={`w-full p-3 rounded-2xl text-xs outline-none font-bold transition ${
-                                  isDark ? 'neu-pressed-dark text-slate-100 border border-slate-800' : 'neu-pressed-light text-slate-800 border border-slate-200'
-                                }`}
+                                className={`w-full p-3 rounded-2xl text-xs outline-none font-bold transition ${isDark ? 'neu-pressed-dark text-slate-100 border border-slate-800' : 'neu-pressed-light text-slate-800 border border-slate-200'
+                                  }`}
                               />
                             </div>
 
@@ -40525,13 +40150,11 @@ Return your response strictly as a JSON object matching this schema:
                                 Task Source
                               </label>
                               {/* Task Source Pill Switcher */}
-                              <div className={`relative flex items-center p-1 rounded-2xl gap-1 select-none ${
-                                isDark ? 'neu-pressed-dark border border-slate-800' : 'neu-pressed-light border border-slate-200'
-                              }`}>
+                              <div className={`relative flex items-center p-1 rounded-2xl gap-1 select-none ${isDark ? 'neu-pressed-dark border border-slate-800' : 'neu-pressed-light border border-slate-200'
+                                }`}>
                                 <div
-                                  className={`absolute top-1 bottom-1 rounded-xl shadow-md ${
-                                    isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
-                                  }`}
+                                  className={`absolute top-1 bottom-1 rounded-xl shadow-md ${isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+                                    }`}
                                   style={{
                                     width: 'calc(50% - 6px)',
                                     left: schedulerTaskSource === 'custom' ? '4px' : 'calc(50% + 2px)',
@@ -40541,22 +40164,20 @@ Return your response strictly as a JSON object matching this schema:
                                 <button
                                   type="button"
                                   onClick={() => setSchedulerTaskSource('custom')}
-                                  className={`relative flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${
-                                    schedulerTaskSource === 'custom'
+                                  className={`relative flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${schedulerTaskSource === 'custom'
                                       ? 'text-white font-extrabold'
                                       : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
-                                  }`}
+                                    }`}
                                 >
                                   Custom Text Input
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => setSchedulerTaskSource('tracker')}
-                                  className={`relative flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${
-                                    schedulerTaskSource === 'tracker'
+                                  className={`relative flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${schedulerTaskSource === 'tracker'
                                       ? 'text-white font-extrabold'
                                       : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
-                                  }`}
+                                    }`}
                                 >
                                   Integrated Subject Tracker
                                 </button>
@@ -40572,15 +40193,13 @@ Return your response strictly as a JSON object matching this schema:
                                   value={schedulerManualTopics}
                                   onChange={(e) => setSchedulerManualTopics(e.target.value)}
                                   placeholder="e.g. Pathology: Amyloidosis&#10;Pharmacology: Beta Blockers&#10;Anatomy: Brachial Plexus"
-                                  className={`w-full h-32 p-4 rounded-2xl text-xs outline-none leading-relaxed font-bold resize-none transition ${
-                                    isDark ? 'neu-pressed-dark text-slate-100 placeholder-slate-500 border border-slate-800' : 'neu-pressed-light text-slate-800 placeholder-slate-400 border border-slate-200'
-                                  }`}
+                                  className={`w-full h-32 p-4 rounded-2xl text-xs outline-none leading-relaxed font-bold resize-none transition ${isDark ? 'neu-pressed-dark text-slate-100 placeholder-slate-500 border border-slate-800' : 'neu-pressed-light text-slate-800 placeholder-slate-400 border border-slate-200'
+                                    }`}
                                 />
                               </div>
                             ) : (
-                              <div className={`space-y-4 rounded-2xl p-5 border ${
-                                isDark ? 'neu-pressed-dark border-slate-800' : 'neu-pressed-light border-slate-200'
-                              }`}>
+                              <div className={`space-y-4 rounded-2xl p-5 border ${isDark ? 'neu-pressed-dark border-slate-800' : 'neu-pressed-light border-slate-200'
+                                }`}>
                                 <div>
                                   <label className={`block text-[10px] font-black uppercase tracking-wider mb-1.5 font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                     Select Subject
@@ -40591,9 +40210,8 @@ Return your response strictly as a JSON object matching this schema:
                                       setSchedulerSelSubject(e.target.value);
                                       setSchedulerSelTopics([]);
                                     }}
-                                    className={`w-full p-3 rounded-2xl text-xs font-bold outline-none transition ${
-                                      isDark ? 'neu-card-dark text-slate-100 border border-slate-800' : 'bg-white border border-slate-200 text-slate-800'
-                                    }`}
+                                    className={`w-full p-3 rounded-2xl text-xs font-bold outline-none transition ${isDark ? 'neu-card-dark text-slate-100 border border-slate-800' : 'bg-white border border-slate-200 text-slate-800'
+                                      }`}
                                   >
                                     {["Anatomy", "Physiology", "Biochemistry", "Pathology", "Microbiology", "Pharmacology", "Forensic Medicine", "Social and Preventive Medicine", "Ophthalmology", "ENT", "General Medicine", "General Surgery", "Obstetrics and Gynecology", "Pediatrics", "Psychiatry", "Dermatology", "Anesthesia", "Radiology", "Orthopedics"].map(sub => (
                                       <option key={sub} value={sub}>{sub}</option>
@@ -40620,15 +40238,13 @@ Return your response strictly as a JSON object matching this schema:
                                     }
 
                                     return (
-                                      <div className={`max-h-40 overflow-y-auto rounded-2xl p-3.5 space-y-2 custom-scrollbar border ${
-                                        isDark ? 'neu-card-dark border-slate-800' : 'bg-white border-slate-200'
-                                      }`}>
+                                      <div className={`max-h-40 overflow-y-auto rounded-2xl p-3.5 space-y-2 custom-scrollbar border ${isDark ? 'neu-card-dark border-slate-800' : 'bg-white border-slate-200'
+                                        }`}>
                                         {topicsList.map(topicItem => {
                                           const isChecked = schedulerSelTopics.includes(topicItem.name);
                                           return (
-                                            <label key={topicItem.name} className={`flex items-center gap-2.5 text-xs font-black cursor-pointer p-2 rounded-xl transition-all ${
-                                              isDark ? 'hover:bg-slate-800/80 text-slate-200' : 'hover:bg-slate-50 text-slate-800'
-                                            }`}>
+                                            <label key={topicItem.name} className={`flex items-center gap-2.5 text-xs font-black cursor-pointer p-2 rounded-xl transition-all ${isDark ? 'hover:bg-slate-800/80 text-slate-200' : 'hover:bg-slate-50 text-slate-800'
+                                              }`}>
                                               <input
                                                 type="checkbox"
                                                 checked={isChecked}
@@ -40643,9 +40259,8 @@ Return your response strictly as a JSON object matching this schema:
                                               />
                                               <span className="flex-grow font-semibold">{topicItem.name}</span>
                                               {topicItem.page && (
-                                                <span className={`text-[9px] font-mono px-2 py-0.5 rounded font-black select-none ${
-                                                  isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600'
-                                                }`}>
+                                                <span className={`text-[9px] font-mono px-2 py-0.5 rounded font-black select-none ${isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600'
+                                                  }`}>
                                                   p. {topicItem.page}
                                                 </span>
                                               )}
@@ -40668,9 +40283,8 @@ Return your response strictly as a JSON object matching this schema:
                                 value={schedulerManualNotes}
                                 onChange={(e) => setSchedulerManualNotes(e.target.value)}
                                 placeholder="e.g. Focus on clinical MCQs, revise previous day cards"
-                                className={`w-full p-3 rounded-2xl text-xs outline-none font-bold transition ${
-                                  isDark ? 'neu-pressed-dark text-slate-100 placeholder-slate-500 border border-slate-800' : 'neu-pressed-light text-slate-800 placeholder-slate-400 border border-slate-200'
-                                }`}
+                                className={`w-full p-3 rounded-2xl text-xs outline-none font-bold transition ${isDark ? 'neu-pressed-dark text-slate-100 placeholder-slate-500 border border-slate-800' : 'neu-pressed-light text-slate-800 placeholder-slate-400 border border-slate-200'
+                                  }`}
                               />
                             </div>
                           </div>
@@ -40678,9 +40292,8 @@ Return your response strictly as a JSON object matching this schema:
                           <div className="space-y-4">
                             {!schedulerAiParsed ? (
                               <div className="space-y-4">
-                                <div className={`border-2 border-dashed rounded-3xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition relative ${
-                                  isDark ? 'neu-pressed-dark border-slate-700 hover:border-blue-500' : 'neu-pressed-light border-slate-300 hover:border-blue-500'
-                                }`}>
+                                <div className={`border-2 border-dashed rounded-3xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition relative ${isDark ? 'neu-pressed-dark border-slate-700 hover:border-blue-500' : 'neu-pressed-light border-slate-300 hover:border-blue-500'
+                                  }`}>
                                   <input
                                     type="file"
                                     accept="image/*,application/pdf"
@@ -40700,9 +40313,8 @@ Return your response strictly as a JSON object matching this schema:
                                   <button
                                     onClick={handleSchedulerAiExtract}
                                     disabled={isSchedulerAiExtracting || !geminiApiKey}
-                                    className={`w-full py-3.5 rounded-2xl text-xs font-black uppercase tracking-wider shadow-lg transition flex items-center justify-center gap-2 active:scale-95 duration-150 text-white ${
-                                      isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
-                                    }`}
+                                    className={`w-full py-3.5 rounded-2xl text-xs font-black uppercase tracking-wider shadow-lg transition flex items-center justify-center gap-2 active:scale-95 duration-150 text-white ${isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+                                      }`}
                                   >
                                     {isSchedulerAiExtracting ? (
                                       <>
@@ -40720,9 +40332,8 @@ Return your response strictly as a JSON object matching this schema:
                               </div>
                             ) : (
                               <div className="space-y-4">
-                                <div className={`flex justify-between items-center p-4 rounded-2xl border ${
-                                  isDark ? 'neu-pressed-dark border-blue-900/50 text-blue-300' : 'bg-blue-50 border border-blue-200 text-blue-800'
-                                }`}>
+                                <div className={`flex justify-between items-center p-4 rounded-2xl border ${isDark ? 'neu-pressed-dark border-blue-900/50 text-blue-300' : 'bg-blue-50 border border-blue-200 text-blue-800'
+                                  }`}>
                                   <div className="text-[10px] font-bold">
                                     ✨ AI extracted {schedulerAiEditableEntries.length} schedule dates. Review and edit before injecting.
                                   </div>
@@ -40739,9 +40350,8 @@ Return your response strictly as a JSON object matching this schema:
 
                                 <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-1 custom-scrollbar">
                                   {schedulerAiEditableEntries.map((entry, idx) => (
-                                    <div key={entry._id} className={`p-4 rounded-2xl border flex flex-col gap-3 relative text-left ${
-                                      isDark ? 'neu-card-dark border-slate-800' : 'neu-card-light border-slate-200'
-                                    }`}>
+                                    <div key={entry._id} className={`p-4 rounded-2xl border flex flex-col gap-3 relative text-left ${isDark ? 'neu-card-dark border-slate-800' : 'neu-card-light border-slate-200'
+                                      }`}>
                                       <button
                                         onClick={() => setSchedulerAiEditableEntries(prev => prev.filter(e => e._id !== entry._id))}
                                         className="absolute top-3 right-3 text-slate-400 hover:text-red-500 transition"
@@ -40758,9 +40368,8 @@ Return your response strictly as a JSON object matching this schema:
                                               const newDate = e.target.value;
                                               setSchedulerAiEditableEntries(prev => prev.map(item => item._id === entry._id ? { ...item, date: newDate } : item));
                                             }}
-                                            className={`w-full p-2 rounded-xl text-xs font-bold transition ${
-                                              isDark ? 'neu-pressed-dark text-slate-100 border border-slate-800' : 'neu-pressed-light text-slate-800 border border-slate-200'
-                                            }`}
+                                            className={`w-full p-2 rounded-xl text-xs font-bold transition ${isDark ? 'neu-pressed-dark text-slate-100 border border-slate-800' : 'neu-pressed-light text-slate-800 border border-slate-200'
+                                              }`}
                                           />
                                         </div>
                                         <div>
@@ -40772,9 +40381,8 @@ Return your response strictly as a JSON object matching this schema:
                                               const newNotes = e.target.value;
                                               setSchedulerAiEditableEntries(prev => prev.map(item => item._id === entry._id ? { ...item, notes: newNotes } : item));
                                             }}
-                                            className={`w-full p-2 rounded-xl text-xs font-medium transition ${
-                                              isDark ? 'neu-pressed-dark text-slate-100 border border-slate-800' : 'neu-pressed-light text-slate-800 border border-slate-200'
-                                            }`}
+                                            className={`w-full p-2 rounded-xl text-xs font-medium transition ${isDark ? 'neu-pressed-dark text-slate-100 border border-slate-800' : 'neu-pressed-light text-slate-800 border border-slate-200'
+                                              }`}
                                           />
                                         </div>
                                       </div>
@@ -40815,9 +40423,8 @@ Return your response strictly as a JSON object matching this schema:
                                                   }));
                                                 }}
                                                 placeholder="Time (e.g. 09:00 AM)"
-                                                className={`w-1/3 p-2 rounded-xl text-[10px] font-mono font-bold outline-none transition ${
-                                                  isDark ? 'neu-pressed-dark text-slate-100 border border-slate-800' : 'neu-pressed-light text-slate-800 border border-slate-200'
-                                                }`}
+                                                className={`w-1/3 p-2 rounded-xl text-[10px] font-mono font-bold outline-none transition ${isDark ? 'neu-pressed-dark text-slate-100 border border-slate-800' : 'neu-pressed-light text-slate-800 border border-slate-200'
+                                                  }`}
                                               />
                                               <input
                                                 type="text"
@@ -40834,9 +40441,8 @@ Return your response strictly as a JSON object matching this schema:
                                                   }));
                                                 }}
                                                 placeholder="Topic Name"
-                                                className={`flex-1 p-2 rounded-xl text-[10px] font-bold outline-none transition ${
-                                                  isDark ? 'neu-pressed-dark text-slate-100 border border-slate-800' : 'neu-pressed-light text-slate-800 border border-slate-200'
-                                                }`}
+                                                className={`flex-1 p-2 rounded-xl text-[10px] font-bold outline-none transition ${isDark ? 'neu-pressed-dark text-slate-100 border border-slate-800' : 'neu-pressed-light text-slate-800 border border-slate-200'
+                                                  }`}
                                               />
                                               <button
                                                 type="button"
@@ -40863,9 +40469,8 @@ Return your response strictly as a JSON object matching this schema:
                                 <button
                                   onClick={handleSchedulerAiInject}
                                   disabled={isSchedulerAiInjecting}
-                                  className={`w-full py-3.5 rounded-2xl text-xs font-black uppercase tracking-wider shadow-lg transition flex items-center justify-center gap-2 active:scale-95 duration-155 text-white ${
-                                    isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
-                                  }`}
+                                  className={`w-full py-3.5 rounded-2xl text-xs font-black uppercase tracking-wider shadow-lg transition flex items-center justify-center gap-2 active:scale-95 duration-155 text-white ${isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+                                    }`}
                                 >
                                   {isSchedulerAiInjecting ? (
                                     <>
@@ -40890,18 +40495,16 @@ Return your response strictly as a JSON object matching this schema:
                         <div className={`p-6 border-t flex justify-end gap-3 shrink-0 ${isDark ? 'border-slate-750' : 'border-slate-200/80'}`}>
                           <button
                             onClick={() => setIsSchedulerModalOpen(false)}
-                            className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-wider transition border ${
-                              isDark ? 'neu-btn-dark text-slate-300 border-slate-700' : 'neu-btn-light text-slate-700 border-slate-200'
-                            }`}
+                            className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-wider transition border ${isDark ? 'neu-btn-dark text-slate-300 border-slate-700' : 'neu-btn-light text-slate-700 border-slate-200'
+                              }`}
                           >
                             Cancel
                           </button>
                           <button
                             onClick={handleSchedulerSaveManual}
                             disabled={isSchedulerSaving || (schedulerTaskSource === 'custom' ? !schedulerManualTopics.trim() : schedulerSelTopics.length === 0)}
-                            className={`px-8 py-3 rounded-xl text-xs font-black uppercase tracking-wider shadow-md transition disabled:opacity-50 text-white ${
-                              isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
-                            }`}
+                            className={`px-8 py-3 rounded-xl text-xs font-black uppercase tracking-wider shadow-md transition disabled:opacity-50 text-white ${isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+                              }`}
                           >
                             {isSchedulerSaving ? 'Saving...' : 'Save Schedule'}
                           </button>
