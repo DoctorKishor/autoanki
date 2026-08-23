@@ -1172,30 +1172,30 @@ export default function CampDashboard({
   };
 
   return (
-    <div className={`flex-grow overflow-y-auto p-4 md:p-6 custom-scrollbar transition-colors duration-300 ${
-      isDark ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'
+    <div className={`w-full transition-colors duration-300 ${
+      isDark ? 'text-slate-100' : 'text-slate-800'
     }`}>
-      <div className="w-full space-y-6">
+      <div className="w-full space-y-5">
 
         {/* Header Title */}
         <motion.div 
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="text-center md:text-left py-2 flex flex-col md:flex-row md:items-center md:justify-between gap-3"
+          className="text-center md:text-left py-1 flex flex-col md:flex-row md:items-center md:justify-between gap-3"
         >
           <div>
-            <h1 className={`text-2xl md:text-3xl font-black tracking-tight ${
+            <h1 className={`text-xl md:text-3xl font-black tracking-tight ${
               isDark ? 'text-slate-100' : 'text-slate-900'
             }`}>
               CAMP <span className={isDark ? 'text-blue-400' : 'text-blue-600'}>• Daily Progress Tracker</span>
             </h1>
-            <p className={`text-xs font-bold mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            <p className={`text-[10px] md:text-xs font-bold mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
               Cerebellum Accountability Management Program • High-Yield Focus Engineering
             </p>
           </div>
 
-          <div className="flex items-center justify-center md:justify-end gap-2">
+          <div className="hidden md:flex items-center justify-end gap-2">
             <button
               type="button"
               onClick={() => setShowOverviewModal(true)}
@@ -1210,17 +1210,17 @@ export default function CampDashboard({
         </motion.div>
 
         {/* Desktop Optimized Responsive Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
 
           {/* LEFT SIDE: Inputs / Charts (Matches layout) */}
-          <div className="space-y-6">
+          <div className="space-y-5">
 
             {/* Efficiency Chart Card */}
             <motion.div 
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.05 }}
-              className={`${isDark ? 'neu-card-dark' : 'neu-card-light'} rounded-3xl p-5 md:p-6 shadow-sm space-y-4`}
+              className={`${isDark ? 'neu-card-dark' : 'neu-card-light'} rounded-3xl p-4 sm:p-5 md:p-6 shadow-sm space-y-4`}
             >
               <div className="flex items-center justify-between">
                 <h2 className={`text-sm md:text-base font-black tracking-tight flex items-center gap-2 ${

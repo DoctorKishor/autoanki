@@ -24253,7 +24253,7 @@ Return your response strictly as a JSON object matching this schema:
                 </header>
 
                 {/* MOBILE MAIN CONTENT */}
-                <main className={`flex-grow overflow-y-auto pb-36 p-4 transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'}`}>
+                <main className={`flex-grow overflow-y-auto pb-36 px-2 sm:px-4 py-3 transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'}`}>
                   {currentTab === 'campTracker' && (
                     <CampDashboard
                       timerState={timerState}
