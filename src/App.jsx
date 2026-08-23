@@ -29254,7 +29254,22 @@ Return your response strictly as a JSON object matching this schema:
             );
           } else {
             mainContent = (
-              <div className={`h-screen w-screen font-sans flex overflow-hidden transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'}`}>
+              <div className={`h-screen w-screen font-sans flex overflow-hidden relative transition-colors duration-500 ${
+                settingsThemeMode === 'dark' ? 'bg-[#181b22] text-slate-100' : 'bg-[#d8e2ef] text-slate-800'
+              }`}>
+
+                {/* AMBIENT LIQUID GLASS MESH ORBS (Refracted through frosted glass) */}
+                <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+                  <div className={`absolute -top-24 -left-24 w-96 h-96 rounded-full blur-[100px] opacity-45 transition-colors duration-700 ${
+                    settingsThemeMode === 'dark' ? 'bg-gradient-to-tr from-cyan-600/50 to-blue-600/50' : 'bg-gradient-to-tr from-sky-400/40 to-blue-400/40'
+                  }`} />
+                  <div className={`absolute top-0 right-1/4 w-80 h-80 rounded-full blur-[110px] opacity-35 transition-colors duration-700 ${
+                    settingsThemeMode === 'dark' ? 'bg-gradient-to-br from-indigo-600/50 to-purple-800/50' : 'bg-gradient-to-br from-blue-300/50 to-indigo-300/50'
+                  }`} />
+                  <div className={`absolute -bottom-24 left-1/3 w-96 h-96 rounded-full blur-[120px] opacity-30 transition-colors duration-700 ${
+                    settingsThemeMode === 'dark' ? 'bg-gradient-to-tr from-purple-700/40 to-pink-700/40' : 'bg-gradient-to-tr from-teal-300/40 to-emerald-300/40'
+                  }`} />
+                </div>
 
                 {/* SIDEBAR NAVIGATION (Hidden on Mobile) */}
                 <aside
@@ -29263,13 +29278,15 @@ Return your response strictly as a JSON object matching this schema:
                   style={{
                     transition: 'width 0.6s cubic-bezier(0, 0, 0, 1)'
                   }}
-                  className={`flex ${isSidebarExpanded ? 'w-64' : 'w-20'} flex flex-col shrink-0 z-20 neu-action-sidebar will-change-[width] overflow-hidden`}
+                  className={`flex ${isSidebarExpanded ? 'w-64' : 'w-20'} flex flex-col shrink-0 z-20 will-change-[width] overflow-hidden ${
+                    settingsThemeMode === 'dark' ? 'liquid-glass-shell-dark border-r-0 border-t-0 border-l-0 border-b-0' : 'liquid-glass-shell-light border-r-0 border-t-0 border-l-0 border-b-0'
+                  }`}
                 >
                   {/* Top Logo & App Title (Perfect Symmetry, Aligned h-16) */}
                   <div className="h-16 flex items-center px-4 z-10 shrink-0">
                     <div className="flex items-center min-w-0 w-full">
                       <div className="w-12 shrink-0 flex items-center justify-center">
-                        <img src="/favicon.svg" alt="AutoAnki Logo" className="w-9 h-9 object-contain rounded-xl shadow-md" />
+                        <img src="/favicon.svg" alt="AutoAnki Logo" className="w-9 h-9 object-contain rounded-xl shadow-md drop-shadow-[0_4px_12px_rgba(59,130,246,0.3)]" />
                       </div>
                       <div
                         style={{
@@ -29483,19 +29500,19 @@ Return your response strictly as a JSON object matching this schema:
                 </aside>
 
                 {/* MAIN CONTENT AREA */}
-                <div className="flex-grow flex flex-col relative overflow-hidden">
+                <div className="flex-grow flex flex-col relative overflow-hidden z-10">
 
                   {/* TOP BAR - SEAMLESS LIQUID GLASS WITH SIDEBAR */}
                   <header className={`h-16 flex items-center justify-between px-6 shrink-0 z-30 transition-all duration-300 relative ${
-                    settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'
+                    settingsThemeMode === 'dark'
+                      ? 'liquid-glass-shell-dark border-none text-white'
+                      : 'liquid-glass-shell-light border-none text-gray-800'
                   }`}>
                     
                     {/* LEFT: Contextual Title & Actions */}
                     <div className="flex items-center gap-3">
                       <div className={`px-3.5 py-1.5 rounded-2xl flex items-center gap-2.5 transition-all ${
-                        settingsThemeMode === 'dark'
-                          ? 'bg-white/[0.04] border border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.08)]'
-                          : 'bg-white/60 border border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.8)]'
+                        settingsThemeMode === 'dark' ? 'liquid-glass-pill-dark' : 'liquid-glass-pill-light'
                       }`}>
                         <span className="text-base select-none">
                           {currentTab === 'campTracker' ? '🏕️' : currentTab === 'about' ? '💡' : currentTab === 'smartReview' ? '🧠' : currentTab === 'pytManager' ? '🎯' : currentTab === 'pytLogger' ? '📝' : currentTab === 'obsOverlay' ? '🎥' : currentTab === 'studyScheduler' ? '📅' : currentTab === 'subjectTracker' ? '📑' : currentTab === 'dashboard' ? '📊' : currentTab === 'studyRoom' ? '🎧' : '📚'}
@@ -29511,8 +29528,8 @@ Return your response strictly as a JSON object matching this schema:
                           onClick={() => setIsWidgetCustomizerOpen(true)}
                           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition font-black text-[10px] uppercase tracking-wider active:scale-95 cursor-pointer ${
                             settingsThemeMode === 'dark'
-                              ? 'bg-white/[0.05] hover:bg-white/[0.1] border-white/10 text-blue-400 hover:text-white shadow-sm'
-                              : 'bg-white/70 hover:bg-white/90 border-white/80 text-blue-600 hover:text-blue-800 shadow-sm'
+                              ? 'liquid-glass-pill-dark text-blue-400 hover:text-white'
+                              : 'liquid-glass-pill-light text-blue-600 hover:text-blue-800'
                           }`}
                           title="Customize Dashboard Widgets"
                         >
@@ -29529,10 +29546,8 @@ Return your response strictly as a JSON object matching this schema:
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => setIsDailyMetricsOpen(!isDailyMetricsOpen)}
-                        className={`flex items-center gap-2.5 sm:gap-3.5 px-3.5 sm:px-4 py-2 rounded-2xl cursor-pointer transition-all border select-none backdrop-blur-xl ${
-                          settingsThemeMode === 'dark'
-                            ? 'bg-white/[0.05] hover:bg-white/[0.09] border-white/[0.12] text-slate-200 shadow-[0_4px_20px_rgba(0,0,0,0.2),inset_0_1px_1px_rgba(255,255,255,0.12)]'
-                            : 'bg-white/75 hover:bg-white/90 border-white/80 text-slate-800 shadow-[0_4px_20px_rgba(37,99,235,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)]'
+                        className={`flex items-center gap-2.5 sm:gap-3.5 px-3.5 sm:px-4 py-2 rounded-2xl cursor-pointer transition-all select-none ${
+                          settingsThemeMode === 'dark' ? 'liquid-glass-pill-dark text-slate-100' : 'liquid-glass-pill-light text-slate-800'
                         } ${isDailyMetricsOpen ? (settingsThemeMode === 'dark' ? 'ring-2 ring-blue-400/50 border-blue-400/40' : 'ring-2 ring-blue-500/40 border-blue-400/40') : ''}`}
                         title="Click to view full study momentum"
                       >
@@ -29576,8 +29591,8 @@ Return your response strictly as a JSON object matching this schema:
                               transition={{ duration: 0.22, ease: [0, 0, 0, 1] }}
                               className={`absolute top-full left-1/2 -translate-x-1/2 mt-2.5 z-50 w-80 rounded-3xl p-5 border shadow-2xl backdrop-blur-3xl ${
                                 settingsThemeMode === 'dark'
-                                  ? 'bg-[#222730]/90 border-white/[0.15] text-slate-100 shadow-[0_20px_60px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.15)]'
-                                  : 'bg-[#e6ecf5]/90 border-white/90 text-slate-800 shadow-[0_20px_60px_rgba(37,99,235,0.12),inset_0_1px_1px_rgba(255,255,255,0.9)]'
+                                  ? 'bg-[#222730]/92 border-white/[0.15] text-slate-100 shadow-[0_20px_60px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.15)]'
+                                  : 'bg-[#e6ecf5]/92 border-white/90 text-slate-800 shadow-[0_20px_60px_rgba(37,99,235,0.12),inset_0_1px_1px_rgba(255,255,255,0.9)]'
                               }`}
                             >
                               {/* Header */}
@@ -29651,10 +29666,10 @@ Return your response strictly as a JSON object matching this schema:
                       {timerState.status !== 'idle' && (
                         <div
                           onClick={() => setIsTimerFullscreen(true)}
-                          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-2xl text-xs font-black shadow-sm font-mono tracking-tight animate-in slide-in-from-right-2 border cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all backdrop-blur-xl ${
+                          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-2xl text-xs font-black shadow-sm font-mono tracking-tight animate-in slide-in-from-right-2 border cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all ${
                             settingsThemeMode === 'dark'
-                              ? 'bg-gradient-to-r from-blue-500/15 via-indigo-500/15 to-purple-500/15 border-blue-400/30 text-white shadow-[0_4px_20px_rgba(59,130,246,0.2)]'
-                              : 'bg-gradient-to-r from-blue-50/90 via-indigo-50/90 to-purple-50/90 border-blue-300/60 text-slate-800 shadow-[0_4px_20px_rgba(59,130,246,0.1)]'
+                              ? 'liquid-glass-pill-dark text-white shadow-[0_4px_20px_rgba(59,130,246,0.2)]'
+                              : 'liquid-glass-pill-light text-slate-800 shadow-[0_4px_20px_rgba(59,130,246,0.1)]'
                           }`}
                           title="Click to open Fullscreen Study Room"
                         >
@@ -29729,12 +29744,12 @@ Return your response strictly as a JSON object matching this schema:
                         type="button"
                         onClick={handleHeaderSync}
                         disabled={isSyncing || gdriveSyncState.isSyncing}
-                        className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer active:scale-95 backdrop-blur-md ${
+                        className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer active:scale-95 ${
                           (isSyncing || gdriveSyncState.isSyncing)
                             ? 'bg-blue-500/20 text-blue-400 border-blue-500/30 shadow-sm cursor-wait'
                             : (settingsThemeMode === 'dark'
-                                ? 'bg-white/[0.05] hover:bg-white/[0.1] text-slate-200 border-white/10 hover:text-white shadow-sm'
-                                : 'bg-white/70 hover:bg-white/90 text-blue-600 border-white/80 hover:text-blue-800 shadow-sm')
+                                ? 'liquid-glass-pill-dark text-slate-200 hover:text-white'
+                                : 'liquid-glass-pill-light text-blue-600 hover:text-blue-800')
                         }`}
                         title={gdriveSyncState.isSyncing ? gdriveSyncState.message : (gdriveAuthState ? 'Sync with Google Drive & LocalDB' : `Sync ${currentTab} data from Local Database`)}
                       >
@@ -29747,19 +29762,21 @@ Return your response strictly as a JSON object matching this schema:
                       </button>
 
                       {/* Status Badge */}
-                      <div className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 backdrop-blur-md ${
-                        gdriveAuthState
-                          ? (settingsThemeMode === 'dark' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.15)]' : 'bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm')
-                          : (user 
-                              ? (settingsThemeMode === 'dark' ? 'bg-blue-500/15 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-200')
-                              : (settingsThemeMode === 'dark' ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30' : 'bg-amber-50 text-amber-600 border border-amber-200'))
+                      <div className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 ${
+                        settingsThemeMode === 'dark' ? 'liquid-glass-pill-dark' : 'liquid-glass-pill-light'
                       }`}>
                         <div className={`w-1.5 h-1.5 rounded-full ${
                           gdriveSyncState.isSyncing
                             ? 'bg-amber-400 animate-pulse'
                             : (gdriveAuthState ? 'bg-emerald-400 animate-pulse' : 'bg-blue-400')
                         }`} />
-                        <span>
+                        <span className={
+                          gdriveAuthState
+                            ? (settingsThemeMode === 'dark' ? 'text-emerald-400 font-black' : 'text-emerald-700 font-black')
+                            : (user
+                                ? (settingsThemeMode === 'dark' ? 'text-blue-400 font-black' : 'text-blue-700 font-black')
+                                : (settingsThemeMode === 'dark' ? 'text-amber-400 font-black' : 'text-amber-700 font-black'))
+                        }>
                           {gdriveSyncState.isSyncing
                             ? 'Syncing'
                             : (gdriveAuthState ? 'Cloud Vault' : (user ? 'Online' : 'Offline'))}
@@ -29771,8 +29788,8 @@ Return your response strictly as a JSON object matching this schema:
                   {/* TAB VIEWS - CANVAS WITH SMOOTH CURVED CORNER */}
                   <div className={`flex-grow flex flex-col overflow-hidden relative transition-all duration-300 rounded-tl-[32px] border-t border-l shadow-2xl ${
                     settingsThemeMode === 'dark'
-                      ? 'neu-bg-dark text-slate-100 border-white/[0.08] shadow-[inset_0_4px_24px_rgba(0,0,0,0.4)]'
-                      : 'neu-bg-light text-slate-800 border-white/90 shadow-[inset_0_4px_24px_rgba(37,99,235,0.04)]'
+                      ? 'bg-[#222730]/95 text-slate-100 border-white/[0.08] shadow-[inset_0_4px_24px_rgba(0,0,0,0.4)]'
+                      : 'bg-[#e6ecf5]/95 text-slate-800 border-white/90 shadow-[inset_0_4px_24px_rgba(37,99,235,0.04)]'
                   }`}>
 
                     {currentTab === 'campTracker' && (

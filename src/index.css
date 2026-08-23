@@ -1851,4 +1851,61 @@ body,
 .radio-input.light-theme .choice-circle:checked ~ .choice-name,
 .radio-input.light-theme .choice:hover .choice-name {
   color: #0f172a;
-}
+}
+
+/* ==========================================================
+   LIQUID GLASS DESIGN SYSTEM (VisionOS & High Refraction)
+   ========================================================== */
+.liquid-glass-shell-light {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0.25) 100%);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 
+    0 8px 32px 0 rgba(31, 38, 135, 0.08),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.liquid-glass-shell-dark {
+  background: linear-gradient(135deg, rgba(34, 39, 48, 0.6) 0%, rgba(20, 24, 33, 0.45) 100%);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 
+    0 8px 32px 0 rgba(0, 0, 0, 0.4),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.liquid-glass-pill-light {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.4) 100%);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 
+    0 4px 16px 0 rgba(31, 38, 135, 0.06),
+    inset 0 1px 2px 0 rgba(255, 255, 255, 1);
+}
+
+.liquid-glass-pill-light:hover {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.55) 100%);
+  box-shadow: 
+    0 6px 20px 0 rgba(31, 38, 135, 0.1),
+    inset 0 1px 2px 0 rgba(255, 255, 255, 1);
+}
+
+.liquid-glass-pill-dark {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 
+    0 4px 16px 0 rgba(0, 0, 0, 0.3),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.liquid-glass-pill-dark:hover {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.06) 100%);
+  box-shadow: 
+    0 6px 20px 0 rgba(0, 0, 0, 0.4),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.25);
+}
