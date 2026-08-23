@@ -2015,13 +2015,15 @@ body,
     transition: opacity 0.2s ease;
   }
 
-  .ios-dynamic-island.mobile-hole:not(.active) .compact-content {
+  .ios-dynamic-island.mobile-hole:not(.active) .compact-content,
+  .ios-dynamic-island.mobile-hole:not(.active) .compact-timer-mini,
+  .ios-dynamic-island.mobile-hole:not(.active) .compact-timer-semi {
     opacity: 0 !important;
     pointer-events: none !important;
     display: none !important;
   }
 
-  /* STATE 2: MINI / SEMI-EXPANDED PILL (OnePlus Fluid Cloud capsule) */
+  /* STATS PILL */
   .ios-dynamic-island.mobile-pill:not(.active) {
     width: 195px !important;
     height: 32px !important;
@@ -2038,6 +2040,64 @@ body,
     padding: 0 10px !important;
     opacity: 1 !important;
     pointer-events: auto !important;
+  }
+
+  .ios-dynamic-island.mobile-pill:not(.active) .compact-timer-mini,
+  .ios-dynamic-island.mobile-pill:not(.active) .compact-timer-semi {
+    display: none !important;
+  }
+
+  /* TIMER STATE 2: MINI CAPSULE (Image 1) */
+  .ios-dynamic-island.mobile-timer-mini:not(.active) {
+    width: 126px !important;
+    height: 32px !important;
+    top: 6px !important;
+    border-radius: 16px !important;
+    background-color: #07090e !important;
+    border: 1.5px solid rgba(255, 255, 255, 0.18) !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5) !important;
+  }
+
+  .ios-dynamic-island.mobile-timer-mini:not(.active)::after {
+    opacity: 0 !important;
+  }
+
+  .ios-dynamic-island.mobile-timer-mini:not(.active) .compact-timer-mini {
+    display: flex !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+
+  .ios-dynamic-island.mobile-timer-mini:not(.active) .compact-content,
+  .ios-dynamic-island.mobile-timer-mini:not(.active) .compact-timer-semi {
+    display: none !important;
+  }
+
+  /* TIMER STATE 3: SEMI-EXPANDED CARD (Image 2) */
+  .ios-dynamic-island.mobile-timer-semi:not(.active) {
+    width: 256px !important;
+    height: 56px !important;
+    top: 4px !important;
+    border-radius: 22px !important;
+    background-color: #12161f !important;
+    border: 1px solid rgba(255, 255, 255, 0.16) !important;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55), inset 0 1px 1px rgba(255, 255, 255, 0.1) !important;
+    color: #f1f5f9 !important;
+  }
+
+  .ios-dynamic-island.mobile-timer-semi:not(.active)::after {
+    opacity: 0 !important;
+  }
+
+  .ios-dynamic-island.mobile-timer-semi:not(.active) .compact-timer-semi {
+    display: flex !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+
+  .ios-dynamic-island.mobile-timer-semi:not(.active) .compact-content,
+  .ios-dynamic-island.mobile-timer-semi:not(.active) .compact-timer-mini {
+    display: none !important;
   }
 
   /* STATE 3: FULL EXPANDED DRAWER */

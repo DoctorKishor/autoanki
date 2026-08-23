@@ -5136,7 +5136,7 @@ export default function App() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [mobileLibraryLevel, setMobileLibraryLevel] = useState('folders');
   const [isDailyMetricsOpen, setIsDailyMetricsOpen] = useState(false);
-  const [isIslandPillOpen, setIsIslandPillOpen] = useState(false);
+  const [islandMobileState, setIsIslandMobileState] = useState('hole'); // 'hole' | 'pill' | 'mini' | 'semi'
   const islandTouchRef = useRef({ startX: 0, startY: 0, startTime: 0, isSwiping: false });
 
   // --- GOOGLE DRIVE CLOUD SYNC STATE ---
@@ -6039,6 +6039,40 @@ export default function App() {
   const [localTimerTimeLeft, setLocalTimerTimeLeft] = useState(1500);
   const [localCustomTimerTimeLeft, setLocalCustomTimerTimeLeft] = useState(600);
   const [localStopwatchTime, setLocalStopwatchTime] = useState(0);
+
+  const activeTimerInfo = useMemo(() => {
+    const activeType = timerState.timerType || 'pomodoro';
+    let secs = 0;
+    let label = 'Focus Session';
+    let isRunning = false;
+
+    if (activeType === 'pomodoro') {
+      secs = localTimerTimeLeft;
+      label = timerState.pomodoroMode === 'break' ? 'Break' : (timerState.pomodoroMode === 'longBreak' ? 'Long Break' : 'Focus Session');
+      isRunning = timerState.pomodoroStatus === 'running';
+    } else if (activeType === 'timer') {
+      secs = localCustomTimerTimeLeft;
+      label = 'Timer';
+      isRunning = timerState.timerStatus === 'running';
+    } else {
+      secs = Math.floor(localStopwatchTime / 1000);
+      label = 'Stopwatch';
+      isRunning = timerState.stopwatchStatus === 'running';
+    }
+
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    const timeStr = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    const subLabel = `${Math.max(1, Math.ceil(secs / 60))} min`;
+
+    return { timeStr, subLabel, label, isRunning, activeType, secs };
+  }, [timerState.timerType, timerState.pomodoroMode, timerState.pomodoroStatus, timerState.timerStatus, timerState.stopwatchStatus, localTimerTimeLeft, localCustomTimerTimeLeft, localStopwatchTime]);
+
+  useEffect(() => {
+    if (timerState.status !== 'idle') {
+      setIslandMobileState(prev => (prev === 'hole' || prev === 'pill' ? 'mini' : prev));
+    }
+  }, [timerState.status]);
 
   // Timer custom configurations input state (local)
   const [activeTimerTab, setActiveTimerTab] = useState('pomodoro'); // 'pomodoro' | 'timer' | 'stopwatch'
@@ -24261,12 +24295,30 @@ Return your response strictly as a JSON object matching this schema:
                       const diffY = touch.clientY - startY;
                       const duration = Date.now() - startTime;
 
-                      // Horizontal swipe detected (OnePlus OxygenOS style cycle between punch-hole & semi-expanded pill)
+                      // Horizontal swipe detected (OnePlus OxygenOS style cycle between punch-hole, mini capsule, and semi-expanded card)
                       if (Math.abs(diffX) > 18 && Math.abs(diffX) > Math.abs(diffY)) {
                         if (isDailyMetricsOpen) {
                           setIsDailyMetricsOpen(false);
                         } else {
-                          setIsIslandPillOpen(prev => !prev);
+                          const isTimerActive = timerState.status !== 'idle';
+                          const dir = diffX > 0 ? 1 : -1;
+                          if (isTimerActive) {
+                            const states = ['hole', 'mini', 'semi'];
+                            setIslandMobileState(prev => {
+                              let idx = states.indexOf(prev);
+                              if (idx === -1) idx = 0;
+                              let nextIdx = (idx + dir + states.length) % states.length;
+                              return states[nextIdx];
+                            });
+                          } else {
+                            const states = ['hole', 'pill'];
+                            setIslandMobileState(prev => {
+                              let idx = states.indexOf(prev);
+                              if (idx === -1) idx = 0;
+                              let nextIdx = (idx + dir + states.length) % states.length;
+                              return states[nextIdx];
+                            });
+                          }
                         }
                         islandTouchRef.current = { startX: 0, startY: 0, startTime: 0, isSwiping: false };
                         return;
@@ -24274,21 +24326,37 @@ Return your response strictly as a JSON object matching this schema:
 
                       // Tap detected
                       if (!isSwiping && Math.abs(diffX) < 15 && Math.abs(diffY) < 15 && duration < 600) {
-                        if (!isDailyMetricsOpen) {
-                          setIsDailyMetricsOpen(true);
+                        const isTimerActive = timerState.status !== 'idle';
+                        if (isTimerActive) {
+                          setIsTimerFullscreen(true);
+                        } else {
+                          if (!isDailyMetricsOpen) {
+                            setIsDailyMetricsOpen(true);
+                          }
                         }
                       }
                       islandTouchRef.current = { startX: 0, startY: 0, startTime: 0, isSwiping: false };
                     }}
                     onClick={() => {
-                      if (!islandTouchRef.current.isSwiping && !isDailyMetricsOpen) {
-                        setIsDailyMetricsOpen(true);
+                      if (!islandTouchRef.current.isSwiping) {
+                        const isTimerActive = timerState.status !== 'idle';
+                        if (isTimerActive) {
+                          setIsTimerFullscreen(true);
+                        } else if (!isDailyMetricsOpen) {
+                          setIsDailyMetricsOpen(true);
+                        }
                       }
                     }}
-                    className={`ios-dynamic-island ${settingsThemeMode === 'dark' ? 'dark' : 'light'} ${isDailyMetricsOpen ? 'active' : (isIslandPillOpen ? 'mobile-pill' : 'mobile-hole')}`}
-                    title={isDailyMetricsOpen ? "" : (isIslandPillOpen ? "Swipe to collapse to punch hole, tap to expand full" : "Swipe to reveal mini pill, tap to expand full")}
+                    className={`ios-dynamic-island ${settingsThemeMode === 'dark' ? 'dark' : 'light'} ${
+                      isDailyMetricsOpen
+                        ? 'active'
+                        : timerState.status !== 'idle'
+                          ? (islandMobileState === 'semi' ? 'mobile-timer-semi' : (islandMobileState === 'mini' ? 'mobile-timer-mini' : 'mobile-hole'))
+                          : (islandMobileState === 'pill' ? 'mobile-pill' : 'mobile-hole')
+                    }`}
+                    title={isDailyMetricsOpen ? "" : (timerState.status !== 'idle' ? "Swipe to cycle timer view, tap to open Study Room" : "Swipe to reveal mini stats, tap to open Momentum Drawer")}
                   >
-                    {/* Compact Content */}
+                    {/* STATS COMPACT PILL */}
                     <div className="compact-content">
                       {/* Study Time */}
                       <div className="flex items-center gap-1 shrink-0">
@@ -24314,6 +24382,61 @@ Return your response strictly as a JSON object matching this schema:
 
                       {/* Chevron */}
                       <ChevronDown className="w-3 h-3 opacity-60 text-blue-500 shrink-0" />
+                    </div>
+
+                    {/* TIMER MINI CAPSULE (Image 1) */}
+                    <div className="compact-timer-mini flex items-center justify-between w-full px-3">
+                      <Hourglass className={`w-3.5 h-3.5 text-blue-400 shrink-0 ${activeTimerInfo.isRunning ? 'animate-pulse' : ''}`} />
+                      <span className="font-mono text-xs font-black text-blue-400 tracking-tight">{activeTimerInfo.timeStr}</span>
+                    </div>
+
+                    {/* TIMER SEMI-EXPANDED CARD (Image 2) */}
+                    <div className="compact-timer-semi flex items-center justify-between w-full px-3.5 py-1.5">
+                      {/* Left: Hourglass + Time & Subtitle */}
+                      <div className="flex items-center gap-2.5">
+                        <Hourglass className={`w-6 h-6 text-blue-500 shrink-0 ${activeTimerInfo.isRunning ? 'animate-pulse' : ''}`} />
+                        <div className="flex flex-col text-left">
+                          <span className="font-mono text-base font-black tracking-tight leading-tight text-white">{activeTimerInfo.timeStr}</span>
+                          <span className="text-[10px] font-bold text-slate-400 leading-none">{activeTimerInfo.subLabel || activeTimerInfo.label}</span>
+                        </div>
+                      </div>
+
+                      {/* Right: Quick Action Controls */}
+                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                        {/* Play / Pause circular button */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (activeTimerInfo.isRunning) {
+                              handlePauseTimer();
+                            } else {
+                              handleStartTimer();
+                            }
+                          }}
+                          className="w-8 h-8 rounded-full bg-blue-500 hover:bg-blue-600 active:scale-95 text-white flex items-center justify-center transition shadow-md cursor-pointer shrink-0"
+                          title={activeTimerInfo.isRunning ? "Pause Timer" : "Start Timer"}
+                        >
+                          {activeTimerInfo.isRunning ? (
+                            <Pause className="w-3.5 h-3.5 fill-current" />
+                          ) : (
+                            <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
+                          )}
+                        </button>
+
+                        {/* Reset / Stop circular button */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleResetTimer();
+                          }}
+                          className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-slate-300 flex items-center justify-center transition border border-white/10 cursor-pointer shrink-0"
+                          title="Reset Timer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
 
                     {/* Expanded Content */}
@@ -24388,19 +24511,6 @@ Return your response strictly as a JSON object matching this schema:
 
                   {/* RIGHT: Actions */}
                   <div className="flex items-center gap-1.5 sm:gap-2 z-10 shrink-0">
-                    {/* Active Timer Pill if running */}
-                    {timerState.status !== 'idle' && (
-                      <button
-                        onClick={() => setIsTimerFullscreen(true)}
-                        className={`flex items-center gap-1 px-2 py-1 rounded-xl text-[10px] font-black border transition active:scale-95 cursor-pointer ${
-                          settingsThemeMode === 'dark' ? 'neu-btn-dark text-orange-400 border-orange-500/30' : 'neu-btn-light text-orange-600 border-orange-200'
-                        }`}
-                        title="Open Study Room"
-                      >
-                        <Clock className={`w-3 h-3 ${timerState.status === 'running' ? 'animate-spin duration-10000' : ''}`} />
-                        <span className="font-mono">{formatMinutesToTime(localTimerTimeLeft)}</span>
-                      </button>
-                    )}
                     <button
                       onClick={handleHeaderSync}
                       disabled={isSyncing || gdriveSyncState.isSyncing}
