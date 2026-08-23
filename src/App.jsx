@@ -4461,10 +4461,10 @@ export default function App() {
                   transition={{ duration: 0.3, ease: 'easeInOut' }}
                   className="overflow-hidden space-y-4 sm:space-y-6 pt-3 sm:pt-4 pb-2 sm:pb-3 px-0.5 sm:px-1.5 border-t border-gray-500/10"
                 >
-                  <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 sm:gap-4 max-w-xl mx-auto w-full">
-                    <div className="w-full sm:w-[230px]">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-4 max-w-xl mx-auto w-full">
+                    <div className="w-full">
                       <UiverseButton
-                        icon={<Download className="w-4 h-4 text-blue-500" />}
+                        icon={<Download className="w-4 h-4 text-blue-500 shrink-0" />}
                         onClick={handleExportBackup}
                         fullWidth
                         size="md"
@@ -4472,13 +4472,13 @@ export default function App() {
                         isSuccess={exportBackupState}
                         successText="Exported!"
                       >
-                        Export Backup (.json)
+                        Export (.json)
                       </UiverseButton>
                     </div>
 
-                    <div className="w-full sm:w-[230px]">
+                    <div className="w-full">
                       <UiverseButton
-                        icon={<Upload className="w-4 h-4 text-emerald-500" />}
+                        icon={<Upload className="w-4 h-4 text-emerald-500 shrink-0" />}
                         onClick={handleImportBackup}
                         fullWidth
                         size="md"
@@ -4486,7 +4486,7 @@ export default function App() {
                         isSuccess={importBackupState}
                         successText="Imported!"
                       >
-                        Import Backup File
+                        Import (.json)
                       </UiverseButton>
                     </div>
                   </div>
