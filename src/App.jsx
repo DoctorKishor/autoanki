@@ -11515,12 +11515,12 @@ JSON Format:
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: -12, scale: 0.98 }}
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-        className={`flex-grow p-4 lg:p-6 flex flex-col gap-6 max-w-[1200px] mx-auto w-full overflow-y-auto pb-24 lg:pb-6 transition-colors duration-300 ${isDark ? 'text-slate-100' : 'text-slate-800'
+        className={`flex-grow px-2 sm:px-4 py-3 sm:py-4 lg:p-6 flex flex-col gap-4 sm:gap-6 max-w-[1200px] mx-auto w-full overflow-y-auto pb-24 lg:pb-6 transition-colors duration-300 ${isDark ? 'text-slate-100' : 'text-slate-800'
           }`}
       >
 
         {/* Header section with high-contrast glassmorphic detailing */}
-        <div className={`flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-3xl backdrop-blur-md transition-colors duration-300 ${isDark ? 'neu-card-dark border border-white/5 bg-[#222730]/90' : 'neu-card-light border border-white/80 bg-white/70 shadow-md'
+        <div className={`flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 p-4 sm:p-6 rounded-2xl sm:rounded-3xl backdrop-blur-md transition-colors duration-300 ${isDark ? 'neu-card-dark border border-white/5 bg-[#222730]/90' : 'neu-card-light border border-white/80 bg-white/70 shadow-md'
           }`}>
           <div className="flex items-center gap-3.5">
             <div className="bg-gradient-to-r from-orange-500 to-amber-500 text-white p-3 rounded-2xl shadow-lg shadow-orange-500/20 animate-pulse">
@@ -11850,13 +11850,13 @@ JSON Format:
                         </div>
 
                         {/* Target Selector Dropdown */}
-                        <div className={`mt-6 w-full p-4 rounded-2xl flex items-center justify-between transition ${isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'
+                        <div className={`mt-5 w-full p-3 sm:p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 transition ${isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'
                           }`}>
-                          <div className="text-left">
+                          <div className="flex items-center justify-between sm:justify-start sm:flex-col sm:items-start gap-1 text-left">
                             <span className={`text-[9px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Target Level</span>
-                            <div className="flex items-center gap-1.5 mt-0.5">
+                            <div className="flex items-center gap-1.5">
                               <span className={`text-xs font-black ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{selectedStreakTag}</span>
-                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded animate-pulse ${isDark ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-orange-50 text-orange-500'
+                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${isDark ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-orange-50 text-orange-500'
                                 }`}>Goal</span>
                             </div>
                           </div>
@@ -11864,7 +11864,7 @@ JSON Format:
                           <select
                             value={selectedStreakTag}
                             onChange={(e) => setSelectedStreakTag(e.target.value)}
-                            className={`text-xs font-bold px-3 py-1.5 rounded-xl outline-none cursor-pointer transition ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-800'
+                            className={`w-full sm:w-auto text-xs font-bold px-3 py-2 sm:py-1.5 rounded-xl outline-none cursor-pointer transition ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-800'
                               }`}
                           >
                             <option value="Rookie">Rookie (2h/20q/30c)</option>
@@ -13260,17 +13260,17 @@ JSON Format:
     const currentTheme = getThemeClasses(activeType);
 
     return (
-      <div className={`p-6 rounded-3xl flex flex-col transition-colors duration-300 w-full text-left ${isDark ? 'neu-card-dark border border-white/5 shadow-xl' : 'neu-card-light border border-white/70 shadow-md'
+      <div className={`p-4 sm:p-6 rounded-2xl sm:rounded-3xl flex flex-col transition-colors duration-300 w-full text-left ${isDark ? 'neu-card-dark border border-white/5 shadow-xl' : 'neu-card-light border border-white/70 shadow-md'
         }`}>
         {/* Tab Header */}
-        <div className={`flex items-center justify-between pb-3 border-b mb-5 ${isDark ? 'border-white/5' : 'border-slate-200/60'}`}>
+        <div className={`flex items-center justify-between pb-3 border-b mb-4 sm:mb-5 ${isDark ? 'border-white/5' : 'border-slate-200/60'}`}>
           <div className="flex items-center gap-2">
             <span className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
               ⏱️ Focus Timer Hub
             </span>
             <button
               onClick={() => setIsTimerFullscreen(true)}
-              className={`p-1 rounded-lg transition ${isDark ? 'hover:bg-white/10 text-slate-400 hover:text-slate-200' : 'hover:bg-slate-200/50 text-slate-500 hover:text-slate-800'}`}
+              className={`p-1 rounded-lg transition cursor-pointer ${isDark ? 'hover:bg-white/10 text-slate-400 hover:text-slate-200' : 'hover:bg-slate-200/50 text-slate-500 hover:text-slate-800'}`}
               title="Fullscreen Mode"
             >
               <Maximize className="w-3.5 h-3.5" />
@@ -13283,14 +13283,14 @@ JSON Format:
         </div>
 
         {/* Tab Selector */}
-        <div className={`relative flex items-center p-1.5 rounded-2xl mb-6 select-none ${isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'
+        <div className={`relative flex items-center p-1 sm:p-1.5 rounded-2xl mb-5 sm:mb-6 select-none ${isDark ? 'neu-pressed-dark border border-white/5' : 'neu-pressed-light border border-white/70'
           }`}>
           {/* Single Sliding Pill Indicator */}
           <div
-            className={`absolute top-1.5 bottom-1.5 w-[calc((100%-0.75rem)/3)] rounded-xl shadow-md ${isDark ? 'neu-btn-dark border border-white/10' : 'neu-btn-light border border-white/80'
+            className={`absolute top-1 bottom-1 sm:top-1.5 sm:bottom-1.5 w-[calc((100%-0.5rem)/3)] sm:w-[calc((100%-0.75rem)/3)] rounded-xl shadow-md ${isDark ? 'neu-btn-dark border border-white/10' : 'neu-btn-light border border-white/80'
               }`}
             style={{
-              left: `calc(0.375rem + ${activeType === 'pomodoro' ? 0 : activeType === 'timer' ? 1 : 2} * ((100% - 0.75rem) / 3))`,
+              left: `calc(0.25rem + ${activeType === 'pomodoro' ? 0 : activeType === 'timer' ? 1 : 2} * ((100% - 0.5rem) / 3))`,
               transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
             }}
           />
@@ -13298,35 +13298,35 @@ JSON Format:
           <button
             type="button"
             onClick={() => handleSwitchTimerType('pomodoro')}
-            className={`relative flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer flex items-center justify-center gap-1.5 z-10 transition-colors duration-300 ${activeType === 'pomodoro'
+            className={`relative flex-1 py-2 text-[9px] sm:text-[10px] font-black uppercase tracking-tight sm:tracking-wider rounded-xl cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 z-10 transition-colors duration-300 px-0.5 sm:px-1 ${activeType === 'pomodoro'
                 ? (isDark ? 'text-orange-400 font-extrabold' : 'text-orange-600 font-extrabold')
                 : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800')
               }`}
           >
-            <Clock className="w-3.5 h-3.5" />
-            Pomodoro
+            <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+            <span>Pomodoro</span>
           </button>
           <button
             type="button"
             onClick={() => handleSwitchTimerType('timer')}
-            className={`relative flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer flex items-center justify-center gap-1.5 z-10 transition-colors duration-300 ${activeType === 'timer'
+            className={`relative flex-1 py-2 text-[9px] sm:text-[10px] font-black uppercase tracking-tight sm:tracking-wider rounded-xl cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 z-10 transition-colors duration-300 px-0.5 sm:px-1 ${activeType === 'timer'
                 ? (isDark ? 'text-indigo-400 font-extrabold' : 'text-indigo-600 font-extrabold')
                 : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800')
               }`}
           >
-            <Hourglass className="w-3.5 h-3.5" />
-            Timer
+            <Hourglass className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+            <span>Timer</span>
           </button>
           <button
             type="button"
             onClick={() => handleSwitchTimerType('stopwatch')}
-            className={`relative flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer flex items-center justify-center gap-1.5 z-10 transition-colors duration-300 ${activeType === 'stopwatch'
+            className={`relative flex-1 py-2 text-[9px] sm:text-[10px] font-black uppercase tracking-tight sm:tracking-wider rounded-xl cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 z-10 transition-colors duration-300 px-0.5 sm:px-1 ${activeType === 'stopwatch'
                 ? (isDark ? 'text-emerald-400 font-extrabold' : 'text-emerald-600 font-extrabold')
                 : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800')
               }`}
           >
-            <Timer className="w-3.5 h-3.5" />
-            Stopwatch
+            <Timer className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+            <span>Stopwatch</span>
           </button>
         </div>
 
