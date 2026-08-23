@@ -24342,6 +24342,9 @@ Return your response strictly as a JSON object matching this schema:
                       // 2. TAP GESTURE (Low movement & quick release)
                       if (!isSwiping && Math.abs(diffX) < 10 && Math.abs(diffY) < 10 && duration < 600) {
                         if (isDailyMetricsOpen) {
+                          // Clicking expanded stats card takes the user to Study Room Manual Log page
+                          setCurrentTab('study');
+                          setStudyActiveTab('manual');
                           setIsDailyMetricsOpen(false);
                         } else if (islandMobileState === 'semi') {
                           // ONLY clicking the expanded card of the timer must take the user to fullscreen timer page
@@ -24373,6 +24376,8 @@ Return your response strictly as a JSON object matching this schema:
                         (timerState.stopwatchStatus && timerState.stopwatchStatus !== 'idle')
                       );
                       if (isDailyMetricsOpen) {
+                        setCurrentTab('study');
+                        setStudyActiveTab('manual');
                         setIsDailyMetricsOpen(false);
                       } else if (islandMobileState === 'semi') {
                         setIsTimerFullscreen(true);
@@ -24397,7 +24402,7 @@ Return your response strictly as a JSON object matching this schema:
                           ? (islandMobileState === 'semi' ? 'mobile-timer-semi' : (islandMobileState === 'mini' ? 'mobile-timer-mini' : (islandMobileState === 'pill' ? 'mobile-pill' : 'mobile-hole')))
                           : (islandMobileState === 'pill' ? 'mobile-pill' : 'mobile-hole')
                     }`}
-                    title={isDailyMetricsOpen ? "" : (((timerState.pomodoroStatus && timerState.pomodoroStatus !== 'idle') ||
+                    title={isDailyMetricsOpen ? "Click to open Study Room Manual Log" : (((timerState.pomodoroStatus && timerState.pomodoroStatus !== 'idle') ||
                                                        (timerState.timerStatus && timerState.timerStatus !== 'idle') ||
                                                        (timerState.stopwatchStatus && timerState.stopwatchStatus !== 'idle'))
                       ? "Swipe to cycle (Hole / Stats / Timer), tap to expand"
@@ -24449,67 +24454,134 @@ Return your response strictly as a JSON object matching this schema:
                       <span className="font-mono text-xs font-black text-blue-400 tracking-tight">{activeTimerInfo.timeStr}</span>
                     </div>
 
-                    {/* TIMER SEMI-EXPANDED CARD (Image 2) */}
+                    {/* TIMER EXPANDED CARD (Same size and aesthetic as stats expanded view) */}
                     <div 
-                      className="compact-timer-semi flex items-center justify-between w-full px-3.5 py-1.5 cursor-pointer"
+                      className="compact-timer-semi flex flex-col justify-between w-full h-full cursor-pointer select-none"
                       onClick={() => {
                         setIsTimerFullscreen(true);
                       }}
+                      title="Click to open Fullscreen Timer"
                     >
-                      {/* Left: Hourglass + Time & Subtitle */}
-                      <div className="flex items-center gap-2.5">
-                        <Hourglass className={`w-6 h-6 text-blue-500 shrink-0 ${activeTimerInfo.isRunning ? 'animate-pulse' : ''}`} />
-                        <div className="flex flex-col text-left">
-                          <span className="font-mono text-base font-black tracking-tight leading-tight text-white">{activeTimerInfo.timeStr}</span>
-                          <span className="text-[10px] font-bold text-slate-400 leading-none">{activeTimerInfo.subLabel || activeTimerInfo.label}</span>
+                      {/* Header Strip */}
+                      <div className="flex items-center justify-between pb-1.5 border-b border-white/10 shrink-0">
+                        <div className="flex items-center gap-1.5">
+                          <Hourglass className={`w-3.5 h-3.5 text-blue-500 shrink-0 ${activeTimerInfo.isRunning ? 'animate-pulse' : ''}`} />
+                          <h4 className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider">
+                            {activeTimerInfo.label === 'Pomodoro' ? 'Focus Session' : activeTimerInfo.label}
+                          </h4>
+                          <span className="text-[9px] sm:text-[10px] font-bold opacity-40">•</span>
+                          <span className="text-[9px] sm:text-[10px] font-bold opacity-60">
+                            {timerState.timerType === 'pomodoro' ? `Round ${timerState.pomodoroRounds || 1}/${pomodoroTargetRounds || 4}` : todayStr}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className={`px-1.5 py-0.5 rounded-lg text-[8px] sm:text-[9px] font-black uppercase tracking-wider border flex items-center gap-1 ${
+                            activeTimerInfo.isRunning
+                              ? (settingsThemeMode === 'dark' ? 'bg-blue-500/15 text-blue-400 border-blue-500/30 animate-pulse' : 'bg-blue-50 text-blue-700 border-blue-200 animate-pulse')
+                              : (settingsThemeMode === 'dark' ? 'bg-amber-500/15 text-amber-400 border-amber-500/30' : 'bg-amber-50 text-amber-700 border-amber-200')
+                          }`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${activeTimerInfo.isRunning ? 'bg-blue-500' : 'bg-amber-500'}`} />
+                            {activeTimerInfo.isRunning ? 'Running' : 'Paused'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setIsIslandMobileState('mini');
+                            }}
+                            onTouchEnd={(e) => {
+                              e.stopPropagation();
+                              setIsIslandMobileState('mini');
+                            }}
+                            className="p-1 hover:bg-white/10 rounded-lg opacity-60 hover:opacity-100 transition cursor-pointer"
+                            title="Minimize Timer"
+                          >
+                            <ChevronDown className="w-3.5 h-3.5 rotate-180 text-blue-500" />
+                          </button>
                         </div>
                       </div>
 
-                      {/* Right: Quick Action Controls */}
-                      <div
-                        className="flex items-center gap-2"
-                        onClick={(e) => e.stopPropagation()}
-                        onTouchStart={(e) => e.stopPropagation()}
-                        onTouchEnd={(e) => e.stopPropagation()}
-                      >
-                        {/* Play / Pause circular button */}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (activeTimerInfo.isRunning) {
-                              handlePauseTimer();
-                            } else {
-                              handleStartTimer();
-                            }
-                          }}
-                          className="w-8 h-8 rounded-full bg-blue-500 hover:bg-blue-600 active:scale-95 text-white flex items-center justify-center transition shadow-md cursor-pointer shrink-0"
-                          title={activeTimerInfo.isRunning ? "Pause Timer" : "Start Timer"}
-                        >
-                          {activeTimerInfo.isRunning ? (
-                            <Pause className="w-3.5 h-3.5 fill-current" />
-                          ) : (
-                            <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
-                          )}
-                        </button>
+                      {/* Body Content: Time Card & Action Controls */}
+                      <div className="flex items-center justify-between gap-2 pt-1 flex-1">
+                        {/* Left: Time Display & Hint */}
+                        <div className="flex items-center gap-2">
+                          <div className={`px-3 py-1.5 rounded-xl border flex flex-col items-start justify-center ${
+                            settingsThemeMode === 'dark'
+                              ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]'
+                              : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'
+                          }`}>
+                            <div className="flex items-baseline gap-1.5">
+                              <span className="font-mono text-xl sm:text-2xl font-black tracking-tight leading-none text-blue-500 dark:text-blue-400">
+                                {activeTimerInfo.timeStr}
+                              </span>
+                              <span className="text-[9px] font-bold opacity-50 uppercase tracking-wider">
+                                {activeTimerInfo.subLabel || activeTimerInfo.label}
+                              </span>
+                            </div>
+                            <span className="text-[8px] font-semibold text-blue-500 dark:text-blue-400/80 mt-0.5 flex items-center gap-0.5">
+                              Tap for Fullscreen <ChevronRight className="w-2.5 h-2.5 inline" />
+                            </span>
+                          </div>
+                        </div>
 
-                        {/* Reset / Stop circular button */}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleResetTimer();
-                          }}
-                          className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-slate-300 flex items-center justify-center transition border border-white/10 cursor-pointer shrink-0"
-                          title="Reset Timer"
+                        {/* Right: Quick Action Controls */}
+                        <div
+                          className="flex items-center gap-2"
+                          onClick={(e) => e.stopPropagation()}
+                          onTouchStart={(e) => e.stopPropagation()}
+                          onTouchEnd={(e) => e.stopPropagation()}
                         >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
+                          {/* Play / Pause circular button */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (activeTimerInfo.isRunning) {
+                                handlePauseTimer();
+                              } else {
+                                handleStartTimer();
+                              }
+                            }}
+                            className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 hover:from-blue-500 hover:to-indigo-400 active:scale-95 text-white flex items-center justify-center transition shadow-lg shadow-blue-500/25 cursor-pointer shrink-0"
+                            title={activeTimerInfo.isRunning ? "Pause Timer" : "Start Timer"}
+                          >
+                            {activeTimerInfo.isRunning ? (
+                              <Pause className="w-4 h-4 fill-current" />
+                            ) : (
+                              <Play className="w-4 h-4 fill-current ml-0.5" />
+                            )}
+                          </button>
+
+                          {/* Reset / Stop circular button */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleResetTimer();
+                            }}
+                            className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl active:scale-95 flex items-center justify-center transition border cursor-pointer shrink-0 ${
+                              settingsThemeMode === 'dark'
+                                ? 'bg-white/5 hover:bg-white/10 text-slate-300 border-white/10'
+                                : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
+                            }`}
+                            title="Reset Timer"
+                          >
+                            <RotateCcw className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Expanded Content */}
-                    <div className="expanded-content">
+                    {/* Expanded Content (Today's Momentum Drawer) */}
+                    <div 
+                      className="expanded-content cursor-pointer"
+                      onClick={() => {
+                        setCurrentTab('study');
+                        setStudyActiveTab('manual');
+                        setIsDailyMetricsOpen(false);
+                      }}
+                      title="Click to open Study Room Manual Log"
+                    >
                       {/* Header Strip */}
                       <div className="flex items-center justify-between pb-1.5 border-b border-white/10">
                         <div className="flex items-center gap-1.5">

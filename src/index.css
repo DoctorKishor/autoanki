@@ -2094,15 +2094,26 @@ body,
     display: none !important;
   }
 
-  /* TIMER STATE 3: SEMI-EXPANDED CARD (Image 2) */
+  /* TIMER STATE 3: EXPANDED CARD (Same size and style as stats expanded active) */
   .ios-dynamic-island.mobile-timer-semi:not(.active) {
-    width: 256px !important;
-    height: 56px !important;
-    top: 4px !important;
+    width: calc(100vw - 20px) !important;
+    height: 124px !important;
+    top: 6px !important;
     border-radius: 22px !important;
-    background-color: #12161f !important;
-    border: 1px solid rgba(255, 255, 255, 0.16) !important;
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55), inset 0 1px 1px rgba(255, 255, 255, 0.1) !important;
+    max-width: 95vw !important;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.55), inset 0 1px 1px rgba(255, 255, 255, 0.15) !important;
+  }
+
+  .ios-dynamic-island.mobile-timer-semi:not(.active).light {
+    background-color: rgba(230, 236, 245, 0.98) !important;
+    border: 1px solid rgba(255, 255, 255, 0.9) !important;
+    color: #1e293b !important;
+    box-shadow: 0 20px 40px rgba(37, 99, 235, 0.18), inset 0 1px 1px rgba(255, 255, 255, 0.9) !important;
+  }
+
+  .ios-dynamic-island.mobile-timer-semi:not(.active).dark {
+    background-color: rgba(34, 39, 48, 0.98) !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
     color: #f1f5f9 !important;
   }
 
@@ -2114,6 +2125,9 @@ body,
     display: flex !important;
     opacity: 1 !important;
     pointer-events: auto !important;
+    width: 100% !important;
+    height: 100% !important;
+    padding: 10px 12px !important;
   }
 
   .ios-dynamic-island.mobile-timer-semi:not(.active) .compact-content,
