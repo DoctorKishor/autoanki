@@ -233,37 +233,37 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
 
   return (
     <AnimatePresence>
-      <div className={`fixed inset-0 z-[9999] flex items-center justify-center p-4 backdrop-blur-md ${isDark ? 'bg-slate-950/80' : 'bg-slate-900/40'}`}>
+      <div className={`fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4 backdrop-blur-md ${isDark ? 'bg-slate-950/80' : 'bg-slate-900/40'}`}>
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 16 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 16 }}
           transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-          className={`relative w-full max-w-4xl h-[85vh] flex flex-col rounded-3xl shadow-2xl overflow-hidden border ${
+          className={`relative w-full max-w-4xl h-[92vh] sm:h-[85vh] flex flex-col rounded-3xl shadow-2xl overflow-hidden border ${
             isDark ? 'bg-[#222730] border-slate-700/60 text-slate-200 neu-card-dark' : 'bg-[#e6ecf5] border-slate-200/80 text-slate-800 neu-card-light'
           }`}
         >
           {/* Header Bar */}
-          <div className={`px-6 py-4 border-b flex items-center justify-between ${isDark ? 'border-slate-700/60 bg-[#222730]' : 'border-slate-200 bg-[#e6ecf5]'}`}>
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">⚙️</span>
-              <div>
-                <h2 className={`text-xl font-black tracking-wide ${isDark ? 'text-white' : 'text-slate-900'}`}>FSRS Spaced Repetition Settings</h2>
-                <p className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Configure engine rules, page limits, retention targets & load balancing</p>
+          <div className={`px-4 sm:px-6 py-3 sm:py-4 border-b flex items-center justify-between gap-2 ${isDark ? 'border-slate-700/60 bg-[#222730]' : 'border-slate-200 bg-[#e6ecf5]'}`}>
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="text-xl sm:text-2xl shrink-0">⚙️</span>
+              <div className="min-w-0">
+                <h2 className={`text-sm sm:text-xl font-black tracking-wide truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>FSRS Spaced Repetition Settings</h2>
+                <p className={`text-[10px] sm:text-xs font-medium truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Configure engine rules, page limits, retention targets & load balancing</p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className={`p-2 rounded-xl transition-all ${isDark ? 'neu-btn-dark text-slate-400 hover:text-white' : 'neu-btn-light text-slate-500 hover:text-slate-900'}`}
+              className={`p-2 rounded-xl transition-all shrink-0 cursor-pointer ${isDark ? 'neu-btn-dark text-slate-400 hover:text-white' : 'neu-btn-light text-slate-500 hover:text-slate-900'}`}
             >
               ✕
             </button>
           </div>
 
           {/* Body Container */}
-          <div className="flex flex-1 min-h-0 overflow-hidden">
-            {/* Left Sidebar Category Tabs */}
-            <div className={`w-56 border-r p-3 space-y-2 overflow-y-auto no-scrollbar ${
+          <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden">
+            {/* Category Tabs: Horizontal scroll on mobile, vertical sidebar on desktop */}
+            <div className={`w-full md:w-56 border-b md:border-b-0 md:border-r p-2 md:p-3 flex md:flex-col gap-1.5 md:space-y-2 overflow-x-auto md:overflow-y-auto no-scrollbar shrink-0 ${
               isDark ? 'border-slate-700/60 bg-[#222730]' : 'border-slate-200 bg-[#e6ecf5]'
             }`}>
               {CATEGORIES.map(cat => {
@@ -272,7 +272,7 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
                   <button
                     key={cat.id}
                     onClick={() => setActiveCategory(cat.id)}
-                    className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left relative ${
+                    className={`flex-shrink-0 md:w-full flex items-center gap-2 px-3 py-2 md:px-3.5 md:py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap text-left relative cursor-pointer ${
                       isActive
                         ? isDark ? 'neu-btn-dark text-indigo-400 border border-indigo-500/40 shadow-md' : 'neu-btn-light text-indigo-700 border border-indigo-300/60 shadow-md'
                         : isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800/40 border border-transparent' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 border border-transparent'
@@ -292,12 +292,12 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
               })}
             </div>
 
-            {/* Right Main Settings Panel */}
-            <div className={`flex-1 p-6 overflow-y-auto no-scrollbar space-y-6 ${isDark ? 'bg-[#222730]' : 'bg-[#e6ecf5]'}`}>
+            {/* Main Settings Panel */}
+            <div className={`flex-1 p-3.5 sm:p-6 overflow-y-auto no-scrollbar space-y-4 sm:space-y-6 ${isDark ? 'bg-[#222730]' : 'bg-[#e6ecf5]'}`}>
               {/* Category Header with Question Mark ? Manual Button */}
               <div className={`flex items-center justify-between pb-3 border-b ${isDark ? 'border-slate-700/40' : 'border-slate-300/60'}`}>
                 <div className="flex items-center gap-2">
-                  <span className={`text-lg font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  <span className={`text-base sm:text-lg font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
                     {CATEGORIES.find(c => c.id === activeCategory)?.icon}{' '}
                     {CATEGORIES.find(c => c.id === activeCategory)?.label}
                   </span>
@@ -305,7 +305,7 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
                 <button
                   onClick={() => setActiveManualSection(activeCategory)}
                   title="Open In-App User Manual"
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
                     isDark ? 'neu-btn-dark text-indigo-300 border-indigo-500/40' : 'neu-btn-light text-indigo-700 border-indigo-200'
                   }`}
                 >
@@ -316,37 +316,39 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
 
               {/* ──────────────── CATEGORY 1: DAILY LIMITS ──────────────── */}
               {activeCategory === 'dailyLimits' && (
-                <div className="space-y-6">
-                  {/* Scope Selector Pills with Section 5 Sliding Indicator */}
-                  <div className={`relative flex items-center p-1.5 rounded-2xl gap-1 shrink-0 select-none w-fit ${
+                <div className="space-y-5">
+                  {/* Scope Selector Pills with Responsive Grid */}
+                  <div className={`relative grid grid-cols-3 sm:flex items-center p-1 sm:p-1.5 rounded-2xl gap-1 select-none w-full sm:w-fit ${
                     isDark ? 'neu-pressed-dark border border-slate-700/60' : 'neu-pressed-light border border-slate-200/80'
                   }`}>
                     {/* Single Sliding Pill Indicator */}
                     <div
-                      className={`absolute top-1.5 bottom-1.5 w-28 rounded-xl shadow-md ${
+                      className={`absolute top-1 sm:top-1.5 bottom-1 sm:bottom-1.5 rounded-xl shadow-md ${
                         isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
                       }`}
                       style={{
-                        left: `calc(0.375rem + ${['preset', 'subject', 'today'].indexOf(activeScopeTab)} * (7rem + 0.25rem))`,
+                        width: 'calc(33.333% - 3px)',
+                        left: activeScopeTab === 'preset' ? '2px' : activeScopeTab === 'subject' ? 'calc(33.333% + 1px)' : 'calc(66.666%)',
                         transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
                       }}
                     />
 
                     {[
-                      { id: 'preset', label: 'Preset (Global)' },
-                      { id: 'subject', label: 'This Subject' },
-                      { id: 'today', label: 'Today Only' }
+                      { id: 'preset', label: 'Preset (Global)', shortLabel: 'Preset' },
+                      { id: 'subject', label: 'This Subject', shortLabel: 'Subject' },
+                      { id: 'today', label: 'Today Only', shortLabel: 'Today' }
                     ].map(item => (
                       <button
                         key={item.id}
                         onClick={() => setActiveScopeTab(item.id)}
-                        className={`relative w-28 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${
+                        className={`relative sm:w-28 py-2 px-1 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${
                           activeScopeTab === item.id
                             ? 'text-white font-extrabold'
                             : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
                         }`}
                       >
-                        <span>{item.label}</span>
+                        <span className="hidden sm:inline">{item.label}</span>
+                        <span className="sm:hidden">{item.shortLabel}</span>
                       </button>
                     ))}
                   </div>
@@ -1055,7 +1057,7 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
           </div>
 
           {/* Footer Action Bar */}
-          <div className={`px-6 py-4 border-t flex items-center justify-between gap-3 ${
+          <div className={`px-4 sm:px-6 py-3 sm:py-4 border-t flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 ${
             isDark ? 'border-slate-700/60 bg-[#222730]' : 'border-slate-200 bg-[#e6ecf5]'
           }`}>
             <button
@@ -1064,17 +1066,17 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
                   setTempConfig(JSON.parse(JSON.stringify(DEFAULT_FSRS_CONFIG)));
                 }
               }}
-              className={`px-4 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer border ${
+              className={`px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer border text-center ${
                 isDark ? 'neu-btn-dark text-amber-400 border-amber-500/30 hover:text-amber-300' : 'neu-btn-light text-amber-700 border-amber-300 hover:text-amber-800'
               }`}
             >
               ↺ Reset Defaults
             </button>
 
-            <div className="flex items-center gap-3">
+            <div className="grid grid-cols-2 sm:flex items-center gap-2 sm:gap-3">
               <button
                 onClick={onClose}
-                className={`px-4.5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all ${
+                className={`px-3.5 py-2 sm:px-4.5 sm:py-2.5 rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all text-center cursor-pointer ${
                   isDark ? 'neu-btn-dark text-slate-300 hover:text-white' : 'neu-btn-light text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -1082,11 +1084,11 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
               </button>
               <button
                 onClick={handleSave}
-                className={`px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                className={`px-4 py-2 sm:px-5 sm:py-2.5 rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer text-center ${
                   isDark ? 'neu-btn-accent-dark text-white' : 'neu-btn-accent-light text-white'
                 }`}
               >
-                Save FSRS Settings
+                Save Settings
               </button>
             </div>
           </div>
