@@ -12566,75 +12566,74 @@ JSON Format:
 
                         {/* Subject breakdown edit grid */}
                         {loggerGtShowSubjects && (
-                          <div className={`col-span-2 border rounded-2xl p-4 space-y-3.5 max-h-[300px] overflow-y-auto scrollbar-thin ${isDark ? 'neu-pressed-dark border-orange-500/20 bg-[#161a20]' : 'border-orange-100 bg-white/70 shadow-inner'
+                          <div className={`col-span-2 border rounded-2xl p-3 sm:p-4 space-y-2.5 max-h-[300px] overflow-y-auto scrollbar-thin ${isDark ? 'neu-pressed-dark border-orange-500/20 bg-[#161a20]' : 'border-orange-100 bg-white/70 shadow-inner'
                             }`}>
-                            <span className={`text-[9px] font-black uppercase tracking-wider block mb-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Enter correct / incorrect per subject</span>
-                            <div className="space-y-3.5">
+                            <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-wider pb-1.5 border-b border-orange-500/20">
+                              <span className={isDark ? 'text-slate-400' : 'text-gray-500'}>Subject (19)</span>
+                              <div className="grid grid-cols-3 gap-1.5 w-[140px] sm:w-[160px] text-center font-mono">
+                                <span className="text-emerald-500">Correct</span>
+                                <span className="text-rose-500">Wrong</span>
+                                <span className={isDark ? 'text-slate-400' : 'text-gray-500'}>Total</span>
+                              </div>
+                            </div>
+
+                            <div className="space-y-1.5">
                               {SYSTEM_SUBJECTS.map((sub) => {
                                 const subData = loggerGtSubjects[sub.name] || { correct: '', incorrect: '', total: sub.weight };
                                 return (
-                                  <div key={sub.name} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-2 text-xs ${isDark ? 'border-white/5' : 'border-gray-50'}`}>
-                                    <span className={`font-extrabold min-w-[130px] ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{sub.name}</span>
-                                    <div className="flex items-center gap-3">
-                                      <div className="flex items-center gap-1.5">
-                                        <span className="text-[9px] text-emerald-500 font-extrabold uppercase">Correct</span>
-                                        <input
-                                          type="number"
-                                          value={subData.correct}
-                                          onChange={(e) => {
-                                            setLoggerGtSubjects(prev => ({
-                                              ...prev,
-                                              [sub.name]: {
-                                                ...subData,
-                                                correct: e.target.value,
-                                                total: subData.total || sub.weight
-                                              }
-                                            }));
-                                          }}
-                                          placeholder="0"
-                                          className={`w-11 p-1 rounded text-center text-xs font-mono font-bold outline-none ${isDark ? 'bg-[#1e232b] border border-white/10 text-slate-100' : 'bg-white border border-gray-200 text-slate-900'
-                                            }`}
-                                        />
-                                      </div>
-                                      <div className="flex items-center gap-1.5">
-                                        <span className="text-[9px] text-red-500 font-extrabold uppercase">Incorrect</span>
-                                        <input
-                                          type="number"
-                                          value={subData.incorrect}
-                                          onChange={(e) => {
-                                            setLoggerGtSubjects(prev => ({
-                                              ...prev,
-                                              [sub.name]: {
-                                                ...subData,
-                                                incorrect: e.target.value,
-                                                total: subData.total || sub.weight
-                                              }
-                                            }));
-                                          }}
-                                          placeholder="0"
-                                          className={`w-11 p-1 rounded text-center text-xs font-mono font-bold outline-none ${isDark ? 'bg-[#1e232b] border border-white/10 text-slate-100' : 'bg-white border border-gray-200 text-slate-900'
-                                            }`}
-                                        />
-                                      </div>
-                                      <div className="flex items-center gap-1.5">
-                                        <span className={`text-[9px] font-extrabold uppercase ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>Total</span>
-                                        <input
-                                          type="number"
-                                          value={subData.total}
-                                          onChange={(e) => {
-                                            setLoggerGtSubjects(prev => ({
-                                              ...prev,
-                                              [sub.name]: {
-                                                ...subData,
-                                                total: e.target.value
-                                              }
-                                            }));
-                                          }}
-                                          placeholder={sub.weight}
-                                          className={`w-11 p-1 rounded text-center text-xs font-mono outline-none ${isDark ? 'bg-[#1e232b] border border-white/10 text-slate-100' : 'bg-white border border-gray-200 text-slate-900'
-                                            }`}
-                                        />
-                                      </div>
+                                  <div key={sub.name} className={`flex items-center justify-between gap-2 py-1 border-b text-xs ${isDark ? 'border-white/5' : 'border-gray-100'}`}>
+                                    <span className={`font-bold text-xs truncate flex-1 ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{sub.name}</span>
+                                    <div className="grid grid-cols-3 gap-1.5 w-[140px] sm:w-[160px] shrink-0">
+                                      <input
+                                        type="number"
+                                        value={subData.correct}
+                                        onChange={(e) => {
+                                          setLoggerGtSubjects(prev => ({
+                                            ...prev,
+                                            [sub.name]: {
+                                              ...subData,
+                                              correct: e.target.value,
+                                              total: subData.total || sub.weight
+                                            }
+                                          }));
+                                        }}
+                                        placeholder="0"
+                                        className={`w-full py-1 px-1 rounded-lg text-center text-xs font-mono font-bold outline-none ${isDark ? 'bg-[#1e232b] border border-white/10 text-emerald-400' : 'bg-white border border-gray-200 text-emerald-700'
+                                          }`}
+                                      />
+                                      <input
+                                        type="number"
+                                        value={subData.incorrect}
+                                        onChange={(e) => {
+                                          setLoggerGtSubjects(prev => ({
+                                            ...prev,
+                                            [sub.name]: {
+                                              ...subData,
+                                              incorrect: e.target.value,
+                                              total: subData.total || sub.weight
+                                            }
+                                          }));
+                                        }}
+                                        placeholder="0"
+                                        className={`w-full py-1 px-1 rounded-lg text-center text-xs font-mono font-bold outline-none ${isDark ? 'bg-[#1e232b] border border-white/10 text-rose-400' : 'bg-white border border-gray-200 text-rose-700'
+                                          }`}
+                                      />
+                                      <input
+                                        type="number"
+                                        value={subData.total}
+                                        onChange={(e) => {
+                                          setLoggerGtSubjects(prev => ({
+                                            ...prev,
+                                            [sub.name]: {
+                                              ...subData,
+                                              total: e.target.value
+                                            }
+                                          }));
+                                        }}
+                                        placeholder={sub.weight}
+                                        className={`w-full py-1 px-1 rounded-lg text-center text-xs font-mono outline-none ${isDark ? 'bg-[#1e232b] border border-white/10 text-slate-300' : 'bg-white border border-gray-200 text-slate-700'
+                                          }`}
+                                      />
                                     </div>
                                   </div>
                                 );
@@ -12645,11 +12644,11 @@ JSON Format:
 
                       </div>
 
-                      <div className="flex justify-end gap-2 pt-2">
+                      <div className="grid grid-cols-2 sm:flex sm:justify-end gap-2 pt-2">
                         <button
                           type="button"
                           onClick={() => setIsAddingGt(false)}
-                          className={`px-4 py-2 text-[10px] font-bold rounded-xl transition ${isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
+                          className={`px-4 py-2 text-[10px] font-bold rounded-xl transition cursor-pointer text-center ${isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
                             }`}
                         >
                           Cancel
@@ -12658,7 +12657,7 @@ JSON Format:
                         <button
                           type="button"
                           onClick={handleAddGt}
-                          className="px-5 py-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-[10px] font-black uppercase rounded-xl hover:shadow active:scale-95 transition"
+                          className="px-5 py-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-[10px] font-black uppercase rounded-xl hover:shadow active:scale-95 transition cursor-pointer text-center"
                         >
                           Add Mock
                         </button>
