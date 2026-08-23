@@ -1914,12 +1914,14 @@ body,
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
 
-  /* Apple fluid spring simulation curve */
+  /* Apple / OxygenOS fluid spring simulation curve */
   transition: 
-    width 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), 
-    height 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), 
-    border-radius 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275),
-    box-shadow 0.3s ease;
+    width 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275), 
+    height 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275), 
+    border-radius 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+    top 0.3s ease,
+    background-color 0.3s ease,
+    box-shadow 0.35s ease;
 }
 
 .ios-dynamic-island.dark {
@@ -1990,18 +1992,18 @@ body,
 }
 
 @media (max-width: 640px) {
-  .ios-dynamic-island {
-    width: 24px;
-    height: 24px;
-    top: 9px;
-    border-radius: 50%;
+  /* STATE 1: PUNCH HOLE (Closed) */
+  .ios-dynamic-island.mobile-hole:not(.active) {
+    width: 24px !important;
+    height: 24px !important;
+    top: 9px !important;
+    border-radius: 50% !important;
     background-color: #07090e !important;
     border: 2px solid rgba(255, 255, 255, 0.22) !important;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45), inset 0 0 4px rgba(0, 0, 0, 0.9) !important;
   }
 
-  /* Punch-hole camera lens glint */
-  .ios-dynamic-island::after {
+  .ios-dynamic-island.mobile-hole:not(.active)::after {
     content: '';
     position: absolute;
     width: 7px;
@@ -2013,13 +2015,36 @@ body,
     transition: opacity 0.2s ease;
   }
 
-  .ios-dynamic-island .compact-content {
+  .ios-dynamic-island.mobile-hole:not(.active) .compact-content {
+    opacity: 0 !important;
+    pointer-events: none !important;
     display: none !important;
   }
 
+  /* STATE 2: MINI / SEMI-EXPANDED PILL (OnePlus Fluid Cloud capsule) */
+  .ios-dynamic-island.mobile-pill:not(.active) {
+    width: 195px !important;
+    height: 32px !important;
+    top: 6px !important;
+    border-radius: 16px !important;
+  }
+
+  .ios-dynamic-island.mobile-pill:not(.active)::after {
+    opacity: 0 !important;
+  }
+
+  .ios-dynamic-island.mobile-pill:not(.active) .compact-content {
+    display: flex !important;
+    padding: 0 10px !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+
+  /* STATE 3: FULL EXPANDED DRAWER */
   .ios-dynamic-island.active {
     width: calc(100vw - 20px) !important;
     height: 124px !important;
+    top: 6px !important;
     border-radius: 22px !important;
     max-width: 95vw !important;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.55), inset 0 1px 1px rgba(255, 255, 255, 0.15) !important;
@@ -2039,7 +2064,7 @@ body,
   }
 
   .ios-dynamic-island.active::after {
-    opacity: 0;
+    opacity: 0 !important;
   }
 
   .ios-dynamic-island .expanded-content {

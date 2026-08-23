@@ -5136,6 +5136,8 @@ export default function App() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [mobileLibraryLevel, setMobileLibraryLevel] = useState('folders');
   const [isDailyMetricsOpen, setIsDailyMetricsOpen] = useState(false);
+  const [isIslandPillOpen, setIsIslandPillOpen] = useState(false);
+  const islandTouchRef = useRef({ startX: 0, startY: 0, startTime: 0, isSwiping: false });
 
   // --- GOOGLE DRIVE CLOUD SYNC STATE ---
   const [gdriveAuthState, setGdriveAuthState] = useState(null);
@@ -24233,9 +24235,58 @@ Return your response strictly as a JSON object matching this schema:
                   )}
 
                   <div
-                    onClick={() => !isDailyMetricsOpen && setIsDailyMetricsOpen(true)}
-                    className={`ios-dynamic-island ${settingsThemeMode === 'dark' ? 'dark' : 'light'} ${isDailyMetricsOpen ? 'active' : ''}`}
-                    title={!isDailyMetricsOpen ? "Click to view full study momentum" : ""}
+                    onTouchStart={(e) => {
+                      const touch = e.touches[0];
+                      islandTouchRef.current = {
+                        startX: touch.clientX,
+                        startY: touch.clientY,
+                        startTime: Date.now(),
+                        isSwiping: false
+                      };
+                    }}
+                    onTouchMove={(e) => {
+                      if (!islandTouchRef.current.startX) return;
+                      const touch = e.touches[0];
+                      const diffX = touch.clientX - islandTouchRef.current.startX;
+                      const diffY = touch.clientY - islandTouchRef.current.startY;
+                      if (Math.abs(diffX) > 12 && Math.abs(diffX) > Math.abs(diffY)) {
+                        islandTouchRef.current.isSwiping = true;
+                      }
+                    }}
+                    onTouchEnd={(e) => {
+                      const { startX, startY, startTime, isSwiping } = islandTouchRef.current;
+                      const touch = e.changedTouches ? e.changedTouches[0] : null;
+                      if (!touch || !startX) return;
+                      const diffX = touch.clientX - startX;
+                      const diffY = touch.clientY - startY;
+                      const duration = Date.now() - startTime;
+
+                      // Horizontal swipe detected (OnePlus OxygenOS style cycle between punch-hole & semi-expanded pill)
+                      if (Math.abs(diffX) > 18 && Math.abs(diffX) > Math.abs(diffY)) {
+                        if (isDailyMetricsOpen) {
+                          setIsDailyMetricsOpen(false);
+                        } else {
+                          setIsIslandPillOpen(prev => !prev);
+                        }
+                        islandTouchRef.current = { startX: 0, startY: 0, startTime: 0, isSwiping: false };
+                        return;
+                      }
+
+                      // Tap detected
+                      if (!isSwiping && Math.abs(diffX) < 15 && Math.abs(diffY) < 15 && duration < 600) {
+                        if (!isDailyMetricsOpen) {
+                          setIsDailyMetricsOpen(true);
+                        }
+                      }
+                      islandTouchRef.current = { startX: 0, startY: 0, startTime: 0, isSwiping: false };
+                    }}
+                    onClick={() => {
+                      if (!islandTouchRef.current.isSwiping && !isDailyMetricsOpen) {
+                        setIsDailyMetricsOpen(true);
+                      }
+                    }}
+                    className={`ios-dynamic-island ${settingsThemeMode === 'dark' ? 'dark' : 'light'} ${isDailyMetricsOpen ? 'active' : (isIslandPillOpen ? 'mobile-pill' : 'mobile-hole')}`}
+                    title={isDailyMetricsOpen ? "" : (isIslandPillOpen ? "Swipe to collapse to punch hole, tap to expand full" : "Swipe to reveal mini pill, tap to expand full")}
                   >
                     {/* Compact Content */}
                     <div className="compact-content">
