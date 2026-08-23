@@ -29485,16 +29485,24 @@ Return your response strictly as a JSON object matching this schema:
                 {/* MAIN CONTENT AREA */}
                 <div className={`flex-grow flex flex-col relative overflow-hidden transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'}`}>
 
-                  {/* TOP BAR - ZEN MINIMALIST WITH FLOATING FOCUS ISLAND */}
-                  <header className={`h-16 flex items-center justify-between px-6 shrink-0 z-20 border-b transition-colors duration-300 relative ${settingsThemeMode === 'dark' ? 'neu-card-dark border-slate-750/80 text-white shadow-md' : 'neu-card-light border-slate-200/80 text-gray-800 shadow-sm'}`}>
+                  {/* TOP BAR - EDGE-TO-EDGE FROSTED LIQUID GLASS */}
+                  <header className={`h-16 flex items-center justify-between px-6 shrink-0 z-30 transition-all duration-300 relative backdrop-blur-2xl ${
+                    settingsThemeMode === 'dark'
+                      ? 'bg-[#222730]/75 border-b border-white/[0.08] text-white shadow-[0_4px_30px_rgba(0,0,0,0.35)] before:absolute before:inset-x-0 before:top-0 before:h-[1px] before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent'
+                      : 'bg-[#e6ecf5]/75 border-b border-white/80 text-gray-800 shadow-[0_4px_30px_rgba(37,99,235,0.06)] before:absolute before:inset-x-0 before:top-0 before:h-[1px] before:bg-gradient-to-r before:from-transparent before:via-white/90 before:to-transparent'
+                  }`}>
                     
                     {/* LEFT: Contextual Title & Actions */}
                     <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-2">
+                      <div className={`px-3.5 py-1.5 rounded-2xl flex items-center gap-2.5 transition-all ${
+                        settingsThemeMode === 'dark'
+                          ? 'bg-white/[0.04] border border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.08)]'
+                          : 'bg-white/60 border border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.8)]'
+                      }`}>
                         <span className="text-base select-none">
                           {currentTab === 'campTracker' ? '🏕️' : currentTab === 'about' ? '💡' : currentTab === 'smartReview' ? '🧠' : currentTab === 'pytManager' ? '🎯' : currentTab === 'pytLogger' ? '📝' : currentTab === 'obsOverlay' ? '🎥' : currentTab === 'studyScheduler' ? '📅' : currentTab === 'subjectTracker' ? '📑' : currentTab === 'dashboard' ? '📊' : currentTab === 'studyRoom' ? '🎧' : '📚'}
                         </span>
-                        <h2 className={`font-black text-base md:text-lg tracking-tight capitalize ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>
+                        <h2 className={`font-black text-sm md:text-base tracking-tight capitalize ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>
                           {currentTab === 'campTracker' ? 'CAMP Tracker' : currentTab === 'about' ? 'About AutoAnki' : currentTab === 'smartReview' ? 'Smart Review' : currentTab === 'pytManager' ? 'PYT Manager' : currentTab === 'pytLogger' ? 'PYT Logger' : currentTab === 'obsOverlay' ? 'OBS Customiser' : currentTab === 'studyScheduler' ? 'Study Scheduler' : currentTab === 'subjectTracker' ? 'Subject Tracker' : currentTab}
                         </h2>
                       </div>
@@ -29505,8 +29513,8 @@ Return your response strictly as a JSON object matching this schema:
                           onClick={() => setIsWidgetCustomizerOpen(true)}
                           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition font-black text-[10px] uppercase tracking-wider active:scale-95 cursor-pointer ${
                             settingsThemeMode === 'dark'
-                              ? 'neu-btn-dark text-blue-400 border-slate-750 hover:text-white'
-                              : 'neu-btn-light text-blue-600 border-blue-200 hover:text-blue-800'
+                              ? 'bg-white/[0.05] hover:bg-white/[0.1] border-white/10 text-blue-400 hover:text-white shadow-sm'
+                              : 'bg-white/70 hover:bg-white/90 border-white/80 text-blue-600 hover:text-blue-800 shadow-sm'
                           }`}
                           title="Customize Dashboard Widgets"
                         >
@@ -29518,10 +29526,10 @@ Return your response strictly as a JSON object matching this schema:
                       <button
                         type="button"
                         onClick={resetLayout}
-                        className={`p-2 rounded-xl transition cursor-pointer active:scale-95 ${
+                        className={`p-2 rounded-xl transition cursor-pointer active:scale-95 border ${
                           settingsThemeMode === 'dark'
-                            ? 'text-slate-400 hover:text-blue-400 hover:bg-white/5'
-                            : 'text-slate-400 hover:text-blue-600 hover:bg-black/5'
+                            ? 'bg-white/[0.03] hover:bg-white/[0.08] border-white/[0.06] text-slate-400 hover:text-blue-400'
+                            : 'bg-white/50 hover:bg-white/80 border-white/70 text-slate-400 hover:text-blue-600'
                         }`}
                         title="Reset Layout"
                       >
@@ -29529,18 +29537,18 @@ Return your response strictly as a JSON object matching this schema:
                       </button>
                     </div>
 
-                    {/* CENTER: Zen Minimalist Summary Capsule with Expandable Drawer */}
+                    {/* CENTER: Liquid Glass Summary Capsule with Expandable Drawer */}
                     <div className="relative">
                       <motion.button
                         type="button"
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => setIsDailyMetricsOpen(!isDailyMetricsOpen)}
-                        className={`flex items-center gap-2.5 sm:gap-3.5 px-3.5 sm:px-4 py-2 rounded-2xl cursor-pointer transition-all border select-none ${
+                        className={`flex items-center gap-2.5 sm:gap-3.5 px-3.5 sm:px-4 py-2 rounded-2xl cursor-pointer transition-all border select-none backdrop-blur-xl ${
                           settingsThemeMode === 'dark'
-                            ? 'neu-pressed-dark border-slate-750/90 hover:border-blue-500/40 text-slate-200'
-                            : 'neu-pressed-light border-slate-200/90 hover:border-blue-500/40 text-slate-800'
-                        } ${isDailyMetricsOpen ? (settingsThemeMode === 'dark' ? 'ring-2 ring-blue-500/40' : 'ring-2 ring-blue-500/30') : ''}`}
+                            ? 'bg-white/[0.05] hover:bg-white/[0.09] border-white/[0.12] text-slate-200 shadow-[0_4px_20px_rgba(0,0,0,0.2),inset_0_1px_1px_rgba(255,255,255,0.12)]'
+                            : 'bg-white/75 hover:bg-white/90 border-white/80 text-slate-800 shadow-[0_4px_20px_rgba(37,99,235,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)]'
+                        } ${isDailyMetricsOpen ? (settingsThemeMode === 'dark' ? 'ring-2 ring-blue-400/50 border-blue-400/40' : 'ring-2 ring-blue-500/40 border-blue-400/40') : ''}`}
                         title="Click to view full study momentum"
                       >
                         {/* Study Time */}
@@ -29569,7 +29577,7 @@ Return your response strictly as a JSON object matching this schema:
                         <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 opacity-60 ${isDailyMetricsOpen ? 'rotate-180 text-blue-500 opacity-100' : ''}`} />
                       </motion.button>
 
-                      {/* Expandable Daily Metrics Popover Drawer */}
+                      {/* Expandable Daily Metrics Liquid Glass Popover Drawer */}
                       <AnimatePresence>
                         {isDailyMetricsOpen && (
                           <>
@@ -29581,14 +29589,14 @@ Return your response strictly as a JSON object matching this schema:
                               animate={{ opacity: 1, y: 0, scale: 1 }}
                               exit={{ opacity: 0, y: -8, scale: 0.95 }}
                               transition={{ duration: 0.22, ease: [0, 0, 0, 1] }}
-                              className={`absolute top-full left-1/2 -translate-x-1/2 mt-2.5 z-50 w-80 rounded-3xl p-5 border shadow-2xl ${
+                              className={`absolute top-full left-1/2 -translate-x-1/2 mt-2.5 z-50 w-80 rounded-3xl p-5 border shadow-2xl backdrop-blur-3xl ${
                                 settingsThemeMode === 'dark'
-                                  ? 'neu-card-dark border-slate-750 text-slate-100'
-                                  : 'neu-card-light border-slate-200 text-slate-800'
+                                  ? 'bg-[#222730]/90 border-white/[0.15] text-slate-100 shadow-[0_20px_60px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.15)]'
+                                  : 'bg-[#e6ecf5]/90 border-white/90 text-slate-800 shadow-[0_20px_60px_rgba(37,99,235,0.12),inset_0_1px_1px_rgba(255,255,255,0.9)]'
                               }`}
                             >
                               {/* Header */}
-                              <div className="flex items-center justify-between pb-3 border-b border-slate-700/30">
+                              <div className="flex items-center justify-between pb-3 border-b border-white/10">
                                 <div>
                                   <h4 className="text-xs font-black uppercase tracking-wider">Today's Momentum</h4>
                                   <p className="text-[10px] font-bold opacity-60 mt-0.5">{todayStr}</p>
@@ -29603,7 +29611,7 @@ Return your response strictly as a JSON object matching this schema:
                               {/* Metrics 2x2 Grid */}
                               <div className="grid grid-cols-2 gap-2.5 py-3.5">
                                 {/* Study Time */}
-                                <div className={`p-3 rounded-2xl border text-left ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border-slate-750' : 'neu-pressed-light border-slate-200'}`}>
+                                <div className={`p-3 rounded-2xl border text-left ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'}`}>
                                   <div className="flex items-center gap-1.5">
                                     <Clock className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                                     <span className="text-[9px] font-black uppercase tracking-wider opacity-60">Study Time</span>
@@ -29612,7 +29620,7 @@ Return your response strictly as a JSON object matching this schema:
                                 </div>
 
                                 {/* Cards Reviewed */}
-                                <div className={`p-3 rounded-2xl border text-left ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border-slate-750' : 'neu-pressed-light border-slate-200'}`}>
+                                <div className={`p-3 rounded-2xl border text-left ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'}`}>
                                   <div className="flex items-center gap-1.5">
                                     <Layers className="w-3.5 h-3.5 text-purple-500 shrink-0" />
                                     <span className="text-[9px] font-black uppercase tracking-wider opacity-60">Cards Rev</span>
@@ -29621,7 +29629,7 @@ Return your response strictly as a JSON object matching this schema:
                                 </div>
 
                                 {/* Questions Solved */}
-                                <div className={`p-3 rounded-2xl border text-left ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border-slate-750' : 'neu-pressed-light border-slate-200'}`}>
+                                <div className={`p-3 rounded-2xl border text-left ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'}`}>
                                   <div className="flex items-center gap-1.5">
                                     <HelpCircle className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
                                     <span className="text-[9px] font-black uppercase tracking-wider opacity-60">Qs Solved</span>
@@ -29630,7 +29638,7 @@ Return your response strictly as a JSON object matching this schema:
                                 </div>
 
                                 {/* Pages Read */}
-                                <div className={`p-3 rounded-2xl border text-left ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border-slate-750' : 'neu-pressed-light border-slate-200'}`}>
+                                <div className={`p-3 rounded-2xl border text-left ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'}`}>
                                   <div className="flex items-center gap-1.5">
                                     <FileText className="w-3.5 h-3.5 text-teal-500 shrink-0" />
                                     <span className="text-[9px] font-black uppercase tracking-wider opacity-60">Pages Read</span>
@@ -29658,27 +29666,27 @@ Return your response strictly as a JSON object matching this schema:
                       {timerState.status !== 'idle' && (
                         <div
                           onClick={() => setIsTimerFullscreen(true)}
-                          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-2xl text-xs font-black shadow-sm font-mono tracking-tight animate-in slide-in-from-right-2 border cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all ${
+                          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-2xl text-xs font-black shadow-sm font-mono tracking-tight animate-in slide-in-from-right-2 border cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all backdrop-blur-xl ${
                             settingsThemeMode === 'dark'
-                              ? 'neu-card-dark border-slate-750 hover:border-blue-500/50'
-                              : 'neu-card-light border-blue-200/80 hover:border-blue-400'
+                              ? 'bg-gradient-to-r from-blue-500/15 via-indigo-500/15 to-purple-500/15 border-blue-400/30 text-white shadow-[0_4px_20px_rgba(59,130,246,0.2)]'
+                              : 'bg-gradient-to-r from-blue-50/90 via-indigo-50/90 to-purple-50/90 border-blue-300/60 text-slate-800 shadow-[0_4px_20px_rgba(59,130,246,0.1)]'
                           }`}
                           title="Click to open Fullscreen Study Room"
                         >
                           {timerState.timerType === 'stopwatch' ? (
-                            <Timer className={`w-3.5 h-3.5 text-emerald-500 ${timerState.status === 'running' ? 'animate-pulse' : ''}`} />
+                            <Timer className={`w-3.5 h-3.5 text-emerald-400 ${timerState.status === 'running' ? 'animate-pulse' : ''}`} />
                           ) : timerState.timerType === 'timer' ? (
-                            <Hourglass className={`w-3.5 h-3.5 text-indigo-500 ${timerState.status === 'running' ? 'animate-pulse' : ''}`} />
+                            <Hourglass className={`w-3.5 h-3.5 text-indigo-400 ${timerState.status === 'running' ? 'animate-pulse' : ''}`} />
                           ) : (
-                            <Clock className={`w-3.5 h-3.5 text-orange-500 ${timerState.status === 'running' ? 'animate-spin duration-10000' : ''}`} />
+                            <Clock className={`w-3.5 h-3.5 text-orange-400 ${timerState.status === 'running' ? 'animate-spin duration-10000' : ''}`} />
                           )}
 
                           <span className={`text-[9px] uppercase tracking-wider font-extrabold ${
                             timerState.timerType === 'stopwatch'
-                              ? 'text-emerald-500'
+                              ? 'text-emerald-400'
                               : timerState.timerType === 'timer'
-                                ? 'text-indigo-500'
-                                : 'text-orange-500'
+                                ? 'text-indigo-400'
+                                : 'text-orange-400'
                           }`}>
                             {timerState.timerType === 'stopwatch'
                               ? 'Stopwatch'
@@ -29716,15 +29724,15 @@ Return your response strictly as a JSON object matching this schema:
                           {/* Quick Controls */}
                           <div className="flex items-center gap-1 ml-1" onClick={(e) => e.stopPropagation()}>
                             {timerState.status === 'running' ? (
-                              <button onClick={handlePauseTimer} className="p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded-lg text-slate-400 hover:text-amber-500 transition" title="Pause">
+                              <button onClick={handlePauseTimer} className="p-1 hover:bg-white/10 rounded-lg text-slate-400 hover:text-amber-400 transition" title="Pause">
                                 <Pause className="w-3 h-3 fill-current" />
                               </button>
                             ) : (
-                              <button onClick={handleStartTimer} className="p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded-lg text-slate-400 hover:text-emerald-500 transition" title="Resume">
+                              <button onClick={handleStartTimer} className="p-1 hover:bg-white/10 rounded-lg text-slate-400 hover:text-emerald-400 transition" title="Resume">
                                 <Play className="w-3 h-3 fill-current" />
                               </button>
                             )}
-                            <button onClick={handleResetTimer} className="p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded-lg text-slate-400 hover:text-blue-500 transition" title="Reset">
+                            <button onClick={handleResetTimer} className="p-1 hover:bg-white/10 rounded-lg text-slate-400 hover:text-blue-400 transition" title="Reset">
                               <RotateCcw className="w-3 h-3" />
                             </button>
                           </div>
@@ -29736,16 +29744,16 @@ Return your response strictly as a JSON object matching this schema:
                         type="button"
                         onClick={handleHeaderSync}
                         disabled={isSyncing || gdriveSyncState.isSyncing}
-                        className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer active:scale-95 ${
+                        className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer active:scale-95 backdrop-blur-md ${
                           (isSyncing || gdriveSyncState.isSyncing)
-                            ? 'bg-blue-50/50 text-blue-500 border-blue-200 shadow-sm cursor-wait'
+                            ? 'bg-blue-500/20 text-blue-400 border-blue-500/30 shadow-sm cursor-wait'
                             : (settingsThemeMode === 'dark'
-                                ? 'neu-btn-dark text-slate-200 border-slate-750 hover:text-white'
-                                : 'neu-btn-light text-blue-600 border-blue-200 hover:text-blue-800')
+                                ? 'bg-white/[0.05] hover:bg-white/[0.1] text-slate-200 border-white/10 hover:text-white shadow-sm'
+                                : 'bg-white/70 hover:bg-white/90 text-blue-600 border-white/80 hover:text-blue-800 shadow-sm')
                         }`}
                         title={gdriveSyncState.isSyncing ? gdriveSyncState.message : (gdriveAuthState ? 'Sync with Google Drive & LocalDB' : `Sync ${currentTab} data from Local Database`)}
                       >
-                        <RefreshCw className={`w-3.5 h-3.5 ${(isSyncing || gdriveSyncState.isSyncing) ? 'animate-spin text-blue-500' : 'transition-transform duration-500 hover:rotate-180'}`} />
+                        <RefreshCw className={`w-3.5 h-3.5 ${(isSyncing || gdriveSyncState.isSyncing) ? 'animate-spin text-blue-400' : 'transition-transform duration-500 hover:rotate-180'}`} />
                         <span>
                           {gdriveSyncState.isSyncing
                             ? (gdriveSyncState.message || 'Syncing…')
@@ -29754,15 +29762,17 @@ Return your response strictly as a JSON object matching this schema:
                       </button>
 
                       {/* Status Badge */}
-                      <div className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 ${
+                      <div className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 backdrop-blur-md ${
                         gdriveAuthState
-                          ? 'bg-green-500/10 text-green-600 border border-green-500/30'
-                          : (user ? 'bg-blue-500/10 text-blue-600 border border-blue-500/20' : 'bg-amber-500/10 text-amber-600 border border-amber-500/20')
+                          ? (settingsThemeMode === 'dark' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.15)]' : 'bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm')
+                          : (user 
+                              ? (settingsThemeMode === 'dark' ? 'bg-blue-500/15 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-200')
+                              : (settingsThemeMode === 'dark' ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30' : 'bg-amber-50 text-amber-600 border border-amber-200'))
                       }`}>
                         <div className={`w-1.5 h-1.5 rounded-full ${
                           gdriveSyncState.isSyncing
-                            ? 'bg-amber-500 animate-pulse'
-                            : (gdriveAuthState ? 'bg-green-500 animate-pulse' : 'bg-blue-500')
+                            ? 'bg-amber-400 animate-pulse'
+                            : (gdriveAuthState ? 'bg-emerald-400 animate-pulse' : 'bg-blue-400')
                         }`} />
                         <span>
                           {gdriveSyncState.isSyncing
