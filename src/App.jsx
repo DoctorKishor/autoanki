@@ -4074,24 +4074,24 @@ export default function App() {
         initial={{ opacity: 0, y: 16, scale: 0.99 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        className="space-y-6 text-left pb-28 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-4 p-3 sm:p-5"
+        className={`space-y-4 sm:space-y-6 text-left pb-28 max-w-7xl mx-auto w-full ${isMobileView ? 'px-0 pt-1 p-0' : 'px-4 sm:px-6 lg:px-8 pt-4 p-3 sm:p-5'}`}
       >
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 items-start">
           {/* Section 1: Neumorphic UI Theme Mode */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className={settingsThemeMode === 'dark' ? 'neu-card-dark p-6 md:p-8 rounded-3xl h-full flex flex-col justify-center' : 'neu-card-light p-6 md:p-8 rounded-3xl h-full flex flex-col justify-center'}
+            className={settingsThemeMode === 'dark' ? 'neu-card-dark p-4 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl h-full flex flex-col justify-center' : 'neu-card-light p-4 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl h-full flex flex-col justify-center'}
           >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className={settingsThemeMode === 'dark' ? 'p-3 rounded-2xl neu-pressed-dark text-amber-400' : 'p-3 rounded-2xl neu-pressed-light text-amber-500'}>
-                  <Sparkles className="w-5 h-5" />
+                <div className={settingsThemeMode === 'dark' ? 'p-2.5 sm:p-3 rounded-xl sm:rounded-2xl neu-pressed-dark text-amber-400' : 'p-2.5 sm:p-3 rounded-xl sm:rounded-2xl neu-pressed-light text-amber-500'}>
+                  <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
                 <div>
-                  <h2 className={`text-base font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>Neumorphic UI Theme Mode</h2>
-                  <p className={`text-xs font-medium ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Select a tactile Soft UI theme for your configuration workspace.</p>
+                  <h2 className={`text-sm sm:text-base font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>Neumorphic UI Theme Mode</h2>
+                  <p className={`text-[11px] sm:text-xs font-medium ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Select a tactile Soft UI theme for your configuration workspace.</p>
                 </div>
               </div>
 
@@ -4127,7 +4127,7 @@ export default function App() {
             transition={{ duration: 0.5, delay: 0.15 }}
             onMouseEnter={() => handleSettingsSectionMouseEnter('storagePrefs')}
             onMouseLeave={() => handleSettingsSectionMouseLeave('storagePrefs')}
-            className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'} p-6 md:p-8 rounded-3xl space-y-4 overflow-hidden`}
+            className={`${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'} p-4 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl space-y-4 overflow-hidden`}
           >
             <button
               type="button"
@@ -4233,7 +4233,7 @@ export default function App() {
             transition={{ duration: 0.5, delay: 0.2 }}
             onMouseEnter={() => handleSettingsSectionMouseEnter('apiKeys')}
             onMouseLeave={() => handleSettingsSectionMouseLeave('apiKeys')}
-            className={settingsThemeMode === 'dark' ? 'neu-card-dark p-6 md:p-8 space-y-4 rounded-3xl overflow-hidden' : 'neu-card-light p-6 md:p-8 space-y-4 rounded-3xl overflow-hidden'}
+            className={settingsThemeMode === 'dark' ? 'neu-card-dark p-4 sm:p-6 md:p-8 space-y-4 rounded-2xl sm:rounded-3xl overflow-hidden' : 'neu-card-light p-4 sm:p-6 md:p-8 space-y-4 rounded-2xl sm:rounded-3xl overflow-hidden'}
           >
             <button
               type="button"
@@ -4426,7 +4426,7 @@ export default function App() {
             transition={{ duration: 0.5, delay: 0.25 }}
             onMouseEnter={() => handleSettingsSectionMouseEnter('backup')}
             onMouseLeave={() => handleSettingsSectionMouseLeave('backup')}
-            className={settingsThemeMode === 'dark' ? 'neu-card-dark p-6 md:p-8 space-y-4 overflow-hidden' : 'neu-card-light p-6 md:p-8 space-y-4 overflow-hidden'}
+            className={settingsThemeMode === 'dark' ? 'neu-card-dark p-4 sm:p-6 md:p-8 space-y-4 rounded-2xl sm:rounded-3xl overflow-hidden' : 'neu-card-light p-4 sm:p-6 md:p-8 space-y-4 rounded-2xl sm:rounded-3xl overflow-hidden'}
           >
             <button
               type="button"
@@ -4434,20 +4434,20 @@ export default function App() {
               className="w-full flex items-center justify-between text-left focus:outline-none select-none cursor-pointer"
             >
               <div className="flex items-center gap-3">
-                <div className={settingsThemeMode === 'dark' ? 'p-3 rounded-2xl neu-pressed-dark text-blue-400' : 'p-3 rounded-2xl neu-pressed-light text-blue-600'}>
-                  <Database className="w-5 h-5" />
+                <div className={settingsThemeMode === 'dark' ? 'p-2.5 sm:p-3 rounded-xl sm:rounded-2xl neu-pressed-dark text-blue-400' : 'p-2.5 sm:p-3 rounded-xl sm:rounded-2xl neu-pressed-light text-blue-600'}>
+                  <Database className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
                 <div>
-                  <h2 className={`text-base font-black tracking-tight uppercase ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>Local App Backup & Restore</h2>
-                  <p className={`text-xs font-medium ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Export/Import your workspace or configure snapshots.</p>
+                  <h2 className={`text-sm sm:text-base font-black tracking-tight uppercase ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>Local App Backup & Restore</h2>
+                  <p className={`text-[11px] sm:text-xs font-medium ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Export/Import your workspace or configure snapshots.</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <span className="hidden sm:inline-block px-3 py-1 bg-green-50 text-green-700 border border-green-200 rounded-full text-[10px] font-black uppercase tracking-wider">
                   100% Offline Vault
                 </span>
-                <div className={`p-2.5 rounded-2xl transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-gray-300' : 'neu-pressed-light text-gray-500'}`}>
-                  {isSettingsSectionOpen('backup') ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                <div className={`p-2 sm:p-2.5 rounded-xl sm:rounded-2xl transition ${settingsThemeMode === 'dark' ? 'neu-pressed-dark text-gray-300' : 'neu-pressed-light text-gray-500'}`}>
+                  {isSettingsSectionOpen('backup') ? <ChevronUp className="w-4 h-4 sm:w-5 sm:h-5" /> : <ChevronDown className="w-4 h-4 sm:w-5 sm:h-5" />}
                 </div>
               </div>
             </button>
@@ -4459,10 +4459,10 @@ export default function App() {
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
                   transition={{ duration: 0.3, ease: 'easeInOut' }}
-                  className="overflow-hidden space-y-6 pt-4 pb-3 px-1.5 border-t border-gray-500/10"
+                  className="overflow-hidden space-y-4 sm:space-y-6 pt-3 sm:pt-4 pb-2 sm:pb-3 px-0.5 sm:px-1.5 border-t border-gray-500/10"
                 >
-                  <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 max-w-xl mx-auto w-full p-2">
-                    <div className="w-[230px] max-w-full">
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 sm:gap-4 max-w-xl mx-auto w-full">
+                    <div className="w-full sm:w-[230px]">
                       <UiverseButton
                         icon={<Download className="w-4 h-4 text-blue-500" />}
                         onClick={handleExportBackup}
@@ -4476,7 +4476,7 @@ export default function App() {
                       </UiverseButton>
                     </div>
 
-                    <div className="w-[230px] max-w-full">
+                    <div className="w-full sm:w-[230px]">
                       <UiverseButton
                         icon={<Upload className="w-4 h-4 text-emerald-500" />}
                         onClick={handleImportBackup}
@@ -4492,14 +4492,14 @@ export default function App() {
                   </div>
 
                   {/* Sub-block: Automatic Background Backups */}
-                  <div className={`p-5 rounded-2xl space-y-4 border ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-gray-200'}`}>
-                    <div className="flex items-center justify-between">
+                  <div className={`p-3.5 sm:p-5 rounded-2xl space-y-3 sm:space-y-4 border ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-gray-200'}`}>
+                    <div className="flex items-center justify-between gap-2">
                       <div>
-                        <h3 className={`text-sm font-bold ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>Automatic Background Backups</h3>
-                        <p className="text-[11px] text-gray-400 font-medium">Automatically save periodic local snapshots to browser IndexedDB vault.</p>
+                        <h3 className={`text-xs sm:text-sm font-bold ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>Automatic Background Backups</h3>
+                        <p className="text-[10px] sm:text-[11px] text-gray-400 font-medium">Automatically save periodic local snapshots to browser IndexedDB vault.</p>
                       </div>
 
-                      <label className="relative inline-flex items-center cursor-pointer">
+                      <label className="relative inline-flex items-center cursor-pointer shrink-0">
                         <input
                           type="checkbox"
                           checked={autoBackupEnabled}
@@ -4517,10 +4517,10 @@ export default function App() {
                           animate={{ opacity: 1, height: 'auto' }}
                           exit={{ opacity: 0, height: 0 }}
                           transition={{ duration: 0.3, ease: 'easeInOut' }}
-                          className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-3 border-t border-gray-500/10 text-left overflow-hidden"
+                          className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 pt-3 border-t border-gray-500/10 text-left overflow-hidden"
                         >
                           <div>
-                            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Backup Frequency</label>
+                            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 sm:mb-3">Backup Frequency</label>
                             <UiverseGlassRadio
                               name="settingsBackupFrequency"
                               options={BACKUP_FREQUENCY_OPTIONS}
@@ -4532,7 +4532,7 @@ export default function App() {
                           </div>
 
                           <div>
-                            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Retention Policy</label>
+                            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 sm:mb-3">Retention Policy</label>
                             <UiverseGlassRadio
                               name="settingsBackupRetention"
                               options={BACKUP_RETENTION_OPTIONS}
@@ -4543,9 +4543,9 @@ export default function App() {
                             />
                           </div>
 
-                          <div className="md:col-span-2 pt-2 border-t border-gray-500/10 flex items-center justify-between text-[11px] font-medium">
+                          <div className="md:col-span-2 pt-2 border-t border-gray-500/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1 text-[10px] sm:text-[11px] font-medium">
                             <span className="flex items-center gap-1.5 text-emerald-500">
-                              <CheckCircle2 className="w-4 h-4" />
+                              <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                               IndexedDB Storage Engine active
                             </span>
                             <span className="text-gray-400 font-normal">
@@ -4562,7 +4562,7 @@ export default function App() {
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.4, delay: 0.15 }}
-                    className={`p-5 rounded-2xl space-y-4 border ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-gray-200'}`}
+                    className={`p-3.5 sm:p-5 rounded-2xl space-y-3 sm:space-y-4 border ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-gray-200'}`}
                   >
                     <div className="flex items-center justify-between">
                       <div>
@@ -4654,7 +4654,7 @@ export default function App() {
             transition={{ duration: 0.5, delay: 0.3 }}
             onMouseEnter={() => handleSettingsSectionMouseEnter('aiModels')}
             onMouseLeave={() => handleSettingsSectionMouseLeave('aiModels')}
-            className={`lg:col-span-2 ${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'} p-6 md:p-8 rounded-3xl space-y-6 overflow-hidden`}
+            className={`lg:col-span-2 ${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'} p-4 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl space-y-4 sm:space-y-6 overflow-hidden`}
           >
             <button
               type="button"

@@ -177,7 +177,7 @@ export default function GoogleDriveSyncSection({
       transition={{ duration: 0.5, delay: 0.12 }}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      className={isDark ? 'neu-card-dark p-6 md:p-8 rounded-3xl overflow-hidden' : 'neu-card-light p-6 md:p-8 rounded-3xl overflow-hidden'}
+      className={isDark ? 'neu-card-dark p-4 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl overflow-hidden' : 'neu-card-light p-4 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl overflow-hidden'}
     >
       {/* Section Header Accordion Trigger */}
       <button

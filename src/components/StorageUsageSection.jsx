@@ -330,7 +330,7 @@ export default function StorageUsageSection({
       transition={{ duration: 0.5, delay: 0.15 }}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      className={`rounded-3xl p-6 md:p-8 space-y-4 overflow-hidden ${
+      className={`rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 space-y-4 overflow-hidden ${
         isThemeDark ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'
       }`}
     >
