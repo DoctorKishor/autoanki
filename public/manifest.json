@@ -1,0 +1,44 @@
+{
+  "name": "AutoAnki - Medical Flashcards & Study Room",
+  "short_name": "AutoAnki",
+  "description": "Intelligent Spaced Repetition Flashcard System & Study Room",
+  "start_url": "/",
+  "scope": "/",
+  "id": "/",
+  "display": "fullscreen",
+  "display_override": [
+    "fullscreen",
+    "standalone",
+    "window-controls-overlay"
+  ],
+  "orientation": "any",
+  "theme_color": "#222730",
+  "background_color": "#222730",
+  "icons": [
+    {
+      "src": "/app_icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["education", "productivity", "medical"],
+  "shortcuts": [
+    {
+      "name": "Study Room",
+      "url": "/?tab=studyRoom",
+      "description": "Open Focus Timer and Study Room"
+    },
+    {
+      "name": "Smart Review",
+      "url": "/?tab=smartReview",
+      "description": "Review Due Flashcards"
+    }
+  ]
+}
