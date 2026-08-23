@@ -5023,6 +5023,7 @@ export default function App() {
   });
   const [isSyncing, setIsSyncing] = useState(false);
   const [mobileLibraryLevel, setMobileLibraryLevel] = useState('folders');
+  const [isDailyMetricsOpen, setIsDailyMetricsOpen] = useState(false);
 
   // --- GOOGLE DRIVE CLOUD SYNC STATE ---
   const [gdriveAuthState, setGdriveAuthState] = useState(null);
@@ -29484,108 +29485,185 @@ Return your response strictly as a JSON object matching this schema:
                 {/* MAIN CONTENT AREA */}
                 <div className={`flex-grow flex flex-col relative overflow-hidden transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-bg-dark text-slate-100' : 'neu-bg-light text-slate-800'}`}>
 
-                  {/* TOP BAR */}
-                  <header className={`h-16 flex items-center justify-between px-6 shrink-0 z-10 border-b transition-colors duration-300 ${settingsThemeMode === 'dark' ? 'neu-card-dark border-gray-800 text-white shadow-md' : 'neu-card-light border-gray-200/80 text-gray-800 shadow-sm'}`}>
-                    <div className="flex items-center gap-4">
-                      <h2 className={`font-black text-lg tracking-tight capitalize ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                        {currentTab === 'campTracker' ? 'CAMP Tracker' : currentTab === 'about' ? 'About AutoAnki' : currentTab === 'smartReview' ? 'Smart Review' : currentTab === 'pytManager' ? 'PYT Manager' : currentTab === 'pytLogger' ? 'PYT Logger' : currentTab === 'obsOverlay' ? 'OBS Customiser' : currentTab === 'studyScheduler' ? 'Study Scheduler' : currentTab === 'subjectTracker' ? 'Subject Tracker' : currentTab}
-                      </h2>
+                  {/* TOP BAR - ZEN MINIMALIST WITH FLOATING FOCUS ISLAND */}
+                  <header className={`h-16 flex items-center justify-between px-6 shrink-0 z-20 border-b transition-colors duration-300 relative ${settingsThemeMode === 'dark' ? 'neu-card-dark border-slate-750/80 text-white shadow-md' : 'neu-card-light border-slate-200/80 text-gray-800 shadow-sm'}`}>
+                    
+                    {/* LEFT: Contextual Title & Actions */}
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base select-none">
+                          {currentTab === 'campTracker' ? '🏕️' : currentTab === 'about' ? '💡' : currentTab === 'smartReview' ? '🧠' : currentTab === 'pytManager' ? '🎯' : currentTab === 'pytLogger' ? '📝' : currentTab === 'obsOverlay' ? '🎥' : currentTab === 'studyScheduler' ? '📅' : currentTab === 'subjectTracker' ? '📑' : currentTab === 'dashboard' ? '📊' : currentTab === 'studyRoom' ? '🎧' : '📚'}
+                        </span>
+                        <h2 className={`font-black text-base md:text-lg tracking-tight capitalize ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>
+                          {currentTab === 'campTracker' ? 'CAMP Tracker' : currentTab === 'about' ? 'About AutoAnki' : currentTab === 'smartReview' ? 'Smart Review' : currentTab === 'pytManager' ? 'PYT Manager' : currentTab === 'pytLogger' ? 'PYT Logger' : currentTab === 'obsOverlay' ? 'OBS Customiser' : currentTab === 'studyScheduler' ? 'Study Scheduler' : currentTab === 'subjectTracker' ? 'Subject Tracker' : currentTab}
+                        </h2>
+                      </div>
+
                       {currentTab === 'dashboard' && (
                         <button
+                          type="button"
                           onClick={() => setIsWidgetCustomizerOpen(true)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl border border-blue-200 transition font-black text-[10px] uppercase tracking-wider active:scale-95"
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition font-black text-[10px] uppercase tracking-wider active:scale-95 cursor-pointer ${
+                            settingsThemeMode === 'dark'
+                              ? 'neu-btn-dark text-blue-400 border-slate-750 hover:text-white'
+                              : 'neu-btn-light text-blue-600 border-blue-200 hover:text-blue-800'
+                          }`}
                           title="Customize Dashboard Widgets"
                         >
                           <Settings className="w-3.5 h-3.5" />
-                          Customize
+                          <span>Customize</span>
                         </button>
                       )}
+
                       <button
+                        type="button"
                         onClick={resetLayout}
-                        className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-blue-600 transition"
+                        className={`p-2 rounded-xl transition cursor-pointer active:scale-95 ${
+                          settingsThemeMode === 'dark'
+                            ? 'text-slate-400 hover:text-blue-400 hover:bg-white/5'
+                            : 'text-slate-400 hover:text-blue-600 hover:bg-black/5'
+                        }`}
                         title="Reset Layout"
                       >
                         <Maximize className="w-4 h-4" />
                       </button>
                     </div>
 
-                    <div className="flex-grow flex items-center justify-center px-6 gap-6 xl:gap-8">
-                      {/* Study Time */}
-                      <div className="flex items-center gap-2">
-                        <Clock className="w-4.5 h-4.5 text-blue-500 shrink-0" />
-                        <div className="flex flex-col items-start">
-                          <span className="text-[8px] font-black text-gray-400 uppercase tracking-wider leading-none mb-0.5">Study Time</span>
-                          <span className="text-xs font-black text-gray-800 leading-none">
-                            {getLiveTodayHours().toFixed(1)}h
-                          </span>
+                    {/* CENTER: Zen Minimalist Summary Capsule with Expandable Drawer */}
+                    <div className="relative">
+                      <motion.button
+                        type="button"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setIsDailyMetricsOpen(!isDailyMetricsOpen)}
+                        className={`flex items-center gap-2.5 sm:gap-3.5 px-3.5 sm:px-4 py-2 rounded-2xl cursor-pointer transition-all border select-none ${
+                          settingsThemeMode === 'dark'
+                            ? 'neu-pressed-dark border-slate-750/90 hover:border-blue-500/40 text-slate-200'
+                            : 'neu-pressed-light border-slate-200/90 hover:border-blue-500/40 text-slate-800'
+                        } ${isDailyMetricsOpen ? (settingsThemeMode === 'dark' ? 'ring-2 ring-blue-500/40' : 'ring-2 ring-blue-500/30') : ''}`}
+                        title="Click to view full study momentum"
+                      >
+                        {/* Study Time */}
+                        <div className="flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                          <span className="text-xs font-black tracking-tight">{getLiveTodayHours().toFixed(1)}h</span>
                         </div>
-                      </div>
 
-                      <div className="w-px h-6 bg-gray-150" />
+                        <span className="opacity-30 text-xs font-bold">•</span>
 
-                      {/* Qs Solved */}
-                      <div className="flex items-center gap-2">
-                        <HelpCircle className="w-4.5 h-4.5 text-indigo-500 shrink-0" />
-                        <div className="flex flex-col items-start">
-                          <span className="text-[8px] font-black text-gray-400 uppercase tracking-wider leading-none mb-0.5">Qs Solved</span>
-                          <span className="text-xs font-black text-gray-800 leading-none">
-                            {studyLogs[todayStr]?.questions || 0}
-                          </span>
+                        {/* Cards Reviewed */}
+                        <div className="flex items-center gap-1.5">
+                          <Layers className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                          <span className="text-xs font-black tracking-tight">{studyLogs[todayStr]?.cards || 0} cards</span>
                         </div>
-                      </div>
 
-                      <div className="w-px h-6 bg-gray-150" />
+                        <span className="opacity-30 text-xs font-bold">•</span>
 
-                      {/* Pages Read */}
-                      <div className="flex items-center gap-2">
-                        <FileText className="w-4.5 h-4.5 text-teal-500 shrink-0" />
-                        <div className="flex flex-col items-start">
-                          <span className="text-[8px] font-black text-gray-400 uppercase tracking-wider leading-none mb-0.5">Pages Read</span>
-                          <span className="text-xs font-black text-gray-800 leading-none">
-                            {studyLogs[todayStr]?.pages || 0}
-                          </span>
+                        {/* Current Streak */}
+                        <div className="flex items-center gap-1.5">
+                          <Flame className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                          <span className="text-xs font-black tracking-tight text-orange-500">{streakStats.currentStreak}d</span>
                         </div>
-                      </div>
 
-                      <div className="w-px h-6 bg-gray-150" />
+                        {/* Dropdown Chevron */}
+                        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 opacity-60 ${isDailyMetricsOpen ? 'rotate-180 text-blue-500 opacity-100' : ''}`} />
+                      </motion.button>
 
-                      {/* Cards Reviewed */}
-                      <div className="flex items-center gap-2">
-                        <Layers className="w-4.5 h-4.5 text-purple-500 shrink-0" />
-                        <div className="flex flex-col items-start">
-                          <span className="text-[8px] font-black text-gray-400 uppercase tracking-wider leading-none mb-0.5">Cards Rev</span>
-                          <span className="text-xs font-black text-gray-800 leading-none">
-                            {studyLogs[todayStr]?.cards || 0}
-                          </span>
-                        </div>
-                      </div>
+                      {/* Expandable Daily Metrics Popover Drawer */}
+                      <AnimatePresence>
+                        {isDailyMetricsOpen && (
+                          <>
+                            {/* Invisible Backdrop */}
+                            <div className="fixed inset-0 z-40" onClick={() => setIsDailyMetricsOpen(false)} />
+                            
+                            <motion.div
+                              initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                              transition={{ duration: 0.22, ease: [0, 0, 0, 1] }}
+                              className={`absolute top-full left-1/2 -translate-x-1/2 mt-2.5 z-50 w-80 rounded-3xl p-5 border shadow-2xl ${
+                                settingsThemeMode === 'dark'
+                                  ? 'neu-card-dark border-slate-750 text-slate-100'
+                                  : 'neu-card-light border-slate-200 text-slate-800'
+                              }`}
+                            >
+                              {/* Header */}
+                              <div className="flex items-center justify-between pb-3 border-b border-slate-700/30">
+                                <div>
+                                  <h4 className="text-xs font-black uppercase tracking-wider">Today's Momentum</h4>
+                                  <p className="text-[10px] font-bold opacity-60 mt-0.5">{todayStr}</p>
+                                </div>
+                                <span className={`px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider border flex items-center gap-1 ${
+                                  settingsThemeMode === 'dark' ? 'bg-orange-500/15 text-orange-400 border-orange-500/30' : 'bg-orange-50 text-orange-700 border-orange-200'
+                                }`}>
+                                  <Flame className="w-3 h-3" /> {streakStats.currentStreak}d Streak
+                                </span>
+                              </div>
 
-                      <div className="w-px h-6 bg-gray-150" />
+                              {/* Metrics 2x2 Grid */}
+                              <div className="grid grid-cols-2 gap-2.5 py-3.5">
+                                {/* Study Time */}
+                                <div className={`p-3 rounded-2xl border text-left ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border-slate-750' : 'neu-pressed-light border-slate-200'}`}>
+                                  <div className="flex items-center gap-1.5">
+                                    <Clock className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                                    <span className="text-[9px] font-black uppercase tracking-wider opacity-60">Study Time</span>
+                                  </div>
+                                  <div className="text-sm font-black mt-1.5">{getLiveTodayHours().toFixed(2)}h</div>
+                                </div>
 
-                      {/* Current Streak */}
-                      <div className="flex items-center gap-2">
-                        <Flame className="w-4.5 h-4.5 text-orange-500 shrink-0" />
-                        <div className="flex flex-col items-start">
-                          <span className="text-[8px] font-black text-gray-400 uppercase tracking-wider leading-none mb-0.5">Streak</span>
-                          <span className="text-xs font-black text-orange-655 leading-none flex items-center gap-0.5">
-                            {streakStats.currentStreak}d
-                          </span>
-                        </div>
-                      </div>
+                                {/* Cards Reviewed */}
+                                <div className={`p-3 rounded-2xl border text-left ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border-slate-750' : 'neu-pressed-light border-slate-200'}`}>
+                                  <div className="flex items-center gap-1.5">
+                                    <Layers className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                                    <span className="text-[9px] font-black uppercase tracking-wider opacity-60">Cards Rev</span>
+                                  </div>
+                                  <div className="text-sm font-black mt-1.5">{studyLogs[todayStr]?.cards || 0}</div>
+                                </div>
+
+                                {/* Questions Solved */}
+                                <div className={`p-3 rounded-2xl border text-left ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border-slate-750' : 'neu-pressed-light border-slate-200'}`}>
+                                  <div className="flex items-center gap-1.5">
+                                    <HelpCircle className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                                    <span className="text-[9px] font-black uppercase tracking-wider opacity-60">Qs Solved</span>
+                                  </div>
+                                  <div className="text-sm font-black mt-1.5">{studyLogs[todayStr]?.questions || 0}</div>
+                                </div>
+
+                                {/* Pages Read */}
+                                <div className={`p-3 rounded-2xl border text-left ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border-slate-750' : 'neu-pressed-light border-slate-200'}`}>
+                                  <div className="flex items-center gap-1.5">
+                                    <FileText className="w-3.5 h-3.5 text-teal-500 shrink-0" />
+                                    <span className="text-[9px] font-black uppercase tracking-wider opacity-60">Pages Read</span>
+                                  </div>
+                                  <div className="text-sm font-black mt-1.5">{studyLogs[todayStr]?.pages || 0}</div>
+                                </div>
+                              </div>
+
+                              {/* Motivational Tag */}
+                              <div className={`p-2.5 rounded-xl text-center text-[10px] font-black uppercase tracking-wider ${
+                                settingsThemeMode === 'dark' ? 'bg-blue-500/15 text-blue-300 border border-blue-500/30' : 'bg-blue-50 text-blue-700 border border-blue-200'
+                              }`}>
+                                ⚡ High-Yield Session Active
+                              </div>
+                            </motion.div>
+                          </>
+                        )}
+                      </AnimatePresence>
                     </div>
 
-                    <div className="flex items-center gap-4">
+                    {/* RIGHT: Floating Focus Island & Cloud Vault Sync */}
+                    <div className="flex items-center gap-3">
 
-                      {/* Desktop Focus Header Widget */}
+                      {/* Desktop Focus Floating Island */}
                       {timerState.status !== 'idle' && (
                         <div
                           onClick={() => setIsTimerFullscreen(true)}
-                          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-black shadow-sm font-mono tracking-tight animate-in slide-in-from-right-2 border cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all ${timerState.timerType === 'stopwatch'
-                            ? 'bg-gradient-to-r from-emerald-50 to-teal-50/20 border-emerald-100/50 hover:from-emerald-100/50 hover:to-teal-100/20'
-                            : timerState.timerType === 'timer'
-                              ? 'bg-gradient-to-r from-indigo-50 to-blue-50/20 border-indigo-100/50 hover:from-indigo-100/50 hover:to-blue-100/20'
-                              : 'bg-gradient-to-r from-orange-50 to-amber-50/20 border-orange-100/50 hover:from-orange-100/50 hover:to-amber-100/20'
-                            }`}
+                          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-2xl text-xs font-black shadow-sm font-mono tracking-tight animate-in slide-in-from-right-2 border cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all ${
+                            settingsThemeMode === 'dark'
+                              ? 'neu-card-dark border-slate-750 hover:border-blue-500/50'
+                              : 'neu-card-light border-blue-200/80 hover:border-blue-400'
+                          }`}
+                          title="Click to open Fullscreen Study Room"
                         >
                           {timerState.timerType === 'stopwatch' ? (
                             <Timer className={`w-3.5 h-3.5 text-emerald-500 ${timerState.status === 'running' ? 'animate-pulse' : ''}`} />
@@ -29595,12 +29673,13 @@ Return your response strictly as a JSON object matching this schema:
                             <Clock className={`w-3.5 h-3.5 text-orange-500 ${timerState.status === 'running' ? 'animate-spin duration-10000' : ''}`} />
                           )}
 
-                          <span className={`text-[9px] uppercase tracking-wider font-extrabold ${timerState.timerType === 'stopwatch'
-                            ? 'text-emerald-600'
-                            : timerState.timerType === 'timer'
-                              ? 'text-indigo-600'
-                              : 'text-orange-600'
-                            }`}>
+                          <span className={`text-[9px] uppercase tracking-wider font-extrabold ${
+                            timerState.timerType === 'stopwatch'
+                              ? 'text-emerald-500'
+                              : timerState.timerType === 'timer'
+                                ? 'text-indigo-500'
+                                : 'text-orange-500'
+                          }`}>
                             {timerState.timerType === 'stopwatch'
                               ? 'Stopwatch'
                               : timerState.timerType === 'timer'
@@ -29609,7 +29688,7 @@ Return your response strictly as a JSON object matching this schema:
                             }:
                           </span>
 
-                          <span className="text-gray-800 font-bold">
+                          <span className={`font-bold ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-800'}`}>
                             {(() => {
                               if (timerState.timerType === 'stopwatch') {
                                 const totalSecs = Math.floor(localStopwatchTime / 1000);
@@ -29634,29 +29713,35 @@ Return your response strictly as a JSON object matching this schema:
                             })()}
                           </span>
 
-                          {timerState.status === 'running' ? (
-                            <button onClick={(e) => { e.stopPropagation(); handlePauseTimer(); }} className="p-0.5 hover:bg-gray-150 rounded text-gray-500 transition ml-1" title="Pause">
-                              <Pause className="w-3 h-3 fill-current" />
+                          {/* Quick Controls */}
+                          <div className="flex items-center gap-1 ml-1" onClick={(e) => e.stopPropagation()}>
+                            {timerState.status === 'running' ? (
+                              <button onClick={handlePauseTimer} className="p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded-lg text-slate-400 hover:text-amber-500 transition" title="Pause">
+                                <Pause className="w-3 h-3 fill-current" />
+                              </button>
+                            ) : (
+                              <button onClick={handleStartTimer} className="p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded-lg text-slate-400 hover:text-emerald-500 transition" title="Resume">
+                                <Play className="w-3 h-3 fill-current" />
+                              </button>
+                            )}
+                            <button onClick={handleResetTimer} className="p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded-lg text-slate-400 hover:text-blue-500 transition" title="Reset">
+                              <RotateCcw className="w-3 h-3" />
                             </button>
-                          ) : (
-                            <button onClick={(e) => { e.stopPropagation(); handleStartTimer(); }} className="p-0.5 hover:bg-gray-150 rounded text-gray-500 transition ml-1" title="Resume">
-                              <Play className="w-3 h-3 fill-current" />
-                            </button>
-                          )}
-                          <button onClick={(e) => { e.stopPropagation(); handleResetTimer(); }} className="p-0.5 hover:bg-gray-150 rounded text-gray-500 transition" title="Reset">
-                            <RotateCcw className="w-3 h-3" />
-                          </button>
+                          </div>
                         </div>
                       )}
+
+                      {/* Sync Button */}
                       <button
+                        type="button"
                         onClick={handleHeaderSync}
                         disabled={isSyncing || gdriveSyncState.isSyncing}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border ${
+                        className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer active:scale-95 ${
                           (isSyncing || gdriveSyncState.isSyncing)
                             ? 'bg-blue-50/50 text-blue-500 border-blue-200 shadow-sm cursor-wait'
                             : (settingsThemeMode === 'dark'
-                                ? 'neu-btn-dark text-slate-200 border-gray-800 active:scale-95'
-                                : 'bg-white hover:bg-blue-50 text-blue-600 hover:text-blue-700 border-blue-200 active:scale-95 hover:shadow-md hover:shadow-blue-500/5')
+                                ? 'neu-btn-dark text-slate-200 border-slate-750 hover:text-white'
+                                : 'neu-btn-light text-blue-600 border-blue-200 hover:text-blue-800')
                         }`}
                         title={gdriveSyncState.isSyncing ? gdriveSyncState.message : (gdriveAuthState ? 'Sync with Google Drive & LocalDB' : `Sync ${currentTab} data from Local Database`)}
                       >
@@ -29668,7 +29753,8 @@ Return your response strictly as a JSON object matching this schema:
                         </span>
                       </button>
 
-                      <div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 ${
+                      {/* Status Badge */}
+                      <div className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 ${
                         gdriveAuthState
                           ? 'bg-green-500/10 text-green-600 border border-green-500/30'
                           : (user ? 'bg-blue-500/10 text-blue-600 border border-blue-500/20' : 'bg-amber-500/10 text-amber-600 border border-amber-500/20')
@@ -29678,9 +29764,11 @@ Return your response strictly as a JSON object matching this schema:
                             ? 'bg-amber-500 animate-pulse'
                             : (gdriveAuthState ? 'bg-green-500 animate-pulse' : 'bg-blue-500')
                         }`} />
-                        {gdriveSyncState.isSyncing
-                          ? 'Syncing'
-                          : (gdriveAuthState ? 'Cloud Vault' : (user ? 'Online' : 'Offline'))}
+                        <span>
+                          {gdriveSyncState.isSyncing
+                            ? 'Syncing'
+                            : (gdriveAuthState ? 'Cloud Vault' : (user ? 'Online' : 'Offline'))}
+                        </span>
                       </div>
                     </div>
                   </header>
