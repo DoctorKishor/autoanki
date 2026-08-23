@@ -662,6 +662,128 @@ For EVERY card generated, you MUST populate all 15 of the following fields:
 EXACT LOCATION BOUNDING BOXES: For EVERY card, inspect the page image and return exact 0 to 1000 normalized bounding coordinates for text ('ymin', 'xmin', 'ymax', 'xmax') and diagram ('img_box').
 `;
 
+const REASONING_PYT_V7_PROMPT = `SYSTEM ROLE: THE "MIRROR–PRECISION" PROTOCOL (v7) — REASONING JSON ENGINE (COMPREHENSIVE EXTRACTION & PYT CLASSIFIER)
+
+You are a High-Fidelity Data Extraction and Card Engineering Engine designed for NEET PG / INICET preparation.
+Your sole function is to transform the provided image of a single PDF page into high-quality Anki flashcards with maximum fidelity, total page coverage, intelligent High-Yield PYT (Previous Year Topic) classification, and flawless grammatical, lexical, and structural precision.
+You do not summarize broadly. You do not reinterpret. You extract, deliberate, verify, structure, classify, and engineer recall.
+
+---
+
+### TASK CONTEXT & PYT TOPIC REFERENCE LIST
+You have been provided with the following High-Yield PYT reference list for this subject:
+{FETCHED_TOPICS}
+
+---
+
+### CORE OPERATING PRINCIPLES (NON-NEGOTIABLE)
+
+#### 1. Internal Reasoning & Quality Audit Protocol
+Before finalizing each card, perform deliberate cognitive verification to eliminate all linguistic, structural, and factual errors:
+- OCR Artifact Healing: Resolve broken words, merged words, hyphenated line-breaks (e.g., "hemo- / dynamics" -> "hemodynamics"), and character substitutions (e.g., "l" vs "1", "O" vs "0") using direct visual context from the page.
+- Strict Grammar & Syntax Hygiene: Ensure every question, answer, and cloze sentence follows standard grammatical rules, complete sentence structure, correct capitalization of medical acronyms/proper names, and consistent punctuation.
+- Terminology & Spelling Verification: Verify that medical terminology, drug names, anatomical structures, numerical values, and units of measurement exactly match the clinical meaning on the page without spelling slips.
+- Anti-Hallucination Gate: Confirm that zero outside facts, clinical extrapolations, or unwritten inferences have been introduced.
+
+#### 2. Source Restriction (Hard Boundary Rule)
+- Absolute Fidelity: Use ONLY the exact content visible on the provided page image—text, tables, diagrams, and labels alike.
+- No External Context: Make no assumptions from other pages or chapters. Do not use outside/background knowledge, even on familiar topics. If a fact is not shown on that page, it does not exist for this task.
+- Permitted Correction Boundary: You may normalize punctuation, resolve OCR glitches, and repair sentence fragments into natural English, but you must NEVER alter clinical meanings, numbers, criteria, or classifications.
+
+#### 3. Total Page Coverage Rule (Extract Everything)
+Do NOT skip non-PYT concepts. Convert every clinically relevant element on the page into at least one card:
+- Definitions, exact numbers, cutoff ranges, and values.
+- Classifications, scoring systems, and diagnostic criteria.
+- Tables, lists, and enumerations.
+- Flowcharts, decision trees, and clinical algorithms.
+- Red-box / highlighted / boxed notes.
+- Mnemonics and exam-pearl callouts (highly prioritized).
+- Footnotes (if clinically relevant) and image/diagram labels.
+- Filtration: Exclude only non-clinical metadata (copyright lines, page numbers, video timestamps, running headers/footers).
+- Deduplication: If the exact same fact is presented multiple times on the page, card it once in whichever form preserves the highest fidelity.
+- Empty Pages: If the page contains zero extractable clinical content, return an empty JSON array [].
+
+#### 4. Intelligent PYT Conceptual Matching & Tagging Nuances
+For every card extracted under the Total Coverage Rule, evaluate whether it matches the provided {FETCHED_TOPICS} list:
+- Conceptual Matching (Not Just Keywords): Do not rely solely on exact string matches. Mark a card as PYT if the fact represents a synonym, underlying mechanism, clinical hallmark, diagnostic criterion, treatment protocol, or directly related pathology of a topic in {FETCHED_TOPICS}.
+- Comprehensive PYT Detail Capture: If a section relates to a PYT, ensure all associated high-yield nuances (presentation, diagnosis, treatment, mechanism, values) are captured with maximum precision.
+- Strict Conceptual Grounding (Anti-False-Positive): Only mark a card as PYT if it genuinely tests the concept of that topic. Do NOT mark casual passing mentions or unrelated background text as PYT.
+- PYT Tagging Protocol:
+  * If the card matches a PYT: Set "is_pyt": true, populate "pyt_topic" with the exact matched topic name from {FETCHED_TOPICS}, and append "PYT" and "PYT::{Matched_Topic_Name}" into the "tags" array.
+  * If the card does NOT match a PYT (foundational knowledge): Set "is_pyt": false, set "pyt_topic": null, and assign standard clinical/chapter tags without "PYT".
+
+#### 5. Visual Fidelity Rule & Image Grounding
+Text extraction alone is unreliable. Tables, flowcharts, highlighted boxes, and image labels are routinely lost or scrambled when a PDF is read as text-only.
+- Visually inspect the rendered page image itself, not just its OCR text layer.
+- Cross-check the two before drafting any card. If the text layer and the rendered image disagree, the rendered image is authoritative.
+- If a card references or relies on a visual diagram, flowchart, histology slide, or anatomical figure on the page, flag it for diagram extraction.
+
+#### 6. Card Engineering, Notetype Assignment & Cloze Deletion Rules
+Avoid excessive micro-cards and overloaded macro-cards. Each card must test one cohesive recall unit.
+- Per-Card Notetype Decision: Analyze content against the criteria below and commit to exactly one notetype — Basic or Cloze. Make this decision independently for every card; never default an entire page to a single notetype.
+- When to use Basic (Q&A) vs. Cloze:
+  * Use Basic for direct associations, single definitions, and distinct standalone facts.
+  * Use Cloze for sequential pathways, mechanisms of action, overlapping symptom profiles, or complex phrasing where a traditional Q&A question would accidentally give away the answer via context clues.
+- Cloze Best Practices: Keep the cloze deletion specific and targeted to key clinical entities, drug names, or numbers. Do not cloze entire non-specific phrases. If a sequential process has multiple steps, use {{c1::Step 1}}, {{c2::Step 2}}, and {{c3::Step 3}} within the same text block to generate distinct overlapping recall prompts.
+- Lists: A tightly related list of <= 4 items remains on one card. A list of > 4 items must be split by category. If no natural subcategory exists, split into groups of <= 4 by logical adjacency.
+- Tables: Create one card per row if rows are independently testable; create one card with table structure if the comparative relationship itself is the testable concept.
+- Flowcharts/Algorithms: Create one card per decision point or step, strictly preserving the sequence.
+- Formatting & Phrasing:
+  * Topic Heading: Prefix questions/cloze text with the most specific subheading governing that content (e.g., "Thyroidectomy: What is..." or "Thyroidectomy: The most common complication is..."). Fall back to the general subject only if no subheading applies.
+  * Textual Precision: Use exact medical terms, numbers, and statements from the page while ensuring complete grammatical correctness.
+
+#### 7. Image Attachment & Side Placement Rules
+- Non-Visual Default: Most cards test purely textual concepts and MUST HAVE "has_image": false, "img_box": null, and "image_side": "none".
+- Mandatory Visual Trigger: Set "has_image": true ONLY for cards that directly test an actual visual figure on the page (clinical lesion photograph, anatomical diagram/schematic, medical instrument, X-ray/CT/MRI, or histological slide). Paragraphs, bullet lists, headers, and text tables are strictly text ("has_image": false).
+- img_box: Whenever "has_image" is true, return [ymin, xmin, ymax, xmax] relative bounding coordinates (0 to 1000 scale) tightly cropping ONLY the visual asset/diagram itself. NEVER return [0, 0, 1000, 1000]. If "has_image" is false, return null.
+- image_side: Specify "front", "back", or "both" for Basic cards. For Cloze cards with images, default to "front". If "has_image" is false, return "none".
+- image_confidence: Return an integer from 0 to 100 representing confidence that this card genuinely requires a cropped visual diagram.
+
+---
+
+### STRICT JSON OUTPUT FORMAT
+Return ONLY a valid, parseable JSON array of card objects. Do not include markdown code block markers around the JSON, meta-announcements, or conversational text.
+
+For EVERY card generated, you MUST populate all 15 fields exactly as specified:
+
+[
+  {
+    "type": "Basic" | "Cloze",
+    "front": "Topic Subheading: Question text (string, or \\"\\" if Cloze)",
+    "back": "Answer text (string, or optional notes if Cloze, never \\"\\" for Basic)",
+    "text": "Topic Subheading: Statement with {{c1::cloze deletion}} (string, or \\"\\" if Basic)",
+    "is_pyt": true | false,
+    "pyt_topic": "Exact Matched PYT Topic Name" | null,
+    "tags": ["Subject", "Subtopic", "PYT", "PYT::Matched_Topic_Name"],
+    "ymin": 120,
+    "xmin": 85,
+    "ymax": 210,
+    "xmax": 920,
+    "has_image": false,
+    "img_box": null,
+    "image_side": "none",
+    "image_confidence": 0
+  }
+]
+
+#### Field Specifications & Value Constraints:
+1. "type": String, exactly "Basic" or "Cloze" (case-sensitive).
+2. "front": String. If "Basic", formatted as "[Subheading]: [Question]". If "Cloze", must be "".
+3. "back": String. If "Basic", contains the clear, direct answer (must not be empty). If "Cloze", contains optional high-yield context or "".
+4. "text": String. If "Cloze", formatted as "[Subheading]: [Text with {{c1::...}} cloze markup]". If "Basic", must be "".
+5. "is_pyt": Boolean (true if conceptually matching {FETCHED_TOPICS}, else false).
+6. "pyt_topic": String matching topic from {FETCHED_TOPICS}, or null if "is_pyt" is false.
+7. "tags": Array of descriptive topic/subtopic strings. Include "PYT" and "PYT::{Topic}" if "is_pyt" is true.
+8. "ymin": Integer (0–1000), top coordinate of the source text bounding box on the page.
+9. "xmin": Integer (0–1000), left coordinate of the source text bounding box on the page.
+10. "ymax": Integer (0–1000), bottom coordinate of the source text bounding box on the page.
+11. "xmax": Integer (0–1000), right coordinate of the source text bounding box on the page.
+12. "has_image": Boolean (true only if referencing a physical visual figure/diagram, else false).
+13. "img_box": Array [ymin, xmin, ymax, xmax] of integers (0–1000) tightly cropping the visual figure, or null if "has_image" is false.
+14. "image_side": String, exactly "front", "back", "both", or "none".
+15. "image_confidence": Integer (0–100).
+`;
+
 const QBANK_ENGINE_PROMPT = `SYSTEM ROLE: THE "MIRROR–PRECISION" PROTOCOL (v6) — QBANK PEARL ENGINE
 You are a High-Fidelity Data Extraction and Card Engineering Engine designed for NEET PG / INICET preparation. Your sole function is to transform the provided screenshot of a single QBank question (which may contain a full question stem, options, and explanation, OR an explanation-only view) into an ultra-high-yield Anki flashcard with maximum fidelity and optimized learning design.
 You do not summarize broadly. You do not reinterpret. You extract, structure, and engineer recall for error log analysis.
@@ -17930,6 +18052,8 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     let basePromptContent = DEFAULT_PROMPT;
     if (generationPromptId === 'comprehensive_pyt') {
       basePromptContent = COMPREHENSIVE_PYT_PROMPT;
+    } else if (generationPromptId === 'reasoning_pyt_v7') {
+      basePromptContent = REASONING_PYT_V7_PROMPT;
     } else if (generationPromptId === 'pyt_generator') {
       basePromptContent = PYT_GENERATOR_PROMPT;
     } else if (generationPromptId === 'qbank_engine') {
@@ -17945,13 +18069,16 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       ? 'Default Medical Prompt'
       : generationPromptId === 'comprehensive_pyt'
         ? 'Comprehensive + PYT Classifier'
-        : generationPromptId === 'pyt_generator'
-          ? 'High-Yield PYT Generator'
-          : generationPromptId === 'qbank_engine'
-            ? 'Q-Bank engine/ error log'
-            : (customPrompts.find(p => p.id === generationPromptId)?.name || '');
+        : generationPromptId === 'reasoning_pyt_v7'
+          ? 'Reasoning + PYT Classifier (v7)'
+          : generationPromptId === 'pyt_generator'
+            ? 'High-Yield PYT Generator'
+            : generationPromptId === 'qbank_engine'
+              ? 'Q-Bank engine/ error log'
+              : (customPrompts.find(p => p.id === generationPromptId)?.name || '');
 
     const isPytAware = generationPromptId === 'comprehensive_pyt'
+      || generationPromptId === 'reasoning_pyt_v7'
       || generationPromptId === 'pyt_generator'
       || currentPromptName.toLowerCase().includes('pyt')
       || currentPromptName.toLowerCase().includes('high-yield')
@@ -18333,6 +18460,8 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       setSystemPrompt(DEFAULT_PROMPT);
     } else if (activePromptId === 'comprehensive_pyt') {
       setSystemPrompt(COMPREHENSIVE_PYT_PROMPT);
+    } else if (activePromptId === 'reasoning_pyt_v7') {
+      setSystemPrompt(REASONING_PYT_V7_PROMPT);
     } else if (activePromptId === 'pyt_generator') {
       setSystemPrompt(PYT_GENERATOR_PROMPT);
     } else if (activePromptId === 'qbank_engine') {
@@ -18355,6 +18484,9 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     } else if (selectedPromptId === 'comprehensive_pyt') {
       setEditingPromptName('Comprehensive + PYT Classifier');
       setEditingPromptContent(COMPREHENSIVE_PYT_PROMPT);
+    } else if (selectedPromptId === 'reasoning_pyt_v7') {
+      setEditingPromptName('Reasoning + PYT Classifier (v7)');
+      setEditingPromptContent(REASONING_PYT_V7_PROMPT);
     } else if (selectedPromptId === 'pyt_generator') {
       setEditingPromptName('High-Yield PYT Generator (Targeted Only)');
       setEditingPromptContent(PYT_GENERATOR_PROMPT);
@@ -18376,7 +18508,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     }
   }, [selectedPromptId, customPrompts]);
 
-  const isBuiltInPrompt = (id) => id === 'default' || id === 'comprehensive_pyt' || id === 'pyt_generator' || id === 'qbank_engine' || id === 'text_default' || id === 'text_verbatim_json';
+  const isBuiltInPrompt = (id) => id === 'default' || id === 'comprehensive_pyt' || id === 'reasoning_pyt_v7' || id === 'pyt_generator' || id === 'qbank_engine' || id === 'text_default' || id === 'text_verbatim_json';
 
 
   // Helper to extract embedded base64/blob images from field text
@@ -18593,10 +18725,18 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       setActivePromptId(id);
 
       let targetContent = DEFAULT_PROMPT;
-      if (id === 'pyt_generator') {
+      if (id === 'comprehensive_pyt') {
+        targetContent = COMPREHENSIVE_PYT_PROMPT;
+      } else if (id === 'reasoning_pyt_v7') {
+        targetContent = REASONING_PYT_V7_PROMPT;
+      } else if (id === 'pyt_generator') {
         targetContent = PYT_GENERATOR_PROMPT;
       } else if (id === 'qbank_engine') {
         targetContent = QBANK_ENGINE_PROMPT;
+      } else if (id === 'text_default') {
+        targetContent = TEXT_DEFAULT_PROMPT;
+      } else if (id === 'text_verbatim_json') {
+        targetContent = TEXT_VERBATIM_JSON_PROMPT;
       } else if (id !== 'default') {
         const found = customPrompts.find(p => p.id === id);
         if (found) targetContent = found.content;
@@ -24304,6 +24444,7 @@ Return your response strictly as a JSON object matching this schema:
                               options={[
                                 { value: 'default', label: 'Default Medical Prompt' },
                                 { value: 'comprehensive_pyt', label: 'Comprehensive + PYT Classifier' },
+                                { value: 'reasoning_pyt_v7', label: 'Reasoning + PYT Classifier (v7)' },
                                 { value: 'pyt_generator', label: 'High-Yield PYT Generator (Targeted Only)' },
                                 { value: 'qbank_engine', label: 'Q-Bank engine/ error log' },
                                 ...customPrompts.map(p => ({ value: p.id, label: p.name }))
@@ -24316,12 +24457,14 @@ Return your response strictly as a JSON object matching this schema:
                                 ? 'Default Medical Prompt'
                                 : generationPromptId === 'comprehensive_pyt'
                                   ? 'Comprehensive + PYT Classifier'
-                                  : generationPromptId === 'pyt_generator'
-                                    ? 'High-Yield PYT Generator'
-                                    : generationPromptId === 'qbank_engine'
-                                      ? 'Q-Bank engine/ error log'
-                                      : (customPrompts.find(p => p.id === generationPromptId)?.name || '');
-                              const isPytSubjectRequired = generationPromptId === 'comprehensive_pyt' || generationPromptId === 'pyt_generator';
+                                  : generationPromptId === 'reasoning_pyt_v7'
+                                    ? 'Reasoning + PYT Classifier (v7)'
+                                    : generationPromptId === 'pyt_generator'
+                                      ? 'High-Yield PYT Generator'
+                                      : generationPromptId === 'qbank_engine'
+                                        ? 'Q-Bank engine/ error log'
+                                        : (customPrompts.find(p => p.id === generationPromptId)?.name || '');
+                              const isPytSubjectRequired = generationPromptId === 'comprehensive_pyt' || generationPromptId === 'reasoning_pyt_v7' || generationPromptId === 'pyt_generator';
                               const isPytAware = isPytSubjectRequired
                                 || currentPromptName.toLowerCase().includes('pyt')
                                 || currentPromptName.toLowerCase().includes('high-yield');
@@ -26945,7 +27088,7 @@ Return your response strictly as a JSON object matching this schema:
                             <h3 className={`text-[10px] font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>Available Prompts</h3>
                             <span className={`${settingsThemeMode === 'dark' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' : 'bg-blue-50 text-blue-700 border border-blue-200'} px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider`}>
                               {promptCategoryTab === 'image'
-                                ? (customPrompts.filter(p => !p.type || p.type === 'image').length + 3)
+                                ? (customPrompts.filter(p => !p.type || p.type === 'image').length + 5)
                                 : (customPrompts.filter(p => p.type === 'text').length + 2)
                               }
                             </span>
@@ -27017,6 +27160,23 @@ Return your response strictly as a JSON object matching this schema:
                                     )}
                                   </div>
                                   <p className={`text-[9px] ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} line-clamp-1`}>Extracts ALL page content while tagging and flagging high-yield PYTs.</p>
+                                </div>
+
+                                {/* Reasoning + PYT Classifier (v7) Prompt Option */}
+                                <div
+                                  onClick={() => setSelectedPromptId('reasoning_pyt_v7')}
+                                  className={`p-3.5 rounded-xl cursor-pointer transition-all duration-200 flex flex-col gap-1 ${selectedPromptId === 'reasoning_pyt_v7'
+                                    ? settingsThemeMode === 'dark' ? 'neu-item-pressed-dark border border-blue-500/50' : 'neu-item-pressed-light border border-blue-500/50'
+                                    : settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'
+                                    }`}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span className={`text-xs font-black truncate ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>Reasoning + PYT Classifier (v7)</span>
+                                    {activePromptId === 'reasoning_pyt_v7' && (
+                                      <span className={`${settingsThemeMode === 'dark' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'} px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider`}>Active</span>
+                                    )}
+                                  </div>
+                                  <p className={`text-[9px] ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} line-clamp-1`}>Protocol v7: Cognitive verification, OCR healing & intelligent PYT matching.</p>
                                 </div>
 
                                 {/* PYT Generator Prompt Option */}
@@ -27149,7 +27309,7 @@ Return your response strictly as a JSON object matching this schema:
                             )}
                           </div>
 
-                          {(selectedPromptId === 'default' || selectedPromptId === 'comprehensive_pyt' || selectedPromptId === 'pyt_generator' || selectedPromptId === 'qbank_engine' || selectedPromptId === 'text_default' || selectedPromptId === 'text_verbatim_json') && (
+                          {(selectedPromptId === 'default' || selectedPromptId === 'comprehensive_pyt' || selectedPromptId === 'reasoning_pyt_v7' || selectedPromptId === 'pyt_generator' || selectedPromptId === 'qbank_engine' || selectedPromptId === 'text_default' || selectedPromptId === 'text_verbatim_json') && (
                             <div className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-amber-500/30 text-amber-300' : 'neu-pressed-light border border-amber-300/60 text-amber-900'} rounded-xl p-3 flex gap-2`}>
                               <Info className="w-4 h-4 shrink-0 mt-0.5" />
                               <div className="text-[10px]">
@@ -27158,13 +27318,15 @@ Return your response strictly as a JSON object matching this schema:
                                     ? 'System Default (Read-only)'
                                     : selectedPromptId === 'comprehensive_pyt'
                                       ? 'Comprehensive + PYT Classifier (Read-only)'
-                                      : selectedPromptId === 'pyt_generator'
-                                        ? 'High-Yield PYT Generator (Read-only)'
-                                        : selectedPromptId === 'qbank_engine'
-                                          ? 'Q-Bank engine/ error log (Read-only)'
-                                          : selectedPromptId === 'text_default'
-                                            ? 'Default Text Extractor (Read-only)'
-                                            : 'Strict 1:1 Verbatim Extractor (Read-only)'}
+                                      : selectedPromptId === 'reasoning_pyt_v7'
+                                        ? 'Reasoning + PYT Classifier (v7) (Read-only)'
+                                        : selectedPromptId === 'pyt_generator'
+                                          ? 'High-Yield PYT Generator (Read-only)'
+                                          : selectedPromptId === 'qbank_engine'
+                                            ? 'Q-Bank engine/ error log (Read-only)'
+                                            : selectedPromptId === 'text_default'
+                                              ? 'Default Text Extractor (Read-only)'
+                                              : 'Strict 1:1 Verbatim Extractor (Read-only)'}
                                 </p>
                                 <p className="mt-0.5 opacity-90">To customize, click **Duplicate** to create an editable custom copy.</p>
                               </div>
@@ -27219,6 +27381,8 @@ Return your response strictly as a JSON object matching this schema:
                                       createCustomPrompt("Duplicate of Default", DEFAULT_PROMPT, 'image');
                                     } else if (selectedPromptId === 'comprehensive_pyt') {
                                       createCustomPrompt("Duplicate of Comprehensive + PYT", COMPREHENSIVE_PYT_PROMPT, 'image');
+                                    } else if (selectedPromptId === 'reasoning_pyt_v7') {
+                                      createCustomPrompt("Duplicate of Reasoning + PYT (v7)", REASONING_PYT_V7_PROMPT, 'image');
                                     } else if (selectedPromptId === 'pyt_generator') {
                                       createCustomPrompt("Duplicate of High-Yield PYT", PYT_GENERATOR_PROMPT, 'image');
                                     } else if (selectedPromptId === 'qbank_engine') {
@@ -29884,6 +30048,7 @@ Return your response strictly as a JSON object matching this schema:
                                       options={[
                                         { value: 'default', label: 'Default Medical Prompt' },
                                         { value: 'comprehensive_pyt', label: 'Comprehensive + PYT Classifier' },
+                                        { value: 'reasoning_pyt_v7', label: 'Reasoning + PYT Classifier (v7)' },
                                         { value: 'pyt_generator', label: 'High-Yield PYT Generator (Targeted Only)' },
                                         { value: 'qbank_engine', label: 'Q-Bank engine/ error log' },
                                         ...customPrompts.filter(p => !p.type || p.type === 'image').map(p => ({ value: p.id, label: p.name }))
@@ -29896,12 +30061,14 @@ Return your response strictly as a JSON object matching this schema:
                                         ? 'Default Medical Prompt'
                                         : generationPromptId === 'comprehensive_pyt'
                                           ? 'Comprehensive + PYT Classifier'
-                                          : generationPromptId === 'pyt_generator'
-                                            ? 'High-Yield PYT Generator'
-                                            : generationPromptId === 'qbank_engine'
-                                              ? 'Q-Bank engine/ error log'
-                                              : (customPrompts.find(p => p.id === generationPromptId)?.name || '');
-                                      const isPytSubjectRequired = generationPromptId === 'comprehensive_pyt' || generationPromptId === 'pyt_generator';
+                                          : generationPromptId === 'reasoning_pyt_v7'
+                                            ? 'Reasoning + PYT Classifier (v7)'
+                                            : generationPromptId === 'pyt_generator'
+                                              ? 'High-Yield PYT Generator'
+                                              : generationPromptId === 'qbank_engine'
+                                                ? 'Q-Bank engine/ error log'
+                                                : (customPrompts.find(p => p.id === generationPromptId)?.name || '');
+                                      const isPytSubjectRequired = generationPromptId === 'comprehensive_pyt' || generationPromptId === 'reasoning_pyt_v7' || generationPromptId === 'pyt_generator';
                                       const isPytAware = isPytSubjectRequired
                                         || currentPromptName.toLowerCase().includes('pyt')
                                         || currentPromptName.toLowerCase().includes('high-yield');
@@ -35198,7 +35365,7 @@ Return your response strictly as a JSON object matching this schema:
                               <h3 className={`text-sm font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>Available Prompts</h3>
                               <span className={`${settingsThemeMode === 'dark' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' : 'bg-blue-50 text-blue-700 border border-blue-200'} px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider`}>
                                 {promptCategoryTab === 'image'
-                                  ? (customPrompts.filter(p => !p.type || p.type === 'image').length + 4)
+                                  ? (customPrompts.filter(p => !p.type || p.type === 'image').length + 5)
                                   : (customPrompts.filter(p => p.type === 'text').length + 2)
                                 }
                               </span>
@@ -35270,6 +35437,23 @@ Return your response strictly as a JSON object matching this schema:
                                       )}
                                     </div>
                                     <p className={`text-[10px] ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} line-clamp-2`}>Extracts ALL page concepts while tagging and classifying high-yield PYTs.</p>
+                                  </div>
+
+                                  {/* Reasoning + PYT Classifier (v7) Prompt Option */}
+                                  <div
+                                    onClick={() => setSelectedPromptId('reasoning_pyt_v7')}
+                                    className={`p-4 rounded-2xl cursor-pointer transition-all duration-200 flex flex-col gap-1.5 ${selectedPromptId === 'reasoning_pyt_v7'
+                                      ? settingsThemeMode === 'dark' ? 'neu-item-pressed-dark border border-blue-500/50' : 'neu-item-pressed-light border border-blue-500/50'
+                                      : settingsThemeMode === 'dark' ? 'neu-item-dark' : 'neu-item-light'
+                                      }`}
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <span className={`text-xs font-black truncate ${settingsThemeMode === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>Reasoning + PYT Classifier (v7)</span>
+                                      {activePromptId === 'reasoning_pyt_v7' && (
+                                        <span className={`${settingsThemeMode === 'dark' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'} px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider`}>Active</span>
+                                      )}
+                                    </div>
+                                    <p className={`text-[10px] ${settingsThemeMode === 'dark' ? 'text-slate-400' : 'text-slate-500'} line-clamp-2`}>Protocol v7: Cognitive verification, OCR healing & intelligent PYT matching.</p>
                                   </div>
 
                                   {/* PYT Generator Prompt Option */}
@@ -35403,7 +35587,7 @@ Return your response strictly as a JSON object matching this schema:
                               )}
                             </div>
 
-                            {(selectedPromptId === 'default' || selectedPromptId === 'comprehensive_pyt' || selectedPromptId === 'pyt_generator' || selectedPromptId === 'qbank_engine' || selectedPromptId === 'text_default' || selectedPromptId === 'text_verbatim_json') && (
+                            {(selectedPromptId === 'default' || selectedPromptId === 'comprehensive_pyt' || selectedPromptId === 'reasoning_pyt_v7' || selectedPromptId === 'pyt_generator' || selectedPromptId === 'qbank_engine' || selectedPromptId === 'text_default' || selectedPromptId === 'text_verbatim_json') && (
                               <div className={`${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-amber-500/30 text-amber-300' : 'neu-pressed-light border border-amber-300/60 text-amber-900'} rounded-2xl p-4 flex gap-3 animate-in slide-in-from-top duration-200`}>
                                 <Info className="w-5 h-5 shrink-0 mt-0.5" />
                                 <div className="text-xs">
@@ -35412,13 +35596,15 @@ Return your response strictly as a JSON object matching this schema:
                                       ? 'System Default Prompt (Read-only)'
                                       : selectedPromptId === 'comprehensive_pyt'
                                         ? 'Comprehensive + PYT Classifier Prompt (Read-only)'
-                                        : selectedPromptId === 'pyt_generator'
-                                          ? 'High-Yield PYT Generator Prompt (Read-only)'
-                                          : selectedPromptId === 'qbank_engine'
-                                            ? 'Q-Bank engine/ error log (Read-only)'
-                                            : selectedPromptId === 'text_default'
-                                              ? 'Default Text Extractor (Read-only)'
-                                              : 'Strict 1:1 Verbatim Extractor (Read-only)'}
+                                        : selectedPromptId === 'reasoning_pyt_v7'
+                                          ? 'Reasoning + PYT Classifier v7 Prompt (Read-only)'
+                                          : selectedPromptId === 'pyt_generator'
+                                            ? 'High-Yield PYT Generator Prompt (Read-only)'
+                                            : selectedPromptId === 'qbank_engine'
+                                              ? 'Q-Bank engine/ error log (Read-only)'
+                                              : selectedPromptId === 'text_default'
+                                                ? 'Default Text Extractor (Read-only)'
+                                                : 'Strict 1:1 Verbatim Extractor (Read-only)'}
                                   </p>
                                   <p className="mt-1 opacity-90">To modify these instructions, click the **Duplicate** button below to create an editable custom copy.</p>
                                 </div>
@@ -35473,6 +35659,8 @@ Return your response strictly as a JSON object matching this schema:
                                         createCustomPrompt("Duplicate of Default", DEFAULT_PROMPT, 'image');
                                       } else if (selectedPromptId === 'comprehensive_pyt') {
                                         createCustomPrompt("Duplicate of Comprehensive + PYT", COMPREHENSIVE_PYT_PROMPT, 'image');
+                                      } else if (selectedPromptId === 'reasoning_pyt_v7') {
+                                        createCustomPrompt("Duplicate of Reasoning + PYT (v7)", REASONING_PYT_V7_PROMPT, 'image');
                                       } else if (selectedPromptId === 'pyt_generator') {
                                         createCustomPrompt("Duplicate of High-Yield PYT", PYT_GENERATOR_PROMPT, 'image');
                                       } else if (selectedPromptId === 'qbank_engine') {
