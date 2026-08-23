@@ -89,8 +89,12 @@ export default function SelectNewTopicsModal({
   // List of distinct subjects for manual filtering
   const distinctSubjects = useMemo(() => {
     const subjects = new Set();
-    unstudiedCatalog.forEach(t => subjects.add(t.subject));
-    return Array.from(subjects).sort();
+    unstudiedCatalog.forEach(t => {
+      if (t.subject && String(t.subject).trim().length > 0) {
+        subjects.add(String(t.subject).trim());
+      }
+    });
+    return Array.from(subjects).filter(Boolean).sort();
   }, [unstudiedCatalog]);
 
   // Filtered manual topics
@@ -106,8 +110,9 @@ export default function SelectNewTopicsModal({
   const groupedManualTopics = useMemo(() => {
     const groups = {};
     filteredManualTopics.forEach(topic => {
-      if (!groups[topic.subject]) groups[topic.subject] = [];
-      groups[topic.subject].push(topic);
+      const sub = topic.subject && String(topic.subject).trim().length > 0 ? String(topic.subject).trim() : 'General';
+      if (!groups[sub]) groups[sub] = [];
+      groups[sub].push(topic);
     });
     return groups;
   }, [filteredManualTopics]);
@@ -384,17 +389,18 @@ Format response strictly as JSON with this schema:
   if (!isOpen) return null;
 
   return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-2 sm:p-4 pt-3 sm:pt-4 bg-slate-950/70 backdrop-blur-md overflow-y-auto no-scrollbar">
+    <>
+      <div key="selectNewTopicsModalOverlay" className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-2 sm:p-4 pt-3 sm:pt-4 bg-slate-950/70 backdrop-blur-md overflow-y-auto no-scrollbar">
         <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 16 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 16 }}
-          transition={{ duration: 0.25, ease: 'easeOut' }}
-          className={`w-full max-w-4xl rounded-3xl border shadow-2xl overflow-hidden flex flex-col h-[94vh] sm:h-auto max-h-[94vh] sm:max-h-[90vh] ${
-            isDark ? 'bg-[#222730] border-slate-700/80 neu-card-dark text-slate-200' : 'bg-[#e6ecf5] border-slate-200 neu-card-light text-slate-800'
-          }`}
-        >
+          key="selectNewTopicsModalCard"
+        initial={{ opacity: 0, scale: 0.95, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 16 }}
+        transition={{ duration: 0.25, ease: 'easeOut' }}
+        className={`w-full max-w-4xl rounded-3xl border shadow-2xl overflow-hidden flex flex-col h-[94vh] sm:h-auto max-h-[94vh] sm:max-h-[90vh] ${
+          isDark ? 'bg-[#222730] border-slate-700/80 neu-card-dark text-slate-200' : 'bg-[#e6ecf5] border-slate-200 neu-card-light text-slate-800'
+        }`}
+      >
           {/* Header Bar */}
           <div className={`p-3.5 sm:p-5 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 shrink-0 ${
             isDark ? 'border-slate-700/60 bg-slate-900/40' : 'border-slate-300/60 bg-white/60'
@@ -507,9 +513,9 @@ Format response strictly as JSON with this schema:
                     >
                       All ({unstudiedCatalog.length})
                     </button>
-                    {distinctSubjects.map(sub => (
+                    {distinctSubjects.map((sub, idx) => (
                       <button
-                        key={sub}
+                        key={`subj_btn_${sub}_${idx}`}
                         onClick={() => setSelectedSubjectFilter(sub)}
                         className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap cursor-pointer ${
                           selectedSubjectFilter === sub
@@ -549,8 +555,8 @@ Format response strictly as JSON with this schema:
                 {/* Grouped Topics List */}
                 {Object.keys(groupedManualTopics).length > 0 ? (
                   <div className="space-y-4">
-                    {Object.entries(groupedManualTopics).map(([subject, topics]) => (
-                      <div key={subject} className="space-y-2">
+                    {Object.entries(groupedManualTopics).map(([subject, topics], gIdx) => (
+                      <div key={`group_${subject}_${gIdx}`} className="space-y-2">
                         <div className={`text-xs font-black uppercase tracking-wider px-2 py-1 rounded-lg inline-block border ${
                           isDark ? 'bg-slate-900/60 border-slate-700 text-indigo-300' : 'bg-indigo-50 border-indigo-200 text-indigo-700'
                         }`}>
@@ -558,11 +564,11 @@ Format response strictly as JSON with this schema:
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                          {topics.map(topic => {
+                          {topics.map((topic, tIdx) => {
                             const isSelected = selectedTopicIds.has(topic.id);
                             return (
                               <motion.div
-                                key={topic.id}
+                                key={topic.id || `topic_${subject}_${topic.name || tIdx}_${tIdx}`}
                                 whileHover={{ scale: 1.01 }}
                                 onClick={() => toggleTopicSelection(topic.id)}
                                 className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
@@ -717,7 +723,7 @@ Format response strictly as JSON with this schema:
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {aiRecommendations.map((rec, idx) => (
                         <motion.div
-                          key={idx}
+                          key={`ai_rec_${rec.topicName || rec.name || idx}_${idx}`}
                           initial={{ opacity: 0, y: 12 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.25, delay: idx * 0.05 }}
@@ -863,8 +869,9 @@ Format response strictly as JSON with this schema:
       {/* Strategy Guide Help Modal */}
       <AnimatePresence>
         {isHelpOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto no-scrollbar">
+          <div key="helpModalOverlay" className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto no-scrollbar">
             <motion.div
+              key="helpModalCard"
               initial={{ opacity: 0, scale: 0.95, y: 16 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 16 }}
@@ -958,6 +965,6 @@ Format response strictly as JSON with this schema:
           </div>
         )}
       </AnimatePresence>
-    </AnimatePresence>
+    </>
   );
 }
