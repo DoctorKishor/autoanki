@@ -22839,9 +22839,9 @@ Return your response strictly as a JSON object matching this schema:
         )}
 
         {/* TOP BAR */}
-        <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-6 pt-5 z-40 pointer-events-none"
+        <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-2.5 pt-2.5 sm:px-6 sm:pt-5 z-40 pointer-events-none"
           onClick={e => e.stopPropagation()}>
-          <div className="flex flex-col md:flex-row items-start md:items-center gap-2 pointer-events-auto">
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-1.5 sm:gap-2 pointer-events-auto max-w-[45%] sm:max-w-none">
             {/* Session badge */}
             {activeTask ? (
               <div className="relative group/badge">
@@ -22851,26 +22851,26 @@ Return your response strictly as a JSON object matching this schema:
                       setFsActiveTaskNotesExpanded(prev => !prev);
                     }
                   }}
-                  className={`flex items-center gap-2.5 bg-black/50 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/10 transition-all ${activeTask.notes ? 'cursor-pointer hover:bg-black/60 active:scale-98' : ''
+                  className={`flex items-center gap-1.5 sm:gap-2.5 bg-black/50 backdrop-blur-md px-2.5 sm:px-4 py-1.5 sm:py-2.5 rounded-xl sm:rounded-2xl border border-white/10 transition-all ${activeTask.notes ? 'cursor-pointer hover:bg-black/60 active:scale-98' : ''
                     }`}
                   title={activeTask.notes ? "Click to view session notes" : undefined}
                 >
                   <div className="w-2 h-2 rounded-full animate-pulse shrink-0" style={{ backgroundColor: progressBarColor }} />
-                  <div>
-                    <div className="text-[9px] font-black uppercase tracking-widest text-white/55">Now Studying</div>
-                    <div className="text-xs font-black text-white leading-tight">{activeTask.topic}</div>
+                  <div className="min-w-0">
+                    <div className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-white/55 truncate">Now Studying</div>
+                    <div className="text-[11px] sm:text-xs font-black text-white leading-tight truncate max-w-[100px] sm:max-w-[200px]">{activeTask.topic}</div>
                   </div>
-                  <div className="ml-2 text-[10px] font-mono text-white/40 border-l border-white/10 pl-2.5 flex items-center gap-1">
+                  <div className="ml-1 sm:ml-2 text-[8.5px] sm:text-[10px] font-mono text-white/40 border-l border-white/10 pl-1.5 sm:pl-2.5 flex items-center gap-1 shrink-0">
                     {activeTimeRemaining}
                     {activeTask.notes && (
-                      <ChevronDown className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${fsActiveTaskNotesExpanded ? 'rotate-180 text-blue-400' : 'text-white/40'}`} />
+                      <ChevronDown className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ml-0.5 transition-transform duration-200 ${fsActiveTaskNotesExpanded ? 'rotate-180 text-blue-400' : 'text-white/40'}`} />
                     )}
                   </div>
                 </div>
 
                 {/* Collapsible Notes Dropdown */}
                 {activeTask.notes && fsActiveTaskNotesExpanded && (
-                  <div className="absolute top-full left-0 mt-2 w-80 bg-black/85 backdrop-blur-lg border border-white/10 rounded-2xl p-4 shadow-2xl z-50 text-left animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="fixed sm:absolute top-14 sm:top-full left-2.5 sm:left-0 mt-2 w-[calc(100vw-20px)] sm:w-80 bg-black/85 backdrop-blur-lg border border-white/10 rounded-2xl p-4 shadow-2xl z-50 text-left animate-in fade-in slide-in-from-top-2 duration-200">
                     <div className="flex items-center gap-2 text-blue-400 border-b border-white/10 pb-2 mb-2">
                       <FileText className="w-4 h-4" />
                       <span className="text-[10px] font-black uppercase tracking-wider">Session Notes</span>
@@ -22882,15 +22882,15 @@ Return your response strictly as a JSON object matching this schema:
                 )}
               </div>
             ) : (
-              <div className="flex items-center gap-2 bg-black/40 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-white/10">
-                <Clock className="w-3.5 h-3.5 text-white/40" />
-                <span className="text-xs font-black text-white/55">Free Study Session</span>
+              <div className="flex items-center gap-1.5 sm:gap-2 bg-black/40 backdrop-blur-md px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl border border-white/10">
+                <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white/40" />
+                <span className="text-[10px] sm:text-xs font-black text-white/55 truncate">Free Study</span>
               </div>
             )}
 
             {/* Next session badge */}
             {nextTask && (
-              <div className="flex items-center gap-2.5 bg-black/50 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/10">
+              <div className="hidden md:flex items-center gap-2.5 bg-black/50 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/10">
                 <div className="w-2 h-2 rounded-full bg-white/20 shrink-0" />
                 <div>
                   <div className="text-[9px] font-black uppercase tracking-widest text-white/40">Next Session</div>
@@ -22902,7 +22902,7 @@ Return your response strictly as a JSON object matching this schema:
           </div>
 
           {/* Control buttons + popovers */}
-          <div className={`relative flex items-center gap-2 transition-all duration-700 pointer-events-auto ${isTimerUiVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'
+          <div className={`relative flex items-center gap-1 sm:gap-2 transition-all duration-700 pointer-events-auto shrink-0 ${isTimerUiVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'
             }`} onClick={e => e.stopPropagation()}>
             <CtrlBtn panelId="background" activePanel={activeFullscreenPanel} icon={ImageIcon} label="Background" onToggle={togglePanel} />
             <CtrlBtn panelId="sounds" activePanel={activeFullscreenPanel} icon={Music} label="Sounds" onToggle={togglePanel} />
@@ -22911,18 +22911,18 @@ Return your response strictly as a JSON object matching this schema:
             <CtrlBtn panelId="timerSettings" activePanel={activeFullscreenPanel} icon={Settings} label="Timer" onToggle={togglePanel} />
             <CtrlBtn panelId="widgets" activePanel={activeFullscreenPanel} icon={Layout} label="Widgets" onToggle={togglePanel} />
             <button onClick={handleSaveStudyRoomLayout} title="Save Layout to Local DB"
-              className="px-3 h-10 flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/40 transition-all active:scale-95 text-xs font-black uppercase tracking-wider">
-              <Save style={{ width: 16, height: 16 }} />
-              <span className="hidden sm:inline">Save Layout</span>
+              className="px-2 sm:px-3 h-8 sm:h-10 flex items-center gap-1 sm:gap-1.5 rounded-lg sm:rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/40 transition-all active:scale-95 text-[10px] sm:text-xs font-black uppercase tracking-wider cursor-pointer">
+              <Save className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Save</span>
             </button>
-            <div className="w-px h-6 bg-white/15 mx-1" />
+            <div className="w-px h-5 sm:h-6 bg-white/15 mx-0.5 sm:mx-1" />
             <button onClick={() => setIsTimerFullscreen(false)} title="Exit Fullscreen"
-              className="w-10 h-10 flex items-center justify-center rounded-xl border border-white/15 bg-black/40 backdrop-blur-md text-white hover:bg-white/20 hover:border-white/30 transition-all active:scale-95">
-              <Minimize2 style={{ width: 18, height: 18 }} />
+              className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg sm:rounded-xl border border-white/15 bg-black/40 backdrop-blur-md text-white hover:bg-white/20 hover:border-white/30 transition-all active:scale-95 cursor-pointer">
+              <Minimize2 className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
             </button>
 
             {activeFullscreenPanel && (
-              <div className="absolute top-[calc(100%+10px)] right-0 z-50" onClick={e => e.stopPropagation()}>
+              <div className="fixed sm:absolute top-14 sm:top-[calc(100%+10px)] right-2.5 sm:right-0 max-h-[85vh] z-50 overflow-y-auto" onClick={e => e.stopPropagation()}>
                 {activeFullscreenPanel === 'background' && (
                   <BgPanel fsYoutubeVideoId={fsYoutubeVideoId} setFsYoutubeVideoId={setFsYoutubeVideoId}
                     fsBgCategory={fsBgCategory} setFsBgCategory={setFsBgCategory}
@@ -22986,8 +22986,8 @@ Return your response strictly as a JSON object matching this schema:
         {/* CENTRAL TIMER */}
         <div
           id="fs-timer-container"
-          className={`absolute z-10 flex flex-col items-center justify-center select-none ${fsCustomizingWidgets
-            ? 'cursor-grab active:cursor-grabbing p-5 rounded-2xl bg-black/20 pointer-events-auto'
+          className={`absolute z-10 flex flex-col items-center justify-center select-none w-full max-w-[95vw] px-2 ${fsCustomizingWidgets
+            ? 'cursor-grab active:cursor-grabbing p-4 sm:p-5 rounded-2xl bg-black/20 pointer-events-auto'
             : 'pointer-events-none'
             }`}
           style={fsTimerMoved ? {
@@ -22997,16 +22997,16 @@ Return your response strictly as a JSON object matching this schema:
             mixBlendMode: fsTimerBlendMode || 'normal',
           } : {
             left: '50%',
-            top: '40%',
+            top: '42%',
             transform: 'translate(-50%, -50%)',
             opacity: fsTimerOpacity / 100,
             mixBlendMode: fsTimerBlendMode || 'normal',
           }}
           onMouseDown={fsCustomizingWidgets ? startTimerDrag : undefined}
         >
-          <div className="mb-5 flex items-center gap-2 bg-white/10 px-4 py-1.5 rounded-full border border-white/10">
-            <Timer className="w-4 h-4 text-white/60 animate-pulse" />
-            <span className="text-xs font-black uppercase tracking-widest text-white/60">{timerLabel}</span>
+          <div className="mb-3 sm:mb-5 flex items-center gap-1.5 sm:gap-2 bg-white/10 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full border border-white/10">
+            <Timer className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white/60 animate-pulse" />
+            <span className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-white/60">{timerLabel}</span>
           </div>
 
           {fullscreenTimerStyle === 'flip' ? (
@@ -23018,7 +23018,7 @@ Return your response strictly as a JSON object matching this schema:
             </div>
           ) : (
             <span className="font-black font-mono tracking-tight leading-none tabular-nums drop-shadow-[0_8px_40px_rgba(0,0,0,0.6)] text-center select-none"
-              style={{ fontSize: `min(${fsTimerFontSize}px, 15vw)` }}>
+              style={{ fontSize: `clamp(3.5rem, 16vw, ${fsTimerFontSize}px)` }}>
               {activeType === 'stopwatch'
                 ? formatStopwatch(localStopwatchTime)
                 : formatTime(activeType === 'pomodoro' ? localTimerTimeLeft : localCustomTimerTimeLeft)}
@@ -23027,7 +23027,7 @@ Return your response strictly as a JSON object matching this schema:
 
           {/* Glassmorphic timer controls button panel */}
           <div
-            className={`mt-6 flex items-center gap-2 bg-white/5 backdrop-blur-md border border-white/10 p-2 rounded-2xl shadow-2xl pointer-events-auto select-none transition-all duration-700 ${isTimerUiVisible
+            className={`mt-4 sm:mt-6 flex items-center justify-center gap-1.5 sm:gap-2 bg-white/5 backdrop-blur-md border border-white/10 p-1.5 sm:p-2 rounded-xl sm:rounded-2xl shadow-2xl pointer-events-auto select-none transition-all duration-700 max-w-[95vw] flex-wrap sm:flex-nowrap ${isTimerUiVisible
               ? 'opacity-100 scale-100 translate-y-0'
               : 'opacity-0 scale-95 translate-y-2 pointer-events-none'
               }`}
@@ -23039,11 +23039,11 @@ Return your response strictly as a JSON object matching this schema:
                   e.stopPropagation();
                   handlePauseActiveTimer();
                 }}
-                className="px-4 py-2 bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/35 hover:border-amber-500/50 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all active:scale-95 duration-200 cursor-pointer"
+                className="px-3 sm:px-4 py-1.5 sm:py-2 bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/35 hover:border-amber-500/50 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider flex items-center gap-1.5 sm:gap-2 transition-all active:scale-95 duration-200 cursor-pointer"
                 title="Pause Study Session"
               >
-                <Pause className="w-3.5 h-3.5 fill-current" />
-                Pause
+                <Pause className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current" />
+                <span>Pause</span>
               </button>
             ) : (
               <button
@@ -23057,11 +23057,11 @@ Return your response strictly as a JSON object matching this schema:
                     handleStartStopwatchTimer();
                   }
                 }}
-                className="px-4 py-2 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/35 hover:border-emerald-500/50 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all active:scale-95 duration-200 cursor-pointer"
+                className="px-3 sm:px-4 py-1.5 sm:py-2 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/35 hover:border-emerald-500/50 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider flex items-center gap-1.5 sm:gap-2 transition-all active:scale-95 duration-200 cursor-pointer"
                 title="Resume Study Session"
               >
-                <Play className="w-3.5 h-3.5 fill-current" />
-                Play
+                <Play className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current" />
+                <span>Play</span>
               </button>
             )}
 
@@ -23072,11 +23072,11 @@ Return your response strictly as a JSON object matching this schema:
                   e.stopPropagation();
                   handleRecordStopwatchLap();
                 }}
-                className="px-4 py-2 bg-white/5 text-slate-350 border border-white/5 hover:bg-white/15 hover:border-white/15 hover:text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all active:scale-95 duration-200 cursor-pointer"
+                className="px-3 sm:px-4 py-1.5 sm:py-2 bg-white/5 text-slate-350 border border-white/5 hover:bg-white/15 hover:border-white/15 hover:text-white rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider flex items-center gap-1.5 sm:gap-2 transition-all active:scale-95 duration-200 cursor-pointer"
                 title="Record Lap"
               >
-                <Flag className="w-3.5 h-3.5" />
-                Lap
+                <Flag className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                <span>Lap</span>
               </button>
             )}
 
@@ -23088,11 +23088,11 @@ Return your response strictly as a JSON object matching this schema:
                   handleResetActiveTimer();
                 }
               }}
-              className="px-4 py-2 bg-white/5 text-slate-350 border border-white/5 hover:bg-red-500/20 hover:border-red-500/30 hover:text-red-300 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all active:scale-95 duration-200 cursor-pointer"
+              className="px-3 sm:px-4 py-1.5 sm:py-2 bg-white/5 text-slate-350 border border-white/5 hover:bg-red-500/20 hover:border-red-500/30 hover:text-red-300 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider flex items-center gap-1.5 sm:gap-2 transition-all active:scale-95 duration-200 cursor-pointer"
               title="Reset Timer"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
-              Reset
+              <RotateCcw className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+              <span>Reset</span>
             </button>
 
             {/* Save Session Button */}
@@ -23101,20 +23101,21 @@ Return your response strictly as a JSON object matching this schema:
                 e.stopPropagation();
                 handleSaveActiveTimerSession();
               }}
-              className="px-4 py-2 bg-blue-600/20 text-blue-300 border border-blue-600/30 hover:bg-blue-600/35 hover:border-blue-600/50 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all active:scale-95 duration-200 cursor-pointer"
+              className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600/20 text-blue-300 border border-blue-600/30 hover:bg-blue-600/35 hover:border-blue-600/50 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider flex items-center gap-1.5 sm:gap-2 transition-all active:scale-95 duration-200 cursor-pointer"
               title="Save Elapsed Time"
             >
-              <Save className="w-3.5 h-3.5" />
-              Save Elapsed Time
+              <Save className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+              <span className="hidden sm:inline">Save Elapsed Time</span>
+              <span className="sm:hidden">Save Log</span>
             </button>
           </div>
 
           {fsQuoteVisible && (
-            <div className="mt-8 text-center max-w-xl px-6 pointer-events-auto">
-              <p className="text-base md:text-lg font-semibold text-white/70 leading-relaxed italic">
+            <div className="mt-5 sm:mt-8 text-center max-w-xl px-4 sm:px-6 pointer-events-auto">
+              <p className="text-xs sm:text-base md:text-lg font-semibold text-white/70 leading-relaxed italic">
                 &ldquo;{STUDY_QUOTES[fsCurrentQuoteIndex % STUDY_QUOTES.length].text}&rdquo;
               </p>
-              <p className="mt-2 text-[11px] font-black text-white/35 uppercase tracking-widest">
+              <p className="mt-1 sm:mt-2 text-[9px] sm:text-[11px] font-black text-white/35 uppercase tracking-widest">
                 &mdash; {STUDY_QUOTES[fsCurrentQuoteIndex % STUDY_QUOTES.length].author}
               </p>
             </div>

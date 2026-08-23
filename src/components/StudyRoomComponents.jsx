@@ -130,13 +130,13 @@ function CtrlBtn({ panelId, activePanel, icon: Icon, label, onToggle }) {
     <button
       onClick={() => onToggle(panelId)}
       title={label}
-      className={`w-10 h-10 flex items-center justify-center rounded-xl border transition-all active:scale-95 ${
+      className={`w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg sm:rounded-xl border transition-all active:scale-95 shrink-0 cursor-pointer ${
         isActive
           ? 'bg-white text-slate-900 border-white shadow-lg shadow-white/20'
           : 'bg-black/40 text-white border-white/15 hover:bg-white/20 hover:border-white/30 backdrop-blur-md'
       }`}
     >
-      <Icon className="w-4.5 h-4.5" style={{ width: 18, height: 18 }} />
+      <Icon className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
     </button>
   );
 }
@@ -176,7 +176,7 @@ function BgPanel({
   }, [selectedItem, fsYoutubeVideoId, fullscreenTimerBg]);
 
   return (
-    <div className="w-[280px] bg-[#0f0f1a] border border-white/10 rounded-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+    <div className="w-80 max-w-[calc(100vw-24px)] bg-[#0f0f1a] border border-white/10 rounded-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
       <PanelHeader icon={ImageIcon} label="Background" onClose={onClose} />
       {/* Category tabs */}
       <div className="px-3 pt-3 flex flex-wrap gap-1.5">
@@ -304,7 +304,7 @@ function BgPanel({
 // ─── Panel: Sound Mixer ────────────────────────────────────────────────────────
 function SoundsPanel({ fsSoundVolumes, setFsSoundVolumes, fsBgVideoVolume, setFsBgVideoVolume, onClose }) {
   return (
-    <div className="w-72 bg-[#0f0f1a] border border-white/10 rounded-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+    <div className="w-72 max-w-[calc(100vw-24px)] bg-[#0f0f1a] border border-white/10 rounded-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
       <PanelHeader icon={Music} label="Sound Mixer" onClose={onClose} />
       <div className="p-4 space-y-4 max-h-[420px] overflow-y-auto">
         <div className="space-y-1.5">
@@ -345,7 +345,7 @@ function SoundSlider({ label, value, onChange }) {
 // ─── Panel: Quotes ────────────────────────────────────────────────────────────
 function QuotesPanel({ fsQuoteVisible, setFsQuoteVisible, onShuffle, fsQuoteShuffleInterval, setFsQuoteShuffleInterval, onClose }) {
   return (
-    <div className="w-56 bg-[#0f0f1a] border border-white/10 rounded-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+    <div className="w-64 max-w-[calc(100vw-24px)] bg-[#0f0f1a] border border-white/10 rounded-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
       <PanelHeader icon={Quote} label="Motivational Quote" onClose={onClose} />
       <div className="p-3 space-y-2">
         <PanelAction icon={RefreshCw} label="Shuffle Quote" onClick={onShuffle} />
@@ -387,7 +387,7 @@ function StatsPanel({ todayLog, timerState, todayTasks, currentStreak, onClose }
     { label:'Streak', value:`${currentStreak}d`, Icon:Flame },
   ];
   return (
-    <div className="w-64 bg-[#0f0f1a] border border-white/10 rounded-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+    <div className="w-72 max-w-[calc(100vw-24px)] bg-[#0f0f1a] border border-white/10 rounded-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
       <PanelHeader icon={BarChart} label="Study Stats" onClose={onClose} />
       <div className="p-3 grid grid-cols-2 gap-2.5">
         {stats.map(({ label, value, Icon }) => (
@@ -426,7 +426,7 @@ function TimerSettingsPanel({
   onClose,
 }) {
   return (
-    <div className="w-80 bg-[#0f0f1a] border border-white/10 rounded-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+    <div className="w-80 max-w-[calc(100vw-24px)] bg-[#0f0f1a] border border-white/10 rounded-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
       <PanelHeader icon={Settings} label="Timer Settings" onClose={onClose} />
       <div className="p-4 space-y-4 max-h-[80vh] overflow-y-auto">
         {/* Type switch */}
@@ -609,7 +609,7 @@ function WidgetsPanel({ fsWidgets, setFsWidgets, fsCustomizingWidgets, setFsCust
   };
 
   return (
-    <div className="w-72 bg-[#0f0f1a] border border-white/10 rounded-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+    <div className="w-72 max-w-[calc(100vw-24px)] bg-[#0f0f1a] border border-white/10 rounded-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
       <PanelHeader icon={Layout} label="Overlay Widgets" onClose={onClose} />
       <div className="p-3 space-y-2.5 max-h-[420px] overflow-y-auto">
         <button onClick={() => setFsCustomizingWidgets(v => !v)}
@@ -717,8 +717,8 @@ function FloatingWidget({ widget, customizing, onDragStart, onResizeStart, onEdi
 
   return (
     <div
-      className={`absolute z-20 rounded-2xl overflow-hidden shadow-2xl ${customizing ? 'ring-2 ring-blue-400/50' : ''}`}
-      style={{ left:widget.x, top:widget.y, width:widget.w, height:widget.h }}
+      className={`absolute z-20 rounded-2xl overflow-hidden shadow-2xl max-w-[calc(100vw-24px)] max-h-[85vh] ${customizing ? 'ring-2 ring-blue-400/50' : ''}`}
+      style={{ left: widget.x, top: widget.y, width: widget.w, height: widget.h }}
       onClick={e => e.stopPropagation()}
       onMouseDown={e => e.stopPropagation()}
     >
