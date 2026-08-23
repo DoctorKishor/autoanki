@@ -29560,7 +29560,7 @@ Return your response strictly as a JSON object matching this schema:
                         <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 opacity-60 ${isDailyMetricsOpen ? 'rotate-180 text-blue-500 opacity-100' : ''}`} />
                       </motion.button>
 
-                      {/* Expandable Daily Metrics Liquid Glass Popover Drawer */}
+                      {/* Expandable Daily Metrics Liquid Glass Horizontal Drawer */}
                       <AnimatePresence>
                         {isDailyMetricsOpen && (
                           <>
@@ -29568,73 +29568,74 @@ Return your response strictly as a JSON object matching this schema:
                             <div className="fixed inset-0 z-40" onClick={() => setIsDailyMetricsOpen(false)} />
                             
                             <motion.div
-                              initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                              initial={{ opacity: 0, y: -6, scale: 0.96 }}
                               animate={{ opacity: 1, y: 0, scale: 1 }}
-                              exit={{ opacity: 0, y: -8, scale: 0.95 }}
-                              transition={{ duration: 0.22, ease: [0, 0, 0, 1] }}
-                              className={`absolute top-full left-1/2 -translate-x-1/2 mt-2.5 z-50 w-80 rounded-3xl p-5 border shadow-2xl backdrop-blur-3xl ${
+                              exit={{ opacity: 0, y: -6, scale: 0.96 }}
+                              transition={{ duration: 0.2, ease: [0, 0, 0, 1] }}
+                              className={`absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 w-[540px] max-w-[92vw] rounded-2xl p-3 border shadow-2xl backdrop-blur-3xl ${
                                 settingsThemeMode === 'dark'
-                                  ? 'bg-[#222730]/92 border-white/[0.15] text-slate-100 shadow-[0_20px_60px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.15)]'
-                                  : 'bg-[#e6ecf5]/92 border-white/90 text-slate-800 shadow-[0_20px_60px_rgba(37,99,235,0.12),inset_0_1px_1px_rgba(255,255,255,0.9)]'
+                                  ? 'bg-[#222730]/95 border-white/[0.12] text-slate-100 shadow-[0_16px_40px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.1)]'
+                                  : 'bg-[#e6ecf5]/95 border-white/90 text-slate-800 shadow-[0_16px_40px_rgba(37,99,235,0.12),inset_0_1px_1px_rgba(255,255,255,0.9)]'
                               }`}
                             >
-                              {/* Header */}
-                              <div className="flex items-center justify-between pb-3 border-b border-white/10">
-                                <div>
-                                  <h4 className="text-xs font-black uppercase tracking-wider">Today's Momentum</h4>
-                                  <p className="text-[10px] font-bold opacity-60 mt-0.5">{todayStr}</p>
+                              {/* Header Strip */}
+                              <div className="flex items-center justify-between pb-2 border-b border-white/10 mb-2">
+                                <div className="flex items-center gap-2">
+                                  <h4 className="text-[11px] font-black uppercase tracking-wider">Today's Momentum</h4>
+                                  <span className="text-[10px] font-bold opacity-50">•</span>
+                                  <span className="text-[10px] font-bold opacity-60">{todayStr}</span>
                                 </div>
-                                <span className={`px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider border flex items-center gap-1 ${
-                                  settingsThemeMode === 'dark' ? 'bg-orange-500/15 text-orange-400 border-orange-500/30' : 'bg-orange-50 text-orange-700 border-orange-200'
-                                }`}>
-                                  <Flame className="w-3 h-3" /> {streakStats.currentStreak}d Streak
-                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border flex items-center gap-1 ${
+                                    settingsThemeMode === 'dark' ? 'bg-orange-500/15 text-orange-400 border-orange-500/30' : 'bg-orange-50 text-orange-700 border-orange-200'
+                                  }`}>
+                                    <Flame className="w-2.5 h-2.5" /> {streakStats.currentStreak}d Streak
+                                  </span>
+                                  <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border ${
+                                    settingsThemeMode === 'dark' ? 'bg-blue-500/15 text-blue-300 border-blue-500/30' : 'bg-blue-50 text-blue-700 border-blue-200'
+                                  }`}>
+                                    ⚡ Active
+                                  </span>
+                                </div>
                               </div>
 
-                              {/* Metrics 2x2 Grid */}
-                              <div className="grid grid-cols-2 gap-2.5 py-3.5">
+                              {/* Single-Row 4-Metric Grid */}
+                              <div className="grid grid-cols-4 gap-2">
                                 {/* Study Time */}
-                                <div className={`p-3 rounded-2xl border text-left ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'}`}>
-                                  <div className="flex items-center gap-1.5">
-                                    <Clock className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                                    <span className="text-[9px] font-black uppercase tracking-wider opacity-60">Study Time</span>
+                                <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'}`}>
+                                  <div className="flex items-center gap-1 mb-0.5">
+                                    <Clock className="w-3 h-3 text-blue-500 shrink-0" />
+                                    <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Time</span>
                                   </div>
-                                  <div className="text-sm font-black mt-1.5">{getLiveTodayHours().toFixed(2)}h</div>
+                                  <div className="text-xs font-black">{getLiveTodayHours().toFixed(2)}h</div>
                                 </div>
 
                                 {/* Cards Reviewed */}
-                                <div className={`p-3 rounded-2xl border text-left ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'}`}>
-                                  <div className="flex items-center gap-1.5">
-                                    <Layers className="w-3.5 h-3.5 text-purple-500 shrink-0" />
-                                    <span className="text-[9px] font-black uppercase tracking-wider opacity-60">Cards Rev</span>
+                                <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'}`}>
+                                  <div className="flex items-center gap-1 mb-0.5">
+                                    <Layers className="w-3 h-3 text-purple-500 shrink-0" />
+                                    <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Cards</span>
                                   </div>
-                                  <div className="text-sm font-black mt-1.5">{studyLogs[todayStr]?.cards || 0}</div>
+                                  <div className="text-xs font-black">{studyLogs[todayStr]?.cards || 0}</div>
                                 </div>
 
                                 {/* Questions Solved */}
-                                <div className={`p-3 rounded-2xl border text-left ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'}`}>
-                                  <div className="flex items-center gap-1.5">
-                                    <HelpCircle className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-                                    <span className="text-[9px] font-black uppercase tracking-wider opacity-60">Qs Solved</span>
+                                <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'}`}>
+                                  <div className="flex items-center gap-1 mb-0.5">
+                                    <HelpCircle className="w-3 h-3 text-indigo-500 shrink-0" />
+                                    <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Qs</span>
                                   </div>
-                                  <div className="text-sm font-black mt-1.5">{studyLogs[todayStr]?.questions || 0}</div>
+                                  <div className="text-xs font-black">{studyLogs[todayStr]?.questions || 0}</div>
                                 </div>
 
                                 {/* Pages Read */}
-                                <div className={`p-3 rounded-2xl border text-left ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'}`}>
-                                  <div className="flex items-center gap-1.5">
-                                    <FileText className="w-3.5 h-3.5 text-teal-500 shrink-0" />
-                                    <span className="text-[9px] font-black uppercase tracking-wider opacity-60">Pages Read</span>
+                                <div className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center ${settingsThemeMode === 'dark' ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]' : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'}`}>
+                                  <div className="flex items-center gap-1 mb-0.5">
+                                    <FileText className="w-3 h-3 text-teal-500 shrink-0" />
+                                    <span className="text-[8px] font-black uppercase tracking-wider opacity-60">Pages</span>
                                   </div>
-                                  <div className="text-sm font-black mt-1.5">{studyLogs[todayStr]?.pages || 0}</div>
+                                  <div className="text-xs font-black">{studyLogs[todayStr]?.pages || 0}</div>
                                 </div>
-                              </div>
-
-                              {/* Motivational Tag */}
-                              <div className={`p-2.5 rounded-xl text-center text-[10px] font-black uppercase tracking-wider ${
-                                settingsThemeMode === 'dark' ? 'bg-blue-500/15 text-blue-300 border border-blue-500/30' : 'bg-blue-50 text-blue-700 border border-blue-200'
-                              }`}>
-                                ⚡ High-Yield Session Active
                               </div>
                             </motion.div>
                           </>
