@@ -22909,7 +22909,9 @@ Return your response strictly as a JSON object matching this schema:
             <CtrlBtn panelId="quotes" activePanel={activeFullscreenPanel} icon={Quote} label="Quotes" onToggle={togglePanel} />
             <CtrlBtn panelId="stats" activePanel={activeFullscreenPanel} icon={BarChartIcon} label="Stats" onToggle={togglePanel} />
             <CtrlBtn panelId="timerSettings" activePanel={activeFullscreenPanel} icon={Settings} label="Timer" onToggle={togglePanel} />
-            <CtrlBtn panelId="widgets" activePanel={activeFullscreenPanel} icon={Layout} label="Widgets" onToggle={togglePanel} />
+            <div className="hidden sm:block">
+              <CtrlBtn panelId="widgets" activePanel={activeFullscreenPanel} icon={Layout} label="Widgets" onToggle={togglePanel} />
+            </div>
             <button onClick={handleSaveStudyRoomLayout} title="Save Layout to Local DB"
               className="px-2 sm:px-3 h-8 sm:h-10 flex items-center gap-1 sm:gap-1.5 rounded-lg sm:rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/40 transition-all active:scale-95 text-[10px] sm:text-xs font-black uppercase tracking-wider cursor-pointer">
               <Save className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -23122,29 +23124,31 @@ Return your response strictly as a JSON object matching this schema:
           )}
         </div>
 
-        {/* FLOATING WIDGET CANVAS */}
-        {fsWidgets.map(widget => (
-          <FloatingWidget key={widget.id} widget={widget} customizing={fsCustomizingWidgets}
-            onDragStart={startWidgetDrag} onResizeStart={startWidgetResize}
-            onEdit={openCssEditor} onRemove={id => setFsWidgets(prev => prev.filter(w => w.id !== id))}>
-            {widget.type === 'custom_browser' ? (
-              <div className="w-full h-full relative">
-                {fsCustomizingWidgets && (
-                  <div className="absolute inset-0 z-30 bg-transparent cursor-grab" />
-                )}
-                <iframe
-                  src={widget.url && (widget.url.startsWith('http://') || widget.url.startsWith('https://')) ? widget.url : `https://${widget.url || ''}`}
-                  title={widget.title || "Custom Browser"}
-                  className="w-full h-full border-0 rounded-2xl"
-                  sandbox="allow-scripts allow-forms"
-                  referrerPolicy="no-referrer"
-                  loading="lazy"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                />
-              </div>
-            ) : renderNativeWidget(widget.nativeId)}
-          </FloatingWidget>
-        ))}
+        {/* FLOATING WIDGET CANVAS (Desktop Only) */}
+        <div className="hidden sm:contents">
+          {fsWidgets.map(widget => (
+            <FloatingWidget key={widget.id} widget={widget} customizing={fsCustomizingWidgets}
+              onDragStart={startWidgetDrag} onResizeStart={startWidgetResize}
+              onEdit={openCssEditor} onRemove={id => setFsWidgets(prev => prev.filter(w => w.id !== id))}>
+              {widget.type === 'custom_browser' ? (
+                <div className="w-full h-full relative">
+                  {fsCustomizingWidgets && (
+                    <div className="absolute inset-0 z-30 bg-transparent cursor-grab" />
+                  )}
+                  <iframe
+                    src={widget.url && (widget.url.startsWith('http://') || widget.url.startsWith('https://')) ? widget.url : `https://${widget.url || ''}`}
+                    title={widget.title || "Custom Browser"}
+                    className="w-full h-full border-0 rounded-2xl"
+                    sandbox="allow-scripts allow-forms"
+                    referrerPolicy="no-referrer"
+                    loading="lazy"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  />
+                </div>
+              ) : renderNativeWidget(widget.nativeId)}
+            </FloatingWidget>
+          ))}
+        </div>
 
         {/* CSS EDITOR MODAL */}
         {fsEditingWidgetId && editingWidget && (
