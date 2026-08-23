@@ -385,33 +385,33 @@ Format response strictly as JSON with this schema:
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-md overflow-y-auto no-scrollbar">
+      <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-2 sm:p-4 pt-3 sm:pt-4 bg-slate-950/70 backdrop-blur-md overflow-y-auto no-scrollbar">
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 16 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 16 }}
           transition={{ duration: 0.25, ease: 'easeOut' }}
-          className={`w-full max-w-4xl rounded-3xl border shadow-2xl overflow-hidden flex flex-col max-h-[90vh] ${
+          className={`w-full max-w-4xl rounded-3xl border shadow-2xl overflow-hidden flex flex-col h-[94vh] sm:h-auto max-h-[94vh] sm:max-h-[90vh] ${
             isDark ? 'bg-[#222730] border-slate-700/80 neu-card-dark text-slate-200' : 'bg-[#e6ecf5] border-slate-200 neu-card-light text-slate-800'
           }`}
         >
           {/* Header Bar */}
-          <div className={`p-4 sm:p-5 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0 ${
+          <div className={`p-3.5 sm:p-5 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 shrink-0 ${
             isDark ? 'border-slate-700/60 bg-slate-900/40' : 'border-slate-300/60 bg-white/60'
           }`}>
             <div>
-              <h3 className={`text-lg font-black tracking-tight flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              <h3 className={`text-base sm:text-lg font-black tracking-tight flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
                 <span>➕</span>
                 <span>Select New Topics for Today</span>
               </h3>
-              <p className={`text-xs font-medium mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              <p className={`text-[10px] sm:text-xs font-medium mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                 {unstudiedCatalog.length} unstudied textbook topics available
               </p>
             </div>
 
             {/* Live Page Cap Gauge & Close */}
-            <div className="flex items-center gap-3">
-              <div className={`px-3 py-1.5 rounded-xl border text-xs font-black flex items-center gap-2 ${
+            <div className="flex items-center justify-between sm:justify-end gap-2.5 sm:gap-3">
+              <div className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl border text-[11px] sm:text-xs font-black flex items-center gap-1.5 ${
                 selectedMetrics.pages > dailyCapPages && !isUnlimited
                   ? 'bg-amber-500/20 text-amber-500 border-amber-500/40'
                   : isDark ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30' : 'bg-indigo-50 text-indigo-700 border-indigo-200'
@@ -424,7 +424,7 @@ Format response strictly as JSON with this schema:
 
               <button
                 onClick={onClose}
-                className={`p-2 rounded-xl border transition-all cursor-pointer ${
+                className={`p-1.5 sm:p-2 rounded-xl border transition-all cursor-pointer ${
                   isDark ? 'neu-btn-dark text-slate-400 hover:text-white border-slate-700' : 'neu-btn-light text-slate-600 hover:text-slate-900 border-slate-300'
                 }`}
               >
@@ -434,17 +434,17 @@ Format response strictly as JSON with this schema:
           </div>
 
           {/* Mode Switcher Tabs - Neumorphic Pill Design */}
-          <div className="px-4 sm:px-5 pt-4 shrink-0">
-            <div className={`relative grid grid-cols-2 p-1.5 rounded-2xl border w-full select-none overflow-hidden ${
+          <div className="px-3.5 sm:px-5 pt-3 sm:pt-4 shrink-0">
+            <div className={`relative grid grid-cols-2 p-1 sm:p-1.5 rounded-2xl border w-full select-none overflow-hidden ${
               isDark ? 'neu-pressed-dark border-slate-700/60' : 'neu-pressed-light border-slate-300/80'
             }`}>
               <div
-                className={`absolute top-1.5 bottom-1.5 rounded-xl shadow-md ${
+                className={`absolute top-1 sm:top-1.5 bottom-1 sm:bottom-1.5 rounded-xl shadow-md ${
                   isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
                 }`}
                 style={{
-                  left: `calc(0.375rem + ${activeTab === 'manual' ? 0 : 1} * ((100% - 0.75rem) / 2))`,
-                  width: `calc((100% - 0.75rem) / 2)`,
+                  left: `calc(0.25rem + ${activeTab === 'manual' ? 0 : 1} * ((100% - 0.5rem) / 2))`,
+                  width: `calc((100% - 0.5rem) / 2)`,
                   transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
                 }}
               />
@@ -452,12 +452,12 @@ Format response strictly as JSON with this schema:
               <button
                 type="button"
                 onClick={() => setActiveTab('manual')}
-                className={`relative z-10 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer flex items-center justify-center gap-2 transition-colors duration-300 ${
+                className={`relative z-10 py-2 sm:py-2.5 px-1 sm:px-2 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer flex items-center justify-center gap-1.5 transition-colors duration-300 ${
                   activeTab === 'manual' ? 'text-white font-extrabold' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <BookOpen className="w-4 h-4" />
-                <span>📚 Browse All Unstudied Topics (Primary)</span>
+                <BookOpen className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">All Unstudied Topics</span>
               </button>
 
               <button
@@ -466,18 +466,18 @@ Format response strictly as JSON with this schema:
                   setActiveTab('ai');
                   if (aiRecommendations.length === 0) generateAiRecommendations();
                 }}
-                className={`relative z-10 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer flex items-center justify-center gap-2 transition-colors duration-300 ${
+                className={`relative z-10 py-2 sm:py-2.5 px-1 sm:px-2 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer flex items-center justify-center gap-1.5 transition-colors duration-300 ${
                   activeTab === 'ai' ? 'text-white font-extrabold' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
-                <span>✨ AI Topper Suggestions (Optional)</span>
+                <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse shrink-0" />
+                <span className="truncate">AI Suggestions</span>
               </button>
             </div>
           </div>
 
           {/* Body Content Area */}
-          <div className="p-4 sm:p-5 overflow-y-auto flex-1 no-scrollbar space-y-4">
+          <div className="p-3.5 sm:p-5 overflow-y-auto flex-1 no-scrollbar space-y-4">
             {/* ── MODE 1: MANUAL TOPIC PICKER (PRIMARY) ── */}
             {activeTab === 'manual' && (
               <div className="space-y-4">
