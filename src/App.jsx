@@ -26492,16 +26492,9 @@ Return your response strictly as a JSON object matching this schema:
                                       {studyIntensityTimeframe === 'yearly' && (() => {
                                         const jan1DateObj = new Date(dateKeys[0] + 'T00:00:00');
                                         const jan1Weekday = jan1DateObj.getDay();
+                                        const leadingBlanks = Array.from({ length: jan1Weekday });
 
-                                        const weeks = Array.from({ length: 53 }, () => Array(7).fill(null));
-                                        dateKeys.forEach((dateStr, idx) => {
-                                          const colIndex = Math.floor((jan1Weekday + idx) / 7);
-                                          const rowIndex = (jan1Weekday + idx) % 7;
-                                          if (colIndex < 53) {
-                                            weeks[colIndex][rowIndex] = dateStr;
-                                          }
-                                        });
-
+                                        // Calculate month header positions across 53 columns
                                         const monthLabels = Array(53).fill(null);
                                         dateKeys.forEach((dateStr, idx) => {
                                           const d = new Date(dateStr + 'T00:00:00');
@@ -26514,48 +26507,56 @@ Return your response strictly as a JSON object matching this schema:
                                         });
 
                                         return (
-                                          <div className="w-full flex flex-col justify-center py-1 overflow-visible">
-                                            <div className="w-full select-none flex flex-col items-stretch max-w-full">
-                                              <div className="grid grid-cols-[repeat(53,minmax(0,1fr))] gap-[1.5px] w-full mb-1">
+                                          <div className="overflow-x-auto w-full custom-scrollbar py-2 px-4 flex justify-start items-center">
+                                            <div className="w-max select-none py-1">
+                                              {/* Month Header Row */}
+                                              <div className="flex gap-1 mb-1.5 h-3 text-[8.5px] font-black uppercase text-slate-400">
                                                 {monthLabels.map((lbl, cIdx) => (
-                                                  <div key={`m-col-st-mob-${cIdx}`} className="text-[6.5px] font-black uppercase text-slate-400 text-left overflow-visible whitespace-nowrap">
+                                                  <div key={`m-col-st-${cIdx}`} className="w-2.5 text-left overflow-visible whitespace-nowrap">
                                                     {lbl || ''}
                                                   </div>
                                                 ))}
                                               </div>
-                                              <div className="grid grid-cols-[repeat(53,minmax(0,1fr))] gap-[1.5px] w-full">
-                                                {weeks.map((week, weekIdx) => (
-                                                  <div key={`week-st-mob-${weekIdx}`} className="flex flex-col gap-[1.5px] w-full">
-                                                    {week.map((dateStr, dayIdx) => {
-                                                      if (!dateStr) {
-                                                        return (
-                                                          <div key={`blank-st-mob-${weekIdx}-${dayIdx}`} className="w-full aspect-square rounded-[1px] opacity-0 pointer-events-none" />
-                                                        );
-                                                      }
-
-                                                      const { color, border, hours, qCount, cardCount } = getIntensityStyle(dateStr);
-                                                      const tooltipPosClass = dayIdx < 3 ? 'top-full mt-1.5' : 'bottom-full mb-1.5';
-                                                      const tooltipAlignClass = weekIdx < 6 ? 'left-0' : (weekIdx > 46 ? 'right-0' : 'left-1/2 -translate-x-1/2');
-
-                                                      return (
-                                                        <div
-                                                          key={dateStr}
-                                                          className={`w-full aspect-square rounded-[1px] relative group hover:z-[200] cursor-pointer border ${border}`}
-                                                          style={{ backgroundColor: color }}
-                                                        >
-                                                          <div className={`absolute ${tooltipPosClass} ${tooltipAlignClass} bg-gray-900 text-white text-[8px] font-bold px-2 py-1 rounded shadow-xl opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-[250]`}>
-                                                            {hours}h / {qCount}q / {cardCount}c on {formatAppDate(dateStr)}
-                                                          </div>
-                                                        </div>
-                                                      );
-                                                    })}
-                                                  </div>
+                                              {/* 7-Row Grid (Exactly 365/366 boxes across 53 columns) */}
+                                              <div className="grid grid-flow-col grid-rows-7 gap-1">
+                                                {leadingBlanks.map((_, idx) => (
+                                                  <div key={`blank-jan1-st-${idx}`} className="w-2.5 h-2.5 rounded-sm opacity-0 pointer-events-none" />
                                                 ))}
+                                                {dateKeys.map(dateStr => {
+                                                  const { color, border, hours, qCount, cardCount } = getIntensityStyle(dateStr);
+                                                  return (
+                                                    <div
+                                                      key={dateStr}
+                                                      className={`w-2.5 h-2.5 rounded-sm relative group hover:z-50 cursor-pointer border ${border}`}
+                                                      style={{ backgroundColor: color }}
+                                                    >
+                                                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-gray-900 text-white text-[8px] font-bold px-2 py-1 rounded shadow-xl opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-50">
+                                                        {hours}h / {qCount}q / {cardCount}c on {formatAppDate(dateStr)}
+                                                      </div>
+                                                    </div>
+                                                  );
+                                                })}
                                               </div>
                                             </div>
                                           </div>
                                         );
                                       })()}
+                                    </div>
+
+                                    {/* Mobile Footer: Intensity Legend */}
+                                    <div className={`flex items-center justify-between text-[8px] font-bold px-2 pt-1 select-none border-t ${isDark ? 'border-gray-800/60 text-slate-400' : 'border-gray-100 text-slate-500'
+                                      }`}>
+                                      <span className="font-mono">{periodDetailText}</span>
+                                      <div className="flex items-center gap-1">
+                                        <span>Less</span>
+                                        <div className={`w-2 h-2 rounded-sm border ${isDark ? 'bg-[#1e242d] border-gray-800/80' : 'bg-[#cbd5e1] border-gray-300/60'}`} title="0 study activity" />
+                                        <div className="w-2 h-2 bg-[#ffedd5] rounded-sm" title="Light activity" />
+                                        <div className="w-2 h-2 bg-[#fed7aa] rounded-sm" title="Moderate activity" />
+                                        <div className="w-2 h-2 bg-[#fdbb2d] rounded-sm" title="High activity" />
+                                        <div className="w-2 h-2 bg-[#f97316] rounded-sm" title="Intense activity" />
+                                        <div className="w-2 h-2 bg-[#c2410c] rounded-sm" title="Extreme activity" />
+                                        <span>More</span>
+                                      </div>
                                     </div>
                                   </>
                                 );
