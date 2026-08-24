@@ -10,9 +10,10 @@ import { getLocalSetting, saveLocalSetting } from './localDb';
 export const DEFAULT_GOOGLE_CLIENT_ID = '373065987778-o11hmpkgtf3bncdvhcjiaq0qb66d11q6.apps.googleusercontent.com';
 
 export const GOOGLE_DRIVE_SCOPES = [
-  'https://www.googleapis.com/auth/drive.file',
-  'https://www.googleapis.com/auth/userinfo.profile',
-  'https://www.googleapis.com/auth/userinfo.email'
+  'openid',
+  'email',
+  'profile',
+  'https://www.googleapis.com/auth/drive.file'
 ].join(' ');
 
 export const GOOGLE_DRIVE_AUTH_KEY = 'google_drive_auth';
