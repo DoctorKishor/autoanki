@@ -1137,6 +1137,11 @@ async function executeSyncInternal({
     console.log('[GDriveSync] Modified bundles:', modifiedBundleNames);
 
     if (modifiedBundleNames.length > 0) {
+      // Check if primary content bundles conflict between separate devices
+      const cardsConflict = localHashes.cards_bundle !== remoteHashes.cards_bundle;
+      const topicsConflict = localHashes.curriculum_topics !== remoteHashes.curriculum_topics;
+      const pagesConflict = localHashes.pages_bundle !== remoteHashes.pages_bundle;
+
       // Build granular difference analysis for user transparency
       const diffDetails = buildConflictDiffDetails(localManifest, remoteManifest, modifiedBundleNames, localHashes, remoteHashes);
 
