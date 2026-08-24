@@ -42,8 +42,9 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
 
-  // Do NOT intercept external API, cloud sync, or chrome-extension requests
+  // Do NOT intercept external API, cloud sync, chrome-extension, or Vite dev server / HMR paths
   if (url.origin !== self.location.origin) return;
+  if (url.pathname.startsWith('/@') || url.pathname.startsWith('/src/') || url.pathname.startsWith('/node_modules/') || url.search.includes('token=')) return;
 
   // 1. Navigation requests (HTML documents): Network-first with offline cache fallback
   if (request.mode === 'navigate') {
