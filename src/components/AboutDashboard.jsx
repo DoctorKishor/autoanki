@@ -16,9 +16,9 @@ import {
 const MANUAL_CATEGORIES = [
   {
     id: 'focus',
-    label: 'Focus & Review',
+    label: 'Focus Hub',
     icon: Flame,
-    desc: 'Deep study lounge, FSRS-6 spaced repetition engine, Pomodoro lounge, and daily revision scheduling.',
+    desc: 'Deep study lounge, FSRS-6 spaced repetition engine, Pomodoro lounge, and live study timers.',
     color: 'from-amber-500 to-orange-600',
     badgeColor: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
     features: [
@@ -91,75 +91,17 @@ const MANUAL_CATEGORIES = [
           '2. Choose an ambient soundscape or paste a YouTube study stream link.',
           '3. After attempting a mock exam or Grand Test, log your score in the GT Scorecard panel to update long-term trend lines.'
         ]
-      },
-      {
-        id: 'studyScheduler',
-        name: 'Study Scheduler',
-        tabId: 'studyScheduler',
-        icon: Calendar,
-        summary: 'Spaced repetition calendar balancing future review workloads, detecting overdue topics, and organizing daily tasks.',
-        elements: [
-          { name: 'Spaced Repetition Calendar Grid', type: 'Calendar View', desc: 'Visual daily matrix displaying scheduled topic reviews, completed decks, and upcoming workloads.' },
-          { name: 'Overdue Topics Alert Bar', type: 'Alert List', desc: 'Highlights medical topics that have passed their scheduled FSRS review dates.' },
-          { name: 'Daily Action Checklist', type: 'Task Manager', desc: 'Add, edit, check off, and delete daily study goals, QBank question quotas, and subject milestones.' },
-          { name: 'Workload Leveler', type: 'Balancing Tool', desc: 'Distributes upcoming card reviews evenly across future days to avoid study burnout.' }
-        ],
-        howToUse: [
-          '1. Inspect the calendar grid to identify days with heavy review loads.',
-          '2. Check off overdue topics by clicking on them to launch an immediate review session.',
-          '3. Add custom daily to-do tasks and mark them complete as you finish your study blocks.'
-        ]
       }
     ]
   },
   {
-    id: 'knowledge',
-    label: 'Content & Knowledge',
+    id: 'syllabus',
+    label: 'Syllabus & PYT',
     icon: BookOpen,
-    desc: 'PDF textbook ingestion, Gemini Vision AI card extraction, 19 medical subjects, and NEET PG PYT indices.',
+    desc: '19-subject curriculum trackers, Previous Year Topic managers, revision frequency loggers, and spaced study scheduling.',
     color: 'from-blue-500 to-indigo-600',
     badgeColor: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
     features: [
-      {
-        id: 'library',
-        name: 'Library & PDF Ingestion',
-        tabId: 'library',
-        icon: Library,
-        summary: 'Localized textbook repository with canvas PDF rendering, bounding box anchors, and page slice previews.',
-        elements: [
-          { name: 'Upload PDF / Slides Button', type: 'File Input', desc: 'Uploads medical textbook PDFs or slide images directly into local IndexedDB storage.' },
-          { name: 'Interactive PDF Canvas Viewer', type: 'Reader View', desc: 'Powered by pdfjs-dist with multi-page continuous scroll, page jumps, and zooming.' },
-          { name: 'Diagram Bounding Box Selector', type: 'Annotation Tool', desc: 'Click-and-drag bounding box on textbook diagrams to attach visual crops directly to flashcards.' },
-          { name: 'PDF Slice Preview Tool', type: 'Modal Trigger', desc: 'Slices multi-page PDF sections into high-res images for visual flashcard extraction.' },
-          { name: 'Subject Folders Manager', type: 'Folder System', desc: 'Create, rename, organize, and delete folders for all 19 medical subjects.' }
-        ],
-        howToUse: [
-          '1. Upload your clinical textbook PDF (e.g. Robbins Pathology, Harrison Medicine) into the relevant subject folder.',
-          '2. Scroll to a high-yield page and use the diagram selector to highlight a clinical flowchart or histology image.',
-          '3. Trigger AI extraction to generate flashcards linked to that exact page coordinate.'
-        ]
-      },
-      {
-        id: 'cards',
-        name: 'Cards Manager & AI Generation',
-        tabId: 'cards',
-        icon: Home,
-        summary: 'Extract high-yield clinical cards from textbook pages using Google Gemini Vision AI with rich pre-save editing.',
-        elements: [
-          { name: 'AI Extract Flashcards Button', type: 'AI Action', desc: 'Sends page layout and text to Gemini Vision AI to extract high-yield clinical Q&A pairs.' },
-          { name: 'Interactive Card Editor', type: 'Editor View', desc: 'Edit Question, Answer, Notes, Tags, Deck, and Yield Rating before saving to database.' },
-          { name: 'Manual Card Creator Modal', type: 'Modal Trigger', desc: 'Create cards manually with rich formatting, Cloze deletion syntax ({{c1::text}}), and image drag-and-drop.' },
-          { name: 'Image Cropper Tool', type: 'Image Editor', desc: 'Adjust crop boundaries for clinical diagrams, histology slides, and ECG strips.' },
-          { name: 'Conflict Inspector Modal', type: 'Modal Trigger', desc: 'Detects duplicate cards in active decks and offers side-by-side diffing to merge, overwrite, or discard.' },
-          { name: 'Search & Tag Filters', type: 'Filter Controls', desc: 'Filter generated cards by Subject, Tag, Status, or Yield Tier (High-Yield / Super-High-Yield).' }
-        ],
-        howToUse: [
-          '1. Click "Extract Flashcards" on any uploaded textbook page.',
-          '2. Refine the generated question and answer in the interactive editor.',
-          '3. Assign appropriate subject tags and click "Save to Deck".',
-          '4. If duplicates are found, resolve them in the Conflict Inspector modal.'
-        ]
-      },
       {
         id: 'subjectTracker',
         name: 'Subject Tracker (19 Subjects)',
@@ -214,12 +156,98 @@ const MANUAL_CATEGORIES = [
           '2. Filter by "Neglected Topics" at the start of each week to prioritize forgotten clinical points.',
           '3. Use search and sorting to find specific topics quickly.'
         ]
+      },
+      {
+        id: 'studyScheduler',
+        name: 'Study Scheduler',
+        tabId: 'studyScheduler',
+        icon: Calendar,
+        summary: 'Spaced repetition calendar balancing future review workloads, detecting overdue topics, and organizing daily tasks.',
+        elements: [
+          { name: 'Spaced Repetition Calendar Grid', type: 'Calendar View', desc: 'Visual daily matrix displaying scheduled topic reviews, completed decks, and upcoming workloads.' },
+          { name: 'Overdue Topics Alert Bar', type: 'Alert List', desc: 'Highlights medical topics that have passed their scheduled FSRS review dates.' },
+          { name: 'Daily Action Checklist', type: 'Task Manager', desc: 'Add, edit, check off, and delete daily study goals, QBank question quotas, and subject milestones.' },
+          { name: 'Workload Leveler', type: 'Balancing Tool', desc: 'Distributes upcoming card reviews evenly across future days to avoid study burnout.' }
+        ],
+        howToUse: [
+          '1. Inspect the calendar grid to identify days with heavy review loads.',
+          '2. Check off overdue topics by clicking on them to launch an immediate review session.',
+          '3. Add custom daily to-do tasks and mark them complete as you finish your study blocks.'
+        ]
+      }
+    ]
+  },
+  {
+    id: 'cards_library',
+    label: 'Cards & Library',
+    icon: Layers,
+    desc: 'PDF textbook repository, Google Gemini Vision AI card extractor, and Anki APKG deck compilation.',
+    color: 'from-cyan-500 to-blue-600',
+    badgeColor: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20',
+    features: [
+      {
+        id: 'library',
+        name: 'Library & PDF Ingestion',
+        tabId: 'library',
+        icon: Library,
+        summary: 'Localized textbook repository with canvas PDF rendering, bounding box anchors, and page slice previews.',
+        elements: [
+          { name: 'Upload PDF / Slides Button', type: 'File Input', desc: 'Uploads medical textbook PDFs or slide images directly into local IndexedDB storage.' },
+          { name: 'Interactive PDF Canvas Viewer', type: 'Reader View', desc: 'Powered by pdfjs-dist with multi-page continuous scroll, page jumps, and zooming.' },
+          { name: 'Diagram Bounding Box Selector', type: 'Annotation Tool', desc: 'Click-and-drag bounding box on textbook diagrams to attach visual crops directly to flashcards.' },
+          { name: 'PDF Slice Preview Tool', type: 'Modal Trigger', desc: 'Slices multi-page PDF sections into high-res images for visual flashcard extraction.' },
+          { name: 'Subject Folders Manager', type: 'Folder System', desc: 'Create, rename, organize, and delete folders for all 19 medical subjects.' }
+        ],
+        howToUse: [
+          '1. Upload your clinical textbook PDF (e.g. Robbins Pathology, Harrison Medicine) into the relevant subject folder.',
+          '2. Scroll to a high-yield page and use the diagram selector to highlight a clinical flowchart or histology image.',
+          '3. Trigger AI extraction to generate flashcards linked to that exact page coordinate.'
+        ]
+      },
+      {
+        id: 'cards',
+        name: 'Card Generator & Extractor',
+        tabId: 'cards',
+        icon: Sparkles,
+        summary: 'Extract high-yield clinical cards from textbook pages using Google Gemini Vision AI with rich pre-save editing.',
+        elements: [
+          { name: 'AI Extract Flashcards Button', type: 'AI Action', desc: 'Sends page layout and text to Gemini Vision AI to extract high-yield clinical Q&A pairs.' },
+          { name: 'Interactive Card Editor', type: 'Editor View', desc: 'Edit Question, Answer, Notes, Tags, Deck, and Yield Rating before saving to database.' },
+          { name: 'Manual Card Creator Modal', type: 'Modal Trigger', desc: 'Create cards manually with rich formatting, Cloze deletion syntax ({{c1::text}}), and image drag-and-drop.' },
+          { name: 'Image Cropper Tool', type: 'Image Editor', desc: 'Adjust crop boundaries for clinical diagrams, histology slides, and ECG strips.' },
+          { name: 'Conflict Inspector Modal', type: 'Modal Trigger', desc: 'Detects duplicate cards in active decks and offers side-by-side diffing to merge, overwrite, or discard.' },
+          { name: 'Search & Tag Filters', type: 'Filter Controls', desc: 'Filter generated cards by Subject, Tag, Status, or Yield Tier (High-Yield / Super-High-Yield).' }
+        ],
+        howToUse: [
+          '1. Click "Extract Flashcards" on any uploaded textbook page.',
+          '2. Refine the generated question and answer in the interactive editor.',
+          '3. Assign appropriate subject tags and click "Save to Deck".',
+          '4. If duplicates are found, resolve them in the Conflict Inspector modal.'
+        ]
+      },
+      {
+        id: 'export',
+        name: 'Exporter Hub & Anki APKG Compiler',
+        tabId: 'export',
+        icon: Download,
+        summary: 'Compile curated deck collections into standardized SQLite .apkg files compatible with official Anki apps.',
+        elements: [
+          { name: 'Compile .apkg Package Button', type: 'Export Action', desc: 'Packages cards, tags, formatting, and notes into standard SQLite Anki databases.' },
+          { name: 'Media Asset Bundler', type: 'Media Processor', desc: 'Automatically embeds cropped images and diagrams into the .apkg media collection.' },
+          { name: 'Export Image Verification Modal', type: 'Modal Trigger', desc: 'Scans deck for broken image links or missing coordinates and fixes them before export.' },
+          { name: 'Subject / Tag Selectors', type: 'Checkboxes', desc: 'Select specific subjects or tag groups for modular specialty exports.' }
+        ],
+        howToUse: [
+          '1. Select the subjects or decks you wish to export.',
+          '2. Click "Verify Images" to ensure all diagram attachments are intact.',
+          '3. Click "Generate .apkg" and import the downloaded file directly into official Anki on Desktop, iOS, or Android.'
+        ]
       }
     ]
   },
   {
     id: 'analytics',
-    label: 'Progress & Metrics',
+    label: 'Analytics & CAMP',
     icon: BarChart2,
     desc: 'Consistent Active Memorization Protocol (CAMP), counseling rank predictors, and nested Sunburst deck charts.',
     color: 'from-emerald-500 to-teal-600',
@@ -267,33 +295,36 @@ const MANUAL_CATEGORIES = [
   },
   {
     id: 'system',
-    label: 'Tools & System',
+    label: 'App & System',
     icon: Sliders,
-    desc: 'Official Anki APKG compiler, AI prompt tuning, OBS stream overlays, local database manager, and Chrome extension.',
+    desc: 'Settings & LocalDB management, AI prompt tuning, OBS overlay customizer, recycle bin, and browser extensions.',
     color: 'from-purple-500 to-pink-600',
     badgeColor: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
     features: [
       {
-        id: 'export',
-        name: 'Exporter Hub & Anki APKG Compiler',
-        tabId: 'export',
-        icon: Download,
-        summary: 'Compile curated deck collections into standardized SQLite .apkg files compatible with official Anki apps.',
+        id: 'settings',
+        name: 'Settings & LocalDB Management',
+        tabId: 'settings',
+        icon: Settings,
+        summary: '100% offline-first IndexedDB database control, JSON database backup/restore, and private GitHub sync.',
         elements: [
-          { name: 'Compile .apkg Package Button', type: 'Export Action', desc: 'Packages cards, tags, formatting, and notes into standard SQLite Anki databases.' },
-          { name: 'Media Asset Bundler', type: 'Media Processor', desc: 'Automatically embeds cropped images and diagrams into the .apkg media collection.' },
-          { name: 'Export Image Verification Modal', type: 'Modal Trigger', desc: 'Scans deck for broken image links or missing coordinates and fixes them before export.' },
-          { name: 'Subject / Tag Selectors', type: 'Checkboxes', desc: 'Select specific subjects or tag groups for modular specialty exports.' }
+          { name: 'Backup Database (Export JSON)', type: 'Backup Button', desc: 'Exports entire IndexedDB database (flashcards, logs, PYTs, settings) to a single portable JSON file.' },
+          { name: 'Restore Database (Import JSON)', type: 'Restore Button', desc: 'Imports a saved JSON backup to restore all data instantly with zero data loss.' },
+          { name: 'Storage Store Diagnostics', type: 'Diagnostic View', desc: 'Inspects item counts and storage footprint for each IndexedDB store.' },
+          { name: 'GitHub Cloud Sync (PAT Manager)', type: 'Sync Controller', desc: 'Configure GitHub Username, Repo, and Personal Access Token for secure push/pull cloud backups.' },
+          { name: 'Gemini API Key Manager', type: 'Credentials Input', desc: 'Input and validate Google Gemini API key with live connection testing.' },
+          { name: 'Theme Mode Toggle (Light / Dark)', type: 'Theme Switch', desc: 'Switches between Neumorphic Light (#e6ecf5) and Dark (#222730).' },
+          { name: 'Mobile Navigation Customizer', type: 'Drag-and-Drop', desc: 'Configure up to 8 bottom navigation tab shortcuts for mobile view.' }
         ],
         howToUse: [
-          '1. Select the subjects or decks you wish to export.',
-          '2. Click "Verify Images" to ensure all diagram attachments are intact.',
-          '3. Click "Generate .apkg" and import the downloaded file directly into official Anki on Desktop, iOS, or Android.'
+          '1. Input your Google Gemini API key to enable AI card generation.',
+          '2. Click "Backup Database (JSON)" to keep safe offline backups on your computer.',
+          '3. Link your private GitHub repository for automated cross-device syncing.'
         ]
       },
       {
         id: 'prompt',
-        name: 'AI Prompt Editor',
+        name: 'AI Prompt Studio',
         tabId: 'prompt',
         icon: MessageSquare,
         summary: 'Refine Gemini AI extraction guidelines with dual prompt categories and JSON schema validation.',
@@ -328,27 +359,6 @@ const MANUAL_CATEGORIES = [
         ]
       },
       {
-        id: 'settings',
-        name: 'Settings & LocalDB Management',
-        tabId: 'settings',
-        icon: Settings,
-        summary: '100% offline-first IndexedDB database control, JSON database backup/restore, and private GitHub sync.',
-        elements: [
-          { name: 'Backup Database (Export JSON)', type: 'Backup Button', desc: 'Exports entire IndexedDB database (flashcards, logs, PYTs, settings) to a single portable JSON file.' },
-          { name: 'Restore Database (Import JSON)', type: 'Restore Button', desc: 'Imports a saved JSON backup to restore all data instantly with zero data loss.' },
-          { name: 'Storage Store Diagnostics', type: 'Diagnostic View', desc: 'Inspects item counts and storage footprint for each IndexedDB store.' },
-          { name: 'GitHub Cloud Sync (PAT Manager)', type: 'Sync Controller', desc: 'Configure GitHub Username, Repo, and Personal Access Token for secure push/pull cloud backups.' },
-          { name: 'Gemini API Key Manager', type: 'Credentials Input', desc: 'Input and validate Google Gemini API key with live connection testing.' },
-          { name: 'Theme Mode Toggle (Light / Dark)', type: 'Theme Switch', desc: 'Switches between Neumorphic Light (#e6ecf5) and Dark (#222730).' },
-          { name: 'Mobile Navigation Customizer', type: 'Drag-and-Drop', desc: 'Configure up to 8 bottom navigation tab shortcuts for mobile view.' }
-        ],
-        howToUse: [
-          '1. Input your Google Gemini API key to enable AI card generation.',
-          '2. Click "Backup Database (JSON)" to keep safe offline backups on your computer.',
-          '3. Link your private GitHub repository for automated cross-device syncing.'
-        ]
-      },
-      {
         id: 'trash',
         name: 'Recycle Bin & Recovery',
         tabId: 'trash',
@@ -366,20 +376,20 @@ const MANUAL_CATEGORIES = [
         ]
       },
       {
-        id: 'chromeExt',
-        name: 'Chrome Extension Ecosystem',
-        tabId: 'library',
-        icon: ExternalLink,
-        summary: 'Browser companion tool to highlight medical text/diagrams online and send cards straight to AutoAnki.',
+        id: 'about',
+        name: 'About AutoAnki',
+        tabId: 'about',
+        icon: Info,
+        summary: 'Interactive showcase, detailed feature manual, system diagnostics, and version information.',
         elements: [
-          { name: 'Floating Action Menu', type: 'Browser Injected UI', desc: 'Appears when highlighting medical questions on online question banks (Marrow, Prepladder).' },
-          { name: 'Offscreen Diagram Capturer', type: 'Canvas Engine', desc: 'Captures high-res diagram regions from web pages directly into AutoAnki.' },
-          { name: 'Extension Popup Manager', type: 'Popup Tool', desc: 'Select active deck and trigger instant card creation directly from the browser toolbar.' }
+          { name: 'Interactive Showcase Subtab', type: 'Subtab', desc: 'Explore key feature highlights, video demonstrations, and PG ranker testimonials.' },
+          { name: 'Feature Manual Subtab', type: 'Subtab', desc: 'Deep dive into every button, toggle, and workflow across all 5 navigation groups.' },
+          { name: 'System Info Subtab', type: 'Subtab', desc: 'View build version, storage architecture, and active local database status.' }
         ],
         howToUse: [
-          '1. Install the extension in Chrome from the chrome-extension directory.',
-          '2. Highlight clinical questions on medical portals and click the AutoAnki floating icon.',
-          '3. Cards are automatically saved into your active AutoAnki queue.'
+          '1. Switch between Showcase, Manual, and App Info subtabs.',
+          '2. Filter features by category or use instant search.',
+          '3. Click on any feature card to view complete step-by-step documentation.'
         ]
       }
     ]
@@ -438,11 +448,24 @@ const SHOWCASE_FAQS = [
   }
 ];
 
-export default function AboutDashboard({ isDark = false, onNavigate }) {
-  const [activeTab, setActiveTab] = useState('showcase'); // 'showcase' | 'manual' | 'app_info'
+export default function AboutDashboard({ isDark = false, onNavigate, activeSubTab = 'showcase', onSubTabChange }) {
+  const [activeTab, setActiveTab] = useState(activeSubTab || 'showcase'); // 'showcase' | 'manual' | 'app_info'
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedFeatureModal, setSelectedFeatureModal] = useState(null);
+
+  useEffect(() => {
+    if (activeSubTab && activeSubTab !== activeTab) {
+      setActiveTab(activeSubTab);
+    }
+  }, [activeSubTab]);
+
+  const handleSetActiveTab = (tab) => {
+    setActiveTab(tab);
+    if (typeof onSubTabChange === 'function') {
+      onSubTabChange(tab);
+    }
+  };
 
   // Rotating Testimonials State
   const [activeTestimonialIdx, setActiveTestimonialIdx] = useState(0);
@@ -610,7 +633,7 @@ export default function AboutDashboard({ isDark = false, onNavigate }) {
         />
 
         <button
-          onClick={() => setActiveTab('showcase')}
+          onClick={() => handleSetActiveTab('showcase')}
           className={`w-1/3 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-2 relative z-10 transition-colors duration-300 ${
             activeTab === 'showcase'
               ? 'text-white font-extrabold'
@@ -622,7 +645,7 @@ export default function AboutDashboard({ isDark = false, onNavigate }) {
         </button>
 
         <button
-          onClick={() => setActiveTab('manual')}
+          onClick={() => handleSetActiveTab('manual')}
           className={`w-1/3 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-2 relative z-10 transition-colors duration-300 ${
             activeTab === 'manual'
               ? 'text-white font-extrabold'
@@ -634,7 +657,7 @@ export default function AboutDashboard({ isDark = false, onNavigate }) {
         </button>
 
         <button
-          onClick={() => setActiveTab('app_info')}
+          onClick={() => handleSetActiveTab('app_info')}
           className={`w-1/3 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-2 relative z-10 transition-colors duration-300 ${
             activeTab === 'app_info'
               ? 'text-white font-extrabold'

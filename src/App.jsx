@@ -4933,16 +4933,18 @@ export default function App() {
   const [libraryPages, setLibraryPages] = useState([]); // List of {id, base64, deck} from local DB
   const getInitialTab = () => {
     const hash = window.location.hash.replace(/^#\/?/, '');
+    const segments = hash.split('/');
+    const mainTab = segments[0];
     const VALID_TABS = [
-      'dashboard', 'campTracker', 'cards', 'library', 'study', 'analytics',
+      'smartReview', 'dashboard', 'campTracker', 'cards', 'library', 'study', 'analytics',
       'export', 'prompt', 'pytManager', 'pytLogger',
       'subjectTracker', 'studyScheduler', 'obsOverlay', 'about', 'settings',
-      'trash', 'home', 'study'
+      'trash', 'home'
     ];
-    if (hash && VALID_TABS.includes(hash)) {
-      return hash;
+    if (mainTab && VALID_TABS.includes(mainTab)) {
+      return mainTab === 'home' ? 'smartReview' : mainTab;
     }
-    return 'dashboard';
+    return 'smartReview';
   };
 
   const [currentTab, setCurrentTab] = useState(getInitialTab);
@@ -7242,9 +7244,22 @@ export default function App() {
   const [mockReviewSubject, setMockReviewSubject] = useState('Anatomy');
   const [mockReviewTopic, setMockReviewTopic] = useState('');
   const [mockReviewDate, setMockReviewDate] = useState(todayStr);
-  const [fsrsAnalyticsSubject, setFsrsAnalyticsSubject] = useState('Anatomy');
-  const [smartReviewSubTab, setSmartReviewSubTab] = useState('logger');
-  const [currentCalendarMonth, setCurrentCalendarMonth] = useState(new Date().getMonth());
+  const [smartReviewSubTab, setSmartReviewSubTab] = useState(() => {
+    const hash = window.location.hash.replace(/^#\/?/, '');
+    const segments = hash.split('/');
+    if (segments[0] === 'smartReview' && ['queue', 'analytics', 'velocity', 'leeches'].includes(segments[1])) {
+      return segments[1];
+    }
+    return 'queue';
+  });
+  const [aboutSubTab, setAboutSubTab] = useState(() => {
+    const hash = window.location.hash.replace(/^#\/?/, '');
+    const segments = hash.split('/');
+    if (segments[0] === 'about' && ['showcase', 'manual', 'app_info'].includes(segments[1])) {
+      return segments[1];
+    }
+    return 'showcase';
+  });
   const [currentCalendarYear, setCurrentCalendarYear] = useState(new Date().getFullYear());
   const [selectedCalendarDateStr, setSelectedCalendarDateStr] = useState(null);
   const [maxDailyReviewCap, setMaxDailyReviewCap] = useState(30);
@@ -15817,6 +15832,8 @@ JSON Format:
       <>
         <SmartReviewHub
           themeMode={settingsThemeMode}
+          activeSubTab={smartReviewSubTab}
+          onSubTabChange={setSmartReviewSubTab}
           subjectTrackerData={subjectTrackerData}
           studyLogs={studyLogs}
           fsrsConfig={fsrsConfig}
@@ -26222,7 +26239,7 @@ Return your response strictly as a JSON object matching this schema:
 
                   {currentTab === 'about' && (
                     <div className="px-1 py-2">
-                      <AboutDashboard isDark={isDark} onNavigate={setCurrentTab} />
+                      <AboutDashboard isDark={isDark} onNavigate={setCurrentTab} activeSubTab={aboutSubTab} onSubTabChange={setAboutSubTab} />
                     </div>
                   )}
 
@@ -36617,7 +36634,7 @@ Return your response strictly as a JSON object matching this schema:
                     {/* ABOUT VIEW (Desktop) */}
                     {currentTab === 'about' && (
                       <div className="flex-grow p-4 lg:p-6 flex flex-col gap-6 max-w-[1280px] mx-auto w-full overflow-y-auto pb-24 lg:pb-6 text-left">
-                        <AboutDashboard isDark={isDark} onNavigate={setCurrentTab} />
+                        <AboutDashboard isDark={isDark} onNavigate={setCurrentTab} activeSubTab={aboutSubTab} onSubTabChange={setAboutSubTab} />
                       </div>
                     )}
 

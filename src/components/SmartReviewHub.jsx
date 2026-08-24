@@ -40,6 +40,8 @@ export function getTopicPageInfo(topic) {
 
 export default function SmartReviewHub({
   themeMode = 'dark',
+  activeSubTab = 'queue',
+  onSubTabChange,
   subjectTrackerData = [],
   studyLogs = [],
   fsrsConfig = {},
@@ -63,7 +65,20 @@ export default function SmartReviewHub({
   onDeleteTimingLog
 }) {
   const isDark = themeMode === 'dark';
-  const [subTab, setSubTab] = useState('queue'); // 'queue', 'analytics', 'velocity', 'leeches'
+  const [subTab, setSubTab] = useState(activeSubTab || 'queue'); // 'queue', 'analytics', 'velocity', 'leeches'
+
+  useEffect(() => {
+    if (activeSubTab && activeSubTab !== subTab) {
+      setSubTab(activeSubTab);
+    }
+  }, [activeSubTab]);
+
+  const handleSetSubTab = (st) => {
+    setSubTab(st);
+    if (typeof onSubTabChange === 'function') {
+      onSubTabChange(st);
+    }
+  };
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [pendingRatingData, setPendingRatingData] = useState(null);
   const [isPickModalOpen, setIsPickModalOpen] = useState(false);
@@ -652,7 +667,7 @@ export default function SmartReviewHub({
 
         <button
           type="button"
-          onClick={() => setSubTab('queue')}
+          onClick={() => handleSetSubTab('queue')}
           className={`relative z-10 py-2.5 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center transition-colors duration-300 px-1 text-center truncate ${
             subTab === 'queue' ? 'text-white font-extrabold' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
           }`}
@@ -663,7 +678,7 @@ export default function SmartReviewHub({
 
         <button
           type="button"
-          onClick={() => setSubTab('analytics')}
+          onClick={() => handleSetSubTab('analytics')}
           className={`relative z-10 py-2.5 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center transition-colors duration-300 px-1 text-center truncate ${
             subTab === 'analytics' ? 'text-white font-extrabold' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
           }`}
@@ -674,7 +689,7 @@ export default function SmartReviewHub({
 
         <button
           type="button"
-          onClick={() => setSubTab('velocity')}
+          onClick={() => handleSetSubTab('velocity')}
           className={`relative z-10 py-2.5 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center transition-colors duration-300 px-1 text-center truncate ${
             subTab === 'velocity' ? 'text-white font-extrabold' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
           }`}
@@ -685,7 +700,7 @@ export default function SmartReviewHub({
 
         <button
           type="button"
-          onClick={() => setSubTab('leeches')}
+          onClick={() => handleSetSubTab('leeches')}
           className={`relative z-10 py-2.5 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center transition-colors duration-300 px-1 text-center truncate ${
             subTab === 'leeches' ? 'text-white font-extrabold' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
           }`}
