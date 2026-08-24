@@ -1038,14 +1038,60 @@ function buildConflictDiffDetails(localManifest, remoteManifest, modifiedBundleN
  * @param {Function} [options.onConflict] Callback for conflict resolution modal
  * @returns {Promise<{ success: boolean, action: string, message: string }>}
  */
+// Storage key for last known synchronized bundle hashes
+const LAST_SYNCED_HASHES_KEY = 'autoanki_last_synced_hashes';
+
+async function getLastSyncedHashes() {
+  try {
+    const fromIdb = await getLocalKV(LAST_SYNCED_HASHES_KEY);
+    if (fromIdb && typeof fromIdb === 'object') return fromIdb;
+    if (typeof localStorage !== 'undefined') {
+      const stored = localStorage.getItem(LAST_SYNCED_HASHES_KEY);
+      if (stored) return JSON.parse(stored);
+    }
+  } catch (e) {
+    console.warn('[GDriveSync] Error getting last synced hashes:', e);
+  }
+  return null;
+}
+
+async function saveLastSyncedHashes(hashes) {
+  if (!hashes || typeof hashes !== 'object') return;
+  try {
+    await setLocalKV(LAST_SYNCED_HASHES_KEY, hashes);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(LAST_SYNCED_HASHES_KEY, JSON.stringify(hashes));
+    }
+  } catch (e) {
+    console.warn('[GDriveSync] Error saving last synced hashes:', e);
+  }
+}
+
 export async function syncWithGoogleDrive(options = {}) {
   if (typeof navigator !== 'undefined' && navigator.locks) {
-    return await navigator.locks.request('autoanki_gdrive_sync', { ifAvailable: true }, async (lock) => {
-      if (!lock) {
-        return { success: false, action: 'busy', message: 'Sync in progress in another tab.' };
-      }
+    try {
+      const lockPromise = navigator.locks.request('autoanki_gdrive_sync', { ifAvailable: true }, async (lock) => {
+        if (!lock) {
+          if (isSyncInProgress) {
+            return { success: false, action: 'busy', message: 'Sync already in progress in another tab.' };
+          }
+        }
+        return await executeSyncInternal(options);
+      });
+
+      // 8-second timeout on lock acquisition to prevent mobile freeze deadlock
+      const timeoutPromise = new Promise((resolve) => {
+        setTimeout(() => resolve(null), 8000);
+      });
+
+      const result = await Promise.race([lockPromise, timeoutPromise]);
+      if (result !== null) return result;
+      // Fallback if lock timed out on mobile background resume
       return await executeSyncInternal(options);
-    });
+    } catch (err) {
+      console.warn('[GDriveSync] Web lock error, bypassing to direct sync:', err);
+      return await executeSyncInternal(options);
+    }
   } else {
     return await executeSyncInternal(options);
   }
@@ -1111,21 +1157,57 @@ async function executeSyncInternal({
     // Check if cloud vault is completely empty (first-time push)
     if (!remoteManifest) {
       emit(4, 10, 'Uploading initial collection to Google Drive…');
-      return await executeOneWayPush(accessToken, vaultFolderId, mediaFolderId, localData, remoteFileMap, emit);
+      const res = await executeOneWayPush(accessToken, vaultFolderId, mediaFolderId, localData, remoteFileMap, emit);
+      if (res.success) await saveLastSyncedHashes(localManifest.hashes);
+      return res;
     }
 
-    // Compare hashes
+    // Compare hashes against both local and last-synced ancestor hashes
     const localHashes = localManifest.hashes;
     const remoteHashes = remoteManifest.hashes || {};
+    const lastSyncedHashes = await getLastSyncedHashes();
 
     const isIdentical = Object.keys(localHashes).every(k => localHashes[k] === remoteHashes[k]);
     if (isIdentical && !force) {
+      await saveLastSyncedHashes(localHashes);
       emit(10, 10, 'Everything is up to date.');
       emitSyncEvent('synced', { message: 'In sync with Google Drive.' });
       return { success: true, action: 'noop', message: 'Everything is up to date.' };
     }
 
-    // Check device ID differences
+    // Fast-Forward Analysis:
+    // Check if local has made 0 modifications since last sync with cloud (Clean Fast-Forward Download)
+    const isLocalClean = lastSyncedHashes && Object.keys(lastSyncedHashes).length > 0 &&
+      Object.keys(localHashes).every(k => localHashes[k] === lastSyncedHashes[k]);
+
+    // Check if remote has made 0 modifications since last sync (Clean Fast-Forward Push)
+    const isRemoteClean = lastSyncedHashes && Object.keys(lastSyncedHashes).length > 0 &&
+      Object.keys(remoteHashes).length > 0 &&
+      Object.keys(remoteHashes).every(k => remoteHashes[k] === lastSyncedHashes[k]);
+
+    // Scenario 1: Clean Fast-Forward Download (Mobile is catching up to Desktop without local edits)
+    if (isLocalClean && !force) {
+      console.log('[GDriveSync] Fast-forwarding local database to newer cloud version…');
+      emit(3, 10, 'Fast-forwarding to newer cloud version…');
+      const res = await executeOneWayDownload(accessToken, vaultFolderId, mediaFolderId, remoteFileMap, emit);
+      if (res.success) {
+        await saveLastSyncedHashes(remoteHashes);
+      }
+      return res;
+    }
+
+    // Scenario 2: Clean Fast-Forward Push (Local has edits and Cloud hasn't changed since last sync)
+    if (isRemoteClean && !force) {
+      console.log('[GDriveSync] Fast-forwarding cloud to newer local version…');
+      emit(3, 10, 'Pushing local changes to cloud…');
+      const res = await executeOneWayPush(accessToken, vaultFolderId, mediaFolderId, localData, remoteFileMap, emit);
+      if (res.success) {
+        await saveLastSyncedHashes(localHashes);
+      }
+      return res;
+    }
+
+    // Scenario 3: True Divergence (Both devices edited data since last sync)
     const isSameDevice = remoteManifest.deviceId === localManifest.deviceId;
 
     // Identify which bundles have changed
@@ -1134,7 +1216,7 @@ async function executeSyncInternal({
       return localHashes[bundleKey] !== remoteHashes[bundleKey];
     });
 
-    console.log('[GDriveSync] Modified bundles:', modifiedBundleNames);
+    console.log('[GDriveSync] Modified divergent bundles:', modifiedBundleNames);
 
     if (modifiedBundleNames.length > 0) {
       // Check if primary content bundles conflict between separate devices
@@ -1145,8 +1227,8 @@ async function executeSyncInternal({
       // Build granular difference analysis for user transparency
       const diffDetails = buildConflictDiffDetails(localManifest, remoteManifest, modifiedBundleNames, localHashes, remoteHashes);
 
-      // Anki-Style Conflict Detection: Trigger modal if distinct device and conflicting primary content
-      if (!isSameDevice && (cardsConflict || topicsConflict || pagesConflict) && onConflict && !force) {
+      // Only trigger conflict modal if user is in interactive mode and distinct devices have divergent primary content
+      if (interactive && !isSameDevice && (cardsConflict || topicsConflict || pagesConflict) && onConflict && !force) {
         emitSyncEvent('conflict', { message: 'Conflict detected between local and cloud versions.' });
         const conflictResolution = await new Promise((resolve) => {
           onConflict({
@@ -1172,9 +1254,13 @@ async function executeSyncInternal({
         });
 
         if (conflictResolution === 'upload') {
-          return await executeOneWayPush(accessToken, vaultFolderId, mediaFolderId, localData, remoteFileMap, emit);
+          const res = await executeOneWayPush(accessToken, vaultFolderId, mediaFolderId, localData, remoteFileMap, emit);
+          if (res.success) await saveLastSyncedHashes(localHashes);
+          return res;
         } else if (conflictResolution === 'download') {
-          return await executeOneWayDownload(accessToken, vaultFolderId, mediaFolderId, remoteFileMap, emit);
+          const res = await executeOneWayDownload(accessToken, vaultFolderId, mediaFolderId, remoteFileMap, emit);
+          if (res.success) await saveLastSyncedHashes(remoteHashes);
+          return res;
         } else if (conflictResolution === 'merge') {
           console.log('[GDriveSync] User opted for smart non-destructive merge.');
           // Falls through to pre-merge snapshot & smart delta merge below
@@ -1209,7 +1295,11 @@ async function executeSyncInternal({
       // After merge, re-extract and push unified bundles
       emit(8, 10, 'Pushing synchronized manifest to Drive…');
       const updatedLocalData = await extractLocalBundles();
-      return await executeOneWayPush(accessToken, vaultFolderId, mediaFolderId, updatedLocalData, remoteFileMap, emit);
+      const res = await executeOneWayPush(accessToken, vaultFolderId, mediaFolderId, updatedLocalData, remoteFileMap, emit);
+      if (res.success) {
+        await saveLastSyncedHashes(updatedLocalData.manifest.hashes);
+      }
+      return res;
     }
 
     emit(10, 10, 'Synchronization complete.');

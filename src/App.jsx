@@ -8730,13 +8730,14 @@ export default function App() {
         if (typeof loadTrash === 'function') await loadTrash(true);
         if (typeof loadInternalSnapshots === 'function') await loadInternalSnapshots();
 
-        const [pytList, pytProg, booksMeta, trackerData, scheduleMap, templatesList] = await Promise.all([
+        const [pytList, pytProg, booksMeta, trackerData, scheduleMap, templatesList, activeTopics] = await Promise.all([
           getAllLocalPytTopics().catch(() => []),
           getAllLocalPytProgress().catch(() => []),
           getLocalTextbooksMetadata().catch(() => []),
           getLocalSubjectTrackerData().catch(() => []),
           getLocalStudySchedule().catch(() => ({})),
-          getLocalScheduleTemplates().catch(() => [])
+          getLocalScheduleTemplates().catch(() => []),
+          getActiveNewTopicIds(todayStr).catch(() => [])
         ]);
 
         if (Array.isArray(pytList)) setPytTopicsList(pytList);
@@ -8745,6 +8746,7 @@ export default function App() {
         if (Array.isArray(trackerData)) setSubjectTrackerData(trackerData);
         if (scheduleMap && typeof scheduleMap === 'object') setStudySchedule(scheduleMap);
         if (Array.isArray(templatesList)) setScheduleTemplates(templatesList);
+        if (Array.isArray(activeTopics) && activeTopics.length > 0) setActiveNewTopicIds(activeTopics);
       } catch (err) {
         console.warn('[App] Error refreshing state after cloud hydration:', err);
       }

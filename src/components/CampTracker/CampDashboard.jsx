@@ -167,15 +167,16 @@ export default function CampDashboard({
     }
   }, [history, hasPromptedYesterday]);
 
-  // 1.5. Fetch local CAMP data from IndexedDB on mount to populate state safely
+  // 1.5. Fetch local CAMP data from IndexedDB on mount and on cloud sync hydration to populate state safely
   useEffect(() => {
     let active = true;
     const fetchLocalDbData = async () => {
       try {
-        const [histData, thData, infoData] = await Promise.all([
+        const [histData, thData, infoData, dailyLog] = await Promise.all([
           getLocalCampData('history'),
           getLocalCampData('timer_history'),
-          getLocalCampData('student_info')
+          getLocalCampData('student_info'),
+          getLocalCampDailyLogs(selectedDate)
         ]);
 
         if (!active) return;
@@ -194,6 +195,10 @@ export default function CampDashboard({
           setStudentInfo(infoData);
           localStorage.setItem('camp_student_info', JSON.stringify(infoData));
         }
+
+        if (dailyLog && dailyLog.sessions) {
+          setSessions(normalizeSessions(dailyLog.sessions));
+        }
       } catch (err) {
         console.error("[LocalDB] Error loading CAMP data:", err);
       } finally {
@@ -204,8 +209,19 @@ export default function CampDashboard({
     };
 
     fetchLocalDbData();
-    return () => { active = false; };
-  }, []);
+
+    const handleSyncHydration = () => {
+      console.log('[CampDashboard] Refreshing CAMP metrics on cloud sync hydration…');
+      fetchLocalDbData();
+    };
+
+    window.addEventListener('gdrive-data-hydrated', handleSyncHydration);
+
+    return () => {
+      active = false;
+      window.removeEventListener('gdrive-data-hydrated', handleSyncHydration);
+    };
+  }, [selectedDate]);
 
   // 1.6. Reactively load sessions and B2B whenever selectedDate changes
   useEffect(() => {
