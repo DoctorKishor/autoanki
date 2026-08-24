@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Upload, ChevronDown, ChevronUp, Shield, AlertTriangle, CheckCircle2,
@@ -264,6 +264,16 @@ export default function ImportBackupModal({ isOpen, onClose, themeMode = 'dark',
     }
   }, [isOpen, loadCurrentStats]);
 
+  // Keyboard dismiss listener
+  useEffect(() => {
+    if (!isOpen || step === 'importing') return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, step, onClose]);
+
   const handleFileChange = useCallback(async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -306,7 +316,7 @@ export default function ImportBackupModal({ isOpen, onClose, themeMode = 'dark',
 
   const handleBackdropClick = (e) => { if (e.target === e.currentTarget && step !== 'importing') onClose(); };
 
-  const card = isDark ? 'bg-[#222730] border border-white/10' : 'bg-[#e6ecf5] border border-black/10';
+  const card = isDark ? 'neu-card-dark border-gray-800 text-white' : 'neu-card-light border-gray-200 text-gray-900';
   const tp = isDark ? 'text-white' : 'text-gray-900';
   const ts = isDark ? 'text-gray-400' : 'text-gray-500';
 
@@ -318,8 +328,7 @@ export default function ImportBackupModal({ isOpen, onClose, themeMode = 'dark',
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.18 }}
-          className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4"
-          style={{ backdropFilter: 'blur(14px)', backgroundColor: 'rgba(0,0,0,0.65)' }}
+          className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/65 backdrop-blur-md"
           onClick={handleBackdropClick}
         >
           <motion.div
@@ -327,14 +336,14 @@ export default function ImportBackupModal({ isOpen, onClose, themeMode = 'dark',
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 40, scale: 0.97 }}
             transition={{ type: 'spring', stiffness: 340, damping: 30 }}
-            className={`${card} w-full max-w-2xl flex flex-col rounded-t-3xl sm:rounded-3xl shadow-2xl`}
+            className={`${card} w-full max-w-2xl flex flex-col rounded-t-3xl sm:rounded-3xl shadow-2xl border`}
             style={{ maxHeight: '90vh' }}
           >
             {/* Header */}
-            <div className={`flex items-center justify-between px-6 py-5 border-b ${isDark ? 'border-white/10' : 'border-black/10'} flex-shrink-0`}>
+            <div className={`flex items-center justify-between px-6 py-5 border-b ${isDark ? 'border-gray-800' : 'border-gray-200'} flex-shrink-0`}>
               <motion.div initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.08 }} className="flex items-center gap-3">
-                <div className={`p-2.5 rounded-2xl ${isDark ? 'bg-emerald-500/15' : 'bg-emerald-50'}`}>
-                  <Upload className="w-5 h-5 text-emerald-500" />
+                <div className={`p-2.5 rounded-2xl ${isDark ? 'neu-pressed-dark text-emerald-400' : 'neu-pressed-light text-emerald-600'}`}>
+                  <Upload className="w-5 h-5" />
                 </div>
                 <div>
                   <h2 className={`text-base font-black tracking-tight ${tp}`}>Import Backup</h2>
@@ -344,7 +353,7 @@ export default function ImportBackupModal({ isOpen, onClose, themeMode = 'dark',
               {step !== 'importing' && (
                 <motion.button initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}
                   onClick={onClose}
-                  className={`p-2 rounded-xl transition ${isDark ? 'hover:bg-white/10 text-gray-400' : 'hover:bg-black/8 text-gray-500'}`}
+                  className={`p-2 rounded-xl transition ${isDark ? 'neu-btn-dark text-gray-400 hover:text-white' : 'neu-btn-light text-gray-600 hover:text-gray-900'}`}
                 >
                   <X className="w-5 h-5" />
                 </motion.button>
@@ -352,7 +361,7 @@ export default function ImportBackupModal({ isOpen, onClose, themeMode = 'dark',
             </div>
 
             {/* Body */}
-            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5" style={{ scrollbarWidth: 'none' }}>
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
 
               {/* idle/parsing */}
               {(step === 'idle' || step === 'parsing') && (

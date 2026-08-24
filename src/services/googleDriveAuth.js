@@ -257,6 +257,8 @@ export async function requestGoogleDriveToken({ prompt = '' } = {}) {
   });
 }
 
+let tokenRefreshPromise = null;
+
 /**
  * Returns a valid, unexpired access token for Google Drive API requests.
  * If expired or expiring within 2 minutes, attempts interactive re-auth if interactive is true.
@@ -275,17 +277,26 @@ export async function getValidAccessToken(interactive = false) {
     return state.accessToken;
   }
 
-  if (interactive) {
-    try {
-      const freshState = await requestGoogleDriveToken({ prompt: '' });
-      return freshState?.accessToken || null;
-    } catch (err) {
-      console.warn('[GoogleAuth] Re-auth failed:', err);
-      return null;
-    }
+  if (!interactive) {
+    return null;
   }
 
-  return null;
+  if (tokenRefreshPromise) {
+    const refreshed = await tokenRefreshPromise;
+    return refreshed?.accessToken || null;
+  }
+
+  tokenRefreshPromise = requestGoogleDriveToken({ prompt: '' })
+    .catch((err) => {
+      console.warn('[GoogleAuth] Re-auth failed:', err);
+      return null;
+    })
+    .finally(() => {
+      tokenRefreshPromise = null;
+    });
+
+  const freshState = await tokenRefreshPromise;
+  return freshState?.accessToken || null;
 }
 
 /**

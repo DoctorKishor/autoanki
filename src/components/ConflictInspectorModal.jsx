@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AlertTriangle, AlertCircle, X, Download, Layers } from 'lucide-react';
 
 export default function ConflictInspectorModal({
@@ -19,40 +19,15 @@ export default function ConflictInspectorModal({
   const isDark = themeMode === 'dark';
   const bgBase = isDark ? '#222730' : '#e6ecf5';
 
-  if (!isOpen || activeConflicts.length === 0) return null;
-
-  const integrityScore = Math.max(50, Math.min(100, Math.round(100 - activeConflicts.length * 8)));
-  const index = Math.min(selectedConflictIndex, activeConflicts.length - 1);
+  const index = Math.min(selectedConflictIndex, Math.max(0, activeConflicts.length - 1));
   const conflict = activeConflicts[index];
-  if (!conflict) return null;
-
-  const { cardA, cardB, similarity, key } = conflict;
-  const matchPercent = Math.round(similarity * 100);
-
-  const getHighlightedText = (text, otherText) => {
-    if (!text) return "—";
-    const cleanWords = (s) => s.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean);
-    const otherWords = new Set(cleanWords(otherText));
-    const words = text.split(/\s+/);
-
-    return words.map((word, idx) => {
-      const cleanWord = word.toLowerCase().replace(/[^a-z0-9]/g, '');
-      const isOverlapping = otherWords.has(cleanWord) && cleanWord.length > 2;
-      return (
-        <span
-          key={idx}
-          className={isOverlapping ? "bg-orange-500/20 text-orange-600 px-0.5 rounded font-black border-b border-orange-500/50" : ""}
-        >
-          {word}{" "}
-        </span>
-      );
-    });
-  };
 
   const handleKeepBoth = async () => {
+    if (!conflict) return;
+    const { cardA, cardB, key } = conflict;
     try {
-      const cardAUpdated = { ...cardA, keepBoth: true };
-      const cardBUpdated = { ...cardB, keepBoth: true };
+      const cardAUpdated = { ...cardA, keepBoth: true, updatedAt: Date.now() };
+      const cardBUpdated = { ...cardB, keepBoth: true, updatedAt: Date.now() };
 
       setCards(prev => prev.map(c => {
         if (c.id === cardA.id) return cardAUpdated;
@@ -73,14 +48,23 @@ export default function ConflictInspectorModal({
       }
     } catch (err) {
       console.error("[LocalDB] Failed to save keepBoth decision:", err);
-      alert("Failed to save decision locally: " + err.message);
     }
   };
 
   const handleMerge = async () => {
+    if (!conflict) return;
+    const { cardA, cardB, key } = conflict;
     try {
       const mergedBack = `${cardA.back || ''}\n\n--- MERGED ADDITIONAL DETAILS ---\n${cardB.back || cardB.text || ''}`;
-      const cardAUpdated = { ...cardA, back: mergedBack };
+      const mergedOcclusions = [...(cardA.occlusions || []), ...(cardB.occlusions || [])];
+      const cardAUpdated = {
+        ...cardA,
+        back: mergedBack,
+        occlusions: mergedOcclusions.length > 0 ? mergedOcclusions : cardA.occlusions,
+        imageUrl: cardA.imageUrl || cardB.imageUrl,
+        img_box: cardA.img_box || cardB.img_box,
+        updatedAt: Date.now()
+      };
 
       setCards(prev => prev.filter(c => c.id !== cardB.id).map(c => c.id === cardA.id ? cardAUpdated : c));
 
@@ -98,18 +82,21 @@ export default function ConflictInspectorModal({
       }
     } catch (err) {
       console.error("[LocalDB] Failed to merge cards:", err);
-      alert("Failed to merge cards locally: " + err.message);
     }
   };
 
   const handleRephrase = async () => {
+    if (!conflict) return;
+    const { cardB, key } = conflict;
     try {
       const currentFront = cardB.front || cardB.text || '';
       const deckName = (cardB.deck || '').split('::').pop() || 'Card';
       const refinedFront = `[Context: ${deckName}] ${currentFront}`;
-      const cardBUpdated = cardB.front
-        ? { ...cardB, front: refinedFront }
-        : { ...cardB, text: refinedFront };
+      const cardBUpdated = {
+        ...cardB,
+        ...(cardB.front ? { front: refinedFront } : { text: refinedFront }),
+        updatedAt: Date.now()
+      };
 
       setCards(prev => prev.map(c => c.id === cardB.id ? cardBUpdated : c));
 
@@ -126,8 +113,52 @@ export default function ConflictInspectorModal({
       }
     } catch (err) {
       console.error("[LocalDB] Failed to refine card:", err);
-      alert("Failed to refine card locally: " + err.message);
     }
+  };
+
+  // Keyboard shortcut listener
+  useEffect(() => {
+    if (!isOpen || activeConflicts.length === 0) return;
+    const handleKeyDown = (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if (e.key === 'Escape') {
+        onClose();
+      } else if (e.key === '1') {
+        handleKeepBoth();
+      } else if (e.key === '2') {
+        handleRephrase();
+      } else if (e.key === '3') {
+        handleMerge();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, activeConflicts, conflict]);
+
+  if (!isOpen || activeConflicts.length === 0 || !conflict) return null;
+
+  const integrityScore = Math.max(50, Math.min(100, Math.round(100 - activeConflicts.length * 8)));
+  const { cardA, cardB, similarity } = conflict;
+  const matchPercent = Math.round(similarity * 100);
+
+  const getHighlightedText = (text, otherText) => {
+    if (!text) return "—";
+    const cleanWords = (s) => s.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean);
+    const otherWords = new Set(cleanWords(otherText));
+    const words = text.split(/\s+/);
+
+    return words.map((word, idx) => {
+      const cleanWord = word.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const isOverlapping = otherWords.has(cleanWord) && cleanWord.length > 2;
+      return (
+        <span
+          key={idx}
+          className={isOverlapping ? "bg-orange-500/20 text-orange-600 px-0.5 rounded font-black border-b border-orange-500/50" : ""}
+        >
+          {word}{" "}
+        </span>
+      );
+    });
   };
 
   return (

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Cloud, HardDrive, AlertTriangle, ArrowRight, ShieldCheck, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -8,6 +8,21 @@ export default function GoogleDriveConflictModal({
   onResolve,
   themeMode = 'light'
 }) {
+  useEffect(() => {
+    if (!isOpen || !conflictData) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onResolve('cancel');
+      } else if (e.key === '1') {
+        onResolve('upload');
+      } else if (e.key === '2') {
+        onResolve('download');
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, conflictData, onResolve]);
+
   if (!isOpen || !conflictData) return null;
 
   const isDark = themeMode === 'dark';
@@ -29,9 +44,18 @@ export default function GoogleDriveConflictModal({
     }
   };
 
+  const handleBackdropClick = (e) => {
+    if (e.target === e.currentTarget) {
+      onResolve('cancel');
+    }
+  };
+
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+      <div
+        className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md"
+        onClick={handleBackdropClick}
+      >
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 16 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -42,6 +66,7 @@ export default function GoogleDriveConflictModal({
               ? 'neu-card-dark border-gray-800 text-white'
               : 'neu-card-light border-gray-200/80 text-gray-900'
           }`}
+          onClick={(e) => e.stopPropagation()}
         >
           {/* Modal Header */}
           <div className="flex items-center justify-between pb-4 border-b border-gray-500/10 mb-6">

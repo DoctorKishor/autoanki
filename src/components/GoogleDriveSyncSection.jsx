@@ -21,7 +21,8 @@ export default function GoogleDriveSyncSection({
   isOpen,
   onToggle,
   onMouseEnter,
-  onMouseLeave
+  onMouseLeave,
+  onConflict
 }) {
   const [authState, setAuthState] = useState(null);
   const [quota, setQuota] = useState(null);
@@ -104,7 +105,7 @@ export default function GoogleDriveSyncSection({
         setQuota(q);
       }
       // Immediately run initial sync check
-      syncWithGoogleDrive({ force: false });
+      syncWithGoogleDrive({ force: false, onConflict });
     } catch (err) {
       console.error('[GDriveSection] Sign in error:', err);
       setErrorMsg(err.message || 'Failed to authenticate with Google.');
@@ -133,7 +134,7 @@ export default function GoogleDriveSyncSection({
     setIsSyncing(true);
     setErrorMsg('');
     try {
-      const result = await syncWithGoogleDrive({ force: true });
+      const result = await syncWithGoogleDrive({ force: true, onConflict });
       if (!result.success && result.action === 'error') {
         setErrorMsg(result.message);
       }
@@ -238,7 +239,12 @@ export default function GoogleDriveSyncSection({
 
             {!authState ? (
               /* ── DISCONNECTED STATE ────────────────────────────── */
-              <div className="space-y-5">
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+                className="space-y-5"
+              >
                 <div className={`p-6 rounded-2xl border text-center flex flex-col items-center justify-center gap-4 ${
                   isDark ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-gray-200'
                 }`}>
@@ -259,7 +265,11 @@ export default function GoogleDriveSyncSection({
                     type="button"
                     onClick={handleSignIn}
                     disabled={isAuthenticating}
-                    className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-white text-gray-800 font-bold text-xs shadow-lg hover:shadow-xl active:scale-95 transition cursor-pointer border border-gray-200"
+                    className={`flex items-center gap-3 px-6 py-3 rounded-2xl font-bold text-xs shadow-lg active:scale-95 transition cursor-pointer ${
+                      isDark
+                        ? 'neu-btn-dark text-white border border-white/10 hover:border-white/20'
+                        : 'neu-btn-light text-gray-800 border border-gray-200 hover:border-gray-300'
+                    }`}
                   >
                     {/* Google 'G' SVG Logo */}
                     <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -284,7 +294,12 @@ export default function GoogleDriveSyncSection({
                 </div>
 
                 {showClientSettings && (
-                  <div className={`p-4 rounded-2xl border space-y-3 ${isDark ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-gray-200'}`}>
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className={`p-4 rounded-2xl border space-y-3 ${isDark ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-gray-200'}`}
+                  >
                     <span className="text-[10px] font-black uppercase tracking-wider block text-blue-500">
                       Google OAuth 2.0 Client ID Configuration
                     </span>
@@ -314,12 +329,17 @@ export default function GoogleDriveSyncSection({
                         {isSavingClientId ? 'Saving…' : 'Save Client ID'}
                       </button>
                     </div>
-                  </div>
+                  </motion.div>
                 )}
-              </div>
+              </motion.div>
             ) : (
               /* ── CONNECTED STATE ──────────────────────────────── */
-              <div className="space-y-6">
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+                className="space-y-6"
+              >
                 {/* Account Profile Card */}
                 <div className={`p-5 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
                   isDark ? 'neu-pressed-dark border-green-500/20' : 'neu-pressed-light border-green-200'
@@ -363,10 +383,14 @@ export default function GoogleDriveSyncSection({
                 </div>
 
                 {/* Storage Quota Bar */}
-                {quota && (
-                  <div className={`p-4 rounded-2xl border space-y-2 ${
-                    isDark ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-gray-200'
-                  }`}>
+                {quota ? (
+                  <motion.div
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`p-4 rounded-2xl border space-y-2 ${
+                      isDark ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-gray-200'
+                    }`}
+                  >
                     <div className="flex items-center justify-between text-xs font-bold">
                       <span className="flex items-center gap-1.5">
                         <HardDrive className="w-3.5 h-3.5 text-blue-500" />
@@ -382,6 +406,15 @@ export default function GoogleDriveSyncSection({
                         style={{ width: `${quotaPercent}%` }}
                       />
                     </div>
+                  </motion.div>
+                ) : (
+                  <div className={`p-4 rounded-2xl border flex items-center justify-between ${
+                    isDark ? 'neu-pressed-dark border-gray-800 text-gray-400' : 'neu-pressed-light border-gray-200 text-gray-500'
+                  }`}>
+                    <span className="text-xs font-bold flex items-center gap-2">
+                      <HardDrive className="w-3.5 h-3.5 text-blue-400" /> Storage metrics ready
+                    </span>
+                    <span className="text-[10px] font-mono">100% Dedicated Vault</span>
                   </div>
                 )}
 
@@ -406,7 +439,7 @@ export default function GoogleDriveSyncSection({
                     {isSyncing ? 'Synchronizing…' : 'Sync Now'}
                   </button>
                 </div>
-              </div>
+              </motion.div>
             )}
           </motion.div>
         )}

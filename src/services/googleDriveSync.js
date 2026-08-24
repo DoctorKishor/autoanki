@@ -16,6 +16,7 @@ import {
   clearLocalStore,
   getLocalKV,
   setLocalKV,
+  deleteLocalItem,
   getLocalPages,
   saveLocalPages,
   getLocalCards,
@@ -43,7 +44,7 @@ export const SYNC_STATE_KEY = 'google_drive_sync_state';
 let isSyncInProgress = false;
 let autoSyncDebounceTimer = null;
 let lastAutoPushTimestamp = 0;
-const AUTO_PUSH_COOLDOWN_MS = 60 * 1000; // 60s cooldown between auto pushes
+const AUTO_PUSH_COOLDOWN_MS = 30 * 1000; // 30s cooldown between auto pushes
 
 // Device identifier (persisted in localStorage or generated)
 export function getDeviceId() {
@@ -61,18 +62,42 @@ export function getDeviceId() {
 }
 
 /**
- * Computes a fast FNV-1a 32-bit hex hash of any string or serialized object.
+ * Serializes an object deterministically with recursively sorted keys.
+ * @param {any} obj
+ * @returns {string}
+ */
+export function canonicalStringify(obj) {
+  if (obj === null || typeof obj !== 'object') return JSON.stringify(obj);
+  if (Array.isArray(obj)) return '[' + obj.map(canonicalStringify).join(',') + ']';
+  const sortedKeys = Object.keys(obj).sort();
+  return '{' + sortedKeys.map(k => JSON.stringify(k) + ':' + canonicalStringify(obj[k])).join(',') + '}';
+}
+
+/**
+ * Computes a fast, deterministic FNV-1a 32-bit hex hash of any string or serialized object.
  * @param {string|object} input 
  * @returns {string} 8-character hex string
  */
 export function computeHash(input) {
-  const str = typeof input === 'string' ? input : JSON.stringify(input);
+  const str = typeof input === 'string' ? input : canonicalStringify(input);
   let hash = 0x811c9dc5;
   for (let i = 0; i < str.length; i++) {
     hash ^= str.charCodeAt(i);
     hash = (hash * 0x01000193) >>> 0;
   }
   return hash.toString(16).padStart(8, '0');
+}
+
+/**
+ * Parses any timestamp safely without returning NaN.
+ * @param {any} val
+ * @returns {number}
+ */
+export function safeTimestamp(val) {
+  if (!val) return 0;
+  if (typeof val === 'number') return isFinite(val) ? val : 0;
+  const parsed = new Date(val).getTime();
+  return isNaN(parsed) ? 0 : parsed;
 }
 
 /**
@@ -86,9 +111,40 @@ function emitSyncEvent(status, details = {}) {
   }
 }
 
+/**
+ * Dispatches a hydration notification event to instruct React components
+ * to reload fresh in-memory data from IndexedDB.
+ */
+function emitDataHydratedEvent(details = {}) {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('gdrive-data-hydrated', {
+      detail: { timestamp: Date.now(), ...details }
+    }));
+  }
+}
+
 // ============================================================================
-// GOOGLE DRIVE REST API HELPERS (v3)
+// GOOGLE DRIVE REST API HELPERS (v3 with Timeout Controls)
 // ============================================================================
+
+/**
+ * Executes a fetch request with timeout protection via AbortController.
+ */
+async function fetchWithTimeout(url, options = {}, timeoutMs = 25000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    return res;
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error(`Google Drive request timed out after ${timeoutMs / 1000}s`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 /**
  * Searches for a file or folder by name and parent folder ID.
@@ -99,7 +155,7 @@ async function findDriveItem(accessToken, name, parentFolderId = null, isFolder 
   const query = `name = '${name}' and ${mimeQuery} and ${parentQuery} and trashed = false`;
 
   const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name,mimeType,modifiedTime,size)&pageSize=10`;
-  const res = await fetch(url, {
+  const res = await fetchWithTimeout(url, {
     headers: { Authorization: `Bearer ${accessToken}` }
   });
 
@@ -112,17 +168,33 @@ async function findDriveItem(accessToken, name, parentFolderId = null, isFolder 
 }
 
 /**
- * Lists all files inside a specific Google Drive folder.
+ * Lists all files inside a specific Google Drive folder with full nextPageToken pagination.
  */
 async function listFilesInFolder(accessToken, folderId) {
-  const query = `'${folderId}' in parents and trashed = false`;
-  const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name,mimeType,modifiedTime,size)&pageSize=1000`;
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${accessToken}` }
-  });
-  if (!res.ok) throw new Error(`Failed to list files in folder: ${res.status}`);
-  const data = await res.json();
-  return data.files || [];
+  const allFiles = [];
+  let pageToken = null;
+
+  do {
+    const parentQuery = folderId ? `'${folderId}' in parents` : "'root' in parents";
+    const query = `${parentQuery} and trashed = false`;
+    let url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=nextPageToken,files(id,name,mimeType,modifiedTime,size)&pageSize=1000`;
+    if (pageToken) {
+      url += `&pageToken=${encodeURIComponent(pageToken)}`;
+    }
+
+    const res = await fetchWithTimeout(url, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+
+    if (!res.ok) throw new Error(`Failed to list files in folder: ${res.status} ${res.statusText}`);
+    const data = await res.json();
+    if (data.files && data.files.length > 0) {
+      allFiles.push(...data.files);
+    }
+    pageToken = data.nextPageToken || null;
+  } while (pageToken);
+
+  return allFiles;
 }
 
 /**
@@ -135,7 +207,7 @@ async function createDriveFolder(accessToken, folderName, parentFolderId = null)
     parents: parentFolderId ? [parentFolderId] : []
   };
 
-  const res = await fetch('https://www.googleapis.com/drive/v3/files?fields=id,name', {
+  const res = await fetchWithTimeout('https://www.googleapis.com/drive/v3/files?fields=id,name', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -152,7 +224,7 @@ async function createDriveFolder(accessToken, folderName, parentFolderId = null)
 }
 
 /**
- * Uploads or updates a JSON/text file using Google Drive REST API multipart upload.
+ * Uploads or updates a JSON/text file using Google Drive REST API multipart upload conforming to RFC 2046.
  */
 async function uploadDriveFile(accessToken, folderId, fileName, contentObj, existingFileId = null, keepalive = false) {
   const jsonString = typeof contentObj === 'string' ? contentObj : JSON.stringify(contentObj);
@@ -163,16 +235,18 @@ async function uploadDriveFile(accessToken, folderId, fileName, contentObj, exis
   };
 
   const boundary = '-------314159265358979323846';
-  const delimiter = `\r\n--${boundary}\r\n`;
-  const closeDelimiter = `\r\n--${boundary}--`;
+  const delimiter = `--${boundary}\r\n`;
+  const closeDelimiter = `--${boundary}--`;
 
   const multipartRequestBody =
     delimiter +
     'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
     JSON.stringify(metadata) +
+    '\r\n' +
     delimiter +
-    'Content-Type: application/json\r\n\r\n' +
+    'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
     jsonString +
+    '\r\n' +
     closeDelimiter;
 
   const url = existingFileId
@@ -181,7 +255,7 @@ async function uploadDriveFile(accessToken, folderId, fileName, contentObj, exis
 
   const method = existingFileId ? 'PATCH' : 'POST';
 
-  const res = await fetch(url, {
+  const res = await fetchWithTimeout(url, {
     method,
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -189,7 +263,7 @@ async function uploadDriveFile(accessToken, folderId, fileName, contentObj, exis
     },
     body: multipartRequestBody,
     keepalive: Boolean(keepalive)
-  });
+  }, 35000);
 
   if (!res.ok) {
     throw new Error(`Failed to upload "${fileName}" to Google Drive: ${res.status} ${res.statusText}`);
@@ -201,19 +275,19 @@ async function uploadDriveFile(accessToken, folderId, fileName, contentObj, exis
 /**
  * Uploads a binary media file (e.g. image/webp, image/jpeg, or pdf blob) to Google Drive.
  */
-async function uploadDriveMediaFile(accessToken, mediaFolderId, fileName, mimeType, arrayBuffer) {
+async function uploadDriveMediaFile(accessToken, mediaFolderId, fileName, mimeType, arrayBuffer, existingFileId = null) {
   const metadata = {
     name: fileName,
     mimeType: mimeType || 'image/webp',
-    parents: [mediaFolderId]
+    ...(existingFileId ? {} : { parents: [mediaFolderId] })
   };
 
   const boundary = '-------314159265358979323846';
-  const delimiter = `\r\n--${boundary}\r\n`;
+  const delimiter = `--${boundary}\r\n`;
   const closeDelimiter = `\r\n--${boundary}--`;
 
   const bytes = new Uint8Array(arrayBuffer);
-  const metaHeader = `${delimiter}Content-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}${delimiter}Content-Type: ${mimeType}\r\n\r\n`;
+  const metaHeader = `${delimiter}Content-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n${delimiter}Content-Type: ${mimeType}\r\n\r\n`;
   const metaBytes = new TextEncoder().encode(metaHeader);
   const endBytes = new TextEncoder().encode(closeDelimiter);
 
@@ -223,14 +297,20 @@ async function uploadDriveMediaFile(accessToken, mediaFolderId, fileName, mimeTy
   combined.set(bytes, metaBytes.byteLength);
   combined.set(endBytes, metaBytes.byteLength + bytes.byteLength);
 
-  const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,size', {
-    method: 'POST',
+  const url = existingFileId
+    ? `https://www.googleapis.com/upload/drive/v3/files/${existingFileId}?uploadType=multipart&fields=id,name,size`
+    : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,size';
+
+  const method = existingFileId ? 'PATCH' : 'POST';
+
+  const res = await fetchWithTimeout(url, {
+    method,
     headers: {
       Authorization: `Bearer ${accessToken}`,
       'Content-Type': `multipart/related; boundary=${boundary}`
     },
     body: combined
-  });
+  }, 45000);
 
   if (!res.ok) {
     throw new Error(`Failed to upload media file "${fileName}": ${res.status}`);
@@ -244,9 +324,9 @@ async function uploadDriveMediaFile(accessToken, mediaFolderId, fileName, mimeTy
  */
 async function downloadDriveFile(accessToken, fileId, isJson = true) {
   const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
-  const res = await fetch(url, {
+  const res = await fetchWithTimeout(url, {
     headers: { Authorization: `Bearer ${accessToken}` }
-  });
+  }, 30000);
 
   if (!res.ok) {
     throw new Error(`Failed to download file ${fileId} from Drive: ${res.status} ${res.statusText}`);
@@ -280,7 +360,7 @@ export async function ensureSyncVault(accessToken) {
 // ============================================================================
 
 /**
- * Gathers and serializes local data into partitioned chunks.
+ * Gathers and serializes local data into partitioned chunks, adhering to Zero-Data-Loss rules.
  */
 export async function extractLocalBundles() {
   // 1. Cards Bundle
@@ -311,28 +391,33 @@ export async function extractLocalBundles() {
   const scheduleTemplates = (await getLocalKV('schedule_templates')) || [];
   const campDailyLogs = (await getAllLocalItems(STORES.CAMP_DAILY_LOGS)) || [];
   const timerState = (await getLocalKV('timerState')) || null;
+  const activeNewTopicsToday = (await getLocalKV('active_new_topics_today')) || [];
   const studyLogsBundle = {
     studyLogs,
     studySchedule,
     scheduleTemplates,
     campDailyLogs,
-    timerState
+    timerState,
+    activeNewTopicsToday
   };
 
   // 4. FSRS Config & Settings Bundle
   const fsrsConfig = (await getFSRSConfig()) || {};
   const settings = (await getAllLocalItems(STORES.SETTINGS)) || [];
-  // Filter out sensitive auth token from upload
   const filteredSettings = settings.filter(s => s?.key !== 'google_drive_auth');
   const topicHints = (await getAllLocalItems(STORES.TOPIC_HINTS)) || [];
   const hintQuota = (await getAllLocalItems(STORES.HINT_QUOTA)) || [];
   const customPrompts = (await getLocalKV('custom_prompts')) || [];
+  const localUserProfile = (await getLocalKV('local_user_profile')) || null;
+  const aiRecommendations = (await getLocalKV('ai_topic_recommendations')) || null;
   const fsrsBundle = {
     fsrsConfig,
     settings: filteredSettings,
     topicHints,
     hintQuota,
-    customPrompts
+    customPrompts,
+    localUserProfile,
+    aiRecommendations
   };
 
   // 5. CAMP Tracker Bundle
@@ -343,17 +428,33 @@ export async function extractLocalBundles() {
     campData
   };
 
-  // 6. Media / Pages metadata
+  // 6. Scanned Pages & Occlusions Metadata Bundle (Zero-Data-Loss Guaranteed)
   const pages = (await getLocalPages()) || [];
   const trashPages = (await getLocalKV('trash_pages')) || [];
-  const mediaManifest = {
-    pagesCount: pages.length + trashPages.length,
-    pagesList: pages.map(p => ({
-      id: p.id,
-      title: p.title || p.name || '',
-      updatedAt: p.updatedAt || '',
-      hasData: Boolean(p.data || p.imageUrl || p.originalImage)
-    }))
+  
+  // Separate heavy image binary payload from metadata for cloud JSON chunking
+  const pagesMetadata = pages.map(p => {
+    const copy = { ...p };
+    // We strip inline array buffer from JSON bundle because full binary webp is transferred via /media
+    if (copy.data instanceof ArrayBuffer || copy.data?.__type === 'ArrayBuffer') {
+      copy.hasMedia = true;
+      delete copy.data;
+    }
+    return copy;
+  });
+
+  const trashPagesMetadata = trashPages.map(p => {
+    const copy = { ...p };
+    if (copy.data instanceof ArrayBuffer || copy.data?.__type === 'ArrayBuffer') {
+      copy.hasMedia = true;
+      delete copy.data;
+    }
+    return copy;
+  });
+
+  const pagesBundle = {
+    pages: serializeBinaryValues(pagesMetadata),
+    trashPages: serializeBinaryValues(trashPagesMetadata)
   };
 
   // Compute hashes
@@ -363,20 +464,21 @@ export async function extractLocalBundles() {
     study_logs: computeHash(studyLogsBundle),
     fsrs_config: computeHash(fsrsBundle),
     camp_tracker: computeHash(campBundle),
-    media_manifest: computeHash(mediaManifest)
+    pages_bundle: computeHash(pagesBundle)
   };
 
   const manifest = {
-    version: '2.0',
+    version: '2.1',
     engine: 'AutoAnki Google Drive Sync',
     deviceId: getDeviceId(),
     timestamp: new Date().toISOString(),
-    schemaVersion: 3,
+    schemaVersion: 4,
     hashes,
     stats: {
       cardsCount: flashcards.length,
       topicsCount: topics.length,
       logsDaysCount: Object.keys(studyLogs).length,
+      pagesCount: pages.length,
       mediaCount: pages.length
     }
   };
@@ -388,7 +490,8 @@ export async function extractLocalBundles() {
       'curriculum_topics.json': curriculumBundle,
       'study_logs.json': studyLogsBundle,
       'fsrs_config.json': fsrsBundle,
-      'camp_tracker.json': campBundle
+      'camp_tracker.json': campBundle,
+      'pages_bundle.json': pagesBundle
     },
     pages,
     trashPages
@@ -396,17 +499,17 @@ export async function extractLocalBundles() {
 }
 
 /**
- * Hydrates downloaded partitioned bundles into IndexedDB.
+ * Hydrates downloaded partitioned bundles into IndexedDB with timestamp-aware defensive merging.
  * @param {object} bundles Downloaded bundles keyed by filename
  * @param {'merge'|'replace'} strategy Merge non-destructively or replace
  * @param {Function} [onProgress] Progress reporter
  */
 export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgress = null) {
   const emit = (step, total, msg) => { if (onProgress) onProgress(step, total, msg); };
-  const totalSteps = 6;
+  const totalSteps = 7;
   let step = 0;
 
-  // 1. Cards Bundle
+  // 1. Cards Bundle (Timestamp-Aware & FSRS Safe)
   if (bundles['cards_bundle.json']) {
     emit(++step, totalSteps, 'Hydrating Flashcards & FSRS memory states…');
     const b = bundles['cards_bundle.json'];
@@ -417,21 +520,42 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
       await setLocalKV('flashcards', incomingCards);
       await setLocalKV('trash_cards', incomingTrash);
     } else {
-      // Merge cards by ID
+      // Merge cards by ID with safe timestamp check & trash awareness
       const existing = (await getLocalKV('flashcards')) || [];
+      const localTrash = (await getLocalKV('trash_cards')) || [];
+      const trashMap = new Map(localTrash.map(c => [c.id, safeTimestamp(c.deletedAt)]));
       const map = new Map(existing.map(c => [c.id, c]));
-      incomingCards.forEach(c => {
-        if (c && c.id) map.set(c.id, { ...map.get(c.id), ...c });
+
+      incomingCards.forEach(inc => {
+        if (inc && inc.id) {
+          const localDeletedAt = trashMap.get(inc.id);
+          const incTime = safeTimestamp(inc.updatedAt || inc.lastReviewDate || inc.createdAt);
+          if (localDeletedAt && localDeletedAt > incTime) {
+            return;
+          }
+
+          const localCard = map.get(inc.id);
+          if (!localCard) {
+            map.set(inc.id, inc);
+          } else {
+            const localTime = safeTimestamp(localCard.updatedAt || localCard.lastReviewDate || localCard.createdAt);
+            if (incTime >= localTime) {
+              map.set(inc.id, { ...localCard, ...inc });
+            } else {
+              map.set(inc.id, { ...inc, ...localCard });
+            }
+          }
+        }
       });
       await setLocalKV('flashcards', Array.from(map.values()));
 
       // Merge trash cards
       const existingTrash = (await getLocalKV('trash_cards')) || [];
-      const trashMap = new Map(existingTrash.map(c => [c.id, c]));
+      const trashSet = new Map(existingTrash.map(c => [c.id, c]));
       incomingTrash.forEach(c => {
-        if (c && c.id) trashMap.set(c.id, c);
+        if (c && c.id && !trashSet.has(c.id)) trashSet.set(c.id, c);
       });
-      await setLocalKV('trash_cards', Array.from(trashMap.values()));
+      await setLocalKV('trash_cards', Array.from(trashSet.values()));
     }
   }
 
@@ -443,20 +567,55 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
     const incomingPyt = deserializeBinaryValues(b.pytData || []);
 
     if (strategy === 'replace') {
-      await clearLocalStore(STORES.TOPICS);
-      await saveAllLocalTopics(incomingTopics);
-      await clearLocalStore(STORES.PYT_DATA);
       const db = await initDB();
-      const tx = db.transaction(STORES.PYT_DATA, 'readwrite');
-      const st = tx.objectStore(STORES.PYT_DATA);
-      incomingPyt.forEach(p => { if (p) st.put(p); });
-      await new Promise(res => { tx.oncomplete = res; });
+      // Atomic clear and put for topics
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(STORES.TOPICS, 'readwrite');
+        const st = tx.objectStore(STORES.TOPICS);
+        const clearReq = st.clear();
+        clearReq.onsuccess = () => {
+          incomingTopics.forEach(t => { if (t && t.id) st.put(t); });
+        };
+        clearReq.onerror = () => reject(clearReq.error);
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => reject(tx.error);
+      });
+
+      // Atomic clear and put for pytData
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(STORES.PYT_DATA, 'readwrite');
+        const st = tx.objectStore(STORES.PYT_DATA);
+        const clearReq = st.clear();
+        clearReq.onsuccess = () => {
+          incomingPyt.forEach(p => { if (p) st.put(p); });
+        };
+        clearReq.onerror = () => reject(clearReq.error);
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => reject(tx.error);
+      });
 
       if (b.subjectTracker) await setLocalKV('subject_tracker_data', b.subjectTracker);
       if (b.pytUserProgress) await setLocalKV('pyt_user_progress', b.pytUserProgress);
       if (b.textbooksMetadata) await setLocalKV('textbooks_metadata', b.textbooksMetadata);
     } else {
-      if (Array.isArray(incomingTopics)) await saveAllLocalTopics(incomingTopics);
+      if (Array.isArray(incomingTopics)) {
+        const existingTopics = (await getAllLocalTopics()) || [];
+        const topMap = new Map(existingTopics.map(t => [t.id, t]));
+        incomingTopics.forEach(incT => {
+          if (incT && incT.id) {
+            const locT = topMap.get(incT.id);
+            if (!locT) {
+              topMap.set(incT.id, incT);
+            } else {
+              const locTime = safeTimestamp(locT.updatedAt || locT.createdAt);
+              const incTime = safeTimestamp(incT.updatedAt || incT.createdAt);
+              topMap.set(incT.id, incTime >= locTime ? { ...locT, ...incT } : { ...incT, ...locT });
+            }
+          }
+        });
+        await saveAllLocalTopics(Array.from(topMap.values()));
+      }
+
       if (Array.isArray(incomingPyt)) {
         for (const item of incomingPyt) {
           if (item && item.key) await putLocalItem(STORES.PYT_DATA, item);
@@ -468,7 +627,7 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
     }
   }
 
-  // 3. Study Logs
+  // 3. Study Logs (Deep Merging & FSRS Log Aggregation)
   if (bundles['study_logs.json']) {
     emit(++step, totalSteps, 'Hydrating Study Logs & Velocity Telemetry…');
     const b = bundles['study_logs.json'];
@@ -479,16 +638,63 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
       if (b.studySchedule) await setLocalKV('study_schedule', b.studySchedule);
       if (b.scheduleTemplates) await setLocalKV('schedule_templates', b.scheduleTemplates);
       if (b.timerState) await setLocalKV('timerState', b.timerState);
+      if (b.activeNewTopicsToday) await setLocalKV('active_new_topics_today', b.activeNewTopicsToday);
       if (Array.isArray(b.campDailyLogs)) {
-        await clearLocalStore(STORES.CAMP_DAILY_LOGS);
-        for (const log of b.campDailyLogs) {
-          if (log && log.dateStr) await putLocalItem(STORES.CAMP_DAILY_LOGS, log);
-        }
+        const db = await initDB();
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction(STORES.CAMP_DAILY_LOGS, 'readwrite');
+          const st = tx.objectStore(STORES.CAMP_DAILY_LOGS);
+          const clearReq = st.clear();
+          clearReq.onsuccess = () => {
+            b.campDailyLogs.forEach(log => { if (log && log.dateStr) st.put(log); });
+          };
+          clearReq.onerror = () => reject(clearReq.error);
+          tx.oncomplete = () => resolve(true);
+          tx.onerror = () => reject(tx.error);
+        });
       }
     } else {
-      // Merge study logs by date
+      // Deep-merge study logs by date with aligned property naming
       const existing = (await getLocalStudyLogs()) || {};
-      const merged = { ...incomingLogs, ...existing };
+      const merged = { ...existing };
+
+      for (const [dateKey, incLog] of Object.entries(incomingLogs)) {
+        if (!merged[dateKey]) {
+          merged[dateKey] = incLog;
+        } else {
+          const cur = merged[dateKey];
+          const existingFsrs = Array.isArray(cur.fsrsLogs) ? cur.fsrsLogs : [];
+          const incomingFsrs = Array.isArray(incLog?.fsrsLogs) ? incLog.fsrsLogs : [];
+
+          // Union FSRS logs by unique review timestamp or log key
+          const fsrsMap = new Map();
+          existingFsrs.forEach(l => {
+            const k = l.timestamp || l.cardId + '_' + (l.rating || 'rev');
+            fsrsMap.set(k, l);
+          });
+          incomingFsrs.forEach(l => {
+            const k = l.timestamp || l.cardId + '_' + (l.rating || 'rev');
+            if (!fsrsMap.has(k)) fsrsMap.set(k, l);
+          });
+
+          const totalCards = Math.max(cur.totalCardsReviewed || cur.cards || 0, incLog?.totalCardsReviewed || incLog?.cards || 0, fsrsMap.size);
+          const totalQuestions = Math.max(cur.totalQuestionsAttempted || cur.questions || 0, incLog?.totalQuestionsAttempted || incLog?.questions || 0);
+          const totalHours = Math.max(cur.studyHours || cur.hours || 0, incLog?.studyHours || incLog?.hours || 0);
+
+          merged[dateKey] = {
+            ...cur,
+            ...incLog,
+            cards: totalCards,
+            totalCardsReviewed: totalCards,
+            questions: totalQuestions,
+            totalQuestionsAttempted: totalQuestions,
+            hours: totalHours,
+            studyHours: totalHours,
+            pages: Math.max(cur.pages || 0, incLog?.pages || 0),
+            fsrsLogs: Array.from(fsrsMap.values())
+          };
+        }
+      }
       await setLocalKV('study_logs', merged);
 
       if (b.studySchedule) {
@@ -509,7 +715,19 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
     emit(++step, totalSteps, 'Hydrating FSRS-6 Config, Hints & Prompts…');
     const b = bundles['fsrs_config.json'];
     if (b.fsrsConfig) await saveFSRSConfig(b.fsrsConfig);
-    if (b.customPrompts) await setLocalKV('custom_prompts', b.customPrompts);
+    if (b.localUserProfile) await setLocalKV('local_user_profile', b.localUserProfile);
+    if (b.aiRecommendations) await setLocalKV('ai_topic_recommendations', b.aiRecommendations);
+
+    // Merge custom prompts non-destructively
+    if (Array.isArray(b.customPrompts)) {
+      const existingPrompts = (await getLocalKV('custom_prompts')) || [];
+      const promptMap = new Map(existingPrompts.map(p => [p.id, p]));
+      b.customPrompts.forEach(p => {
+        if (p && p.id && !promptMap.has(p.id)) promptMap.set(p.id, p);
+      });
+      await setLocalKV('custom_prompts', Array.from(promptMap.values()));
+    }
+
     if (Array.isArray(b.topicHints)) {
       for (const h of b.topicHints) {
         if (h && h.topicId) await putLocalItem(STORES.TOPIC_HINTS, h);
@@ -545,17 +763,83 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
     }
   }
 
+  // 6. Scanned Pages & Image Occlusions (Zero-Data-Loss Restoration)
+  if (bundles['pages_bundle.json']) {
+    emit(++step, totalSteps, 'Hydrating Scanned Pages & Image Occlusions…');
+    const b = bundles['pages_bundle.json'];
+    const incomingPages = deserializeBinaryValues(b.pages || []);
+    const incomingTrashPages = deserializeBinaryValues(b.trashPages || []);
+
+    if (strategy === 'replace') {
+      // Retain existing local image blobs if incoming metadata stripped them
+      const localPages = (await getLocalPages()) || [];
+      const localMap = new Map(localPages.map(p => [p.id, p]));
+      const hydratedPages = incomingPages.map(p => {
+        const local = localMap.get(p.id);
+        return {
+          ...p,
+          data: local?.data || p.data,
+          originalImage: local?.originalImage || p.originalImage,
+          imageUrl: local?.imageUrl || p.imageUrl
+        };
+      });
+      await setLocalKV('pages', hydratedPages);
+      await setLocalKV('trash_pages', incomingTrashPages);
+    } else {
+      const existing = (await getLocalPages()) || [];
+      const localTrashPages = (await getLocalKV('trash_pages')) || [];
+      const trashMap = new Map(localTrashPages.map(p => [p.id, p.deletedAt || 0]));
+      const map = new Map(existing.map(p => [p.id, p]));
+
+      incomingPages.forEach(p => {
+        if (p && p.id) {
+          const localDeletedAt = trashMap.get(p.id);
+          const incTime = new Date(p.updatedAt || p.createdAt || 0).getTime();
+          if (localDeletedAt && localDeletedAt > incTime) {
+            // Page was deleted locally after incoming version was updated
+            return;
+          }
+
+          const localP = map.get(p.id);
+          if (!localP) {
+            map.set(p.id, p);
+          } else {
+            const locTime = new Date(localP.updatedAt || localP.createdAt || 0).getTime();
+            map.set(p.id, {
+              ...(incTime >= locTime ? { ...localP, ...p } : { ...p, ...localP }),
+              data: localP.data || p.data,
+              originalImage: localP.originalImage || p.originalImage,
+              imageUrl: localP.imageUrl || p.imageUrl
+            });
+          }
+        }
+      });
+      await setLocalKV('pages', Array.from(map.values()));
+
+      // Merge trash pages
+      const existingTrash = (await getLocalKV('trash_pages')) || [];
+      const trashSet = new Map(existingTrash.map(p => [p.id, p]));
+      incomingTrashPages.forEach(p => {
+        if (p && p.id && !trashSet.has(p.id)) trashSet.set(p.id, p);
+      });
+      await setLocalKV('trash_pages', Array.from(trashSet.values()));
+    }
+  }
+
   emit(++step, totalSteps, 'Local database hydrated successfully.');
+
+  // Emit hydration event so React views reload fresh state
+  emitDataHydratedEvent({ strategy, bundleKeys: Object.keys(bundles) });
 }
 
 // ============================================================================
-// MAIN SYNCHRONIZATION ENGINE
+// MAIN SYNCHRONIZATION ENGINE (MUTEX & ZERO DESYNC)
 // ============================================================================
 
 /**
  * Main Google Drive Cloud Sync routine.
  * Handles Fast check, 2-phase hydration, Anki-style conflict modal invocation,
- * and background media sync.
+ * Web Locks mutex locking, and background media sync.
  *
  * @param {object} [options]
  * @param {boolean} [options.force=false]
@@ -563,7 +847,20 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
  * @param {Function} [options.onConflict] Callback for conflict resolution modal
  * @returns {Promise<{ success: boolean, action: string, message: string }>}
  */
-export async function syncWithGoogleDrive({
+export async function syncWithGoogleDrive(options = {}) {
+  if (typeof navigator !== 'undefined' && navigator.locks) {
+    return await navigator.locks.request('autoanki_gdrive_sync', { ifAvailable: true }, async (lock) => {
+      if (!lock) {
+        return { success: false, action: 'busy', message: 'Sync in progress in another tab.' };
+      }
+      return await executeSyncInternal(options);
+    });
+  } else {
+    return await executeSyncInternal(options);
+  }
+}
+
+async function executeSyncInternal({
   force = false,
   onProgress = null,
   onConflict = null
@@ -632,9 +929,7 @@ export async function syncWithGoogleDrive({
       return { success: true, action: 'noop', message: 'Everything is up to date.' };
     }
 
-    // Compare modified dates and devices
-    const remoteDate = new Date(remoteManifest.timestamp || 0).getTime();
-    const localDate = new Date(localManifest.timestamp || 0).getTime();
+    // Check device ID differences
     const isSameDevice = remoteManifest.deviceId === localManifest.deviceId;
 
     // Identify which bundles have changed
@@ -645,15 +940,14 @@ export async function syncWithGoogleDrive({
 
     console.log('[GDriveSync] Modified bundles:', modifiedBundleNames);
 
-    // Automatic Two-Way Non-Conflicting Merge:
-    // If different devices or remote is newer, download remote bundles, merge locally, and push updated state
     if (modifiedBundleNames.length > 0) {
-      // Check if both sides have changes in cards/curriculum that conflict
+      // Check if either cards or curriculum conflict between separate devices
       const cardsConflict = localHashes.cards_bundle !== remoteHashes.cards_bundle;
       const topicsConflict = localHashes.curriculum_topics !== remoteHashes.curriculum_topics;
+      const pagesConflict = localHashes.pages_bundle !== remoteHashes.pages_bundle;
 
-      // If user provided onConflict and there is an irreconcilable conflict between separate devices
-      if (!isSameDevice && cardsConflict && topicsConflict && onConflict && !force) {
+      // Anki-Style Conflict Detection: Trigger modal if distinct device and conflicting primary content
+      if (!isSameDevice && (cardsConflict || topicsConflict || pagesConflict) && onConflict && !force) {
         emitSyncEvent('conflict', { message: 'Conflict detected between local and cloud versions.' });
         const conflictResolution = await new Promise((resolve) => {
           onConflict({
@@ -661,6 +955,7 @@ export async function syncWithGoogleDrive({
               cardsCount: localManifest.stats.cardsCount,
               topicsCount: localManifest.stats.topicsCount,
               logsDaysCount: localManifest.stats.logsDaysCount,
+              pagesCount: localManifest.stats.pagesCount,
               timestamp: localManifest.timestamp,
               deviceId: localManifest.deviceId
             },
@@ -668,6 +963,7 @@ export async function syncWithGoogleDrive({
               cardsCount: remoteManifest.stats?.cardsCount || 0,
               topicsCount: remoteManifest.stats?.topicsCount || 0,
               logsDaysCount: remoteManifest.stats?.logsDaysCount || 0,
+              pagesCount: remoteManifest.stats?.pagesCount || 0,
               timestamp: remoteManifest.timestamp,
               deviceId: remoteManifest.deviceId
             },
@@ -685,7 +981,15 @@ export async function syncWithGoogleDrive({
         }
       }
 
-      // Default smart delta merge: download remote modified bundles, merge in-memory, push new unified manifest
+      // Safe Pre-Merge Snapshot (Rollback Guarantee)
+      emit(4, 10, 'Creating pre-sync safety snapshot…');
+      try {
+        await saveInternalSnapshot('pre_cloud_sync_merge');
+      } catch (snapErr) {
+        console.warn('[GDriveSync] Pre-merge snapshot warning:', snapErr);
+      }
+
+      // Smart delta merge: download remote modified bundles, merge in-memory, push new unified manifest
       emit(5, 10, 'Downloading modified cloud bundles (Phase 1)…');
       const downloadedBundles = {};
       for (const bName of modifiedBundleNames) {
@@ -798,19 +1102,20 @@ async function syncMediaToDrive(accessToken, mediaFolderId, pages) {
     const mediaName = `page_${page.id}.webp`;
     if (existingNames.has(mediaName)) continue; // Already uploaded
 
-    // If page has image data/blob
     let buffer = null;
     let mimeType = 'image/webp';
 
-    if (page.data instanceof ArrayBuffer) {
-      buffer = page.data;
-    } else if (typeof page.data === 'string' && page.data.startsWith('data:')) {
-      const parts = page.data.split(',');
+    const candidate = page.data || page.originalImage || page.imageUrl;
+
+    if (candidate instanceof ArrayBuffer) {
+      buffer = candidate;
+    } else if (typeof candidate === 'string' && candidate.startsWith('data:')) {
+      const parts = candidate.split(',');
       const mimeMatch = parts[0].match(/:(.*?);/);
       mimeType = mimeMatch ? mimeMatch[1] : 'image/webp';
       buffer = base64ToArrayBuffer(parts[1]);
-    } else if (page.data?.__type === 'ArrayBuffer' && page.data.base64) {
-      buffer = base64ToArrayBuffer(page.data.base64);
+    } else if (candidate?.__type === 'ArrayBuffer' && candidate.base64) {
+      buffer = base64ToArrayBuffer(candidate.base64);
     }
 
     if (buffer && buffer.byteLength > 0) {
@@ -824,7 +1129,7 @@ async function syncMediaToDrive(accessToken, mediaFolderId, pages) {
 }
 
 /**
- * Phase 2: Downloads missing images from the Drive /media folder in the background.
+ * Phase 2: Downloads missing images from the Drive /media folder in chunked batches.
  */
 async function syncMediaFromDrive(accessToken, mediaFolderId) {
   const remoteMedia = await listFilesInFolder(accessToken, mediaFolderId);
@@ -834,27 +1139,51 @@ async function syncMediaFromDrive(accessToken, mediaFolderId) {
   const localPageMap = new Map(localPages.map(p => [p.id, p]));
   let hasUpdates = false;
 
+  // Filter missing media files
+  const missingFiles = [];
   for (const file of remoteMedia) {
     const match = file.name.match(/^page_(.*?)\./);
     if (!match) continue;
     const pageId = match[1];
     const localPage = localPageMap.get(pageId);
-
-    // If local page has no image data, download from cloud
-    if (localPage && !localPage.data && !localPage.imageUrl) {
-      try {
-        const arrayBuf = await downloadDriveFile(accessToken, file.id, false);
-        localPage.data = arrayBuf;
-        localPage.updatedAt = new Date().toISOString();
-        hasUpdates = true;
-      } catch (e) {
-        console.warn(`[GDriveSync] Could not download media for page ${pageId}:`, e);
-      }
+    if (localPage && !localPage.data && !localPage.imageUrl && !localPage.originalImage) {
+      missingFiles.push({ file, pageId });
     }
   }
 
+  // Download in throttled batches of 4 to protect mobile RAM
+  const BATCH_SIZE = 4;
+  for (let i = 0; i < missingFiles.length; i += BATCH_SIZE) {
+    const chunk = missingFiles.slice(i, i + BATCH_SIZE);
+    await Promise.all(chunk.map(async ({ file, pageId }) => {
+      try {
+        const arrayBuf = await downloadDriveFile(accessToken, file.id, false);
+        const localPage = localPageMap.get(pageId);
+        if (localPage) {
+          localPage.data = arrayBuf;
+          localPage.updatedAt = new Date().toISOString();
+          hasUpdates = true;
+        }
+      } catch (e) {
+        console.warn(`[GDriveSync] Could not download media for page ${pageId}:`, e);
+      }
+    }));
+  }
+
   if (hasUpdates) {
-    await saveLocalPages(Array.from(localPageMap.values()));
+    // Re-fetch fresh pages from storage before saving to prevent clobbering concurrent user edits
+    const currentPages = (await getLocalPages()) || [];
+    const currentMap = new Map(currentPages.map(p => [p.id, p]));
+    for (const [id, updatedP] of localPageMap.entries()) {
+      if (updatedP.data && currentMap.has(id)) {
+        const existingCur = currentMap.get(id);
+        if (!existingCur.data) {
+          existingCur.data = updatedP.data;
+        }
+      }
+    }
+    await saveLocalPages(Array.from(currentMap.values()));
+    emitDataHydratedEvent({ type: 'media_hydrated' });
   }
 }
 
@@ -864,7 +1193,7 @@ async function syncMediaFromDrive(accessToken, mediaFolderId) {
 
 /**
  * Triggers a debounced smart push when decks or reviews are completed.
- * Enforces a 5s debounce and a 60s cooldown.
+ * Enforces a 5s debounce and a 30s cooldown.
  */
 export function triggerDebouncedSmartPush() {
   if (autoSyncDebounceTimer) clearTimeout(autoSyncDebounceTimer);
@@ -888,11 +1217,14 @@ export function triggerDebouncedSmartPush() {
 }
 
 /**
- * App Exit handler to flush uncommitted changes via keepalive fetch.
+ * App Exit handler: flags pending sync for next clean launch without failing 64KB keepalive limit.
  */
 export function handleAppExitKeepaliveSync() {
   try {
-    const auth = getGoogleDriveAuthState();
-    // Keepalive sync attempt on pagehide
-  } catch (e) {}
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('autoanki_pending_sync_launch', 'true');
+    }
+  } catch (e) {
+    console.warn('[GDriveSync] Exit sync flag error:', e);
+  }
 }

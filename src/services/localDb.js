@@ -205,23 +205,31 @@ export async function deleteLocalTopic(id) {
   return deleteLocalItem(STORES.TOPICS, id);
 }
 
+// --- TOPICS STORAGE (MUTEX PROTECTED) ---
+let topicsWriteMutex = Promise.resolve();
+
 export async function saveAllLocalTopics(topicsArray) {
   if (!Array.isArray(topicsArray)) return;
-  const db = await initDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORES.TOPICS, 'readwrite');
-    const store = tx.objectStore(STORES.TOPICS);
-    tx.oncomplete = () => resolve(true);
-    tx.onerror = () => reject(tx.error);
-    for (const item of topicsArray) {
-      if (item && item.id) {
-        store.put({
-          ...item,
-          updatedAt: item.updatedAt || new Date().toISOString()
-        });
+  topicsWriteMutex = topicsWriteMutex.then(async () => {
+    const db = await initDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORES.TOPICS, 'readwrite');
+      const store = tx.objectStore(STORES.TOPICS);
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => reject(tx.error);
+      for (const item of topicsArray) {
+        if (item && item.id) {
+          store.put({
+            ...item,
+            updatedAt: item.updatedAt || new Date().toISOString()
+          });
+        }
       }
-    }
+    });
+  }).catch(err => {
+    console.error("[LocalDB] saveAllLocalTopics mutex error:", err);
   });
+  return topicsWriteMutex;
 }
 
 // --- SETTINGS & PREFERENCES ---
@@ -352,6 +360,9 @@ export async function getLocalKV(key, defaultValue = null) {
 }
 
 // --- FLASHCARDS STORAGE ---
+// --- FLASHCARDS STORAGE (MUTEX PROTECTED) ---
+let cardsWriteMutex = Promise.resolve();
+
 export async function getLocalCards() {
   const cards = await getLocalKV('flashcards', []);
   return cards || [];
@@ -359,22 +370,34 @@ export async function getLocalCards() {
 
 export async function replaceAllLocalCards(cardsArray) {
   const finalArray = Array.isArray(cardsArray) ? cardsArray : [];
-  await setLocalKV('flashcards', finalArray);
-  return finalArray;
+  cardsWriteMutex = cardsWriteMutex.then(async () => {
+    await setLocalKV('flashcards', finalArray);
+    return finalArray;
+  }).catch(err => {
+    console.error("[LocalDB] replaceAllLocalCards mutex error:", err);
+    return finalArray;
+  });
+  return cardsWriteMutex;
 }
 
 export async function saveLocalCards(cardsInput) {
   if (!Array.isArray(cardsInput) || cardsInput.length === 0) return getLocalCards();
-  const existing = await getLocalCards();
-  const map = new Map(existing.map(c => [c.id, c]));
-  cardsInput.forEach(c => {
-    if (c && c.id) {
-      map.set(c.id, { ...map.get(c.id), ...c });
-    }
+  cardsWriteMutex = cardsWriteMutex.then(async () => {
+    const existing = await getLocalCards();
+    const map = new Map(existing.map(c => [c.id, c]));
+    cardsInput.forEach(c => {
+      if (c && c.id) {
+        map.set(c.id, { ...map.get(c.id), ...c, updatedAt: c.updatedAt || Date.now() });
+      }
+    });
+    const merged = Array.from(map.values());
+    await setLocalKV('flashcards', merged);
+    return merged;
+  }).catch(err => {
+    console.error("[LocalDB] saveLocalCards mutex error:", err);
+    return getLocalCards();
   });
-  const merged = Array.from(map.values());
-  await setLocalKV('flashcards', merged);
-  return merged;
+  return cardsWriteMutex;
 }
 
 export async function saveLocalCard(card) {
@@ -383,13 +406,21 @@ export async function saveLocalCard(card) {
 }
 
 export async function deleteLocalCard(cardId) {
-  const cards = await getLocalCards();
-  const filtered = cards.filter(c => c.id !== cardId);
-  await replaceAllLocalCards(filtered);
-  return filtered;
+  cardsWriteMutex = cardsWriteMutex.then(async () => {
+    const cards = await getLocalCards();
+    const filtered = cards.filter(c => c.id !== cardId);
+    await setLocalKV('flashcards', filtered);
+    return filtered;
+  }).catch(err => {
+    console.error("[LocalDB] deleteLocalCard mutex error:", err);
+    return getLocalCards();
+  });
+  return cardsWriteMutex;
 }
 
-// --- PAGES / SCANS STORAGE ---
+// --- PAGES / SCANS STORAGE (MUTEX PROTECTED) ---
+let pagesWriteMutex = Promise.resolve();
+
 export async function getLocalPages() {
   const pages = await getLocalKV('pages', []);
   return pages || [];
@@ -397,22 +428,34 @@ export async function getLocalPages() {
 
 export async function replaceAllLocalPages(pagesArray) {
   const finalArray = Array.isArray(pagesArray) ? pagesArray : [];
-  await setLocalKV('pages', finalArray);
-  return finalArray;
+  pagesWriteMutex = pagesWriteMutex.then(async () => {
+    await setLocalKV('pages', finalArray);
+    return finalArray;
+  }).catch(err => {
+    console.error("[LocalDB] replaceAllLocalPages mutex error:", err);
+    return finalArray;
+  });
+  return pagesWriteMutex;
 }
 
 export async function saveLocalPages(pagesInput) {
   if (!Array.isArray(pagesInput) || pagesInput.length === 0) return getLocalPages();
-  const existing = await getLocalPages();
-  const map = new Map(existing.map(p => [p.id, p]));
-  pagesInput.forEach(p => {
-    if (p && p.id) {
-      map.set(p.id, { ...map.get(p.id), ...p });
-    }
+  pagesWriteMutex = pagesWriteMutex.then(async () => {
+    const existing = await getLocalPages();
+    const map = new Map(existing.map(p => [p.id, p]));
+    pagesInput.forEach(p => {
+      if (p && p.id) {
+        map.set(p.id, { ...map.get(p.id), ...p, updatedAt: p.updatedAt || Date.now() });
+      }
+    });
+    const merged = Array.from(map.values());
+    await setLocalKV('pages', merged);
+    return merged;
+  }).catch(err => {
+    console.error("[LocalDB] saveLocalPages mutex error:", err);
+    return getLocalPages();
   });
-  const merged = Array.from(map.values());
-  await setLocalKV('pages', merged);
-  return merged;
+  return pagesWriteMutex;
 }
 
 export async function saveLocalPage(pageObj) {
@@ -421,10 +464,16 @@ export async function saveLocalPage(pageObj) {
 }
 
 export async function deleteLocalPage(pageId) {
-  const pages = await getLocalPages();
-  const filtered = pages.filter(p => p.id !== pageId);
-  await replaceAllLocalPages(filtered);
-  return filtered;
+  pagesWriteMutex = pagesWriteMutex.then(async () => {
+    const pages = await getLocalPages();
+    const filtered = pages.filter(p => p.id !== pageId);
+    await setLocalKV('pages', filtered);
+    return filtered;
+  }).catch(err => {
+    console.error("[LocalDB] deleteLocalPage mutex error:", err);
+    return getLocalPages();
+  });
+  return pagesWriteMutex;
 }
 
 // --- CUSTOM PROMPTS STORAGE ---
@@ -559,7 +608,9 @@ export async function saveLocalTextbooksMetadata(metadataArray) {
   return metadataArray || [];
 }
 
-// --- STUDY LOGS HELPERS ---
+// --- STUDY LOGS HELPERS (MUTEX PROTECTED) ---
+let studyLogsWriteMutex = Promise.resolve();
+
 export async function getLocalStudyLogs() {
   const data = await getLocalKV('study_logs');
   return (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
@@ -567,15 +618,28 @@ export async function getLocalStudyLogs() {
 
 export async function saveLocalStudyLog(dateStr, logData) {
   if (!dateStr) return await getLocalStudyLogs();
-  const current = await getLocalStudyLogs();
-  const updated = { ...current, [dateStr]: { ...(current[dateStr] || {}), ...logData } };
-  await setLocalKV('study_logs', updated);
-  return updated;
+  studyLogsWriteMutex = studyLogsWriteMutex.then(async () => {
+    const current = await getLocalStudyLogs();
+    const updated = { ...current, [dateStr]: { ...(current[dateStr] || {}), ...logData } };
+    await setLocalKV('study_logs', updated);
+    return updated;
+  }).catch(err => {
+    console.error("[LocalDB] saveLocalStudyLog mutex error:", err);
+    return getLocalStudyLogs();
+  });
+  return studyLogsWriteMutex;
 }
 
 export async function replaceAllLocalStudyLogs(logsObj) {
-  await setLocalKV('study_logs', logsObj || {});
-  return logsObj || {};
+  studyLogsWriteMutex = studyLogsWriteMutex.then(async () => {
+    const updated = logsObj || {};
+    await setLocalKV('study_logs', updated);
+    return updated;
+  }).catch(err => {
+    console.error("[LocalDB] replaceAllLocalStudyLogs mutex error:", err);
+    return logsObj || {};
+  });
+  return studyLogsWriteMutex;
 }
 
 // --- TIMER STATE HELPERS ---
@@ -1668,10 +1732,23 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
     });
   };
 
-  // Helper: clear a store then bulk put
-  const clearAndPut = async (storeName, records) => {
-    await clearLocalStore(storeName);
-    if (Array.isArray(records) && records.length > 0) await bulkPut(storeName, records);
+  // Helper: single-transaction atomic clear then put
+  const atomicClearAndPut = async (storeName, records) => {
+    const db = await initDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, 'readwrite');
+      const store = tx.objectStore(storeName);
+      const clearReq = store.clear();
+      clearReq.onsuccess = () => {
+        if (Array.isArray(records) && records.length > 0) {
+          records.forEach(r => { if (r) store.put(r); });
+        }
+      };
+      clearReq.onerror = () => reject(clearReq.error);
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(new Error(`Atomic transaction aborted on store: ${storeName}`));
+    });
   };
 
   // Helper: merge KV entries by key (put each one — IDB put is upsert)
@@ -1701,11 +1778,29 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
         await deleteLocalItem(STORES.KV_STORE, 'flashcards');
         for (const r of cardKv) await putLocalItem(STORES.KV_STORE, r);
       } else {
-        // Merge: union by card.id
+        // Merge: union by card.id with timestamp & trash awareness
         const existing = await getLocalCards();
         const incoming = cardKv.find(r => r.key === 'flashcards')?.value || [];
+        const localTrashCards = (await getLocalKV('trash_cards')) || [];
+        const trashMap = new Map(localTrashCards.map(tc => [tc.id, tc.deletedAt || 0]));
         const map = new Map(existing.map(c => [c.id, c]));
-        incoming.forEach(c => { if (c && c.id) map.set(c.id, { ...map.get(c.id), ...c }); });
+        
+        incoming.forEach(c => {
+          if (!c || !c.id) return;
+          const localDeletedAt = trashMap.get(c.id);
+          if (localDeletedAt && localDeletedAt > (c.updatedAt || 0)) return;
+          
+          if (!map.has(c.id)) {
+            map.set(c.id, c);
+          } else {
+            const current = map.get(c.id);
+            const currentTs = current.updatedAt || current.lastReviewDate || 0;
+            const incomingTs = c.updatedAt || c.lastReviewDate || 0;
+            if (incomingTs >= currentTs) {
+              map.set(c.id, { ...current, ...c });
+            }
+          }
+        });
         await setLocalKV('flashcards', Array.from(map.values()));
       }
       report.restored.push('cards_fsrs');
@@ -1715,14 +1810,31 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
     if (bundles.includes('topics_curriculum')) {
       emit(++step, totalSteps, 'Restoring Curriculum Topics & PYT Progress…');
       if (strategy === 'replace') {
-        if (stores.topics) await clearAndPut(STORES.TOPICS, stores.topics);
-        if (stores.pyt_data) await clearAndPut(STORES.PYT_DATA, stores.pyt_data);
+        if (stores.topics) await atomicClearAndPut(STORES.TOPICS, stores.topics);
+        if (stores.pyt_data) await atomicClearAndPut(STORES.PYT_DATA, stores.pyt_data);
         // subject_tracker_data, pyt_user_progress are KV keys
         const trackerKvs = kvSubset(['subject_tracker_data', 'pyt_user_progress', 'textbooks_metadata']);
         for (const r of trackerKvs) await putLocalItem(STORES.KV_STORE, r);
       } else {
-        // Merge topics by id
-        if (Array.isArray(stores.topics)) await bulkPut(STORES.TOPICS, stores.topics);
+        // Merge topics by id with timestamp/reviewCount awareness
+        if (Array.isArray(stores.topics)) {
+          const existingTopics = (await getAllLocalItems(STORES.TOPICS)) || [];
+          const topicMap = new Map(existingTopics.map(t => [t.id, t]));
+          stores.topics.forEach(t => {
+            if (!t || !t.id) return;
+            if (!topicMap.has(t.id)) {
+              topicMap.set(t.id, t);
+            } else {
+              const current = topicMap.get(t.id);
+              const currentTs = current.updatedAt || current.lastReviewDate || 0;
+              const incomingTs = t.updatedAt || t.lastReviewDate || 0;
+              if (incomingTs >= currentTs) {
+                topicMap.set(t.id, { ...current, ...t });
+              }
+            }
+          });
+          await bulkPut(STORES.TOPICS, Array.from(topicMap.values()));
+        }
         if (Array.isArray(stores.pyt_data)) await bulkPut(STORES.PYT_DATA, stores.pyt_data);
         await mergeKV(kvSubset(['subject_tracker_data', 'pyt_user_progress', 'textbooks_metadata']));
       }
@@ -1733,16 +1845,16 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
     if (bundles.includes('study_logs_velocity')) {
       emit(++step, totalSteps, 'Restoring Study Logs & Velocity Telemetry…');
       if (strategy === 'replace') {
-        if (stores.camp_tracker) await clearAndPut(STORES.CAMP_TRACKER, stores.camp_tracker);
-        if (stores.camp_data) await clearAndPut(STORES.CAMP_DATA, stores.camp_data);
-        if (stores.camp_daily_logs) await clearAndPut(STORES.CAMP_DAILY_LOGS, stores.camp_daily_logs);
+        if (stores.camp_tracker) await atomicClearAndPut(STORES.CAMP_TRACKER, stores.camp_tracker);
+        if (stores.camp_data) await atomicClearAndPut(STORES.CAMP_DATA, stores.camp_data);
+        if (stores.camp_daily_logs) await atomicClearAndPut(STORES.CAMP_DAILY_LOGS, stores.camp_daily_logs);
         const logKvs = kvSubset(['study_logs', 'study_schedule', 'schedule_templates', 'timerState', 'active_new_topics_today']);
         for (const r of logKvs) await putLocalItem(STORES.KV_STORE, r);
         // Also restore camp dynamic KV keys
         const campDynamic = kv.filter(r => r && (r.key?.startsWith('active_new_topics_')));
         for (const r of campDynamic) await putLocalItem(STORES.KV_STORE, r);
       } else {
-        // Merge: append new study log dates (non-destructive, existing days preserved)
+        // Merge: deep-merge daily logs with fsrsLogs combination & unified property naming
         if (Array.isArray(stores.camp_tracker)) await bulkPut(STORES.CAMP_TRACKER, stores.camp_tracker);
         if (Array.isArray(stores.camp_data)) await bulkPut(STORES.CAMP_DATA, stores.camp_data);
         if (Array.isArray(stores.camp_daily_logs)) await bulkPut(STORES.CAMP_DAILY_LOGS, stores.camp_daily_logs);
@@ -1750,8 +1862,38 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
         if (studyLogsKv) {
           const existing = await getLocalStudyLogs();
           const incoming = (typeof studyLogsKv.value === 'object' && studyLogsKv.value) ? studyLogsKv.value : {};
-          const merged = { ...incoming, ...existing }; // existing takes priority on same-day conflicts
-          await setLocalKV('study_logs', merged);
+          const mergedLogs = { ...existing };
+          for (const [dateKey, incDay] of Object.entries(incoming)) {
+            if (!mergedLogs[dateKey]) {
+              mergedLogs[dateKey] = incDay;
+            } else {
+              const curDay = mergedLogs[dateKey];
+              const combinedFsrs = [...(curDay.fsrsLogs || []), ...(incDay.fsrsLogs || [])];
+              const seenLogKeys = new Set();
+              const dedupedFsrs = combinedFsrs.filter(log => {
+                const k = `${log.cardId || log.topicName || ''}_${log.timestamp || log.dateStr || ''}`;
+                if (seenLogKeys.has(k)) return false;
+                seenLogKeys.add(k);
+                return true;
+              });
+              const totalCards = Math.max(curDay.totalCardsReviewed || curDay.cards || 0, incDay.totalCardsReviewed || incDay.cards || 0, dedupedFsrs.length);
+              const totalQuestions = Math.max(curDay.totalQuestionsAttempted || curDay.questions || 0, incDay.totalQuestionsAttempted || incDay.questions || 0);
+              const totalHours = Math.max(curDay.studyHours || curDay.hours || 0, incDay.studyHours || incDay.hours || 0);
+
+              mergedLogs[dateKey] = {
+                ...curDay,
+                ...incDay,
+                totalCardsReviewed: totalCards,
+                cards: totalCards,
+                totalQuestionsAttempted: totalQuestions,
+                questions: totalQuestions,
+                studyHours: totalHours,
+                hours: totalHours,
+                fsrsLogs: dedupedFsrs
+              };
+            }
+          }
+          await setLocalKV('study_logs', mergedLogs);
         }
         await mergeKV(kvSubset(['study_schedule', 'schedule_templates', 'timerState']));
       }
@@ -1766,11 +1908,18 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
         await deleteLocalItem(STORES.KV_STORE, 'pages');
         for (const r of pagesKvs) await putLocalItem(STORES.KV_STORE, r);
       } else {
-        // Merge pages by id
+        // Merge pages by id with trash awareness
         const existing = (await getLocalPages()) || [];
         const incoming = pagesKvs.find(r => r.key === 'pages')?.value || [];
+        const localTrashPages = (await getLocalKV('trash_pages')) || [];
+        const trashMap = new Map(localTrashPages.map(tp => [tp.id, tp.deletedAt || 0]));
         const map = new Map(existing.map(p => [p.id, p]));
-        incoming.forEach(p => { if (p && p.id && !map.has(p.id)) map.set(p.id, p); });
+        incoming.forEach(p => {
+          if (!p || !p.id) return;
+          const localDeletedAt = trashMap.get(p.id);
+          if (localDeletedAt && localDeletedAt > (p.updatedAt || 0)) return;
+          if (!map.has(p.id)) map.set(p.id, p);
+        });
         await setLocalKV('pages', Array.from(map.values()));
         await mergeKV(kvSubset(['textbooks_metadata']));
       }
@@ -1781,9 +1930,9 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
     if (bundles.includes('settings_prompts')) {
       emit(++step, totalSteps, 'Restoring FSRS-6 Config, API Keys & Prompts…');
       if (strategy === 'replace') {
-        if (stores.settings) await clearAndPut(STORES.SETTINGS, stores.settings);
-        if (stores.hint_quota) await clearAndPut(STORES.HINT_QUOTA, stores.hint_quota);
-        if (stores.topic_hints) await clearAndPut(STORES.TOPIC_HINTS, stores.topic_hints);
+        if (stores.settings) await atomicClearAndPut(STORES.SETTINGS, stores.settings);
+        if (stores.hint_quota) await atomicClearAndPut(STORES.HINT_QUOTA, stores.hint_quota);
+        if (stores.topic_hints) await atomicClearAndPut(STORES.TOPIC_HINTS, stores.topic_hints);
         await mergeKV(kvSubset(['custom_prompts', 'local_user_profile']));
       } else {
         // Merge: put all settings (upsert by key — non-destructive)

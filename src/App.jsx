@@ -22,7 +22,7 @@ import StorageUsageSection from './components/StorageUsageSection';
 import GoogleDriveSyncSection from './components/GoogleDriveSyncSection';
 import GoogleDriveConflictModal from './components/GoogleDriveConflictModal';
 import { getGoogleDriveAuthState } from './services/googleDriveAuth';
-import { syncWithGoogleDrive, triggerDebouncedSmartPush } from './services/googleDriveSync';
+import { syncWithGoogleDrive, triggerDebouncedSmartPush, handleAppExitKeepaliveSync } from './services/googleDriveSync';
 import {
   BG_CATEGORIES, STATIC_BG_GRADIENTS, SOUND_TRACKS, STUDY_QUOTES, OBS_CSS_TEMPLATE,
   CtrlBtn, BgPanel, SoundsPanel, QuotesPanel, StatsPanel, TimerSettingsPanel, WidgetsPanel, FloatingWidget,
@@ -4210,6 +4210,7 @@ export default function App() {
             onToggle={() => handleSettingsSectionClick('googleDrive')}
             onMouseEnter={() => handleSettingsSectionMouseEnter('googleDrive')}
             onMouseLeave={() => handleSettingsSectionMouseLeave('googleDrive')}
+            onConflict={(conflict) => setGdriveConflictData(conflict)}
           />
 
           {/* Section 4: Telegram-Style Storage Usage & Cache Manager */}
@@ -8660,6 +8661,56 @@ export default function App() {
     }
   }, []);
 
+  // Listen for Google Drive Cloud Hydration events to refresh active in-memory React state
+  useEffect(() => {
+    const handleDataHydrated = async (e) => {
+      console.log('[App] Cloud data hydrated from Google Drive. Refreshing active state...', e?.detail);
+      try {
+        if (typeof loadAllCards === 'function') await loadAllCards(true);
+        if (typeof loadPages === 'function') await loadPages(true);
+        if (typeof loadStudyLogs === 'function') await loadStudyLogs(true);
+        if (typeof loadTrash === 'function') await loadTrash(true);
+        if (typeof loadInternalSnapshots === 'function') await loadInternalSnapshots();
+
+        const [pytList, pytProg, booksMeta, trackerData, scheduleMap, templatesList] = await Promise.all([
+          getAllLocalPytTopics().catch(() => []),
+          getAllLocalPytProgress().catch(() => []),
+          getLocalTextbooksMetadata().catch(() => []),
+          getLocalSubjectTrackerData().catch(() => []),
+          getLocalStudySchedule().catch(() => ({})),
+          getLocalScheduleTemplates().catch(() => [])
+        ]);
+
+        if (Array.isArray(pytList)) setPytTopicsList(pytList);
+        if (Array.isArray(pytProg)) setUserPytProgress(pytProg);
+        if (Array.isArray(booksMeta)) setTextbooksMetadata(booksMeta);
+        if (Array.isArray(trackerData)) setSubjectTrackerData(trackerData);
+        if (scheduleMap && typeof scheduleMap === 'object') setStudySchedule(scheduleMap);
+        if (Array.isArray(templatesList)) setScheduleTemplates(templatesList);
+      } catch (err) {
+        console.warn('[App] Error refreshing state after cloud hydration:', err);
+      }
+    };
+
+    window.addEventListener('gdrive-data-hydrated', handleDataHydrated);
+    window.addEventListener('pagehide', handleAppExitKeepaliveSync);
+
+    // Check for pending background sync queued from previous session exit
+    try {
+      if (typeof localStorage !== 'undefined' && localStorage.getItem('autoanki_pending_sync_launch') === 'true') {
+        localStorage.removeItem('autoanki_pending_sync_launch');
+        setTimeout(() => {
+          syncWithGoogleDrive({ force: false }).catch(err => console.log('[App] Pending launch sync skipped:', err));
+        }, 3000);
+      }
+    } catch (_) {}
+
+    return () => {
+      window.removeEventListener('gdrive-data-hydrated', handleDataHydrated);
+      window.removeEventListener('pagehide', handleAppExitKeepaliveSync);
+    };
+  }, [loadAllCards, loadPages, loadStudyLogs, loadTrash, loadInternalSnapshots]);
+
   // Handle PYT progress increment/decrement & database auto-save
   const handlePytCountChange = async (subject, topicName, newCount) => {
     const docId = subject.trim().toLowerCase();
@@ -9652,6 +9703,8 @@ JSON Format:
       ratingLabel: ratingLabels[rating],
       timestamp: Date.now()
     });
+
+    triggerDebouncedSmartPush();
 
     return logEntry;
   };
@@ -14937,6 +14990,7 @@ JSON Format:
       }
 
       setBatchedReviews([]);
+      triggerDebouncedSmartPush();
       alert(`Successfully saved ${batchedReviews.length} reviews to Local Database!`);
     } catch (err) {
       console.error("Failed saving batched reviews locally:", err);
@@ -16741,12 +16795,26 @@ JSON Format:
       if (result.success) {
         setSnapshotOpState(prev => ({ ...prev, [snap.id]: 'done' }));
         setTimeout(() => setSnapshotOpState(prev => { const n = { ...prev }; delete n[snap.id]; return n; }), 2000);
+        // Invalidate and reload all in-memory React state immediately
+        try {
+          if (typeof loadAllCards === 'function') await loadAllCards(true);
+          if (typeof loadPages === 'function') await loadPages(true);
+          if (typeof loadStudyLogs === 'function') await loadStudyLogs(true);
+          if (typeof loadTrash === 'function') await loadTrash(true);
+          const localData = await getLocalSubjectTrackerData();
+          if (Array.isArray(localData)) setSubjectTrackerData(localData);
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('gdrive-data-hydrated', { detail: { source: 'vault-restore' } }));
+          }
+        } catch (reloadErr) {
+          console.warn('[AutoAnki] Error refreshing in-memory state after restore:', reloadErr);
+        }
       }
     } catch (e) {
       console.error('[AutoAnki] Snapshot restore failed:', e);
       setSnapshotOpState(prev => { const n = { ...prev }; delete n[snap.id]; return n; });
     }
-  }, []);
+  }, [loadAllCards, loadPages, loadStudyLogs, loadTrash]);
 
   const handleDeleteSnapshot = useCallback(async (snapId) => {
     setSnapshotOpState(prev => ({ ...prev, [snapId]: 'deleting' }));
@@ -20702,7 +20770,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
 
         const allExportTags = new Set();
         cardsToUse.forEach(c => {
-          (c.tags || []).forEach(t => { if (t) allExportTags.add(t); });
+          (c.tags || []).forEach(t => { if (t) allExportTags.add(t.trim().replace(/\s+/g, '_')); });
         });
         allExportTags.add('suspended');
         const colTagsObj = {};
@@ -20816,14 +20884,17 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
             }
 
             if (imgDataUrl) {
-              const binaryData = await fetchImageAsBinary(imgDataUrl);
-              if (binaryData && binaryData.byteLength > 0) {
-                const filename = `img_${card.id || i}.png`;
+              try {
+                const binaryData = await fetchImageAsBinary(imgDataUrl);
+                if (binaryData && binaryData.byteLength > 0) {
+                  imgFilename = `img_${card.id || i}.png`;
 
-                zip.file(String(mediaCounter), binaryData);
-                mediaManifest[String(mediaCounter)] = filename;
-                imgFilename = filename;
-                mediaCounter++;
+                  zip.file(String(mediaCounter), binaryData);
+                  mediaManifest[String(mediaCounter)] = imgFilename;
+                  mediaCounter++;
+                }
+              } catch (err) {
+                console.warn('Failed to convert image to binary for APKG export:', err);
               }
             }
           }
@@ -20917,7 +20988,8 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
               cardTagsList.push('suspended');
             }
           }
-          const formattedTags = cardTagsList.length > 0 ? ` ${cardTagsList.join(' ')} ` : '';
+          const sanitizedTags = cardTagsList.map(t => (t || '').trim().replace(/\s+/g, '_')).filter(Boolean);
+          const formattedTags = sanitizedTags.length > 0 ? ` ${sanitizedTags.join(' ')} ` : '';
 
           dbInstance.run(`INSERT INTO notes VALUES (?, ?, ?, ?, -1, ?, ?, ?, ?, 0, '')`, [
             noteId, guid, mid, Math.floor(Date.now() / 1000), formattedTags, flds, sfld, csum
@@ -21024,7 +21096,8 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
         if (shouldSuspend && !cardTags.includes('suspended')) {
           cardTags.push('suspended');
         }
-        const tagsStr = cardTags.join(' ');
+        const sanitizedTags = cardTags.map(t => (t || '').trim().replace(/\s+/g, '_')).filter(Boolean);
+        const tagsStr = sanitizedTags.join(' ');
         if (type === 'Cloze') {
           fileContent += `${type}\t${cleanDeck}\t${clean(card.text)}\t${clean(card.extra || '')}\t${tagsStr}\n`;
         } else {
@@ -21038,7 +21111,10 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
       fileContent = "Type,Deck,Front,Back,Tags\n";
       cardsToUse.forEach(card => {
         const escapeCSV = (str) => {
-          const s = str || '';
+          let s = str || '';
+          if (/^[=+\-@\t\r]/.test(s)) {
+            s = `'${s}`;
+          }
           if (s.includes(',') || s.includes('"') || s.includes('\n')) {
             return `"${s.replace(/"/g, '""')}"`;
           }
@@ -21063,7 +21139,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
         if (shouldSuspend && !cardTags.includes('suspended')) {
           cardTags.push('suspended');
         }
-        const tags = cardTags.join('; ');
+        const tags = cardTags.map(t => (t || '').trim().replace(/\s+/g, '_')).filter(Boolean).join('; ');
 
         if (type === 'Cloze') {
           fileContent += `${escapeCSV(type)},${escapeCSV(deck)},${escapeCSV(card.text)},,${escapeCSV(tags)}\n`;
