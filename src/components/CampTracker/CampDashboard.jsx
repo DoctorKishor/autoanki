@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   User,
   Clock,
@@ -13,9 +13,19 @@ import {
   FileText,
   Trash2,
   History,
-  Filter
+  Filter,
+  Flame,
+  Sparkles,
+  Zap,
+  ChevronDown,
+  Plus
 } from 'lucide-react';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import {
+  getLocalCampData,
+  saveLocalCampData,
+  getLocalCampDailyLogs,
+  saveLocalCampDailyLogs
+} from '../../services/localDb';
 import CollapsibleCard from './CollapsibleCard';
 import ProgressChart from './ProgressChart';
 import {
@@ -26,17 +36,18 @@ import {
   calculateEfficiencyScore
 } from '../../utils/campCalculations';
 
-
 export default function CampDashboard({ 
-  db, 
-  targetUid, 
-  appId, 
   timerState, 
   localStopwatchTime, 
   localCustomTimerTimeLeft, 
-  localTimerTimeLeft 
+  localTimerTimeLeft,
+  themeMode = 'dark'
 }) {
-  const todayDateStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
+  const isDark = themeMode === 'dark';
+  const todayDateStr = (() => {
+    const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+    return (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10);
+  })();
   const todayLabel = new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'short' }).replace(' ', '-'); // e.g. "27-May"
 
   const [selectedDate, setSelectedDate] = useState(todayDateStr);
@@ -104,9 +115,11 @@ export default function CampDashboard({
   });
 
   const [selectedCell, setSelectedCell] = useState(null);
+  const [activeSessionSlot, setActiveSessionSlot] = useState('preLunch');
   const [showOverviewModal, setShowOverviewModal] = useState(false);
   const [saveStatus, setSaveStatus] = useState('');
-  const [hasLoadedFirestore, setHasLoadedFirestore] = useState(false);
+  const [hasLoadedLocalDb, setHasLoadedLocalDb] = useState(false);
+  const isLoadingDateRef = useRef(false);
   const currentSessionsDateRef = useRef(selectedDate);
   const currentB2bDateRef = useRef(selectedDate);
 
@@ -118,6 +131,8 @@ export default function CampDashboard({
   const sessionsDebounceRef = useRef(null);
   const historyDebounceRef = useRef(null);
   const timerHistoryDebounceRef = useRef(null);
+  const obsBroadcastChannelRef = useRef(null);
+  const obsBroadcastDebounceRef = useRef(null);
 
   const [showYesterdayPrompt, setShowYesterdayPrompt] = useState(false);
   const [yesterdayLabelText, setYesterdayLabelText] = useState('');
@@ -152,219 +167,259 @@ export default function CampDashboard({
     }
   }, [history, hasPromptedYesterday]);
 
-  // 1.5. Fetch online logs from Firestore on mount to populate state and LocalStorage safely
+  // 1.5. Fetch local CAMP data from IndexedDB on mount to populate state safely
   useEffect(() => {
-    if (!db || !targetUid || !appId) {
-      setHasLoadedFirestore(true);
-      return;
-    }
-
     let active = true;
-    const fetchFirestoreData = async () => {
+    const fetchLocalDbData = async () => {
       try {
-        const histRef = doc(db, 'artifacts', appId, 'users', targetUid, 'camp_data', 'history');
-        const thRef = doc(db, 'artifacts', appId, 'users', targetUid, 'camp_data', 'timer_history');
-        const infoRef = doc(db, 'artifacts', appId, 'users', targetUid, 'camp_data', 'student_info');
-
-        const [histSnap, thSnap, infoSnap] = await Promise.all([
-          getDoc(histRef),
-          getDoc(thRef),
-          getDoc(infoRef)
+        const [histData, thData, infoData] = await Promise.all([
+          getLocalCampData('history'),
+          getLocalCampData('timer_history'),
+          getLocalCampData('student_info')
         ]);
 
         if (!active) return;
 
-        if (histSnap.exists()) {
-          const remoteData = histSnap.data()?.data || [];
-          setHistory(prev => {
-            if (JSON.stringify(prev) !== JSON.stringify(remoteData)) {
-              localStorage.setItem('camp_history', JSON.stringify(remoteData));
-              return remoteData;
-            }
-            return prev;
-          });
+        if (histData && Array.isArray(histData)) {
+          setHistory(histData);
+          localStorage.setItem('camp_history', JSON.stringify(histData));
         }
 
-        if (thSnap.exists()) {
-          const remoteData = thSnap.data()?.data || [];
-          setTimerHistory(prev => {
-            if (JSON.stringify(prev) !== JSON.stringify(remoteData)) {
-              localStorage.setItem('camp_timer_history', JSON.stringify(remoteData));
-              return remoteData;
-            }
-            return prev;
-          });
+        if (thData && Array.isArray(thData)) {
+          setTimerHistory(thData);
+          localStorage.setItem('camp_timer_history', JSON.stringify(thData));
         }
 
-        if (infoSnap.exists()) {
-          const remoteData = infoSnap.data()?.data;
-          if (remoteData) {
-            setStudentInfo(prev => {
-              if (JSON.stringify(prev) !== JSON.stringify(remoteData)) {
-                localStorage.setItem('camp_student_info', JSON.stringify(remoteData));
-                return remoteData;
-              }
-              return prev;
-            });
-          }
+        if (infoData && typeof infoData === 'object') {
+          setStudentInfo(infoData);
+          localStorage.setItem('camp_student_info', JSON.stringify(infoData));
         }
       } catch (err) {
-        console.error("Error loading CAMP data from Firestore:", err);
+        console.error("[LocalDB] Error loading CAMP data:", err);
       } finally {
         if (active) {
-          setHasLoadedFirestore(true);
+          setHasLoadedLocalDb(true);
         }
       }
     };
 
-    fetchFirestoreData();
+    fetchLocalDbData();
     return () => { active = false; };
-  }, [db, targetUid, appId]);
+  }, []);
 
   // 1.6. Reactively load sessions and B2B whenever selectedDate changes
   useEffect(() => {
-    const savedSessions = localStorage.getItem(`camp_sessions_${selectedDate}`);
-    const parsedSessions = savedSessions ? normalizeSessions(JSON.parse(savedSessions)) : {
-      preLunch: [],
-      midDay: [],
-      postDinner: []
+    let active = true;
+    isLoadingDateRef.current = true;
+
+    const loadDaily = async () => {
+      try {
+        const log = await getLocalCampDailyLogs(selectedDate);
+        if (!active) return;
+        if (log) {
+          if (log.sessions) {
+            const norm = normalizeSessions(log.sessions);
+            setSessions(norm);
+            localStorage.setItem(`camp_sessions_${selectedDate}`, JSON.stringify(norm));
+          } else {
+            setSessions({ preLunch: [], midDay: [], postDinner: [] });
+          }
+          if (log.bedToBook) {
+            setBedToBook(log.bedToBook);
+            localStorage.setItem(`camp_bedToBook_${selectedDate}`, log.bedToBook);
+          } else {
+            setBedToBook('Less than 45 mins');
+          }
+        } else {
+          const savedSessions = localStorage.getItem(`camp_sessions_${selectedDate}`);
+          let parsedSessions = { preLunch: [], midDay: [], postDinner: [] };
+          if (savedSessions) {
+            try {
+              parsedSessions = normalizeSessions(JSON.parse(savedSessions));
+            } catch (err) {
+              console.error("Error parsing sessions cache:", err);
+            }
+          }
+          const savedB2B = localStorage.getItem(`camp_bedToBook_${selectedDate}`);
+          const b2bValue = savedB2B || 'Less than 45 mins';
+          setSessions(parsedSessions);
+          setBedToBook(b2bValue);
+        }
+      } catch (err) {
+        console.error("[LocalDB] Error loading daily CAMP log:", err);
+      } finally {
+        if (active) {
+          currentSessionsDateRef.current = selectedDate;
+          currentB2bDateRef.current = selectedDate;
+          isLoadingDateRef.current = false;
+        }
+      }
     };
 
-    const savedB2B = localStorage.getItem(`camp_bedToBook_${selectedDate}`);
-    const b2bValue = savedB2B || 'Less than 45 mins';
-
-    setSessions(parsedSessions);
-    setBedToBook(b2bValue);
-
-    currentSessionsDateRef.current = selectedDate;
-    currentB2bDateRef.current = selectedDate;
+    loadDaily();
+    return () => { active = false; };
   }, [selectedDate]);
 
   // 2. Persist Student Info
   useEffect(() => {
-    if (!hasLoadedFirestore) return;
+    if (!hasLoadedLocalDb) return;
     localStorage.setItem('camp_student_info', JSON.stringify(studentInfo));
-    if (db && targetUid && appId) {
-      clearTimeout(studentInfoDebounceRef.current);
-      studentInfoDebounceRef.current = setTimeout(() => {
-        const docRef = doc(db, 'artifacts', appId, 'users', targetUid, 'camp_data', 'student_info');
-        setDoc(docRef, { data: studentInfo }).catch(console.error);
-      }, 2000);
-    }
+    clearTimeout(studentInfoDebounceRef.current);
+    studentInfoDebounceRef.current = setTimeout(() => {
+      saveLocalCampData('student_info', studentInfo);
+    }, 500);
     return () => clearTimeout(studentInfoDebounceRef.current);
-  }, [studentInfo, db, targetUid, appId, hasLoadedFirestore]);
+  }, [studentInfo, hasLoadedLocalDb]);
 
   // 3. Persist Daily Inputs based on selectedDate
   useEffect(() => {
-    if (!hasLoadedFirestore || currentB2bDateRef.current !== selectedDate) return;
+    if (!hasLoadedLocalDb || isLoadingDateRef.current || currentB2bDateRef.current !== selectedDate) return;
     localStorage.setItem(`camp_bedToBook_${selectedDate}`, bedToBook);
-    if (db && targetUid && appId) {
-      clearTimeout(bedToBookDebounceRef.current);
-      bedToBookDebounceRef.current = setTimeout(() => {
-        const docRef = doc(db, 'artifacts', appId, 'users', targetUid, 'camp_daily_logs', selectedDate);
-        setDoc(docRef, { bedToBook }, { merge: true }).catch(console.error);
-      }, 2000);
-    }
+    clearTimeout(bedToBookDebounceRef.current);
+    bedToBookDebounceRef.current = setTimeout(() => {
+      saveLocalCampDailyLogs(selectedDate, { bedToBook });
+    }, 500);
     return () => clearTimeout(bedToBookDebounceRef.current);
-  }, [bedToBook, selectedDate, db, targetUid, appId, hasLoadedFirestore]);
+  }, [bedToBook, selectedDate, hasLoadedLocalDb]);
 
   useEffect(() => {
-    if (!hasLoadedFirestore || currentSessionsDateRef.current !== selectedDate) return;
+    if (!hasLoadedLocalDb || isLoadingDateRef.current || currentSessionsDateRef.current !== selectedDate) return;
     localStorage.setItem(`camp_sessions_${selectedDate}`, JSON.stringify(sessions));
-    if (db && targetUid && appId) {
-      clearTimeout(sessionsDebounceRef.current);
-      sessionsDebounceRef.current = setTimeout(() => {
-        const docRef = doc(db, 'artifacts', appId, 'users', targetUid, 'camp_daily_logs', selectedDate);
-        setDoc(docRef, { sessions }, { merge: true }).catch(console.error);
-      }, 2000);
-    }
+    clearTimeout(sessionsDebounceRef.current);
+    sessionsDebounceRef.current = setTimeout(() => {
+      saveLocalCampDailyLogs(selectedDate, { sessions });
+    }, 500);
     return () => clearTimeout(sessionsDebounceRef.current);
-  }, [sessions, selectedDate, db, targetUid, appId, hasLoadedFirestore]);
+  }, [sessions, selectedDate, hasLoadedLocalDb]);
 
-  // 3a. Persist History & Timer History based on state changes to Firestore
+  // 3a. Persist History & Timer History based on state changes
   useEffect(() => {
-    if (!hasLoadedFirestore) return;
+    if (!hasLoadedLocalDb) return;
     localStorage.setItem('camp_history', JSON.stringify(history));
-    if (db && targetUid && appId) {
-      clearTimeout(historyDebounceRef.current);
-      historyDebounceRef.current = setTimeout(() => {
-        const docRef = doc(db, 'artifacts', appId, 'users', targetUid, 'camp_data', 'history');
-        setDoc(docRef, { data: history }).catch(console.error);
-      }, 2000);
-    }
+    clearTimeout(historyDebounceRef.current);
+    historyDebounceRef.current = setTimeout(() => {
+      saveLocalCampData('history', history);
+    }, 500);
     return () => clearTimeout(historyDebounceRef.current);
-  }, [history, db, targetUid, appId, hasLoadedFirestore]);
+  }, [history, hasLoadedLocalDb]);
 
   useEffect(() => {
-    if (!hasLoadedFirestore) return;
+    if (!hasLoadedLocalDb) return;
     localStorage.setItem('camp_timer_history', JSON.stringify(timerHistory));
-    if (db && targetUid && appId) {
-      clearTimeout(timerHistoryDebounceRef.current);
-      timerHistoryDebounceRef.current = setTimeout(() => {
-        const docRef = doc(db, 'artifacts', appId, 'users', targetUid, 'camp_data', 'timer_history');
-        setDoc(docRef, { data: timerHistory }).catch(console.error);
-      }, 2000);
-    }
+    clearTimeout(timerHistoryDebounceRef.current);
+    timerHistoryDebounceRef.current = setTimeout(() => {
+      saveLocalCampData('timer_history', timerHistory);
+    }, 500);
     return () => clearTimeout(timerHistoryDebounceRef.current);
-  }, [timerHistory, db, targetUid, appId, hasLoadedFirestore]);
+  }, [timerHistory, hasLoadedLocalDb]);
 
-  // 3b. Real-time BroadcastChannel sync for CAMP overlay widgets
+  // 3b. Real-time BroadcastChannel sync for CAMP overlay widgets (debounced singleton)
   useEffect(() => {
-    const channel = new BroadcastChannel('auto_anki_obs_channel');
-    channel.postMessage({
-      type: 'CAMP_STATE_UPDATE',
-      payload: {
-        campSessions: JSON.stringify(sessions),
-        campB2B: bedToBook,
-        campHistory: JSON.stringify(history),
-        campTimerHistory: JSON.stringify(timerHistory),
-        campStudentInfo: JSON.stringify(studentInfo),
-        selectedDate
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      obsBroadcastChannelRef.current = new BroadcastChannel('auto_anki_obs_channel');
+    }
+    return () => {
+      if (obsBroadcastChannelRef.current) {
+        obsBroadcastChannelRef.current.close();
+        obsBroadcastChannelRef.current = null;
       }
-    });
-    return () => channel.close();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!obsBroadcastChannelRef.current) return;
+    clearTimeout(obsBroadcastDebounceRef.current);
+    obsBroadcastDebounceRef.current = setTimeout(() => {
+      try {
+        if (obsBroadcastChannelRef.current) {
+          obsBroadcastChannelRef.current.postMessage({
+            type: 'CAMP_STATE_UPDATE',
+            payload: {
+              campSessions: JSON.stringify(sessions),
+              campB2B: bedToBook,
+              campHistory: JSON.stringify(history),
+              campTimerHistory: JSON.stringify(timerHistory),
+              campStudentInfo: JSON.stringify(studentInfo),
+              selectedDate
+            }
+          });
+        }
+      } catch (err) {
+        console.warn("OBS BroadcastChannel postMessage failed:", err);
+      }
+    }, 150);
+    return () => clearTimeout(obsBroadcastDebounceRef.current);
   }, [sessions, bedToBook, history, timerHistory, studentInfo, selectedDate]);
+
+  // 3b-2. Unmount cleanup effect for all debounced timer refs
+  useEffect(() => {
+    return () => {
+      if (studentInfoDebounceRef.current) clearTimeout(studentInfoDebounceRef.current);
+      if (bedToBookDebounceRef.current) clearTimeout(bedToBookDebounceRef.current);
+      if (sessionsDebounceRef.current) clearTimeout(sessionsDebounceRef.current);
+      if (historyDebounceRef.current) clearTimeout(historyDebounceRef.current);
+      if (timerHistoryDebounceRef.current) clearTimeout(timerHistoryDebounceRef.current);
+      if (obsBroadcastDebounceRef.current) clearTimeout(obsBroadcastDebounceRef.current);
+      if (manualEditTimeoutRef.current) clearTimeout(manualEditTimeoutRef.current);
+    };
+  }, []);
 
   // 3c. Sync inputs and timer history in real time from localStorage (for active timer modal logs)
   useEffect(() => {
     const syncData = () => {
       if (isManuallyEditingRef.current) return;
-      const savedSessions = localStorage.getItem(`camp_sessions_${selectedDate}`);
-      if (savedSessions) {
-        setSessions(prev => {
-          const parsed = normalizeSessions(JSON.parse(savedSessions));
-          if (JSON.stringify(prev) !== JSON.stringify(parsed)) {
-            return parsed;
-          }
-          return prev;
-        });
-      }
+      try {
+        const savedSessions = localStorage.getItem(`camp_sessions_${selectedDate}`);
+        if (savedSessions) {
+          setSessions(prev => {
+            try {
+              const parsed = normalizeSessions(JSON.parse(savedSessions));
+              if (JSON.stringify(prev) !== JSON.stringify(parsed)) {
+                return parsed;
+              }
+            } catch (err) {
+              console.warn("[CampDashboard] syncData parse error (sessions):", err);
+            }
+            return prev;
+          });
+        }
 
-      const savedB2B = localStorage.getItem(`camp_bedToBook_${selectedDate}`);
-      if (savedB2B && savedB2B !== bedToBook) {
-        setBedToBook(savedB2B);
-      }
+        const savedB2B = localStorage.getItem(`camp_bedToBook_${selectedDate}`);
+        if (savedB2B && savedB2B !== bedToBook) {
+          setBedToBook(savedB2B);
+        }
 
-      const savedTimerHistory = localStorage.getItem('camp_timer_history');
-      if (savedTimerHistory) {
-        setTimerHistory(prev => {
-          const parsed = JSON.parse(savedTimerHistory);
-          if (JSON.stringify(prev) !== JSON.stringify(parsed)) {
-            return parsed;
-          }
-          return prev;
-        });
-      }
+        const savedTimerHistory = localStorage.getItem('camp_timer_history');
+        if (savedTimerHistory) {
+          setTimerHistory(prev => {
+            try {
+              const parsed = JSON.parse(savedTimerHistory);
+              if (JSON.stringify(prev) !== JSON.stringify(parsed)) {
+                return parsed;
+              }
+            } catch (err) {
+              console.warn("[CampDashboard] syncData parse error (timerHistory):", err);
+            }
+            return prev;
+          });
+        }
 
-      const savedCampHistory = localStorage.getItem('camp_history');
-      if (savedCampHistory) {
-        setHistory(prev => {
-          const parsed = JSON.parse(savedCampHistory);
-          if (JSON.stringify(prev) !== JSON.stringify(parsed)) {
-            return parsed;
-          }
-          return prev;
-        });
+        const savedCampHistory = localStorage.getItem('camp_history');
+        if (savedCampHistory) {
+          setHistory(prev => {
+            try {
+              const parsed = JSON.parse(savedCampHistory);
+              if (JSON.stringify(prev) !== JSON.stringify(parsed)) {
+                return parsed;
+              }
+            } catch (err) {
+              console.warn("[CampDashboard] syncData parse error (history):", err);
+            }
+            return prev;
+          });
+        }
+      } catch (e) {
+        console.warn("[CampDashboard] syncData outer exception:", e);
       }
     };
 
@@ -386,7 +441,10 @@ export default function CampDashboard({
     } else if (timerState.timerType === 'timer') {
       const total = (timerState.timerDuration || 600) * 1000;
       totalElapsedMs = Math.max(0, total - (localCustomTimerTimeLeft ?? (total / 1000)) * 1000);
-    } else if (timerState.timerType === 'pomodoro' && timerState.pomodoroMode === 'study') {
+    } else if (
+      timerState.timerType === 'pomodoro' &&
+      (timerState.mode === 'study' || timerState.pomodoroMode === 'study')
+    ) {
       const total = (timerState.pomodoroDuration || 1500) * 1000;
       totalElapsedMs = Math.max(0, total - (localTimerTimeLeft ?? (total / 1000)) * 1000);
     }
@@ -450,13 +508,30 @@ export default function CampDashboard({
       const list = state[cat] || [];
       const totalHours = list.reduce((sum, s) => sum + (parseFloat(s.hours) || 0), 0);
       let avgFocus = 7;
+      let qualifiedDeepSessions = 0;
+
       if (list.length > 0) {
         const sumFocus = list.reduce((sum, s) => sum + (Number(s.concentration) || 7), 0);
         avgFocus = sumFocus / list.length;
+
+        // Strictly validate each session against duration (>= 50m / 0.833h) AND concentration (>= 8)
+        list.forEach(s => {
+          if (!s) return;
+          if (s.deepSessions !== undefined && s.deepSessions !== null && s.deepSessions !== '') {
+            qualifiedDeepSessions += parseInt(s.deepSessions, 10) || 0;
+          } else {
+            const h = parseFloat(s.hours) || 0;
+            const c = parseFloat(s.concentration) || 0;
+            if (h >= 0.833 && c >= 8) {
+              qualifiedDeepSessions += 1;
+            }
+          }
+        });
       }
+
       agg[cat] = {
         hours: totalHours.toString(),
-        deepSessions: Math.round(totalHours * 2) / 2,
+        deepSessions: qualifiedDeepSessions,
         concentration: Math.round(avgFocus)
       };
     });
@@ -478,25 +553,36 @@ export default function CampDashboard({
   const handleSaveProgress = () => {
     setSaveStatus('Saving...');
 
-    const [yr, mo, dy] = selectedDate.split('-').map(Number);
+    const targetDateStr = selectedDate || new Date().toLocaleDateString('en-CA');
+    const [yr, mo, dy] = targetDateStr.split('-').map(Number);
     const dateObj = new Date(yr, mo - 1, dy);
     const dateLabel = dateObj.toLocaleDateString('en-US', { day: '2-digit', month: 'short' }).replace(' ', '-');
 
     const updatedHistory = [...history];
-    const dayIndex = updatedHistory.findIndex(h => h.date === dateLabel);
+    const dayIndex = updatedHistory.findIndex(h => 
+      (h.fullDate && h.fullDate === targetDateStr) || h.date === dateLabel
+    );
+
+    const historyEntry = {
+      date: dateLabel,
+      fullDate: targetDateStr,
+      timestamp: dateObj.getTime(),
+      score: Number(efficiencyScore.toFixed(1))
+    };
 
     if (dayIndex >= 0) {
-      updatedHistory[dayIndex].score = efficiencyScore;
+      updatedHistory[dayIndex] = { ...updatedHistory[dayIndex], ...historyEntry };
     } else {
-      updatedHistory.push({ date: dateLabel, score: efficiencyScore });
+      updatedHistory.push(historyEntry);
     }
 
-    // Chronological sorting of entries
+    // Chronological sorting of entries using reliable timestamp or ISO date
     updatedHistory.sort((a, b) => {
-      const currentYear = new Date().getFullYear();
-      const dateA = new Date(`${a.date}-${currentYear}`);
-      const dateB = new Date(`${b.date}-${currentYear}`);
-      return dateA - dateB;
+      const timeA = a.timestamp || (a.fullDate ? new Date(a.fullDate).getTime() : 0);
+      const timeB = b.timestamp || (b.fullDate ? new Date(b.fullDate).getTime() : 0);
+      if (timeA && timeB) return timeA - timeB;
+      if (a.fullDate && b.fullDate) return a.fullDate.localeCompare(b.fullDate);
+      return 0;
     });
 
     setHistory(updatedHistory);
@@ -594,23 +680,23 @@ export default function CampDashboard({
     };
     relevantItems.forEach(item => {
       if (!rebuilt[item.period]) return;
+      const numHours = parseFloat(item.hours) || 0;
       rebuilt[item.period].push({
         id: Date.now().toString() + '_' + Math.random().toString(36).substr(2, 9),
-        hours: item.hours.toFixed(3),
-        concentration: item.concentration,
+        hours: numHours.toFixed(3),
+        concentration: Number(item.concentration) || 7,
         type: item.type || 'notes',
-        pagesRead: item.pagesRead || 0,
-        questionsSolved: item.questionsSolved || 0,
-        cardsReviewed: item.cardsReviewed || 0,
+        pagesRead: Number(item.pagesRead) || 0,
+        questionsSolved: Number(item.questionsSolved) || 0,
+        cardsReviewed: Number(item.cardsReviewed) || 0,
         gtDetails: item.gtDetails || null,
         isManual: false
       });
     });
     localStorage.setItem(`camp_sessions_${dateStr}`, JSON.stringify(rebuilt));
-    if (db && targetUid && appId) {
-      const docRef = doc(db, 'artifacts', appId, 'users', targetUid, 'camp_daily_logs', dateStr);
-      setDoc(docRef, { sessions: rebuilt }, { merge: true }).catch(console.error);
-    }
+    saveLocalCampDailyLogs(dateStr, { sessions: rebuilt }).catch(err => {
+      console.error("[LocalDB] Error saving rebuilt daily sessions:", err);
+    });
     // If this is the currently selected date, update UI state too
     if (dateStr === selectedDate) {
       setSessions(rebuilt);
@@ -691,7 +777,8 @@ export default function CampDashboard({
       flashcardPeriodSums[s.period].count += 1;
     });
     Object.keys(flashcardPeriodSums).forEach(p => {
-      const avg = flashcardPeriodSums[p].sum / flashcardPeriodSums[p].count;
+      const count = flashcardPeriodSums[p].count || 0;
+      const avg = count > 0 ? flashcardPeriodSums[p].sum / count : 0;
       if (avg > maxFlashcardFocus) {
         maxFlashcardFocus = avg;
         bestFlashcardPeriod = p;
@@ -709,7 +796,8 @@ export default function CampDashboard({
       qbankPeriodSums[s.period].count += 1;
     });
     Object.keys(qbankPeriodSums).forEach(p => {
-      const avg = qbankPeriodSums[p].sum / qbankPeriodSums[p].count;
+      const count = qbankPeriodSums[p].count || 0;
+      const avg = count > 0 ? qbankPeriodSums[p].sum / count : 0;
       if (avg > maxQbankFocus) {
         maxQbankFocus = avg;
         bestQbankPeriod = p;
@@ -721,14 +809,19 @@ export default function CampDashboard({
     let maxDurationFocus = 0;
     const durationSums = { short: { sum: 0, count: 0 }, medium: { sum: 0, count: 0 }, long: { sum: 0, count: 0 } };
     timerHistory.forEach(s => {
-      if (s.hours < 1.0) {
-        durationSums.short.sum += s.concentration;
+      if (!s) return;
+      const numHours = parseFloat(s.hours) || 0;
+      const numConc = parseFloat(s.concentration) || 0;
+      if (numHours <= 0) return;
+
+      if (numHours < 1.0) {
+        durationSums.short.sum += numConc;
         durationSums.short.count += 1;
-      } else if (s.hours >= 1.0 && s.hours <= 2.0) {
-        durationSums.medium.sum += s.concentration;
+      } else if (numHours >= 1.0 && numHours <= 2.0) {
+        durationSums.medium.sum += numConc;
         durationSums.medium.count += 1;
       } else {
-        durationSums.long.sum += s.concentration;
+        durationSums.long.sum += numConc;
         durationSums.long.count += 1;
       }
     });
@@ -743,7 +836,7 @@ export default function CampDashboard({
     } else if (avgMedium > avgShort && avgMedium > avgLong) {
       bestDurationRange = 'Medium Sessions (1.0 to 2.0 hours)';
       maxDurationFocus = avgMedium;
-    } else {
+    } else if (avgLong > 0) {
       bestDurationRange = 'Deep Grinds (> 2.0 hours)';
       maxDurationFocus = avgLong;
     }
@@ -751,14 +844,17 @@ export default function CampDashboard({
     // 4. Optimal Day of Week
     const daySums = {};
     timerHistory.forEach(s => {
+      if (!s || !s.dayOfWeek) return;
+      const numConc = parseFloat(s.concentration) || 0;
       if (!daySums[s.dayOfWeek]) daySums[s.dayOfWeek] = { sum: 0, count: 0 };
-      daySums[s.dayOfWeek].sum += s.concentration;
+      daySums[s.dayOfWeek].sum += numConc;
       daySums[s.dayOfWeek].count += 1;
     });
     let bestDay = 'Wednesday';
     let maxDayFocus = 0;
     Object.keys(daySums).forEach(d => {
-      const avg = daySums[d].sum / daySums[d].count;
+      const count = daySums[d].count || 0;
+      const avg = count > 0 ? daySums[d].sum / count : 0;
       if (avg > maxDayFocus) {
         maxDayFocus = avg;
         bestDay = d;
@@ -788,21 +884,21 @@ export default function CampDashboard({
   const renderHeatmap = () => {
     return (
       <div className="space-y-4">
-        <div className="text-left border-b border-slate-100 pb-2.5">
-          <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest block">
+        <div className={`text-left border-b pb-2.5 ${isDark ? 'border-slate-700/60' : 'border-slate-200/80'}`}>
+          <h3 className={`text-xs font-black uppercase tracking-widest block ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
             Focus Correlation Heatmap (Study Block vs Session Type)
           </h3>
-          <p className="text-[10px] text-slate-500 font-semibold mt-0.5 leading-relaxed">
+          <p className={`text-[10px] font-semibold mt-0.5 leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
             Color intensity indicates average focus (1–10). Click a cell to view tailored duration suggestions.
           </p>
         </div>
 
-        <div className="overflow-x-auto">
-          <div className="min-w-[440px] grid grid-cols-4 gap-2 text-center select-none pt-1">
+        <div className="overflow-x-auto scrollbar-none">
+          <div className="min-w-[440px] grid grid-cols-4 gap-2.5 text-center select-none pt-1">
             {/* Header labels */}
             <div />
             {periodsList.map(p => (
-              <div key={p.id} className="text-[9px] font-black text-slate-400 uppercase tracking-wider py-1">
+              <div key={p.id} className={`text-[9px] font-black uppercase tracking-wider py-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                 {p.label}
               </div>
             ))}
@@ -811,7 +907,7 @@ export default function CampDashboard({
             {sessionTypes.map(t => (
               <React.Fragment key={t.id}>
                 {/* Row label */}
-                <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex items-center justify-start pl-1 text-left">
+                <div className={`text-[10px] font-black uppercase tracking-wider flex items-center justify-start pl-1 text-left ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
                   {t.label}
                 </div>
 
@@ -821,17 +917,22 @@ export default function CampDashboard({
                   const isSelected = selectedCell && selectedCell.type === t.id && selectedCell.period === p.id;
 
                   const bgClass = data.count === 0
-                    ? 'bg-slate-50 text-slate-350 border-slate-100'
+                    ? isDark ? 'neu-pressed-dark text-slate-500 border border-slate-750' : 'neu-pressed-light text-slate-400 border border-slate-200'
                     : `border-transparent text-white cursor-pointer hover:scale-[1.03] active:scale-[0.97]`;
 
+                  const safeFocus = isNaN(data.avgFocus) ? 7 : Math.max(1, Math.min(10, data.avgFocus));
                   const cellColorStyle = data.count > 0 ? {
-                    backgroundColor: `hsl(199, 85%, ${100 - data.avgFocus * 6.5}%)`,
-                    textShadow: '0 1px 2px rgba(0, 0, 0, 0.15)'
+                    backgroundColor: isDark 
+                      ? `hsl(215, 85%, ${20 + safeFocus * 4}%)` 
+                      : `hsl(215, 85%, ${100 - safeFocus * 5.5}%)`,
+                    textShadow: '0 1px 2px rgba(0, 0, 0, 0.4)'
                   } : {};
 
                   return (
-                    <div
+                    <motion.div
                       key={`${t.id}_${p.id}`}
+                      whileHover={data.count > 0 ? { scale: 1.03 } : {}}
+                      whileTap={data.count > 0 ? { scale: 0.97 } : {}}
                       onClick={() => {
                         if (data.count > 0) {
                           setSelectedCell({
@@ -844,22 +945,28 @@ export default function CampDashboard({
                         }
                       }}
                       style={cellColorStyle}
-                      className={`p-3.5 rounded-2xl border text-xs font-black transition flex flex-col justify-center items-center h-14 relative group ${bgClass} ${isSelected ? 'ring-2 ring-sky-500 shadow-md' : 'shadow-sm'}`}
+                      className={`p-3.5 rounded-2xl border text-xs font-black transition flex flex-col justify-center items-center h-14 relative group ${bgClass} ${
+                        isSelected 
+                          ? (isDark ? 'ring-2 ring-blue-400 shadow-lg shadow-blue-500/20' : 'ring-2 ring-blue-500 shadow-md') 
+                          : 'shadow-sm'
+                      }`}
                     >
                       {data.count > 0 ? (
                         <>
                           <span>{data.avgFocus.toFixed(1)}</span>
-                          <span className="text-[8px] opacity-75 font-bold mt-0.5">{data.count} {data.count === 1 ? 'sess' : 'sesses'}</span>
+                          <span className="text-[8px] opacity-80 font-bold mt-0.5">{data.count} {data.count === 1 ? 'sess' : 'sesses'}</span>
 
                           {/* Hover tooltip */}
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block bg-slate-900 text-white text-[8px] font-black uppercase tracking-wider px-2 py-1 rounded shadow-lg whitespace-nowrap z-20 pointer-events-none">
+                          <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block ${
+                            isDark ? 'bg-slate-800 text-slate-100 border border-slate-700' : 'bg-slate-900 text-white'
+                          } text-[8px] font-black uppercase tracking-wider px-2 py-1 rounded-lg shadow-xl whitespace-nowrap z-20 pointer-events-none`}>
                             Focus: {data.avgFocus}/10 | Length: {data.avgHrs}h
                           </div>
                         </>
                       ) : (
-                        <span className="text-[9px] font-bold text-slate-300">-</span>
+                        <span className={`text-[9px] font-bold ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>-</span>
                       )}
-                    </div>
+                    </motion.div>
                   );
                 })}
               </React.Fragment>
@@ -870,20 +977,28 @@ export default function CampDashboard({
         {/* Selected Cell Insights Detail Box */}
         {selectedCell && (
           <motion.div
-            initial={{ opacity: 0, y: 5 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-sky-50/40 border border-sky-100/50 rounded-2xl p-4 text-xs mt-3 flex items-start gap-3.5"
+            className={`rounded-2xl p-4 text-xs mt-3 flex items-start gap-3.5 ${
+              isDark 
+                ? 'neu-pressed-dark border border-blue-500/30' 
+                : 'neu-pressed-light border border-blue-500/20'
+            }`}
           >
-            <div className="w-9 h-9 rounded-xl bg-sky-500 flex items-center justify-center text-white font-black text-sm shadow-md shrink-0">
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm shadow-md shrink-0 ${
+              isDark ? 'neu-btn-accent-dark text-white' : 'neu-btn-accent-light text-white'
+            }`}>
               💡
             </div>
             <div className="space-y-1 text-left">
-              <h4 className="font-black text-sky-800 uppercase tracking-wider text-[10px]">
+              <h4 className={`font-black uppercase tracking-wider text-[10px] ${
+                isDark ? 'text-blue-400' : 'text-blue-700'
+              }`}>
                 Cell Insight: {selectedCell.typeLabel} + {selectedCell.periodLabel}
               </h4>
-              <p className="text-slate-650 font-medium leading-relaxed">
-                Based on {selectedCell.count} logged sessions, your average focus rating is <span className="text-sky-650 font-bold">{selectedCell.avgFocus}/10</span>.
-                The ideal study duration for this type is <span className="text-sky-650 font-bold">{selectedCell.avgHrs} hours</span>.
+              <p className={`font-medium leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                Based on {selectedCell.count} logged sessions, your average focus rating is <span className={`font-black ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{selectedCell.avgFocus}/10</span>.
+                The ideal study duration for this type is <span className={`font-black ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{selectedCell.avgHrs} hours</span>.
                 {selectedCell.avgFocus >= 8
                   ? " This is a highly efficient combination. Keep scheduling these sessions!"
                   : " Focus is moderate here. Try shorter, distraction-free Pomodoro sprints to elevate focus."}
@@ -901,31 +1016,64 @@ export default function CampDashboard({
     const totalHrs = parseFloat(agg.hours) || 0;
 
     return (
-      <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100/70 space-y-4 text-left">
-        <div className="flex items-center justify-between">
+      <div className={`rounded-2xl p-3.5 sm:p-4.5 space-y-3.5 text-left border ${
+        isDark 
+          ? 'neu-pressed-dark border-slate-750' 
+          : 'neu-pressed-light border-slate-200/80'
+      }`}>
+        {/* Header: Title & Action */}
+        <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-200/60 dark:border-slate-750">
           <div>
-            <h4 className="text-xs font-black text-sky-900 uppercase tracking-wide flex items-center gap-1.5">
+            <h4 className={`text-xs font-black uppercase tracking-wide ${
+              isDark ? 'text-blue-400' : 'text-blue-700'
+            }`}>
               {label}
-              <span className="text-[9px] font-bold text-slate-400 normal-case">({timeRange})</span>
             </h4>
-            <div className="flex items-center gap-2 mt-0.5 text-[9px] font-bold text-slate-500">
-              <span>⏱️ {totalHrs.toFixed(2)}h total</span>
-              <span>•</span>
-              <span>🎯 Avg Focus: {agg.concentration}/10</span>
-            </div>
+            <p className={`text-[9px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              ({timeRange})
+            </p>
           </div>
           <button
+            type="button"
             onClick={() => handleAddManualSession(catKey)}
-            className="px-3 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-700 rounded-xl text-[10px] font-black uppercase tracking-wider transition active:scale-95 flex items-center gap-1 cursor-pointer font-bold border border-sky-100/20"
+            className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition active:scale-95 flex items-center gap-1.5 shrink-0 cursor-pointer ${
+              isDark ? 'neu-btn-dark text-blue-400 hover:text-white' : 'neu-btn-light text-blue-600 hover:text-blue-800'
+            }`}
           >
-            + Add Session
+            <Plus className="w-3.5 h-3.5" />
+            <span>Add Session</span>
           </button>
         </div>
 
-        <div className="space-y-2">
+        {/* Stats Row - GUARANTEED SINGLE LINE */}
+        <div className={`flex items-center gap-2 text-[10px] font-bold whitespace-nowrap overflow-x-auto custom-scrollbar py-0.5 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+          <span className="flex items-center gap-1">
+            <span>⏱️</span>
+            <span>{totalHrs.toFixed(2)}h total</span>
+          </span>
+          <span className="opacity-40">•</span>
+          <span className="flex items-center gap-1">
+            <span>🎯</span>
+            <span>Avg Focus: {agg.concentration}/10</span>
+          </span>
+        </div>
+
+        <div className="space-y-2.5">
           {list.length === 0 ? (
-            <div className="text-center py-4 text-[10px] text-slate-400 italic font-bold">
-              No study sessions logged for this slot.
+            <div className={`flex flex-col items-center justify-center py-6 text-center space-y-2 rounded-xl ${isDark ? 'bg-white/[0.02]' : 'bg-black/[0.02]'}`}>
+              <BookOpen className={`w-5 h-5 opacity-30 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+              <p className={`text-[10px] sm:text-[11px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                No study sessions logged for this slot yet.
+              </p>
+              <button
+                type="button"
+                onClick={() => handleAddManualSession(catKey)}
+                className={`text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-lg transition ${
+                  isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'
+                }`}
+              >
+                + Log Study Session
+              </button>
             </div>
           ) : (
             list.map((sess) => {
@@ -944,75 +1092,99 @@ export default function CampDashboard({
               return (
                 <div 
                   key={sess.id} 
-                  className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border transition-all ${
+                  className={`p-3 rounded-2xl border transition-all space-y-2.5 ${
                     isRunning 
-                      ? 'bg-sky-50/70 border-sky-200 ring-2 ring-sky-500/20 shadow-sm animate-pulse' 
-                      : 'bg-white border-slate-100 hover:border-slate-200 shadow-sm'
+                      ? (isDark ? 'neu-card-dark border-blue-500/50 ring-2 ring-blue-500/30 animate-pulse' : 'neu-card-light border-blue-400 ring-2 ring-blue-500/20 animate-pulse')
+                      : (isDark ? 'neu-card-dark border-slate-750' : 'neu-card-light border-slate-200/60')
                   }`}
                 >
-                  <div className="flex items-center gap-2">
-                    {isRunning ? (
-                      <span className="flex h-2 w-2 relative shrink-0">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
+                  {/* Top row of session card: Type badge + Delete button */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      {isRunning ? (
+                        <span className="flex h-2 w-2 relative shrink-0">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                        </span>
+                      ) : null}
+                      <span className={`text-[10px] font-black uppercase tracking-wider truncate ${
+                        isRunning 
+                          ? (isDark ? 'text-blue-400' : 'text-blue-600') 
+                          : (isDark ? 'text-slate-200' : 'text-slate-800')
+                      }`}>
+                        {isRunning ? '⚡ Running Timer' : typeLabel}
                       </span>
-                    ) : null}
-                    <span className={`text-[10px] font-black uppercase tracking-wider ${isRunning ? 'text-sky-700' : 'text-slate-650'}`}>
-                      {isRunning ? '⚡ Running Timer' : typeLabel}
-                    </span>
-                    {isPrecise && (
-                      <span className="text-[8px] font-black text-sky-600 bg-sky-50 px-1.5 py-0.5 rounded" title="Precise timer-accumulated duration">
-                        Precise
-                      </span>
+                      {isPrecise && (
+                        <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md shrink-0 ${
+                          isDark ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-200'
+                        }`} title="Precise timer-accumulated duration">
+                          Precise
+                        </span>
+                      )}
+                    </div>
+
+                    {!isRunning && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteSession(catKey, sess.id)}
+                        className={`p-1.5 rounded-xl transition cursor-pointer shrink-0 ${
+                          isDark ? 'text-slate-400 hover:text-red-400 hover:bg-red-500/10' : 'text-slate-400 hover:text-red-600 hover:bg-red-50'
+                        }`}
+                        title="Delete session"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     )}
                   </div>
 
-                  <div className="flex items-center gap-3.5 justify-end">
-                    {/* Hours dropdown */}
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[9px] font-bold text-slate-400">Hours:</span>
+                  {/* Bottom row of session card: Hours and Focus inputs */}
+                  <div className="grid grid-cols-2 gap-2.5 pt-0.5">
+                    {/* Hours */}
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className={`text-[10px] font-bold shrink-0 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Hours:</span>
                       {isRunning ? (
-                        <span className="text-xs font-black text-sky-700 min-w-[50px] text-center">
+                        <span className={`text-xs font-black min-w-[40px] text-center ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
                           {parseFloat(sess.hours).toFixed(2)}h
                         </span>
                       ) : (
                         <select
                           value={getNearestHalfHour(sess.hours)}
                           onChange={(e) => handleSessionChange(catKey, sess.id, 'hours', e.target.value)}
-                          className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[11px] font-bold cursor-pointer focus:outline-none focus:border-sky-500 focus:bg-white transition"
+                          className={`w-full rounded-xl px-2.5 py-1 text-[11px] font-black cursor-pointer focus:outline-none transition ${
+                            isDark 
+                              ? 'neu-pressed-dark text-slate-150 border-slate-750 bg-[#222730]' 
+                              : 'neu-pressed-light text-slate-800 border-slate-200 bg-[#e6ecf5]'
+                          }`}
                         >
                           {hoursOptions.map(h => (
-                            <option key={`h-${sess.id}-${h}`} value={h}>{h}h</option>
+                            <option key={`h-${sess.id}-${h}`} value={h} className={isDark ? 'bg-[#222730] text-slate-100' : 'bg-[#e6ecf5] text-slate-800'}>
+                              {h}h
+                            </option>
                           ))}
                         </select>
                       )}
                     </div>
 
-                    {/* Focus dropdown */}
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[9px] font-bold text-slate-400">Focus:</span>
+                    {/* Focus */}
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className={`text-[10px] font-bold shrink-0 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Focus:</span>
                       <select
                         value={getNearestInteger(sess.concentration)}
                         disabled={isRunning}
                         onChange={(e) => handleSessionChange(catKey, sess.id, 'concentration', e.target.value)}
-                        className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[11px] font-bold cursor-pointer focus:outline-none focus:border-sky-500 focus:bg-white transition disabled:opacity-75 disabled:cursor-not-allowed"
+                        className={`w-full rounded-xl px-2.5 py-1 text-[11px] font-black cursor-pointer focus:outline-none transition disabled:opacity-60 disabled:cursor-not-allowed ${
+                          isDark 
+                            ? 'neu-pressed-dark text-slate-150 border-slate-750 bg-[#222730]' 
+                            : 'neu-pressed-light text-slate-800 border-slate-200 bg-[#e6ecf5]'
+                        }`}
                       >
                         {concentrationOptions.map(c => (
-                          <option key={`c-${sess.id}-${c}`} value={c}>{c}/10</option>
+                          <option key={`c-${sess.id}-${c}`} value={c} className={isDark ? 'bg-[#222730] text-slate-100' : 'bg-[#e6ecf5] text-slate-800'}>
+                            {c}/10
+                          </option>
                         ))}
                       </select>
                     </div>
-
-                    {/* Delete button */}
-                    {!isRunning && (
-                      <button
-                        onClick={() => handleDeleteSession(catKey, sess.id)}
-                        className="p-1 hover:bg-red-50 text-slate-400 hover:text-red-600 rounded transition cursor-pointer"
-                        title="Delete session"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
                   </div>
                 </div>
               );
@@ -1024,35 +1196,71 @@ export default function CampDashboard({
   };
 
   return (
-    <div className="flex-grow overflow-y-auto bg-slate-50/50 p-4 md:p-6 custom-scrollbar text-slate-800">
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className={`w-full transition-colors duration-300 ${
+      isDark ? 'text-slate-100' : 'text-slate-800'
+    }`}>
+      <div className="w-full space-y-5">
 
         {/* Header Title */}
-        <div className="text-center md:text-left py-2">
-          <h1 className="text-2xl font-black text-sky-800 tracking-tight">
-            CAMP - Daily Progress Tracker
-          </h1>
-          <p className="text-xs text-slate-500 font-bold mt-1">
-            Cerebellum Accountability Management Program
-          </p>
-        </div>
+        <motion.div 
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="text-center md:text-left py-1 flex flex-col md:flex-row md:items-center md:justify-between gap-3"
+        >
+          <div>
+            <h1 className={`text-xl md:text-3xl font-black tracking-tight ${
+              isDark ? 'text-slate-100' : 'text-slate-900'
+            }`}>
+              CAMP <span className={isDark ? 'text-blue-400' : 'text-blue-600'}>• Daily Progress Tracker</span>
+            </h1>
+            <p className={`text-[10px] md:text-xs font-bold mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              Cerebellum Accountability Management Program • High-Yield Focus Engineering
+            </p>
+          </div>
+
+          <div className="hidden md:flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setShowOverviewModal(true)}
+              className={`px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition active:scale-95 cursor-pointer ${
+                isDark ? 'neu-btn-dark text-blue-400 hover:text-white' : 'neu-btn-light text-blue-600 hover:text-blue-800'
+              }`}
+            >
+              <HelpCircle className="w-4 h-4" />
+              CAMP Info
+            </button>
+          </div>
+        </motion.div>
 
         {/* Desktop Optimized Responsive Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
 
           {/* LEFT SIDE: Inputs / Charts (Matches layout) */}
-          <div className="space-y-6">
+          <div className="space-y-5">
 
             {/* Efficiency Chart Card */}
-            <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm space-y-4">
+            <motion.div 
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.05 }}
+              className={`${isDark ? 'neu-card-dark' : 'neu-card-light'} rounded-3xl p-4 sm:p-5 md:p-6 shadow-sm space-y-4`}
+            >
               <div className="flex items-center justify-between">
-                <h2 className="text-sm md:text-base font-black text-sky-800 tracking-tight flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-sky-600" />
-                  Your Overall efficiency progress
+                <h2 className={`text-sm md:text-base font-black tracking-tight flex items-center gap-2 ${
+                  isDark ? 'text-slate-100' : 'text-slate-900'
+                }`}>
+                  <div className={`p-2 rounded-xl ${isDark ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'}`}>
+                    <Activity className="w-4 h-4" />
+                  </div>
+                  Your Overall Efficiency Progress
                 </h2>
                 <button
+                  type="button"
                   onClick={() => setShowOverviewModal(true)}
-                  className="text-slate-400 hover:text-sky-600 transition"
+                  className={`p-2 rounded-xl transition ${
+                    isDark ? 'neu-pressed-dark text-slate-400 hover:text-blue-400' : 'neu-pressed-light text-slate-400 hover:text-blue-600'
+                  }`}
                   title="CAMP Info"
                 >
                   <HelpCircle className="w-4 h-4" />
@@ -1060,175 +1268,231 @@ export default function CampDashboard({
               </div>
 
               {/* Responsive Progress Line Graph */}
-              <ProgressChart data={history} />
+              <ProgressChart data={history} themeMode={themeMode} />
 
               <div className="flex justify-center pt-2">
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  type="button"
                   onClick={() => setShowOverviewModal(true)}
-                  className="bg-sky-600 hover:bg-sky-700 text-white rounded-full px-6 py-2.5 text-xs font-black tracking-widest shadow-lg shadow-sky-600/20 active:scale-95 transition-all duration-200"
+                  className={`rounded-2xl px-6 py-3 text-xs font-black tracking-widest uppercase transition-all duration-200 cursor-pointer ${
+                    isDark ? 'neu-btn-accent-dark text-white' : 'neu-btn-accent-light text-white'
+                  }`}
                 >
                   CAMP Overview
-                </button>
+                </motion.button>
               </div>
-            </div>
+            </motion.div>
 
             {/* Manage History Card */}
-            <CollapsibleCard title="Manage Logged Days" icon={Trash2} defaultOpen={false}>
-              <div className="py-2 space-y-2">
-                <p className="text-xs text-slate-500 font-medium mb-3">
-                  Select and delete any previously logged values to remove them from your progress chart.
-                </p>
-                {history.length === 0 ? (
-                  <p className="text-xs text-slate-400 italic">No logged data available.</p>
-                ) : (
-                  <div className="max-h-48 overflow-y-auto divide-y divide-slate-100 border border-slate-100 rounded-xl bg-slate-50/50 pr-1 custom-scrollbar">
-                    {history.map((item, idx) => (
-                      <div key={`hist-${item.date}-${idx}`} className="flex items-center justify-between p-3 text-xs font-semibold hover:bg-slate-100/50 transition-colors">
-                        <div className="flex flex-col text-left">
-                          <span className="text-slate-800 font-bold">{item.date}</span>
-                          <span className="text-[10px] text-slate-400 font-medium">Logged Efficiency</span>
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+            >
+              <CollapsibleCard title="Manage Logged Days" icon={Trash2} defaultOpen={false} themeMode={themeMode}>
+                <div className="py-2 space-y-2">
+                  <p className={`text-xs font-medium mb-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Select and delete any previously logged values to remove them from your progress chart.
+                  </p>
+                  {history.length === 0 ? (
+                    <p className={`text-xs italic ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>No logged data available.</p>
+                  ) : (
+                    <div className={`max-h-48 overflow-y-auto divide-y rounded-2xl pr-1 custom-scrollbar ${
+                      isDark 
+                        ? 'neu-pressed-dark divide-slate-750 border border-slate-750' 
+                        : 'neu-pressed-light divide-slate-200 border border-slate-200'
+                    }`}>
+                      {history.map((item, idx) => (
+                        <div key={`hist-${item.date}-${idx}`} className={`flex items-center justify-between p-3 text-xs font-semibold transition-colors ${
+                          isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'
+                        }`}>
+                          <div className="flex flex-col text-left">
+                            <span className={`font-black ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{item.date}</span>
+                            <span className={`text-[10px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Logged Efficiency</span>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <span className={`font-black ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{item.score.toFixed(1)}%</span>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteHistoryItem(idx)}
+                              className={`p-1.5 rounded-lg transition ${
+                                isDark ? 'hover:bg-red-500/10 text-slate-400 hover:text-red-400' : 'hover:bg-red-50 text-slate-400 hover:text-red-600'
+                              }`}
+                              title={`Delete entry for ${item.date}`}
+                            >
+                              <Trash2 className="w-4 h-4 text-red-500" />
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-4">
-                          <span className="text-sky-700 font-black">{item.score.toFixed(1)}%</span>
-                          <button
-                            onClick={() => handleDeleteHistoryItem(idx)}
-                            className="p-1.5 hover:bg-red-50 hover:text-red-600 rounded-lg text-slate-400 transition"
-                            title={`Delete entry for ${item.date}`}
-                          >
-                            <Trash2 className="w-4 h-4 text-red-500 hover:text-red-600" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </CollapsibleCard>
-
-            {/* Session History Log Card */}
-            <CollapsibleCard title={`Session History Log (${timerHistory.length} entries)`} icon={History} defaultOpen={false}>
-              <div className="py-2 space-y-3">
-                <p className="text-xs text-slate-500 font-medium">
-                  All sessions logged via timers. Delete individual entries to correct mistakes — CAMP session hours will auto-recalculate.
-                </p>
-
-                {/* Date filter */}
-                <div className="flex items-center gap-2">
-                  <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                  <input
-                    type="date"
-                    value={historyFilterDate}
-                    max={todayDateStr}
-                    onChange={(e) => setHistoryFilterDate(e.target.value)}
-                    placeholder="Filter by date"
-                    className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-700 focus:outline-none focus:border-sky-500 cursor-pointer"
-                  />
-                  {historyFilterDate && (
-                    <button
-                      onClick={() => setHistoryFilterDate('')}
-                      className="text-[10px] font-black text-slate-400 hover:text-red-500 transition px-2 py-1 rounded-lg hover:bg-red-50"
-                    >
-                      Clear
-                    </button>
+                      ))}
+                    </div>
                   )}
                 </div>
+              </CollapsibleCard>
+            </motion.div>
 
-                {timerHistory.length === 0 ? (
-                  <div className="text-center py-6 text-xs text-slate-400 italic">
-                    No sessions logged yet. Start a timer and save a session to see it here.
+            {/* Session History Log Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.15 }}
+            >
+              <CollapsibleCard title={`Session History Log (${timerHistory.length} entries)`} icon={History} defaultOpen={false} themeMode={themeMode}>
+                <div className="py-2 space-y-3">
+                  <p className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    All sessions logged via timers. Delete individual entries to correct mistakes — CAMP session hours will auto-recalculate.
+                  </p>
+
+                  {/* Date filter */}
+                  <div className="flex items-center gap-2">
+                    <Filter className={`w-3.5 h-3.5 shrink-0 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+                    <input
+                      type="date"
+                      value={historyFilterDate}
+                      max={todayDateStr}
+                      onChange={(e) => setHistoryFilterDate(e.target.value)}
+                      placeholder="Filter by date"
+                      className={`flex-1 rounded-xl px-3.5 py-2 text-xs font-bold focus:outline-none transition cursor-pointer ${
+                        isDark 
+                          ? 'neu-pressed-dark text-slate-100 border-slate-750 bg-[#222730]' 
+                          : 'neu-pressed-light text-slate-800 border-slate-200 bg-[#e6ecf5]'
+                      }`}
+                    />
+                    {historyFilterDate && (
+                      <button
+                        type="button"
+                        onClick={() => setHistoryFilterDate('')}
+                        className={`text-[10px] font-black transition px-2.5 py-1.5 rounded-xl cursor-pointer ${
+                          isDark ? 'neu-btn-dark text-red-400 hover:text-red-300' : 'neu-btn-light text-red-600 hover:text-red-700'
+                        }`}
+                      >
+                        Clear
+                      </button>
+                    )}
                   </div>
-                ) : (() => {
-                  const filtered = timerHistory
-                    .map((item, originalIdx) => ({ ...item, originalIdx }))
-                    .filter(item => !historyFilterDate || item.date === historyFilterDate)
-                    .sort((a, b) => b.date.localeCompare(a.date) || b.originalIdx - a.originalIdx);
 
-                  if (filtered.length === 0) {
+                  {timerHistory.length === 0 ? (
+                    <div className={`text-center py-6 text-xs italic ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                      No sessions logged yet. Start a timer and save a session to see it here.
+                    </div>
+                  ) : (() => {
+                    const filtered = timerHistory
+                      .map((item, originalIdx) => ({ ...item, originalIdx }))
+                      .filter(item => !historyFilterDate || item.date === historyFilterDate)
+                      .sort((a, b) => b.date.localeCompare(a.date) || b.originalIdx - a.originalIdx);
+
+                    if (filtered.length === 0) {
+                      return (
+                        <div className={`text-center py-4 text-xs italic ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                          No sessions found for {historyFilterDate}.
+                        </div>
+                      );
+                    }
+
+                    const periodLabel = (p) => p === 'preLunch' ? '🌅 Pre Lunch' : p === 'midDay' ? '☀️ Midday' : '🌙 Post Dinner';
+                    const typeLabel = (t) => t === 'notes' ? '📚 Notes' : t === 'qbank' ? '❓ Qbank' : t === 'flashcards' ? '🎴 Flashcards' : '🏆 Grand Test';
+                    const typeColor = (t) => {
+                      if (t === 'notes') return isDark ? 'bg-blue-500/15 text-blue-400 border-blue-500/30' : 'bg-blue-50 text-blue-700 border-blue-200';
+                      if (t === 'qbank') return isDark ? 'bg-amber-500/15 text-amber-400 border-amber-500/30' : 'bg-amber-50 text-amber-700 border-amber-200';
+                      if (t === 'flashcards') return isDark ? 'bg-violet-500/15 text-violet-400 border-violet-500/30' : 'bg-violet-50 text-violet-700 border-violet-200';
+                      return isDark ? 'bg-orange-500/15 text-orange-400 border-orange-500/30' : 'bg-orange-50 text-orange-700 border-orange-200';
+                    };
+                    const metricStr = (item) => {
+                      if (item.type === 'notes' && item.pagesRead > 0) return `${item.pagesRead} pages`;
+                      if (item.type === 'qbank' && item.questionsSolved > 0) return `${item.questionsSolved} Qs`;
+                      if (item.type === 'flashcards' && item.cardsReviewed > 0) return `${item.cardsReviewed} cards`;
+                      if (item.type === 'gt' && item.gtDetails) return item.gtDetails.name || 'GT';
+                      return null;
+                    };
+
                     return (
-                      <div className="text-center py-4 text-xs text-slate-400 italic">
-                        No sessions found for {historyFilterDate}.
+                      <div className={`max-h-72 overflow-y-auto divide-y rounded-2xl custom-scrollbar ${
+                        isDark 
+                          ? 'neu-pressed-dark divide-slate-750 border border-slate-750' 
+                          : 'neu-pressed-light divide-slate-200 border border-slate-200'
+                      }`}>
+                        {filtered.map((item) => {
+                          const metric = metricStr(item);
+                          return (
+                            <motion.div
+                              key={`th-${item.date}-${item.originalIdx}`}
+                              layout
+                              initial={{ opacity: 0, x: -4 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              exit={{ opacity: 0, x: 4 }}
+                              className={`flex items-start justify-between gap-3 p-3.5 transition-colors group ${
+                                isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'
+                              }`}
+                            >
+                              <div className="flex flex-col gap-1.5 flex-1 min-w-0 text-left">
+                                {/* Row 1: Date + Day */}
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className={`text-[10px] font-black ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>{item.date}</span>
+                                  <span className={`text-[9px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{item.dayOfWeek}</span>
+                                </div>
+                                {/* Row 2: Period + Type chips */}
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className={`text-[9px] font-black border px-2 py-0.5 rounded-full ${
+                                    isDark ? 'bg-sky-500/15 text-sky-400 border-sky-500/30' : 'bg-sky-50 text-sky-700 border-sky-200'
+                                  }`}>
+                                    {periodLabel(item.period)}
+                                  </span>
+                                  <span className={`text-[9px] font-black border px-2 py-0.5 rounded-full ${typeColor(item.type)}`}>
+                                    {typeLabel(item.type)}
+                                  </span>
+                                </div>
+                                {/* Row 3: Metrics */}
+                                <div className="flex items-center gap-3 flex-wrap">
+                                  <span className={`text-[9px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                    ⏱ {item.hours}h
+                                  </span>
+                                  <span className={`text-[9px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                    🎯 Focus {item.concentration}/10
+                                  </span>
+                                  {metric && (
+                                    <span className={`text-[9px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                      📌 {metric}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              {/* Delete button */}
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteTimerHistoryItem(item.originalIdx)}
+                                title="Delete this session"
+                                className={`shrink-0 p-2 rounded-xl transition cursor-pointer ${
+                                  isDark ? 'text-slate-500 hover:text-red-400 hover:bg-red-500/10' : 'text-slate-400 hover:text-red-600 hover:bg-red-50'
+                                }`}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </motion.div>
+                          );
+                        })}
                       </div>
                     );
-                  }
-
-                  const periodLabel = (p) => p === 'preLunch' ? '🌅 Pre Lunch' : p === 'midDay' ? '☀️ Midday' : '🌙 Post Dinner';
-                  const typeLabel = (t) => t === 'notes' ? '📚 Notes' : t === 'qbank' ? '❓ Qbank' : t === 'flashcards' ? '🎴 Flashcards' : '🏆 Grand Test';
-                  const typeColor = (t) => t === 'notes' ? 'bg-blue-50 text-blue-700 border-blue-100' : t === 'qbank' ? 'bg-amber-50 text-amber-700 border-amber-100' : t === 'flashcards' ? 'bg-violet-50 text-violet-700 border-violet-100' : 'bg-orange-50 text-orange-700 border-orange-100';
-                  const metricStr = (item) => {
-                    if (item.type === 'notes' && item.pagesRead > 0) return `${item.pagesRead} pages`;
-                    if (item.type === 'qbank' && item.questionsSolved > 0) return `${item.questionsSolved} Qs`;
-                    if (item.type === 'flashcards' && item.cardsReviewed > 0) return `${item.cardsReviewed} cards`;
-                    if (item.type === 'gt' && item.gtDetails) return item.gtDetails.name || 'GT';
-                    return null;
-                  };
-
-                  return (
-                    <div className="max-h-72 overflow-y-auto divide-y divide-slate-100 border border-slate-100 rounded-xl bg-slate-50/30 custom-scrollbar">
-                      {filtered.map((item) => {
-                        const metric = metricStr(item);
-                        return (
-                          <motion.div
-                            key={`th-${item.date}-${item.originalIdx}`}
-                            layout
-                            initial={{ opacity: 0, x: -4 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: 4 }}
-                            className="flex items-start justify-between gap-3 p-3 hover:bg-white transition-colors group"
-                          >
-                            <div className="flex flex-col gap-1 flex-1 min-w-0">
-                              {/* Row 1: Date + Day */}
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-[10px] font-black text-slate-700">{item.date}</span>
-                                <span className="text-[9px] font-bold text-slate-400">{item.dayOfWeek}</span>
-                              </div>
-                              {/* Row 2: Period + Type chips */}
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="text-[9px] font-black bg-sky-50 text-sky-700 border border-sky-100 px-2 py-0.5 rounded-full">
-                                  {periodLabel(item.period)}
-                                </span>
-                                <span className={`text-[9px] font-black border px-2 py-0.5 rounded-full ${typeColor(item.type)}`}>
-                                  {typeLabel(item.type)}
-                                </span>
-                              </div>
-                              {/* Row 3: Metrics */}
-                              <div className="flex items-center gap-3 flex-wrap">
-                                <span className="text-[9px] font-bold text-slate-500">
-                                  ⏱ {item.hours}h
-                                </span>
-                                <span className="text-[9px] font-bold text-slate-500">
-                                  🎯 Focus {item.concentration}/10
-                                </span>
-                                {metric && (
-                                  <span className="text-[9px] font-bold text-slate-500">
-                                    📌 {metric}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            {/* Delete button */}
-                            <button
-                              onClick={() => handleDeleteTimerHistoryItem(item.originalIdx)}
-                              title="Delete this session"
-                              className="shrink-0 p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition opacity-0 group-hover:opacity-100 focus:opacity-100"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </motion.div>
-                        );
-                      })}
-                    </div>
-                  );
-                })()}
-              </div>
-            </CollapsibleCard>
+                  })()}
+                </div>
+              </CollapsibleCard>
+            </motion.div>
 
             {/* Inputs Label & Date Selector */}
-            <div className="pt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-center sm:text-left">
+            <motion.div 
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="pt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-center sm:text-left"
+            >
               <div>
-                <h2 className="text-base font-black text-sky-800 tracking-tight uppercase">
+                <h2 className={`text-base font-black tracking-tight uppercase ${
+                  isDark ? 'text-slate-100' : 'text-slate-900'
+                }`}>
                   Add Day's Progress
                 </h2>
-                <p className="text-[10px] text-slate-500 font-semibold mt-0.5">
+                <p className={`text-[10px] font-semibold mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                   Select a date to log or modify CAMP tracker values.
                 </p>
               </div>
@@ -1238,106 +1502,217 @@ export default function CampDashboard({
                   value={selectedDate}
                   max={todayDateStr}
                   onChange={(e) => setSelectedDate(e.target.value)}
-                  className="bg-white border border-slate-250 rounded-xl px-4 py-2 text-xs font-bold text-slate-750 focus:outline-none focus:border-sky-500 shadow-sm cursor-pointer"
+                  className={`rounded-2xl px-4 py-2.5 text-xs font-black focus:outline-none transition cursor-pointer ${
+                    isDark 
+                      ? 'neu-pressed-dark text-slate-100 border-slate-750 bg-[#222730]' 
+                      : 'neu-pressed-light text-slate-800 border-slate-200 bg-[#e6ecf5]'
+                  }`}
                 />
               </div>
-            </div>
-
-
+            </motion.div>
 
             {/* Bed to Book Time */}
-            <CollapsibleCard title="Bed to Book Time" icon={Clock} defaultOpen={true}>
-              <div className="py-2 space-y-2">
-                <p className="text-xs text-slate-500 font-medium">
-                  How quickly did you sit down to study after waking up?
-                </p>
-                <div className="relative mt-1">
-                  <select
-                    value={bedToBook}
-                    onChange={(e) => setBedToBook(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200/80 rounded-xl px-4 py-3 text-xs font-black text-slate-700 focus:outline-none focus:border-sky-500 focus:bg-white transition appearance-none cursor-pointer"
-                  >
-                    <option value="Less than 45 mins">Less than 45 mins (No Penalty)</option>
-                    <option value="45-60 min">45 to 60 mins (5% Penalty)</option>
-                    <option value="More than 1 hour">More than 1 hour (15% Penalty)</option>
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
-                    <Clock className="w-4 h-4" />
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.25 }}
+            >
+              <CollapsibleCard title="Bed to Book Time" icon={Clock} defaultOpen={true} themeMode={themeMode}>
+                <div className="py-2 space-y-2 text-left">
+                  <p className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    How quickly did you sit down to study after waking up?
+                  </p>
+                  <div className="relative mt-1">
+                    <select
+                      value={bedToBook}
+                      onChange={(e) => setBedToBook(e.target.value)}
+                      className={`w-full rounded-2xl px-4 py-3.5 text-xs font-black focus:outline-none transition appearance-none cursor-pointer ${
+                        isDark 
+                          ? 'neu-pressed-dark text-slate-100 border-slate-750 bg-[#222730]' 
+                          : 'neu-pressed-light text-slate-800 border-slate-200 bg-[#e6ecf5]'
+                      }`}
+                    >
+                      <option value="Less than 45 mins" className={isDark ? 'bg-[#222730] text-slate-100' : 'bg-[#e6ecf5] text-slate-800'}>
+                        Less than 45 mins (No Penalty)
+                      </option>
+                      <option value="45-60 min" className={isDark ? 'bg-[#222730] text-slate-100' : 'bg-[#e6ecf5] text-slate-800'}>
+                        45 to 60 mins (5% Penalty)
+                      </option>
+                      <option value="More than 1 hour" className={isDark ? 'bg-[#222730] text-slate-100' : 'bg-[#e6ecf5] text-slate-800'}>
+                        More than 1 hour (15% Penalty)
+                      </option>
+                    </select>
+                    <div className={`pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      <Clock className="w-4 h-4" />
+                    </div>
                   </div>
                 </div>
-              </div>
-            </CollapsibleCard>
+              </CollapsibleCard>
+            </motion.div>
 
             {/* Study Sessions Card */}
-            <CollapsibleCard title="Study Sessions & Concentration" icon={BookOpen} defaultOpen={true}>
-              <div className="py-2 space-y-4">
-                {renderCategoryBlock('preLunch', 'Pre Lunch', 'Midnight to 1:00 PM')}
-                {renderCategoryBlock('midDay', 'Midday', '1:00 PM to 7:00 PM')}
-                {renderCategoryBlock('postDinner', 'Post Dinner', '7:00 PM to Midnight')}
-              </div>
-            </CollapsibleCard>
-            {/* Productivity Insights Card */}
-            <CollapsibleCard title="Productivity Insights & Recommendations" icon={Activity} defaultOpen={true}>
-              <div className="space-y-6 py-2">
-                {timerHistory.length === 0 ? (
-                  <div className="bg-slate-50/50 rounded-2xl p-8 border border-slate-200 border-dashed text-center flex flex-col items-center justify-center space-y-3.5">
-                    <div className="w-12 h-12 bg-sky-100 rounded-2xl flex items-center justify-center text-sky-600 font-bold text-lg animate-pulse">
-                      📊
-                    </div>
-                    <div className="space-y-1">
-                      <h4 className="font-black text-slate-700 text-xs uppercase tracking-wider text-left md:text-center">Focus Analytics Empty</h4>
-                      <p className="text-[10px] text-slate-550 font-semibold leading-relaxed max-w-sm mx-auto text-left md:text-center">
-                        Start studying using the active countdown timers, Pomodoro sprints, or stopwatch. Once you log a session, this heatmap and recommendations engine will automatically analyze your peak focus slots!
-                      </p>
-                    </div>
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+            >
+              <CollapsibleCard title="Study Sessions & Concentration" icon={BookOpen} defaultOpen={true} themeMode={themeMode}>
+                <div className="py-2 space-y-3.5">
+                  {/* Slot Switcher Pill */}
+                  <div className={`relative grid grid-cols-3 p-1 rounded-2xl ${isDark ? 'neu-pressed-dark border border-slate-750' : 'neu-pressed-light border border-slate-200'}`}>
+                    <div
+                      className="absolute top-1 bottom-1 rounded-xl bg-blue-600 shadow-md transition-all"
+                      style={{
+                        width: 'calc(33.333% - 3px)',
+                        left: activeSessionSlot === 'preLunch' ? '2px' : activeSessionSlot === 'midDay' ? 'calc(33.333% + 1px)' : 'calc(66.666%)',
+                        transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+                      }}
+                    />
+                    {[
+                      { key: 'preLunch', label: 'Pre Lunch', icon: '🌅' },
+                      { key: 'midDay', label: 'Midday', icon: '☀️' },
+                      { key: 'postDinner', label: 'Post Dinner', icon: '🌙' },
+                    ].map((slot) => {
+                      const isActive = activeSessionSlot === slot.key;
+                      const agg = aggregatedSessions[slot.key] || { hours: '0' };
+                      const hrs = parseFloat(agg.hours) || 0;
+                      return (
+                        <button
+                          key={slot.key}
+                          type="button"
+                          onClick={() => setActiveSessionSlot(slot.key)}
+                          className={`relative z-10 py-1.5 px-0.5 text-[9px] sm:text-xs font-black uppercase tracking-wider rounded-xl transition-colors duration-200 flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 cursor-pointer ${
+                            isActive ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'
+                          }`}
+                        >
+                          <span className="flex items-center gap-1">
+                            <span className="text-xs">{slot.icon}</span>
+                            <span className="truncate">{slot.label}</span>
+                          </span>
+                          {hrs > 0 && (
+                            <span className={`text-[8px] px-1.5 py-0.2 rounded-full font-black ${
+                              isActive ? 'bg-white/20 text-white' : isDark ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-700'
+                            }`}>
+                              {hrs.toFixed(1)}h
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
-                ) : (
-                  <>
-                    {/* Correlation Heatmap */}
-                    {renderHeatmap()}
 
-                    {/* Advanced Suggestions Panel */}
-                    <div className="space-y-3.5 mt-4">
-                      <div className="text-left border-b border-slate-100 pb-2">
-                        <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest block">
-                          AI Recommendations & Learnings
-                        </h3>
+                  {/* Active Slot Content */}
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={activeSessionSlot}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      {activeSessionSlot === 'preLunch' && renderCategoryBlock('preLunch', 'Pre Lunch', 'Midnight to 1:00 PM')}
+                      {activeSessionSlot === 'midDay' && renderCategoryBlock('midDay', 'Midday', '1:00 PM to 7:00 PM')}
+                      {activeSessionSlot === 'postDinner' && renderCategoryBlock('postDinner', 'Post Dinner', '7:00 PM to Midnight')}
+                    </motion.div>
+                  </AnimatePresence>
+                </div>
+              </CollapsibleCard>
+            </motion.div>
+
+            {/* Productivity Insights Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.35 }}
+            >
+              <CollapsibleCard title="Productivity Insights & Recommendations" icon={Activity} defaultOpen={true} themeMode={themeMode}>
+                <div className="space-y-6 py-2">
+                  {timerHistory.length === 0 ? (
+                    <div className={`rounded-3xl p-8 border border-dashed text-center flex flex-col items-center justify-center space-y-3.5 ${
+                      isDark 
+                        ? 'neu-pressed-dark border-slate-750' 
+                        : 'neu-pressed-light border-slate-300'
+                    }`}>
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg animate-pulse ${
+                        isDark ? 'neu-card-dark text-blue-400' : 'neu-card-light text-blue-600'
+                      }`}>
+                        📊
                       </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-                        {/* Recommendation 1 */}
-                        <div className="bg-slate-50/70 border border-slate-100 rounded-2xl p-4 flex flex-col items-start gap-2.5 text-left transition hover:bg-slate-100/50">
-                          <span className="text-xl">🎴</span>
-                          <h4 className="text-[10px] font-black uppercase text-sky-850 tracking-wider">Flashcard Strategy</h4>
-                          <p className="text-[10px] text-slate-500 font-medium leading-relaxed">
-                            Your peak focus for Flashcards is during <span className="text-sky-600 font-bold">{insights.flashcardsPeriod}</span> with a focus score of <span className="text-sky-600 font-bold">{insights.flashcardsFocus}/10</span>. We recommend doing reviews in this slot.
-                          </p>
-                        </div>
-
-                        {/* Recommendation 2 */}
-                        <div className="bg-slate-50/70 border border-slate-100 rounded-2xl p-4 flex flex-col items-start gap-2.5 text-left transition hover:bg-slate-100/50">
-                          <span className="text-xl">❓</span>
-                          <h4 className="text-[10px] font-black uppercase text-sky-850 tracking-wider">Qbank Strategy</h4>
-                          <p className="text-[10px] text-slate-500 font-medium leading-relaxed">
-                            For Qbank practicing, you excel during <span className="text-sky-600 font-bold">{insights.qbankPeriod}</span> (rating: <span className="text-sky-600 font-bold">{insights.qbankFocus}/10</span>). Schedule question blocks in this period.
-                          </p>
-                        </div>
-
-                        {/* Recommendation 3 */}
-                        <div className="bg-slate-50/70 border border-slate-100 rounded-2xl p-4 flex flex-col items-start gap-2.5 text-left transition hover:bg-slate-100/50">
-                          <span className="text-xl">📅</span>
-                          <h4 className="text-[10px] font-black uppercase text-sky-850 tracking-wider">Session & Day Adherence</h4>
-                          <p className="text-[10px] text-slate-500 font-medium leading-relaxed">
-                            Your highest concentration matches <span className="text-sky-600 font-bold">{insights.durationRange}</span> (rating: <span className="text-sky-600 font-bold">{insights.durationFocus}/10</span>). <span className="text-sky-600 font-bold">{insights.bestDay}</span> is your most productive day.
-                          </p>
-                        </div>
+                      <div className="space-y-1">
+                        <h4 className={`font-black text-xs uppercase tracking-wider text-left md:text-center ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                          Focus Analytics Empty
+                        </h4>
+                        <p className={`text-[10px] font-semibold leading-relaxed max-w-sm mx-auto text-left md:text-center ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                          Start studying using the active countdown timers, Pomodoro sprints, or stopwatch. Once you log a session, this heatmap and recommendations engine will automatically analyze your peak focus slots!
+                        </p>
                       </div>
                     </div>
-                  </>
-                )}
+                  ) : (
+                    <>
+                      {/* Correlation Heatmap */}
+                      {renderHeatmap()}
 
-              </div>
-            </CollapsibleCard>
+                      {/* Advanced Suggestions Panel */}
+                      <div className="space-y-3.5 mt-4">
+                        <div className={`text-left border-b pb-2 ${isDark ? 'border-slate-700/60' : 'border-slate-200/80'}`}>
+                          <h3 className={`text-xs font-black uppercase tracking-widest block ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                            AI Recommendations & Learnings
+                          </h3>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                          {/* Recommendation 1 */}
+                          <div className={`rounded-2xl p-4 flex flex-col items-start gap-2.5 text-left transition border ${
+                            isDark 
+                              ? 'neu-item-dark border-slate-750 hover:border-blue-500/40' 
+                              : 'neu-item-light border-slate-200/80 hover:border-blue-500/40'
+                          }`}>
+                            <span className="text-xl">🎴</span>
+                            <h4 className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
+                              Flashcard Strategy
+                            </h4>
+                            <p className={`text-[10px] font-medium leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                              Your peak focus for Flashcards is during <span className={`font-black ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{insights.flashcardsPeriod}</span> with a focus score of <span className={`font-black ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{insights.flashcardsFocus}/10</span>. We recommend doing reviews in this slot.
+                            </p>
+                          </div>
+
+                          {/* Recommendation 2 */}
+                          <div className={`rounded-2xl p-4 flex flex-col items-start gap-2.5 text-left transition border ${
+                            isDark 
+                              ? 'neu-item-dark border-slate-750 hover:border-blue-500/40' 
+                              : 'neu-item-light border-slate-200/80 hover:border-blue-500/40'
+                          }`}>
+                            <span className="text-xl">❓</span>
+                            <h4 className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
+                              Qbank Strategy
+                            </h4>
+                            <p className={`text-[10px] font-medium leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                              For Qbank practicing, you excel during <span className={`font-black ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{insights.qbankPeriod}</span> (rating: <span className={`font-black ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{insights.qbankFocus}/10</span>). Schedule question blocks in this period.
+                            </p>
+                          </div>
+
+                          {/* Recommendation 3 */}
+                          <div className={`rounded-2xl p-4 flex flex-col items-start gap-2.5 text-left transition border ${
+                            isDark 
+                              ? 'neu-item-dark border-slate-750 hover:border-blue-500/40' 
+                              : 'neu-item-light border-slate-200/80 hover:border-blue-500/40'
+                          }`}>
+                            <span className="text-xl">📅</span>
+                            <h4 className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
+                              Session & Day Adherence
+                            </h4>
+                            <p className={`text-[10px] font-medium leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                              Your highest concentration matches <span className={`font-black ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{insights.durationRange}</span> (rating: <span className={`font-black ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{insights.durationFocus}/10</span>). <span className={`font-black ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{insights.bestDay}</span> is your most productive day.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                </div>
+              </CollapsibleCard>
+            </motion.div>
 
           </div>
 
@@ -1345,84 +1720,139 @@ export default function CampDashboard({
           <div className="space-y-6 lg:sticky lg:top-4">
 
             {/* Performance Score Main Container */}
-            <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm space-y-6">
+            <motion.div 
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className={`${isDark ? 'neu-card-dark' : 'neu-card-light'} rounded-3xl p-6 md:p-8 space-y-6 shadow-sm`}
+            >
 
-              <div className="text-center border-b border-slate-100 pb-4">
-                <h2 className="text-base font-black text-sky-800 tracking-tight uppercase flex items-center justify-center gap-2">
-                  <Award className="w-5 h-5 text-sky-600" />
+              <div className={`text-center border-b pb-4 ${isDark ? 'border-slate-700/60' : 'border-slate-200/80'}`}>
+                <h2 className={`text-base font-black tracking-tight uppercase flex items-center justify-center gap-2 ${
+                  isDark ? 'text-slate-100' : 'text-slate-900'
+                }`}>
+                  <div className={`p-2 rounded-xl ${isDark ? 'neu-pressed-dark text-blue-400' : 'neu-pressed-light text-blue-600'}`}>
+                    <Award className="w-5 h-5" />
+                  </div>
                   Performance Score
                 </h2>
               </div>
 
               {/* 1. Efficiency Score Dial Block */}
-              <div className="bg-slate-50/50 rounded-2xl p-5 border border-slate-100/50 flex flex-col items-center justify-center text-center space-y-1">
-                <span className="text-xs font-black text-slate-500 uppercase tracking-widest">
+              <div className={`rounded-2xl p-6 flex flex-col items-center justify-center text-center space-y-1.5 border ${
+                isDark 
+                  ? 'neu-pressed-dark border-slate-750' 
+                  : 'neu-pressed-light border-slate-200'
+              }`}>
+                <span className={`text-xs font-black uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                   Efficiency Score
                 </span>
-                <span className="text-[10px] font-semibold text-slate-400">
-                  This highlights your study performance.
+                <span className={`text-[10px] font-semibold ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                  This highlights your overall study performance.
                 </span>
-                <span className="text-3xl font-black text-sky-600 pt-2 block tracking-tight">
+                <span className={`text-4xl font-black pt-2 block tracking-tight ${
+                  isDark ? 'text-blue-400' : 'text-blue-600'
+                }`}>
                   {efficiencyScore.toFixed(1)}%
                 </span>
               </div>
 
               {/* 2. Overall Concentration Average Block */}
-              <div className="bg-slate-50/50 rounded-2xl p-5 border border-slate-100/50 flex flex-col items-center justify-center text-center space-y-1">
-                <span className="text-xs font-black text-slate-500 uppercase tracking-widest">
+              <div className={`rounded-2xl p-5 flex flex-col items-center justify-center text-center space-y-1 border ${
+                isDark 
+                  ? 'neu-pressed-dark border-slate-750' 
+                  : 'neu-pressed-light border-slate-200'
+              }`}>
+                <span className={`text-xs font-black uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                   Overall Concentration
                 </span>
-                <span className="text-[10px] font-semibold text-slate-400">
+                <span className={`text-[10px] font-semibold ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                   Time-weighted focus across all periods.
                 </span>
-                <span className="text-xl font-black text-sky-600 pt-2 block">
+                <span className={`text-2xl font-black pt-2 block ${
+                  isDark ? 'text-blue-400' : 'text-blue-600'
+                }`}>
                   {weightedConcentration.toFixed(1)}/10
                 </span>
               </div>
 
               {/* 3. Effective Study Hours Breakdowns */}
               <div className="space-y-3">
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1.5">
+                <h3 className={`text-[10px] font-black uppercase tracking-widest border-b pb-1.5 ${
+                  isDark ? 'text-slate-400 border-slate-700/60' : 'text-slate-500 border-slate-200/80'
+                }`}>
                   Effective Period Breakdown
                 </h3>
 
                 {/* Pre Lunch Card */}
-                <div className="bg-sky-50/45 border border-sky-100/50 rounded-xl p-4 flex justify-between items-center transition hover:border-sky-200">
-                  <span className="text-xs font-bold text-slate-700">Pre Lunch Effective Study</span>
-                  <span className="text-sm font-black text-sky-700">{preLunchEffective.toFixed(1)} Hours</span>
+                <div className={`rounded-2xl p-4 flex justify-between items-center transition border ${
+                  isDark 
+                    ? 'neu-item-dark border-slate-750 hover:border-blue-500/40' 
+                    : 'neu-item-light border-slate-200/80 hover:border-blue-500/40'
+                }`}>
+                  <span className={`text-xs font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                    Pre Lunch Effective Study
+                  </span>
+                  <span className={`text-sm font-black ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
+                    {preLunchEffective.toFixed(1)} Hours
+                  </span>
                 </div>
 
                 {/* Midday Card */}
-                <div className="bg-sky-50/45 border border-sky-100/50 rounded-xl p-4 flex justify-between items-center transition hover:border-sky-200">
-                  <span className="text-xs font-bold text-slate-700">Midday Effective Study</span>
-                  <span className="text-sm font-black text-sky-700">{midDayEffective.toFixed(1)} Hours</span>
+                <div className={`rounded-2xl p-4 flex justify-between items-center transition border ${
+                  isDark 
+                    ? 'neu-item-dark border-slate-750 hover:border-blue-500/40' 
+                    : 'neu-item-light border-slate-200/80 hover:border-blue-500/40'
+                }`}>
+                  <span className={`text-xs font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                    Midday Effective Study
+                  </span>
+                  <span className={`text-sm font-black ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
+                    {midDayEffective.toFixed(1)} Hours
+                  </span>
                 </div>
 
                 {/* Post Dinner Card */}
-                <div className="bg-sky-50/45 border border-sky-100/50 rounded-xl p-4 flex justify-between items-center transition hover:border-sky-200">
-                  <span className="text-xs font-bold text-slate-700">Post Dinner Effective Study</span>
-                  <span className="text-sm font-black text-sky-700">{postDinnerEffective.toFixed(1)} Hours</span>
+                <div className={`rounded-2xl p-4 flex justify-between items-center transition border ${
+                  isDark 
+                    ? 'neu-item-dark border-slate-750 hover:border-blue-500/40' 
+                    : 'neu-item-light border-slate-200/80 hover:border-blue-500/40'
+                }`}>
+                  <span className={`text-xs font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                    Post Dinner Effective Study
+                  </span>
+                  <span className={`text-sm font-black ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
+                    {postDinnerEffective.toFixed(1)} Hours
+                  </span>
                 </div>
               </div>
 
               {/* Save Entry CTA */}
               <div className="pt-2 flex flex-col gap-2">
-                <button
+                <motion.button
+                  whileHover={grossHours > 0 ? { scale: 1.02 } : {}}
+                  whileTap={grossHours > 0 ? { scale: 0.98 } : {}}
+                  type="button"
                   onClick={handleSaveProgress}
                   disabled={grossHours === 0}
-                  className={`w-full py-3.5 rounded-full text-xs font-black tracking-widest uppercase transition-all duration-300 shadow-md active:scale-95 ${grossHours === 0
-                      ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
-                      : 'bg-sky-600 hover:bg-sky-700 text-white shadow-sky-600/10'
-                    }`}
+                  className={`w-full py-4 rounded-2xl text-xs font-black tracking-widest uppercase transition-all duration-300 shadow-md cursor-pointer ${
+                    grossHours === 0
+                      ? isDark ? 'neu-pressed-dark text-slate-500 cursor-not-allowed shadow-none' : 'neu-pressed-light text-slate-400 cursor-not-allowed shadow-none'
+                      : isDark ? 'neu-btn-accent-dark text-white' : 'neu-btn-accent-light text-white'
+                  }`}
                 >
                   Log Today's Progress
-                </button>
+                </motion.button>
 
                 {saveStatus && (
                   <motion.div
                     initial={{ opacity: 0, y: 5 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="flex items-center justify-center gap-2 text-xs font-black text-emerald-600 bg-emerald-50 py-2 rounded-xl mt-1"
+                    className={`flex items-center justify-center gap-2 text-xs font-black py-2.5 rounded-2xl mt-1 border ${
+                      isDark 
+                        ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400' 
+                        : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                    }`}
                   >
                     <CheckCircle className="w-4 h-4 shrink-0" />
                     {saveStatus}
@@ -1430,7 +1860,7 @@ export default function CampDashboard({
                 )}
               </div>
 
-            </div>
+            </motion.div>
 
           </div>
 
@@ -1439,97 +1869,130 @@ export default function CampDashboard({
       </div>
 
       {/* CAMP OVERVIEW POPUP MODAL */}
-      {showOverviewModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="bg-white border border-slate-100 rounded-3xl shadow-xl max-w-lg w-full overflow-hidden"
-          >
-            <div className="bg-sky-600 px-6 py-4 flex justify-between items-center text-white">
-              <h3 className="font-black text-sm uppercase tracking-widest flex items-center gap-2">
-                <FileText className="w-4 h-4" />
-                CAMP Method Overview
-              </h3>
-              <button
-                onClick={() => setShowOverviewModal(false)}
-                className="text-white hover:text-sky-200 font-bold text-sm focus:outline-none"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="p-6 space-y-4 text-xs leading-relaxed text-slate-600">
-              <p>
-                The <strong>Cerebellum Accountability Management Program (CAMP)</strong> tracks medical students' daily study habits using strict mathematical constraints to enforce true focus.
-              </p>
-
-              <div className="space-y-2 border-l-2 border-sky-100 pl-4 py-1">
-                <p>
-                  <strong>1. Bed-to-Book Penalty:</strong> If you wait more than 45 minutes to start studying after waking up, you lose efficiency.
-                  <br />• Under 45m: <span className="text-emerald-600 font-bold">0% Penalty</span>
-                  <br />• 45–60m: <span className="text-amber-500 font-bold">5% Penalty</span>
-                  <br />• Over 1 hour: <span className="text-red-500 font-bold">15% Penalty</span>
-                </p>
-                <p>
-                  <strong>2. Time-Weighted Focus:</strong> Study sessions with longer duration are weighted heavier in calculating concentration ratings.
-                </p>
-                <p>
-                  <strong>3. Deep Study Bonus:</strong> Gain <span className="text-sky-600 font-bold">+2%</span> for each distraction-free 50m block, capped up to <span className="text-sky-600 font-bold">+10%</span>.
-                </p>
-              </div>
-
-              <div className="pt-2 border-t border-slate-100 flex justify-end">
+      <AnimatePresence>
+        {showOverviewModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+            <motion.div
+              initial={{ scale: 0.92, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.92, opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className={`${isDark ? 'neu-card-dark border border-slate-700' : 'neu-card-light border border-white/80'} rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden`}
+            >
+              <div className={`px-6 py-4.5 flex justify-between items-center ${
+                isDark ? 'neu-btn-accent-dark text-white' : 'neu-btn-accent-light text-white'
+              }`}>
+                <h3 className="font-black text-sm uppercase tracking-widest flex items-center gap-2">
+                  <FileText className="w-4 h-4" />
+                  CAMP Method Overview
+                </h3>
                 <button
+                  type="button"
                   onClick={() => setShowOverviewModal(false)}
-                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2.5 rounded-full font-black uppercase tracking-widest text-[10px] transition"
+                  className="text-white/80 hover:text-white font-black text-sm focus:outline-none cursor-pointer"
                 >
-                  Got it
+                  ✕
                 </button>
               </div>
-            </div>
-          </motion.div>
-        </div>
-      )}
+              <div className={`p-6 md:p-8 space-y-4 text-xs leading-relaxed text-left ${
+                isDark ? 'text-slate-300' : 'text-slate-700'
+              }`}>
+                <p>
+                  The <strong className={isDark ? 'text-slate-100' : 'text-slate-900'}>Cerebellum Accountability Management Program (CAMP)</strong> tracks medical students' daily study habits using strict mathematical constraints to enforce true focus.
+                </p>
+
+                <div className={`space-y-2.5 border-l-2 pl-4 py-1.5 ${
+                  isDark ? 'border-blue-500/50' : 'border-blue-500'
+                }`}>
+                  <p>
+                    <strong className={isDark ? 'text-slate-100' : 'text-slate-900'}>1. Bed-to-Book Penalty:</strong> If you wait more than 45 minutes to start studying after waking up, you lose efficiency.
+                    <br />• Under 45m: <span className="text-emerald-500 font-bold">0% Penalty</span>
+                    <br />• 45–60m: <span className="text-amber-500 font-bold">5% Penalty</span>
+                    <br />• Over 1 hour: <span className="text-red-500 font-bold">15% Penalty</span>
+                  </p>
+                  <p>
+                    <strong className={isDark ? 'text-slate-100' : 'text-slate-900'}>2. Time-Weighted Focus:</strong> Study sessions with longer duration are weighted heavier in calculating concentration ratings.
+                  </p>
+                  <p>
+                    <strong className={isDark ? 'text-slate-100' : 'text-slate-900'}>3. Deep Study Bonus:</strong> Gain <span className={isDark ? 'text-blue-400 font-black' : 'text-blue-600 font-black'}>+2%</span> for each distraction-free 50m block, capped up to <span className={isDark ? 'text-blue-400 font-black' : 'text-blue-600 font-black'}>+10%</span>.
+                  </p>
+                </div>
+
+                <div className={`pt-3 border-t flex justify-end ${
+                  isDark ? 'border-slate-700/60' : 'border-slate-200/80'
+                }`}>
+                  <button
+                    type="button"
+                    onClick={() => setShowOverviewModal(false)}
+                    className={`px-6 py-2.5 rounded-2xl font-black uppercase tracking-widest text-[10px] transition active:scale-95 cursor-pointer ${
+                      isDark ? 'neu-btn-dark text-slate-200' : 'neu-btn-light text-slate-800'
+                    }`}
+                  >
+                    Got it
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* YESTERDAY'S MISSED LOG PROMPT */}
-      {showYesterdayPrompt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="bg-white border border-slate-100 rounded-3xl shadow-xl max-w-sm w-full p-6 text-center space-y-4"
-          >
-            <div className="w-12 h-12 bg-amber-100 rounded-2xl flex items-center justify-center text-amber-600 mx-auto text-xl animate-pulse">
-              📅
-            </div>
-            <div className="space-y-1.5 text-left">
-              <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider text-center">Missed Yesterday's Log</h3>
-              <p className="text-xs text-slate-500 font-semibold leading-relaxed text-center">
-                You didn't log your CAMP progress for yesterday ({yesterdayLabelText}). Would you like to review and log it now? Your inputs are preserved.
-              </p>
-            </div>
-            <div className="flex gap-3 pt-2">
-              <button
-                onClick={() => setShowYesterdayPrompt(false)}
-                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black py-2.5 px-4 rounded-xl transition uppercase tracking-wider"
-              >
-                Dismiss
-              </button>
-              <button
-                onClick={() => {
-                  setSelectedDate(yesterdayDateVal);
-                  setShowYesterdayPrompt(false);
-                }}
-                className="flex-1 bg-sky-600 hover:bg-sky-700 text-white text-xs font-black py-2.5 px-4 rounded-xl transition shadow-md shadow-sky-600/10 uppercase tracking-wider"
-              >
-                Log Yesterday
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
+      <AnimatePresence>
+        {showYesterdayPrompt && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+            <motion.div
+              initial={{ scale: 0.92, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.92, opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className={`${isDark ? 'neu-card-dark border border-slate-700' : 'neu-card-light border border-white/80'} rounded-3xl shadow-2xl max-w-sm w-full p-6 text-center space-y-4`}
+            >
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mx-auto text-xl animate-pulse ${
+                isDark ? 'neu-pressed-dark text-amber-400' : 'neu-pressed-light text-amber-600'
+              }`}>
+                📅
+              </div>
+              <div className="space-y-1.5 text-left">
+                <h3 className={`text-sm font-black uppercase tracking-wider text-center ${
+                  isDark ? 'text-slate-100' : 'text-slate-900'
+                }`}>
+                  Missed Yesterday's Log
+                </h3>
+                <p className={`text-xs font-semibold leading-relaxed text-center ${
+                  isDark ? 'text-slate-400' : 'text-slate-600'
+                }`}>
+                  You didn't log your CAMP progress for yesterday ({yesterdayLabelText}). Would you like to review and log it now? Your inputs are preserved.
+                </p>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowYesterdayPrompt(false)}
+                  className={`flex-1 text-xs font-black py-3 px-4 rounded-2xl transition uppercase tracking-wider cursor-pointer ${
+                    isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-700'
+                  }`}
+                >
+                  Dismiss
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedDate(yesterdayDateVal);
+                    setShowYesterdayPrompt(false);
+                  }}
+                  className={`flex-1 text-xs font-black py-3 px-4 rounded-2xl transition uppercase tracking-wider cursor-pointer ${
+                    isDark ? 'neu-btn-accent-dark text-white' : 'neu-btn-accent-light text-white'
+                  }`}
+                >
+                  Log Yesterday
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );
 }
-

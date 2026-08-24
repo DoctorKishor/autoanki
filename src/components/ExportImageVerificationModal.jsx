@@ -1,8 +1,9 @@
+import RichInputField from './RichInputField';
 import React, { useState, useEffect, useRef } from 'react';
 import {
   X, Check, AlertTriangle, Image as ImageIcon, Eye, EyeOff, Sparkles,
   Layers, CheckCircle2, ChevronRight, HelpCircle, FileText, Download, Crop, RotateCcw,
-  ZoomIn, ZoomOut, Edit3
+  ZoomIn, ZoomOut, Edit3, Minus, Maximize2
 } from 'lucide-react';
 import { cropAndMaskDiagram } from '../utils/imageCropper';
 
@@ -13,12 +14,15 @@ function FineTuneCropModal({
   card,
   sourceImageUrl,
   currentImgBox,
-  onSaveCrop
+  onSaveCrop,
+  themeMode = 'light'
 }) {
   const [box, setBox] = useState([0, 0, 1000, 1000]); // [ymin, xmin, ymax, xmax]
   const [cropPreview, setCropPreview] = useState(null);
   const [zoomScale, setZoomScale] = useState(1);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [showLivePreview, setShowLivePreview] = useState(true);
 
   const zoomScaleRef = useRef(1);
   const panOffsetRef = useRef({ x: 0, y: 0 });
@@ -26,10 +30,17 @@ function FineTuneCropModal({
   const workspaceRef = useRef(null);
   const isDraggingRef = useRef(null); // null | 'move' | 'nw' | 'ne' | 'sw' | 'se' | 'n' | 's' | 'w' | 'e'
   const dragStartRef = useRef({ mouseX: 0, mouseY: 0, initialBox: [0, 0, 1000, 1000] });
+  const initialTouchDistanceRef = useRef(null);
+  const initialZoomScaleRef = useRef(1);
+  const initialPanOffsetRef = useRef({ x: 0, y: 0 });
+  const initialMidpointRef = useRef({ x: 0, y: 0 });
+
+  const isDark = themeMode === 'dark';
+  const bgBase = isDark ? '#222730' : '#e6ecf5';
 
   // Attach non-passive mouse wheel listener focused on mouse pointer position
   useEffect(() => {
-    if (!isOpen) {
+    if (!isOpen || isMinimized) {
       setZoomScale(1);
       setPanOffset({ x: 0, y: 0 });
       zoomScaleRef.current = 1;
@@ -87,7 +98,7 @@ function FineTuneCropModal({
     return () => {
       el.removeEventListener('wheel', handleWheelNative);
     };
-  }, [isOpen]);
+  }, [isOpen, isMinimized]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -102,7 +113,7 @@ function FineTuneCropModal({
 
   // Update real-time cropped preview thumbnail
   useEffect(() => {
-    if (!isOpen || !sourceImageUrl) return;
+    if (!isOpen || !sourceImageUrl || isMinimized) return;
     let isCurrent = true;
     cropAndMaskDiagram(sourceImageUrl, box, [], 'back', card?.type || 'Basic')
       .then(url => {
@@ -110,9 +121,88 @@ function FineTuneCropModal({
       })
       .catch(console.error);
     return () => { isCurrent = false; };
-  }, [box, sourceImageUrl, isOpen, card?.type]);
+  }, [box, sourceImageUrl, isOpen, card?.type, isMinimized]);
 
   if (!isOpen) return null;
+
+  // Minimized Widget Rendering
+  if (isMinimized) {
+    return (
+      <div
+        className="fixed bottom-4 left-4 z-[320] flex items-center gap-3 p-3 rounded-2xl shadow-2xl border cursor-pointer hover:scale-105 active:scale-95 transition-all duration-200"
+        style={{
+          background: bgBase,
+          borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+          boxShadow: isDark
+            ? '6px 6px 14px #171a20, -6px -6px 14px #2d3440'
+            : '6px 6px 14px #c2c8d4, -6px -6px 14px #ffffff'
+        }}
+        onClick={() => setIsMinimized(false)}
+      >
+        <div className={`p-2 rounded-xl ${isDark ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-500/10 text-blue-600'}`}>
+          <Crop className="w-5 h-5 animate-pulse" />
+        </div>
+        <div>
+          <span className={`text-[9px] uppercase font-black block tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Crop Editor</span>
+          <span className={`text-xs font-bold block ${isDark ? 'text-white' : 'text-slate-800'}`}>Tuning Crop Box</span>
+        </div>
+        <button
+          onClick={(e) => { e.stopPropagation(); setIsMinimized(false); }}
+          className="px-2.5 py-1 text-[10px] font-black text-blue-500 hover:underline uppercase tracking-wider ml-1"
+        >
+          Restore
+        </button>
+      </div>
+    );
+  }
+
+
+  const handleTouchStart = (e) => {
+    if (e.touches.length === 2) {
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+      initialTouchDistanceRef.current = dist;
+      initialZoomScaleRef.current = zoomScaleRef.current;
+      initialPanOffsetRef.current = { ...panOffsetRef.current };
+      const midX = (t1.clientX + t2.clientX) / 2;
+      const midY = (t1.clientY + t2.clientY) / 2;
+      initialMidpointRef.current = { x: midX, y: midY };
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (e.touches.length === 2 && initialTouchDistanceRef.current) {
+      e.preventDefault();
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const currentDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+      const ratio = currentDist / initialTouchDistanceRef.current;
+      const newScale = Math.min(4, Math.max(1, parseFloat((initialZoomScaleRef.current * ratio).toFixed(2))));
+      
+      if (containerRef.current && workspaceRef.current) {
+        const midX = (t1.clientX + t2.clientX) / 2;
+        const midY = (t1.clientY + t2.clientY) / 2;
+        const deltaX = midX - initialMidpointRef.current.x;
+        const deltaY = midY - initialMidpointRef.current.y;
+        const scaleRatio = newScale / initialZoomScaleRef.current;
+        const newPan = {
+          x: initialPanOffsetRef.current.x * scaleRatio + deltaX,
+          y: initialPanOffsetRef.current.y * scaleRatio + deltaY
+        };
+        setZoomScale(newScale);
+        zoomScaleRef.current = newScale;
+        setPanOffset(newPan);
+        panOffsetRef.current = newPan;
+      }
+    }
+  };
+
+  const handleTouchEnd = (e) => {
+    if (e.touches.length < 2) {
+      initialTouchDistanceRef.current = null;
+    }
+  };
 
   const handlePointerDown = (e, handleType) => {
     e.preventDefault();
@@ -123,7 +213,8 @@ function FineTuneCropModal({
     dragStartRef.current = {
       mouseX: clientX,
       mouseY: clientY,
-      initialBox: [...box]
+      initialBox: [...box],
+      initialPan: { ...panOffsetRef.current }
     };
 
     const handlePointerMove = (moveEvt) => {
@@ -133,6 +224,18 @@ function FineTuneCropModal({
 
       const currX = moveEvt.clientX || moveEvt.touches?.[0]?.clientX || 0;
       const currY = moveEvt.clientY || moveEvt.touches?.[0]?.clientY || 0;
+
+      if (isDraggingRef.current === 'pan') {
+        const moveDeltaX = currX - dragStartRef.current.mouseX;
+        const moveDeltaY = currY - dragStartRef.current.mouseY;
+        const newPan = {
+          x: dragStartRef.current.initialPan.x + moveDeltaX,
+          y: dragStartRef.current.initialPan.y + moveDeltaY
+        };
+        setPanOffset(newPan);
+        panOffsetRef.current = newPan;
+        return;
+      }
 
       const deltaX = ((currX - dragStartRef.current.mouseX) / rect.width) * 1000;
       const deltaY = ((currY - dragStartRef.current.mouseY) / rect.height) * 1000;
@@ -189,28 +292,52 @@ function FineTuneCropModal({
   const heightPct = `${((ymax - ymin) / 1000) * 100}%`;
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-gray-900 w-full max-w-7xl rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-800 flex flex-col max-h-[94vh] overflow-hidden">
-        
+    <div className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-md p-2 sm:p-4 animate-in fade-in duration-200">
+      
+      {/* Mobile Floating Preview (renders in empty space above bottom modal) */}
+      {showLivePreview && (
+        <div className="md:hidden absolute top-[3dvh] left-1/2 -translate-x-1/2 w-[85vw] max-w-[340px] aspect-[4/3] bg-black rounded-2xl border border-slate-700/80 overflow-hidden flex flex-col p-1 shadow-2xl z-[310] pointer-events-none animate-in slide-in-from-top-4 duration-300">
+          {cropPreview ? (
+            <img src={cropPreview} alt="Crop Preview" className="w-full h-full object-contain" />
+          ) : (
+            <span className="text-[10px] text-slate-400 m-auto">Previewing...</span>
+          )}
+        </div>
+      )}
+
+      <div
+        className="w-full max-w-7xl flex flex-col rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden border"
+        style={{
+          maxHeight: '96dvh',
+          background: bgBase,
+          borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.1)',
+          boxShadow: isDark
+            ? '0 32px 80px rgba(0,0,0,0.6), 6px 6px 14px #171a20, -6px -6px 14px #2d3440'
+            : '0 32px 80px rgba(0,0,0,0.15), 6px 6px 14px #c2c8d4, -6px -6px 14px #ffffff'
+        }}
+      >
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gray-50 dark:bg-gray-800/60">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
-              <Crop className="w-5 h-5" />
+        <div
+          className="px-4 sm:px-6 py-2.5 sm:py-4 border-b flex items-center justify-between shrink-0"
+          style={{ borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }}
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${isDark ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-500/10 text-blue-600'}`}>
+              <Crop className="w-4 h-4 sm:w-5 h-5" />
             </div>
-            <div>
-              <h3 className="text-base font-black text-gray-900 dark:text-white flex items-center gap-2">
+            <div className="min-w-0">
+              <h3 className={`text-xs sm:text-base font-black tracking-tight leading-tight ${isDark ? 'text-white' : 'text-slate-800'}`}>
                 Fine-Tune Image Crop Box
               </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Scroll mouse wheel to zoom (focused on cursor). Drag glowing blue box or handles to crop.
+              <p className={`text-[10px] mt-0.5 hidden sm:block ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                Scroll mouse wheel or pinch to zoom. Drag glowing blue box or handles to adjust crop workspace.
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            {/* Zoom Controls Widget */}
-            <div className="flex items-center gap-1.5 bg-gray-200 dark:bg-gray-800 px-2.5 py-1 rounded-xl border border-gray-300 dark:border-gray-700 text-xs font-bold text-gray-700 dark:text-gray-200">
+          <div className="flex items-center gap-2">
+            {/* Zoom Controls */}
+            <div className={`flex items-center gap-1 px-1.5 py-0.5 sm:py-1 rounded-xl text-[10px] sm:text-xs font-bold ${isDark ? 'neu-pressed-dark text-slate-200' : 'neu-pressed-light text-slate-700'}`}>
               <button
                 onClick={() => {
                   setZoomScale(prev => {
@@ -219,54 +346,71 @@ function FineTuneCropModal({
                     return next;
                   });
                 }}
-                className="p-1 hover:bg-gray-300 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-300 transition"
+                className={`p-1 rounded transition hover:bg-black/10`}
                 title="Zoom Out"
               >
-                <ZoomOut className="w-3.5 h-3.5" />
+                <ZoomOut className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
               </button>
-
-              <span className="w-12 text-center font-mono text-[11px] font-black">{Math.round(zoomScale * 100)}%</span>
-
+              <span className="w-10 text-center font-mono text-[9px] sm:text-[11px] font-black">{Math.round(zoomScale * 100)}%</span>
               <button
-                onClick={() => {
-                  setZoomScale(prev => Math.min(4, parseFloat((prev + 0.25).toFixed(2))));
-                }}
-                className="p-1 hover:bg-gray-300 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-300 transition"
+                onClick={() => setZoomScale(prev => Math.min(4, parseFloat((prev + 0.25).toFixed(2))))}
+                className={`p-1 rounded transition hover:bg-black/10`}
                 title="Zoom In"
               >
-                <ZoomIn className="w-3.5 h-3.5" />
+                <ZoomIn className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
               </button>
-
-              {zoomScale > 1 && (
-                <button
-                  onClick={() => {
-                    setZoomScale(1);
-                    setPanOffset({ x: 0, y: 0 });
-                  }}
-                  className="ml-1 text-[10px] text-blue-500 font-black hover:underline"
-                >
-                  Reset
-                </button>
-              )}
             </div>
 
-            <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400">
-              <X className="w-5 h-5" />
+            {/* Minimize button */}
+            <button
+              onClick={() => setIsMinimized(true)}
+              className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-200 text-slate-500'}`}
+              title="Minimize Crop Editor"
+            >
+              <Minus className="w-4 h-4" />
+            </button>
+
+            {/* Close button */}
+            <button
+              onClick={onClose}
+              className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-200 text-slate-500'}`}
+            >
+              <X className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           </div>
         </div>
 
-        {/* Modal Body: Decoupled Workspace & Control Sidebar */}
-        <div className="flex-1 overflow-hidden flex flex-col md:flex-row bg-gray-950 relative">
+        {/* Modal Body */}
+        <div className="flex-1 overflow-hidden flex flex-col md:flex-row relative" style={{ background: isDark ? '#1a1f26' : '#d2dbe6' }}>
           
-          {/* Left Interactive Page Canvas Workspace */}
+          {/* Main Interactive Zoom Box Area */}
           <div
             ref={workspaceRef}
-            className="flex-1 h-full relative overflow-hidden flex items-center justify-center p-6 bg-gray-950"
+            className="flex-1 relative overflow-hidden flex items-center justify-center p-2 h-[48vh] sm:h-[55vh]"
+            style={{ background: bgBase }}
+            onMouseDown={(e) => handlePointerDown(e, 'pan')}
+            onTouchStart={(e) => {
+              if (e.touches.length === 1) {
+                handlePointerDown(e, 'pan');
+              } else {
+                handleTouchStart(e);
+              }
+            }}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
           >
-            {/* Main Image & Interactive Drag Container */}
+            {/* Toggle live preview button overlay in the workspace */}
+            <button
+              onClick={() => setShowLivePreview(!showLivePreview)}
+              className="absolute top-2 left-2 z-50 p-2 rounded-xl bg-black/60 text-white hover:bg-black/80 flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider transition active:scale-95 shadow-lg border border-white/10"
+            >
+              {showLivePreview ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+              <span>{showLivePreview ? 'Hide Preview' : 'Show Preview'}</span>
+            </button>
+
+            {/* Main image container */}
             <div
-              className="relative inline-block max-w-full max-h-[75vh] select-none transition-transform duration-75 origin-top-left"
+              className="relative inline-block max-w-full max-h-[46vh] sm:max-h-[52vh] select-none transition-transform duration-75 origin-top-left"
               style={{
                 transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoomScale})`,
                 transformOrigin: '0 0'
@@ -276,117 +420,116 @@ function FineTuneCropModal({
               <img
                 src={sourceImageUrl}
                 alt="Source Page"
-                className="max-h-[75vh] object-contain rounded-xl shadow-2xl pointer-events-none block border border-gray-800"
+                className="max-h-[46vh] sm:max-h-[52vh] object-contain rounded-xl pointer-events-none block border border-slate-800"
               />
 
-              {/* Interactive Bounding Box */}
+              {/* Glowing Crop Bounding Box */}
               <div
                 className="absolute border-2 border-blue-500 bg-blue-500/10 cursor-move shadow-xl"
                 style={{ left: leftPct, top: topPct, width: widthPct, height: heightPct }}
                 onMouseDown={(e) => handlePointerDown(e, 'move')}
                 onTouchStart={(e) => handlePointerDown(e, 'move')}
               >
+                {/* Drag Handles */}
+                <div className="absolute -top-2.5 -left-2.5 w-5 h-5 bg-white border-2 border-blue-600 rounded-full cursor-nwse-resize shadow-lg hover:scale-125 transition-transform" onMouseDown={(e) => handlePointerDown(e, 'nw')} onTouchStart={(e) => handlePointerDown(e, 'nw')} />
+                <div className="absolute -top-2.5 -right-2.5 w-5 h-5 bg-white border-2 border-blue-600 rounded-full cursor-nesw-resize shadow-lg hover:scale-125 transition-transform" onMouseDown={(e) => handlePointerDown(e, 'ne')} onTouchStart={(e) => handlePointerDown(e, 'ne')} />
+                <div className="absolute -bottom-2.5 -left-2.5 w-5 h-5 bg-white border-2 border-blue-600 rounded-full cursor-nesw-resize shadow-lg hover:scale-125 transition-transform" onMouseDown={(e) => handlePointerDown(e, 'sw')} onTouchStart={(e) => handlePointerDown(e, 'sw')} />
+                <div className="absolute -bottom-2.5 -right-2.5 w-5 h-5 bg-white border-2 border-blue-600 rounded-full cursor-nwse-resize shadow-lg hover:scale-125 transition-transform" onMouseDown={(e) => handlePointerDown(e, 'se')} onTouchStart={(e) => handlePointerDown(e, 'se')} />
 
-                {/* Corner Drag Handles */}
-                <div
-                  className="absolute -top-2.5 -left-2.5 w-5 h-5 bg-white border-2 border-blue-600 rounded-full cursor-nwse-resize shadow-lg hover:scale-125 transition-transform"
-                  onMouseDown={(e) => handlePointerDown(e, 'nw')}
-                  onTouchStart={(e) => handlePointerDown(e, 'nw')}
-                />
-                <div
-                  className="absolute -top-2.5 -right-2.5 w-5 h-5 bg-white border-2 border-blue-600 rounded-full cursor-nesw-resize shadow-lg hover:scale-125 transition-transform"
-                  onMouseDown={(e) => handlePointerDown(e, 'ne')}
-                  onTouchStart={(e) => handlePointerDown(e, 'ne')}
-                />
-                <div
-                  className="absolute -bottom-2.5 -left-2.5 w-5 h-5 bg-white border-2 border-blue-600 rounded-full cursor-nesw-resize shadow-lg hover:scale-125 transition-transform"
-                  onMouseDown={(e) => handlePointerDown(e, 'sw')}
-                  onTouchStart={(e) => handlePointerDown(e, 'sw')}
-                />
-                <div
-                  className="absolute -bottom-2.5 -right-2.5 w-5 h-5 bg-white border-2 border-blue-600 rounded-full cursor-nwse-resize shadow-lg hover:scale-125 transition-transform"
-                  onMouseDown={(e) => handlePointerDown(e, 'se')}
-                  onTouchStart={(e) => handlePointerDown(e, 'se')}
-                />
-
-                {/* Edge Drag Handles */}
-                <div
-                  className="absolute -top-2 left-1/2 -translate-x-1/2 w-8 h-2.5 bg-blue-500 border border-white rounded-full cursor-ns-resize shadow"
-                  onMouseDown={(e) => handlePointerDown(e, 'n')}
-                  onTouchStart={(e) => handlePointerDown(e, 'n')}
-                />
-                <div
-                  className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-8 h-2.5 bg-blue-500 border border-white rounded-full cursor-ns-resize shadow"
-                  onMouseDown={(e) => handlePointerDown(e, 's')}
-                  onTouchStart={(e) => handlePointerDown(e, 's')}
-                />
-                <div
-                  className="absolute top-1/2 -left-2 -translate-y-1/2 w-2.5 h-8 bg-blue-500 border border-white rounded-full cursor-ew-resize shadow"
-                  onMouseDown={(e) => handlePointerDown(e, 'w')}
-                  onTouchStart={(e) => handlePointerDown(e, 'w')}
-                />
-                <div
-                  className="absolute top-1/2 -right-2 -translate-y-1/2 w-2.5 h-8 bg-blue-500 border border-white rounded-full cursor-ew-resize shadow"
-                  onMouseDown={(e) => handlePointerDown(e, 'e')}
-                  onTouchStart={(e) => handlePointerDown(e, 'e')}
-                />
+                <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-8 h-2.5 bg-blue-500 border border-white rounded-full cursor-ns-resize shadow" onMouseDown={(e) => handlePointerDown(e, 'n')} onTouchStart={(e) => handlePointerDown(e, 'n')} />
+                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-8 h-2.5 bg-blue-500 border border-white rounded-full cursor-ns-resize shadow" onMouseDown={(e) => handlePointerDown(e, 's')} onTouchStart={(e) => handlePointerDown(e, 's')} />
+                <div className="absolute top-1/2 -left-2 -translate-y-1/2 w-2.5 h-8 bg-blue-500 border border-white rounded-full cursor-ew-resize shadow" onMouseDown={(e) => handlePointerDown(e, 'w')} onTouchStart={(e) => handlePointerDown(e, 'w')} />
+                <div className="absolute top-1/2 -right-2 -translate-y-1/2 w-2.5 h-8 bg-blue-500 border border-white rounded-full cursor-ew-resize shadow" onMouseDown={(e) => handlePointerDown(e, 'e')} onTouchStart={(e) => handlePointerDown(e, 'e')} />
               </div>
             </div>
           </div>
 
-          {/* Right Live Preview Sidebar */}
-          <div className="w-full md:w-80 lg:w-96 shrink-0 h-full bg-gray-900 border-l border-gray-800 flex flex-col p-4 gap-3 overflow-y-auto">
-            <span className="text-xs font-black text-gray-300 uppercase tracking-wider flex items-center gap-1.5 shrink-0">
+          {/* Live Preview Sidebar (only visible on desktop / tablet) */}
+          <div
+            className="hidden md:flex w-80 lg:w-96 shrink-0 h-full flex-col p-4 gap-3 overflow-y-auto border-l"
+            style={{
+              background: isDark ? '#1a1f26' : '#d2dbe6',
+              borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'
+            }}
+          >
+            <span className={`text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shrink-0 ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
               <Eye className="w-4 h-4 text-blue-400" /> Cropped Result Preview
             </span>
-            <div className="aspect-4/3 min-h-[210px] bg-black rounded-xl overflow-hidden border border-gray-700 flex items-center justify-center p-1 shadow-inner shrink-0">
+            <div
+              className="aspect-4/3 min-h-[200px] rounded-xl overflow-hidden flex items-center justify-center p-1 shadow-inner shrink-0 border"
+              style={{
+                background: isDark ? '#101216' : '#e6ecf5',
+                borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'
+              }}
+            >
               {cropPreview ? (
                 <img src={cropPreview} alt="Crop Preview" className="w-full h-full object-contain" />
               ) : (
-                <span className="text-[10px] text-gray-500">Generating preview...</span>
+                <span className="text-[10px] text-slate-500">Generating preview...</span>
               )}
             </div>
-
-            <div className="text-[10px] text-gray-400 font-mono space-y-1 bg-gray-950 p-2.5 rounded-lg border border-gray-800 shrink-0">
+            <div
+              className="text-[10px] font-mono space-y-1 p-2.5 rounded-xl shrink-0 border"
+              style={{
+                background: isDark ? '#121418' : '#e6ecf5',
+                color: isDark ? '#94a3b8' : '#475569',
+                borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'
+              }}
+            >
               <div className="flex justify-between"><span>Top: {ymin}</span> <span>Left: {xmin}</span></div>
               <div className="flex justify-between"><span>Bottom: {ymax}</span> <span>Right: {xmax}</span></div>
             </div>
           </div>
         </div>
 
-        {/* Footer Bar with Action Buttons */}
-        <div className="px-6 py-3.5 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/60 flex flex-wrap items-center justify-between gap-3 shrink-0">
-          <button onClick={onClose} className="px-4 py-2 text-xs font-bold text-gray-500 hover:text-gray-800 dark:hover:text-white transition">
-            Cancel
-          </button>
-
-          <div className="flex items-center gap-2.5 flex-wrap">
+        {/* Footer actions */}
+        <div
+          className="px-4 py-3 border-t flex flex-col gap-2.5 shrink-0"
+          style={{
+            borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+            boxShadow: isDark ? 'inset 0 1px 0 rgba(255,255,255,0.02)' : 'none'
+          }}
+        >
+          {/* Mobile Grid: cancel + Select Entire Page + Reset AI + Apply */}
+          <div className="grid grid-cols-2 sm:flex sm:items-center sm:justify-between gap-2.5">
+            {/* Left buttons (mobile: top row of grid / sm: flex row) */}
             <button
-              onClick={() => setBox([0, 0, 1000, 1000])}
-              className="py-2 px-3 bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-xs font-bold rounded-xl border border-gray-200 dark:border-gray-600 transition flex items-center gap-1.5 shadow-xs active:scale-95"
+              onClick={onClose}
+              className={`py-2 px-4 text-xs font-bold rounded-xl transition-all active:scale-95 ${isDark ? 'neu-btn-dark text-slate-400' : 'neu-btn-light text-slate-500'}`}
             >
-              <span>Select Entire Page</span>
-              <span className="text-[9px] text-gray-500 dark:text-gray-400 font-mono bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">100%</span>
+              Cancel
             </button>
 
-            {card?.img_box && (
+            <button
+              onClick={() => setBox([0, 0, 1000, 1000])}
+              className={`py-2 px-3 text-xs font-bold rounded-xl transition-all active:scale-95 flex items-center justify-center gap-1.5 ${isDark ? 'neu-btn-dark text-slate-200' : 'neu-btn-light text-slate-700'}`}
+            >
+              <span>Entire Page</span>
+              <span className="text-[9px] font-mono text-blue-500 font-bold bg-blue-500/10 px-1 py-0.5 rounded">100%</span>
+            </button>
+
+            {/* Reset AI Crop (if card has it) */}
+            {card?.img_box ? (
               <button
                 onClick={() => setBox(Array.isArray(card.img_box) ? card.img_box : [card.img_box.ymin, card.img_box.xmin, card.img_box.ymax, card.img_box.xmax])}
-                className="py-2 px-3 bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 text-amber-600 dark:text-amber-400 text-xs font-bold rounded-xl border border-gray-200 dark:border-gray-600 transition flex items-center gap-1.5 shadow-xs active:scale-95"
+                className={`py-2 px-3 text-xs font-bold rounded-xl transition-all active:scale-95 flex items-center justify-center gap-1.5 ${isDark ? 'neu-btn-dark text-amber-400' : 'neu-btn-light text-amber-600'}`}
               >
-                <RotateCcw className="w-3.5 h-3.5 text-amber-500" />
-                <span>Reset to AI Crop</span>
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>AI Crop</span>
               </button>
+            ) : (
+              <div className="hidden sm:block" />
             )}
 
+            {/* Apply button */}
             <button
               onClick={() => {
                 onSaveCrop(box);
                 onClose();
               }}
-              className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-blue-600/20 transition active:scale-95 flex items-center gap-2"
+              className="py-2.5 px-5 bg-gradient-to-br from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-blue-500/30 transition-all active:scale-95 flex items-center justify-center gap-2"
             >
-              <Check className="w-4 h-4" /> Apply Fine-Tuned Crop
+              <Check className="w-4 h-4" /> Apply
             </button>
           </div>
         </div>
@@ -397,6 +540,14 @@ function FineTuneCropModal({
 }
 
 // Helper to detect [0, 0, 0, 0] or invalid zero bounding box
+
+const isManualOrInlineCard = (card) => {
+  if (!card) return false;
+  if (card.isManual || card.pageId === 'custom_upload') return true;
+  const textHasImg = (str) => typeof str === 'string' && /<img[^>]+src=/i.test(str);
+  return textHasImg(card.text) || textHasImg(card.front) || textHasImg(card.back);
+};
+
 const isZeroOrInvalidBox = (box) => {
   if (!box) return true;
   let ymin = 0, xmin = 0, ymax = 0, xmax = 0;
@@ -425,12 +576,16 @@ export default function ExportImageVerificationModal({
   cards = [],
   sourceImageUrl,
   findCardImageSrc,
-  onConfirmExport
+  onConfirmExport,
+  themeMode = 'light'
 }) {
-  const [activeTab, setActiveTab] = useState('uncertain'); // 'confirmed' | 'uncertain' | 'textonly'
+  const isDark = themeMode === 'dark';
+  const bgBase = isDark ? '#222730' : '#e6ecf5';
+  const [activeTab, setActiveTab] = useState('uncertain');
   const [cardConfigs, setCardConfigs] = useState({});
   const [previewImages, setPreviewImages] = useState({});
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
   const prevIsOpenRef = useRef(false);
 
   // Fine-tuning modal state
@@ -449,9 +604,7 @@ export default function ExportImageVerificationModal({
       return;
     }
 
-    // Prevent re-initializing configs when scrolling or parent component re-renders
-    if (prevIsOpenRef.current) return;
-    prevIsOpenRef.current = true;
+    // Re-initialize card configs whenever modal opens or cards list changes
 
     if (!cards || cards.length === 0) return;
 
@@ -459,6 +612,7 @@ export default function ExportImageVerificationModal({
     setIsGenerating(true);
 
     const initialConfigs = {};
+    let hasManual = false;
     let hasUncertain = false;
     let hasConfirmed = false;
 
@@ -485,8 +639,13 @@ export default function ExportImageVerificationModal({
 
       const includeByDefault = hasImg && confidence >= 70;
 
-      if (hasImg && confidence < 70) hasUncertain = true;
-      if (hasImg && confidence >= 70) hasConfirmed = true;
+      const isManual = isManualOrInlineCard(card);
+      if (isManual) {
+        hasManual = true;
+      } else {
+        if (hasImg && confidence < 70) hasUncertain = true;
+        if (hasImg && confidence >= 70) hasConfirmed = true;
+      }
 
       initialConfigs[id] = {
         includeImage: includeByDefault,
@@ -502,7 +661,9 @@ export default function ExportImageVerificationModal({
     setCardConfigs(initialConfigs);
 
     // Set initial active tab dynamically
-    if (hasUncertain) {
+    if (hasManual) {
+      setActiveTab('manual');
+    } else if (hasUncertain) {
       setActiveTab('uncertain');
     } else if (hasConfirmed) {
       setActiveTab('confirmed');
@@ -558,102 +719,73 @@ export default function ExportImageVerificationModal({
 
   if (!isOpen) return null;
 
-  // Filter cards by category
-  const confirmedCards = cards.filter((c, idx) => {
-    const id = c.id || `card_${idx}`;
-    const cfg = cardConfigs[id];
-    return cfg && (c.has_image || cfg.imgBox) && cfg.confidence >= 70;
-  });
+  const totalIncludedImages = Object.values(cardConfigs).filter(c => c.includeImage).length;
 
-  const uncertainCards = cards.filter((c, idx) => {
-    const id = c.id || `card_${idx}`;
-    const cfg = cardConfigs[id];
-    return cfg && (c.has_image || cfg.imgBox) && cfg.confidence < 70;
-  });
+  // Minimized Widget Rendering
+  if (isMinimized) {
+    return (
+      <div
+        className="fixed bottom-4 right-4 z-[260] flex items-center gap-3 p-3 rounded-2xl shadow-2xl border cursor-pointer hover:scale-105 active:scale-95 transition-all duration-200"
+        style={{
+          background: bgBase,
+          borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+          boxShadow: isDark
+            ? '6px 6px 14px #171a20, -6px -6px 14px #2d3440'
+            : '6px 6px 14px #c2c8d4, -6px -6px 14px #ffffff'
+        }}
+        onClick={() => setIsMinimized(false)}
+      >
+        <div className={`p-2 rounded-xl ${isDark ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-500/10 text-amber-600'}`}>
+          <ImageIcon className="w-5 h-5 animate-pulse" />
+        </div>
+        <div>
+          <span className={`text-[9px] uppercase font-black block tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Verify Images</span>
+          <span className={`text-xs font-bold block ${isDark ? 'text-white' : 'text-slate-800'}`}>{totalIncludedImages} Selected</span>
+        </div>
+        <button
+          onClick={(e) => { e.stopPropagation(); setIsMinimized(false); }}
+          className="px-2.5 py-1 text-[10px] font-black text-blue-500 hover:underline uppercase tracking-wider ml-1"
+        >
+          Restore
+        </button>
+      </div>
+    );
+  }
 
-  const textOnlyCards = cards.filter((c, idx) => {
-    const id = c.id || `card_${idx}`;
-    const cfg = cardConfigs[id];
-    return cfg && !c.has_image && !cfg.imgBox;
-  });
+  const manualCards    = cards.filter((c) => isManualOrInlineCard(c));
+  const confirmedCards = cards.filter((c, idx) => { const id = c.id || `card_${idx}`; const cfg = cardConfigs[id]; return !isManualOrInlineCard(c) && cfg && (c.has_image || cfg.imgBox) && cfg.confidence >= 70; });
+  const uncertainCards = cards.filter((c, idx) => { const id = c.id || `card_${idx}`; const cfg = cardConfigs[id]; return !isManualOrInlineCard(c) && cfg && (c.has_image || cfg.imgBox) && cfg.confidence < 70; });
+  const textOnlyCards  = cards.filter((c, idx) => { const id = c.id || `card_${idx}`; const cfg = cardConfigs[id]; return !isManualOrInlineCard(c) && cfg && !c.has_image && !cfg.imgBox; });
+  
+  const displayedCards = activeTab === 'manual' ? manualCards : activeTab === 'confirmed' ? confirmedCards : activeTab === 'uncertain' ? uncertainCards : textOnlyCards;
 
-  const displayedCards = activeTab === 'confirmed' ? confirmedCards : activeTab === 'uncertain' ? uncertainCards : textOnlyCards;
-
-  const toggleIncludeImage = (id) => {
-    setCardConfigs(prev => ({
-      ...prev,
-      [id]: { ...prev[id], includeImage: !prev[id]?.includeImage }
-    }));
-  };
-
-  const setSide = (id, side) => {
-    setCardConfigs(prev => ({
-      ...prev,
-      [id]: { ...prev[id], imageSide: side }
-    }));
-  };
-
-  const updateCardText = (id, field, value) => {
-    setCardConfigs(prev => ({
-      ...prev,
-      [id]: { ...prev[id], [field]: value }
-    }));
-  };
+  const toggleIncludeImage = (id) => setCardConfigs(prev => ({ ...prev, [id]: { ...prev[id], includeImage: !prev[id]?.includeImage } }));
+  const setSide = (id, side) => setCardConfigs(prev => ({ ...prev, [id]: { ...prev[id], imageSide: side } }));
+  const updateCardText = (id, field, value) => setCardConfigs(prev => ({ ...prev, [id]: { ...prev[id], [field]: value } }));
 
   const handleApproveAllUncertain = () => {
     setCardConfigs(prev => {
       const next = { ...prev };
-      uncertainCards.forEach((c, idx) => {
-        const id = c.id || `card_${idx}`;
-        if (next[id]) {
-          next[id].includeImage = true;
-        }
-      });
+      uncertainCards.forEach((c, idx) => { const id = c.id || `card_${idx}`; if (next[id]) next[id].includeImage = true; });
       return next;
     });
   };
 
-  // Open Fine-Tune modal for a specific card
   const handleOpenFineTune = (card, id) => {
     const cfg = cardConfigs[id] || {};
-    setFineTuneState({
-      isOpen: true,
-      cardId: id,
-      card: card,
-      currentImgBox: cfg.imgBox || [0, 0, 1000, 1000]
-    });
+    setFineTuneState({ isOpen: true, cardId: id, card, currentImgBox: cfg.imgBox || [0, 0, 1000, 1000] });
   };
 
-  // Callback when crop box fine-tuned
   const handleSaveCrop = async (id, newImgBox) => {
     const card = cards.find((c, idx) => (c.id || `card_${idx}`) === id);
     const imgSrc = resolveCardImageSrc(card);
-
-    setCardConfigs(prev => ({
-      ...prev,
-      [id]: {
-        ...prev[id],
-        imgBox: newImgBox,
-        includeImage: true
-      }
-    }));
-
+    setCardConfigs(prev => ({ ...prev, [id]: { ...prev[id], imgBox: newImgBox, includeImage: true } }));
     if (imgSrc) {
       try {
         const cfg = cardConfigs[id] || {};
-        const dataUrl = await cropAndMaskDiagram(
-          imgSrc,
-          newImgBox,
-          [],
-          cfg.imageSide || 'back',
-          card?.type || 'Basic'
-        );
-        if (dataUrl) {
-          setPreviewImages(prev => ({ ...prev, [id]: dataUrl }));
-        }
-      } catch (err) {
-        console.error("Error updating preview after fine-tune crop:", err);
-      }
+        const dataUrl = await cropAndMaskDiagram(imgSrc, newImgBox, [], cfg.imageSide || 'back', card?.type || 'Basic');
+        if (dataUrl) setPreviewImages(prev => ({ ...prev, [id]: dataUrl }));
+      } catch (err) { console.error('Error updating preview after fine-tune crop:', err); }
     }
   };
 
@@ -661,126 +793,121 @@ export default function ExportImageVerificationModal({
     const processedCards = cards.map((card, idx) => {
       const id = card.id || `card_${idx}`;
       const cfg = cardConfigs[id] || {};
-      const finalFront = cfg.front !== undefined ? cfg.front : card.front;
-      const finalBack = cfg.back !== undefined ? cfg.back : card.back;
-      const finalText = cfg.text !== undefined ? cfg.text : card.text;
       const includeImg = Boolean(cfg.includeImage);
-
       return {
         ...card,
-        front: finalFront,
-        back: finalBack,
-        text: finalText,
-        has_image: includeImg,
-        include_image: includeImg,
+        front: cfg.front !== undefined ? cfg.front : card.front,
+        back: cfg.back !== undefined ? cfg.back : card.back,
+        text: cfg.text !== undefined ? cfg.text : card.text,
+        has_image: includeImg, include_image: includeImg,
         img_box: includeImg ? cfg.imgBox : null,
         image_side: cfg.imageSide || card.image_side || 'back',
         cropped_data_url: includeImg ? (previewImages[id] || null) : null
       };
     });
-
-    // Await the full export pipeline (Firestore batch + file download)
-    // before closing the modal so the async zip/download isn't aborted.
-    try {
-      await onConfirmExport(processedCards);
-    } catch (err) {
-      console.error('[ExportVerificationModal] Export pipeline error:', err);
-    }
+    try { await onConfirmExport(processedCards); } catch (err) { console.error('[ExportVerificationModal] Export pipeline error:', err); }
     onClose();
   };
 
-  const totalIncludedImages = Object.values(cardConfigs).filter(c => c.includeImage).length;
+
 
   return (
-    <div className="fixed inset-0 z-[250] flex items-center justify-center bg-black/75 backdrop-blur-md p-4 overflow-y-auto">
-      <div className="bg-white dark:bg-gray-900 w-full max-w-5xl rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-800 flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200">
-        
-        {/* Header */}
-        <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gray-50/80 dark:bg-gray-800/50 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-bold shrink-0">
-              <ImageIcon className="w-5 h-5" />
+    <div className="fixed inset-0 z-[250] flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-md overflow-y-auto">
+      <div
+        className="w-full max-w-5xl flex flex-col animate-in zoom-in-95 slide-in-from-bottom-4 sm:slide-in-from-bottom-0 duration-300 sm:rounded-3xl rounded-t-3xl shadow-2xl overflow-hidden"
+        style={{
+          maxHeight: '94dvh',
+          background: bgBase,
+          border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(255,255,255,0.7)',
+          boxShadow: isDark
+            ? '0 32px 80px rgba(0,0,0,0.6), 6px 6px 14px #171a20, -6px -6px 14px #2d3440'
+            : '0 32px 80px rgba(0,0,0,0.15), 6px 6px 14px #c2c8d4, -6px -6px 14px #ffffff'
+        }}
+      >
+
+        {/* ── COMPACT HEADER ── */}
+        <div
+          className="px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between shrink-0 border-b"
+          style={{ borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }}
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0 ${isDark ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-500/10 text-amber-600'}`}>
+              <ImageIcon className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
-              <h2 className="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2 flex-wrap">
-                Pre-Export Image Verification
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 font-bold">
-                  {totalIncludedImages} Images Selected
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className={`text-sm sm:text-lg font-black tracking-tight leading-tight ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+                  Pre-Export Image Verification
+                </h2>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-black shrink-0 ${isDark ? 'bg-blue-500/20 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>
+                  {totalIncludedImages} Selected
                 </span>
-              </h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                Review AI-cropped diagrams, fine-tune crop areas (drag & scale), and side placement before export.
+              </div>
+              {/* Description hidden on mobile to reclaim vertical space */}
+              <p className={`text-[10px] mt-0.5 hidden sm:block ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                Review AI-cropped diagrams, fine-tune crop areas (drag &amp; scale), and side placement before export.
               </p>
             </div>
           </div>
-
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center justify-center text-gray-400 hover:text-gray-600 transition shrink-0"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Tab Navigation Header */}
-        <div className="px-6 py-3 bg-gray-50/60 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 flex flex-wrap items-center justify-between gap-3 shrink-0">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => setActiveTab('uncertain')}
-              className={`px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-2 ${
-                activeTab === 'uncertain'
-                  ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-amber-50 hover:text-amber-600'
-              }`}
+              onClick={() => setIsMinimized(true)}
+              className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition ${isDark ? 'hover:bg-slate-700 text-slate-400 hover:text-slate-200' : 'hover:bg-slate-200 text-slate-400 hover:text-slate-700'}`}
+              title="Minimize Verification"
             >
-              <AlertTriangle className="w-3.5 h-3.5" />
-              AI Suggested / Uncertain ({uncertainCards.length})
+              <Minus className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
-
             <button
-              onClick={() => setActiveTab('confirmed')}
-              className={`px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-2 ${
-                activeTab === 'confirmed'
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-emerald-50 hover:text-emerald-600'
-              }`}
+              onClick={onClose}
+              className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition ${isDark ? 'hover:bg-slate-700 text-slate-400 hover:text-slate-200' : 'hover:bg-slate-200 text-slate-400 hover:text-slate-700'}`}
             >
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              Confirmed Images ({confirmedCards.length})
-            </button>
-
-            <button
-              onClick={() => setActiveTab('textonly')}
-              className={`px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-2 ${
-                activeTab === 'textonly'
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-blue-50 hover:text-blue-600'
-              }`}
-            >
-              <FileText className="w-3.5 h-3.5" />
-              Text Only ({textOnlyCards.length})
+              <X className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           </div>
+        </div>
 
+        {/* ── TAB NAV ── */}
+        <div
+          className="px-3 sm:px-6 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between shrink-0 border-b"
+          style={{ borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }}
+        >
+          <div className="flex items-center gap-3 overflow-x-auto custom-scrollbar py-3 px-1.5">
+            {[
+              { key: 'manual', label: `Manual / Inline (${manualCards.length})`, icon: <Edit3 className="w-3.5 h-3.5" />, active: 'bg-purple-600 text-white shadow-md shadow-purple-600/25' },
+              { key: 'uncertain', label: `AI Suggested (${uncertainCards.length})`, icon: <AlertTriangle className="w-3.5 h-3.5" />, active: 'bg-amber-500 text-white shadow-md shadow-amber-500/30' },
+              { key: 'confirmed', label: `Confirmed (${confirmedCards.length})`, icon: <CheckCircle2 className="w-3.5 h-3.5" />, active: 'bg-emerald-600 text-white shadow-md shadow-emerald-600/25' },
+              { key: 'textonly', label: `Text Only (${textOnlyCards.length})`, icon: <FileText className="w-3.5 h-3.5" />, active: 'bg-blue-600 text-white shadow-md shadow-blue-600/25' },
+            ].map(t => (
+              <button
+                key={t.key}
+                onClick={() => setActiveTab(t.key)}
+                className={`flex-shrink-0 px-3 py-2 rounded-xl text-[11px] sm:text-xs font-black transition-all flex items-center gap-1.5 active:scale-95 ${
+                  activeTab === t.key ? t.active : isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'
+                }`}
+              >
+                {t.icon}{t.label}
+              </button>
+            ))}
+          </div>
           {activeTab === 'uncertain' && uncertainCards.length > 0 && (
             <button
               onClick={handleApproveAllUncertain}
-              className="text-xs font-black bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-xl transition shadow-md shadow-amber-500/20"
+              className="w-full sm:w-auto flex-shrink-0 text-[11px] sm:text-xs font-black bg-amber-500 hover:bg-amber-600 active:scale-95 text-white px-4 py-2 rounded-xl transition shadow-md shadow-amber-500/25"
             >
               Approve All Suggested
             </button>
           )}
         </div>
 
-        {/* Content Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        {/* ── CONTENT BODY ── */}
+        <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-4 custom-scrollbar">
           {isGenerating ? (
-            <div className="py-16 text-center text-gray-400 flex flex-col items-center justify-center gap-3">
+            <div className="py-12 text-center flex flex-col items-center justify-center gap-3">
               <Sparkles className="w-8 h-8 text-amber-500 animate-spin" />
-              <p className="text-sm font-bold text-gray-600 dark:text-gray-300">Auto-cropping diagrams & masking front labels...</p>
+              <p className={`text-sm font-bold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>Auto-cropping diagrams &amp; masking front labels...</p>
             </div>
           ) : displayedCards.length === 0 ? (
-            <div className="py-12 text-center text-gray-400 dark:text-gray-600 font-bold text-sm">
+            <div className={`py-12 text-center font-bold text-sm ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
               No cards in this category.
             </div>
           ) : (
@@ -789,189 +916,168 @@ export default function ExportImageVerificationModal({
               const cfg = cardConfigs[id] || {};
               const previewImg = previewImages[id];
               const cardImgSrc = resolveCardImageSrc(card);
+              const hasImageBlock = !!(cfg.imgBox || card.has_image || cfg.includeImage || cardImgSrc);
 
               return (
                 <div
                   key={id}
-                  className={`p-4 rounded-2xl border transition-all flex flex-col md:flex-row gap-4 items-start ${
-                    cfg.includeImage
-                      ? 'border-blue-200 dark:border-blue-900 bg-blue-50/20 dark:bg-blue-950/10'
-                      : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900'
-                  }`}
+                  className="rounded-2xl p-1 transition-all"
+                  style={{
+                    background: bgBase,
+                    boxShadow: cfg.includeImage
+                      ? (isDark ? 'inset 2px 2px 6px #171a20, inset -2px -2px 6px #2d3440, 0 0 0 2px rgba(59,130,246,0.4)' : 'inset 2px 2px 6px #c5cbd6, inset -2px -2px 6px #ffffff, 0 0 0 2px rgba(59,130,246,0.3)')
+                      : (isDark ? 'inset 2px 2px 6px #171a20, inset -2px -2px 6px #2d3440' : 'inset 2px 2px 6px #c5cbd6, inset -2px -2px 6px #ffffff')
+                  }}
                 >
-                  {/* Card Content Text */}
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
-                        {card.type} Card
-                      </span>
-
+                  <div className="p-3 sm:p-4 rounded-xl flex flex-col gap-3">
+                    {/* Badges */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-lg ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>{card.type} Card</span>
                       {cfg.confidence > 0 && (
-                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                          cfg.confidence >= 70
-                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
-                            : 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
-                        }`}>
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${cfg.confidence >= 70 ? (isDark ? 'bg-emerald-900/40 text-emerald-300' : 'bg-emerald-100 text-emerald-700') : (isDark ? 'bg-amber-900/40 text-amber-300' : 'bg-amber-100 text-amber-700')}`}>
                           {cfg.confidence}% AI Confidence
                         </span>
                       )}
                     </div>
 
-                    {card.type === 'Basic' ? (
-                      <div className="space-y-2 text-xs">
-                        <div>
-                          <label className="text-[10px] font-black text-blue-500 uppercase tracking-wider flex items-center gap-1 mb-1">
-                            <Edit3 className="w-3 h-3" /> Question (Front)
-                          </label>
-                          <textarea
-                            value={cfg.front !== undefined ? cfg.front : (card.front || '')}
-                            onChange={(e) => updateCardText(id, 'front', e.target.value)}
-                            rows={2}
-                            placeholder="Enter question..."
-                            className="w-full text-xs font-bold text-gray-900 dark:text-white bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition resize-y shadow-xs"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] font-black text-emerald-500 uppercase tracking-wider flex items-center gap-1 mb-1">
-                            <Edit3 className="w-3 h-3" /> Answer (Back)
-                          </label>
-                          <textarea
-                            value={cfg.back !== undefined ? cfg.back : (card.back || '')}
-                            onChange={(e) => updateCardText(id, 'back', e.target.value)}
-                            rows={2}
-                            placeholder="Enter answer..."
-                            className="w-full text-xs font-semibold text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-2.5 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:outline-none transition resize-y shadow-xs"
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      <div>
-                        <label className="text-[10px] font-black text-purple-500 uppercase tracking-wider flex items-center gap-1 mb-1">
-                          <Edit3 className="w-3 h-3" /> Cloze Text
-                        </label>
-                        <textarea
-                          value={cfg.text !== undefined ? cfg.text : (card.text || '')}
-                          onChange={(e) => updateCardText(id, 'text', e.target.value)}
-                          rows={3}
-                          placeholder="Enter cloze text..."
-                          className="w-full text-xs font-bold text-gray-900 dark:text-white bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:outline-none transition resize-y font-mono shadow-xs"
-                        />
-                      </div>
-                    )}
+                    {/* Layout: image first on mobile, text alongside on desktop */}
+                    <div className={`flex flex-col sm:flex-row gap-3`}>
 
-                    {/* Add/Fine-tune Image Crop button for text-only cards */}
-                    {(!cfg.imgBox && cardImgSrc) && (
-                      <button
-                        onClick={() => handleOpenFineTune(card, id)}
-                        className="mt-2 text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1.5"
-                      >
-                        <Crop className="w-3.5 h-3.5" /> Add Manual Image Crop Box
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Image Preview & Controls */}
-                  {(cfg.imgBox || card.has_image || cfg.includeImage || cardImgSrc) && (
-                    <div className="w-full md:w-80 lg:w-[380px] shrink-0 flex flex-col gap-2.5 p-4 bg-gray-50 dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-xs">
-                      <div className="relative aspect-4/3 min-h-[200px] bg-gray-900 rounded-xl overflow-hidden flex items-center justify-center border border-gray-700 group shadow-inner">
-                        {previewImg || cardImgSrc ? (
-                          <img src={previewImg || cardImgSrc} alt="Cropped Diagram" className="object-contain w-full h-full" />
-                        ) : (
-                          <div className="flex flex-col items-center justify-center text-gray-400 p-2 text-center">
-                            <ImageIcon className="w-6 h-6 mb-1 opacity-40 animate-pulse text-blue-400" />
-                            <span className="text-[10px]">Loading Crop...</span>
-                          </div>
-                        )}
-                        {cfg.occlusions && cfg.occlusions.length > 0 && (card.type === 'Cloze' || cfg.imageSide === 'front' || cfg.imageSide === 'both') && (
-                          <span className="absolute top-1 right-1 text-[9px] bg-amber-500 text-white font-bold px-1.5 py-0.5 rounded shadow">
-                            {cfg.occlusions.length} Masked
-                          </span>
-                        )}
-
-                        {/* Hover Overlay to Fine-Tune Crop */}
-                        {cardImgSrc && (
-                          <button
-                            onClick={() => handleOpenFineTune(card, id)}
-                            className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 text-white font-bold text-xs"
-                          >
-                            <Crop className="w-4 h-4 text-blue-400" /> Fine-Tune Crop Box
-                          </button>
-                        )}
-                      </div>
-
-                      {/* Manual Fine-Tune Button */}
-                      {cardImgSrc && (
-                        <button
-                          onClick={() => handleOpenFineTune(card, id)}
-                          className="w-full py-1 rounded-lg text-[10px] font-bold bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition flex items-center justify-center gap-1.5"
+                      {/* IMAGE BLOCK — shown first on mobile */}
+                      {hasImageBlock && (
+                        <div
+                          className="w-full sm:w-72 lg:w-80 shrink-0 flex flex-col gap-2 p-3 rounded-2xl"
+                          style={{ boxShadow: isDark ? '3px 3px 7px #171a20, -3px -3px 7px #2d3440' : '3px 3px 7px #c2c8d4, -3px -3px 7px #ffffff' }}
                         >
-                          <Crop className="w-3 h-3 text-blue-500" /> Fine-Tune Crop Box
-                        </button>
-                      )}
-
-                      {/* Side Placement Controls */}
-                      {card.type === 'Basic' && (
-                        <div className="flex items-center justify-between gap-1 text-[10px]">
-                          <span className="text-gray-500 dark:text-gray-400 font-bold">Attach to:</span>
-                          <div className="flex items-center gap-1">
-                            {['front', 'back', 'both'].map((side) => (
+                          {/* Image preview */}
+                          <div className="relative aspect-4/3 bg-gray-950 rounded-xl overflow-hidden flex items-center justify-center border border-gray-700 group shadow-inner">
+                            {previewImg || cardImgSrc ? (
+                              <img src={previewImg || cardImgSrc} alt="Cropped Diagram" className="object-contain w-full h-full" />
+                            ) : (
+                              <div className="flex flex-col items-center justify-center text-gray-400 p-2 text-center">
+                                <ImageIcon className="w-6 h-6 mb-1 opacity-40 animate-pulse text-blue-400" />
+                                <span className="text-[10px]">Loading Crop...</span>
+                              </div>
+                            )}
+                            {cfg.occlusions && cfg.occlusions.length > 0 && (card.type === 'Cloze' || cfg.imageSide === 'front' || cfg.imageSide === 'both') && (
+                              <span className="absolute top-1 right-1 text-[9px] bg-amber-500 text-white font-bold px-1.5 py-0.5 rounded shadow">{cfg.occlusions.length} Masked</span>
+                            )}
+                            {cardImgSrc && (
                               <button
-                                key={side}
-                                onClick={() => setSide(id, side)}
-                                className={`px-2 py-0.5 rounded font-black uppercase transition ${
-                                  cfg.imageSide === side
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
-                                }`}
+                                onClick={() => handleOpenFineTune(card, id)}
+                                className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 text-white font-bold text-xs"
                               >
-                                {side}
+                                <Crop className="w-4 h-4 text-blue-400" /> Fine-Tune Crop Box
                               </button>
-                            ))}
+                            )}
                           </div>
+
+                          {/* Fine-Tune button */}
+                          {cardImgSrc && (
+                            <button
+                              onClick={() => handleOpenFineTune(card, id)}
+                              className={`w-full py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 active:scale-95 ${isDark ? 'neu-btn-dark text-blue-400' : 'neu-btn-light text-blue-600'}`}
+                            >
+                              <Crop className="w-3.5 h-3.5" /> Fine-Tune Crop Box
+                            </button>
+                          )}
+
+                          {/* Attach-to side controls */}
+                          {card.type === 'Basic' && (
+                            <div className="flex items-center justify-between gap-1 text-[11px]">
+                              <span className={`font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Attach to:</span>
+                              <div className="flex items-center gap-1">
+                                {['front', 'back', 'both'].map(side => (
+                                  <button
+                                    key={side}
+                                    onClick={() => setSide(id, side)}
+                                    className={`px-2.5 py-1.5 rounded-lg font-black uppercase text-[10px] transition active:scale-95 ${cfg.imageSide === side ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30' : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}
+                                  >
+                                    {side}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Include toggle — big touch target */}
+                          <button
+                            onClick={() => toggleIncludeImage(id)}
+                            className={`w-full py-3 rounded-xl text-sm font-black flex items-center justify-center gap-2 transition active:scale-95 ${cfg.includeImage ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-md shadow-emerald-500/25' : isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-200 hover:bg-slate-300 text-slate-600'}`}
+                          >
+                            {cfg.includeImage ? <Check className="w-4 h-4" /> : null}
+                            {cfg.includeImage ? 'Image Included ✓' : 'Include Image'}
+                          </button>
                         </div>
                       )}
 
-                      {/* Include Checkbox */}
-                      <button
-                        onClick={() => toggleIncludeImage(id)}
-                        className={`w-full py-1.5 rounded-lg text-xs font-black flex items-center justify-center gap-1.5 transition ${
-                          cfg.includeImage
-                            ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
-                            : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 text-gray-700 dark:text-gray-300'
-                        }`}
-                      >
-                        {cfg.includeImage ? <Check className="w-3.5 h-3.5" /> : null}
-                        {cfg.includeImage ? 'Image Included' : 'Include Image'}
-                      </button>
+                      {/* TEXT FIELDS */}
+                      <div className="flex-1 space-y-2">
+                        {card.type === 'Basic' ? (
+                          <div className="space-y-2 text-xs">
+                            <div>
+                              <label className="text-[10px] font-black text-blue-500 uppercase tracking-wider flex items-center gap-1 mb-1"><Edit3 className="w-3 h-3" /> Question (Front)</label>
+                              <RichInputField
+                                value={cfg.front !== undefined ? cfg.front : (card.front || '')}
+                                onChange={(val) => updateCardText(id, 'front', val)}
+                                themeMode={themeMode}
+                                minHeight="80px"
+                                placeholder="Enter question (paste images inline directly)..."
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-black text-emerald-500 uppercase tracking-wider flex items-center gap-1 mb-1"><Edit3 className="w-3 h-3" /> Answer (Back)</label>
+                              <RichInputField
+                                value={cfg.back !== undefined ? cfg.back : (card.back || '')}
+                                onChange={(val) => updateCardText(id, 'back', val)}
+                                themeMode={themeMode}
+                                minHeight="80px"
+                                placeholder="Enter answer (paste images inline directly)..."
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div>
+                            <label className="text-[10px] font-black text-purple-500 uppercase tracking-wider flex items-center gap-1 mb-1"><Edit3 className="w-3 h-3" /> Cloze Text</label>
+                            <RichInputField
+                              value={cfg.text !== undefined ? cfg.text : (card.text || '')}
+                              onChange={(val) => updateCardText(id, 'text', val)}
+                              themeMode={themeMode}
+                              minHeight="120px"
+                              placeholder="Enter cloze text (paste images inline directly)..."
+                            />
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  )}
+                  </div>
                 </div>
               );
             })
           )}
         </div>
 
-        {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50 flex items-center justify-between">
+        {/* ── FOOTER ── */}
+        <div
+          className="px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-3 shrink-0 border-t"
+          style={{ borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }}
+        >
           <button
             onClick={onClose}
-            className="px-4 py-2 text-xs font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition"
+            className={`px-4 py-2.5 text-xs font-bold rounded-xl transition active:scale-95 ${isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-600'}`}
           >
             Cancel
           </button>
-
           <button
             onClick={handleFinalExport}
-            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-blue-600/20 transition flex items-center gap-2 active:scale-95"
+            className="px-5 sm:px-6 py-2.5 bg-gradient-to-br from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-blue-600/30 transition flex items-center gap-2 active:scale-95"
           >
             <Download className="w-4 h-4" />
-            Proceed to Export ({totalIncludedImages} Images)
+            Export ({totalIncludedImages} Images)
           </button>
         </div>
-
       </div>
 
-      {/* Embedded Fine-Tune Crop Box Modal */}
       {fineTuneState.isOpen && (
         <FineTuneCropModal
           isOpen={fineTuneState.isOpen}
@@ -980,8 +1086,11 @@ export default function ExportImageVerificationModal({
           sourceImageUrl={resolveCardImageSrc(fineTuneState.card)}
           currentImgBox={fineTuneState.currentImgBox}
           onSaveCrop={(newBox) => handleSaveCrop(fineTuneState.cardId, newBox)}
+          themeMode={themeMode}
         />
       )}
     </div>
   );
 }
+
+

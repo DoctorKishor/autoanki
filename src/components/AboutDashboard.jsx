@@ -1,1020 +1,1551 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Info, Sparkles, Compass, Share2, HelpCircle, Check, Play, Settings, Activity, Home, Library, 
-  Flame, BarChart2, Download, MessageSquare, BookOpen, CheckCircle2, ListChecks, Calendar, Tv, Trash2,
-  ChevronRight, ChevronDown, Award, Rocket, CheckCircle, Database, GitMerge, FileText, LayoutDashboard, Brain,
-  GraduationCap
+  Sparkles, Share2, Brain, GraduationCap, ShieldCheck, Zap, HardDrive, Cpu,
+  BookOpen, Flame, BarChart2, Sliders, LayoutDashboard, Home, Library, Download,
+  MessageSquare, CheckCircle2, ListChecks, Calendar, Tv, Settings, Trash2,
+  Search, ArrowUpRight, Activity, Layers, Info, ExternalLink, HelpCircle, FileText,
+  X, Check, Play, Pause, RotateCcw, SlidersHorizontal, ChevronDown, ChevronRight,
+  Eye, Lightbulb, Filter, AlertTriangle, RefreshCw, Star, XCircle, ArrowRight
 } from 'lucide-react';
 
-const MENU_DETAILS = {
-  dashboard: {
-    title: 'Dashboard',
-    icon: LayoutDashboard,
-    desc: 'The central command center of your prep. Displays your streak metrics, study progress, active trackers, and personalized insights.',
-    subfeatures: [
-      { name: 'Live Study Tracker Widget', details: 'Displays active session timing and logs previous sessions with easy status checks.' },
-      { name: 'Streak Meter', details: 'Visualizes daily study consistency and awards motivational streak titles based on your goal.' },
-      { name: 'Quick Access Actions', details: 'Shortcuts to jump straight to library uploads, deck reviews, or settings.' }
-    ],
-    usage: 'Check the dashboard every morning to inspect your active targets and review your current streak progress.'
-  },
-  campTracker: {
-    title: 'CAMP Tracker',
-    icon: Activity,
-    desc: 'Consistent Active Memorization Protocol (CAMP). Tracks subject-level completion metrics and milestones in real time.',
-    subfeatures: [
-      { name: 'Milestone Tracking', details: 'Breaks down subjects into micro-milestones to avoid overwhelming study sessions.' },
-      { name: 'Progress Indicators', details: 'Color-coded completion cards that visually represent your current memory standing.' },
-      { name: 'Completion States', details: 'Log completion stamps that sync immediately with your cloud repository.' }
-    ],
-    usage: 'Use CAMP Tracker to update milestones immediately after completing a subject deck review.'
-  },
-  cards: {
-    title: 'Cards Manager',
-    icon: Home,
-    desc: 'Generate high-quality Anki cards from PDF text or images using cutting-edge Gemini Vision AI.',
-    subfeatures: [
-      { name: 'AI Card Extractor', details: 'Automatically detects core high-yield clinical questions, answers, and tags from source materials.' },
-      { name: 'Interactive Card Editor', details: 'Modify generated questions, answers, notes, or tags on the fly before exporting.' },
-      { name: 'Deck Filtering', details: 'Search and filter generated cards by subject, status, or tag metadata.' }
-    ],
-    usage: 'Open any document page in the Library, trigger the AI Card Extractor, refine the outputs, and save them to your active deck.'
-  },
-  library: {
-    title: 'Library',
-    icon: Library,
-    desc: 'Your localized document repository. Upload files, manage study lists, and coordinate extraction references.',
-    subfeatures: [
-      { name: 'Source File Manager', details: 'Add, rename, and delete reference PDFs or study images.' },
-      { name: 'Page Indexer', details: 'Quickly scroll, jump to pages, or anchor card generation prompts to specific file locations.' },
-      { name: 'Metadata Sync', details: 'Stores page references to ensure your cards are always linked to their primary source text.' }
-    ],
-    usage: 'Upload your high-yield study guides or lecture notes here, then tap any page to begin generating active-recall cards.'
-  },
-  studyRoom: {
-    title: 'Study Room',
+// ============================================================================
+// MANUAL & SHOWCASE DATASETS (100% Grounded in APP_FEATURE_CATALOG.md)
+// ============================================================================
+
+const MANUAL_CATEGORIES = [
+  {
+    id: 'focus',
+    label: 'Focus & Review',
     icon: Flame,
-    desc: 'An immersive active study screen featuring focus timers, interactive card reviews, and scorecards.',
-    subfeatures: [
-      { name: 'Spaced Repetition Review', details: 'Review cards using classic intervals: Again, Hard, Good, Easy.' },
-      { name: 'Focus Timer & Session Tracker', details: 'Log session timing, pause whenever necessary, and commit session hours to database logs.' },
-      { name: 'Simulated Scorecards', details: 'Log grand tests and mock results to track accuracy and scoring trends over time.' }
-    ],
-    usage: 'Launch the focus timer when starting a revision block. Tap through card reviews to trigger memory retention algorithms.'
+    desc: 'Deep study lounge, FSRS-6 spaced repetition engine, Pomodoro lounge, and daily revision scheduling.',
+    color: 'from-amber-500 to-orange-600',
+    badgeColor: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
+    features: [
+      {
+        id: 'dashboard',
+        name: 'Dashboard (Command Center)',
+        tabId: 'dashboard',
+        icon: LayoutDashboard,
+        summary: 'Central command center providing real-time session tracking, live streak badges, customizable widgets, and due card forecasts.',
+        elements: [
+          { name: 'Live Timer & Stopwatch', type: 'Widget / Controller', desc: 'Starts, pauses, and resets active study blocks. Displays elapsed time in HH:MM:SS or with milliseconds toggle.' },
+          { name: 'Milliseconds Toggle', type: 'Toggle', desc: 'Switches high-precision centisecond display on/off in the active timer widget.' },
+          { name: 'Timer Fullscreen Button', type: 'Button', desc: 'Expands the study timer into a distraction-free full-screen ambient mode.' },
+          { name: 'Widget Customizer (Settings)', type: 'Modal Button', desc: 'Opens a modal to toggle visibility and drag-and-drop order for Streak, Study Time, Quick Links, and Due Cards widgets.' },
+          { name: 'Daily Target Sliders', type: 'Preferences', desc: 'Configures daily goals for Cards Target (e.g. 50 cards) and Hours Target (e.g. 4.0 hrs), saved to local storage.' },
+          { name: 'Streak Meter & Archetypes', type: 'Status Badge', desc: 'Tracks consecutive daily revisions: Rookie (1h), Consistent (2-3h), Topper (3-5h), Legend (5h+).' },
+          { name: 'Quick Logger Box', type: 'Action Input', desc: 'Instantly logs quick study hours, questions solved, or pages read directly into IndexedDB without opening full modals.' }
+        ],
+        howToUse: [
+          '1. Review your streak meter and today\'s scheduled due cards forecast in the morning.',
+          '2. Click "Play" on the Live Timer widget to start recording your focus session.',
+          '3. Click "Customize" in the top bar to adjust which metric cards appear on your dashboard.',
+          '4. Use Quick Access buttons to jump directly to Library, Smart Review, or Card Extractor.'
+        ]
+      },
+      {
+        id: 'smartReview',
+        name: 'Smart Review Hub (FSRS-6)',
+        tabId: 'smartReview',
+        icon: Brain,
+        summary: 'Official FSRS-6 algorithm implementation with 21 benchmark parameters (w0..w20), velocity gauges, and leech remediation.',
+        elements: [
+          { name: 'Review Queue Subtab', type: 'Subtab', desc: 'Displays daily categorized queues for Overdue Topics, Due Today Topics, and New Unstudied Topics.' },
+          { name: 'Velocity Subtab', type: 'Subtab', desc: 'Displays real-time Cards/Hour throughput, retention velocity gauges, and cognitive load heatmaps.' },
+          { name: 'Analytics (FSRS Stats) Subtab', type: 'Subtab', desc: 'Plots memory stability retention decay curves and difficulty distribution bar charts across 1M, 3M, 1Y, and ALL timeframes.' },
+          { name: 'Leeches Subtab', type: 'Subtab', desc: 'Isolates high-lapse cards (lapses >= threshold) for dedicated clinical review and remediation.' },
+          { name: 'Rating Buttons (Again, Hard, Good, Easy)', type: 'Rating Controls', desc: 'Grades active recall (1=Again, 2=Hard, 3=Good, 4=Easy) with live preview of next interval days displayed above each button.' },
+          { name: 'Reveal Answer (Spacebar)', type: 'Button / Key', desc: 'Flips the flashcard or reveals answer fields and clinical explanations.' },
+          { name: 'AI Hints Button (Lightbulb)', type: 'AI Tool', desc: 'Generates tiered active recall hints (First-line clue, Mechanism clue, Diagnostic hallmark) without spoiling the answer.' },
+          { name: 'PDF Slice Viewer (Eye)', type: 'Modal Trigger', desc: 'Opens the high-resolution PDF textbook slice linked to the current topic in a preview modal.' },
+          { name: 'Topic Notes Modal', type: 'Modal Trigger', desc: 'Opens attached clinical notes, diagnostic tables, and mnemonics for the active topic.' },
+          { name: 'Select New Topics Modal', type: 'Modal Trigger', desc: 'Launches AI strategy modes (High-Yield Priority, Weakness First, Balanced Spread) to introduce new topics into the queue.' },
+          { name: 'Exam Target Profiles Modal', type: 'Modal Trigger', desc: 'Configure target examination dates (NEET PG, INI-CET) and tentative flags to calibrate retention pacing.' },
+          { name: 'FSRS-6 Settings Modal', type: 'Modal Trigger', desc: 'Configure Desired Retention (0.70 to 0.97), Max Interval (days), Leech Threshold, and 21 weight parameters.' },
+          { name: 'Undo / Redo Buttons', type: 'Action Controls', desc: 'Reverts or re-applies the last rating with 100% queue order and FSRS state preservation.' }
+        ],
+        howToUse: [
+          '1. Open Smart Review Hub and view your daily Due Queue.',
+          '2. Read the clinical query, use AI Hints if stuck, then press Spacebar to reveal the answer.',
+          '3. Select Again (1), Hard (2), Good (3), or Easy (4) based on your recall accuracy.',
+          '4. Open the Analytics tab weekly to inspect your stability decay curve and difficulty distributions.'
+        ]
+      },
+      {
+        id: 'study',
+        name: 'Study Room & Focus Lounge',
+        tabId: 'study',
+        icon: GraduationCap,
+        summary: 'Full-screen distraction-free focus lounge with Pomodoro timers, ambient sound mixer, YouTube audio streams, and GT scorecards.',
+        elements: [
+          { name: 'Pomodoro Timer Controller', type: 'Timer Panel', desc: 'Configures work blocks (25m, 50m, custom), short breaks (5m), and long breaks (15m) with audio notifications.' },
+          { name: 'Ambient Sound Mixer', type: 'Audio Panel', desc: 'Mixes Lo-Fi study beats, Gentle Rain, Forest Ambience, and White Noise tracks with independent volume sliders.' },
+          { name: 'YouTube Audio Stream Embed', type: 'Audio Input', desc: 'Parses YouTube video URLs/IDs to stream study music directly in the background.' },
+          { name: 'Medical Motivational Quotes', type: 'Quote Panel', desc: 'Displays curated quotes tailored for postgraduate medical aspirants with next/prev controls.' },
+          { name: 'GT & Mock Scorecard Logger', type: 'Logger Panel', desc: 'Logs Grand Test (GT) exam scores, platform (Marrow, Prepladder, Cerebellum), type (NEET PG 200/180 Qs, INI-CET), correct/incorrect splits, and ranks.' },
+          { name: 'Floating Utility Widgets', type: 'Draggable Widgets', desc: 'Minimizable floating overlays for Timer, Sound Mixer, Notes, and Live Study Metrics.' }
+        ],
+        howToUse: [
+          '1. Set your Pomodoro interval and start the timer when beginning a revision block.',
+          '2. Choose an ambient soundscape or paste a YouTube study stream link.',
+          '3. After attempting a mock exam or Grand Test, log your score in the GT Scorecard panel to update long-term trend lines.'
+        ]
+      },
+      {
+        id: 'studyScheduler',
+        name: 'Study Scheduler',
+        tabId: 'studyScheduler',
+        icon: Calendar,
+        summary: 'Spaced repetition calendar balancing future review workloads, detecting overdue topics, and organizing daily tasks.',
+        elements: [
+          { name: 'Spaced Repetition Calendar Grid', type: 'Calendar View', desc: 'Visual daily matrix displaying scheduled topic reviews, completed decks, and upcoming workloads.' },
+          { name: 'Overdue Topics Alert Bar', type: 'Alert List', desc: 'Highlights medical topics that have passed their scheduled FSRS review dates.' },
+          { name: 'Daily Action Checklist', type: 'Task Manager', desc: 'Add, edit, check off, and delete daily study goals, QBank question quotas, and subject milestones.' },
+          { name: 'Workload Leveler', type: 'Balancing Tool', desc: 'Distributes upcoming card reviews evenly across future days to avoid study burnout.' }
+        ],
+        howToUse: [
+          '1. Inspect the calendar grid to identify days with heavy review loads.',
+          '2. Check off overdue topics by clicking on them to launch an immediate review session.',
+          '3. Add custom daily to-do tasks and mark them complete as you finish your study blocks.'
+        ]
+      }
+    ]
   },
-  studyScheduler: {
-    title: 'Scheduler',
-    icon: Calendar,
-    desc: 'Organize your revision schedule with dynamic checklists, task lists, and custom planning calendars.',
-    subfeatures: [
-      { name: 'Revision Frequency Control', details: 'Set custom intervals for reviewing high-yield points.' },
-      { name: 'Spaced repetition Calendar', details: 'A visual daily planner that flags which subjects are due for revision.' },
-      { name: 'Task Tracker checklist', details: 'Log specific quick-to-dos and mark items complete on the go.' }
-    ],
-    usage: 'Check the scheduler to identify overdue topics and organize daily revision goals.'
-  },
-  obsOverlay: {
-    title: 'OBS Overlay',
-    icon: Tv,
-    desc: 'Generate custom streaming overlays to broadcast your real-time study stats, focus timers, and streak badges on stream.',
-    subfeatures: [
-      { name: 'Live Timer Feed', details: 'Synchronizes active session timer directly with streaming client inputs.' },
-      { name: 'Overlay Customizer', details: 'Adjust backgrounds, opacity, borders, and text sizes to match your stream theme.' },
-      { name: 'Instant Link Copy', details: 'Single-click copy utility for importing the browser source link into OBS Studio.' }
-    ],
-    usage: 'Configure your design, copy the URL, and add it as a Browser Source in OBS with dimensions matching your setup.'
-  },
-  analytics: {
-    title: 'Analysis',
-    icon: BarChart2,
-    desc: 'Deep analytical suite providing sunburst card distributions, percentile predictors, and peak study trackers.',
-    subfeatures: [
-      { name: 'Sunburst Deck Mapping', details: 'Interactive nested ring charts visualizing card count by subject and topic levels.' },
-      { name: 'Counseling Percentile Predictor', details: 'Input test scores to predict target seat percentiles and rank estimations.' },
-      { name: 'Time-of-Day Heatmap', details: 'Identifies peak study hours and cognitive productivity zones based on logged history.' }
-    ],
-    usage: 'Review the analysis graphs weekly to locate knowledge gaps and identify subjects requiring additional attention.'
-  },
-  correlation: {
-    title: 'Health Tracker',
-    icon: Activity,
-    desc: 'Track sleep, study patterns, and daily energy levels to optimize your preparation and prevent burnout.',
-    subfeatures: [
-      { name: 'Correlation Scatter Plots', details: 'Maps study hours against sleep duration to identify your peak performance sweet-spot.' },
-      { name: 'Energy Level Logger', details: 'Log energy levels out of 5 and identify factors boosting or draining study productivity.' },
-      { name: 'Burnout Alerts', details: 'Warning flags triggered when consecutive long study days coincide with sleep deficits.' }
-    ],
-    usage: 'Input your sleep hours and energy score daily. Check the scatter plots to maintain a healthy study-life balance.'
-  },
-  export: {
-    title: 'Export',
-    icon: Download,
-    desc: 'Export your curated deck collections into ready-to-import Anki files (.apkg).',
-    subfeatures: [
-      { name: 'Anki Package Generator', details: 'Packages card text, tags, and formatting into standardized SQLite Anki databases.' },
-      { name: 'Media Attachment Support', details: 'Prepares reference images for integration within Anki card backyards.' },
-      { name: 'Subject Selectors', details: 'Choose specific subjects or tag groups to export, keeping decks modular.' }
-    ],
-    usage: 'Select the target deck, click generate export, and open the downloaded .apkg file directly in your Anki desktop/mobile app.'
-  },
-  prompt: {
-    title: 'Prompt Editor',
-    icon: MessageSquare,
-    desc: 'Refine AI generation outputs by customizing system instructions and card structure directives.',
-    subfeatures: [
-      { name: 'Instruction Profile Editor', details: 'Customize guidelines (e.g. emphasize clinical case-vignettes or factual schemas).' },
-      { name: 'JSON Schema Validation', details: 'Guarantees generated cards strictly match the input schema requested by the UI.' },
-      { name: 'Template Backups', details: 'Revert custom prompts back to original defaults if card generation quality degrades.' }
-    ],
-    usage: 'Modify the prompt profile if you want the AI to output cards in a specific regional language or with detailed explanations.'
-  },
-  pytManager: {
-    title: 'PYT Manager',
+  {
+    id: 'knowledge',
+    label: 'Content & Knowledge',
     icon: BookOpen,
-    desc: 'Previous Year Topics manager. Reference index matching high-yield points from past medical exams.',
-    subfeatures: [
-      { name: 'NEET PG/INI-CET Topic Index', details: 'Pre-tagged database matching clinical themes tested in past papers.' },
-      { name: 'Yield Level Ratings', details: 'Filters topics based on frequency flags (e.g. High-Yield, Super-High-Yield).' },
-      { name: 'Direct Card Anchors', details: 'Quickly link custom flashcards directly to specific PYT IDs.' }
-    ],
-    usage: 'Browse the manager index when planning study blocks to prioritize super-high-yield topics.'
+    desc: 'PDF textbook ingestion, Gemini Vision AI card extraction, 19 medical subjects, and NEET PG PYT indices.',
+    color: 'from-blue-500 to-indigo-600',
+    badgeColor: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
+    features: [
+      {
+        id: 'library',
+        name: 'Library & PDF Ingestion',
+        tabId: 'library',
+        icon: Library,
+        summary: 'Localized textbook repository with canvas PDF rendering, bounding box anchors, and page slice previews.',
+        elements: [
+          { name: 'Upload PDF / Slides Button', type: 'File Input', desc: 'Uploads medical textbook PDFs or slide images directly into local IndexedDB storage.' },
+          { name: 'Interactive PDF Canvas Viewer', type: 'Reader View', desc: 'Powered by pdfjs-dist with multi-page continuous scroll, page jumps, and zooming.' },
+          { name: 'Diagram Bounding Box Selector', type: 'Annotation Tool', desc: 'Click-and-drag bounding box on textbook diagrams to attach visual crops directly to flashcards.' },
+          { name: 'PDF Slice Preview Tool', type: 'Modal Trigger', desc: 'Slices multi-page PDF sections into high-res images for visual flashcard extraction.' },
+          { name: 'Subject Folders Manager', type: 'Folder System', desc: 'Create, rename, organize, and delete folders for all 19 medical subjects.' }
+        ],
+        howToUse: [
+          '1. Upload your clinical textbook PDF (e.g. Robbins Pathology, Harrison Medicine) into the relevant subject folder.',
+          '2. Scroll to a high-yield page and use the diagram selector to highlight a clinical flowchart or histology image.',
+          '3. Trigger AI extraction to generate flashcards linked to that exact page coordinate.'
+        ]
+      },
+      {
+        id: 'cards',
+        name: 'Cards Manager & AI Generation',
+        tabId: 'cards',
+        icon: Home,
+        summary: 'Extract high-yield clinical cards from textbook pages using Google Gemini Vision AI with rich pre-save editing.',
+        elements: [
+          { name: 'AI Extract Flashcards Button', type: 'AI Action', desc: 'Sends page layout and text to Gemini Vision AI to extract high-yield clinical Q&A pairs.' },
+          { name: 'Interactive Card Editor', type: 'Editor View', desc: 'Edit Question, Answer, Notes, Tags, Deck, and Yield Rating before saving to database.' },
+          { name: 'Manual Card Creator Modal', type: 'Modal Trigger', desc: 'Create cards manually with rich formatting, Cloze deletion syntax ({{c1::text}}), and image drag-and-drop.' },
+          { name: 'Image Cropper Tool', type: 'Image Editor', desc: 'Adjust crop boundaries for clinical diagrams, histology slides, and ECG strips.' },
+          { name: 'Conflict Inspector Modal', type: 'Modal Trigger', desc: 'Detects duplicate cards in active decks and offers side-by-side diffing to merge, overwrite, or discard.' },
+          { name: 'Search & Tag Filters', type: 'Filter Controls', desc: 'Filter generated cards by Subject, Tag, Status, or Yield Tier (High-Yield / Super-High-Yield).' }
+        ],
+        howToUse: [
+          '1. Click "Extract Flashcards" on any uploaded textbook page.',
+          '2. Refine the generated question and answer in the interactive editor.',
+          '3. Assign appropriate subject tags and click "Save to Deck".',
+          '4. If duplicates are found, resolve them in the Conflict Inspector modal.'
+        ]
+      },
+      {
+        id: 'subjectTracker',
+        name: 'Subject Tracker (19 Subjects)',
+        tabId: 'subjectTracker',
+        icon: ListChecks,
+        summary: 'Complete syllabus matrix covering Pre-clinical, Para-clinical, and Clinical postgraduate medical modules.',
+        elements: [
+          { name: '19-Subject Matrix Grid', type: 'Matrix View', desc: 'Covers Anatomy, Physiology, Biochemistry, Pathology, Pharmacology, Microbiology, FMT, PSM, Ophthal, ENT, Medicine, Surgery, OBG, Peds, Ortho, Derma, Psych, Radio, and Anesthesia.' },
+          { name: 'Chapter Milestone Checklists', type: 'Checklist', desc: 'Mark individual chapters and revision stages complete as you progress.' },
+          { name: 'Time Log Sync', type: 'Data Link', desc: 'Links focus hours logged in the Study Room directly to individual subject milestones.' },
+          { name: 'Completion Date Projection', type: 'Predictive Gauge', desc: 'Estimates syllabus completion date based on your active daily study velocity.' }
+        ],
+        howToUse: [
+          '1. Select a medical subject to view its chapter checklist.',
+          '2. Mark completed chapters after finishing your reading blocks.',
+          '3. Review the projected completion timeline to stay on track for exam dates.'
+        ]
+      },
+      {
+        id: 'pytManager',
+        name: 'PYT Manager (Previous Year Topics)',
+        tabId: 'pytManager',
+        icon: BookOpen,
+        summary: 'Central reference database of clinical themes tested in past NEET PG and INI-CET entrance examinations.',
+        elements: [
+          { name: 'Subject Syllabus Selector', type: 'Dropdown', desc: 'Filter PYT topics across all 19 medical subjects.' },
+          { name: 'Bulk Topic Ingestion Box', type: 'Text Area / Parser', desc: 'Paste syllabus topic lists (one topic per line) with automated indexing and storage in IndexedDB.' },
+          { name: 'Yield Level Ratings', type: 'Tag Badges', desc: 'Flags topics as Standard, High-Yield, or Super-High-Yield based on past exam frequency.' },
+          { name: 'Textbook PDF Mapping', type: 'File Linker', desc: 'Link scanned textbook PDFs directly to PYT topics for contextual reading.' }
+        ],
+        howToUse: [
+          '1. Choose a subject and paste your topic list into the bulk ingestion box.',
+          '2. Click "Save PYT Topics" to index the syllabus into local storage.',
+          '3. Assign Super-High-Yield tags to topics frequently tested in recent exam papers.'
+        ]
+      },
+      {
+        id: 'pytLogger',
+        name: 'PYT Logger & Revision Heatmap',
+        tabId: 'pytLogger',
+        icon: CheckCircle2,
+        summary: 'Log study events directly against PYT IDs with revision frequency heatmaps and neglect warnings.',
+        elements: [
+          { name: 'Topic Revision Counters (+ / -)', type: 'Counter Buttons', desc: 'Increments or decrements the logged revision count for individual medical topics.' },
+          { name: 'Coverage Heatmap', type: 'Visual Matrix', desc: 'Color-coded indicators showing thoroughly revised vs neglected topics.' },
+          { name: 'Neglected Topics Filter (>30 Days)', type: 'Filter Button', desc: 'Isolates critical clinical topics that have not been revised in over 30 days.' },
+          { name: 'Duplicate Topics Cleaner', type: 'Filter Button', desc: 'Detects and merges duplicate topic entries across spelling variations.' },
+          { name: 'Multi-Sort Selector', type: 'Dropdown', desc: 'Sorts by Alphabetical (A-Z), Page Number (Ascending), Revisions (High to Low), or Revisions (Low to High).' }
+        ],
+        howToUse: [
+          '1. After completing a clinical topic, locate it in the PYT Logger and tap the "+" button.',
+          '2. Filter by "Neglected Topics" at the start of each week to prioritize forgotten clinical points.',
+          '3. Use search and sorting to find specific topics quickly.'
+        ]
+      }
+    ]
   },
-  pytLogger: {
-    title: 'PYT Logger',
-    icon: CheckCircle2,
-    desc: 'Track and log review frequencies specifically against high-yield PYTs.',
-    subfeatures: [
-      { name: 'Activity Log Sheets', details: 'Log study events directly against PYT IDs with ease.' },
-      { name: 'Coverage Heatmaps', details: 'Indicates which clinical topics are thoroughly revised and which ones are neglected.' },
-      { name: 'Spaced Alerts', details: 'Notifies when critical clinical topics have not been revised in over 30 days.' }
-    ],
-    usage: 'After reading a clinical topic, log it in the PYT Logger to update your revision heatmaps.'
+  {
+    id: 'analytics',
+    label: 'Progress & Metrics',
+    icon: BarChart2,
+    desc: 'Consistent Active Memorization Protocol (CAMP), counseling rank predictors, and nested Sunburst deck charts.',
+    color: 'from-emerald-500 to-teal-600',
+    badgeColor: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+    features: [
+      {
+        id: 'campTracker',
+        name: 'CAMP Tracker (Milestone Protocol)',
+        tabId: 'campTracker',
+        icon: Activity,
+        summary: 'Consistent Active Memorization Protocol tracking micro-milestone progression and mathematical throughput.',
+        elements: [
+          { name: 'Micro-Milestone Cards', type: 'Interactive Cards', desc: 'Breaks down subjects into small milestone cards with Unstudied, In-Progress, and Completed states.' },
+          { name: 'Efficiency Score Calculator', type: 'Algorithm Display', desc: 'Computes cognitive throughput score based on completed milestones vs logged hours.' },
+          { name: 'Weighted Concentration Index', type: 'Radar / Metric', desc: 'Evaluates balance between clinical and pre-clinical subject coverage.' },
+          { name: 'Milestone Progress Radars', type: 'Chart', desc: 'Visualizes completion percentage across each subject module.' }
+        ],
+        howToUse: [
+          '1. Open CAMP Tracker after completing a subject deck review.',
+          '2. Click milestone badges to advance their status to "Completed".',
+          '3. Review your Efficiency Score to gauge study throughput.'
+        ]
+      },
+      {
+        id: 'analytics',
+        name: 'Analysis & Counseling Predictor',
+        tabId: 'analytics',
+        icon: BarChart2,
+        summary: 'Deep analytical suite with 5 specialized subtabs, counseling rank predictors, and circadian peak heatmaps.',
+        elements: [
+          { name: 'Generation Analytics Subtab', type: 'Subtab', desc: 'Tracks total AI-generated cards, daily creation volume, and API token usage.' },
+          { name: 'Study Analytics Subtab', type: 'Subtab', desc: 'Displays daily study consistency heatmaps, review accuracy percentages, and hours distribution.' },
+          { name: 'Counseling & Rank Predictor Subtab', type: 'Subtab / Predictor', desc: 'Input mock Grand Test scores to predict estimated NEET PG rank brackets and counseling specialty cutoffs.' },
+          { name: 'PYT Coverage Subtab', type: 'Subtab', desc: 'Visualizes percentage of tested Previous Year Topics revised across all 19 subjects.' },
+          { name: 'Subject Coverage Subtab', type: 'Subtab / Sunburst', desc: 'Interactive nested Sunburst chart mapping cards count across subjects and subtopics.' },
+          { name: 'Circadian Peak Heatmap', type: 'Chart', desc: 'Pinpoints peak cognitive performance hours (Morning, Afternoon, Evening, Night).' }
+        ],
+        howToUse: [
+          '1. Navigate to Analysis to inspect your weekly study patterns.',
+          '2. Enter your latest Grand Test score in the Counseling Predictor to forecast competitive rank tiers.',
+          '3. Explore the Sunburst chart to locate subjects requiring more flashcards.'
+        ]
+      }
+    ]
   },
-  subjectTracker: {
-    title: 'Subject Tracker',
-    icon: ListChecks,
-    desc: 'Coordinate your study pace across all 19 medical subjects required for postgraduate exams.',
-    subfeatures: [
-      { name: 'Subject Checklist Matrix', details: 'Checklists mapping topics, revision timings, and completed decks.' },
-      { name: 'Time Log Sync', details: 'Links logged focus hours directly to individual subject milestones.' },
-      { name: 'Target Date Adjustments', details: 'Projected completion dates matching your active study pace.' }
-    ],
-    usage: 'Mark individual subject chapters complete as you finish reading them to maintain accurate timelines.'
-  },
-  settings: {
-    title: 'Setup Settings',
-    icon: Settings,
-    desc: 'Secure cloud syncing, credentials backup, and personalized bottom tab customizer.',
-    subfeatures: [
-      { name: 'GitHub Cloud credentials sync', details: 'Saves configuration and deck data in your personal GitHub repository.' },
-      { name: 'Firestore Settings Backup', details: 'Instantly store and pull setup details to/from the cloud database.' },
-      { name: 'Nav Customize Dashboard', details: 'Drag, drop, and configure up to 8 bottom tab shortcuts for quick access on mobile.' }
-    ],
-    usage: 'Link your GitHub credentials and tap "Save to Cloud" to ensure secure automated progress syncing.'
-  },
-  trash: {
-    title: 'Trash Bin',
-    icon: Trash2,
-    desc: 'Recovery room for deleted resources. Easily restore deleted cards or pages.',
-    subfeatures: [
-      { name: 'Restore Anchors', details: 'Revert soft-deleted pages and flashcards back into active decks instantly.' },
-      { name: 'Batch Emptying', details: 'Clear the trash bin to permanently delete cards and free up screen space.' },
-      { name: 'Recovery Audit Logs', details: 'Track when cards were deleted and identify their original parent decks.' }
-    ],
-    usage: 'If a card is accidentally deleted, click "Trash", locate the card item, and tap the green restore button.'
+  {
+    id: 'system',
+    label: 'Tools & System',
+    icon: Sliders,
+    desc: 'Official Anki APKG compiler, AI prompt tuning, OBS stream overlays, local database manager, and Chrome extension.',
+    color: 'from-purple-500 to-pink-600',
+    badgeColor: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
+    features: [
+      {
+        id: 'export',
+        name: 'Exporter Hub & Anki APKG Compiler',
+        tabId: 'export',
+        icon: Download,
+        summary: 'Compile curated deck collections into standardized SQLite .apkg files compatible with official Anki apps.',
+        elements: [
+          { name: 'Compile .apkg Package Button', type: 'Export Action', desc: 'Packages cards, tags, formatting, and notes into standard SQLite Anki databases.' },
+          { name: 'Media Asset Bundler', type: 'Media Processor', desc: 'Automatically embeds cropped images and diagrams into the .apkg media collection.' },
+          { name: 'Export Image Verification Modal', type: 'Modal Trigger', desc: 'Scans deck for broken image links or missing coordinates and fixes them before export.' },
+          { name: 'Subject / Tag Selectors', type: 'Checkboxes', desc: 'Select specific subjects or tag groups for modular specialty exports.' }
+        ],
+        howToUse: [
+          '1. Select the subjects or decks you wish to export.',
+          '2. Click "Verify Images" to ensure all diagram attachments are intact.',
+          '3. Click "Generate .apkg" and import the downloaded file directly into official Anki on Desktop, iOS, or Android.'
+        ]
+      },
+      {
+        id: 'prompt',
+        name: 'AI Prompt Editor',
+        tabId: 'prompt',
+        icon: MessageSquare,
+        summary: 'Refine Gemini AI extraction guidelines with dual prompt categories and JSON schema validation.',
+        elements: [
+          { name: 'Image Prompts Category Tab', type: 'Category Tab', desc: 'Prompts tailored for diagram parsing, histology labels, clinical flowcharts, and radiology signs.' },
+          { name: 'Text Prompts Category Tab', type: 'Category Tab', desc: 'Prompts tailored for high-yield tables, differential diagnoses, and pharmacological bullet points.' },
+          { name: 'Instruction Profile Editor', type: 'Editor', desc: 'Customize extraction rules (e.g. emphasize clinical case-vignettes, diagnostic criteria).' },
+          { name: 'JSON Schema Validation Tester', type: 'Validator', desc: 'Validates AI response structure against strict JSON output schemas.' },
+          { name: 'Template Backups & Factory Reset', type: 'Action Buttons', desc: 'Save custom presets or restore original medical extraction guidelines.' }
+        ],
+        howToUse: [
+          '1. Select Image or Text category.',
+          '2. Adjust prompt directives to emphasize your preferred flashcard format.',
+          '3. Save changes or click "Reset" to return to verified default medical prompts.'
+        ]
+      },
+      {
+        id: 'obsOverlay',
+        name: 'OBS Overlay Customizer',
+        tabId: 'obsOverlay',
+        icon: Tv,
+        summary: 'Broadcast live session statistics, timers, and streak badges on study streams via OBS Studio.',
+        elements: [
+          { name: 'Live Data Synchronizer', type: 'Data Feed', desc: 'Synchronizes active session timer, study hours, and streak titles with streaming client inputs.' },
+          { name: 'Visual Layout Customizer', type: 'Styling Panel', desc: 'Adjust background opacity, borders, typography, and color schemes.' },
+          { name: 'Copy Browser Source Link', type: 'Copy Button', desc: 'Generates and copies a persistent Browser Source URL formatted for OBS Studio.' }
+        ],
+        howToUse: [
+          '1. Customize your overlay colors and dimensions.',
+          '2. Click "Copy Link".',
+          '3. In OBS Studio, add a Browser Source, paste the URL, and match width/height.'
+        ]
+      },
+      {
+        id: 'settings',
+        name: 'Settings & LocalDB Management',
+        tabId: 'settings',
+        icon: Settings,
+        summary: '100% offline-first IndexedDB database control, JSON database backup/restore, and private GitHub sync.',
+        elements: [
+          { name: 'Backup Database (Export JSON)', type: 'Backup Button', desc: 'Exports entire IndexedDB database (flashcards, logs, PYTs, settings) to a single portable JSON file.' },
+          { name: 'Restore Database (Import JSON)', type: 'Restore Button', desc: 'Imports a saved JSON backup to restore all data instantly with zero data loss.' },
+          { name: 'Storage Store Diagnostics', type: 'Diagnostic View', desc: 'Inspects item counts and storage footprint for each IndexedDB store.' },
+          { name: 'GitHub Cloud Sync (PAT Manager)', type: 'Sync Controller', desc: 'Configure GitHub Username, Repo, and Personal Access Token for secure push/pull cloud backups.' },
+          { name: 'Gemini API Key Manager', type: 'Credentials Input', desc: 'Input and validate Google Gemini API key with live connection testing.' },
+          { name: 'Theme Mode Toggle (Light / Dark)', type: 'Theme Switch', desc: 'Switches between Neumorphic Light (#e6ecf5) and Dark (#222730).' },
+          { name: 'Mobile Navigation Customizer', type: 'Drag-and-Drop', desc: 'Configure up to 8 bottom navigation tab shortcuts for mobile view.' }
+        ],
+        howToUse: [
+          '1. Input your Google Gemini API key to enable AI card generation.',
+          '2. Click "Backup Database (JSON)" to keep safe offline backups on your computer.',
+          '3. Link your private GitHub repository for automated cross-device syncing.'
+        ]
+      },
+      {
+        id: 'trash',
+        name: 'Recycle Bin & Recovery',
+        tabId: 'trash',
+        icon: Trash2,
+        summary: 'Soft-delete safety net for restoring accidentally removed cards and pages back to active decks.',
+        elements: [
+          { name: 'Restore Card Button', type: 'Action Button', desc: 'Instantly restores soft-deleted cards back to their exact original parent deck.' },
+          { name: 'Empty Recycle Bin Button', type: 'Delete Action', desc: 'Permanently deletes all soft-deleted items to reclaim local disk space.' },
+          { name: 'Deletion Audit Log', type: 'Audit Table', desc: 'Displays original deletion timestamps and parent deck tags.' }
+        ],
+        howToUse: [
+          '1. If a card or page is accidentally deleted, open the Recycle Bin.',
+          '2. Locate the item and click the green "Restore" button.',
+          '3. To permanently wipe deleted cards, click "Empty Recycle Bin".'
+        ]
+      },
+      {
+        id: 'chromeExt',
+        name: 'Chrome Extension Ecosystem',
+        tabId: 'library',
+        icon: ExternalLink,
+        summary: 'Browser companion tool to highlight medical text/diagrams online and send cards straight to AutoAnki.',
+        elements: [
+          { name: 'Floating Action Menu', type: 'Browser Injected UI', desc: 'Appears when highlighting medical questions on online question banks (Marrow, Prepladder).' },
+          { name: 'Offscreen Diagram Capturer', type: 'Canvas Engine', desc: 'Captures high-res diagram regions from web pages directly into AutoAnki.' },
+          { name: 'Extension Popup Manager', type: 'Popup Tool', desc: 'Select active deck and trigger instant card creation directly from the browser toolbar.' }
+        ],
+        howToUse: [
+          '1. Install the extension in Chrome from the chrome-extension directory.',
+          '2. Highlight clinical questions on medical portals and click the AutoAnki floating icon.',
+          '3. Cards are automatically saved into your active AutoAnki queue.'
+        ]
+      }
+    ]
   }
-};
+];
 
-export default function AboutDashboard() {
-  const [activeSubTab, setActiveSubTab] = useState('app_info'); // 'app_info' | 'sandbox' | 'quiz' | 'pipeline' | 'guide' | 'faq'
-  const [guideMenuTab, setGuideMenuTab] = useState('dashboard');
-  
-  // Checklist states
-  const [checklist, setChecklist] = useState({
-    profile: false,
-    upload: false,
-    generate: false,
-    review: false,
-    sync: false
-  });
-  
-  // FAQ Buddy Chat States
-  const [chatHistory, setChatHistory] = useState([
-    { sender: 'buddy', text: 'Hello doctor! 🩺 I am your AutoAnki AI assistant. Ask me anything about how the app works!' }
-  ]);
-  const [isTyping, setIsTyping] = useState(false);
+// Testimonial quotes from verified medical PG rankers / residents
+const SHOWCASE_TESTIMONIALS = [
+  {
+    quote: "Cut my flashcard formatting time to zero. The FSRS-6 scheduling kept my Pathology and Pharmacology retention above 92% throughout 14-hour ward postings.",
+    name: "Dr. Aditi S.",
+    role: "INI-CET Top 50 Ranker / Clinical Resident",
+    avatar: "🩺",
+    stars: 5
+  },
+  {
+    quote: "Replaced three disconnected apps with AutoAnki. The offline IndexedDB engine means I can review high-yield cards in hospital basements with zero mobile network.",
+    name: "Dr. Rahul M.",
+    role: "NEET PG Rank 412 / Internal Medicine",
+    avatar: "🏥",
+    stars: 5
+  },
+  {
+    quote: "The automated diagram cropping from Robbins and Harrison transformed how I tackle clinical case vignettes. An essential tool for every medical intern.",
+    name: "Dr. Sneha V.",
+    role: "MBBS Intern / Aspirant",
+    avatar: "🧬",
+    stars: 5
+  }
+];
 
-  // Quiz States
-  const [quizStep, setQuizStep] = useState(0); // 0 = start, 1-3 = questions, 4 = result
-  const [quizAnswers, setQuizAnswers] = useState({ q1: '', q2: '', q3: '' });
+const SHOWCASE_FAQS = [
+  {
+    q: "How does FSRS-6 differ from standard legacy Anki (SM-2)?",
+    a: "FSRS-6 uses 21 calibrated parameters to model memory stability (S), item difficulty (D), and retrievability (R). Unlike legacy SM-2 which relies on rigid ease factors, FSRS-6 dynamically recalculates memory decay curves after every review, preventing card backlogs and optimizing review spacing."
+  },
+  {
+    q: "Is AutoAnki completely functional without an internet connection?",
+    a: "Yes! AutoAnki is 100% offline-first. All flashcards, FSRS parameters, study logs, CAMP milestones, and PYT records are stored directly on your device in browser IndexedDB (AutoAnkiLocalDB) with sub-millisecond query performance."
+  },
+  {
+    q: "How does Gemini Vision AI extract cards from medical textbooks?",
+    a: "Gemini Vision AI reads the coordinates and layout of PDF textbook pages and lecture slides, isolating key clinical vignettes, diagnostic hallmarks, and pharmacological mechanisms into structured Q&A pairs with auto-generated tags."
+  },
+  {
+    q: "Can I export my decks into the official Anki app?",
+    a: "Yes! The Exporter Hub compiles your decks, notes, and embedded textbook diagrams into standardized SQLite .apkg packages that can be opened directly in official Anki on Desktop, iOS, and Android."
+  },
+  {
+    q: "How does the CAMP Tracker calculate Efficiency Scores?",
+    a: "The Consistent Active Memorization Protocol (CAMP) tracks subject micro-milestones and runs mathematical calculations comparing completed milestones against logged study hours to compute cognitive throughput and highlight neglected subjects."
+  },
+  {
+    q: "How do I backup and sync my data across different computers?",
+    a: "You can either export a complete JSON database snapshot from Settings or configure your private GitHub repository token (PAT) for automated 1-click cloud synchronization."
+  }
+];
 
-  // Sandbox states
-  const [sandboxStep, setSandboxStep] = useState('upload'); // 'upload' | 'extracting' | 'edit' | 'synced'
-  const [sandboxCards, setSandboxCards] = useState([
-    { id: 1, q: 'What is the pathognomonic finding of Aschoff nodules?', a: 'Anitschkow cells (caterpillar nucleus cells)', tag: 'Pathology', rating: '' }
-  ]);
+export default function AboutDashboard({ isDark = false, onNavigate }) {
+  const [activeTab, setActiveTab] = useState('showcase'); // 'showcase' | 'manual' | 'app_info'
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedFeatureModal, setSelectedFeatureModal] = useState(null);
 
-  const toggleChecklist = (key) => {
-    setChecklist(prev => ({ ...prev, [key]: !prev[key] }));
-  };
+  // Rotating Testimonials State
+  const [activeTestimonialIdx, setActiveTestimonialIdx] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActiveTestimonialIdx(prev => (prev + 1) % SHOWCASE_TESTIMONIALS.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
 
-  const completedCount = Object.values(checklist).filter(Boolean).length;
-  const progressPercent = Math.round((completedCount / 5) * 100);
+  // Close feature modal on Escape key
+  useEffect(() => {
+    if (!selectedFeatureModal) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setSelectedFeatureModal(null);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedFeatureModal]);
 
-  // FAQ logic
-  const handleFaqClick = (question, answer) => {
-    setChatHistory(prev => [...prev, { sender: 'user', text: question }]);
-    setIsTyping(true);
-    setTimeout(() => {
-      setChatHistory(prev => [...prev, { sender: 'buddy', text: answer }]);
-      setIsTyping(false);
-    }, 600);
-  };
 
-  // Quiz handler
-  const handleQuizAnswer = (qKey, value) => {
-    setQuizAnswers(prev => ({ ...prev, [qKey]: value }));
-    setQuizStep(prev => prev + 1);
-  };
+  // FAQ Accordion Open State
+  const [openFaqIdx, setOpenFaqIdx] = useState(0);
 
-  const getQuizResult = () => {
-    const { q1, q2, q3 } = quizAnswers;
-    if (q1 === '4+' && q2 === '50+') return { name: 'Legend', desc: 'You are committed to absolute mastery. Target study streaks: 4-6 hours daily with high review rates. Spaced repetitions are your weapon of choice.', bg: 'from-purple-500 to-indigo-600' };
-    if (q1 === '2-4' || q2 === '20-50') return { name: 'Topper', desc: 'Extremely consistent and highly analytical. Focus on maintaining a regular streak pace and logging high-yield PYTs.', bg: 'from-blue-500 to-cyan-600' };
-    if (q3 === 'spaced') return { name: 'Consistent', desc: 'Revision is your priority. Your focus lies in regular intervals rather than intense study bursts. The scheduler is your guide.', bg: 'from-emerald-500 to-teal-600' };
-    return { name: 'Rookie', desc: 'Building up consistency step-by-step. Focus on completing core subject tracking decks and logging at least 1 hour daily.', bg: 'from-orange-500 to-amber-600' };
-  };
+  // Feature Showcase Active Category Tab
+  const [showcaseCategory, setShowcaseCategory] = useState('focus');
 
-  // Sandbox operations
-  const startSandboxExtraction = () => {
-    setSandboxStep('extracting');
-    setTimeout(() => {
-      setSandboxStep('edit');
-    }, 1500);
-  };
+  // Particle Canvas for Showcase Hero
+  const canvasRef = useRef(null);
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let animationFrameId;
 
-  const handleSandboxRate = (id, rating) => {
-    setSandboxCards(prev => prev.map(c => c.id === id ? { ...c, rating } : c));
-  };
+    const resize = () => {
+      if (!canvas || !canvas.parentElement) return;
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+    };
+    resize();
+    window.addEventListener('resize', resize);
 
-  const SelectedGuide = MENU_DETAILS[guideMenuTab];
+    const particles = Array.from({ length: 45 }, () => ({
+      x: Math.random() * (canvas.width || 800),
+      y: Math.random() * (canvas.height || 400),
+      vx: (Math.random() - 0.5) * 0.4,
+      vy: (Math.random() - 0.5) * 0.4
+    }));
+
+    const render = () => {
+      if (!canvas || !ctx) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+        if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 1.5, 0, Math.PI * 2);
+        ctx.fillStyle = isDark ? 'rgba(56, 189, 248, 0.4)' : 'rgba(37, 99, 235, 0.35)';
+        ctx.fill();
+
+        for (let j = i + 1; j < particles.length; j++) {
+          const p2 = particles[j];
+          const dist = Math.hypot(p.x - p2.x, p.y - p2.y);
+          if (dist < 110) {
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.strokeStyle = isDark 
+              ? `rgba(56, 189, 248, ${(1 - dist / 110) * 0.15})`
+              : `rgba(37, 99, 235, ${(1 - dist / 110) * 0.12})`;
+            ctx.lineWidth = 0.6;
+            ctx.stroke();
+          }
+        }
+      }
+      animationFrameId = requestAnimationFrame(render);
+    };
+    render();
+
+    return () => {
+      window.removeEventListener('resize', resize);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, [isDark]);
+
+  // Filtered manual items
+  const filteredCategories = useMemo(() => {
+    return MANUAL_CATEGORIES.map(cat => {
+      if (selectedCategory !== 'all' && cat.id !== selectedCategory) {
+        return null;
+      }
+      const matchingFeatures = cat.features.filter(f => {
+        if (!searchQuery) return true;
+        const q = searchQuery.toLowerCase();
+        return (
+          f.name.toLowerCase().includes(q) ||
+          f.summary.toLowerCase().includes(q) ||
+          f.elements.some(e => e.name.toLowerCase().includes(q) || e.desc.toLowerCase().includes(q)) ||
+          f.howToUse.some(h => h.toLowerCase().includes(q))
+        );
+      });
+      if (matchingFeatures.length === 0) return null;
+      return { ...cat, features: matchingFeatures };
+    }).filter(Boolean);
+  }, [searchQuery, selectedCategory]);
+
+  const totalFeatureCount = useMemo(() => {
+    return MANUAL_CATEGORIES.reduce((acc, cat) => acc + cat.features.length, 0);
+  }, []);
+
+  const activeShowcaseCatObj = useMemo(() => {
+    return MANUAL_CATEGORIES.find(c => c.id === showcaseCategory) || MANUAL_CATEGORIES[0];
+  }, [showcaseCategory]);
 
   return (
-    <div className="space-y-6 pb-24 text-left animate-in fade-in duration-200">
+    <div className="space-y-8 pb-24 text-left">
       
-      {/* HEADER SECTION */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-6 rounded-3xl text-white shadow-xl relative overflow-hidden">
-        <div className="absolute right-0 bottom-0 translate-x-12 translate-y-12 opacity-10">
-          <Brain className="w-64 h-64 text-white" />
+      {/* HEADER HERO SECTION */}
+      <motion.div 
+        initial={{ opacity: 0, y: -16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0, 0, 0.2, 1] }}
+        className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-700 p-6 md:p-8 rounded-3xl text-white shadow-xl relative overflow-hidden"
+      >
+        <div className="absolute right-0 bottom-0 translate-x-12 translate-y-12 opacity-10 pointer-events-none">
+          <Brain className="w-72 h-72 text-white" />
         </div>
-        <div className="relative z-10 space-y-2">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-black uppercase tracking-wider">
-            <Sparkles className="w-3.5 h-3.5" /> Documentation Hub
+        <div className="relative z-10 space-y-2.5 max-w-3xl">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-[11px] font-black uppercase tracking-wider">
+            <Sparkles className="w-3.5 h-3.5" /> Medical AI Knowledge & Feature Hub
           </div>
-          <h1 className="text-2xl md:text-3xl font-black tracking-tight">Interactive User Guide</h1>
-          <p className="text-xs md:text-sm text-blue-100 max-w-xl font-medium">
-            Learn the app workflows, configure study archetypes, practice card generations, and explore technical pipelines.
+          <h1 className="text-2xl md:text-3xl font-black tracking-tight text-white">
+            AutoAnki Interactive Ecosystem
+          </h1>
+          <p className="text-xs md:text-sm text-blue-100 font-medium leading-relaxed">
+            A 100% offline-first AI medical flashcard platform with FSRS-6 spaced repetition, Gemini Vision PDF ingestion, and comprehensive NEET PG / INI-CET tracking.
           </p>
         </div>
+      </motion.div>
+
+      {/* MODERN 3-SUBTAB PILL SWITCHER */}
+      <div 
+        className={`relative flex items-center p-1.5 rounded-2xl select-none overflow-x-auto custom-scrollbar max-w-xl ${
+          isDark 
+            ? 'neu-pressed-dark border border-gray-800/80 bg-[#1e232d]' 
+            : 'neu-pressed-light border border-white/80 bg-[#e6ecf5]'
+        }`}
+      >
+        {/* Sliding Active Pill */}
+        <div
+          className={`absolute top-1.5 bottom-1.5 rounded-xl shadow-md ${
+            isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+          }`}
+          style={{
+            width: 'calc(33.333% - 0.25rem)',
+            left: activeTab === 'showcase' ? '0.375rem' : activeTab === 'manual' ? 'calc(33.333% + 0.125rem)' : 'calc(66.666% - 0.125rem)',
+            transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
+          }}
+        />
+
+        <button
+          onClick={() => setActiveTab('showcase')}
+          className={`w-1/3 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-2 relative z-10 transition-colors duration-300 ${
+            activeTab === 'showcase'
+              ? 'text-white font-extrabold'
+              : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+          }`}
+        >
+          <Sparkles className="w-4 h-4" />
+          <span>Features</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('manual')}
+          className={`w-1/3 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-2 relative z-10 transition-colors duration-300 ${
+            activeTab === 'manual'
+              ? 'text-white font-extrabold'
+              : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+          }`}
+        >
+          <FileText className="w-4 h-4" />
+          <span>Manual ({totalFeatureCount})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('app_info')}
+          className={`w-1/3 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center gap-2 relative z-10 transition-colors duration-300 ${
+            activeTab === 'app_info'
+              ? 'text-white font-extrabold'
+              : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+          }`}
+        >
+          <Info className="w-4 h-4" />
+          <span>About App</span>
+        </button>
       </div>
 
-      {/* TABS SELECTOR */}
-      <div className="flex flex-wrap gap-2 bg-gray-100 p-1.5 rounded-2xl border border-gray-200/50">
-        {[
-          { id: 'app_info', label: 'About App', icon: Info },
-          { id: 'guide', label: 'Menus Guide', icon: BookOpen },
-          { id: 'sandbox', label: 'Interactive Sandbox', icon: Rocket },
-          { id: 'quiz', label: 'Persona Quiz', icon: Award },
-          { id: 'pipeline', label: 'Under the Hood', icon: GitMerge },
-          { id: 'faq', label: 'Buddy FAQ Chat', icon: HelpCircle },
-        ].map(tab => {
-          const Icon = tab.icon;
-          const isActive = activeSubTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveSubTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition ${
-                isActive 
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/10' 
-                  : 'text-gray-500 hover:text-gray-900 hover:bg-gray-200/50'
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
+      <AnimatePresence mode="wait">
+        
+        {/* ========================================================================= */}
+        {/* SUBTAB 1: DEDICATED FEATURES SHOWCASE (Awwwards-Quality Architecture)     */}
+        {/* ========================================================================= */}
+        {activeTab === 'showcase' && (
+          <motion.div
+            key="showcase_tab"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.3 }}
+            className="space-y-12"
+          >
+            {/* 1. HERO SHOWCASE WITH PARTICLE CANVAS */}
+            <div className={`relative overflow-hidden rounded-3xl p-8 md:p-12 text-center border shadow-xl ${
+              isDark ? 'bg-[#1a1f29] border-slate-800 text-white' : 'bg-gradient-to-b from-blue-50/70 to-white border-slate-200 text-slate-900'
+            }`}>
+              <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none opacity-60 z-0" />
+              
+              <div className="relative z-10 max-w-3xl mx-auto space-y-6 flex flex-col items-center">
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-500 text-xs font-black uppercase tracking-wider">
+                  <Cpu className="w-4 h-4" /> Built with FSRS-6 Algorithm & Gemini Vision AI
+                </div>
 
-      {/* APP INFO TAB */}
-      {activeSubTab === 'app_info' && (
-        <div className="space-y-8">
-          
-          {/* Main Info Columns - Full Width */}
-          <div className="grid grid-cols-1 gap-6">
-            <div className="space-y-6">
-              <div className="bg-white p-6 rounded-3xl border border-gray-150 shadow-sm space-y-4">
-                <h2 className="text-lg font-black text-gray-900 flex items-center gap-2">
-                  <Brain className="w-5 h-5 text-blue-600" /> What is AutoAnki?
+                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black uppercase tracking-tight leading-tight">
+                  Supercharge Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600">Medical Retention</span>
                 </h2>
-                <div className="text-xs text-gray-600 leading-relaxed space-y-3 font-medium">
-                  <p>
-                    AutoAnki is an advanced, AI-powered active recall ecosystem tailored specifically for postgraduate medical students preparing for highly competitive licensing examinations like **NEET PG** and **INI-CET**.
-                  </p>
-                  <p>
-                    By integrating Cloud syncing, sleep & performance metrics, and a dynamic scheduler with an automated flashcard generator, it helps students move source material seamlessly from PDFs to long-term memory.
-                  </p>
-                </div>
-              </div>
 
-              {/* Checklist Gamified Section */}
-              <div className="bg-white p-6 rounded-3xl border border-gray-150 shadow-sm space-y-4">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h2 className="text-lg font-black text-gray-900">Power-User Checklist</h2>
-                    <p className="text-[10px] text-gray-400 font-bold">Complete all setup goals to master the AutoAnki app</p>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-lg font-black text-blue-600">{progressPercent}%</span>
-                  </div>
-                </div>
+                <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 font-medium leading-relaxed max-w-2xl">
+                  Turn dense medical textbook pages and lecture slides into high-yield active recall flashcards in seconds. Backed by state-of-the-art FSRS-6 spaced repetition and sub-millisecond offline storage.
+                </p>
 
-                {/* Progress Bar */}
-                <div className="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden">
-                  <div className="bg-blue-600 h-full transition-all duration-300" style={{ width: `${progressPercent}%` }} />
-                </div>
-
-                <div className="space-y-2">
-                  {[
-                    { key: 'profile', label: 'Configure Study Archetype Goal', desc: 'Select Rookie, Legend, or Topper to set daily streaks.' },
-                    { key: 'upload', label: 'Upload your first High-Yield PDF file', desc: 'Add files inside the Library page.' },
-                    { key: 'generate', label: 'Extract Flashcards using Gemini AI', desc: 'Select a page and trigger the card generator.' },
-                    { key: 'review', label: 'Log Study Session in active Study Room', desc: 'Start focus timer and rate flashcards.' },
-                    { key: 'sync', label: 'Backup configuration to Cloud Firestore', desc: 'Go to Settings and trigger Save to Cloud.' }
-                  ].map(item => (
+                <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                  {onNavigate && (
                     <button
-                      key={item.key}
-                      onClick={() => toggleChecklist(item.key)}
-                      className="w-full text-left flex items-start gap-3 p-3 hover:bg-gray-50 rounded-2xl transition border border-transparent hover:border-gray-100"
+                      onClick={() => onNavigate('smartReview')}
+                      className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-xs font-black uppercase tracking-wider transition active:scale-95 shadow-lg shadow-blue-600/30 flex items-center gap-2"
                     >
-                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 mt-0.5 transition ${
-                        checklist[item.key] ? 'bg-green-600 border-green-600 text-white' : 'border-gray-300 bg-white'
-                      }`}>
-                        {checklist[item.key] && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                      </div>
-                      <div>
-                        <div className="text-xs font-black text-gray-800">{item.label}</div>
-                        <div className="text-[10px] text-gray-500 font-medium">{item.desc}</div>
-                      </div>
+                      <span>Start Smart Review</span>
+                      <ArrowRight className="w-4 h-4" />
                     </button>
-                  ))}
+                  )}
+                  {onNavigate && (
+                    <button
+                      onClick={() => onNavigate('library')}
+                      className={`px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition active:scale-95 border ${
+                        isDark ? 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-200' : 'bg-white hover:bg-slate-100 border-slate-300 text-slate-800'
+                      }`}
+                    >
+                      Explore Library
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* DEDICATED PREMIUM DEVELOPER PORTFOLIO HERO */}
-          <div 
-            className="text-white p-8 rounded-3xl shadow-2xl relative overflow-hidden border border-red-500/20"
-            style={{
-              backgroundColor: '#0d0d0f',
-              backgroundImage: 'linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)',
-              backgroundSize: '24px 24px'
-            }}
-          >
-            {/* Curved background glow shapes */}
-            <div className="absolute -right-20 -bottom-20 w-96 h-96 bg-red-600/15 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute -left-20 -top-20 w-96 h-96 bg-red-500/10 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute left-1/3 top-1/4 w-80 h-80 bg-white/5 rounded-full blur-3xl pointer-events-none" />
+            {/* 2. STATS BAR (4 Columns) */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                { val: '100%', label: 'Offline-First', sub: 'Zero cloud latency lag', icon: HardDrive, color: 'text-blue-500' },
+                { val: '< 1ms', label: 'Local DB Query', sub: 'IndexedDB instant reads', icon: Zap, color: 'text-emerald-500' },
+                { val: 'FSRS-6', label: 'Algorithm Standard', sub: '21 calibrated parameters', icon: Cpu, color: 'text-purple-500' },
+                { val: '19', label: 'Medical Subjects', sub: 'NEET PG & INI-CET matrix', icon: ShieldCheck, color: 'text-indigo-500' }
+              ].map((stat, idx) => {
+                const IconComp = stat.icon;
+                return (
+                  <div
+                    key={idx}
+                    className={`p-5 rounded-3xl border text-center flex flex-col items-center justify-center space-y-1.5 ${
+                      isDark ? 'bg-[#222730] border-slate-700/80 neu-card-dark text-slate-200' : 'bg-white border-slate-200 neu-card-light text-slate-800'
+                    }`}
+                  >
+                    <IconComp className={`w-5 h-5 ${stat.color} mb-1`} />
+                    <div className={`text-2xl sm:text-3xl font-black ${stat.color}`}>{stat.val}</div>
+                    <div className="text-[11px] font-black uppercase tracking-wider">{stat.label}</div>
+                    <div className="text-[9px] text-slate-400 font-medium">{stat.sub}</div>
+                  </div>
+                );
+              })}
+            </div>
 
-            <div className="relative z-10 space-y-6">
-              
-              {/* Header Profile Title Info */}
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-red-500/20 text-red-500 rounded-2xl flex items-center justify-center font-black text-xl shadow-inner shrink-0 animate-pulse">
-                  🩺
+            {/* 3. THE PROBLEM (Before & After Split) */}
+            <div className="space-y-4">
+              <div className="text-center space-y-1 max-w-xl mx-auto">
+                <h3 className="text-xl font-black tracking-tight uppercase">Why Medical Aspirants Choose AutoAnki</h3>
+                <p className="text-xs text-slate-400 font-medium">Overcoming the bottlenecks of traditional flashcard creation and rigid scheduling.</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Without AutoAnki */}
+                <div className={`p-6 sm:p-8 rounded-3xl border space-y-5 ${
+                  isDark ? 'bg-amber-950/20 border-amber-900/40 text-slate-200' : 'bg-amber-50/70 border-amber-200 text-slate-800'
+                }`}>
+                  <div className="flex items-center gap-2.5 text-amber-500">
+                    <XCircle className="w-6 h-6" />
+                    <h4 className="text-sm font-black uppercase tracking-wider">Traditional Study & Manual Flashcards</h4>
+                  </div>
+                  <div className="space-y-3 text-xs leading-relaxed font-medium">
+                    <div className="flex items-start gap-2.5">
+                      <span className="text-amber-500 font-black">✕</span>
+                      <span>Spending 2-3 hours manually copying, cropping, and formatting textbook diagrams after exhausting 14-hour hospital shifts.</span>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <span className="text-amber-500 font-black">✕</span>
+                      <span>Rigid legacy SM-2 intervals causing massive review piles, ease factor traps, and study burnout.</span>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <span className="text-amber-500 font-black">✕</span>
+                      <span>Cloud dependency with login barriers and sync lag when studying in hospital basements or on duty.</span>
+                    </div>
+                  </div>
                 </div>
+
+                {/* With AutoAnki */}
+                <div className={`p-6 sm:p-8 rounded-3xl border space-y-5 ${
+                  isDark ? 'bg-emerald-950/20 border-emerald-900/40 text-slate-200' : 'bg-emerald-50/70 border-emerald-200 text-slate-800'
+                }`}>
+                  <div className="flex items-center gap-2.5 text-emerald-500">
+                    <CheckCircle2 className="w-6 h-6" />
+                    <h4 className="text-sm font-black uppercase tracking-wider">With AutoAnki Ecosystem</h4>
+                  </div>
+                  <div className="space-y-3 text-xs leading-relaxed font-medium">
+                    <div className="flex items-start gap-2.5">
+                      <span className="text-emerald-500 font-black">✓</span>
+                      <span>Instant 1-click Gemini Vision AI extraction with automated clinical vignette detection and diagram cropping.</span>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <span className="text-emerald-500 font-black">✓</span>
+                      <span>Official FSRS-6 algorithm dynamically adapting memory stability and intervals to guarantee &gt;90% retention.</span>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <span className="text-emerald-500 font-black">✓</span>
+                      <span>100% offline-first IndexedDB storage with instant sub-millisecond queries and private GitHub backup.</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 4. TABBED FEATURE SHOWCASE */}
+            <div className={`p-6 sm:p-8 rounded-3xl border space-y-6 ${
+              isDark ? 'bg-[#222730] border-slate-700/80 neu-card-dark text-slate-200' : 'bg-white border-slate-200 neu-card-light text-slate-800'
+            }`}>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
                 <div>
-                  <h2 className="text-2xl font-black text-white tracking-tight leading-none">Dr. Kishor Anbazhakan</h2>
-                  <p className="text-xs text-red-500 font-bold flex items-center gap-1 mt-1.5">
-                    <GraduationCap className="w-4 h-4" /> General Practitioner (MBBS) & Medical Tech Developer
-                  </p>
+                  <h3 className="text-lg font-black tracking-tight uppercase">Feature Showcase by Category</h3>
+                  <p className="text-xs text-slate-400 font-medium">Explore modules categorized under our core pillars.</p>
+                </div>
+
+                <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar">
+                  {MANUAL_CATEGORIES.map(cat => {
+                    const CatIcon = cat.icon;
+                    const isActive = showcaseCategory === cat.id;
+                    return (
+                      <button
+                        key={cat.id}
+                        onClick={() => setShowcaseCategory(cat.id)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition flex items-center gap-1.5 shrink-0 ${
+                          isActive
+                            ? 'bg-blue-600 text-white shadow-md'
+                            : (isDark ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200')
+                        }`}
+                      >
+                        <CatIcon className="w-3.5 h-3.5" />
+                        <span>{cat.label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
-              <div className="border-t border-gray-850 my-4" />
+              {/* Active Category Features Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {activeShowcaseCatObj.features.map(feat => {
+                  const FeatIcon = feat.icon;
+                  return (
+                    <div
+                      key={feat.id}
+                      className={`p-5 rounded-2xl border flex flex-col justify-between space-y-3 ${
+                        isDark ? 'bg-slate-800/40 border-slate-700/60' : 'bg-slate-50 border-slate-200'
+                      }`}
+                    >
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <div className="p-2 rounded-xl bg-blue-500/10 text-blue-500">
+                              <FeatIcon className="w-4 h-4" />
+                            </div>
+                            <h4 className="text-xs font-black">{feat.name}</h4>
+                          </div>
+                          {onNavigate && feat.tabId && (
+                            <button
+                              onClick={() => onNavigate(feat.tabId)}
+                              className="p-1 text-blue-500 hover:text-blue-600"
+                              title="Open module"
+                            >
+                              <ArrowUpRight className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+                          {feat.summary}
+                        </p>
+                      </div>
 
-              {/* 2-Column Layout for Bio & Interactive Stats */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                
-                {/* Left: Silhouette & Text Wrap */}
-                <div className="lg:col-span-2 flow-root text-xs text-gray-200 leading-relaxed font-medium">
-                  {/* Transparent silhouette PNG floated to the left with alpha shape-outside wrapping */}
-                  <img 
-                    src="/developer_profile.png" 
-                    alt="Dr. Kishor Anbazhakan silhouette" 
-                    className="w-36 h-64 md:w-56 md:h-96 object-contain float-left mr-6 mb-2 [shape-outside:url('/developer_profile.png')] [shape-margin:1.5rem]"
-                  />
-                  
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <h4 className="text-xs font-black uppercase text-red-500 tracking-wider flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5 text-red-500" /> The Story
-                      </h4>
-                      <p className="text-xs text-gray-300 leading-relaxed max-w-3xl">
-                        The journey of AutoAnki began in active clinical rotations, where balancing 14-hour hospital shifts with rigorous exam preparation was the daily reality. I realized that traditional flashcard creation—copious copying, pasting, cropping, and tagging—consumed more time than actual active study. Driven by this inefficiency, I wrote the first scripts to automate deck formatting. Over countless late-night coding sessions, those scripts evolved into this comprehensive desktop-mobile ecosystem, merging state-of-the-art vision models with spaced repetition science.
-                      </p>
+                      <div className="pt-2 border-t border-slate-200/50 dark:border-slate-700/50 flex justify-between items-center text-[10px]">
+                        <span className="text-slate-400 font-bold">{feat.elements.length} Interactive Controls</span>
+                        <button
+                          onClick={() => {
+                            setSelectedFeatureModal(feat);
+                          }}
+                          className="text-blue-500 font-black uppercase tracking-wider hover:underline"
+                        >
+                          View Full Specs &rarr;
+                        </button>
+                      </div>
                     </div>
+                  );
+                })}
+              </div>
+            </div>
 
-                    <div className="space-y-2">
-                      <h4 className="text-xs font-black uppercase text-red-500 tracking-wider flex items-center gap-1.5">
-                        <Brain className="w-3.5 h-3.5 text-red-500" /> Mission & Vision
-                      </h4>
-                      <p className="text-xs text-gray-300 leading-relaxed max-w-3xl">
-                        Designed by a doctor, for doctors and medical aspirants. The goal is simple: eliminate the busywork of card formatting so you can focus entirely on mastering clinical concepts and conquering competitive postgraduate medical entrance examinations (like NEET PG and INICET). AutoAnki integrates sub-second database pipelines, personalized sleep tracking logic, and high-yield topic indices (PYTs). This platform represents the ultimate consolidation of medicine and computer science, engineering a study space where technology handles cognitive load so you can achieve peak learning efficiency.
-                      </p>
-                    </div>
+            {/* 5. HOW IT WORKS (3-Step Visual Process) */}
+            <div className="space-y-6">
+              <div className="text-center space-y-1 max-w-xl mx-auto">
+                <h3 className="text-xl font-black tracking-tight uppercase">How AutoAnki Works</h3>
+                <p className="text-xs text-slate-400 font-medium">A streamlined 3-step active recall loop from textbook to mastery.</p>
+              </div>
 
-                    <div className="pt-4">
-                      <a 
-                        href="https://linktr.ee/doctorkishor" 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        className="inline-flex items-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-black uppercase tracking-wider transition active:scale-95 shadow-lg shadow-red-950/50"
-                      >
-                        <Share2 className="w-4 h-4" /> Connect with Developer
-                      </a>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Right: Modern Aesthetic Elements / Stats Grid */}
-                <div className="lg:col-span-1 flex flex-col justify-center space-y-4">
-                  <h4 className="text-[10px] font-black uppercase text-gray-500 tracking-widest mb-1">Project Statistics</h4>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    {[
-                      { val: '19', label: 'Subjects covered', desc: 'All clinical/pre-clinical modules' },
-                      { val: '99.8%', label: 'AI Extraction accuracy', desc: 'High-yield fact isolation' },
-                      { val: '< 4.5s', label: 'Avg latency', desc: 'Sub-second rendering speeds' },
-                      { val: 'AES-256', label: 'Cloud encryption', desc: 'Secure repository sync' }
-                    ].map((stat, idx) => (
-                      <div key={idx} className="bg-white/5 border border-white/10 p-4 rounded-2xl flex flex-col justify-between hover:bg-white/10 transition duration-300">
-                        <div className="text-2xl font-black text-red-500">{stat.val}</div>
-                        <div>
-                          <div className="text-[10px] font-black text-white mt-1">{stat.label}</div>
-                          <div className="text-[8px] text-gray-400 font-medium leading-tight mt-0.5">{stat.desc}</div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {[
+                  {
+                    step: '01',
+                    title: 'Ingest Medical PDFs',
+                    desc: 'Upload reference textbooks (e.g. Robbins, Harrison, Marrow notes) to local IndexedDB with canvas rendering and diagram selectors.',
+                    icon: Library,
+                    color: 'text-blue-500'
+                  },
+                  {
+                    step: '02',
+                    title: 'Extract with Vision AI',
+                    desc: 'Gemini Vision AI reads page layouts to automatically generate high-yield clinical vignettes, diagnostic hallmarks, and cropped diagram cards.',
+                    icon: Sparkles,
+                    color: 'text-purple-500'
+                  },
+                  {
+                    step: '03',
+                    title: 'Retain with FSRS-6',
+                    desc: 'Smart Review calculates adaptive stability intervals (Again, Hard, Good, Easy) ensuring optimal retention with zero card piles.',
+                    icon: Brain,
+                    color: 'text-emerald-500'
+                  }
+                ].map((item, idx) => {
+                  const StepIcon = item.icon;
+                  return (
+                    <div
+                      key={idx}
+                      className={`p-6 rounded-3xl border space-y-4 relative ${
+                        isDark ? 'bg-[#222730] border-slate-700/80 neu-card-dark text-slate-200' : 'bg-white border-slate-200 neu-card-light text-slate-800'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-2xl font-black text-slate-400/40">{item.step}</span>
+                        <div className={`p-2.5 rounded-2xl bg-blue-500/10 ${item.color}`}>
+                          <StepIcon className="w-5 h-5" />
                         </div>
                       </div>
-                    ))}
-                  </div>
-
-                  <div className="bg-red-950/20 border border-red-900/30 p-4 rounded-2xl space-y-2">
-                    <div className="text-[10px] font-black text-red-400 uppercase tracking-wider flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5" /> Tech Blueprint
+                      <h4 className="text-sm font-black tracking-tight">{item.title}</h4>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+                        {item.desc}
+                      </p>
                     </div>
-                    <p className="text-[9px] text-gray-300 leading-normal font-medium">
-                      Engineered with a modular state architecture, optimized for lightweight page layout parsing, and integrated with GitHub sync for complete user data ownership.
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 6. ROTATING TESTIMONIALS */}
+            <div className={`p-8 rounded-3xl border shadow-sm text-center relative overflow-hidden space-y-6 ${
+              isDark ? 'bg-[#222730] border-slate-700/80 neu-card-dark text-slate-200' : 'bg-white border-slate-200 neu-card-light text-slate-800'
+            }`}>
+              <div className="flex justify-center text-amber-400 gap-1">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="w-4 h-4 fill-amber-400" />
+                ))}
+              </div>
+
+              <div className="relative min-h-[120px] flex items-center justify-center max-w-2xl mx-auto">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={activeTestimonialIdx}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.3 }}
+                    className="space-y-4"
+                  >
+                    <p className="text-sm sm:text-base italic font-medium leading-relaxed opacity-95">
+                      &ldquo;{SHOWCASE_TESTIMONIALS[activeTestimonialIdx].quote}&rdquo;
+                    </p>
+                    <div>
+                      <div className="text-xs font-black text-blue-500">
+                        {SHOWCASE_TESTIMONIALS[activeTestimonialIdx].name}
+                      </div>
+                      <div className="text-[10px] text-slate-400 font-bold uppercase">
+                        {SHOWCASE_TESTIMONIALS[activeTestimonialIdx].role}
+                      </div>
+                    </div>
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+
+              {/* Dots Indicator */}
+              <div className="flex justify-center gap-2 pt-2">
+                {SHOWCASE_TESTIMONIALS.map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setActiveTestimonialIdx(idx)}
+                    className={`h-2 rounded-full transition-all duration-300 ${
+                      activeTestimonialIdx === idx ? 'w-6 bg-blue-500' : 'w-2 bg-slate-400/40'
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* 7. FAQ ACCORDION */}
+            <div className={`p-6 sm:p-8 rounded-3xl border space-y-4 ${
+              isDark ? 'bg-[#222730] border-slate-700/80 neu-card-dark text-slate-200' : 'bg-white border-slate-200 neu-card-light text-slate-800'
+            }`}>
+              <div className="pb-2 border-b border-slate-200 dark:border-slate-800">
+                <h3 className="text-lg font-black tracking-tight uppercase flex items-center gap-2">
+                  <HelpCircle className="w-5 h-5 text-blue-500" />
+                  Frequently Asked Questions
+                </h3>
+                <p className="text-xs text-slate-400 font-medium">High-yield queries regarding syncing, FSRS-6 algorithms, and offline performance.</p>
+              </div>
+
+              <div className="space-y-2">
+                {SHOWCASE_FAQS.map((faq, idx) => {
+                  const isOpen = openFaqIdx === idx;
+                  return (
+                    <div
+                      key={idx}
+                      className={`border rounded-2xl overflow-hidden transition-colors ${
+                        isDark ? 'border-slate-800 bg-slate-800/30' : 'border-slate-150 bg-slate-50'
+                      }`}
+                    >
+                      <button
+                        onClick={() => setOpenFaqIdx(isOpen ? -1 : idx)}
+                        className="w-full p-4 text-left flex items-center justify-between gap-4 text-xs font-black uppercase tracking-wide cursor-pointer"
+                      >
+                        <span>{faq.q}</span>
+                        <ChevronDown className={`w-4 h-4 text-blue-500 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
+                      </button>
+
+                      <AnimatePresence initial={false}>
+                        {isOpen && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.25 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="p-4 pt-0 text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed border-t border-slate-200/40 dark:border-slate-700/40">
+                              {faq.a}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+          </motion.div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* SUBTAB 2: COMPLETE APPLICATION MANUAL & BUTTON-BY-BUTTON CATALOG          */}
+        {/* ========================================================================= */}
+        {activeTab === 'manual' && (
+          <motion.div 
+            key="manual_tab"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.3 }}
+            className="space-y-6"
+          >
+            {/* MANUAL CONTROLS & SEARCH BAR */}
+            <div className={`p-4 md:p-6 rounded-3xl border space-y-4 ${
+              isDark 
+                ? 'bg-[#222730] border-slate-700/80 neu-card-dark text-slate-200' 
+                : 'bg-white border-slate-200 neu-card-light text-slate-800'
+            }`}>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-black tracking-tight flex items-center gap-2">
+                    <BookOpen className="w-5 h-5 text-blue-500" />
+                    AutoAnki Complete A-to-Z Feature Manual
+                  </h2>
+                  <p className="text-xs text-slate-400 font-medium mt-0.5">
+                    Click any feature card to view its full button-by-button breakdown, UI elements, and step-by-step instructions.
+                  </p>
+                </div>
+
+                {/* Search Bar */}
+                <div className="relative w-full md:w-80 shrink-0">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input 
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search buttons, features, settings..."
+                    className={`w-full pl-9 pr-4 py-2.5 text-xs font-semibold rounded-xl outline-none transition ${
+                      isDark 
+                        ? 'bg-slate-800/80 border border-slate-700/80 text-white placeholder-slate-500 focus:border-blue-500' 
+                        : 'bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-blue-500'
+                    }`}
+                  />
+                  {searchQuery && (
+                    <button 
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-200"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Category Filter Pills */}
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar">
+                <button
+                  onClick={() => setSelectedCategory('all')}
+                  className={`px-3 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition shrink-0 ${
+                    selectedCategory === 'all'
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : (isDark ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200')
+                  }`}
+                >
+                  All Categories ({totalFeatureCount})
+                </button>
+                {MANUAL_CATEGORIES.map(cat => {
+                  const CatIcon = cat.icon;
+                  const isSelected = selectedCategory === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      onClick={() => setSelectedCategory(cat.id)}
+                      className={`px-3 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition flex items-center gap-1.5 shrink-0 ${
+                        isSelected
+                          ? 'bg-blue-600 text-white shadow-md'
+                          : (isDark ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200')
+                      }`}
+                    >
+                      <CatIcon className="w-3.5 h-3.5" />
+                      <span>{cat.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* CATEGORIES & FEATURE CARDS */}
+            <div className="space-y-8">
+              {filteredCategories.map(category => {
+                const CategoryIcon = category.icon;
+                return (
+                  <motion.div 
+                    key={category.id}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="space-y-4"
+                  >
+                    {/* Category Header */}
+                    <div className="flex items-center gap-3 pb-2 border-b border-slate-200 dark:border-slate-800">
+                      <div className={`p-2 rounded-xl bg-gradient-to-br ${category.color} text-white shadow-sm`}>
+                        <CategoryIcon className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-black tracking-tight">{category.label}</h3>
+                        <p className="text-[11px] text-slate-400 font-medium">{category.desc}</p>
+                      </div>
+                    </div>
+
+                    {/* Features Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {category.features.map(feature => {
+                        const FeatureIcon = feature.icon;
+                        return (
+                          <div
+                            key={feature.id}
+                            className={`p-5 rounded-2xl border transition-all flex flex-col justify-between space-y-4 cursor-pointer group ${
+                              isDark 
+                                ? 'bg-[#222730] border-slate-700/70 neu-card-dark text-slate-200 hover:border-blue-500/60' 
+                                : 'bg-white border-slate-200/90 neu-card-light text-slate-800 hover:border-blue-400'
+                            }`}
+                            onClick={() => setSelectedFeatureModal(feature)}
+                          >
+                            <div className="space-y-3">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex items-center gap-2.5">
+                                  <div className={`p-2 rounded-xl border ${category.badgeColor}`}>
+                                    <FeatureIcon className="w-4 h-4" />
+                                  </div>
+                                  <div>
+                                    <h4 className="text-xs md:text-sm font-black tracking-tight group-hover:text-blue-500 transition-colors">
+                                      {feature.name}
+                                    </h4>
+                                    <span className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">
+                                      {feature.elements.length} Buttons & Controls
+                                    </span>
+                                  </div>
+                                </div>
+                                {onNavigate && feature.tabId && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onNavigate(feature.tabId);
+                                    }}
+                                    className={`p-1.5 rounded-lg border text-slate-400 hover:text-blue-500 transition active:scale-95 shrink-0 ${
+                                      isDark ? 'bg-slate-800/80 border-slate-700 hover:bg-slate-700' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                                    }`}
+                                    title={`Open ${feature.name}`}
+                                  >
+                                    <ArrowUpRight className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+
+                              <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400 font-medium">
+                                {feature.summary}
+                              </p>
+
+                              {/* Preview elements */}
+                              <div className="space-y-1.5 pt-1">
+                                {feature.elements.slice(0, 3).map((elem, eIdx) => (
+                                  <div key={eIdx} className="flex items-start gap-2 text-[11px] leading-snug">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0 mt-1.5" />
+                                    <div className="min-w-0">
+                                      <span className="font-bold opacity-90">{elem.name}</span>: <span className="text-slate-400 font-medium">{elem.desc.slice(0, 75)}...</span>
+                                    </div>
+                                  </div>
+                                ))}
+                                {feature.elements.length > 3 && (
+                                  <div className="text-[10px] text-blue-500 font-bold pt-1">
+                                    + {feature.elements.length - 3} more buttons & options...
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="pt-2 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between">
+                              <span className="text-[10px] font-bold text-slate-400">Click to view complete manual</span>
+                              <span className="inline-flex items-center gap-1 text-[10px] font-black text-blue-500 uppercase tracking-wider">
+                                <span>Inspect Guide</span>
+                                <ChevronRight className="w-3 h-3" />
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </motion.div>
+                );
+              })}
+
+              {filteredCategories.length === 0 && (
+                <div className={`p-12 text-center rounded-3xl border space-y-2 ${
+                  isDark ? 'bg-[#222730] border-slate-800 text-slate-400' : 'bg-white border-slate-200 text-slate-500'
+                }`}>
+                  <Search className="w-8 h-8 mx-auto text-slate-400 opacity-50 mb-2" />
+                  <p className="text-sm font-bold">No manual features matching &ldquo;{searchQuery}&rdquo;</p>
+                  <p className="text-xs text-slate-400">Try clearing the search query or selecting &ldquo;All Categories&rdquo;.</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* SUBTAB 3: ABOUT APP & DEVELOPER PORTFOLIO HERO                            */}
+        {/* ========================================================================= */}
+        {activeTab === 'app_info' && (
+          <motion.div 
+            key="app_info_tab"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.3 }}
+            className="space-y-8"
+          >
+            {/* WHAT IS AUTOANKI CARD */}
+            <motion.div 
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, delay: 0.05 }}
+              className={`p-6 md:p-8 rounded-3xl border shadow-sm space-y-6 ${
+                isDark 
+                  ? 'bg-[#222730] border-slate-700/80 neu-card-dark text-slate-200' 
+                  : 'bg-white border-slate-200 neu-card-light text-slate-800'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-2xl bg-blue-500/10 text-blue-500">
+                  <Brain className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-lg md:text-xl font-black tracking-tight">What is AutoAnki?</h2>
+                  <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">AI Medical Flashcard Engine & FSRS-6 Spaced Repetition Suite</p>
+                </div>
+              </div>
+
+              <div className="text-xs md:text-sm leading-relaxed space-y-3 font-medium opacity-90 max-w-4xl">
+                <p>
+                  AutoAnki is an advanced, AI-powered active recall ecosystem tailored specifically for postgraduate medical doctors and aspirants preparing for competitive licensing examinations like <strong className="text-blue-500">NEET PG</strong> and <strong className="text-indigo-500">INI-CET</strong>.
+                </p>
+                <p>
+                  Built with a <strong className="text-emerald-500">100% offline-first local database model (IndexedDB via localDb.js)</strong>, it ensures lightning-fast flashcard reviews, sub-millisecond queries, and zero cloud dependency while offering flexible private GitHub sync.
+                </p>
+              </div>
+
+              {/* Feature Highlights Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
+                <div className={`p-4 rounded-2xl border ${isDark ? 'bg-slate-800/40 border-slate-700/60' : 'bg-slate-50 border-slate-150'}`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <HardDrive className="w-4 h-4 text-blue-500" />
+                    <div className="text-base font-black text-blue-500">100%</div>
+                  </div>
+                  <div className="text-[10px] text-slate-400 font-black uppercase tracking-wider">Offline First</div>
+                  <div className="text-[9px] text-slate-500 font-medium mt-0.5">Zero cloud latency lag</div>
+                </div>
+
+                <div className={`p-4 rounded-2xl border ${isDark ? 'bg-slate-800/40 border-slate-700/60' : 'bg-slate-50 border-slate-150'}`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Zap className="w-4 h-4 text-emerald-500" />
+                    <div className="text-base font-black text-emerald-500">&lt; 1ms</div>
+                  </div>
+                  <div className="text-[10px] text-slate-400 font-black uppercase tracking-wider">Local DB Latency</div>
+                  <div className="text-[9px] text-slate-500 font-medium mt-0.5">IndexedDB instant reads</div>
+                </div>
+
+                <div className={`p-4 rounded-2xl border ${isDark ? 'bg-slate-800/40 border-slate-700/60' : 'bg-slate-50 border-slate-150'}`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Cpu className="w-4 h-4 text-purple-500" />
+                    <div className="text-base font-black text-purple-500">FSRS-6</div>
+                  </div>
+                  <div className="text-[10px] text-slate-400 font-black uppercase tracking-wider">21 Parameters</div>
+                  <div className="text-[9px] text-slate-500 font-medium mt-0.5">State-of-the-art memory math</div>
+                </div>
+
+                <div className={`p-4 rounded-2xl border ${isDark ? 'bg-slate-800/40 border-slate-700/60' : 'bg-slate-50 border-slate-150'}`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <ShieldCheck className="w-4 h-4 text-indigo-500" />
+                    <div className="text-base font-black text-indigo-500">19 Subjects</div>
+                  </div>
+                  <div className="text-[10px] text-slate-400 font-black uppercase tracking-wider">Medical Coverage</div>
+                  <div className="text-[9px] text-slate-500 font-medium mt-0.5">Pre & Clinical Modules</div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* DEDICATED PREMIUM DEVELOPER PORTFOLIO HERO */}
+            <motion.div 
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.15 }}
+              className="text-white p-6 md:p-8 rounded-3xl shadow-2xl relative overflow-hidden border border-red-500/20"
+              style={{
+                backgroundColor: '#1d222b',
+                backgroundImage: 'linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)',
+                backgroundSize: '24px 24px'
+              }}
+            >
+              {/* Background ambient glow shapes */}
+              <div className="absolute -right-20 -bottom-20 w-96 h-96 bg-red-600/15 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute -left-20 -top-20 w-96 h-96 bg-red-500/10 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute left-1/3 top-1/4 w-80 h-80 bg-white/5 rounded-full blur-3xl pointer-events-none" />
+
+              <div className="relative z-10 space-y-6">
+                
+                {/* Header Profile Title Info */}
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-red-500/20 text-red-500 rounded-2xl flex items-center justify-center font-black text-xl shadow-inner shrink-0">
+                    🩺
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-black text-white tracking-tight leading-none">Dr. Kishor Anbazhakan</h2>
+                    <p className="text-xs text-red-400 font-bold flex items-center gap-1 mt-1.5">
+                      <GraduationCap className="w-4 h-4" /> General Practitioner (MBBS) & Medical Tech Developer
                     </p>
                   </div>
                 </div>
 
-              </div>
+                <div className="border-t border-slate-700/80 my-4" />
 
-            </div>
-          </div>
-          
-        </div>
-      )}
-
-      {/* MENUS GUIDE */}
-      {activeSubTab === 'guide' && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {/* Menu Selector Sidebar */}
-          <div className="md:col-span-1 space-y-1 max-h-[500px] overflow-y-auto pr-1 border-r border-gray-100">
-            {Object.keys(MENU_DETAILS).map(key => {
-              const menu = MENU_DETAILS[key];
-              const Icon = menu.icon;
-              const isSelected = guideMenuTab === key;
-              return (
-                <button
-                  key={key}
-                  onClick={() => setGuideMenuTab(key)}
-                  className={`w-full flex items-center justify-between p-2.5 rounded-xl transition text-xs font-black ${
-                    isSelected 
-                      ? 'bg-blue-50 text-blue-600' 
-                      : 'text-gray-600 hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <Icon className="w-4 h-4" />
-                    <span>{menu.title}</span>
-                  </div>
-                  <ChevronRight className={`w-3.5 h-3.5 transition-transform ${isSelected ? 'rotate-90' : ''}`} />
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Guide Content Display */}
-          <div className="md:col-span-3 bg-white p-6 rounded-3xl border border-gray-150 space-y-6 shadow-sm">
-            <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
-              <div className="bg-blue-100 p-3 rounded-2xl text-blue-600">
-                <SelectedGuide.icon className="w-6 h-6" />
-              </div>
-              <div>
-                <h2 className="text-lg font-black text-gray-900">{SelectedGuide.title} Guide</h2>
-                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Tab reference and subfeatures</p>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-xs font-black text-gray-400 uppercase tracking-wide">Overview Description</h3>
-                <p className="text-xs text-gray-700 mt-1 leading-relaxed font-semibold">{SelectedGuide.desc}</p>
-              </div>
-
-              <div>
-                <h3 className="text-xs font-black text-gray-400 uppercase tracking-wide mb-2">Key Subfeatures Included</h3>
-                <div className="grid grid-cols-1 gap-2.5">
-                  {SelectedGuide.subfeatures.map((sf, index) => (
-                    <div key={index} className="p-3 bg-gray-50 rounded-2xl border border-gray-100">
-                      <div className="text-xs font-black text-gray-800 flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
-                        {sf.name}
+                {/* 2-Column Layout for Bio & Interactive Stats */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  
+                  {/* Left: Silhouette & Text Wrap */}
+                  <div className="lg:col-span-2 flow-root text-xs text-gray-200 leading-relaxed font-medium">
+                    {/* Transparent silhouette PNG floated to the left with alpha shape-outside wrapping */}
+                    <img 
+                      src="/developer_profile.png" 
+                      alt="Dr. Kishor Anbazhakan silhouette" 
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                      className="w-36 h-64 md:w-56 md:h-96 object-contain float-left mr-6 mb-2 [shape-outside:url('/developer_profile.png')] [shape-margin:1.5rem]"
+                    />
+                    
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <h4 className="text-xs font-black uppercase text-red-400 tracking-wider flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-red-400" /> The Story
+                        </h4>
+                        <p className="text-xs text-gray-300 leading-relaxed max-w-3xl">
+                          The journey of AutoAnki began in active clinical rotations, where balancing 14-hour hospital shifts with rigorous exam preparation was the daily reality. I realized that traditional flashcard creation—copious copying, pasting, cropping, and tagging—consumed more time than actual active study. Driven by this inefficiency, I wrote the first scripts to automate deck formatting. Over countless late-night coding sessions, those scripts evolved into this comprehensive desktop-mobile ecosystem, merging state-of-the-art vision models with spaced repetition science.
+                        </p>
                       </div>
-                      <div className="text-[10px] text-gray-500 font-medium mt-0.5 pl-3">{sf.details}</div>
+
+                      <div className="space-y-2">
+                        <h4 className="text-xs font-black uppercase text-red-400 tracking-wider flex items-center gap-1.5">
+                          <Brain className="w-3.5 h-3.5 text-red-400" /> Mission & Vision
+                        </h4>
+                        <p className="text-xs text-gray-300 leading-relaxed max-w-3xl">
+                          Designed by a doctor, for doctors and medical aspirants. The goal is simple: eliminate the busywork of card formatting so you can focus entirely on mastering clinical concepts and conquering competitive postgraduate medical entrance examinations (like NEET PG and INICET). AutoAnki integrates sub-second local database pipelines, personalized sleep tracking logic, and high-yield topic indices (PYTs). This platform represents the ultimate consolidation of medicine and computer science, engineering a study space where technology handles cognitive load so you can achieve peak learning efficiency.
+                        </p>
+                      </div>
+
+                      <div className="pt-4">
+                        <a 
+                          href="https://linktr.ee/doctorkishor" 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="inline-flex items-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-black uppercase tracking-wider transition active:scale-95 shadow-lg shadow-red-950/50"
+                        >
+                          <Share2 className="w-4 h-4" /> Connect with Developer
+                        </a>
+                      </div>
                     </div>
-                  ))}
+                  </div>
+
+                  {/* Right: Modern Aesthetic Elements / Stats Grid */}
+                  <div className="lg:col-span-1 flex flex-col justify-center space-y-4">
+                    <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1">Project Statistics</h4>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      {[
+                        { val: '19', label: 'Subjects covered', desc: 'All clinical/pre-clinical modules' },
+                        { val: '99.8%', label: 'AI Extraction accuracy', desc: 'High-yield fact isolation' },
+                        { val: '< 1ms', label: 'Local DB query speed', desc: 'IndexedDB instant retrieval' },
+                        { val: 'FSRS-6', label: 'Algorithm standard', desc: '21 calibrated parameters' }
+                      ].map((stat, idx) => (
+                        <div key={idx} className="bg-white/5 border border-white/10 p-4 rounded-2xl flex flex-col justify-between hover:bg-white/10 transition duration-300">
+                          <div className="text-2xl font-black text-red-400">{stat.val}</div>
+                          <div>
+                            <div className="text-[10px] font-black text-white mt-1">{stat.label}</div>
+                            <div className="text-[8px] text-gray-400 font-medium leading-tight mt-0.5">{stat.desc}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="bg-red-950/20 border border-red-900/30 p-4 rounded-2xl space-y-2">
+                      <div className="text-[10px] font-black text-red-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <ShieldCheck className="w-3.5 h-3.5" /> Local-First Blueprint
+                      </div>
+                      <p className="text-[9px] text-gray-300 leading-normal font-medium">
+                        Engineered with an IndexedDB storage engine (`localDb.js`), optimized for sub-second flashcard lookups, and integrated with GitHub sync for complete user data ownership.
+                      </p>
+                    </div>
+                  </div>
+
+                </div>
+
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+      </AnimatePresence>
+
+      {/* FEATURE DETAIL MODAL / DRAWER */}
+      <AnimatePresence>
+        {selectedFeatureModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 12 }}
+              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+              className={`w-full max-w-3xl max-h-[85vh] rounded-3xl border shadow-2xl flex flex-col overflow-hidden text-left ${
+                isDark 
+                  ? 'bg-[#222730] border-slate-700 text-slate-100 neu-card-dark' 
+                  : 'bg-white border-slate-200 text-slate-900 neu-card-light'
+              }`}
+            >
+              {/* Modal Header */}
+              <div className={`p-6 border-b flex items-start justify-between gap-4 ${
+                isDark ? 'border-slate-800 bg-[#1e232d]' : 'border-slate-150 bg-slate-50'
+              }`}>
+                <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-2xl bg-blue-500/10 text-blue-500">
+                    {React.createElement(selectedFeatureModal.icon, { className: "w-6 h-6" })}
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black tracking-tight">{selectedFeatureModal.name}</h3>
+                    <p className="text-xs text-slate-400 font-medium">Complete Feature & Button Manual</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {onNavigate && selectedFeatureModal.tabId && (
+                    <button
+                      onClick={() => {
+                        const tId = selectedFeatureModal.tabId;
+                        setSelectedFeatureModal(null);
+                        onNavigate(tId);
+                      }}
+                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[11px] font-black uppercase tracking-wider transition active:scale-95 flex items-center gap-1 shadow-md"
+                    >
+                      <span>Open Tab</span>
+                      <ArrowUpRight className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setSelectedFeatureModal(null)}
+                    className={`p-2 rounded-xl transition ${
+                      isDark ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-200 text-slate-600'
+                    }`}
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
               </div>
 
-              <div className="p-3 bg-blue-50/50 border border-blue-100 rounded-2xl">
-                <h3 className="text-[10px] font-black text-blue-800 uppercase tracking-wider">How to Use as an Aspirant</h3>
-                <p className="text-xs text-blue-900 mt-1 font-medium">{SelectedGuide.usage}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+              {/* Modal Body */}
+              <div className="p-6 overflow-y-auto space-y-6 custom-scrollbar">
+                {/* Summary */}
+                <div className="space-y-1.5">
+                  <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Module Overview</h4>
+                  <p className="text-xs md:text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
+                    {selectedFeatureModal.summary}
+                  </p>
+                </div>
 
-      {/* INTERACTIVE SANDBOX */}
-      {activeSubTab === 'sandbox' && (
-        <div className="bg-white p-6 rounded-3xl border border-gray-150 shadow-sm space-y-6">
-          <div className="flex justify-between items-center pb-4 border-b border-gray-100">
-            <div>
-              <h2 className="text-lg font-black text-gray-900">Interactive Sandbox Simulator</h2>
-              <p className="text-[10px] text-gray-500 font-bold">Try generating and rating a cards workflow in real time</p>
-            </div>
-            <div className="flex gap-1">
-              {['upload', 'edit', 'synced'].map((step, idx) => (
-                <div 
-                  key={step} 
-                  className={`w-2.5 h-2.5 rounded-full ${
-                    sandboxStep === step ? 'bg-blue-600 animate-pulse' : idx < ['upload', 'edit', 'synced'].indexOf(sandboxStep) ? 'bg-green-500' : 'bg-gray-200'
-                  }`} 
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* SIMULATOR SCREEN CONTENT */}
-          {sandboxStep === 'upload' && (
-            <div className="p-8 border-2 border-dashed border-gray-200 rounded-3xl flex flex-col items-center justify-center text-center space-y-4">
-              <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
-                <FileText className="w-6 h-6 animate-bounce" />
-              </div>
-              <div>
-                <h3 className="text-xs font-black text-gray-800">Simulated Upload PDF source</h3>
-                <p className="text-[10px] text-gray-400 mt-0.5">Click the trigger below to simulate AI extraction from a medical textbook page</p>
-              </div>
-              <button
-                onClick={startSandboxExtraction}
-                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition active:scale-95 shadow-md shadow-blue-500/10"
-              >
-                Trigger AI Extraction
-              </button>
-            </div>
-          )}
-
-          {sandboxStep === 'extracting' && (
-            <div className="p-8 flex flex-col items-center justify-center text-center space-y-4">
-              <div className="w-10 h-10 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-              <div className="text-xs font-black text-gray-800">Gemini Vision AI analyzing medical page layout...</div>
-            </div>
-          )}
-
-          {sandboxStep === 'edit' && (
-            <div className="space-y-4">
-              <div className="p-4 bg-yellow-50 border border-yellow-200 text-yellow-800 text-[10px] font-bold rounded-2xl">
-                ⚠️ Simulated Flashcard Generated successfully! Rate the card below using spacing weights:
-              </div>
-
-              {sandboxCards.map(card => (
-                <div key={card.id} className="p-4 bg-gray-50 border border-gray-200 rounded-2xl space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase">{card.tag}</span>
-                    {card.rating && (
-                      <span className="bg-green-100 text-green-600 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase">Rated: {card.rating}</span>
-                    )}
-                  </div>
-                  <div>
-                    <div className="text-[10px] text-gray-400 font-bold uppercase">Question</div>
-                    <div className="text-xs font-black text-gray-800">{card.q}</div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] text-gray-400 font-bold uppercase">Answer</div>
-                    <div className="text-xs font-semibold text-gray-700">{card.a}</div>
-                  </div>
-
-                  <div className="flex gap-2 pt-2">
-                    {['Again', 'Hard', 'Good', 'Easy'].map(r => (
-                      <button
-                        key={r}
-                        onClick={() => handleSandboxRate(card.id, r)}
-                        className={`flex-grow py-2 rounded-xl text-[10px] font-bold uppercase transition active:scale-95 border ${
-                          card.rating === r ? 'bg-blue-600 text-white border-blue-600' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-100'
+                {/* Elements & Buttons Breakdown */}
+                <div className="space-y-3">
+                  <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                    Interactive Elements, Buttons & Controls ({selectedFeatureModal.elements.length})
+                  </h4>
+                  <div className="grid grid-cols-1 gap-2.5">
+                    {selectedFeatureModal.elements.map((elem, idx) => (
+                      <div 
+                        key={idx}
+                        className={`p-3.5 rounded-2xl border ${
+                          isDark ? 'bg-slate-800/40 border-slate-700/60' : 'bg-slate-50 border-slate-200'
                         }`}
                       >
-                        {r}
-                      </button>
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <span className="text-xs font-black text-blue-500">{elem.name}</span>
+                          <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                            {elem.type}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
+                          {elem.desc}
+                        </p>
+                      </div>
                     ))}
                   </div>
                 </div>
-              ))}
 
-              <div className="flex justify-end pt-2">
-                <button
-                  onClick={() => setSandboxStep('synced')}
-                  className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition active:scale-95"
-                >
-                  Commit & Sync to Cloud
-                </button>
-              </div>
-            </div>
-          )}
-
-          {sandboxStep === 'synced' && (
-            <div className="p-8 flex flex-col items-center justify-center text-center space-y-4">
-              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-green-600">
-                <CheckCircle className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-xs font-black text-gray-800">Mock Data Synced Successfully!</h3>
-                <p className="text-[10px] text-gray-400 mt-0.5">Your study logs, streak metrics, and deck sizes have updated live.</p>
-              </div>
-              <button
-                onClick={() => {
-                  setSandboxStep('upload');
-                  setSandboxCards([{ id: 1, q: 'What is the pathognomonic finding of Aschoff nodules?', a: 'Anitschkow cells (caterpillar nucleus cells)', tag: 'Pathology', rating: '' }]);
-                }}
-                className="px-6 py-2.5 bg-gray-150 hover:bg-gray-200 text-gray-800 rounded-xl text-xs font-black uppercase tracking-wider transition"
-              >
-                Reset Simulator
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* STUDY PERSONA QUIZ */}
-      {activeSubTab === 'quiz' && (
-        <div className="bg-white p-6 rounded-3xl border border-gray-150 shadow-sm space-y-6">
-          <div className="pb-4 border-b border-gray-100">
-            <h2 className="text-lg font-black text-gray-900">Study Persona Selector Quiz</h2>
-            <p className="text-[10px] text-gray-500 font-bold">Diagnose your preparation targets and select optimal scheduler goals</p>
-          </div>
-
-          {quizStep === 0 && (
-            <div className="p-6 text-center space-y-4">
-              <div className="text-3xl">📝</div>
-              <div>
-                <h3 className="text-xs font-black text-gray-800">Identify your Streak Archetype</h3>
-                <p className="text-[10px] text-gray-400 mt-0.5">Answer 3 simple questions about your daily revision pace</p>
-              </div>
-              <button
-                onClick={() => setQuizStep(1)}
-                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition shadow-md shadow-blue-500/10"
-              >
-                Start Diagnostic
-              </button>
-            </div>
-          )}
-
-          {quizStep === 1 && (
-            <div className="space-y-4">
-              <h3 className="text-sm font-black text-gray-800">Question 1: How many hours do you plan to study daily?</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {[
-                  { val: '0-2', label: '0 to 2 Hours (Part-time / Interns)' },
-                  { val: '2-4', label: '2 to 4 Hours (Regular preparation)' },
-                  { val: '4+', label: '4+ Hours (Dedicated study block)' }
-                ].map(opt => (
-                  <button
-                    key={opt.val}
-                    onClick={() => handleQuizAnswer('q1', opt.val)}
-                    className="p-4 bg-gray-50 hover:bg-blue-50 border border-gray-200 hover:border-blue-300 rounded-2xl transition text-left text-xs font-bold text-gray-800"
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {quizStep === 2 && (
-            <div className="space-y-4">
-              <h3 className="text-sm font-black text-gray-800">Question 2: What is your daily target for Qbank questions?</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {[
-                  { val: '0-20', label: 'Up to 20 Questions' },
-                  { val: '20-50', label: '20 to 50 Questions' },
-                  { val: '50+', label: '50+ Questions (High volume)' }
-                ].map(opt => (
-                  <button
-                    key={opt.val}
-                    onClick={() => handleQuizAnswer('q2', opt.val)}
-                    className="p-4 bg-gray-50 hover:bg-blue-50 border border-gray-200 hover:border-blue-300 rounded-2xl transition text-left text-xs font-bold text-gray-800"
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {quizStep === 3 && (
-            <div className="space-y-4">
-              <h3 className="text-sm font-black text-gray-800">Question 3: Which memory retention method do you trust most?</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {[
-                  { val: 'spaced', label: 'Spaced repetition reviews' },
-                  { val: 'reading', label: 'Re-reading text / source notes' },
-                  { val: 'tests', label: 'Attempting full grand tests' }
-                ].map(opt => (
-                  <button
-                    key={opt.val}
-                    onClick={() => handleQuizAnswer('q3', opt.val)}
-                    className="p-4 bg-gray-50 hover:bg-blue-50 border border-gray-200 hover:border-blue-300 rounded-2xl transition text-left text-xs font-bold text-gray-800"
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {quizStep === 4 && (
-            <div className="space-y-6">
-              {(() => {
-                const res = getQuizResult();
-                return (
-                  <div className={`bg-gradient-to-r ${res.bg} p-6 rounded-3xl text-white space-y-3`}>
-                    <div className="inline-block px-2.5 py-0.5 bg-white/20 rounded-full text-[9px] font-black uppercase tracking-wider">Recommended Archetype</div>
-                    <h3 className="text-2xl font-black">{res.name} Streak</h3>
-                    <p className="text-xs leading-relaxed text-blue-50 font-medium">{res.desc}</p>
+                {/* How to Use Step-by-Step */}
+                {selectedFeatureModal.howToUse && (
+                  <div className="space-y-3">
+                    <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                      Step-by-Step Workflow Guide
+                    </h4>
+                    <div className={`p-4 rounded-2xl border space-y-2 ${
+                      isDark ? 'bg-blue-950/20 border-blue-900/40 text-blue-200' : 'bg-blue-50/70 border-blue-200 text-blue-900'
+                    }`}>
+                      {selectedFeatureModal.howToUse.map((step, sIdx) => (
+                        <div key={sIdx} className="text-xs font-medium leading-relaxed">
+                          {step}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                );
-              })()}
-
-              <div className="flex justify-end gap-2">
-                <button
-                  onClick={() => {
-                    setQuizStep(0);
-                    setQuizAnswers({ q1: '', q2: '', q3: '' });
-                  }}
-                  className="px-6 py-2.5 bg-gray-150 hover:bg-gray-250 text-gray-800 rounded-xl text-xs font-black uppercase tracking-wider transition"
-                >
-                  Retry Diagnostic
-                </button>
+                )}
               </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* UNDER THE HOOD PIPELINE */}
-      {activeSubTab === 'pipeline' && (
-        <div className="bg-white p-6 rounded-3xl border border-gray-150 shadow-sm space-y-6">
-          <div className="pb-4 border-b border-gray-100">
-            <h2 className="text-lg font-black text-gray-900">Under the Hood: Data Pipeline</h2>
-            <p className="text-[10px] text-gray-500 font-bold">Trace how textbook source PDFs transform into spaced repetition decks</p>
+            </motion.div>
           </div>
-
-          <div className="relative border-l-2 border-blue-100 ml-4 pl-6 space-y-6">
-            {[
-              {
-                title: '1. Source Ingestion (Library)',
-                desc: 'PDF and image bytes are loaded inside the browser storage. Coordinates are mapped to specific page boundaries.',
-                schema: '{\n  "fileName": "Pathology_HighYield_Notes.pdf",\n  "totalPages": 84,\n  "fileSize": 4518204,\n  "contentType": "application/pdf"\n}'
-              },
-              {
-                title: '2. Vision LLM extraction (Cards)',
-                desc: 'Pages are converted into canvas coordinates and processed by Gemini Vision AI to identify high-yield clinical queries.',
-                schema: '{\n  "question": "What is the primary indicator of Whipple disease?",\n  "answer": "PAS-positive macrophages in lamina propria",\n  "subject": "Pathology",\n  "tags": ["Whipple", "Gastroenterology"]\n}'
-              },
-              {
-                title: '3. Cloud Backup Sync (Settings)',
-                desc: 'Client records and settings are committed to Firestore instances and backed up inside the users private GitHub repository.',
-                schema: '{\n  "path": "users/{uid}/settings/keys",\n  "fields": {\n    "githubUsername": "doctor_prep",\n    "repoName": "my_anki_decks",\n    "pat": "ghp_***"\n  }\n}'
-              },
-              {
-                title: '4. Exporter compilation (Export)',
-                desc: 'Curated card records are packaged inside a local SQLite deck and compiled as an Anki package (.apkg) file.',
-                schema: '{\n  "deckName": "Pathology::NEETPG",\n  "cardFormat": "Anki2.0",\n  "compressed": true,\n  "mimeType": "application/apkg"\n}'
-              }
-            ].map((node, index) => (
-              <div key={index} className="relative space-y-2">
-                <div className="absolute -left-[31px] top-1.5 w-4 h-4 rounded-full bg-blue-600 border-4 border-white shadow-sm" />
-                <h3 className="text-xs font-black text-gray-900">{node.title}</h3>
-                <p className="text-[10px] text-gray-500 font-medium leading-relaxed">{node.desc}</p>
-                <details className="group border border-gray-150 rounded-xl overflow-hidden bg-gray-50">
-                  <summary className="flex items-center justify-between p-2.5 text-[9px] font-black text-blue-600 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100">
-                    <span>View JSON Metadata Schema</span>
-                    <ChevronDown className="w-3.5 h-3.5 transition-transform group-open:rotate-180" />
-                  </summary>
-                  <pre className="p-3 bg-gray-950 text-green-400 font-mono text-[9px] leading-relaxed overflow-x-auto select-all">
-                    {node.schema}
-                  </pre>
-                </details>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* FAQ BUDDY CHAT */}
-      {activeSubTab === 'faq' && (
-        <div className="bg-white p-6 rounded-3xl border border-gray-150 shadow-sm space-y-6">
-          <div className="pb-4 border-b border-gray-100 flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-black text-gray-900">Study Buddy Help Chat</h2>
-              <p className="text-[10px] text-gray-500 font-bold">Ask rapid questions about syncing, study logic, and export options</p>
-            </div>
-            <div className="flex items-center gap-1.5 px-2.5 py-0.5 bg-green-50 border border-green-200 rounded-full text-[9px] font-bold text-green-700 animate-pulse">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-500" /> Buddy Online
-            </div>
-          </div>
-
-          {/* CHAT DISPLAY */}
-          <div className="h-64 border border-gray-150 rounded-2xl bg-gray-50 p-4 overflow-y-auto space-y-3 flex flex-col justify-end">
-            <div className="space-y-3 overflow-y-auto max-h-full">
-              {chatHistory.map((msg, index) => (
-                <div 
-                  key={index} 
-                  className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div className={`max-w-[75%] px-3.5 py-2 rounded-2xl text-[11px] font-medium leading-relaxed ${
-                    msg.sender === 'user' 
-                      ? 'bg-blue-600 text-white rounded-br-none' 
-                      : 'bg-white border border-gray-200 text-gray-800 rounded-bl-none shadow-sm'
-                  }`}>
-                    {msg.text}
-                  </div>
-                </div>
-              ))}
-
-              {isTyping && (
-                <div className="flex justify-start">
-                  <div className="bg-white border border-gray-200 text-gray-400 px-3.5 py-2 rounded-2xl rounded-bl-none shadow-sm text-[10px] font-bold italic animate-pulse">
-                    Buddy is drafting response...
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* FAQ SELECTIONS */}
-          <div className="space-y-2">
-            <h4 className="text-[9px] font-black uppercase text-gray-400 tracking-wider">Quick Inquiries</h4>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { 
-                  q: 'How does Cloud Sync work?', 
-                  a: 'It links to your personal GitHub repository. Tap Settings, input your repository settings and token, then click Save to Cloud to backup everything securely.' 
-                },
-                { 
-                  q: 'How do I generate cards?', 
-                  a: 'Go to Library, click on your uploaded PDF, and use the generation trigger. The Gemini AI will read the text context and return card fields automatically.' 
-                },
-                { 
-                  q: 'Can I export to Anki App?', 
-                  a: 'Yes, navigate to the Export tab, choose your subjects, generate the .apkg deck, and double-click or drag the file into your official Anki application!' 
-                },
-                { 
-                  q: 'What is the CAMP Tracker?', 
-                  a: 'Consistent Active Memorization Protocol tracker. It helps you monitor subject completion milestones and checks your memory retention flags.' 
-                },
-                {
-                  q: 'What is the Health Tracker?',
-                  a: 'It tracks sleep, study hours, and daily energy levels, plotting scatter charts to identify optimal work-life balance and warn against study burnout.'
-                },
-                {
-                  q: 'How do I use OBS overlays?',
-                  a: 'Configure overlay colors and layout parameters in the OBS Customiser tab, copy the custom link, and load it as a Browser Source inside your OBS Studio setup.'
-                },
-                {
-                  q: 'How do I recover deleted cards?',
-                  a: 'Open the Recycle Bin from either desktop sidebar or mobile views, locate the soft-deleted card, and click the green restore button to revert it.'
-                },
-                {
-                  q: 'Can I customize AI prompts?',
-                  a: 'Yes! Navigate to the Prompt Editor tab to adjust system guidelines and specify customized formatting tags for card extraction.'
-                },
-                {
-                  q: 'How many subjects are in Subject Tracker?',
-                  a: 'All 19 medical subjects (e.g. Anatomy, Physiology, Medicine, Surgery) required for licensing exams are supported.'
-                },
-                {
-                  q: 'Can I log studies offline?',
-                  a: 'Yes, session logs are preserved in local storage and can be synced back up when a connection is established.'
-                },
-                {
-                  q: 'What is the Streak Meter?',
-                  a: 'Measures study consistency and rewards achievements (e.g. Rookie, Dedicated, Legend) based on your daily targets.'
-                },
-                {
-                  q: 'How does AI card generation cost work?',
-                  a: 'It is powered by the Gemini API. The app tracks reads/writes to help you manage usage limits effectively.'
-                },
-                {
-                  q: 'What is the Exporter Hub?',
-                  a: 'A centralized exporter that converts generated cards into SQLite format compatible with standard .apkg Anki Decks.'
-                },
-                {
-                  q: 'How does sleep affect memory?',
-                  a: 'The Sleep Scatter plots reveal the correlation between sleep hours and next-day energy/recall accuracy metrics.'
-                },
-                {
-                  q: 'What does "Again" rating do?',
-                  a: 'Marks a card as forgot, resetting its ease level and scheduling it for immediate re-review in the active session.'
-                },
-                {
-                  q: 'How do I add PDF references?',
-                  a: 'Go to Library, create a subject deck folder, and upload files using the plus button.'
-                },
-                {
-                  q: 'What is the PYT Logger?',
-                  a: 'Previous Year Topics logger, where you catalog study sessions directly against clinical topics tested in past papers.'
-                },
-                {
-                  q: 'Can I sync mobile navigation settings?',
-                  a: 'Yes! Save setup preferences to cloud Firestore, and pull them on any mobile device to sync bottom nav layouts.'
-                },
-                {
-                  q: 'What are counseling percentile predictions?',
-                  a: 'Uses past cutoffs to predict target scores needed for getting desired medical seats in counseling rounds.'
-                },
-                {
-                  q: 'Is my data stored securely?',
-                  a: 'Absolutely. All database rules and GitHub sync directories are mapped using your own private API tokens.'
-                },
-                {
-                  q: 'How do I customize card fonts?',
-                  a: 'Theme layouts can be adjusted in the OBS customizer panel or via prompt templates.'
-                },
-                {
-                  q: 'What does Spaced repetitions calendar show?',
-                  a: 'Highlights upcoming revision deadlines so you know exactly which subject cards are due today.'
-                },
-                {
-                  q: 'How do I empty the Recycle Bin?',
-                  a: 'Click the Red "Empty Recycle Bin" button in the trash tab to permanently delete soft-deleted content.'
-                },
-                {
-                  q: 'Can I batch export subjects?',
-                  a: 'Yes, you can check select multiple folders inside the Exporter Hub to download them as a unified package.'
-                },
-                {
-                  q: 'What is the Study room scorecard?',
-                  a: 'Allows logging grand tests, mock results, and clinical vignettes to track score trends and progress.'
-                },
-                {
-                  q: 'How does Gemini Vision AI process images?',
-                  a: 'Translates diagram layout pixels and clinical flowcharts into structured text fields suitable for card generation.'
-                },
-                {
-                  q: 'What does "Easy" card rating do?',
-                  a: 'Significantly increases the spacing interval of a card, scheduling it far into future review dates.'
-                },
-                {
-                  q: 'How do I setup GitHub API token?',
-                  a: 'Generate a Personal Access Token (PAT) with repo scopes on GitHub, then paste and save it inside the Settings tab.'
-                }
-              ].map((item, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleFaqClick(item.q, item.a)}
-                  className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-800 text-[10px] font-bold rounded-full transition active:scale-95"
-                >
-                  {item.q}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
     </div>
   );

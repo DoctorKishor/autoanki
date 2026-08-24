@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { getLocalPytTopic, saveLocalPytTopic } from '../services/localDb';
 
 /**
  * Normalizes the subject name to be case-insensitive for document ID.
@@ -11,39 +11,28 @@ export const normalizeSubjectName = (name) => {
 };
 
 /**
- * Fetches the PYT topics for a specific subject name.
- * @param {import('firebase/firestore').Firestore} db
- * @param {string} appId
- * @param {string} userId
- * @param {string} subjectName
- * @returns {Promise<{subject: string, topics: string}|null>}
+ * Fetches the PYT topics for a specific subject name from local IndexedDB.
+ * Supports both getPytTopics(subjectName) and legacy getPytTopics(db, appId, userId, subjectName).
  */
-export const getPytTopics = async (db, appId, userId, subjectName) => {
+export const getPytTopics = async (subjectNameOrDb, ...rest) => {
+  const subjectName = rest.length >= 3 ? rest[2] : subjectNameOrDb;
   const docId = normalizeSubjectName(subjectName);
   if (!docId) return null;
-  const docRef = doc(db, 'artifacts', appId, 'users', userId, 'pyt_topics', docId);
-  const docSnap = await getDoc(docRef);
-  if (docSnap.exists()) {
-    return docSnap.data();
-  }
-  return null;
+  return getLocalPytTopic(docId);
 };
 
 /**
- * Sets/updates the PYT topics for a specific subject name.
- * @param {import('firebase/firestore').Firestore} db
- * @param {string} appId
- * @param {string} userId
- * @param {string} subjectName
- * @param {string} topicsText
- * @returns {Promise<void>}
+ * Sets/updates the PYT topics for a specific subject name in local IndexedDB.
+ * Supports both upsertPytTopics(subjectName, topicsText) and legacy upsertPytTopics(db, appId, userId, subjectName, topicsText).
  */
-export const upsertPytTopics = async (db, appId, userId, subjectName, topicsText) => {
+export const upsertPytTopics = async (subjectNameOrDb, topicsTextOrAppId, ...rest) => {
+  let subjectName = subjectNameOrDb;
+  let topicsText = topicsTextOrAppId;
+  if (rest.length >= 2) {
+    subjectName = rest[1];
+    topicsText = rest[2];
+  }
   const docId = normalizeSubjectName(subjectName);
   if (!docId) throw new Error("Invalid subject name");
-  const docRef = doc(db, 'artifacts', appId, 'users', userId, 'pyt_topics', docId);
-  await setDoc(docRef, {
-    subject: subjectName.trim(),
-    topics: topicsText || ''
-  }, { merge: true });
+  await saveLocalPytTopic(subjectName, topicsText);
 };

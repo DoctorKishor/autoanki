@@ -80,11 +80,14 @@ export async function cropAndMaskDiagram(sourceImageUrl, imgBox, occlusions = []
             }
 
             if (typeof oYmin === 'number' && typeof oXmin === 'number' && typeof oYmax === 'number' && typeof oXmax === 'number') {
+              const spanX = Math.max(1, xmax - xmin);
+              const spanY = Math.max(1, ymax - ymin);
+
               // Convert occlusion coordinates relative to cropped diagram area
-              const occX = ((oXmin - xmin) / (xmax - xmin)) * cropW;
-              const occY = ((oYmin - ymin) / (ymax - ymin)) * cropH;
-              const occW = ((oXmax - oXmin) / (xmax - xmin)) * cropW;
-              const occH = ((oYmax - oYmin) / (ymax - ymin)) * cropH;
+              const occX = ((oXmin - xmin) / spanX) * cropW;
+              const occY = ((oYmin - ymin) / spanY) * cropH;
+              const occW = ((oXmax - oXmin) / spanX) * cropW;
+              const occH = ((oYmax - oYmin) / spanY) * cropH;
 
               if (occW > 0 && occH > 0) {
                 // Fill mask rectangle
