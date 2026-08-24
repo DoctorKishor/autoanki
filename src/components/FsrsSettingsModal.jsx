@@ -1,47 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DEFAULT_FSRS6_WEIGHTS } from '../services/fsrsEngine';
+import { DEFAULT_FSRS_CONFIG } from '../services/localDb';
 
-export const DEFAULT_FSRS_CONFIG = {
-  enabled: true,
-  retentionMode: 'global',
-  globalDesiredRetention: 0.90,
-  weights: [...DEFAULT_FSRS6_WEIGHTS],
-  dailyLimits: {
-    newPagesPerDay: 15,
-    maxReviewPagesPerDay: 30,
-    newIgnoreReviewLimit: false,
-    limitsStartFromTop: false,
-    subjectOverrides: {},
-    todayOverride: { enabled: false, date: '', newPagesPerDay: 15, maxReviewPagesPerDay: 30 }
-  },
-  newTopics: {
-    learningSteps: '1d',
-    insertionOrder: 'sequential'
-  },
-  lapses: {
-    relearningSteps: '1d',
-    leechThreshold: 8,
-    leechAction: 'tag'
-  },
-  displayOrder: {
-    gatherOrder: 'curriculum',
-    newReviewOrder: 'reviewsFirst',
-    reviewSortOrder: 'urgency'
-  },
-  easyDays: {
-    mon: 'normal',
-    tue: 'normal',
-    wed: 'normal',
-    thu: 'normal',
-    fri: 'normal',
-    sat: 'normal',
-    sun: 'normal'
-  },
-  advancedRules: {
-    maxInterval: 365
-  }
-};
+export { DEFAULT_FSRS_CONFIG };
 
 // Category Definitions
 const CATEGORIES = [
@@ -176,6 +138,7 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
   const [selectedSubject, setSelectedSubject] = useState('');
   const [activeManualSection, setActiveManualSection] = useState(null);
   const [tempConfig, setTempConfig] = useState(fsrsConfig || {});
+  const [weightsText, setWeightsText] = useState((fsrsConfig?.weights || DEFAULT_FSRS6_WEIGHTS).join(', '));
 
   const todayStr = React.useMemo(() => {
     const d = new Date();
@@ -189,6 +152,7 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
   React.useEffect(() => {
     if (fsrsConfig) {
       setTempConfig(JSON.parse(JSON.stringify(fsrsConfig)));
+      setWeightsText((fsrsConfig.weights || DEFAULT_FSRS6_WEIGHTS).join(', '));
     }
   }, [fsrsConfig, isOpen]);
 
@@ -977,19 +941,32 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
                     <div className="flex items-center justify-between">
                       <label className={`text-xs font-black ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>FSRS-6 Parameters (w0..w20)</label>
                       <button
-                        onClick={() => setTempConfig({ ...tempConfig, weights: [...DEFAULT_FSRS6_WEIGHTS] })}
-                        className={`text-[11px] font-black hover:underline ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}
+                        onClick={() => {
+                          const defStr = DEFAULT_FSRS6_WEIGHTS.join(', ');
+                          setWeightsText(defStr);
+                          setTempConfig({ ...tempConfig, weights: [...DEFAULT_FSRS6_WEIGHTS] });
+                        }}
+                        className={`text-[11px] font-black hover:underline cursor-pointer ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}
                       >
                         Reset to Defaults
                       </button>
                     </div>
                     <textarea
                       rows={3}
-                      value={(tempConfig.weights || DEFAULT_FSRS6_WEIGHTS).join(', ')}
+                      value={weightsText}
                       onChange={e => {
-                        const parsed = e.target.value.split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
-                        if (parsed.length >= 21) {
+                        const val = e.target.value;
+                        setWeightsText(val);
+                        const parsed = val.split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
+                        if (parsed.length === 21) {
                           setTempConfig({ ...tempConfig, weights: parsed });
+                        }
+                      }}
+                      onBlur={() => {
+                        const parsed = weightsText.split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
+                        if (parsed.length === 21) {
+                          setTempConfig({ ...tempConfig, weights: parsed });
+                          setWeightsText(parsed.join(', '));
                         }
                       }}
                       className={`w-full p-2.5 rounded-xl text-xs font-mono focus:outline-none focus:border-indigo-500 border ${

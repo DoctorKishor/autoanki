@@ -454,7 +454,7 @@ export default function StudyVelocityTab({
 
                   <div className="text-center">
                     <div className={`text-[11px] font-black ${isToday ? 'text-blue-400' : (isDark ? 'text-slate-300' : 'text-slate-700')}`}>
-                      {day.dayLabel.split(',')[0].slice(0, 3)}
+                      {idx === 0 ? 'Today' : idx === 1 ? 'Tmrw' : day.dayLabel.split(',')[0].slice(0, 3)}
                     </div>
                     <div className={`text-[9px] font-semibold opacity-70 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                       {day.reviewCount + day.newCount} tops

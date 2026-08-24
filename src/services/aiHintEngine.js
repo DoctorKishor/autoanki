@@ -41,6 +41,9 @@ async function callGeminiMultimodalFallback({ prompt, images = [], geminiApiKey,
         }
       }
 
+      const isHighTokenModel = modelName.includes('2.5') || modelName.includes('3.5');
+      const maxTokens = isHighTokenModel ? 65536 : 8192;
+
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiApiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -48,7 +51,7 @@ async function callGeminiMultimodalFallback({ prompt, images = [], geminiApiKey,
           contents: [{ parts }],
           generationConfig: {
             temperature: 0.3,
-            maxOutputTokens: 65536,
+            maxOutputTokens: maxTokens,
             responseMimeType: 'application/json'
           }
         })

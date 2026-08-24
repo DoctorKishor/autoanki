@@ -7,7 +7,7 @@ import StudyVelocityTab from './StudyVelocityTab';
 import RatingDurationModal from './RatingDurationModal';
 import FsrsSettingsModal from './FsrsSettingsModal';
 import SelectNewTopicsModal from './SelectNewTopicsModal';
-import { saveLocalSubjectTrackerDoc, getActiveNewTopicIds, saveActiveNewTopicIds, getTopicHintsLocal, deleteTopicHintsLocal, getLocalPytTopic, getLocalTextbooksMetadata } from '../services/localDb';
+import { saveLocalSubjectTrackerDoc, getLocalSubjectTrackerData, getActiveNewTopicIds, saveActiveNewTopicIds, getTopicHintsLocal, deleteTopicHintsLocal, getLocalPytTopic, getLocalTextbooksMetadata } from '../services/localDb';
 import { generateTopicActiveRecallHints } from '../services/aiHintEngine';
 import { Lightbulb, ChevronDown, ChevronUp, Eye } from 'lucide-react';
 import { parsePageNumbers, getTopicPageWeight } from '../utils/pageUtils';
@@ -387,37 +387,39 @@ export default function SmartReviewHub({
     const topicKey = item.id || item.name;
     setMnemonicNotes(prev => ({ ...prev, [topicKey]: text }));
 
-    if (!item.subject || !subjectTrackerData) return;
+    if (!item.subject) return;
+    const docId = (item.subject || '').trim().toLowerCase();
 
-    const subDoc = subjectTrackerData.find(d => 
-      (d.id && d.id.toLowerCase() === item.subject?.toLowerCase()) ||
-      (d.subject && d.subject.toLowerCase() === item.subject?.toLowerCase())
-    );
-
-    if (subDoc && subDoc.topics) {
-      const clonedTopics = { ...subDoc.topics };
-      const cleanTargetName = (item.name || '').trim().toLowerCase();
-      let topicEntryKey = Object.keys(clonedTopics).find(k => 
-        k.trim().toLowerCase() === cleanTargetName || 
-        clonedTopics[k]?.name?.trim().toLowerCase() === cleanTargetName || 
-        clonedTopics[k]?.id === item.id
+    try {
+      const allSubjectDocs = (await getLocalSubjectTrackerData()) || subjectTrackerData || [];
+      const subDoc = allSubjectDocs.find(d => 
+        (d.id && d.id.toLowerCase() === docId) ||
+        (d.subject && d.subject.toLowerCase() === docId)
       );
 
-      if (topicEntryKey) {
-        if (clonedTopics[topicEntryKey].mnemonicNote === text) return;
-        clonedTopics[topicEntryKey] = {
-          ...clonedTopics[topicEntryKey],
-          mnemonicNote: text
-        };
-        const targetDocId = (subDoc.id ? String(subDoc.id) : (subDoc.subject || '')).trim().toLowerCase();
-        const updatedDoc = {
-          ...subDoc,
-          id: targetDocId,
-          topics: clonedTopics,
-          updatedAt: new Date().toISOString()
-        };
+      if (subDoc && subDoc.topics) {
+        const clonedTopics = { ...subDoc.topics };
+        const cleanTargetName = (item.name || '').trim().toLowerCase();
+        let topicEntryKey = Object.keys(clonedTopics).find(k => 
+          k.trim().toLowerCase() === cleanTargetName || 
+          clonedTopics[k]?.name?.trim().toLowerCase() === cleanTargetName || 
+          clonedTopics[k]?.id === item.id
+        );
 
-        try {
+        if (topicEntryKey) {
+          if (clonedTopics[topicEntryKey].mnemonicNote === text) return;
+          clonedTopics[topicEntryKey] = {
+            ...clonedTopics[topicEntryKey],
+            mnemonicNote: text
+          };
+          const targetDocId = (subDoc.id ? String(subDoc.id) : docId).trim().toLowerCase();
+          const updatedDoc = {
+            ...subDoc,
+            id: targetDocId,
+            topics: clonedTopics,
+            updatedAt: new Date().toISOString()
+          };
+
           if (typeof onUpdateSubjectDoc === 'function') {
             await onUpdateSubjectDoc(targetDocId, { topics: clonedTopics });
           } else {
@@ -425,12 +427,12 @@ export default function SmartReviewHub({
           }
           setToastMessage('Note saved successfully');
           setTimeout(() => setToastMessage(''), 2000);
-        } catch (err) {
-          console.error("Failed to save mnemonic note to IndexedDB:", err);
-          setToastMessage('⚠️ Failed to save note to storage');
-          setTimeout(() => setToastMessage(''), 3000);
         }
       }
+    } catch (err) {
+      console.error("Failed to save mnemonic note to IndexedDB:", err);
+      setToastMessage('⚠️ Failed to save note to storage');
+      setTimeout(() => setToastMessage(''), 3000);
     }
   };
 
@@ -507,7 +509,7 @@ export default function SmartReviewHub({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
             transition={{ duration: 0.25 }}
-            className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl text-xs font-black shadow-2xl backdrop-blur-md border flex items-center gap-3 ${
+            className={`fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-50 px-4 py-3 rounded-2xl text-xs font-black shadow-2xl backdrop-blur-md border flex items-center gap-3 ${
               isDark ? 'bg-[#222730] text-white border-slate-700/80 neu-card-dark' : 'bg-white text-slate-800 border-slate-200/80 neu-card-light'
             }`}
           >
@@ -984,7 +986,7 @@ export default function SmartReviewHub({
             return next;
           });
 
-          // Dual-Persist to Subject Tracker Data for Universal Cross-Device Sync Parity with safe batching
+          // Dual-Persist to Subject Tracker Data for Universal Cross-Device Sync Parity with safe sequential batching
           if (typeof onUpdateSubjectDoc === 'function') {
             const subjectGroups = {};
             selectedTopics.forEach(top => {
@@ -994,29 +996,31 @@ export default function SmartReviewHub({
               subjectGroups[subDocId].push(top);
             });
 
-            Object.entries(subjectGroups).forEach(([subDocId, topicsInSub]) => {
-              const subDoc = subjectTrackerData.find(d =>
-                (d.id && d.id.toLowerCase() === subDocId) ||
-                (d.subject && d.subject.toLowerCase() === subDocId)
-              );
-              if (subDoc && subDoc.topics) {
-                const updatedTopics = { ...subDoc.topics };
-                topicsInSub.forEach(top => {
-                  const targetKey = Object.keys(updatedTopics).find(k =>
-                    k.trim().toLowerCase() === top.name.trim().toLowerCase() ||
-                    updatedTopics[k]?.id === top.id
-                  ) || top.name;
-                  if (updatedTopics[targetKey]) {
-                    updatedTopics[targetKey] = {
-                      ...updatedTopics[targetKey],
-                      activatedDate: todayStr,
-                      isPickedForToday: true
-                    };
-                  }
-                });
-                onUpdateSubjectDoc(subDoc.id || subDocId, { topics: updatedTopics });
+            (async () => {
+              for (const [subDocId, topicsInSub] of Object.entries(subjectGroups)) {
+                const subDoc = subjectTrackerData.find(d =>
+                  (d.id && d.id.toLowerCase() === subDocId) ||
+                  (d.subject && d.subject.toLowerCase() === subDocId)
+                );
+                if (subDoc && subDoc.topics) {
+                  const updatedTopics = { ...subDoc.topics };
+                  topicsInSub.forEach(top => {
+                    const targetKey = Object.keys(updatedTopics).find(k =>
+                      k.trim().toLowerCase() === top.name.trim().toLowerCase() ||
+                      updatedTopics[k]?.id === top.id
+                    ) || top.name;
+                    if (updatedTopics[targetKey]) {
+                      updatedTopics[targetKey] = {
+                        ...updatedTopics[targetKey],
+                        activatedDate: todayStr,
+                        isPickedForToday: true
+                      };
+                    }
+                  });
+                  await onUpdateSubjectDoc(subDoc.id || subDocId, { topics: updatedTopics });
+                }
               }
-            });
+            })().catch(err => console.error("[SmartReviewHub] Error in sequential batch topic activation:", err));
           }
 
           setToastMessage(`Activated ${selectedTopics.length} new topics for today's study session!`);
@@ -1124,321 +1128,319 @@ export default function SmartReviewHub({
       )}
 
       {/* EXAM TARGET MANAGEMENT MODAL */}
-      <AnimatePresence>
-        {isExamModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className={`w-full max-w-lg p-6 rounded-3xl border shadow-2xl space-y-6 ${
-                isDark ? 'bg-[#222730] border-slate-700/80 text-white' : 'bg-[#e6ecf5] border-slate-300 text-slate-900'
-              }`}
-            >
-              {/* Modal Header */}
-              <div className="flex items-center justify-between border-b pb-3 border-slate-700/40">
-                <div className="flex items-center gap-2.5">
-                  <Target className="w-5 h-5 text-amber-500" />
-                  <h3 className="text-base font-black tracking-wide">Upcoming Exam Targets</h3>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsExamModalOpen(false)}
-                  className={`p-1.5 rounded-xl border transition-all ${
-                    isDark ? 'neu-btn-dark text-slate-400 hover:text-white' : 'neu-btn-light text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <X className="w-4 h-4" />
-                </button>
+      {isExamModalOpen && typeof document !== 'undefined' && ReactDOM.createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overscroll-contain">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 15 }}
+            className={`w-full max-w-lg p-6 rounded-3xl border shadow-2xl space-y-6 ${
+              isDark ? 'bg-[#222730] border-slate-700/80 text-white neu-card-dark' : 'bg-[#e6ecf5] border-slate-300 text-slate-900 neu-card-light'
+            }`}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b pb-3 border-slate-700/40">
+              <div className="flex items-center gap-2.5">
+                <Target className="w-5 h-5 text-amber-500" />
+                <h3 className="text-base font-black tracking-wide">Upcoming Exam Targets</h3>
               </div>
+              <button
+                type="button"
+                onClick={() => setIsExamModalOpen(false)}
+                className={`p-1.5 rounded-xl border transition-all cursor-pointer ${
+                  isDark ? 'neu-btn-dark text-slate-400 hover:text-white' : 'neu-btn-light text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
 
-              {/* Add New Exam Form */}
-              <div className="space-y-3 p-4 rounded-2xl border border-amber-500/30 bg-amber-500/5">
-                <h4 className="text-xs font-black uppercase tracking-wider text-amber-500 flex items-center gap-2">
-                  <Plus className="w-4 h-4" /> Add Exam Target
-                </h4>
-                
-                {/* Presets */}
-                <div className="flex flex-wrap gap-1.5">
-                  {['NEET PG 2026', 'INI-CET 2026', 'FMGE 2026', 'USMLE Step 1'].map(preset => (
-                    <button
-                      key={preset}
-                      type="button"
-                      onClick={() => setNewExamTitle(preset)}
-                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all ${
-                        newExamTitle === preset
-                          ? 'bg-amber-500 text-slate-950 border-amber-400 font-extrabold'
-                          : isDark ? 'bg-slate-800 border-slate-700 text-slate-300 hover:border-amber-500/50' : 'bg-white border-slate-300 text-slate-700 hover:border-amber-400'
-                      }`}
-                    >
-                      {preset}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[10px] font-black uppercase tracking-wider text-amber-600 mb-1">Exam Title / Name</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. NEET PG 2026"
-                      value={newExamTitle}
-                      onChange={(e) => setNewExamTitle(e.target.value)}
-                      className={`w-full px-3 py-2 rounded-xl text-xs font-semibold border outline-none ${
-                        isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
-                      }`}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-black uppercase tracking-wider text-amber-600 mb-1">Exam Date</label>
-                    <input
-                      type="date"
-                      value={newExamDate}
-                      onChange={(e) => setNewExamDate(e.target.value)}
-                      className={`w-full px-3 py-2 rounded-xl text-xs font-semibold border outline-none ${
-                        isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
-                      }`}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-1">
-                  <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-400">
-                    <input
-                      type="checkbox"
-                      checked={newExamTentative}
-                      onChange={(e) => setNewExamTentative(e.target.checked)}
-                      className="rounded accent-amber-500"
-                    />
-                    Tentative Date
-                  </label>
+            {/* Add New Exam Form */}
+            <div className="space-y-3 p-4 rounded-2xl border border-amber-500/30 bg-amber-500/5">
+              <h4 className="text-xs font-black uppercase tracking-wider text-amber-500 flex items-center gap-2">
+                <Plus className="w-4 h-4" /> Add Exam Target
+              </h4>
+              
+              {/* Presets */}
+              <div className="flex flex-wrap gap-1.5">
+                {['NEET PG 2026', 'INI-CET 2026', 'FMGE 2026', 'USMLE Step 1'].map(preset => (
                   <button
+                    key={preset}
                     type="button"
-                    onClick={handleAddExamTarget}
-                    disabled={!newExamTitle.trim() || !newExamDate}
-                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black text-xs shadow-md disabled:opacity-40 hover:brightness-110 transition-all cursor-pointer"
+                    onClick={() => setNewExamTitle(preset)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all min-h-[36px] cursor-pointer focus-visible:ring-2 focus-visible:ring-amber-500 ${
+                      newExamTitle === preset
+                        ? 'bg-amber-500 text-slate-950 border-amber-400 font-extrabold shadow-sm'
+                        : isDark ? 'bg-slate-800 border-slate-700 text-slate-300 hover:border-amber-500/50' : 'bg-white border-slate-300 text-slate-700 hover:border-amber-400'
+                    }`}
                   >
-                    Save Exam Target
+                    {preset}
                   </button>
-                </div>
+                ))}
               </div>
 
-              {/* Active Exam Targets List */}
-              <div className="space-y-2">
-                <h4 className="text-xs font-black uppercase tracking-wider opacity-75">Saved Exam Targets ({examProfiles.length})</h4>
-                {examProfiles.length === 0 ? (
-                  <div className="text-center py-4 text-xs font-semibold text-slate-400 italic">No exam target saved yet. Add one above!</div>
-                ) : (
-                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                    {examProfiles.map((exam, idx) => (
-                      <div
-                        key={exam.id || idx}
-                        className={`p-3 rounded-xl border flex items-center justify-between ${
-                          isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <Calendar className="w-4 h-4 text-amber-500" />
-                          <div>
-                            <div className="text-xs font-bold">{exam.name || exam.title || 'Exam Target'}</div>
-                            <div className="text-[10px] text-slate-400">
-                              {exam.date || exam.examDate} {exam.isTentative ? '(Tentative)' : ''}
-                            </div>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteExamTarget(exam.id || idx)}
-                          className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 transition-all cursor-pointer"
-                          title="Delete Exam Target"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Modal Footer */}
-              <div className="flex justify-end pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsExamModalOpen(false)}
-                  className={`px-5 py-2 rounded-xl text-xs font-bold border transition-all ${
-                    isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-700'
-                  }`}
-                >
-                  Close
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* AD-HOC / EARLY REVIEW MODAL */}
-      <AnimatePresence>
-        {isAdHocModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className={`w-full max-w-2xl p-6 rounded-3xl border shadow-2xl space-y-5 max-h-[85vh] flex flex-col ${
-                isDark ? 'bg-[#222730] border-slate-700/80 text-white' : 'bg-[#e6ecf5] border-slate-300 text-slate-900'
-              }`}
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between border-b pb-3 border-slate-700/40 shrink-0">
-                <div className="flex items-center gap-2.5">
-                  <Zap className="w-5 h-5 text-amber-500" />
-                  <div>
-                    <h3 className="text-base font-black tracking-wide">⚡ Ad-hoc / Early Review Workspace</h3>
-                    <p className="text-[11px] text-slate-400">Review any topic from your curriculum ahead of schedule. FSRS-6 will automatically update memory retention!</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsAdHocModalOpen(false);
-                    setAdHocActiveTopic(null);
-                  }}
-                  className={`p-1.5 rounded-xl border transition-all ${
-                    isDark ? 'neu-btn-dark text-slate-400 hover:text-white' : 'neu-btn-light text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* If rating a topic inside modal */}
-              {adHocActiveTopic ? (
-                <div className="space-y-4 overflow-y-auto p-2">
-                  <div className="flex items-center justify-between">
-                    <button
-                      type="button"
-                      onClick={() => setAdHocActiveTopic(null)}
-                      className="text-xs font-bold text-amber-500 hover:underline flex items-center gap-1"
-                    >
-                      ← Back to Search
-                    </button>
-                    <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 bg-amber-500/10 px-2.5 py-1 rounded-lg">
-                      Ad-hoc Review Mode
-                    </span>
-                  </div>
-
-                  <TopicCard
-                    topic={adHocActiveTopic}
-                    onRate={(topicToRate, rating, predictedMinutes) => {
-                      handleRequestRateTopic(topicToRate, rating, predictedMinutes);
-                      setAdHocActiveTopic(null);
-                      setIsAdHocModalOpen(false);
-                    }}
-                    onOpenNotes={onOpenNotesModal}
-                    fsrsConfig={fsrsConfig}
-                    isDark={isDark}
-                    geminiApiKey={geminiApiKey}
-                    aiFeatureModels={aiFeatureModels}
-                    subjectTrackerData={subjectTrackerData}
-                    studyLogs={studyLogs}
-                    timerState={timerState}
-                    onPushUndoAction={onPushUndoAction}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-amber-600 mb-1">Exam Title / Name</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. NEET PG 2026"
+                    value={newExamTitle}
+                    onChange={(e) => setNewExamTitle(e.target.value)}
+                    className={`w-full px-3 py-2 rounded-xl text-xs font-semibold border outline-none ${
+                      isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                    }`}
                   />
                 </div>
-              ) : (
-                /* Search & Select Topic View */
-                <div className="space-y-4 overflow-hidden flex flex-col flex-1">
-                  {/* Search Bar & Subject Filter */}
-                  <div className="space-y-2 shrink-0">
-                    <div className="relative">
-                      <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                      <input
-                        type="text"
-                        placeholder="Search topic or chapter name (e.g., Brachial Plexus, Antihypertensives)..."
-                        value={adHocSearch}
-                        onChange={(e) => setAdHocSearch(e.target.value)}
-                        className={`w-full pl-10 pr-4 py-2.5 rounded-2xl text-xs font-semibold border outline-none ${
-                          isDark ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500' : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'
-                        }`}
-                      />
-                    </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-amber-600 mb-1">Exam Date</label>
+                  <input
+                    type="date"
+                    value={newExamDate}
+                    onChange={(e) => setNewExamDate(e.target.value)}
+                    className={`w-full px-3 py-2 rounded-xl text-xs font-semibold border outline-none ${
+                      isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                    }`}
+                  />
+                </div>
+              </div>
 
-                    {/* Subject Filter Pills */}
-                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+              <div className="flex items-center justify-between pt-1">
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-400">
+                  <input
+                    type="checkbox"
+                    checked={newExamTentative}
+                    onChange={(e) => setNewExamTentative(e.target.checked)}
+                    className="rounded accent-amber-500"
+                  />
+                  Tentative Date
+                </label>
+                <button
+                  type="button"
+                  onClick={handleAddExamTarget}
+                  disabled={!newExamTitle.trim() || !newExamDate}
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black text-xs shadow-md disabled:opacity-40 hover:brightness-110 transition-all cursor-pointer"
+                >
+                  Save Exam Target
+                </button>
+              </div>
+            </div>
+
+            {/* Active Exam Targets List */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-black uppercase tracking-wider opacity-75">Saved Exam Targets ({examProfiles.length})</h4>
+              {examProfiles.length === 0 ? (
+                <div className="text-center py-4 text-xs font-semibold text-slate-400 italic">No exam target saved yet. Add one above!</div>
+              ) : (
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1 no-scrollbar">
+                  {examProfiles.map((exam, idx) => (
+                    <div
+                      key={exam.id || idx}
+                      className={`p-3 rounded-xl border flex items-center justify-between ${
+                        isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Calendar className="w-4 h-4 text-amber-500" />
+                        <div>
+                          <div className="text-xs font-bold">{exam.name || exam.title || 'Exam Target'}</div>
+                          <div className="text-[10px] text-slate-400">
+                            {exam.date || exam.examDate} {exam.isTentative ? '(Tentative)' : ''}
+                          </div>
+                        </div>
+                      </div>
                       <button
                         type="button"
-                        onClick={() => setAdHocSelectedSubject('all')}
-                        className={`px-3 py-1 rounded-xl text-[11px] font-bold border transition-all ${
-                          adHocSelectedSubject === 'all'
+                        onClick={() => handleDeleteExamTarget(exam.id || idx)}
+                        className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 transition-all cursor-pointer"
+                        title="Delete Exam Target"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setIsExamModalOpen(false)}
+                className={`px-5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                  isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-700'
+                }`}
+              >
+                Close
+              </button>
+            </div>
+          </motion.div>
+        </div>,
+        document.body
+      )}
+
+      {/* AD-HOC / EARLY REVIEW MODAL */}
+      {isAdHocModalOpen && typeof document !== 'undefined' && ReactDOM.createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overscroll-contain">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 15 }}
+            className={`w-full max-w-2xl p-6 rounded-3xl border shadow-2xl space-y-5 max-h-[85vh] flex flex-col ${
+              isDark ? 'bg-[#222730] border-slate-700/80 text-white neu-card-dark' : 'bg-[#e6ecf5] border-slate-300 text-slate-900 neu-card-light'
+            }`}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between border-b pb-3 border-slate-700/40 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <Zap className="w-5 h-5 text-amber-500" />
+                <div>
+                  <h3 className="text-base font-black tracking-wide">⚡ Ad-hoc / Early Review Workspace</h3>
+                  <p className="text-[11px] text-slate-400">Review any topic from your curriculum ahead of schedule. FSRS-6 will automatically update memory retention!</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsAdHocModalOpen(false);
+                  setAdHocActiveTopic(null);
+                }}
+                className={`p-1.5 rounded-xl border transition-all cursor-pointer ${
+                  isDark ? 'neu-btn-dark text-slate-400 hover:text-white' : 'neu-btn-light text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* If rating a topic inside modal */}
+            {adHocActiveTopic ? (
+              <div className="space-y-4 overflow-y-auto p-2 no-scrollbar">
+                <div className="flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => setAdHocActiveTopic(null)}
+                    className="text-xs font-bold text-amber-500 hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    ← Back to Search
+                  </button>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 bg-amber-500/10 px-2.5 py-1 rounded-lg">
+                    Ad-hoc Review Mode
+                  </span>
+                </div>
+
+                <TopicCard
+                  topic={adHocActiveTopic}
+                  onRate={(topicToRate, rating, predictedMinutes) => {
+                    handleRequestRateTopic(topicToRate, rating, predictedMinutes);
+                    setAdHocActiveTopic(null);
+                    setIsAdHocModalOpen(false);
+                  }}
+                  onOpenNotes={onOpenNotesModal}
+                  fsrsConfig={fsrsConfig}
+                  isDark={isDark}
+                  geminiApiKey={geminiApiKey}
+                  aiFeatureModels={aiFeatureModels}
+                  subjectTrackerData={subjectTrackerData}
+                  studyLogs={studyLogs}
+                  timerState={timerState}
+                  onPushUndoAction={onPushUndoAction}
+                />
+              </div>
+            ) : (
+              /* Search & Select Topic View */
+              <div className="space-y-4 overflow-hidden flex flex-col flex-1">
+                {/* Search Bar & Subject Filter */}
+                <div className="space-y-2 shrink-0">
+                  <div className="relative">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                    <input
+                      type="text"
+                      placeholder="Search topic or chapter name (e.g., Brachial Plexus, Antihypertensives)..."
+                      value={adHocSearch}
+                      onChange={(e) => setAdHocSearch(e.target.value)}
+                      className={`w-full pl-10 pr-4 py-2.5 rounded-2xl text-xs font-semibold border outline-none ${
+                        isDark ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500' : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'
+                      }`}
+                    />
+                  </div>
+
+                  {/* Subject Filter Pills */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                    <button
+                      type="button"
+                      onClick={() => setAdHocSelectedSubject('all')}
+                      className={`px-3 py-1 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                        adHocSelectedSubject === 'all'
+                          ? 'bg-amber-500 text-slate-950 border-amber-400'
+                          : isDark ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-white border-slate-300 text-slate-700'
+                      }`}
+                    >
+                      All Subjects
+                    </button>
+                    {subjectTrackerData.map(subDoc => (
+                      <button
+                        key={subDoc.subject}
+                        type="button"
+                        onClick={() => setAdHocSelectedSubject(subDoc.subject)}
+                        className={`px-3 py-1 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                          adHocSelectedSubject === subDoc.subject
                             ? 'bg-amber-500 text-slate-950 border-amber-400'
                             : isDark ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-white border-slate-300 text-slate-700'
                         }`}
                       >
-                        All Subjects
+                        {subDoc.subject}
                       </button>
-                      {subjectTrackerData.map(subDoc => (
-                        <button
-                          key={subDoc.subject}
-                          type="button"
-                          onClick={() => setAdHocSelectedSubject(subDoc.subject)}
-                          className={`px-3 py-1 rounded-xl text-[11px] font-bold border transition-all ${
-                            adHocSelectedSubject === subDoc.subject
-                              ? 'bg-amber-500 text-slate-950 border-amber-400'
-                              : isDark ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-white border-slate-300 text-slate-700'
-                          }`}
-                        >
-                          {subDoc.subject}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Topics List */}
-                  <div className="space-y-2 overflow-y-auto pr-1 flex-1 min-h-[250px]">
-                    {filteredAdHocTopics.length === 0 ? (
-                      <div className="text-center py-10 text-xs font-semibold text-slate-400 italic">
-                        No matching topics found. Try typing a different keyword!
-                      </div>
-                    ) : (
-                      filteredAdHocTopics.map((topic, idx) => (
-                        <div
-                          key={topic.id || idx}
-                          className={`p-3.5 rounded-2xl border flex items-center justify-between gap-3 transition-all ${
-                            isDark ? 'bg-slate-900/80 border-slate-800 hover:border-amber-500/40' : 'bg-white border-slate-200 hover:border-amber-400'
-                          }`}
-                        >
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <span className="text-[10px] font-black uppercase tracking-wider text-amber-500 px-2 py-0.5 rounded-md bg-amber-500/10">
-                                {topic.subject}
-                              </span>
-                              <span className="text-xs font-bold">{topic.name}</span>
-                            </div>
-                            <div className="text-[10px] text-slate-400 flex items-center gap-3">
-                              <span>Due: {topic.nextReviewDue || 'Unscheduled'}</span>
-                              <span>Reviews: {topic.reviewCount || 0}</span>
-                              {topic.stability && <span>Stability: {topic.stability}d</span>}
-                            </div>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => setAdHocActiveTopic(topic)}
-                            className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-md transition-all active:scale-95 cursor-pointer shrink-0"
-                          >
-                            ⚡ Review Now
-                          </button>
-                        </div>
-                      ))
-                    )}
+                    ))}
                   </div>
                 </div>
-              )}
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+
+                {/* Topics List */}
+                <div className="space-y-2 overflow-y-auto pr-1 flex-1 min-h-[250px] no-scrollbar">
+                  {filteredAdHocTopics.length === 0 ? (
+                    <div className="text-center py-10 text-xs font-semibold text-slate-400 italic">
+                      No matching topics found. Try typing a different keyword!
+                    </div>
+                  ) : (
+                    filteredAdHocTopics.map((topic, idx) => (
+                      <div
+                        key={topic.id || idx}
+                        className={`p-3.5 rounded-2xl border flex items-center justify-between gap-3 transition-all ${
+                          isDark ? 'bg-slate-900/80 border-slate-800 hover:border-amber-500/40' : 'bg-white border-slate-200 hover:border-amber-400'
+                        }`}
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-amber-500 px-2 py-0.5 rounded-md bg-amber-500/10">
+                              {topic.subject}
+                            </span>
+                            <span className="text-xs font-bold">{topic.name}</span>
+                          </div>
+                          <div className="text-[10px] text-slate-400 flex items-center gap-3">
+                            <span>Due: {topic.nextReviewDue || 'Unscheduled'}</span>
+                            <span>Reviews: {topic.reviewCount || 0}</span>
+                            {topic.stability && <span>Stability: {topic.stability}d</span>}
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setAdHocActiveTopic(topic)}
+                          className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-md transition-all active:scale-95 cursor-pointer shrink-0"
+                        >
+                          ⚡ Review Now
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </motion.div>
+        </div>,
+        document.body
+      )}
 
       {/* Post-Rating Duration Confirmation Modal */}
       {pendingRatingData && (
@@ -2010,9 +2012,13 @@ function TopicCard({
 
       const formatDays = (d) => {
         if (!d || d <= 1) return '1d';
-        if (d < 30) return `${d}d`;
-        if (d < 365) return `${(d / 30).toFixed(1)}m`;
-        return `${(d / 365).toFixed(1)}y`;
+        if (d < 30) return `${Math.round(d)}d`;
+        if (d < 365) {
+          const months = d / 30;
+          return months % 1 === 0 ? `${months}m` : `${months.toFixed(1)}m`;
+        }
+        const years = d / 365;
+        return years % 1 === 0 ? `${years}y` : `${years.toFixed(1)}y`;
       };
 
       return {
@@ -2029,10 +2035,11 @@ function TopicCard({
   // A topic is truly reviewed only if reviewCount > 0 AND it has a lastReviewDate AND is not in New queue
   const isReviewed = !isNew && (topic.reviewCount || 0) > 0 && !!topic.lastReviewDate;
 
-  // Dynamic Predictive Time Engine Calculation
+  // Dynamic Predictive Time Engine Calculation (Quantized to 1-min increments to avoid 1-second render cascades)
+  const quantizedContinuousMins = timerState?.continuousMins ? Math.floor(timerState.continuousMins) : 0;
   const topicPrediction = useMemo(() => {
     return calculatePredictiveTopicTime(topic, subjectTrackerData, studyLogs, fsrsConfig, timerState);
-  }, [topic, subjectTrackerData, studyLogs, fsrsConfig, timerState]);
+  }, [topic, subjectTrackerData, studyLogs, fsrsConfig, quantizedContinuousMins]);
 
   return (
     <motion.div
@@ -2359,7 +2366,7 @@ function TopicCard({
                 {/* Body Content Rendering */}
                 {topicHints.tree && Array.isArray(topicHints.tree) && topicHints.tree.length > 0 ? (
                   /* RECURSIVE N-LEVEL MINDMAP OUTLINE TREE */
-                  <div className="space-y-1.5 max-h-[440px] overflow-y-auto pr-1 no-scrollbar custom-scrollbar">
+                  <div className="space-y-1.5 max-h-[440px] overflow-y-auto pr-1 no-scrollbar">
                     {topicHints.tree.map((rootNode, rIdx) => (
                       <RecursiveBlueprintNode
                         key={rootNode.id || rootNode.title || rIdx}
@@ -2375,7 +2382,7 @@ function TopicCard({
                   </div>
                 ) : topicHints.structure && Array.isArray(topicHints.structure) && topicHints.structure.length > 0 ? (
                   /* 3-LEVEL STRUCTURE FALLBACK */
-                  <div className="space-y-2.5 max-h-[420px] overflow-y-auto pr-1 no-scrollbar custom-scrollbar">
+                  <div className="space-y-2.5 max-h-[420px] overflow-y-auto pr-1 no-scrollbar">
                     {topicHints.structure.map((topObj, tIdx) => {
                       const isTopExpanded = expandedNodesMap[tIdx] !== false;
                       const subtopics = topObj.subtopics || [];

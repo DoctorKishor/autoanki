@@ -40,12 +40,12 @@ export default function FsrsStatsTab({ subjectTrackerData = [], studyLogs = [], 
     } else if (studyLogs && typeof studyLogs === 'object') {
       Object.entries(studyLogs).forEach(([dateKey, dayLog]) => {
         if (Array.isArray(dayLog)) {
-          rawFsrsLogs.push(...dayLog);
+          rawFsrsLogs.push(...dayLog.map(l => ({ ...l, dateStr: l.dateStr || dateKey })));
         } else if (dayLog && typeof dayLog === 'object') {
           if (Array.isArray(dayLog.fsrsLogs)) {
-            rawFsrsLogs.push(...dayLog.fsrsLogs);
+            rawFsrsLogs.push(...dayLog.fsrsLogs.map(l => ({ ...l, dateStr: l.dateStr || dateKey })));
           } else if (dayLog.rating) {
-            rawFsrsLogs.push(dayLog);
+            rawFsrsLogs.push({ ...dayLog, dateStr: dayLog.dateStr || dateKey });
           }
         }
       });

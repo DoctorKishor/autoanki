@@ -253,8 +253,13 @@ export default function RatingDurationModal({
                 max="24"
                 value={hours === 0 ? '' : hours}
                 onChange={(e) => {
-                  const val = parseInt(e.target.value, 10);
-                  setHours(isNaN(val) ? 0 : Math.max(0, Math.min(24, val)));
+                  const raw = e.target.value;
+                  if (raw === '') {
+                    setHours(0);
+                  } else {
+                    const val = parseInt(raw, 10);
+                    setHours(isNaN(val) ? 0 : Math.max(0, Math.min(24, val)));
+                  }
                   setSelectedPreset(null);
                 }}
                 placeholder="0"
@@ -275,16 +280,21 @@ export default function RatingDurationModal({
                 type="number"
                 min="0"
                 max="999"
-                value={minutes === 0 && hours === 0 ? '' : minutes}
+                value={minutes === 0 ? '' : minutes}
                 onChange={(e) => {
-                  const val = parseInt(e.target.value, 10);
-                  if (isNaN(val) || val <= 0) {
+                  const raw = e.target.value;
+                  if (raw === '') {
                     setMinutes(0);
-                  } else if (val >= 60 && hours === 0) {
-                    setHours(Math.floor(val / 60));
-                    setMinutes(val % 60);
                   } else {
-                    setMinutes(Math.max(0, val));
+                    const val = parseInt(raw, 10);
+                    if (isNaN(val) || val < 0) {
+                      setMinutes(0);
+                    } else if (val >= 60 && hours === 0) {
+                      setHours(Math.floor(val / 60));
+                      setMinutes(val % 60);
+                    } else {
+                      setMinutes(val);
+                    }
                   }
                   setSelectedPreset(null);
                 }}

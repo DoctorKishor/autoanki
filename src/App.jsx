@@ -15834,6 +15834,24 @@ JSON Format:
             setReviewUndoStack(prev => [...prev, action]);
             setReviewRedoStack([]);
           }}
+          onDeleteTimingLog={async (logId, dateStr) => {
+            if (!logId || !dateStr) return;
+            setStudyLogs(prev => {
+              const dayLog = prev[dateStr];
+              if (!dayLog || !Array.isArray(dayLog.fsrsLogs)) return prev;
+              const filtered = dayLog.fsrsLogs.filter(l => l.id !== logId);
+              const removedLog = dayLog.fsrsLogs.find(l => l.id === logId);
+              const removedPages = removedLog?.pageWeight || 1;
+              const updatedDayLog = {
+                ...dayLog,
+                cards: Math.max(0, (dayLog.cards || 0) - 1),
+                pages: Math.max(0, (dayLog.pages || 0) - removedPages),
+                fsrsLogs: filtered
+              };
+              saveLocalStudyLog(dateStr, updatedDayLog).catch(err => console.error("[LocalDB] Error saving pruned study log:", err));
+              return { ...prev, [dateStr]: updatedDayLog };
+            });
+          }}
           onOpenNotesModal={(topic) => setNotesModalTopic(topic)}
         />
 

@@ -391,7 +391,8 @@ export async function extractLocalBundles() {
   const scheduleTemplates = (await getLocalKV('schedule_templates')) || [];
   const campDailyLogs = (await getAllLocalItems(STORES.CAMP_DAILY_LOGS)) || [];
   const timerState = (await getLocalKV('timerState')) || null;
-  const activeNewTopicsToday = (await getLocalKV('active_new_topics_today')) || [];
+  const syncTodayStr = new Date().toLocaleDateString('en-CA');
+  const activeNewTopicsToday = (await getLocalKV('active_new_topics_' + syncTodayStr)) || (await getLocalKV('active_new_topics_today')) || [];
   const studyLogsBundle = {
     studyLogs,
     studySchedule,
@@ -409,7 +410,7 @@ export async function extractLocalBundles() {
   const hintQuota = (await getAllLocalItems(STORES.HINT_QUOTA)) || [];
   const customPrompts = (await getLocalKV('custom_prompts')) || [];
   const localUserProfile = (await getLocalKV('local_user_profile')) || null;
-  const aiRecommendations = (await getLocalKV('ai_topic_recommendations')) || null;
+  const aiRecommendations = (await getLocalKV('ai_topic_recommendations_' + syncTodayStr)) || (await getLocalKV('ai_topic_recommendations')) || null;
   const fsrsBundle = {
     fsrsConfig,
     settings: filteredSettings,
@@ -707,6 +708,11 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
           if (log && log.dateStr) await putLocalItem(STORES.CAMP_DAILY_LOGS, log);
         }
       }
+      if (Array.isArray(b.activeNewTopicsToday)) {
+        const hydTodayStr = new Date().toLocaleDateString('en-CA');
+        await setLocalKV('active_new_topics_' + hydTodayStr, b.activeNewTopicsToday);
+        await setLocalKV('active_new_topics_today', b.activeNewTopicsToday);
+      }
     }
   }
 
@@ -716,7 +722,11 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
     const b = bundles['fsrs_config.json'];
     if (b.fsrsConfig) await saveFSRSConfig(b.fsrsConfig);
     if (b.localUserProfile) await setLocalKV('local_user_profile', b.localUserProfile);
-    if (b.aiRecommendations) await setLocalKV('ai_topic_recommendations', b.aiRecommendations);
+    if (b.aiRecommendations) {
+      const hydTodayStr = new Date().toLocaleDateString('en-CA');
+      await setLocalKV('ai_topic_recommendations_' + hydTodayStr, b.aiRecommendations);
+      await setLocalKV('ai_topic_recommendations', b.aiRecommendations);
+    }
 
     // Merge custom prompts non-destructively
     if (Array.isArray(b.customPrompts)) {

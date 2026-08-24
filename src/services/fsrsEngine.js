@@ -125,8 +125,9 @@ export const calculateInitialStability = (rating, weights = DEFAULT_FSRS6_WEIGHT
 export const calculateFuzzRange = (interval) => {
   if (interval < 3) return 0;
   if (interval < 7) return 1;
-  if (interval < 30) return Math.max(1, Math.round(interval * 0.15));
-  return Math.max(2, Math.round(interval * 0.05));
+  if (interval < 21) return 2;
+  if (interval < 60) return 3;
+  return Math.max(4, Math.round(interval * 0.05));
 };
 
 /**
