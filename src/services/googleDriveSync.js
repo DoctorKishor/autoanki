@@ -843,6 +843,186 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
   emitDataHydratedEvent({ strategy, bundleKeys: Object.keys(bundles) });
 }
 
+/**
+ * Builds a rich, human-readable breakdown of differences between Local Device and Google Drive Cloud.
+ */
+function buildConflictDiffDetails(localManifest, remoteManifest, modifiedBundleNames, localHashes, remoteHashes) {
+  const localTime = new Date(localManifest?.timestamp || 0).getTime();
+  const remoteTime = new Date(remoteManifest?.timestamp || 0).getTime();
+  const timeDiffMs = Math.abs(localTime - remoteTime);
+  const timeDiffMinutes = Math.round(timeDiffMs / 60000);
+
+  let timeRelation = 'equal';
+  let timeDiffText = 'Both versions were saved around the same time.';
+  if (localTime > remoteTime) {
+    timeRelation = 'local_newer';
+    timeDiffText = timeDiffMinutes >= 60
+      ? `Local device was saved ~${Math.round(timeDiffMinutes / 60)} hour(s) more recently than Cloud`
+      : `Local device was saved ${timeDiffMinutes || '< 1'} minute(s) more recently than Cloud`;
+  } else if (remoteTime > localTime) {
+    timeRelation = 'remote_newer';
+    timeDiffText = timeDiffMinutes >= 60
+      ? `Cloud version was saved ~${Math.round(timeDiffMinutes / 60)} hour(s) more recently than Local`
+      : `Cloud version was saved ${timeDiffMinutes || '< 1'} minute(s) more recently than Local`;
+  }
+
+  const bundleDifferences = [];
+
+  const BUNDLE_META = {
+    'cards_bundle.json': {
+      title: 'Flashcards & FSRS Review States',
+      icon: 'Layers',
+      describe: (loc, rem) => {
+        const lCount = loc?.stats?.cardsCount ?? 0;
+        const rCount = rem?.stats?.cardsCount ?? 0;
+        if (lCount !== rCount) {
+          const diff = lCount - rCount;
+          return {
+            badge: diff > 0 ? `+${diff} Local Cards` : `${diff} Cloud Cards`,
+            badgeType: 'warning',
+            diffSummary: `Card counts differ: Local has ${lCount.toLocaleString()} vs Cloud has ${rCount.toLocaleString()} cards.`,
+            localDetail: `${lCount.toLocaleString()} cards (${diff > 0 ? `+${diff} added locally` : ''})`,
+            remoteDetail: `${rCount.toLocaleString()} cards (${diff < 0 ? `+${Math.abs(diff)} in cloud` : ''})`
+          };
+        }
+        return {
+          badge: 'Review States & Content Updated',
+          badgeType: 'info',
+          diffSummary: `Card count is identical (${lCount.toLocaleString()}), but review logs, FSRS memory stability, ratings, or tags were updated on another device.`,
+          localDetail: `${lCount.toLocaleString()} cards (Local FSRS states & edits)`,
+          remoteDetail: `${rCount.toLocaleString()} cards (Cloud FSRS states & edits)`
+        };
+      }
+    },
+    'pages_bundle.json': {
+      title: 'Scanned Pages & Image Occlusions',
+      icon: 'FileText',
+      describe: (loc, rem) => {
+        const lCount = loc?.stats?.pagesCount ?? 0;
+        const rCount = rem?.stats?.pagesCount ?? 0;
+        if (lCount !== rCount) {
+          return {
+            badge: `Page Count Differs`,
+            badgeType: 'warning',
+            diffSummary: `Scanned textbook/note pages differ: Local (${lCount}) vs Cloud (${rCount}).`,
+            localDetail: `${lCount} scanned pages`,
+            remoteDetail: `${rCount} scanned pages`
+          };
+        }
+        return {
+          badge: 'Page Occlusions / Notes Modified',
+          badgeType: 'info',
+          diffSummary: `Scanned pages contain different occlusion boxes, topic links, or metadata.`,
+          localDetail: `${lCount} pages (Local edits)`,
+          remoteDetail: `${rCount} pages (Cloud version)`
+        };
+      }
+    },
+    'study_logs.json': {
+      title: 'Study History & Daily Hours',
+      icon: 'Clock',
+      describe: (loc, rem) => {
+        const lCount = loc?.stats?.logsDaysCount ?? 0;
+        const rCount = rem?.stats?.logsDaysCount ?? 0;
+        return {
+          badge: 'Study Sessions & Hours Differ',
+          badgeType: 'info',
+          diffSummary: `Study logs or logged study sessions differ between your devices.`,
+          localDetail: `${lCount} logged study days`,
+          remoteDetail: `${rCount} logged study days`
+        };
+      }
+    },
+    'curriculum_topics.json': {
+      title: 'Subject Tracker & Curriculum',
+      icon: 'BookOpen',
+      describe: (loc, rem) => {
+        const lCount = loc?.stats?.topicsCount ?? 0;
+        const rCount = rem?.stats?.topicsCount ?? 0;
+        return {
+          badge: lCount !== rCount ? `Topics Differ` : `Progress Checkmarks Differ`,
+          badgeType: 'info',
+          diffSummary: `Curriculum topics, read checkboxes, or subject progress were modified.`,
+          localDetail: `${lCount} curriculum topics`,
+          remoteDetail: `${rCount} curriculum topics`
+        };
+      }
+    },
+    'study_schedule.json': {
+      title: 'Study Scheduler & Templates',
+      icon: 'Calendar',
+      describe: () => ({
+        badge: 'Calendar Modified',
+        badgeType: 'info',
+        diffSummary: `Study schedule calendar events or study plan templates differ.`,
+        localDetail: `Local study calendar`,
+        remoteDetail: `Cloud study calendar`
+      })
+    },
+    'camp_tracker.json': {
+      title: 'CAMP Tracker & Performance Metrics',
+      icon: 'Activity',
+      describe: () => ({
+        badge: 'CAMP Logs Differ',
+        badgeType: 'info',
+        diffSummary: `CAMP daily concentration, alertness, mastery, and performance ratings differ.`,
+        localDetail: `Local CAMP entries`,
+        remoteDetail: `Cloud CAMP entries`
+      })
+    },
+    'app_settings.json': {
+      title: 'Topic Hints & User Preferences',
+      icon: 'Settings',
+      describe: () => ({
+        badge: 'Settings Modified',
+        badgeType: 'info',
+        diffSummary: `Topic hints, custom study prompts, or user preferences differ.`,
+        localDetail: `Local settings`,
+        remoteDetail: `Cloud settings`
+      })
+    }
+  };
+
+  for (const bName of (modifiedBundleNames || [])) {
+    const meta = BUNDLE_META[bName] || {
+      title: bName.replace('.json', '').replace(/_/g, ' ').toUpperCase(),
+      icon: 'Layers',
+      describe: () => ({
+        badge: 'Modified',
+        badgeType: 'info',
+        diffSummary: `${bName} differs between local device and Google Drive cloud.`,
+        localDetail: 'Modified locally',
+        remoteDetail: 'Modified in cloud'
+      })
+    };
+
+    const details = meta.describe(localManifest, remoteManifest);
+    bundleDifferences.push({
+      bundleName: bName,
+      title: meta.title,
+      icon: meta.icon,
+      ...details
+    });
+  }
+
+  let recommendation = 'merge';
+  let recommendationText = 'Smart Merge is recommended to combine all new cards, reviews, and logs from both devices with zero data loss.';
+  if (timeRelation === 'local_newer' && timeDiffMinutes >= 5) {
+    recommendationText = `Local device has newer activity (${timeDiffText}). Smart Merge is recommended to keep all new changes, or Upload Local if you want to replace Cloud entirely.`;
+  } else if (timeRelation === 'remote_newer' && timeDiffMinutes >= 5) {
+    recommendationText = `Cloud has newer activity from another device (${timeDiffText}). Smart Merge is recommended to retain everything, or Download Cloud to replace local.`;
+  }
+
+  return {
+    timeRelation,
+    timeDiffText,
+    timeDiffMinutes,
+    bundleDifferences,
+    recommendation,
+    recommendationText
+  };
+}
+
 // ============================================================================
 // MAIN SYNCHRONIZATION ENGINE (MUTEX & ZERO DESYNC)
 // ============================================================================
@@ -957,10 +1137,8 @@ async function executeSyncInternal({
     console.log('[GDriveSync] Modified bundles:', modifiedBundleNames);
 
     if (modifiedBundleNames.length > 0) {
-      // Check if either cards or curriculum conflict between separate devices
-      const cardsConflict = localHashes.cards_bundle !== remoteHashes.cards_bundle;
-      const topicsConflict = localHashes.curriculum_topics !== remoteHashes.curriculum_topics;
-      const pagesConflict = localHashes.pages_bundle !== remoteHashes.pages_bundle;
+      // Build granular difference analysis for user transparency
+      const diffDetails = buildConflictDiffDetails(localManifest, remoteManifest, modifiedBundleNames, localHashes, remoteHashes);
 
       // Anki-Style Conflict Detection: Trigger modal if distinct device and conflicting primary content
       if (!isSameDevice && (cardsConflict || topicsConflict || pagesConflict) && onConflict && !force) {
@@ -983,6 +1161,7 @@ async function executeSyncInternal({
               timestamp: remoteManifest.timestamp,
               deviceId: remoteManifest.deviceId
             },
+            diffDetails,
             onResolve: resolve
           });
         });
@@ -991,6 +1170,9 @@ async function executeSyncInternal({
           return await executeOneWayPush(accessToken, vaultFolderId, mediaFolderId, localData, remoteFileMap, emit);
         } else if (conflictResolution === 'download') {
           return await executeOneWayDownload(accessToken, vaultFolderId, mediaFolderId, remoteFileMap, emit);
+        } else if (conflictResolution === 'merge') {
+          console.log('[GDriveSync] User opted for smart non-destructive merge.');
+          // Falls through to pre-merge snapshot & smart delta merge below
         } else {
           emitSyncEvent('cancelled', { message: 'Sync cancelled by user.' });
           return { success: false, action: 'cancelled', message: 'Sync cancelled by user.' };
