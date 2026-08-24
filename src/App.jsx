@@ -30516,13 +30516,17 @@ Return your response strictly as a JSON object matching this schema:
                     }`}>
 
                     {currentTab === 'campTracker' && (
-                      <CampDashboard
-                        timerState={timerState}
-                        localStopwatchTime={localStopwatchTime}
-                        localCustomTimerTimeLeft={localCustomTimerTimeLeft}
-                        localTimerTimeLeft={localTimerTimeLeft}
-                        themeMode={settingsThemeMode}
-                      />
+                      <div className="flex-grow w-full h-full overflow-y-auto p-4 lg:p-6 pb-28 custom-scrollbar">
+                        <div className="max-w-[1400px] mx-auto w-full">
+                          <CampDashboard
+                            timerState={timerState}
+                            localStopwatchTime={localStopwatchTime}
+                            localCustomTimerTimeLeft={localCustomTimerTimeLeft}
+                            localTimerTimeLeft={localTimerTimeLeft}
+                            themeMode={settingsThemeMode}
+                          />
+                        </div>
+                      </div>
                     )}
 
                     {currentTab === 'dashboard' && (
