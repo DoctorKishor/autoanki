@@ -5164,6 +5164,7 @@ export default function App() {
         // Fast background check on boot
         syncWithGoogleDrive({
           force: false,
+          interactive: false,
           onConflict: (conflict) => setGdriveConflictData(conflict)
         }).catch(err => console.warn('[App] Boot sync error:', err));
       }
@@ -5190,6 +5191,7 @@ export default function App() {
           if (state?.accessToken) {
             syncWithGoogleDrive({
               force: false,
+              interactive: false,
               onConflict: (conflict) => setGdriveConflictData(conflict)
             }).catch(() => { });
           }
@@ -8737,7 +8739,7 @@ export default function App() {
       if (typeof localStorage !== 'undefined' && localStorage.getItem('autoanki_pending_sync_launch') === 'true') {
         localStorage.removeItem('autoanki_pending_sync_launch');
         setTimeout(() => {
-          syncWithGoogleDrive({ force: false }).catch(err => console.log('[App] Pending launch sync skipped:', err));
+          syncWithGoogleDrive({ force: false, interactive: false }).catch(err => console.log('[App] Pending launch sync skipped:', err));
         }, 3000);
       }
     } catch (_) {}

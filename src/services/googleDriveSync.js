@@ -433,25 +433,26 @@ export async function extractLocalBundles() {
   const pages = (await getLocalPages()) || [];
   const trashPages = (await getLocalKV('trash_pages')) || [];
   
-  // Separate heavy image binary payload from metadata for cloud JSON chunking
-  const pagesMetadata = pages.map(p => {
+  // Separate heavy image binary payload & Base64 strings from metadata for cloud JSON chunking
+  const cleanPageForBundle = (p) => {
     const copy = { ...p };
-    // We strip inline array buffer from JSON bundle because full binary webp is transferred via /media
     if (copy.data instanceof ArrayBuffer || copy.data?.__type === 'ArrayBuffer') {
       copy.hasMedia = true;
       delete copy.data;
     }
+    if (typeof copy.originalImage === 'string' && copy.originalImage.startsWith('data:')) {
+      copy.hasMedia = true;
+      delete copy.originalImage;
+    }
+    if (typeof copy.imageUrl === 'string' && copy.imageUrl.startsWith('data:')) {
+      copy.hasMedia = true;
+      delete copy.imageUrl;
+    }
     return copy;
-  });
+  };
 
-  const trashPagesMetadata = trashPages.map(p => {
-    const copy = { ...p };
-    if (copy.data instanceof ArrayBuffer || copy.data?.__type === 'ArrayBuffer') {
-      copy.hasMedia = true;
-      delete copy.data;
-    }
-    return copy;
-  });
+  const pagesMetadata = pages.map(cleanPageForBundle);
+  const trashPagesMetadata = trashPages.map(cleanPageForBundle);
 
   const pagesBundle = {
     pages: serializeBinaryValues(pagesMetadata),
@@ -700,7 +701,7 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
 
       if (b.studySchedule) {
         const existSched = (await getLocalKV('study_schedule')) || {};
-        await setLocalKV('study_schedule', { ...b.studySchedule, ...existSched });
+        await setLocalKV('study_schedule', { ...existSched, ...b.studySchedule });
       }
       if (b.scheduleTemplates) await setLocalKV('schedule_templates', b.scheduleTemplates);
       if (Array.isArray(b.campDailyLogs)) {
@@ -872,6 +873,7 @@ export async function syncWithGoogleDrive(options = {}) {
 
 async function executeSyncInternal({
   force = false,
+  interactive = true,
   onProgress = null,
   onConflict = null
 } = {}) {
@@ -893,8 +895,12 @@ async function executeSyncInternal({
   emitSyncEvent('started', { message: 'Initiating Google Drive synchronization…' });
 
   try {
-    const accessToken = await getValidAccessToken(true);
+    const accessToken = await getValidAccessToken(interactive);
     if (!accessToken) {
+      if (!interactive) {
+        console.log('[GDriveSync] Silent background sync paused: access token expired.');
+        return { success: false, action: 'token_expired', message: 'Token expired. Background sync paused.' };
+      }
       throw new Error('Could not obtain a valid Google access token. Please re-authenticate.');
     }
 
@@ -1057,9 +1063,10 @@ async function executeOneWayPush(accessToken, vaultFolderId, mediaFolderId, loca
     stats: localData.manifest.stats
   });
 
-  // Background non-blocking media sync
+  // Background non-blocking media sync (includes active and trash pages)
   setTimeout(() => {
-    syncMediaToDrive(accessToken, mediaFolderId, localData.pages).catch(e => {
+    const allMediaPages = [...(localData.pages || []), ...(localData.trashPages || [])];
+    syncMediaToDrive(accessToken, mediaFolderId, allMediaPages).catch(e => {
       console.warn('[GDriveSync] Background media upload error:', e);
     });
   }, 100);
@@ -1220,7 +1227,7 @@ export function triggerDebouncedSmartPush() {
 
     lastAutoPushTimestamp = now;
     console.log('[GDriveSync] Triggering debounced smart push to Google Drive…');
-    syncWithGoogleDrive({ force: false }).catch(err => {
+    syncWithGoogleDrive({ force: false, interactive: false }).catch(err => {
       console.warn('[GDriveSync] Smart push error:', err);
     });
   }, 5000);
