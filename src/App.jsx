@@ -5055,33 +5055,42 @@ export default function App() {
   const navCategories = useMemo(() => [
     {
       id: 'focus',
-      label: 'Focus & Review',
+      label: 'Focus Hub',
       shortLabel: 'Focus',
       icon: Flame,
       items: [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, action: () => setCurrentTab('dashboard') },
         { id: 'smartReview', label: 'Smart Review', icon: Brain, action: () => setCurrentTab('smartReview') },
         { id: 'study', label: 'Study Room', icon: GraduationCap, action: () => { setCurrentTab('study'); setCurrentStudyCardIndex(0); setIsAnswerRevealed(false); } },
+      ]
+    },
+    {
+      id: 'syllabus',
+      label: 'Syllabus & PYT',
+      shortLabel: 'Syllabus',
+      icon: BookOpen,
+      items: [
+        { id: 'subjectTracker', label: 'Subject Tracker', icon: ListChecks, action: () => setCurrentTab('subjectTracker') },
+        { id: 'pytManager', label: 'PYT Manager', icon: BookOpen, action: () => setCurrentTab('pytManager') },
+        { id: 'pytLogger', label: 'PYT Logger', icon: CheckCircle2, action: () => setCurrentTab('pytLogger') },
         { id: 'studyScheduler', label: 'Study Scheduler', icon: Calendar, action: () => setCurrentTab('studyScheduler') },
       ]
     },
     {
-      id: 'knowledge',
-      label: 'Content & Knowledge',
-      shortLabel: 'Knowledge',
-      icon: BookOpen,
+      id: 'cards_library',
+      label: 'Cards & Library',
+      shortLabel: 'Cards',
+      icon: Layers,
       items: [
         { id: 'library', label: 'Library', icon: Library, action: () => setCurrentTab('library') },
-        { id: 'cards', label: 'Card Generation', icon: Home, action: () => setCurrentTab('cards') },
-        { id: 'subjectTracker', label: 'Subject Tracker', icon: ListChecks, action: () => setCurrentTab('subjectTracker') },
-        { id: 'pytManager', label: 'PYT Manager', icon: BookOpen, action: () => setCurrentTab('pytManager') },
-        { id: 'pytLogger', label: 'PYT Logger', icon: CheckCircle2, action: () => setCurrentTab('pytLogger') },
+        { id: 'cards', label: 'Card Generation', icon: Sparkles, action: () => setCurrentTab('cards') },
+        { id: 'export', label: 'Exporter Hub', icon: Download, action: () => setCurrentTab('export') },
       ]
     },
     {
       id: 'analytics',
-      label: 'Progress & Metrics',
-      shortLabel: 'Progress',
+      label: 'Analytics & CAMP',
+      shortLabel: 'Analytics',
       icon: BarChart2,
       items: [
         { id: 'campTracker', label: 'CAMP Tracker', icon: Activity, action: () => setCurrentTab('campTracker') },
@@ -5090,16 +5099,15 @@ export default function App() {
     },
     {
       id: 'system',
-      label: 'Tools & System',
+      label: 'App & System',
       shortLabel: 'System',
       icon: Sliders,
       items: [
-        { id: 'export', label: 'Exporter Hub', icon: Download, action: () => setCurrentTab('export') },
-        { id: 'prompt', label: 'AI Prompt', icon: MessageSquare, action: () => setCurrentTab('prompt') },
-        { id: 'obsOverlay', label: 'OBS Customiser', icon: Tv, action: () => setCurrentTab('obsOverlay') },
         { id: 'settings', label: 'Settings', icon: Settings, action: () => setCurrentTab('settings') },
-        { id: 'about', label: 'About', icon: Info, action: () => setCurrentTab('about') },
+        { id: 'prompt', label: 'AI Prompt Studio', icon: MessageSquare, action: () => setCurrentTab('prompt') },
+        { id: 'obsOverlay', label: 'OBS Customiser', icon: Tv, action: () => setCurrentTab('obsOverlay') },
         { id: 'trash', label: 'Recycle Bin', icon: Trash2, action: () => setCurrentTab('trash') },
+        { id: 'about', label: 'About AutoAnki', icon: Info, action: () => setCurrentTab('about') },
       ]
     }
   ], []);
