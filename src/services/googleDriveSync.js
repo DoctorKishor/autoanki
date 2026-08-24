@@ -1114,10 +1114,20 @@ async function syncMediaToDrive(accessToken, mediaFolderId, pages) {
   const remoteMediaFiles = await listFilesInFolder(accessToken, mediaFolderId);
   const existingNames = new Set(remoteMediaFiles.map(f => f.name));
 
-  for (const page of pages) {
-    if (!page || !page.id) continue;
+  const pagesToUpload = pages.filter(p => p && p.id && !existingNames.has(`page_${p.id}.webp`));
+  const totalMedia = pagesToUpload.length;
+  if (totalMedia === 0) return;
+
+  emitSyncEvent('syncing', {
+    message: `Uploading media 0/${totalMedia} (0%)`,
+    step: 0,
+    total: totalMedia,
+    mediaProgress: { current: 0, total: totalMedia, percent: 0, type: 'upload' }
+  });
+
+  let uploadedCount = 0;
+  for (const page of pagesToUpload) {
     const mediaName = `page_${page.id}.webp`;
-    if (existingNames.has(mediaName)) continue; // Already uploaded
 
     let buffer = null;
     let mimeType = 'image/webp';
@@ -1142,7 +1152,20 @@ async function syncMediaToDrive(accessToken, mediaFolderId, pages) {
         console.warn(`[GDriveSync] Failed to upload media ${mediaName}:`, err);
       }
     }
+
+    uploadedCount++;
+    const percent = Math.round((uploadedCount / totalMedia) * 100);
+    emitSyncEvent('syncing', {
+      message: `Uploading media ${uploadedCount}/${totalMedia} (${percent}%)`,
+      step: uploadedCount,
+      total: totalMedia,
+      mediaProgress: { current: uploadedCount, total: totalMedia, percent, type: 'upload' }
+    });
   }
+
+  emitSyncEvent('synced', {
+    message: `All media synchronized (${totalMedia}/${totalMedia})`
+  });
 }
 
 /**
@@ -1168,8 +1191,19 @@ async function syncMediaFromDrive(accessToken, mediaFolderId) {
     }
   }
 
+  const totalToDownload = missingFiles.length;
+  if (totalToDownload === 0) return;
+
+  emitSyncEvent('syncing', {
+    message: `Downloading media 0/${totalToDownload} (0%)`,
+    step: 0,
+    total: totalToDownload,
+    mediaProgress: { current: 0, total: totalToDownload, percent: 0, type: 'download' }
+  });
+
   // Download in throttled batches of 4 to protect mobile RAM
   const BATCH_SIZE = 4;
+  let downloadedCount = 0;
   for (let i = 0; i < missingFiles.length; i += BATCH_SIZE) {
     const chunk = missingFiles.slice(i, i + BATCH_SIZE);
     await Promise.all(chunk.map(async ({ file, pageId }) => {
@@ -1185,6 +1219,14 @@ async function syncMediaFromDrive(accessToken, mediaFolderId) {
         console.warn(`[GDriveSync] Could not download media for page ${pageId}:`, e);
       }
     }));
+    downloadedCount = Math.min(totalToDownload, i + chunk.length);
+    const percent = Math.round((downloadedCount / totalToDownload) * 100);
+    emitSyncEvent('syncing', {
+      message: `Downloading media ${downloadedCount}/${totalToDownload} (${percent}%)`,
+      step: downloadedCount,
+      total: totalToDownload,
+      mediaProgress: { current: downloadedCount, total: totalToDownload, percent, type: 'download' }
+    });
   }
 
   if (hasUpdates) {
@@ -1202,6 +1244,10 @@ async function syncMediaFromDrive(accessToken, mediaFolderId) {
     await saveLocalPages(Array.from(currentMap.values()));
     emitDataHydratedEvent({ type: 'media_hydrated' });
   }
+
+  emitSyncEvent('synced', {
+    message: `All media downloaded (${totalToDownload}/${totalToDownload})`
+  });
 }
 
 // ============================================================================

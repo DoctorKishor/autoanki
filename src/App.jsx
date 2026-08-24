@@ -5153,7 +5153,13 @@ export default function App() {
 
   // --- GOOGLE DRIVE CLOUD SYNC STATE ---
   const [gdriveAuthState, setGdriveAuthState] = useState(null);
-  const [gdriveSyncState, setGdriveSyncState] = useState({ isSyncing: false, step: 0, total: 0, message: '' });
+  const [gdriveSyncState, setGdriveSyncState] = useState({
+    isSyncing: false,
+    step: 0,
+    total: 0,
+    message: '',
+    mediaProgress: null // { current: number, total: number, percent: number, type: 'upload' | 'download' }
+  });
   const [gdriveConflictData, setGdriveConflictData] = useState(null);
 
   // Initialize and listen to Google Drive Auth & Sync events
@@ -5175,13 +5181,19 @@ export default function App() {
     };
 
     const handleSyncStatus = (e) => {
-      const { status, message, step, total } = e.detail || {};
+      const { status, message, step, total, mediaProgress } = e.detail || {};
       if (status === 'syncing') {
-        setGdriveSyncState({ isSyncing: true, step: step || 0, total: total || 10, message: message || 'Syncing...' });
+        setGdriveSyncState({
+          isSyncing: true,
+          step: step || 0,
+          total: total || 10,
+          message: message || 'Syncing...',
+          mediaProgress: mediaProgress || null
+        });
       } else if (status === 'synced') {
-        setGdriveSyncState({ isSyncing: false, step: 0, total: 0, message: message || 'In sync' });
+        setGdriveSyncState({ isSyncing: false, step: 0, total: 0, message: message || 'In sync', mediaProgress: null });
       } else if (status === 'error' || status === 'cancelled') {
-        setGdriveSyncState({ isSyncing: false, step: 0, total: 0, message: '' });
+        setGdriveSyncState({ isSyncing: false, step: 0, total: 0, message: '', mediaProgress: null });
       }
     };
 
@@ -24819,11 +24831,40 @@ Return your response strictly as a JSON object matching this schema:
                     <button
                       onClick={handleHeaderSync}
                       disabled={isSyncing || gdriveSyncState.isSyncing}
-                      className={`relative w-8 h-8 rounded-xl flex items-center justify-center transition active:scale-95 cursor-pointer ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300 hover:text-white' : 'neu-btn-light text-slate-700 hover:text-slate-950'
-                        } ${(isSyncing || gdriveSyncState.isSyncing) ? 'opacity-75' : ''}`}
-                      title={gdriveSyncState.isSyncing ? gdriveSyncState.message : (gdriveAuthState ? 'Sync with Google Drive & LocalDB' : 'Sync current page data')}
+                      className={`relative ${gdriveSyncState.mediaProgress ? 'w-auto px-2.5 h-8 gap-1.5' : 'w-8 h-8'} rounded-xl flex items-center justify-center transition active:scale-95 cursor-pointer ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300 hover:text-white' : 'neu-btn-light text-slate-700 hover:text-slate-950'
+                        } ${(isSyncing || gdriveSyncState.isSyncing) ? 'opacity-95' : ''}`}
+                      title={gdriveSyncState.isSyncing
+                        ? (gdriveSyncState.mediaProgress
+                          ? `${gdriveSyncState.mediaProgress.type === 'upload' ? 'Uploading' : 'Downloading'} Media: ${gdriveSyncState.mediaProgress.current}/${gdriveSyncState.mediaProgress.total} (${gdriveSyncState.mediaProgress.percent}%)`
+                          : gdriveSyncState.message)
+                        : (gdriveAuthState ? 'Sync with Google Drive & LocalDB' : 'Sync current page data')}
                     >
-                      <RefreshCw className={`w-3.5 h-3.5 ${(isSyncing || gdriveSyncState.isSyncing) ? 'animate-spin text-blue-500' : ''}`} />
+                      {gdriveSyncState.isSyncing && gdriveSyncState.mediaProgress ? (
+                        <div className="relative w-4 h-4 flex items-center justify-center shrink-0">
+                          <svg className="w-4 h-4 -rotate-90" viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="9" className="text-blue-500/20" strokeWidth="3" stroke="currentColor" fill="transparent" />
+                            <circle
+                              cx="12"
+                              cy="12"
+                              r="9"
+                              className="text-blue-400 transition-all duration-300"
+                              strokeWidth="3"
+                              strokeDasharray={56.54}
+                              strokeDashoffset={56.54 - (56.54 * (gdriveSyncState.mediaProgress.percent || 0)) / 100}
+                              strokeLinecap="round"
+                              stroke="currentColor"
+                              fill="transparent"
+                            />
+                          </svg>
+                        </div>
+                      ) : (
+                        <RefreshCw className={`w-3.5 h-3.5 ${(isSyncing || gdriveSyncState.isSyncing) ? 'animate-spin text-blue-500' : ''}`} />
+                      )}
+                      {gdriveSyncState.mediaProgress && (
+                        <span className="text-[10px] font-black font-mono text-blue-400">
+                          {gdriveSyncState.mediaProgress.percent}%
+                        </span>
+                      )}
                       <span className={`absolute top-1 right-1 w-2 h-2 rounded-full ${gdriveSyncState.isSyncing ? 'bg-amber-500 animate-ping' : (gdriveAuthState ? 'bg-green-500 shadow-xs shadow-green-500/50' : 'bg-slate-400')
                         }`} />
                     </button>
@@ -30722,20 +30763,64 @@ Return your response strictly as a JSON object matching this schema:
                         type="button"
                         onClick={handleHeaderSync}
                         disabled={isSyncing || gdriveSyncState.isSyncing}
-                        className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer active:scale-95 ${(isSyncing || gdriveSyncState.isSyncing)
-                            ? 'bg-blue-500/20 text-blue-400 border-blue-500/30 shadow-sm cursor-wait'
+                        className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer active:scale-95 relative overflow-hidden ${(isSyncing || gdriveSyncState.isSyncing)
+                            ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30 shadow-sm cursor-wait'
                             : (settingsThemeMode === 'dark'
                               ? 'liquid-glass-pill-dark text-slate-200 hover:text-white'
                               : 'liquid-glass-pill-light text-blue-600 hover:text-blue-800')
                           }`}
-                        title={gdriveSyncState.isSyncing ? gdriveSyncState.message : (gdriveAuthState ? 'Sync with Google Drive & LocalDB' : `Sync ${currentTab} data from Local Database`)}
+                        title={gdriveSyncState.isSyncing
+                          ? (gdriveSyncState.mediaProgress
+                            ? `${gdriveSyncState.mediaProgress.type === 'upload' ? 'Uploading' : 'Downloading'} Media: ${gdriveSyncState.mediaProgress.current}/${gdriveSyncState.mediaProgress.total} (${gdriveSyncState.mediaProgress.percent}%)`
+                            : gdriveSyncState.message)
+                          : (gdriveAuthState ? 'Sync with Google Drive & LocalDB' : `Sync ${currentTab} data from Local Database`)}
                       >
-                        <RefreshCw className={`w-3.5 h-3.5 ${(isSyncing || gdriveSyncState.isSyncing) ? 'animate-spin text-blue-400' : 'transition-transform duration-500 hover:rotate-180'}`} />
+                        {(isSyncing || gdriveSyncState.isSyncing) && gdriveSyncState.mediaProgress ? (
+                          <div className="relative w-4 h-4 flex items-center justify-center shrink-0">
+                            <svg className="w-4 h-4 -rotate-90" viewBox="0 0 24 24">
+                              <circle
+                                cx="12"
+                                cy="12"
+                                r="9"
+                                className="text-blue-500/20"
+                                strokeWidth="3"
+                                stroke="currentColor"
+                                fill="transparent"
+                              />
+                              <circle
+                                cx="12"
+                                cy="12"
+                                r="9"
+                                className="text-blue-400 transition-all duration-300"
+                                strokeWidth="3"
+                                strokeDasharray={56.54}
+                                strokeDashoffset={56.54 - (56.54 * (gdriveSyncState.mediaProgress.percent || 0)) / 100}
+                                strokeLinecap="round"
+                                stroke="currentColor"
+                                fill="transparent"
+                              />
+                            </svg>
+                          </div>
+                        ) : (
+                          <RefreshCw className={`w-3.5 h-3.5 ${(isSyncing || gdriveSyncState.isSyncing) ? 'animate-spin text-blue-400' : 'transition-transform duration-500 hover:rotate-180'}`} />
+                        )}
                         <span>
                           {gdriveSyncState.isSyncing
-                            ? (gdriveSyncState.message || 'Syncing…')
+                            ? (gdriveSyncState.mediaProgress
+                              ? `${gdriveSyncState.mediaProgress.type === 'upload' ? 'Media Upload' : 'Media Download'} ${gdriveSyncState.mediaProgress.percent}%`
+                              : (gdriveSyncState.message || 'Syncing…'))
                             : (isSyncing ? 'Syncing…' : (gdriveAuthState ? 'Drive Sync' : 'Sync Page'))}
                         </span>
+
+                        {/* Bottom Linear Progress Bar for Media Sync */}
+                        {gdriveSyncState.isSyncing && gdriveSyncState.mediaProgress && (
+                          <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-blue-500/20 overflow-hidden">
+                            <div
+                              className="h-full bg-gradient-to-r from-blue-400 to-indigo-400 transition-all duration-300"
+                              style={{ width: `${gdriveSyncState.mediaProgress.percent}%` }}
+                            />
+                          </div>
+                        )}
                       </button>
 
                       {/* Status Badge */}
@@ -30753,7 +30838,9 @@ Return your response strictly as a JSON object matching this schema:
                               : (settingsThemeMode === 'dark' ? 'text-amber-400 font-black' : 'text-amber-700 font-black'))
                         }>
                           {gdriveSyncState.isSyncing
-                            ? 'Syncing'
+                            ? (gdriveSyncState.mediaProgress
+                              ? `Media ${gdriveSyncState.mediaProgress.percent}%`
+                              : 'Syncing')
                             : (gdriveAuthState ? 'Cloud Vault' : (user ? 'Online' : 'Offline'))}
                         </span>
                       </div>
