@@ -1830,7 +1830,7 @@ function TopicCard({
     setHintError(null);
 
     if (!geminiApiKey) {
-      alert('⚠️ Missing Gemini API Key!\nPlease add your Gemini API Key in the Settings page to generate AI Active-Recall hints.');
+      setHintError('Missing Gemini API Key! Please add your Gemini API Key in Settings to generate AI Active-Recall hints.');
       return;
     }
 
@@ -1860,9 +1860,9 @@ function TopicCard({
 
       if (!pdfObj || !pdfArrayBuffer) {
         const reason = pdfObj
-          ? `⚠️ The attached PDF for "${topicName}" (${subjectName}) has missing binary data (e.g. from an earlier text-only backup export).\n\nPlease open Subject Tracker -> "📁 Textbook Manager" and re-upload the PDF to enable AI hint generation.`
-          : `⚠️ No PDF attached for "${topicName}" (${subjectName}).\nPlease upload a Master Subject PDF or Pre-Split Topic PDF in the Subject Tracker tab ("📁 Textbook Manager").`;
-        alert(reason);
+          ? `The attached PDF for "${topicName}" (${subjectName}) has missing binary data. Please open Subject Tracker -> "Textbook Manager" and re-upload the PDF to enable AI hint generation.`
+          : `No PDF attached for "${topicName}" (${subjectName}). Please upload a Master Subject PDF or Pre-Split Topic PDF in the Subject Tracker tab ("Textbook Manager").`;
+        setHintError(reason);
         setIsGeneratingHints(false);
         return;
       }
