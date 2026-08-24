@@ -30059,6 +30059,56 @@ Return your response strictly as a JSON object matching this schema:
                           </button>
                         </div>
 
+                        {/* Mobile Profile Card for System Category */}
+                        {activeCat.id === 'system' && (
+                          <div className={`p-2.5 rounded-2xl mb-2 flex items-center justify-between gap-2.5 ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200/60'}`}>
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              {gdriveAuthState?.user?.picture ? (
+                                <div className="relative shrink-0">
+                                  <img
+                                    src={gdriveAuthState.user.picture}
+                                    alt={gdriveAuthState.user.name || 'User avatar'}
+                                    className="w-8 h-8 rounded-xl object-cover border border-sky-400/40"
+                                    referrerPolicy="no-referrer"
+                                    onError={(e) => { e.target.style.display = 'none'; }}
+                                  />
+                                  <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-white dark:border-[#222730] rounded-full shadow-xs" />
+                                </div>
+                              ) : (
+                                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-cyan-500 text-white flex items-center justify-center font-black text-xs shrink-0 relative">
+                                  {gdriveAuthState?.user?.name?.[0] || user?.displayName?.[0] || user?.email?.[0] || 'D'}
+                                  {gdriveAuthState?.accessToken && (
+                                    <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-white dark:border-[#222730] rounded-full shadow-xs" />
+                                  )}
+                                </div>
+                              )}
+                              <div className="min-w-0 text-left">
+                                <div className="text-[9px] font-extrabold uppercase tracking-widest truncate flex items-center gap-1">
+                                  {gdriveAuthState?.accessToken ? (
+                                    <span className="text-emerald-500 flex items-center gap-1">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Google Sync
+                                    </span>
+                                  ) : (
+                                    <span className="text-blue-500">Medical ID</span>
+                                  )}
+                                </div>
+                                <div className={`text-xs font-black truncate ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>
+                                  {gdriveAuthState?.user?.name || user?.displayName || 'Offline Scholar'}
+                                </div>
+                              </div>
+                            </div>
+                            {gdriveAuthState?.user?.email ? (
+                              <div className="text-[9px] text-gray-400 truncate max-w-[130px] font-medium text-right" title={gdriveAuthState.user.email}>
+                                {gdriveAuthState.user.email}
+                              </div>
+                            ) : (
+                              <button onClick={logout} className="text-right text-[9px] text-red-500 hover:text-red-600 transition uppercase font-black tracking-wider px-2 py-1 rounded-lg">
+                                Sign Out
+                              </button>
+                            )}
+                          </div>
+                        )}
+
                         {/* Full Visibility Menu Items List */}
                         <div className="flex flex-col gap-2 max-h-[60vh] overflow-y-auto custom-scrollbar p-0.5">
                           {activeCat.items.map(item => {
@@ -30315,29 +30365,92 @@ Return your response strictly as a JSON object matching this schema:
                     })}
                   </nav>
 
-                  {/* Footer Profile Section (Perfect Symmetry) */}
-                  <div className="mt-auto px-4 py-3 z-10 shrink-0">
+                  {/* Footer Profile Section (Google Drive Connected & Offline Parity) */}
+                  <div className="mt-auto px-3.5 py-3 z-10 shrink-0">
                     <div
                       style={{
                         transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
                       }}
-                      className={`p-1.5 rounded-2xl ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200/60'} flex items-center w-full`}
+                      className={`p-1.5 rounded-2xl ${settingsThemeMode === 'dark' ? 'neu-pressed-dark border border-gray-800' : 'neu-pressed-light border border-gray-200/60'} flex items-center w-full cursor-pointer`}
+                      title={gdriveAuthState?.user?.name ? `${gdriveAuthState.user.name} (${gdriveAuthState.user.email})` : (user?.displayName || 'Offline Scholar')}
+                      onMouseEnter={(e) => {
+                        if (!isSidebarExpanded) {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setSidebarTooltip({
+                            top: rect.top + rect.height / 2,
+                            label: gdriveAuthState?.user?.name || user?.displayName || 'Offline Scholar'
+                          });
+                        }
+                      }}
+                      onMouseLeave={() => {
+                        if (!isSidebarExpanded) {
+                          setSidebarTooltip(null);
+                        }
+                      }}
                     >
-                      <div className="w-9 shrink-0 flex items-center justify-center">
-                        <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-cyan-500 text-white flex items-center justify-center font-black text-xs shadow-md">
-                          {user.displayName?.[0] || user.email?.[0] || 'D'}
-                        </div>
+                      <div className="w-9 shrink-0 flex items-center justify-center relative">
+                        {gdriveAuthState?.user?.picture ? (
+                          <div className="relative w-8 h-8">
+                            <img
+                              src={gdriveAuthState.user.picture}
+                              alt={gdriveAuthState.user.name || 'User avatar'}
+                              className="w-8 h-8 rounded-xl object-cover shadow-md border border-sky-400/40"
+                              referrerPolicy="no-referrer"
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                                if (e.target.nextElementSibling) {
+                                  e.target.nextElementSibling.style.display = 'flex';
+                                }
+                              }}
+                            />
+                            <div
+                              style={{ display: 'none' }}
+                              className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-cyan-500 text-white items-center justify-center font-black text-xs shadow-md"
+                            >
+                              {gdriveAuthState?.user?.name?.[0] || 'D'}
+                            </div>
+                            <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-white dark:border-[#222730] rounded-full shadow-xs ring-1 ring-emerald-400/30" />
+                          </div>
+                        ) : (
+                          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-cyan-500 text-white flex items-center justify-center font-black text-xs shadow-md relative">
+                            {gdriveAuthState?.user?.name?.[0] || user?.displayName?.[0] || user?.email?.[0] || 'D'}
+                            {gdriveAuthState?.accessToken && (
+                              <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-white dark:border-[#222730] rounded-full shadow-xs ring-1 ring-emerald-400/30" />
+                            )}
+                          </div>
+                        )}
                       </div>
                       <div
                         style={{
                           transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
                         }}
-                        className={`overflow-hidden ${isSidebarExpanded ? 'opacity-100 max-w-[140px] ml-2 text-left' : 'opacity-0 max-w-0 ml-0 pointer-events-none'
+                        className={`overflow-hidden ${isSidebarExpanded ? 'opacity-100 max-w-[140px] ml-2.5 text-left' : 'opacity-0 max-w-0 ml-0 pointer-events-none'
                           }`}
                       >
-                        <div className="text-[9px] text-blue-500 font-extrabold uppercase tracking-widest truncate">Medical ID</div>
-                        <div className={`text-xs font-black truncate ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>{user.displayName || 'Doctor'}</div>
-                        <button onClick={logout} className="text-left text-[9px] text-red-500 hover:text-red-600 transition uppercase font-black tracking-wider pt-0.5 border-t border-gray-200/20 block w-full mt-0.5">Sign Out</button>
+                        {gdriveAuthState?.accessToken ? (
+                          <>
+                            <div className="text-[9px] text-emerald-500 font-extrabold uppercase tracking-widest truncate flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                              <span className="truncate">Google Sync</span>
+                            </div>
+                            <div className={`text-xs font-black truncate ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`} title={gdriveAuthState.user?.name || 'Google User'}>
+                              {gdriveAuthState.user?.name || 'Google User'}
+                            </div>
+                            <div className="text-[9px] text-gray-400 font-medium truncate" title={gdriveAuthState.user?.email || ''}>
+                              {gdriveAuthState.user?.email || 'Cloud Connected'}
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="text-[9px] text-blue-500 font-extrabold uppercase tracking-widest truncate">Medical ID</div>
+                            <div className={`text-xs font-black truncate ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-800'}`}>
+                              {user?.displayName || 'Offline Scholar'}
+                            </div>
+                            <button onClick={logout} className="text-left text-[9px] text-red-500 hover:text-red-600 transition uppercase font-black tracking-wider pt-0.5 border-t border-gray-200/20 block w-full mt-0.5">
+                              Sign Out
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
