@@ -5161,6 +5161,8 @@ export default function App() {
     mediaProgress: null // { current: number, total: number, percent: number, type: 'upload' | 'download' }
   });
   const [gdriveConflictData, setGdriveConflictData] = useState(null);
+  const [justSynced, setJustSynced] = useState(false);
+  const justSyncedTimerRef = useRef(null);
 
   // Initialize and listen to Google Drive Auth & Sync events
   useEffect(() => {
@@ -5192,6 +5194,11 @@ export default function App() {
         });
       } else if (status === 'synced') {
         setGdriveSyncState({ isSyncing: false, step: 0, total: 0, message: message || 'In sync', mediaProgress: null });
+        setJustSynced(true);
+        if (justSyncedTimerRef.current) clearTimeout(justSyncedTimerRef.current);
+        justSyncedTimerRef.current = setTimeout(() => {
+          setJustSynced(false);
+        }, 2800);
       } else if (status === 'error' || status === 'cancelled') {
         setGdriveSyncState({ isSyncing: false, step: 0, total: 0, message: '', mediaProgress: null });
       }
@@ -24831,15 +24838,20 @@ Return your response strictly as a JSON object matching this schema:
                     <button
                       onClick={handleHeaderSync}
                       disabled={isSyncing || gdriveSyncState.isSyncing}
-                      className={`relative ${gdriveSyncState.mediaProgress ? 'w-auto px-2.5 h-8 gap-1.5' : 'w-8 h-8'} rounded-xl flex items-center justify-center transition active:scale-95 cursor-pointer ${settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300 hover:text-white' : 'neu-btn-light text-slate-700 hover:text-slate-950'
+                      className={`relative ${(justSynced || gdriveSyncState.mediaProgress) ? 'w-auto px-2.5 h-8 gap-1.5' : 'w-8 h-8'} rounded-xl flex items-center justify-center transition-all duration-300 active:scale-95 cursor-pointer ${
+                        justSynced
+                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-[0_0_15px_rgba(52,211,153,0.3)] scale-[1.03]'
+                          : settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300 hover:text-white' : 'neu-btn-light text-slate-700 hover:text-slate-950'
                         } ${(isSyncing || gdriveSyncState.isSyncing) ? 'opacity-95' : ''}`}
-                      title={gdriveSyncState.isSyncing
+                      title={justSynced ? 'Vault Synced!' : (gdriveSyncState.isSyncing
                         ? (gdriveSyncState.mediaProgress
                           ? `${gdriveSyncState.mediaProgress.type === 'upload' ? 'Uploading' : 'Downloading'} Media: ${gdriveSyncState.mediaProgress.current}/${gdriveSyncState.mediaProgress.total} (${gdriveSyncState.mediaProgress.percent}%)`
                           : gdriveSyncState.message)
-                        : (gdriveAuthState ? 'Sync with Google Drive & LocalDB' : 'Sync current page data')}
+                        : (gdriveAuthState ? 'Sync with Google Drive & LocalDB' : 'Sync current page data'))}
                     >
-                      {gdriveSyncState.isSyncing && gdriveSyncState.mediaProgress ? (
+                      {justSynced ? (
+                        <Sparkles className="w-3.5 h-3.5 text-emerald-400 animate-pulse shrink-0" />
+                      ) : gdriveSyncState.isSyncing && gdriveSyncState.mediaProgress ? (
                         <div className="relative w-4 h-4 flex items-center justify-center shrink-0">
                           <svg className="w-4 h-4 -rotate-90" viewBox="0 0 24 24">
                             <circle cx="12" cy="12" r="9" className="text-blue-500/20" strokeWidth="3" stroke="currentColor" fill="transparent" />
@@ -24860,12 +24872,16 @@ Return your response strictly as a JSON object matching this schema:
                       ) : (
                         <RefreshCw className={`w-3.5 h-3.5 ${(isSyncing || gdriveSyncState.isSyncing) ? 'animate-spin text-blue-500' : ''}`} />
                       )}
-                      {gdriveSyncState.mediaProgress && (
+                      {justSynced ? (
+                        <span className="text-[10px] font-black uppercase text-emerald-400">
+                          Synced ✨
+                        </span>
+                      ) : gdriveSyncState.mediaProgress ? (
                         <span className="text-[10px] font-black font-mono text-blue-400">
                           {gdriveSyncState.mediaProgress.percent}%
                         </span>
-                      )}
-                      <span className={`absolute top-1 right-1 w-2 h-2 rounded-full ${gdriveSyncState.isSyncing ? 'bg-amber-500 animate-ping' : (gdriveAuthState ? 'bg-green-500 shadow-xs shadow-green-500/50' : 'bg-slate-400')
+                      ) : null}
+                      <span className={`absolute top-1 right-1 w-2 h-2 rounded-full ${justSynced ? 'bg-emerald-400 shadow-xs shadow-emerald-400/50' : (gdriveSyncState.isSyncing ? 'bg-amber-500 animate-ping' : (gdriveAuthState ? 'bg-green-500 shadow-xs shadow-green-500/50' : 'bg-slate-400'))
                         }`} />
                     </button>
                   </div>
@@ -30763,19 +30779,24 @@ Return your response strictly as a JSON object matching this schema:
                         type="button"
                         onClick={handleHeaderSync}
                         disabled={isSyncing || gdriveSyncState.isSyncing}
-                        className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer active:scale-95 relative overflow-hidden ${(isSyncing || gdriveSyncState.isSyncing)
-                            ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30 shadow-sm cursor-wait'
-                            : (settingsThemeMode === 'dark'
-                              ? 'liquid-glass-pill-dark text-slate-200 hover:text-white'
-                              : 'liquid-glass-pill-light text-blue-600 hover:text-blue-800')
+                        className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-300 cursor-pointer active:scale-95 relative overflow-hidden ${
+                          justSynced
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-[0_0_18px_rgba(52,211,153,0.35)] scale-[1.02]'
+                            : (isSyncing || gdriveSyncState.isSyncing)
+                              ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30 shadow-sm cursor-wait'
+                              : (settingsThemeMode === 'dark'
+                                ? 'liquid-glass-pill-dark text-slate-200 hover:text-white'
+                                : 'liquid-glass-pill-light text-blue-600 hover:text-blue-800')
                           }`}
-                        title={gdriveSyncState.isSyncing
+                        title={justSynced ? 'Collection synchronized!' : (gdriveSyncState.isSyncing
                           ? (gdriveSyncState.mediaProgress
                             ? `${gdriveSyncState.mediaProgress.type === 'upload' ? 'Uploading' : 'Downloading'} Media: ${gdriveSyncState.mediaProgress.current}/${gdriveSyncState.mediaProgress.total} (${gdriveSyncState.mediaProgress.percent}%)`
                             : gdriveSyncState.message)
-                          : (gdriveAuthState ? 'Sync with Google Drive & LocalDB' : `Sync ${currentTab} data from Local Database`)}
+                          : (gdriveAuthState ? 'Sync with Google Drive & LocalDB' : `Sync ${currentTab} data from Local Database`))}
                       >
-                        {(isSyncing || gdriveSyncState.isSyncing) && gdriveSyncState.mediaProgress ? (
+                        {justSynced ? (
+                          <Sparkles className="w-3.5 h-3.5 text-emerald-400 animate-pulse shrink-0" />
+                        ) : (isSyncing || gdriveSyncState.isSyncing) && gdriveSyncState.mediaProgress ? (
                           <div className="relative w-4 h-4 flex items-center justify-center shrink-0">
                             <svg className="w-4 h-4 -rotate-90" viewBox="0 0 24 24">
                               <circle
@@ -30805,11 +30826,13 @@ Return your response strictly as a JSON object matching this schema:
                           <RefreshCw className={`w-3.5 h-3.5 ${(isSyncing || gdriveSyncState.isSyncing) ? 'animate-spin text-blue-400' : 'transition-transform duration-500 hover:rotate-180'}`} />
                         )}
                         <span>
-                          {gdriveSyncState.isSyncing
-                            ? (gdriveSyncState.mediaProgress
-                              ? `${gdriveSyncState.mediaProgress.type === 'upload' ? 'Media Upload' : 'Media Download'} ${gdriveSyncState.mediaProgress.percent}%`
-                              : (gdriveSyncState.message || 'Syncing…'))
-                            : (isSyncing ? 'Syncing…' : (gdriveAuthState ? 'Drive Sync' : 'Sync Page'))}
+                          {justSynced
+                            ? 'Vault Synced ✨'
+                            : gdriveSyncState.isSyncing
+                              ? (gdriveSyncState.mediaProgress
+                                ? `${gdriveSyncState.mediaProgress.type === 'upload' ? 'Media Upload' : 'Media Download'} ${gdriveSyncState.mediaProgress.percent}%`
+                                : (gdriveSyncState.message || 'Syncing…'))
+                              : (isSyncing ? 'Syncing…' : (gdriveAuthState ? 'Drive Sync' : 'Sync Page'))}
                         </span>
 
                         {/* Bottom Linear Progress Bar for Media Sync */}
@@ -30826,9 +30849,11 @@ Return your response strictly as a JSON object matching this schema:
                       {/* Status Badge */}
                       <div className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 ${settingsThemeMode === 'dark' ? 'liquid-glass-pill-dark' : 'liquid-glass-pill-light'
                         }`}>
-                        <div className={`w-1.5 h-1.5 rounded-full ${gdriveSyncState.isSyncing
-                            ? 'bg-amber-400 animate-pulse'
-                            : (gdriveAuthState ? 'bg-emerald-400 animate-pulse' : 'bg-blue-400')
+                        <div className={`w-1.5 h-1.5 rounded-full ${justSynced
+                            ? 'bg-emerald-400 shadow-xs shadow-emerald-400 animate-ping'
+                            : gdriveSyncState.isSyncing
+                              ? 'bg-amber-400 animate-pulse'
+                              : (gdriveAuthState ? 'bg-emerald-400 animate-pulse' : 'bg-blue-400')
                           }`} />
                         <span className={
                           gdriveAuthState

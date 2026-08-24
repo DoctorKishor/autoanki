@@ -41,6 +41,8 @@ export default function GoogleDriveSyncSection({
   const [activeClientId, setActiveClientId] = useState(DEFAULT_GOOGLE_CLIENT_ID);
   const [isSavingClientId, setIsSavingClientId] = useState(false);
 
+  const [justSynced, setJustSynced] = useState(false);
+
   // Compute local and cloud storage metrics
   const refreshStorageMetrics = useCallback(async (token) => {
     try {
@@ -89,6 +91,7 @@ export default function GoogleDriveSyncSection({
   useEffect(() => {
     refreshAuthState();
 
+    let justSyncedTimer = null;
     const handleAuthChanged = (e) => {
       const freshState = e.detail;
       setAuthState(freshState);
@@ -112,6 +115,9 @@ export default function GoogleDriveSyncSection({
         setSyncStatusMsg(message || 'In sync with Google Drive');
         setLastSyncTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
         setErrorMsg('');
+        setJustSynced(true);
+        if (justSyncedTimer) clearTimeout(justSyncedTimer);
+        justSyncedTimer = setTimeout(() => setJustSynced(false), 2800);
         // Refresh vault size after sync
         getGoogleDriveAuthState().then(state => {
           if (state?.accessToken) {
@@ -539,10 +545,23 @@ export default function GoogleDriveSyncSection({
                     type="button"
                     onClick={handleManualSync}
                     disabled={isSyncing}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl font-black text-xs uppercase tracking-wider bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20 active:scale-95 transition cursor-pointer hover:opacity-95 disabled:opacity-50"
+                    className={`w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl font-black text-xs uppercase tracking-wider transition-all duration-300 cursor-pointer active:scale-95 disabled:opacity-50 ${
+                      justSynced
+                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-500/25 scale-[1.02]'
+                        : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20 hover:opacity-95'
+                    }`}
                   >
-                    <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                    {isSyncing ? 'Synchronizing…' : 'Sync Now'}
+                    {justSynced ? (
+                      <>
+                        <Sparkles className="w-4 h-4 text-emerald-200 animate-pulse" />
+                        <span>Vault Synced ✨</span>
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                        <span>{isSyncing ? 'Synchronizing…' : 'Sync Now'}</span>
+                      </>
+                    )}
                   </button>
                 </div>
               </motion.div>
