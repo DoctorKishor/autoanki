@@ -1445,7 +1445,7 @@ export const SNAPSHOT_BUNDLES = {
   recycle_bin:         'recycle_bin',
 };
 
-const LS_KEYS_TO_SNAPSHOT = [
+export const LS_KEYS_TO_SNAPSHOT = [
   'pyt_gemini_api_key',
   'pyt_imgbb_api_key',
   'pyt_github_username',

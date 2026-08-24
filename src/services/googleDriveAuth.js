@@ -301,6 +301,19 @@ export async function requestGoogleDriveToken({ prompt = '', hint = '' } = {}) {
 let tokenRefreshPromise = null;
 
 /**
+ * Checks if the Google Drive access token is expired or expiring within 2 minutes.
+ * @param {object} state
+ * @returns {boolean}
+ */
+export function isGoogleDriveTokenExpired(state) {
+  if (!state || !state.accessToken) return true;
+  if (!state.expiresAt) return false;
+  const now = Date.now();
+  const bufferMs = 2 * 60 * 1000; // 2 minute buffer
+  return state.expiresAt - now < bufferMs;
+}
+
+/**
  * Returns a valid, unexpired access token for Google Drive API requests.
  * If expired or expiring within 2 minutes, seamlessly requests a token renewal using user email hint.
  * @param {boolean} [interactive=false]
@@ -310,9 +323,7 @@ export async function getValidAccessToken(interactive = false) {
   const state = await getGoogleDriveAuthState();
   if (!state || !state.accessToken) return null;
 
-  const now = Date.now();
-  const bufferMs = 2 * 60 * 1000; // 2 minute buffer
-  const isExpiring = !state.expiresAt || (state.expiresAt - now < bufferMs);
+  const isExpiring = isGoogleDriveTokenExpired(state);
 
   if (!isExpiring) {
     return state.accessToken;
@@ -327,7 +338,7 @@ export async function getValidAccessToken(interactive = false) {
     return refreshed?.accessToken || null;
   }
 
-  tokenRefreshPromise = requestGoogleDriveToken({ prompt: '', hint: state.user?.email || '' })
+  const p = requestGoogleDriveToken({ prompt: '', hint: state.user?.email || '' })
     .catch((err) => {
       console.warn('[GoogleAuth] Seamless token renewal failed:', err);
       return null;
@@ -336,8 +347,18 @@ export async function getValidAccessToken(interactive = false) {
       tokenRefreshPromise = null;
     });
 
-  const freshState = await tokenRefreshPromise;
+  tokenRefreshPromise = p;
+  const freshState = await p;
   return freshState?.accessToken || null;
+}
+
+// Pre-warm Google Identity Services script on module evaluation (non-blocking)
+if (typeof window !== 'undefined') {
+  setTimeout(() => {
+    loadGoogleIdentityServices()
+      .then(() => initGoogleTokenClient().catch(() => {}))
+      .catch(() => {});
+  }, 1000);
 }
 
 /**

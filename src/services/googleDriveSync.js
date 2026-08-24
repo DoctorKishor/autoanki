@@ -33,7 +33,8 @@ import {
   arrayBufferToBase64,
   base64ToArrayBuffer,
   serializeBinaryValues,
-  deserializeBinaryValues
+  deserializeBinaryValues,
+  LS_KEYS_TO_SNAPSHOT
 } from './localDb';
 
 export const VAULT_FOLDER_NAME = 'AutoAnki_Sync_Vault';
@@ -402,7 +403,7 @@ export async function extractLocalBundles() {
     activeNewTopicsToday
   };
 
-  // 4. FSRS Config & Settings Bundle
+  // 4. FSRS Config & Settings Bundle (including 24 synchronized localStorage settings)
   const fsrsConfig = (await getFSRSConfig()) || {};
   const settings = (await getAllLocalItems(STORES.SETTINGS)) || [];
   const filteredSettings = settings.filter(s => s?.key !== 'google_drive_auth');
@@ -411,6 +412,26 @@ export async function extractLocalBundles() {
   const customPrompts = (await getLocalKV('custom_prompts')) || [];
   const localUserProfile = (await getLocalKV('local_user_profile')) || null;
   const aiRecommendations = (await getLocalKV('ai_topic_recommendations_' + syncTodayStr)) || (await getLocalKV('ai_topic_recommendations')) || null;
+
+  const localStorageSnapshot = {};
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      (LS_KEYS_TO_SNAPSHOT || []).forEach(key => {
+        const val = localStorage.getItem(key);
+        if (val !== null && val !== undefined) localStorageSnapshot[key] = val;
+      });
+      for (let i = 0; i < window.localStorage.length; i++) {
+        const k = window.localStorage.key(i);
+        if (k && (k.startsWith('camp_sessions_') || k.startsWith('camp_bedToBook_'))) {
+          const val = window.localStorage.getItem(k);
+          if (val !== null && val !== undefined) localStorageSnapshot[k] = val;
+        }
+      }
+    } catch (e) {
+      console.warn('[GDriveSync] Error capturing localStorage settings:', e);
+    }
+  }
+
   const fsrsBundle = {
     fsrsConfig,
     settings: filteredSettings,
@@ -418,7 +439,8 @@ export async function extractLocalBundles() {
     hintQuota,
     customPrompts,
     localUserProfile,
-    aiRecommendations
+    aiRecommendations,
+    localStorageSnapshot
   };
 
   // 5. CAMP Tracker Bundle
@@ -511,7 +533,7 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
   const totalSteps = 7;
   let step = 0;
 
-  // 1. Cards Bundle (Timestamp-Aware & FSRS Safe)
+  // 1. Cards Bundle (Timestamp-Aware, Tombstone Pruning & FSRS Safe)
   if (bundles['cards_bundle.json']) {
     emit(++step, totalSteps, 'Hydrating Flashcards & FSRS memory states…');
     const b = bundles['cards_bundle.json'];
@@ -522,17 +544,18 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
       await setLocalKV('flashcards', incomingCards);
       await setLocalKV('trash_cards', incomingTrash);
     } else {
-      // Merge cards by ID with safe timestamp check & trash awareness
+      // Merge cards by ID with safe timestamp check & trash tombstone awareness
       const existing = (await getLocalKV('flashcards')) || [];
       const localTrash = (await getLocalKV('trash_cards')) || [];
-      const trashMap = new Map(localTrash.map(c => [c.id, safeTimestamp(c.deletedAt)]));
+      const localTrashMap = new Map(localTrash.map(c => [c.id, safeTimestamp(c.deletedAt)]));
+      const incomingTrashMap = new Map(incomingTrash.map(c => [c.id, safeTimestamp(c.deletedAt)]));
       const map = new Map(existing.map(c => [c.id, c]));
 
       incomingCards.forEach(inc => {
         if (inc && inc.id) {
-          const localDeletedAt = trashMap.get(inc.id);
+          const localDeletedAt = localTrashMap.get(inc.id);
           const incTime = safeTimestamp(inc.updatedAt || inc.lastReviewDate || inc.createdAt);
-          if (localDeletedAt && localDeletedAt > incTime) {
+          if (localDeletedAt && localDeletedAt >= incTime) {
             return;
           }
 
@@ -549,15 +572,31 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
           }
         }
       });
+
+      // Tombstone pruning: remove any local card that was deleted in the incoming trash
+      for (const [id, card] of map.entries()) {
+        const remoteDeletedAt = incomingTrashMap.get(id);
+        if (remoteDeletedAt) {
+          const localCardTime = safeTimestamp(card.updatedAt || card.lastReviewDate || card.createdAt);
+          if (remoteDeletedAt >= localCardTime) {
+            map.delete(id);
+          }
+        }
+      }
+
       await setLocalKV('flashcards', Array.from(map.values()));
 
-      // Merge trash cards
-      const existingTrash = (await getLocalKV('trash_cards')) || [];
-      const trashSet = new Map(existingTrash.map(c => [c.id, c]));
+      // Merge trash cards with latest deletedAt
+      const mergedTrashMap = new Map(localTrash.map(c => [c.id, c]));
       incomingTrash.forEach(c => {
-        if (c && c.id && !trashSet.has(c.id)) trashSet.set(c.id, c);
+        if (c && c.id) {
+          const exist = mergedTrashMap.get(c.id);
+          if (!exist || safeTimestamp(c.deletedAt) >= safeTimestamp(exist.deletedAt)) {
+            mergedTrashMap.set(c.id, c);
+          }
+        }
       });
-      await setLocalKV('trash_cards', Array.from(trashSet.values()));
+      await setLocalKV('trash_cards', Array.from(mergedTrashMap.values()));
     }
   }
 
@@ -629,7 +668,7 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
     }
   }
 
-  // 3. Study Logs (Deep Merging & FSRS Log Aggregation)
+  // 3. Study Logs (Deep Merging & Session/GT Unioning)
   if (bundles['study_logs.json']) {
     emit(++step, totalSteps, 'Hydrating Study Logs & Velocity Telemetry…');
     const b = bundles['study_logs.json'];
@@ -656,7 +695,7 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
         });
       }
     } else {
-      // Deep-merge study logs by date with aligned property naming
+      // Deep-merge study logs by date with session unioning
       const existing = (await getLocalStudyLogs()) || {};
       const merged = { ...existing };
 
@@ -671,12 +710,38 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
           // Union FSRS logs by unique review timestamp or log key
           const fsrsMap = new Map();
           existingFsrs.forEach(l => {
-            const k = l.timestamp || l.cardId + '_' + (l.rating || 'rev');
+            const k = l.timestamp || (l.cardId + '_' + (l.rating || 'rev'));
             fsrsMap.set(k, l);
           });
           incomingFsrs.forEach(l => {
-            const k = l.timestamp || l.cardId + '_' + (l.rating || 'rev');
+            const k = l.timestamp || (l.cardId + '_' + (l.rating || 'rev'));
             if (!fsrsMap.has(k)) fsrsMap.set(k, l);
+          });
+
+          // Union study sessions by ID or start timestamp
+          const existingSessions = Array.isArray(cur.sessions) ? cur.sessions : [];
+          const incomingSessions = Array.isArray(incLog?.sessions) ? incLog.sessions : [];
+          const sessionMap = new Map();
+          existingSessions.forEach(s => {
+            const k = s.id || s.startedAt || s.timestamp || (s.subject + '_' + s.duration);
+            sessionMap.set(k, s);
+          });
+          incomingSessions.forEach(s => {
+            const k = s.id || s.startedAt || s.timestamp || (s.subject + '_' + s.duration);
+            if (!sessionMap.has(k)) sessionMap.set(k, s);
+          });
+
+          // Union Grand Tests (GTs)
+          const existingGts = Array.isArray(cur.gts) ? cur.gts : [];
+          const incomingGts = Array.isArray(incLog?.gts) ? incLog.gts : [];
+          const gtMap = new Map();
+          existingGts.forEach(g => {
+            const k = g.id || (g.testName + '_' + (g.date || g.timestamp));
+            gtMap.set(k, g);
+          });
+          incomingGts.forEach(g => {
+            const k = g.id || (g.testName + '_' + (g.date || g.timestamp));
+            if (!gtMap.has(k)) gtMap.set(k, g);
           });
 
           const totalCards = Math.max(cur.totalCardsReviewed || cur.cards || 0, incLog?.totalCardsReviewed || incLog?.cards || 0, fsrsMap.size);
@@ -693,7 +758,9 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
             hours: totalHours,
             studyHours: totalHours,
             pages: Math.max(cur.pages || 0, incLog?.pages || 0),
-            fsrsLogs: Array.from(fsrsMap.values())
+            fsrsLogs: Array.from(fsrsMap.values()),
+            sessions: Array.from(sessionMap.values()),
+            gts: Array.from(gtMap.values())
           };
         }
       }
@@ -717,9 +784,9 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
     }
   }
 
-  // 4. FSRS Config & Settings
+  // 4. FSRS Config & Settings (including 24 synchronized localStorage settings)
   if (bundles['fsrs_config.json']) {
-    emit(++step, totalSteps, 'Hydrating FSRS-6 Config, Hints & Prompts…');
+    emit(++step, totalSteps, 'Hydrating FSRS-6 Config, Hints & Preferences…');
     const b = bundles['fsrs_config.json'];
     if (b.fsrsConfig) await saveFSRSConfig(b.fsrsConfig);
     if (b.localUserProfile) await setLocalKV('local_user_profile', b.localUserProfile);
@@ -756,6 +823,23 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
         }
       }
     }
+
+    // Hydrate localStorage snapshot settings into browser localStorage
+    if (b.localStorageSnapshot && typeof b.localStorageSnapshot === 'object') {
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          Object.entries(b.localStorageSnapshot).forEach(([k, v]) => {
+            if (v !== null && v !== undefined && k !== 'autoanki_device_id' && k !== 'autoanki_gdrive_auth') {
+              if (strategy === 'replace' || localStorage.getItem(k) === null) {
+                localStorage.setItem(k, v);
+              }
+            }
+          });
+        }
+      } catch (e) {
+        console.warn('[GDriveSync] Error hydrating localStorage settings:', e);
+      }
+    }
   }
 
   // 5. CAMP Tracker
@@ -774,7 +858,7 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
     }
   }
 
-  // 6. Scanned Pages & Image Occlusions (Zero-Data-Loss Restoration)
+  // 6. Scanned Pages & Image Occlusions (Zero-Data-Loss Restoration with Tombstone Pruning)
   if (bundles['pages_bundle.json']) {
     emit(++step, totalSteps, 'Hydrating Scanned Pages & Image Occlusions…');
     const b = bundles['pages_bundle.json'];
@@ -799,14 +883,15 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
     } else {
       const existing = (await getLocalPages()) || [];
       const localTrashPages = (await getLocalKV('trash_pages')) || [];
-      const trashMap = new Map(localTrashPages.map(p => [p.id, p.deletedAt || 0]));
+      const localTrashMap = new Map(localTrashPages.map(p => [p.id, safeTimestamp(p.deletedAt)]));
+      const incomingTrashMap = new Map(incomingTrashPages.map(p => [p.id, safeTimestamp(p.deletedAt)]));
       const map = new Map(existing.map(p => [p.id, p]));
 
       incomingPages.forEach(p => {
         if (p && p.id) {
-          const localDeletedAt = trashMap.get(p.id);
-          const incTime = new Date(p.updatedAt || p.createdAt || 0).getTime();
-          if (localDeletedAt && localDeletedAt > incTime) {
+          const localDeletedAt = localTrashMap.get(p.id);
+          const incTime = safeTimestamp(p.updatedAt || p.createdAt);
+          if (localDeletedAt && localDeletedAt >= incTime) {
             // Page was deleted locally after incoming version was updated
             return;
           }
@@ -815,7 +900,7 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
           if (!localP) {
             map.set(p.id, p);
           } else {
-            const locTime = new Date(localP.updatedAt || localP.createdAt || 0).getTime();
+            const locTime = safeTimestamp(localP.updatedAt || localP.createdAt);
             map.set(p.id, {
               ...(incTime >= locTime ? { ...localP, ...p } : { ...p, ...localP }),
               data: localP.data || p.data,
@@ -825,15 +910,31 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
           }
         }
       });
+
+      // Tombstone pruning: remove any local page that was deleted in incoming trash
+      for (const [id, page] of map.entries()) {
+        const remoteDeletedAt = incomingTrashMap.get(id);
+        if (remoteDeletedAt) {
+          const localPageTime = safeTimestamp(page.updatedAt || page.createdAt);
+          if (remoteDeletedAt >= localPageTime) {
+            map.delete(id);
+          }
+        }
+      }
+
       await setLocalKV('pages', Array.from(map.values()));
 
-      // Merge trash pages
-      const existingTrash = (await getLocalKV('trash_pages')) || [];
-      const trashSet = new Map(existingTrash.map(p => [p.id, p]));
+      // Merge trash pages with latest deletedAt
+      const mergedTrashPages = new Map(localTrashPages.map(p => [p.id, p]));
       incomingTrashPages.forEach(p => {
-        if (p && p.id && !trashSet.has(p.id)) trashSet.set(p.id, p);
+        if (p && p.id) {
+          const exist = mergedTrashPages.get(p.id);
+          if (!exist || safeTimestamp(p.deletedAt) >= safeTimestamp(exist.deletedAt)) {
+            mergedTrashPages.set(p.id, p);
+          }
+        }
       });
-      await setLocalKV('trash_pages', Array.from(trashSet.values()));
+      await setLocalKV('trash_pages', Array.from(mergedTrashPages.values()));
     }
   }
 
@@ -970,15 +1071,15 @@ function buildConflictDiffDetails(localManifest, remoteManifest, modifiedBundleN
         remoteDetail: `Cloud CAMP entries`
       })
     },
-    'app_settings.json': {
-      title: 'Topic Hints & User Preferences',
+    'fsrs_config.json': {
+      title: 'Topic Hints, FSRS Config & Settings',
       icon: 'Settings',
       describe: () => ({
-        badge: 'Settings Modified',
+        badge: 'Settings & Prompts Modified',
         badgeType: 'info',
-        diffSummary: `Topic hints, custom study prompts, or user preferences differ.`,
-        localDetail: `Local settings`,
-        remoteDetail: `Cloud settings`
+        diffSummary: `Topic hints, FSRS parameters, custom AI prompts, or user preferences differ.`,
+        localDetail: `Local settings & config`,
+        remoteDetail: `Cloud settings & config`
       })
     }
   };
@@ -1173,6 +1274,20 @@ async function executeSyncInternal({
       emit(10, 10, 'Everything is up to date.');
       emitSyncEvent('synced', { message: 'In sync with Google Drive.' });
       return { success: true, action: 'noop', message: 'Everything is up to date.' };
+    }
+
+    // Scenario 0: Fresh/empty local device auto fast-forward
+    const isLocalEmpty = (!localManifest.stats?.cardsCount && !localManifest.stats?.topicsCount && !localManifest.stats?.pagesCount && !localManifest.stats?.logsDaysCount);
+    const hasRemoteData = remoteManifest.stats && ((remoteManifest.stats.cardsCount || 0) > 0 || (remoteManifest.stats.topicsCount || 0) > 0 || (remoteManifest.stats.pagesCount || 0) > 0);
+
+    if (isLocalEmpty && hasRemoteData && !force) {
+      console.log('[GDriveSync] Local device is uninitialized/empty. Fast-forward downloading from cloud…');
+      emit(3, 10, 'Downloading your collection from Google Drive…');
+      const res = await executeOneWayDownload(accessToken, vaultFolderId, mediaFolderId, remoteFileMap, emit);
+      if (res.success) {
+        await saveLastSyncedHashes(remoteHashes);
+      }
+      return res;
     }
 
     // Fast-Forward Analysis:
@@ -1489,6 +1604,10 @@ async function syncMediaFromDrive(accessToken, mediaFolderId) {
         const localPage = localPageMap.get(pageId);
         if (localPage) {
           localPage.data = arrayBuf;
+          const base64Str = arrayBufferToBase64(arrayBuf);
+          const dataUrl = `data:image/webp;base64,${base64Str}`;
+          localPage.imageUrl = dataUrl;
+          localPage.originalImage = dataUrl;
           localPage.updatedAt = new Date().toISOString();
           hasUpdates = true;
         }
@@ -1511,10 +1630,16 @@ async function syncMediaFromDrive(accessToken, mediaFolderId) {
     const currentPages = (await getLocalPages()) || [];
     const currentMap = new Map(currentPages.map(p => [p.id, p]));
     for (const [id, updatedP] of localPageMap.entries()) {
-      if (updatedP.data && currentMap.has(id)) {
+      if (currentMap.has(id)) {
         const existingCur = currentMap.get(id);
-        if (!existingCur.data) {
+        if (!existingCur.data && updatedP.data) {
           existingCur.data = updatedP.data;
+        }
+        if (!existingCur.imageUrl && updatedP.imageUrl) {
+          existingCur.imageUrl = updatedP.imageUrl;
+        }
+        if (!existingCur.originalImage && updatedP.originalImage) {
+          existingCur.originalImage = updatedP.originalImage;
         }
       }
     }
@@ -1637,7 +1762,7 @@ export async function pushTimerStateToDrive(timerState, immediate = true) {
       const { vaultFolderId } = await ensureSyncVault(auth.accessToken);
       const existingFile = await findDriveItem(auth.accessToken, TIMER_STATE_FILE, vaultFolderId);
 
-      const deviceId = getOrCreateDeviceId();
+      const deviceId = getDeviceId();
       const payload = {
         timerType: timerState.timerType || 'pomodoro',
         pomodoroStatus: timerState.pomodoroStatus || 'idle',
@@ -1705,7 +1830,7 @@ export async function checkAndSyncRemoteTimerState(onRemoteUpdate) {
 
     lastKnownRemoteTimerModified = remoteFile.modifiedTime;
 
-    const localDeviceId = getOrCreateDeviceId();
+    const localDeviceId = getDeviceId();
     // Ignore if update originated from this same device earlier
     if (remoteState.deviceId === localDeviceId && remoteState.updatedAt <= lastPushedTimerTimestamp) {
       return false;

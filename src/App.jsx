@@ -8730,14 +8730,32 @@ export default function App() {
         if (typeof loadTrash === 'function') await loadTrash(true);
         if (typeof loadInternalSnapshots === 'function') await loadInternalSnapshots();
 
-        const [pytList, pytProg, booksMeta, trackerData, scheduleMap, templatesList, activeTopics] = await Promise.all([
+        const [
+          pytList,
+          pytProg,
+          booksMeta,
+          trackerData,
+          scheduleMap,
+          templatesList,
+          activeTopics,
+          freshFsrs,
+          freshExamProfiles,
+          freshPrompts,
+          freshCap,
+          freshHierarchy
+        ] = await Promise.all([
           getAllLocalPytTopics().catch(() => []),
           getAllLocalPytProgress().catch(() => []),
           getLocalTextbooksMetadata().catch(() => []),
           getLocalSubjectTrackerData().catch(() => []),
           getLocalStudySchedule().catch(() => ({})),
           getLocalScheduleTemplates().catch(() => []),
-          getActiveNewTopicIds(todayStr).catch(() => [])
+          getActiveNewTopicIds(todayStr).catch(() => []),
+          getFSRSConfig().catch(() => null),
+          getLocalSetting('exam_profiles').catch(() => null),
+          getLocalPrompts().catch(() => []),
+          getLocalSetting('max_daily_review_cap').catch(() => null),
+          getLocalSetting('hierarchy').catch(() => null)
         ]);
 
         if (Array.isArray(pytList)) setPytTopicsList(pytList);
@@ -8747,6 +8765,18 @@ export default function App() {
         if (scheduleMap && typeof scheduleMap === 'object') setStudySchedule(scheduleMap);
         if (Array.isArray(templatesList)) setScheduleTemplates(templatesList);
         if (Array.isArray(activeTopics) && activeTopics.length > 0) setActiveNewTopicIds(activeTopics);
+        if (freshFsrs) {
+          setFsrsConfig(freshFsrs);
+          if (freshFsrs.dailyLimits?.maxReviewPagesPerDay) {
+            setMaxDailyReviewCap(freshFsrs.dailyLimits.maxReviewPagesPerDay);
+          }
+        }
+        if (Array.isArray(freshExamProfiles)) setExamProfiles(freshExamProfiles);
+        if (Array.isArray(freshPrompts)) setCustomPrompts(freshPrompts);
+        if (typeof freshCap === 'number') setMaxDailyReviewCap(freshCap);
+        if (freshHierarchy?.paths && Array.isArray(freshHierarchy.paths)) {
+          setDeckPaths(freshHierarchy.paths);
+        }
       } catch (err) {
         console.warn('[App] Error refreshing state after cloud hydration:', err);
       }
