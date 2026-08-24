@@ -1335,3 +1335,117 @@ export async function getGoogleDriveVaultStorageSize(accessToken) {
   }
 }
 
+// ============================================================================
+// REAL-TIME GOOGLE DRIVE TIMER SYNCHRONIZATION ENGINE
+// ============================================================================
+
+export const TIMER_STATE_FILE = 'timer_state.json';
+let lastPushedTimerTimestamp = 0;
+let lastKnownRemoteTimerModified = null;
+let timerPushDebounceTimer = null;
+
+/**
+ * Pushes the local timer state to Google Drive AutoAnki_Sync_Vault.
+ * @param {object} timerState
+ * @param {boolean} [immediate=true]
+ */
+export async function pushTimerStateToDrive(timerState, immediate = true) {
+  if (!timerState) return;
+
+  const auth = await getGoogleDriveAuthState();
+  if (!auth?.accessToken) return;
+
+  const doPush = async () => {
+    try {
+      const { vaultFolderId } = await ensureSyncVault(auth.accessToken);
+      const existingFile = await findDriveItem(auth.accessToken, TIMER_STATE_FILE, vaultFolderId);
+
+      const deviceId = getOrCreateDeviceId();
+      const payload = {
+        timerType: timerState.timerType || 'pomodoro',
+        pomodoroStatus: timerState.pomodoroStatus || 'idle',
+        pomodoroDuration: timerState.pomodoroDuration || 1500,
+        pomodoroBreakDuration: timerState.pomodoroBreakDuration || 300,
+        pomodoroLongBreakDuration: timerState.pomodoroLongBreakDuration || 1200,
+        pomodoroTargetRounds: timerState.pomodoroTargetRounds || 4,
+        pomodoroTimeLeft: timerState.pomodoroTimeLeft || 1500,
+        pomodoroTimeLeftAtStart: timerState.pomodoroTimeLeftAtStart || 1500,
+        pomodoroStartedAt: timerState.pomodoroStartedAt || null,
+        pomodoroMode: timerState.pomodoroMode || 'study',
+        pomodoroRounds: timerState.pomodoroRounds || 0,
+        timerStatus: timerState.timerStatus || 'idle',
+        timerDuration: timerState.timerDuration || 600,
+        timerTimeLeft: timerState.timerTimeLeft || 600,
+        timerTimeLeftAtStart: timerState.timerTimeLeftAtStart || 600,
+        timerStartedAt: timerState.timerStartedAt || null,
+        stopwatchStatus: timerState.stopwatchStatus || 'idle',
+        stopwatchStartedAt: timerState.stopwatchStartedAt || null,
+        stopwatchElapsedBeforePause: timerState.stopwatchElapsedBeforePause || 0,
+        stopwatchLaps: timerState.stopwatchLaps || [],
+        updatedAt: Date.now(),
+        deviceId
+      };
+
+      lastPushedTimerTimestamp = payload.updatedAt;
+      const uploaded = await uploadDriveFile(auth.accessToken, vaultFolderId, TIMER_STATE_FILE, payload, existingFile?.id);
+      if (uploaded?.modifiedTime) {
+        lastKnownRemoteTimerModified = uploaded.modifiedTime;
+      }
+    } catch (err) {
+      console.warn('[GDriveTimer] Failed to push timer state to Drive:', err);
+    }
+  };
+
+  if (timerPushDebounceTimer) clearTimeout(timerPushDebounceTimer);
+
+  if (immediate) {
+    await doPush();
+  } else {
+    timerPushDebounceTimer = setTimeout(doPush, 500);
+  }
+}
+
+/**
+ * Checks if a newer remote timer state exists in Google Drive and applies it.
+ * @param {Function} onRemoteUpdate Callback with the new remote timer state
+ * @returns {Promise<boolean>} True if remote state was applied
+ */
+export async function checkAndSyncRemoteTimerState(onRemoteUpdate) {
+  try {
+    const auth = await getGoogleDriveAuthState();
+    if (!auth?.accessToken) return false;
+
+    const { vaultFolderId } = await ensureSyncVault(auth.accessToken);
+    const remoteFile = await findDriveItem(auth.accessToken, TIMER_STATE_FILE, vaultFolderId);
+    if (!remoteFile) return false;
+
+    if (lastKnownRemoteTimerModified && remoteFile.modifiedTime <= lastKnownRemoteTimerModified) {
+      return false;
+    }
+
+    const remoteState = await downloadDriveFile(auth.accessToken, remoteFile.id, true);
+    if (!remoteState || typeof remoteState !== 'object') return false;
+
+    lastKnownRemoteTimerModified = remoteFile.modifiedTime;
+
+    const localDeviceId = getOrCreateDeviceId();
+    // Ignore if update originated from this same device earlier
+    if (remoteState.deviceId === localDeviceId && remoteState.updatedAt <= lastPushedTimerTimestamp) {
+      return false;
+    }
+
+    if (remoteState.updatedAt && remoteState.updatedAt > lastPushedTimerTimestamp) {
+      if (typeof onRemoteUpdate === 'function') {
+        onRemoteUpdate(remoteState);
+      }
+      return true;
+    }
+
+    return false;
+  } catch (err) {
+    console.warn('[GDriveTimer] Error checking remote timer state:', err);
+    return false;
+  }
+}
+
+

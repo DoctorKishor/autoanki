@@ -22,7 +22,7 @@ import StorageUsageSection from './components/StorageUsageSection';
 import GoogleDriveSyncSection from './components/GoogleDriveSyncSection';
 import GoogleDriveConflictModal from './components/GoogleDriveConflictModal';
 import { getGoogleDriveAuthState } from './services/googleDriveAuth';
-import { syncWithGoogleDrive, triggerDebouncedSmartPush, handleAppExitKeepaliveSync } from './services/googleDriveSync';
+import { syncWithGoogleDrive, triggerDebouncedSmartPush, handleAppExitKeepaliveSync, pushTimerStateToDrive, checkAndSyncRemoteTimerState } from './services/googleDriveSync';
 import {
   BG_CATEGORIES, STATIC_BG_GRADIENTS, SOUND_TRACKS, STUDY_QUOTES, OBS_CSS_TEMPLATE,
   CtrlBtn, BgPanel, SoundsPanel, QuotesPanel, StatsPanel, TimerSettingsPanel, WidgetsPanel, FloatingWidget,
@@ -10342,6 +10342,69 @@ JSON Format:
     return () => { isMounted = false; };
   }, []);
 
+  // Handler to apply remote Google Drive timer state
+  const applyRemoteTimerState = useCallback((remote) => {
+    if (!remote || typeof remote !== 'object') return;
+    setRawTimerState(prev => ({ ...prev, ...remote }));
+    saveLocalTimerState(remote).catch(() => {});
+
+    // Recalculate local ticking values based on remote timestamp anchors
+    if (remote.pomodoroStatus === 'running') {
+      const elapsed = Math.floor((Date.now() - (remote.pomodoroStartedAt || Date.now())) / 1000);
+      const duration = remote.pomodoroMode === 'break' ? (remote.pomodoroBreakDuration || 300) : (remote.pomodoroDuration || 1500);
+      const currentLeft = Math.max(0, (remote.pomodoroTimeLeftAtStart ?? duration) - elapsed);
+      setLocalTimerTimeLeft(currentLeft);
+    } else {
+      const duration = remote.pomodoroMode === 'break' ? (remote.pomodoroBreakDuration || 300) : (remote.pomodoroDuration || 1500);
+      setLocalTimerTimeLeft(remote.pomodoroTimeLeft ?? duration);
+    }
+
+    if (remote.timerStatus === 'running') {
+      const elapsed = Math.floor((Date.now() - (remote.timerStartedAt || Date.now())) / 1000);
+      const currentLeft = Math.max(0, (remote.timerTimeLeftAtStart ?? remote.timerDuration) - elapsed);
+      setLocalCustomTimerTimeLeft(currentLeft);
+    } else {
+      setLocalCustomTimerTimeLeft(remote.timerTimeLeft ?? remote.timerDuration ?? 600);
+    }
+
+    if (remote.stopwatchStatus === 'running') {
+      const elapsed = (remote.stopwatchElapsedBeforePause || 0) + (Date.now() - (remote.stopwatchStartedAt || Date.now()));
+      setLocalStopwatchTime(elapsed);
+    } else {
+      setLocalStopwatchTime(remote.stopwatchElapsedBeforePause ?? 0);
+    }
+  }, []);
+
+  // Real-time Google Drive Timer Sync: Check on mount, window focus, tab visibility, and adaptive 5s heartbeat
+  useEffect(() => {
+    if (!gdriveAuthState?.accessToken) return;
+
+    // Check remote timer on startup/auth
+    checkAndSyncRemoteTimerState(applyRemoteTimerState);
+
+    const handleFocusOrVisible = () => {
+      if (document.visibilityState === 'visible') {
+        checkAndSyncRemoteTimerState(applyRemoteTimerState);
+      }
+    };
+
+    window.addEventListener('focus', handleFocusOrVisible);
+    document.addEventListener('visibilitychange', handleFocusOrVisible);
+
+    // Adaptive 5s polling heartbeat when tab is active
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        checkAndSyncRemoteTimerState(applyRemoteTimerState);
+      }
+    }, 5000);
+
+    return () => {
+      window.removeEventListener('focus', handleFocusOrVisible);
+      document.removeEventListener('visibilitychange', handleFocusOrVisible);
+      clearInterval(interval);
+    };
+  }, [gdriveAuthState?.accessToken, applyRemoteTimerState]);
+
   // Modern double-beep chime alarm synthesized via native browser Web Audio API
   const playAlarmSound = () => {
     try {
@@ -11130,6 +11193,7 @@ JSON Format:
 
       setTimerState(updates);
       await saveLocalTimerState(updates);
+      pushTimerStateToDrive({ ...timerStateRef.current, ...updates }, true);
     } catch (err) {
       console.error("Error resuming active timer:", err);
     }
@@ -11160,6 +11224,7 @@ JSON Format:
 
       setTimerState(updates);
       await saveLocalTimerState(updates);
+      pushTimerStateToDrive({ ...timerStateRef.current, ...updates }, true);
     } catch (err) {
       console.error("Error pausing active timer:", err);
     }
@@ -11195,6 +11260,7 @@ JSON Format:
 
       setTimerState(updates);
       await saveLocalTimerState(updates);
+      pushTimerStateToDrive({ ...timerStateRef.current, ...updates }, true);
     } catch (err) {
       console.error("Error resetting active timer:", err);
     }
@@ -11243,6 +11309,7 @@ JSON Format:
 
       setTimerState(updates);
       await saveLocalTimerState(updates);
+      pushTimerStateToDrive({ ...timerStateRef.current, ...updates }, true);
 
       if (startNow) playStateChangeSound('start');
       else playStateChangeSound('reset');
@@ -11264,6 +11331,7 @@ JSON Format:
       };
       setTimerState(updates);
       await saveLocalTimerState(updates);
+      pushTimerStateToDrive({ ...timerStateRef.current, ...updates }, true);
       playStateChangeSound('start');
     } catch (err) {
       console.error("Error starting custom countdown timer:", err);
@@ -11280,6 +11348,7 @@ JSON Format:
       };
       setTimerState(updates);
       await saveLocalTimerState(updates);
+      pushTimerStateToDrive({ ...timerStateRef.current, ...updates }, true);
       playStateChangeSound('start');
     } catch (err) {
       console.error("Error starting stopwatch:", err);
@@ -11304,6 +11373,7 @@ JSON Format:
       const updates = { stopwatchLaps: laps };
       setTimerState(updates);
       await saveLocalTimerState(updates);
+      pushTimerStateToDrive({ ...timerStateRef.current, ...updates }, true);
       playStateChangeSound('reset');
     } catch (err) {
       console.error("Error recording stopwatch lap:", err);
@@ -11353,6 +11423,7 @@ JSON Format:
       const updates = { timerType: type };
       setTimerState(updates);
       await saveLocalTimerState(updates);
+      pushTimerStateToDrive({ ...timerStateRef.current, ...updates }, true);
     } catch (err) {
       console.error("Error switching timer type:", err);
     }
@@ -11373,6 +11444,7 @@ JSON Format:
         };
         setTimerState(updates);
         await saveLocalTimerState(updates);
+        pushTimerStateToDrive({ ...timerStateRef.current, ...updates }, true);
       } catch (err) {
         console.error("Error starting synchronized timer fallback:", err);
       }
