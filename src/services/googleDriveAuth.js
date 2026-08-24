@@ -5,7 +5,7 @@
  * Stores auth session and tokens in IndexedDB (STORES.SETTINGS) without touching user data.
  */
 
-import { getLocalSetting, saveLocalSetting } from './localDb';
+import { getLocalSetting, saveLocalSetting } from './localDb.js';
 
 export const DEFAULT_GOOGLE_CLIENT_ID = '373065987778-o11hmpkgtf3bncdvhcjiaq0qb66d11q6.apps.googleusercontent.com';
 
@@ -315,7 +315,8 @@ export function isGoogleDriveTokenExpired(state) {
 
 /**
  * Returns a valid, unexpired access token for Google Drive API requests.
- * If expired or expiring within 2 minutes, seamlessly requests a token renewal using user email hint.
+ * If expired or expiring within 2 minutes and interactive=true, seamlessly requests a token renewal using user email hint.
+ * If expired and interactive=false, dispatches a 'gdrive-token-expired' event so UI can show renewal indicator.
  * @param {boolean} [interactive=false]
  * @returns {Promise<string|null>}
  */
@@ -330,17 +331,34 @@ export async function getValidAccessToken(interactive = false) {
   }
 
   if (!interactive) {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('gdrive-token-expired', {
+        detail: { email: state.user?.email || '', expiredAt: state.expiresAt }
+      }));
+    }
     return null;
   }
+
+  return await renewGoogleDriveToken();
+}
+
+/**
+ * Explicitly renews the Google Drive OAuth 2.0 access token using GIS with user email hint.
+ * @param {string} [prompt='']
+ * @returns {Promise<string|null>} Fresh access token or null
+ */
+export async function renewGoogleDriveToken(prompt = '') {
+  const state = await getGoogleDriveAuthState();
+  if (!state) return null;
 
   if (tokenRefreshPromise) {
     const refreshed = await tokenRefreshPromise;
     return refreshed?.accessToken || null;
   }
 
-  const p = requestGoogleDriveToken({ prompt: '', hint: state.user?.email || '' })
+  const p = requestGoogleDriveToken({ prompt, hint: state.user?.email || '' })
     .catch((err) => {
-      console.warn('[GoogleAuth] Seamless token renewal failed:', err);
+      console.warn('[GoogleAuth] Token renewal failed:', err);
       return null;
     })
     .finally(() => {

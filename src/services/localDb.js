@@ -229,12 +229,28 @@ export async function saveAllLocalTopics(topicsArray) {
   }).catch(err => {
     console.error("[LocalDB] saveAllLocalTopics mutex error:", err);
   });
+  notifyLocalMutation('topics');
   return topicsWriteMutex;
+}
+
+/**
+ * Dispatches a global event when local database records are modified,
+ * allowing background sync engines to trigger debounced cloud pushes.
+ */
+export function notifyLocalMutation(mutationType = 'mutation') {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('localdb-mutation', {
+      detail: { type: mutationType, timestamp: Date.now() }
+    }));
+  }
 }
 
 // --- SETTINGS & PREFERENCES ---
 export async function saveLocalSetting(key, value) {
   await putLocalItem(STORES.SETTINGS, { key, value, updatedAt: new Date().toISOString() });
+  if (key !== 'google_drive_auth' && key !== 'google_drive_sync_state' && key !== 'autoanki_last_synced_hashes') {
+    notifyLocalMutation('setting:' + key);
+  }
   return value;
 }
 
@@ -372,6 +388,7 @@ export async function replaceAllLocalCards(cardsArray) {
   const finalArray = Array.isArray(cardsArray) ? cardsArray : [];
   cardsWriteMutex = cardsWriteMutex.then(async () => {
     await setLocalKV('flashcards', finalArray);
+    notifyLocalMutation('cards:replace');
     return finalArray;
   }).catch(err => {
     console.error("[LocalDB] replaceAllLocalCards mutex error:", err);
@@ -392,6 +409,7 @@ export async function saveLocalCards(cardsInput) {
     });
     const merged = Array.from(map.values());
     await setLocalKV('flashcards', merged);
+    notifyLocalMutation('cards:save');
     return merged;
   }).catch(err => {
     console.error("[LocalDB] saveLocalCards mutex error:", err);
@@ -410,6 +428,7 @@ export async function deleteLocalCard(cardId) {
     const cards = await getLocalCards();
     const filtered = cards.filter(c => c.id !== cardId);
     await setLocalKV('flashcards', filtered);
+    notifyLocalMutation('cards:delete');
     return filtered;
   }).catch(err => {
     console.error("[LocalDB] deleteLocalCard mutex error:", err);
@@ -430,6 +449,7 @@ export async function replaceAllLocalPages(pagesArray) {
   const finalArray = Array.isArray(pagesArray) ? pagesArray : [];
   pagesWriteMutex = pagesWriteMutex.then(async () => {
     await setLocalKV('pages', finalArray);
+    notifyLocalMutation('pages:replace');
     return finalArray;
   }).catch(err => {
     console.error("[LocalDB] replaceAllLocalPages mutex error:", err);
@@ -450,6 +470,7 @@ export async function saveLocalPages(pagesInput) {
     });
     const merged = Array.from(map.values());
     await setLocalKV('pages', merged);
+    notifyLocalMutation('pages:save');
     return merged;
   }).catch(err => {
     console.error("[LocalDB] saveLocalPages mutex error:", err);
@@ -468,6 +489,7 @@ export async function deleteLocalPage(pageId) {
     const pages = await getLocalPages();
     const filtered = pages.filter(p => p.id !== pageId);
     await setLocalKV('pages', filtered);
+    notifyLocalMutation('pages:delete');
     return filtered;
   }).catch(err => {
     console.error("[LocalDB] deleteLocalPage mutex error:", err);

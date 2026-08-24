@@ -8,10 +8,11 @@
 import {
   getValidAccessToken,
   getGoogleDriveAuthState
-} from './googleDriveAuth';
+} from './googleDriveAuth.js';
 
 import {
   getAllLocalItems,
+  getLocalItem,
   putLocalItem,
   clearLocalStore,
   getLocalKV,
@@ -35,7 +36,7 @@ import {
   serializeBinaryValues,
   deserializeBinaryValues,
   LS_KEYS_TO_SNAPSHOT
-} from './localDb';
+} from './localDb.js';
 
 export const VAULT_FOLDER_NAME = 'AutoAnki_Sync_Vault';
 export const MEDIA_FOLDER_NAME = 'media';
@@ -69,7 +70,11 @@ export function getDeviceId() {
  */
 export function canonicalStringify(obj) {
   if (obj === null || typeof obj !== 'object') return JSON.stringify(obj);
-  if (Array.isArray(obj)) return '[' + obj.map(canonicalStringify).join(',') + ']';
+  if (Array.isArray(obj)) {
+    const stringifiedItems = obj.map(canonicalStringify);
+    stringifiedItems.sort();
+    return '[' + stringifiedItems.join(',') + ']';
+  }
   const sortedKeys = Object.keys(obj).sort();
   return '{' + sortedKeys.map(k => JSON.stringify(k) + ':' + canonicalStringify(obj[k])).join(',') + '}';
 }
@@ -563,12 +568,31 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
           if (!localCard) {
             map.set(inc.id, inc);
           } else {
-            const localTime = safeTimestamp(localCard.updatedAt || localCard.lastReviewDate || localCard.createdAt);
-            if (incTime >= localTime) {
-              map.set(inc.id, { ...localCard, ...inc });
-            } else {
-              map.set(inc.id, { ...inc, ...localCard });
-            }
+            const localRevTime = safeTimestamp(localCard.lastReviewDate || 0);
+            const incRevTime = safeTimestamp(inc.lastReviewDate || 0);
+            const latestRev = incRevTime >= localRevTime ? inc : localCard;
+            const earliestRev = incRevTime >= localRevTime ? localCard : inc;
+
+            const localContentTime = safeTimestamp(localCard.updatedAt || localCard.createdAt || 0);
+            const incContentTime = safeTimestamp(inc.updatedAt || inc.createdAt || 0);
+            const latestContent = incContentTime >= localContentTime ? inc : localCard;
+
+            // Merge: preserve latest content edits AND latest FSRS review parameters
+            const mergedCard = {
+              ...earliestRev,
+              ...latestContent,
+              stability: latestRev.stability !== undefined ? latestRev.stability : (latestContent.stability ?? 0),
+              difficulty: latestRev.difficulty !== undefined ? latestRev.difficulty : (latestContent.difficulty ?? 0),
+              reps: Math.max(localCard.reps || 0, inc.reps || 0, latestRev.reps || 0),
+              lapses: Math.max(localCard.lapses || 0, inc.lapses || 0, latestRev.lapses || 0),
+              due: latestRev.due || latestContent.due,
+              state: latestRev.state !== undefined ? latestRev.state : latestContent.state,
+              lastReviewDate: latestRev.lastReviewDate || latestContent.lastReviewDate,
+              scheduledDays: latestRev.scheduledDays !== undefined ? latestRev.scheduledDays : latestContent.scheduledDays,
+              history: Array.isArray(latestRev.history) && latestRev.history.length > 0 ? latestRev.history : (latestContent.history || []),
+              updatedAt: new Date(Math.max(localContentTime, incContentTime, localRevTime, incRevTime, Date.now())).toISOString()
+            };
+            map.set(inc.id, mergedCard);
           }
         }
       });
@@ -773,7 +797,27 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
       if (b.scheduleTemplates) await setLocalKV('schedule_templates', b.scheduleTemplates);
       if (Array.isArray(b.campDailyLogs)) {
         for (const log of b.campDailyLogs) {
-          if (log && log.dateStr) await putLocalItem(STORES.CAMP_DAILY_LOGS, log);
+          if (log && log.dateStr) {
+            const existingLog = await getLocalItem(STORES.CAMP_DAILY_LOGS, log.dateStr);
+            if (!existingLog) {
+              await putLocalItem(STORES.CAMP_DAILY_LOGS, log);
+            } else {
+              const mergedSessions = [...(existingLog.sessions || [])];
+              const existSessionKeys = new Set(mergedSessions.map(s => s.id || s.startedAt || (s.subject + '_' + s.duration)));
+              (log.sessions || []).forEach(s => {
+                const k = s.id || s.startedAt || (s.subject + '_' + s.duration);
+                if (!existSessionKeys.has(k)) {
+                  mergedSessions.push(s);
+                }
+              });
+              await putLocalItem(STORES.CAMP_DAILY_LOGS, {
+                ...existingLog,
+                ...log,
+                sessions: mergedSessions,
+                bedToBook: log.bedToBook || existingLog.bedToBook
+              });
+            }
+          }
         }
       }
       if (Array.isArray(b.activeNewTopicsToday)) {
@@ -784,7 +828,7 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
     }
   }
 
-  // 4. FSRS Config & Settings (including 24 synchronized localStorage settings)
+  // 4. FSRS Config & Settings (including synchronized localStorage settings)
   if (bundles['fsrs_config.json']) {
     emit(++step, totalSteps, 'Hydrating FSRS-6 Config, Hints & Preferences…');
     const b = bundles['fsrs_config.json'];
@@ -828,11 +872,18 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
     if (b.localStorageSnapshot && typeof b.localStorageSnapshot === 'object') {
       try {
         if (typeof window !== 'undefined' && window.localStorage) {
+          const DEVICE_SPECIFIC_KEYS = new Set([
+            'autoanki_device_id',
+            'local_device_id',
+            'obs_device_id',
+            'autoanki_gdrive_auth',
+            'autoanki_pending_sync_launch',
+            'auto_anki_last_auto_backup',
+            'auto_anki_last_manual_backup'
+          ]);
           Object.entries(b.localStorageSnapshot).forEach(([k, v]) => {
-            if (v !== null && v !== undefined && k !== 'autoanki_device_id' && k !== 'autoanki_gdrive_auth') {
-              if (strategy === 'replace' || localStorage.getItem(k) === null) {
-                localStorage.setItem(k, v);
-              }
+            if (v !== null && v !== undefined && !DEVICE_SPECIFIC_KEYS.has(k)) {
+              localStorage.setItem(k, v);
             }
           });
         }
@@ -1413,6 +1464,14 @@ async function executeSyncInternal({
       const res = await executeOneWayPush(accessToken, vaultFolderId, mediaFolderId, updatedLocalData, remoteFileMap, emit);
       if (res.success) {
         await saveLastSyncedHashes(updatedLocalData.manifest.hashes);
+        // Phase 2: If pages were updated remotely, download missing media in background
+        if (modifiedBundleNames.includes('pages_bundle.json')) {
+          setTimeout(() => {
+            syncMediaFromDrive(accessToken, mediaFolderId).catch(e => {
+              console.warn('[GDriveSync] Background delta media download error:', e);
+            });
+          }, 200);
+        }
       }
       return res;
     }
@@ -1679,6 +1738,15 @@ export function triggerDebouncedSmartPush() {
       console.warn('[GDriveSync] Smart push error:', err);
     });
   }, 5000);
+}
+
+// Auto-listen to local database mutations to trigger debounced cloud pushes
+if (typeof window !== 'undefined') {
+  window.addEventListener('localdb-mutation', () => {
+    if (!isSyncInProgress) {
+      triggerDebouncedSmartPush();
+    }
+  });
 }
 
 /**

@@ -8742,7 +8742,10 @@ export default function App() {
           freshExamProfiles,
           freshPrompts,
           freshCap,
-          freshHierarchy
+          freshHierarchy,
+          freshApiKeys,
+          freshBottomNav,
+          freshDashboard
         ] = await Promise.all([
           getAllLocalPytTopics().catch(() => []),
           getAllLocalPytProgress().catch(() => []),
@@ -8755,7 +8758,10 @@ export default function App() {
           getLocalSetting('exam_profiles').catch(() => null),
           getLocalPrompts().catch(() => []),
           getLocalSetting('max_daily_review_cap').catch(() => null),
-          getLocalSetting('hierarchy').catch(() => null)
+          getLocalSetting('hierarchy').catch(() => null),
+          getLocalSetting('apiKeys').catch(() => null),
+          getLocalSetting('bottomNav').catch(() => null),
+          getLocalSetting('dashboard').catch(() => null)
         ]);
 
         if (Array.isArray(pytList)) setPytTopicsList(pytList);
@@ -8776,6 +8782,41 @@ export default function App() {
         if (typeof freshCap === 'number') setMaxDailyReviewCap(freshCap);
         if (freshHierarchy?.paths && Array.isArray(freshHierarchy.paths)) {
           setDeckPaths(freshHierarchy.paths);
+        }
+
+        // Refresh API keys & AI feature model selections
+        if (freshApiKeys) {
+          if (freshApiKeys.geminiApiKey !== undefined) setGeminiApiKey(freshApiKeys.geminiApiKey);
+          if (freshApiKeys.imgbbApiKey !== undefined) setImgbbApiKey(freshApiKeys.imgbbApiKey);
+          if (freshApiKeys.githubUsername !== undefined) setGithubUsername(freshApiKeys.githubUsername);
+          if (freshApiKeys.githubRepo !== undefined) setGithubRepo(freshApiKeys.githubRepo);
+          if (freshApiKeys.githubPatToken !== undefined) setGithubPatToken(freshApiKeys.githubPatToken);
+          if (freshApiKeys.imageStorageMode !== undefined) setImageStorageMode(freshApiKeys.imageStorageMode);
+          if (freshApiKeys.settingsThemeMode !== undefined) {
+            setSettingsThemeMode(freshApiKeys.settingsThemeMode);
+            if (typeof setThemeMode === 'function') setThemeMode(freshApiKeys.settingsThemeMode);
+          }
+          if (freshApiKeys.aiFeatureModels && typeof freshApiKeys.aiFeatureModels === 'object') {
+            setAiFeatureModels(freshApiKeys.aiFeatureModels);
+          }
+          if (freshApiKeys.autoBackupEnabled !== undefined) setAutoBackupEnabled(freshApiKeys.autoBackupEnabled);
+          if (freshApiKeys.autoBackupFrequency !== undefined) setAutoBackupFrequency(freshApiKeys.autoBackupFrequency);
+          if (freshApiKeys.autoBackupRetention !== undefined) setAutoBackupRetention(freshApiKeys.autoBackupRetention);
+        }
+
+        // Refresh LocalStorage-backed reactive settings
+        if (typeof localStorage !== 'undefined') {
+          const quickNotes = localStorage.getItem('fs_quick_notes');
+          if (quickNotes !== null) setFsQuickNotesText(quickNotes);
+          const showMs = localStorage.getItem('stopwatch_show_milliseconds');
+          if (showMs !== null) setShowMilliseconds(showMs === 'true');
+        }
+
+        if (Array.isArray(freshBottomNav) && freshBottomNav.length > 0) {
+          setBottomNavIds(freshBottomNav);
+        }
+        if (Array.isArray(freshDashboard) && freshDashboard.length > 0) {
+          setDashboardWidgets(freshDashboard);
         }
       } catch (err) {
         console.warn('[App] Error refreshing state after cloud hydration:', err);
@@ -10058,6 +10099,7 @@ JSON Format:
       try {
         await syncWithGoogleDrive({
           force: true,
+          interactive: true,
           onConflict: (conflict) => setGdriveConflictData(conflict)
         });
       } catch (err) {

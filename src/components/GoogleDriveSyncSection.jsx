@@ -183,7 +183,7 @@ export default function GoogleDriveSyncSection({
     setIsSyncing(true);
     setErrorMsg('');
     try {
-      const result = await syncWithGoogleDrive({ force: true, onConflict });
+      const result = await syncWithGoogleDrive({ force: true, interactive: true, onConflict });
       if (!result.success && result.action === 'error') {
         setErrorMsg(result.message);
       }
