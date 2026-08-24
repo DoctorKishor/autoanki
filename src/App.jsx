@@ -6939,6 +6939,20 @@ export default function App() {
   const [snapshotOpState, setSnapshotOpState] = useState({}); // { [id]: 'restoring'|'deleting'|'done' }
   const [isCreatingManualSnapshot, setIsCreatingManualSnapshot] = useState(false);
 
+  // ── Internal Snapshot Vault Loader ────────────────────────────────────────
+  const loadInternalSnapshots = useCallback(async () => {
+    setIsLoadingSnapshots(true);
+    try {
+      const snaps = await getAllInternalSnapshots();
+      setInternalSnapshots(snaps || []);
+    } catch (e) {
+      console.error('[AutoAnki] Failed to load internal snapshots:', e);
+      setInternalSnapshots([]);
+    } finally {
+      setIsLoadingSnapshots(false);
+    }
+  }, []);
+
   const [floatingPos, setFloatingPos] = useState({ x: window.innerWidth - 200, y: 150 });
   const [isDraggingFloating, setIsDraggingFloating] = useState(false);
   const dragStartOffset = useRef({ x: 0, y: 0 });
@@ -16762,19 +16776,6 @@ JSON Format:
   };
 
   // ── Internal Snapshot Vault Helpers ──────────────────────────────────────
-  const loadInternalSnapshots = useCallback(async () => {
-    setIsLoadingSnapshots(true);
-    try {
-      const snaps = await getAllInternalSnapshots();
-      setInternalSnapshots(snaps || []);
-    } catch (e) {
-      console.error('[AutoAnki] Failed to load internal snapshots:', e);
-      setInternalSnapshots([]);
-    } finally {
-      setIsLoadingSnapshots(false);
-    }
-  }, []);
-
   const handleManualSnapshot = useCallback(async () => {
     setIsCreatingManualSnapshot(true);
     try {
