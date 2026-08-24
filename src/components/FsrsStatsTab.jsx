@@ -161,7 +161,7 @@ export default function FsrsStatsTab({ subjectTrackerData = [], studyLogs = [], 
     for (let i = 0; i < 30; i++) {
       const d = new Date(today);
       d.setDate(today.getDate() + i);
-      const dateStr = d.toISOString().split('T')[0];
+      const dateStr = d.toLocaleDateString('en-CA');
       const dayLabel = `${d.getMonth() + 1}/${d.getDate()}`;
       daysMap[dateStr] = { date: dateStr, label: dayLabel, count: 0, pages: 0 };
     }

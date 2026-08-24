@@ -110,6 +110,8 @@ export default function RatingDurationModal({
 
   const currentBadge = ratingBadges[rating] || { label: `Rating ${rating || ''}`, color: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' };
 
+  if (typeof document === 'undefined') return null;
+
   return ReactDOM.createPortal(
     <div
       className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 overscroll-contain touch-pan-y"
@@ -315,7 +317,7 @@ export default function RatingDurationModal({
               className="py-3 px-4 rounded-2xl text-xs font-black uppercase tracking-wider transition-all duration-200 active:scale-95 cursor-pointer bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-lg shadow-indigo-500/25 border border-indigo-400/40 flex items-center justify-center gap-2"
             >
               <CheckCircle2 className="w-4 h-4 text-white" />
-              <span>Confirm ({totalCalculatedMins}m)</span>
+              <span>Confirm ({totalCalculatedMins > 0 ? totalCalculatedMins : effectivePredicted}m)</span>
             </button>
           </div>
         </form>

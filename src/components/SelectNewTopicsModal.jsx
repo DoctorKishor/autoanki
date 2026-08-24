@@ -25,6 +25,7 @@ export default function SelectNewTopicsModal({
   studySchedule = [],
   dailyLimits = {},
   onActivateTopics,
+  onUpdateSubjectDoc,
   geminiApiKey = '',
   aiFeatureModels = {},
   themeMode = 'dark'
@@ -362,17 +363,29 @@ Format response strictly as JSON with this schema:
     onClose();
   };
 
-  const handleActivateSingleAiTopic = (rec) => {
-    if (!rec) return;
+  const findMatchingCatalogTopic = (rec) => {
+    if (!rec) return null;
     const cleanRName = (rec.topicName || rec.name || '').trim().toLowerCase();
     const cleanRSub = (rec.subject || '').trim().toLowerCase();
 
-    const matchedTopic = unstudiedCatalog.find(t => {
-      const cleanTName = t.name.trim().toLowerCase();
-      const cleanTSub = t.subject.trim().toLowerCase();
-      return cleanTName === cleanRName || (cleanTSub === cleanRSub && cleanTName.includes(cleanRName));
-    });
+    // 1. Exact Name & Subject Match
+    let match = unstudiedCatalog.find(t =>
+      t.name.trim().toLowerCase() === cleanRName &&
+      t.subject.trim().toLowerCase() === cleanRSub
+    );
+    if (match) return match;
 
+    // 2. Exact Name Match across catalog
+    match = unstudiedCatalog.find(t => t.name.trim().toLowerCase() === cleanRName);
+    if (match) return match;
+
+    // 3. Fallback by ID
+    return unstudiedCatalog.find(t => t.id === rec.id) || null;
+  };
+
+  const handleActivateSingleAiTopic = (rec) => {
+    if (!rec) return;
+    const matchedTopic = findMatchingCatalogTopic(rec);
     if (matchedTopic && typeof onActivateTopics === 'function') {
       onActivateTopics([matchedTopic]);
     }
@@ -380,18 +393,19 @@ Format response strictly as JSON with this schema:
 
   const handleActivateAiPlan = () => {
     if (aiRecommendations.length === 0) return;
-    const aiSelectedTopics = unstudiedCatalog.filter(t => {
-      const cleanTName = t.name.trim().toLowerCase();
-      const cleanTSub = t.subject.trim().toLowerCase();
-      return aiRecommendations.some(r => {
-        const cleanRName = (r.topicName || r.name || '').trim().toLowerCase();
-        const cleanRSub = (r.subject || '').trim().toLowerCase();
-        return cleanTName === cleanRName || (cleanTSub === cleanRSub && (cleanTName.includes(cleanRName) || cleanRName.includes(cleanTName)));
-      });
+    const matchedList = [];
+    const matchedIds = new Set();
+
+    aiRecommendations.forEach(rec => {
+      const match = findMatchingCatalogTopic(rec);
+      if (match && !matchedIds.has(match.id)) {
+        matchedIds.add(match.id);
+        matchedList.push(match);
+      }
     });
 
-    if (aiSelectedTopics.length > 0 && typeof onActivateTopics === 'function') {
-      onActivateTopics(aiSelectedTopics);
+    if (matchedList.length > 0 && typeof onActivateTopics === 'function') {
+      onActivateTopics(matchedList);
     } else if (unstudiedCatalog.length > 0 && typeof onActivateTopics === 'function') {
       // Fallback: activate top unstudied topics matching recommendation count
       onActivateTopics(unstudiedCatalog.slice(0, aiRecommendations.length));
@@ -454,16 +468,16 @@ Format response strictly as JSON with this schema:
 
           {/* Mode Switcher Tabs - Neumorphic Pill Design */}
           <div className="px-3.5 sm:px-5 pt-3 sm:pt-4 shrink-0">
-            <div className={`relative grid grid-cols-2 p-1 sm:p-1.5 rounded-2xl border w-full select-none overflow-hidden ${
+            <div className={`relative grid grid-cols-2 p-1.5 rounded-2xl border w-full select-none overflow-hidden ${
               isDark ? 'neu-pressed-dark border-slate-700/60' : 'neu-pressed-light border-slate-300/80'
             }`}>
               <div
-                className={`absolute top-1 sm:top-1.5 bottom-1 sm:bottom-1.5 rounded-xl shadow-md ${
+                className={`absolute top-1.5 bottom-1.5 rounded-xl shadow-md ${
                   isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
                 }`}
                 style={{
-                  left: `calc(0.25rem + ${activeTab === 'manual' ? 0 : 1} * ((100% - 0.5rem) / 2))`,
-                  width: `calc((100% - 0.5rem) / 2)`,
+                  left: `calc(0.375rem + ${activeTab === 'manual' ? 0 : 1} * ((100% - 0.75rem) / 2))`,
+                  width: `calc((100% - 0.75rem) / 2)`,
                   transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
                 }}
               />

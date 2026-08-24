@@ -15806,35 +15806,45 @@ JSON Format:
 
   const renderSmartReviewTab = (isMobileView = false) => {
     return (
-      <SmartReviewHub
-        themeMode={settingsThemeMode}
-        subjectTrackerData={subjectTrackerData}
-        studyLogs={studyLogs}
-        fsrsConfig={fsrsConfig}
-        timerState={timerState}
-        onSaveConfig={updateFsrsConfig}
-        onRateTopic={handleInstantRateTopic}
-        onUndoRating={handleUndoReviewRating}
-        onRedoRating={handleRedoReviewRating}
-        canUndo={reviewUndoStack.length > 0}
-        canRedo={reviewRedoStack.length > 0}
-        lastRatedToast={lastRatedToast}
-        onClearToast={() => setLastRatedToast(null)}
-        studySchedule={studySchedule}
-        examProfiles={examProfiles}
-        onSaveExamProfiles={(updated) => {
-          setExamProfiles(updated);
-          saveLocalSetting('exam_profiles', updated).catch(err => console.error("[LocalDB] Error saving exam profiles:", err));
-        }}
-        onUpdateSubjectDoc={handleUpdateSubjectTrackerDoc}
-        geminiApiKey={geminiApiKey}
-        aiFeatureModels={aiFeatureModels}
-        onPushUndoAction={(action) => {
-          setReviewUndoStack(prev => [...prev, action]);
-          setReviewRedoStack([]);
-        }}
-        onOpenNotesModal={(topic) => setNotesModalTopic(topic)}
-      />
+      <>
+        <SmartReviewHub
+          themeMode={settingsThemeMode}
+          subjectTrackerData={subjectTrackerData}
+          studyLogs={studyLogs}
+          fsrsConfig={fsrsConfig}
+          timerState={timerState}
+          onSaveConfig={updateFsrsConfig}
+          onRateTopic={handleInstantRateTopic}
+          onUndoRating={handleUndoReviewRating}
+          onRedoRating={handleRedoReviewRating}
+          canUndo={reviewUndoStack.length > 0}
+          canRedo={reviewRedoStack.length > 0}
+          lastRatedToast={lastRatedToast}
+          onClearToast={() => setLastRatedToast(null)}
+          studySchedule={studySchedule}
+          examProfiles={examProfiles}
+          onSaveExamProfiles={(updated) => {
+            setExamProfiles(updated);
+            saveLocalSetting('exam_profiles', updated).catch(err => console.error("[LocalDB] Error saving exam profiles:", err));
+          }}
+          onUpdateSubjectDoc={handleUpdateSubjectTrackerDoc}
+          geminiApiKey={geminiApiKey}
+          aiFeatureModels={aiFeatureModels}
+          onPushUndoAction={(action) => {
+            setReviewUndoStack(prev => [...prev, action]);
+            setReviewRedoStack([]);
+          }}
+          onOpenNotesModal={(topic) => setNotesModalTopic(topic)}
+        />
+
+        <TopicNotesModal
+          isOpen={!!notesModalTopic}
+          onClose={() => setNotesModalTopic(null)}
+          topic={notesModalTopic}
+          onSaveNotes={handleSaveTopicNotes}
+          themeMode={settingsThemeMode}
+        />
+      </>
     );
   };
 

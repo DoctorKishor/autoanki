@@ -59,7 +59,8 @@ export default function SmartReviewHub({
   geminiApiKey = '',
   aiFeatureModels = {},
   onPushUndoAction,
-  onOpenNotesModal
+  onOpenNotesModal,
+  onDeleteTimingLog
 }) {
   const isDark = themeMode === 'dark';
   const [subTab, setSubTab] = useState('queue'); // 'queue', 'analytics', 'velocity', 'leeches'
@@ -219,13 +220,15 @@ export default function SmartReviewHub({
 
           // A topic is NEW if it has 0 reviewCount and no lastReviewDate (has never completed a review session)
           const isUnstudied = (!topic.reviewCount || topic.reviewCount === 0) && !topic.lastReviewDate;
-          const cleanName = topic.name.trim().toLowerCase();
-          const isPickedForToday = activeNewTopicIds.has(topicId) ||
-                                   activeNewTopicIds.has(cleanName) ||
-                                   activeNewTopicIds.has(`${subName}_${topic.name}`) ||
-                                   activeNewTopicIds.has(`${subName.toLowerCase()}_${cleanName}`) ||
-                                   topic.isPickedForToday ||
-                                   (topic.activatedDate && topic.activatedDate <= todayStr);
+          const cleanName = (topic.name || '').trim().toLowerCase();
+          const isPickedForToday = (
+            (topicId && activeNewTopicIds.has(topicId)) ||
+            (cleanName.length > 0 && activeNewTopicIds.has(cleanName)) ||
+            (subName && topic.name && activeNewTopicIds.has(`${subName}_${topic.name}`)) ||
+            (subName && cleanName.length > 0 && activeNewTopicIds.has(`${subName.toLowerCase()}_${cleanName}`)) ||
+            Boolean(topic.isPickedForToday) ||
+            (topic.activatedDate && topic.activatedDate <= todayStr)
+          );
 
           if (isUnstudied && isPickedForToday) {
             newItems.push(topicObj);
@@ -379,7 +382,7 @@ export default function SmartReviewHub({
     };
   }, [studySchedule, examProfiles]);
 
-  const handleMnemonicChange = (item, text) => {
+  const handleMnemonicChange = async (item, text) => {
     if (!item) return;
     const topicKey = item.id || item.name;
     setMnemonicNotes(prev => ({ ...prev, [topicKey]: text }));
@@ -401,6 +404,7 @@ export default function SmartReviewHub({
       );
 
       if (topicEntryKey) {
+        if (clonedTopics[topicEntryKey].mnemonicNote === text) return;
         clonedTopics[topicEntryKey] = {
           ...clonedTopics[topicEntryKey],
           mnemonicNote: text
@@ -413,16 +417,19 @@ export default function SmartReviewHub({
           updatedAt: new Date().toISOString()
         };
 
-        if (typeof onUpdateSubjectDoc === 'function') {
-          onUpdateSubjectDoc(updatedDoc);
-        } else {
-          saveLocalSubjectTrackerDoc(targetDocId, updatedDoc).catch(err => {
-            console.error("Failed to save mnemonic note to IndexedDB:", err);
-          });
+        try {
+          if (typeof onUpdateSubjectDoc === 'function') {
+            await onUpdateSubjectDoc(targetDocId, { topics: clonedTopics });
+          } else {
+            await saveLocalSubjectTrackerDoc(targetDocId, updatedDoc);
+          }
+          setToastMessage('Note saved successfully');
+          setTimeout(() => setToastMessage(''), 2000);
+        } catch (err) {
+          console.error("Failed to save mnemonic note to IndexedDB:", err);
+          setToastMessage('⚠️ Failed to save note to storage');
+          setTimeout(() => setToastMessage(''), 3000);
         }
-
-        setToastMessage('Note saved successfully');
-        setTimeout(() => setToastMessage(''), 2500);
       }
     }
   };
@@ -447,16 +454,23 @@ export default function SmartReviewHub({
 
     if (onUpdateSubjectDoc && subName && topicToRemove.name) {
       const docId = subName.trim().toLowerCase();
-      const subDoc = subjectTrackerData.find(d => d.id === docId);
+      const subDoc = subjectTrackerData.find(d => 
+        (d.id && d.id.trim().toLowerCase() === docId) ||
+        (d.subject && d.subject.trim().toLowerCase() === docId)
+      );
       if (subDoc && subDoc.topics) {
-        const targetKey = Object.keys(subDoc.topics).find(k => k.trim().toLowerCase() === topicToRemove.name.trim().toLowerCase()) || topicToRemove.name;
+        const targetKey = Object.keys(subDoc.topics).find(k => 
+          k.trim().toLowerCase() === topicToRemove.name.trim().toLowerCase() ||
+          subDoc.topics[k]?.id === topicToRemove.id
+        ) || topicToRemove.name;
         if (subDoc.topics[targetKey]) {
           const updatedTopics = { ...subDoc.topics };
           const topicObj = { ...updatedTopics[targetKey] };
           delete topicObj.activatedDate;
           delete topicObj.isPickedForToday;
           updatedTopics[targetKey] = topicObj;
-          onUpdateSubjectDoc(docId, { topics: updatedTopics });
+          const targetDocId = subDoc.id || docId;
+          onUpdateSubjectDoc(targetDocId, { topics: updatedTopics });
         }
       }
     }
@@ -594,8 +608,9 @@ export default function SmartReviewHub({
                 : 'neu-btn-light text-amber-700 border-amber-300 hover:border-amber-400'
             }`}
           >
-            <Zap className="w-3.5 h-3.5 text-amber-500" />
-            <span>Ad-hoc Review</span>
+            <Zap className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+            <span className="hidden sm:inline truncate">Ad-hoc Review</span>
+            <span className="sm:hidden truncate">Ad-hoc</span>
           </button>
 
           {/* FSRS Settings Button */}
@@ -945,6 +960,7 @@ export default function SmartReviewHub({
         geminiApiKey={geminiApiKey}
         aiFeatureModels={aiFeatureModels}
         themeMode={themeMode}
+        onUpdateSubjectDoc={onUpdateSubjectDoc}
         onActivateTopics={(selectedTopics) => {
           const todayStr = getLocalDateStr();
           const activatedIds = selectedTopics.flatMap(t => [
@@ -967,6 +983,42 @@ export default function SmartReviewHub({
               .catch(err => console.error("Failed to save active new topic IDs to IndexedDB:", err));
             return next;
           });
+
+          // Dual-Persist to Subject Tracker Data for Universal Cross-Device Sync Parity with safe batching
+          if (typeof onUpdateSubjectDoc === 'function') {
+            const subjectGroups = {};
+            selectedTopics.forEach(top => {
+              if (!top.subject || !top.name) return;
+              const subDocId = top.subject.trim().toLowerCase();
+              if (!subjectGroups[subDocId]) subjectGroups[subDocId] = [];
+              subjectGroups[subDocId].push(top);
+            });
+
+            Object.entries(subjectGroups).forEach(([subDocId, topicsInSub]) => {
+              const subDoc = subjectTrackerData.find(d =>
+                (d.id && d.id.toLowerCase() === subDocId) ||
+                (d.subject && d.subject.toLowerCase() === subDocId)
+              );
+              if (subDoc && subDoc.topics) {
+                const updatedTopics = { ...subDoc.topics };
+                topicsInSub.forEach(top => {
+                  const targetKey = Object.keys(updatedTopics).find(k =>
+                    k.trim().toLowerCase() === top.name.trim().toLowerCase() ||
+                    updatedTopics[k]?.id === top.id
+                  ) || top.name;
+                  if (updatedTopics[targetKey]) {
+                    updatedTopics[targetKey] = {
+                      ...updatedTopics[targetKey],
+                      activatedDate: todayStr,
+                      isPickedForToday: true
+                    };
+                  }
+                });
+                onUpdateSubjectDoc(subDoc.id || subDocId, { topics: updatedTopics });
+              }
+            });
+          }
+
           setToastMessage(`Activated ${selectedTopics.length} new topics for today's study session!`);
           setTimeout(() => setToastMessage(''), 3000);
         }}
@@ -990,6 +1042,7 @@ export default function SmartReviewHub({
           fsrsConfig={fsrsConfig}
           timerState={timerState}
           themeMode={themeMode}
+          onDeleteTimingLog={onDeleteTimingLog}
         />
       )}
 
@@ -1014,41 +1067,49 @@ export default function SmartReviewHub({
 
           {leechTopics.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {leechTopics.map((item, idx) => (
-                <motion.div
-                  key={idx}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.25, delay: idx * 0.04 }}
-                  className={`p-5 rounded-2xl border shadow-md space-y-3 ${
-                    isDark ? 'bg-[#222730] border-amber-500/40 neu-card-dark' : 'bg-white border-amber-300 neu-card-light'
-                  }`}
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <div className="text-sm font-black text-amber-600">{item.name}</div>
-                      <div className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{item.subject} • <span className="font-mono text-amber-500 font-bold">{getTopicPageInfo(item).pageLabel}</span></div>
-                    </div>
-                    <span className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-600 text-xs font-black uppercase">
-                      {item.lapses || item.lapsesCount || 0} Lapses
-                    </span>
-                  </div>
+              {leechTopics.map((item) => {
+                const topicKey = item.id || `${item.subject}_${item.name}`;
+                const currentVal = mnemonicNotes[topicKey] !== undefined ? mnemonicNotes[topicKey] : (item.mnemonicNote || '');
 
-                  {/* Mnemonic Note Input */}
-                  <div className="space-y-1">
-                    <label className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Mnemonic Note / Revision Memory Cue</label>
-                    <textarea
-                      value={mnemonicNotes[item.id || item.name] !== undefined ? mnemonicNotes[item.id || item.name] : (item.mnemonicNote || '')}
-                      onChange={(e) => handleMnemonicChange(item, e.target.value)}
-                      onBlur={(e) => handleMnemonicChange(item, e.target.value)}
-                      placeholder="Write a mnemonic or key memory clue..."
-                      className={`w-full p-2.5 rounded-xl text-xs focus:outline-none focus:border-amber-500/60 resize-y min-h-[64px] custom-scrollbar ${
-                        isDark ? 'bg-slate-900/80 border border-slate-700 text-slate-200' : 'bg-slate-50 border border-slate-300 text-slate-800 neu-pressed-light'
-                      }`}
-                    />
-                  </div>
-                </motion.div>
-              ))}
+                return (
+                  <motion.div
+                    key={topicKey}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className={`p-5 rounded-2xl border shadow-md space-y-3 ${
+                      isDark ? 'bg-[#222730] border-amber-500/40 neu-card-dark' : 'bg-white border-amber-300 neu-card-light'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="text-sm font-black text-amber-600">{item.name}</div>
+                        <div className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{item.subject} • <span className="font-mono text-amber-500 font-bold">{getTopicPageInfo(item).pageLabel}</span></div>
+                      </div>
+                      <span className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-600 text-xs font-black uppercase">
+                        {item.lapses || item.lapsesCount || 0} Lapses
+                      </span>
+                    </div>
+
+                    {/* Mnemonic Note Input */}
+                    <div className="space-y-1">
+                      <label className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Mnemonic Note / Revision Memory Cue</label>
+                      <textarea
+                        value={currentVal}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setMnemonicNotes(prev => ({ ...prev, [topicKey]: val }));
+                        }}
+                        onBlur={(e) => handleMnemonicChange(item, e.target.value)}
+                        placeholder="Write a mnemonic or key memory clue..."
+                        className={`w-full p-2.5 rounded-xl text-xs focus:outline-none focus:border-amber-500/60 resize-y min-h-[64px] custom-scrollbar ${
+                          isDark ? 'bg-slate-900/80 border border-slate-700 text-slate-200' : 'bg-slate-50 border border-slate-300 text-slate-800 neu-pressed-light'
+                        }`}
+                      />
+                    </div>
+                  </motion.div>
+                );
+              })}
             </div>
           ) : (
             <div className={`p-8 rounded-2xl border text-center space-y-2 ${
@@ -1805,7 +1866,8 @@ function TopicCard({
         if (nextStartPages.length > 0) {
           endPage = nextStartPages[0] - 1;
         } else {
-          endPage = startPage + 10;
+          const weight = getTopicPageWeight(topic, allTopics);
+          endPage = startPage + Math.max(0, weight - 1);
         }
       }
 
@@ -1889,7 +1951,8 @@ function TopicCard({
         if (nextStartPages.length > 0) {
           endPage = nextStartPages[0] - 1; // Cap strictly before next topic starts!
         } else {
-          endPage = startPage + 10;
+          const weight = getTopicPageWeight(topic, allTopics);
+          endPage = startPage + Math.max(0, weight - 1);
         }
       }
 

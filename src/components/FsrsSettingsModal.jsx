@@ -318,17 +318,17 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
               {activeCategory === 'dailyLimits' && (
                 <div className="space-y-5">
                   {/* Scope Selector Pills with Responsive Grid */}
-                  <div className={`relative grid grid-cols-3 sm:flex items-center p-1 sm:p-1.5 rounded-2xl gap-1 select-none w-full sm:w-fit ${
+                  <div className={`relative grid grid-cols-3 sm:flex items-center p-1.5 rounded-2xl gap-1 select-none w-full sm:w-fit ${
                     isDark ? 'neu-pressed-dark border border-slate-700/60' : 'neu-pressed-light border border-slate-200/80'
                   }`}>
                     {/* Single Sliding Pill Indicator */}
                     <div
-                      className={`absolute top-1 sm:top-1.5 bottom-1 sm:bottom-1.5 rounded-xl shadow-md ${
+                      className={`absolute top-1.5 bottom-1.5 rounded-xl shadow-md ${
                         isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
                       }`}
                       style={{
-                        width: 'calc((100% - 0.5rem) / 3)',
-                        left: `calc(0.25rem + ${['preset', 'subject', 'today'].indexOf(activeScopeTab)} * ((100% - 0.5rem) / 3))`,
+                        width: 'calc((100% - 0.75rem) / 3)',
+                        left: `calc(0.375rem + ${Math.max(0, ['preset', 'subject', 'today'].indexOf(activeScopeTab))} * ((100% - 0.75rem) / 3))`,
                         transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
                       }}
                     />
@@ -904,17 +904,17 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
                   }`}>
                     <div className="flex items-center justify-between">
                       <label className={`text-xs font-black ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Retention Mode</label>
-                      <div className={`relative grid grid-cols-2 p-1 rounded-2xl gap-1 shrink-0 select-none w-48 sm:w-56 ${
+                      <div className={`relative grid grid-cols-2 p-1.5 rounded-2xl gap-1 shrink-0 select-none w-48 sm:w-56 ${
                         isDark ? 'neu-pressed-dark border border-slate-700/60' : 'neu-pressed-light border border-slate-200/80'
                       }`}>
                         {/* Single Sliding Pill Indicator */}
                         <div
-                          className={`absolute top-1 bottom-1 rounded-xl shadow-md ${
+                          className={`absolute top-1.5 bottom-1.5 rounded-xl shadow-md ${
                             isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
                           }`}
                           style={{
-                            width: 'calc(50% - 4px)',
-                            left: `calc(2px + ${(tempConfig.retentionMode === 'perSubject' ? 1 : 0)} * 50%)`,
+                            width: 'calc((100% - 0.75rem) / 2)',
+                            left: `calc(0.375rem + ${(tempConfig.retentionMode === 'perSubject' ? 1 : 0)} * ((100% - 0.75rem) / 2))`,
                             transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
                           }}
                         />
