@@ -272,11 +272,18 @@ export default function RatingDurationModal({
               <input
                 type="number"
                 min="0"
-                max="59"
-                value={minutes === 0 ? '' : minutes}
+                max="999"
+                value={minutes === 0 && hours === 0 ? '' : minutes}
                 onChange={(e) => {
                   const val = parseInt(e.target.value, 10);
-                  setMinutes(isNaN(val) ? 0 : Math.max(0, Math.min(59, val)));
+                  if (isNaN(val) || val <= 0) {
+                    setMinutes(0);
+                  } else if (val >= 60 && hours === 0) {
+                    setHours(Math.floor(val / 60));
+                    setMinutes(val % 60);
+                  } else {
+                    setMinutes(Math.max(0, val));
+                  }
                   setSelectedPreset(null);
                 }}
                 placeholder="0"

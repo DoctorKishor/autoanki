@@ -1895,6 +1895,9 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
           }
           await setLocalKV('study_logs', mergedLogs);
         }
+        // Also merge camp dynamic KV keys
+        const campDynamic = kv.filter(r => r && (r.key?.startsWith('active_new_topics_')));
+        for (const r of campDynamic) await putLocalItem(STORES.KV_STORE, r);
         await mergeKV(kvSubset(['study_schedule', 'schedule_templates', 'timerState']));
       }
       report.restored.push('study_logs_velocity');
@@ -1937,7 +1940,9 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
       } else {
         // Merge: put all settings (upsert by key — non-destructive)
         if (Array.isArray(stores.settings)) await bulkPut(STORES.SETTINGS, stores.settings);
-        await mergeKV(kvSubset(['custom_prompts']));
+        if (Array.isArray(stores.topic_hints)) await bulkPut(STORES.TOPIC_HINTS, stores.topic_hints);
+        if (Array.isArray(stores.hint_quota)) await bulkPut(STORES.HINT_QUOTA, stores.hint_quota);
+        await mergeKV(kvSubset(['custom_prompts', 'local_user_profile']));
       }
       report.restored.push('settings_prompts');
     }

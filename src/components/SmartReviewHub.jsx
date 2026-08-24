@@ -256,6 +256,33 @@ export default function SmartReviewHub({
     };
   }, [subjectTrackerData, fsrsConfig, activeNewTopicIds]);
 
+  // Memoized Ad-Hoc Topic Search Filter for 100% Smooth Keystrokes
+  const filteredAdHocTopics = useMemo(() => {
+    const allTopics = [];
+    const term = adHocSearch.trim().toLowerCase();
+    (subjectTrackerData || []).forEach(subDoc => {
+      const currentSubject = (subDoc.subject || subDoc.id || '').trim();
+      if (
+        adHocSelectedSubject !== 'all' &&
+        currentSubject.toLowerCase() !== adHocSelectedSubject.toLowerCase()
+      ) {
+        return;
+      }
+      if (subDoc.topics && typeof subDoc.topics === 'object') {
+        Object.values(subDoc.topics).forEach(t => {
+          if (!t || !t.name) return;
+          const matchesSearch = !term ||
+            t.name.toLowerCase().includes(term) ||
+            currentSubject.toLowerCase().includes(term);
+          if (matchesSearch) {
+            allTopics.push({ ...t, subject: currentSubject });
+          }
+        });
+      }
+    });
+    return allTopics;
+  }, [subjectTrackerData, adHocSelectedSubject, adHocSearch]);
+
   // Timezone-safe date parser
   const parseLocalDate = (dateStr) => {
     if (!dateStr) return null;
@@ -378,7 +405,7 @@ export default function SmartReviewHub({
           ...clonedTopics[topicEntryKey],
           mnemonicNote: text
         };
-        const targetDocId = subDoc.id || subDoc.subject.trim().toLowerCase();
+        const targetDocId = (subDoc.id ? String(subDoc.id) : (subDoc.subject || '')).trim().toLowerCase();
         const updatedDoc = {
           ...subDoc,
           id: targetDocId,
@@ -873,7 +900,7 @@ export default function SmartReviewHub({
               {newTopics.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <AnimatePresence mode="popLayout">
-                    {newTopics.slice(0, 6).map((topic, idx) => (
+                    {newTopics.map((topic, idx) => (
                       <TopicCard
                         key={topic.id || (topic.subject + '_' + topic.name)}
                         topic={topic}
@@ -930,7 +957,14 @@ export default function SmartReviewHub({
           setActiveNewTopicIds(prev => {
             const next = new Set(prev);
             activatedIds.forEach(id => next.add(id));
-            saveActiveNewTopicIds(todayStr, Array.from(next)).catch(err => console.error("Failed to save active new topic IDs to IndexedDB:", err));
+            const updatedList = Array.from(next);
+            saveActiveNewTopicIds(todayStr, updatedList)
+              .then(() => {
+                window.dispatchEvent(new CustomEvent('autoanki_topic_ids_changed', {
+                  detail: { todayStr, updatedList }
+                }));
+              })
+              .catch(err => console.error("Failed to save active new topic IDs to IndexedDB:", err));
             return next;
           });
           setToastMessage(`Activated ${selectedTopics.length} new topics for today's study session!`);
@@ -1008,7 +1042,7 @@ export default function SmartReviewHub({
                       onChange={(e) => handleMnemonicChange(item, e.target.value)}
                       onBlur={(e) => handleMnemonicChange(item, e.target.value)}
                       placeholder="Write a mnemonic or key memory clue..."
-                      className={`w-full p-2.5 rounded-xl text-xs focus:outline-none focus:border-amber-500/60 resize-none h-16 no-scrollbar ${
+                      className={`w-full p-2.5 rounded-xl text-xs focus:outline-none focus:border-amber-500/60 resize-y min-h-[64px] custom-scrollbar ${
                         isDark ? 'bg-slate-900/80 border border-slate-700 text-slate-200' : 'bg-slate-50 border border-slate-300 text-slate-800 neu-pressed-light'
                       }`}
                     />
@@ -1301,39 +1335,12 @@ export default function SmartReviewHub({
 
                   {/* Topics List */}
                   <div className="space-y-2 overflow-y-auto pr-1 flex-1 min-h-[250px]">
-                    {(() => {
-                      const allTopics = [];
-                      subjectTrackerData.forEach(subDoc => {
-                        const currentSubject = (subDoc.subject || subDoc.id || '').trim();
-                        if (
-                          adHocSelectedSubject !== 'all' &&
-                          currentSubject.toLowerCase() !== adHocSelectedSubject.toLowerCase()
-                        ) {
-                          return;
-                        }
-                        if (subDoc.topics) {
-                          Object.values(subDoc.topics).forEach(t => {
-                            if (!t || !t.name) return;
-                            const term = adHocSearch.trim().toLowerCase();
-                            const matchesSearch = !term ||
-                              t.name.toLowerCase().includes(term) ||
-                              currentSubject.toLowerCase().includes(term);
-                            if (matchesSearch) {
-                              allTopics.push({ ...t, subject: currentSubject });
-                            }
-                          });
-                        }
-                      });
-
-                      if (allTopics.length === 0) {
-                        return (
-                          <div className="text-center py-10 text-xs font-semibold text-slate-400 italic">
-                            No matching topics found. Try typing a different keyword!
-                          </div>
-                        );
-                      }
-
-                      return allTopics.map((topic, idx) => (
+                    {filteredAdHocTopics.length === 0 ? (
+                      <div className="text-center py-10 text-xs font-semibold text-slate-400 italic">
+                        No matching topics found. Try typing a different keyword!
+                      </div>
+                    ) : (
+                      filteredAdHocTopics.map((topic, idx) => (
                         <div
                           key={topic.id || idx}
                           className={`p-3.5 rounded-2xl border flex items-center justify-between gap-3 transition-all ${
@@ -1362,8 +1369,8 @@ export default function SmartReviewHub({
                             ⚡ Review Now
                           </button>
                         </div>
-                      ));
-                    })()}
+                      ))
+                    )}
                   </div>
                 </div>
               )}

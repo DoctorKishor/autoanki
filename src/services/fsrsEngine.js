@@ -65,13 +65,14 @@ export const calculateRetrievability = (elapsedDays, stability, w20 = DEFAULT_FS
  * @param {number} [w20=0.2345] Forgetting curve shape parameter w20
  * @returns {number} Calculated interval in days
  */
-export const calculateInterval = (stability, desiredRetention = 0.90, w20 = DEFAULT_FSRS6_WEIGHTS[20]) => {
+export const calculateInterval = (stability, desiredRetention = 0.90, w20 = DEFAULT_FSRS6_WEIGHTS[20], maxInterval = 365) => {
   if (stability <= 0) return 1;
   const dr = clamp(desiredRetention, 0.70, 0.97);
   const shape = Math.max(0.01, typeof w20 === 'number' && !isNaN(w20) ? w20 : DEFAULT_FSRS6_WEIGHTS[20]);
 
-  const interval = (stability / shape) * (Math.pow(dr, -shape) - 1);
-  return Math.max(1, Math.round(interval));
+  const rawInterval = (stability / shape) * (Math.pow(dr, -shape) - 1);
+  const safeMax = Math.max(30, typeof maxInterval === 'number' && !isNaN(maxInterval) ? maxInterval : 365);
+  return clamp(Math.max(1, Math.round(rawInterval)), 1, safeMax);
 };
 
 /**
@@ -240,7 +241,8 @@ export const calculateInitialState = (
   const D = calculateInitialDifficulty(r, w);
   const S = calculateInitialStability(r, w);
   const R = 1.0;
-  const interval = calculateInterval(S, desiredRetention, w20);
+  const maxInterval = loadBalancingOptions?.maxInterval || loadBalancingOptions?.advancedRules?.maxInterval || 365;
+  const interval = calculateInterval(S, desiredRetention, w20, maxInterval);
 
   // Fix Bug 2.6: always parse as local-timezone midnight to prevent IST UTC off-by-one.
   // new Date('YYYY-MM-DD') is parsed as UTC; appending T00:00:00 forces local-timezone interpretation.
@@ -337,8 +339,9 @@ export const calculateNextFSRSState = (
     newS = Math.max(S, S * Sinc);
   }
 
-  // 3. Interval calculation based on Desired Retention DR
-  const interval = calculateInterval(newS, desiredRetention, w20);
+  // 3. Interval calculation based on Desired Retention DR & Max Interval
+  const maxInterval = loadBalancingOptions?.maxInterval || loadBalancingOptions?.advancedRules?.maxInterval || 365;
+  const interval = calculateInterval(newS, desiredRetention, w20, maxInterval);
 
   const baseNextDate = new Date(reviewDate);
   baseNextDate.setDate(baseNextDate.getDate() + interval);

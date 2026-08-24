@@ -7,6 +7,7 @@ import {
 import { parsePageNumbers, getTopicPageWeight } from '../utils/pageUtils';
 import { getAiTopicRecommendations, saveAiTopicRecommendations } from '../services/localDb';
 import { calculatePredictiveTopicTime } from '../services/predictiveTimingEngine';
+import { getLocalDateStr } from './SmartReviewHub';
 
 const DEFAULT_CARD_GEN_MODELS = [
   'gemini-3.5-flash-lite',
@@ -134,7 +135,7 @@ export default function SelectNewTopicsModal({
   // Load cached AI recommendations on open
   useEffect(() => {
     if (isOpen) {
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = getLocalDateStr();
       getAiTopicRecommendations(todayStr).then(cached => {
         if (cached && Array.isArray(cached.recommendations)) {
           setAiRecommendations(cached.recommendations);
@@ -325,7 +326,7 @@ Format response strictly as JSON with this schema:
         if (parsed && Array.isArray(parsed.recommendations)) {
           setAiRecommendations(parsed.recommendations);
           if (parsed.advisorNote) setAiAdvisorNote(parsed.advisorNote);
-          const todayStr = new Date().toISOString().split('T')[0];
+          const todayStr = getLocalDateStr();
           saveAiTopicRecommendations(todayStr, parsed).catch(err => console.error(err));
           success = true;
           break;
