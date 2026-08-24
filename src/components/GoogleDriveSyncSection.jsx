@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Cloud, RefreshCw, LogOut, CheckCircle2, AlertCircle, HardDrive,
-  Settings as SettingsIcon, ShieldCheck, ChevronDown, ChevronUp, Loader2, Sparkles
+  Settings as SettingsIcon, ShieldCheck, ChevronDown, ChevronUp, Loader2, Sparkles,
+  Layers, Database
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -13,7 +14,8 @@ import {
   saveCustomGoogleClientId,
   DEFAULT_GOOGLE_CLIENT_ID
 } from '../services/googleDriveAuth';
-import { syncWithGoogleDrive } from '../services/googleDriveSync';
+import { syncWithGoogleDrive, getGoogleDriveVaultStorageSize } from '../services/googleDriveSync';
+import { calculateDetailedStorageBreakdown } from '../services/localDb';
 
 export default function GoogleDriveSyncSection({
   isDark,
@@ -26,6 +28,9 @@ export default function GoogleDriveSyncSection({
 }) {
   const [authState, setAuthState] = useState(null);
   const [quota, setQuota] = useState(null);
+  const [vaultStorage, setVaultStorage] = useState(null); // { totalBytes, vaultFileCount, mediaFileCount }
+  const [localAppBytes, setLocalAppBytes] = useState(null);
+  const [loadingStorage, setLoadingStorage] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncStatusMsg, setSyncStatusMsg] = useState('');
@@ -35,6 +40,30 @@ export default function GoogleDriveSyncSection({
   const [clientIdInput, setClientIdInput] = useState('');
   const [activeClientId, setActiveClientId] = useState(DEFAULT_GOOGLE_CLIENT_ID);
   const [isSavingClientId, setIsSavingClientId] = useState(false);
+
+  // Compute local and cloud storage metrics
+  const refreshStorageMetrics = useCallback(async (token) => {
+    try {
+      // 1. Calculate local app IndexedDB storage
+      const breakdown = await calculateDetailedStorageBreakdown();
+      if (breakdown) {
+        setLocalAppBytes(breakdown.grandTotalBytes || breakdown.browserUsage || 0);
+      }
+
+      // 2. Calculate Google Drive vault size if token is available
+      if (token) {
+        setLoadingStorage(true);
+        const vaultData = await getGoogleDriveVaultStorageSize(token);
+        setVaultStorage(vaultData);
+      } else {
+        setVaultStorage(null);
+      }
+    } catch (err) {
+      console.warn('[GDriveSection] Error calculating storage metrics:', err);
+    } finally {
+      setLoadingStorage(false);
+    }
+  }, []);
 
   // Load persistent auth state and client ID on mount
   const refreshAuthState = useCallback(async () => {
@@ -48,21 +77,28 @@ export default function GoogleDriveSyncSection({
       if (state?.accessToken) {
         const q = await getGoogleDriveStorageQuota(state.accessToken);
         setQuota(q);
+        refreshStorageMetrics(state.accessToken);
+      } else {
+        refreshStorageMetrics(null);
       }
     } catch (e) {
       console.warn('[GDriveSection] Error loading auth state:', e);
     }
-  }, []);
+  }, [refreshStorageMetrics]);
 
   useEffect(() => {
     refreshAuthState();
 
     const handleAuthChanged = (e) => {
-      setAuthState(e.detail);
-      if (e.detail?.accessToken) {
-        getGoogleDriveStorageQuota(e.detail.accessToken).then(setQuota);
+      const freshState = e.detail;
+      setAuthState(freshState);
+      if (freshState?.accessToken) {
+        getGoogleDriveStorageQuota(freshState.accessToken).then(setQuota);
+        refreshStorageMetrics(freshState.accessToken);
       } else {
         setQuota(null);
+        setVaultStorage(null);
+        refreshStorageMetrics(null);
       }
     };
 
@@ -76,6 +112,12 @@ export default function GoogleDriveSyncSection({
         setSyncStatusMsg(message || 'In sync with Google Drive');
         setLastSyncTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
         setErrorMsg('');
+        // Refresh vault size after sync
+        getGoogleDriveAuthState().then(state => {
+          if (state?.accessToken) {
+            refreshStorageMetrics(state.accessToken);
+          }
+        });
       } else if (status === 'error') {
         setIsSyncing(false);
         setErrorMsg(e.detail.error || 'Sync failed.');
@@ -91,7 +133,7 @@ export default function GoogleDriveSyncSection({
       window.removeEventListener('gdrive-auth-changed', handleAuthChanged);
       window.removeEventListener('gdrive-sync-status', handleSyncStatus);
     };
-  }, [refreshAuthState]);
+  }, [refreshAuthState, refreshStorageMetrics]);
 
   // Sign in with Google
   const handleSignIn = async () => {
@@ -280,6 +322,16 @@ export default function GoogleDriveSyncSection({
                     </svg>
                     <span>{isAuthenticating ? 'Connecting to Google…' : 'Sign in with Google'}</span>
                   </button>
+
+                  {/* Local App Storage Metric in Disconnected Mode */}
+                  {localAppBytes != null && (
+                    <div className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl border text-[11px] font-mono ${
+                      isDark ? 'neu-pressed-dark border-gray-800 text-gray-400' : 'neu-pressed-light border-gray-200 text-gray-600'
+                    }`}>
+                      <Layers className="w-3.5 h-3.5 text-indigo-400" />
+                      <span>Local App Storage: <strong className={isDark ? 'text-gray-200' : 'text-gray-900'}>{formatBytes(localAppBytes)}</strong></span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Client ID Configuration Collapsible */}
@@ -382,29 +434,81 @@ export default function GoogleDriveSyncSection({
                   </button>
                 </div>
 
-                {/* Storage Quota Bar */}
+                {/* Storage Quota & App Space Bar */}
                 {quota ? (
                   <motion.div
                     initial={{ opacity: 0, y: 4 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className={`p-4 rounded-2xl border space-y-2 ${
+                    className={`p-4 sm:p-5 rounded-2xl border space-y-3.5 ${
                       isDark ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-gray-200'
                     }`}
                   >
-                    <div className="flex items-center justify-between text-xs font-bold">
-                      <span className="flex items-center gap-1.5">
-                        <HardDrive className="w-3.5 h-3.5 text-blue-500" />
-                        Google Drive Storage Usage
-                      </span>
-                      <span className="font-mono text-[11px]">
-                        {formatBytes(quota.usage)} / {formatBytes(quota.limit)} ({quotaPercent}%)
-                      </span>
+                    {/* Google Drive Account Total Usage */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between text-xs font-bold">
+                        <span className="flex items-center gap-1.5">
+                          <HardDrive className="w-3.5 h-3.5 text-blue-500" />
+                          Google Drive Storage Usage
+                        </span>
+                        <span className="font-mono text-[11px] text-gray-500 dark:text-gray-400">
+                          {formatBytes(quota.usage)} / {formatBytes(quota.limit)} ({quotaPercent}%)
+                        </span>
+                      </div>
+                      <div className="w-full h-2 rounded-full bg-gray-500/20 overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-500 rounded-full"
+                          style={{ width: `${quotaPercent}%` }}
+                        />
+                      </div>
                     </div>
-                    <div className="w-full h-2 rounded-full bg-gray-500/20 overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-500 rounded-full"
-                        style={{ width: `${quotaPercent}%` }}
-                      />
+
+                    {/* App Storage Breakdown Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                      {/* Cloud Vault Storage */}
+                      <div className={`p-3 rounded-xl border flex items-center justify-between gap-3 ${
+                        isDark ? 'neu-card-dark border-gray-800' : 'neu-card-light border-gray-200/80'
+                      }`}>
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="p-2 rounded-lg bg-sky-500/10 text-sky-400 shrink-0">
+                            <Cloud className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 truncate">
+                              App Drive Vault
+                            </div>
+                            <div className={`text-xs font-black font-mono truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                              {vaultStorage ? formatBytes(vaultStorage.totalBytes) : (loadingStorage ? 'Calculating…' : '0 B')}
+                            </div>
+                          </div>
+                        </div>
+                        {vaultStorage && (vaultStorage.vaultFileCount > 0 || vaultStorage.mediaFileCount > 0) ? (
+                          <span className="text-[9px] font-mono px-2 py-0.5 rounded-md bg-sky-500/10 text-sky-400 border border-sky-500/20 shrink-0">
+                            {vaultStorage.vaultFileCount + vaultStorage.mediaFileCount} files
+                          </span>
+                        ) : null}
+                      </div>
+
+                      {/* Device Local Storage */}
+                      <div className={`p-3 rounded-xl border flex items-center justify-between gap-3 ${
+                        isDark ? 'neu-card-dark border-gray-800' : 'neu-card-light border-gray-200/80'
+                      }`}>
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400 shrink-0">
+                            <Layers className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 truncate">
+                              Local App Storage
+                            </div>
+                            <div className={`text-xs font-black font-mono truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                              {localAppBytes != null ? formatBytes(localAppBytes) : 'Calculating…'}
+                            </div>
+                          </div>
+                        </div>
+                        <span className="text-[9px] font-mono px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shrink-0">
+                          IndexedDB
+                        </span>
+                      </div>
                     </div>
                   </motion.div>
                 ) : (
@@ -414,7 +518,9 @@ export default function GoogleDriveSyncSection({
                     <span className="text-xs font-bold flex items-center gap-2">
                       <HardDrive className="w-3.5 h-3.5 text-blue-400" /> Storage metrics ready
                     </span>
-                    <span className="text-[10px] font-mono">100% Dedicated Vault</span>
+                    <span className="text-[10px] font-mono">
+                      Local: {localAppBytes != null ? formatBytes(localAppBytes) : 'Ready'}
+                    </span>
                   </div>
                 )}
 

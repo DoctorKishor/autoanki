@@ -1245,3 +1245,47 @@ export function handleAppExitKeepaliveSync() {
     console.warn('[GDriveSync] Exit sync flag error:', e);
   }
 }
+
+/**
+ * Calculates the total storage size (in bytes) of all files stored in the Google Drive AutoAnki_Sync_Vault.
+ * @param {string} accessToken
+ * @returns {Promise<{ totalBytes: number, vaultFileCount: number, mediaFileCount: number }>}
+ */
+export async function getGoogleDriveVaultStorageSize(accessToken) {
+  if (!accessToken) return { totalBytes: 0, vaultFileCount: 0, mediaFileCount: 0 };
+  try {
+    const vault = await findDriveItem(accessToken, VAULT_FOLDER_NAME, null, true);
+    if (!vault) return { totalBytes: 0, vaultFileCount: 0, mediaFileCount: 0 };
+
+    const vaultFiles = await listFilesInFolder(accessToken, vault.id);
+    let totalBytes = 0;
+    let vaultFileCount = 0;
+    let mediaFileCount = 0;
+
+    let mediaFolderId = null;
+    for (const f of vaultFiles) {
+      if (f.mimeType === 'application/vnd.google-apps.folder' && f.name === MEDIA_FOLDER_NAME) {
+        mediaFolderId = f.id;
+      } else if (f.mimeType !== 'application/vnd.google-apps.folder') {
+        totalBytes += Number(f.size) || 0;
+        vaultFileCount++;
+      }
+    }
+
+    if (mediaFolderId) {
+      const mediaFiles = await listFilesInFolder(accessToken, mediaFolderId);
+      for (const m of mediaFiles) {
+        if (m.mimeType !== 'application/vnd.google-apps.folder') {
+          totalBytes += Number(m.size) || 0;
+          mediaFileCount++;
+        }
+      }
+    }
+
+    return { totalBytes, vaultFileCount, mediaFileCount };
+  } catch (err) {
+    console.warn('[GDriveSync] Could not calculate vault storage size:', err);
+    return { totalBytes: 0, vaultFileCount: 0, mediaFileCount: 0 };
+  }
+}
+
