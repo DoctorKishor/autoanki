@@ -15437,9 +15437,11 @@ JSON Format:
       const prevDayLog = nextStudyLogs[targetDate];
       if (prevDayLog) {
         const filteredFsrsLogs = (prevDayLog.fsrsLogs || []).filter(l => l.id !== logEntry.id);
+        const removedPageWeight = logEntry?.pageWeight || 1;
         const updatedDayLog = {
           ...prevDayLog,
           cards: Math.max(0, (prevDayLog.cards || 0) - 1),
+          pages: Math.max(0, (prevDayLog.pages || 0) - removedPageWeight),
           fsrsLogs: filteredFsrsLogs
         };
         nextStudyLogs = { ...nextStudyLogs, [targetDate]: updatedDayLog };
@@ -15669,9 +15671,11 @@ JSON Format:
     if (logEntry && logEntry.dateStr) {
       const targetDate = logEntry.dateStr;
       const prevDayLog = nextStudyLogs[targetDate] || { questions: 0, cards: 0, hours: 0, pages: 0, gts: [], fsrsLogs: [] };
+      const restoredPageWeight = logEntry?.pageWeight || 1;
       const updatedDayLog = {
         ...prevDayLog,
         cards: (prevDayLog.cards || 0) + 1,
+        pages: (prevDayLog.pages || 0) + restoredPageWeight,
         fsrsLogs: [...(prevDayLog.fsrsLogs || []), logEntry]
       };
       nextStudyLogs = { ...nextStudyLogs, [targetDate]: updatedDayLog };

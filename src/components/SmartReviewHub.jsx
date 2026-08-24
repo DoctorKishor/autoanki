@@ -17,9 +17,21 @@ import PdfSlicePreviewModal from './PdfSlicePreviewModal';
 import { extractTopicPdfSlice } from '../services/pdfSliceService';
 
 export function getLocalDateStr(d = new Date()) {
-  const dateObj = typeof d === 'string' ? new Date(d) : d;
-  if (!dateObj || isNaN(dateObj.getTime())) return new Date().toLocaleDateString('en-CA');
-  return dateObj.toLocaleDateString('en-CA');
+  if (typeof d === 'string') {
+    const trimmed = d.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      return trimmed;
+    }
+    if (trimmed.includes('T')) {
+      return trimmed.split('T')[0];
+    }
+    const parsed = new Date(trimmed);
+    return isNaN(parsed.getTime()) ? new Date().toLocaleDateString('en-CA') : parsed.toLocaleDateString('en-CA');
+  }
+  if (d instanceof Date && !isNaN(d.getTime())) {
+    return d.toLocaleDateString('en-CA');
+  }
+  return new Date().toLocaleDateString('en-CA');
 }
 
 export function getTopicPageInfo(topic) {
@@ -69,12 +81,12 @@ export default function SmartReviewHub({
   const handleAddExamTarget = () => {
     if (!newExamTitle.trim() || !newExamDate) return;
     const newEntry = {
-      id: Date.now().toString(),
+      id: `exam_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
       name: newExamTitle.trim(),
       title: newExamTitle.trim(),
       date: newExamDate,
       examDate: newExamDate,
-      isTentative: newExamTentative
+      isTentative: Boolean(newExamTentative)
     };
     const updated = Array.isArray(examProfiles) ? [...examProfiles, newEntry] : [newEntry];
     if (typeof onSaveExamProfiles === 'function') onSaveExamProfiles(updated);
@@ -192,8 +204,17 @@ export default function SmartReviewHub({
           const topicId = topic.id || `${subName}_${topic.name}`;
           const topicObj = { ...topic, id: topicId, subject: subName, pageCount: topicWeight, pageLabel, startPage, endPage };
 
-          if (lapses >= (fsrsConfig.lapses?.leechThreshold ?? 8) || topic.isLeech) {
+          const leechThreshold = fsrsConfig.lapses?.leechThreshold ?? 8;
+          const isLeechTopic = lapses >= leechThreshold || Boolean(topic.isLeech);
+          const shouldSuspendLeech = isLeechTopic && fsrsConfig.lapses?.leechAction === 'suspend';
+
+          if (isLeechTopic) {
             leeches.push(topicObj);
+          }
+
+          // If topic is suspended as a leech or manually suspended, exclude from active study queues
+          if (shouldSuspendLeech || topic.isSuspended) {
+            return;
           }
 
           // A topic is NEW if it has 0 reviewCount and no lastReviewDate (has never completed a review session)
@@ -338,10 +359,20 @@ export default function SmartReviewHub({
 
     if (!item.subject || !subjectTrackerData) return;
 
-    const subDoc = subjectTrackerData.find(d => d.subject === item.subject || d.subject?.toLowerCase() === item.subject?.toLowerCase());
+    const subDoc = subjectTrackerData.find(d => 
+      (d.id && d.id.toLowerCase() === item.subject?.toLowerCase()) ||
+      (d.subject && d.subject.toLowerCase() === item.subject?.toLowerCase())
+    );
+
     if (subDoc && subDoc.topics) {
       const clonedTopics = { ...subDoc.topics };
-      let topicEntryKey = Object.keys(clonedTopics).find(k => k === item.name || clonedTopics[k]?.name === item.name || clonedTopics[k]?.id === item.id);
+      const cleanTargetName = (item.name || '').trim().toLowerCase();
+      let topicEntryKey = Object.keys(clonedTopics).find(k => 
+        k.trim().toLowerCase() === cleanTargetName || 
+        clonedTopics[k]?.name?.trim().toLowerCase() === cleanTargetName || 
+        clonedTopics[k]?.id === item.id
+      );
+
       if (topicEntryKey) {
         clonedTopics[topicEntryKey] = {
           ...clonedTopics[topicEntryKey],
@@ -354,15 +385,17 @@ export default function SmartReviewHub({
           topics: clonedTopics,
           updatedAt: new Date().toISOString()
         };
-        saveLocalSubjectTrackerDoc(targetDocId, updatedDoc).then(() => {
-          if (typeof onUpdateSubjectDoc === 'function') {
-            onUpdateSubjectDoc(updatedDoc);
-          }
-          setToastMessage('Note saved successfully');
-          setTimeout(() => setToastMessage(''), 2500);
-        }).catch(err => {
-          console.error("Failed to save mnemonic note to IndexedDB:", err);
-        });
+
+        if (typeof onUpdateSubjectDoc === 'function') {
+          onUpdateSubjectDoc(updatedDoc);
+        } else {
+          saveLocalSubjectTrackerDoc(targetDocId, updatedDoc).catch(err => {
+            console.error("Failed to save mnemonic note to IndexedDB:", err);
+          });
+        }
+
+        setToastMessage('Note saved successfully');
+        setTimeout(() => setToastMessage(''), 2500);
       }
     }
   };
@@ -567,7 +600,7 @@ export default function SmartReviewHub({
             isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
           }`}
           style={{
-            left: `calc(0.375rem + ${['queue', 'analytics', 'velocity', 'leeches'].indexOf(subTab)} * ((100% - 0.75rem) / 4))`,
+            left: `calc(0.375rem + ${Math.max(0, ['queue', 'analytics', 'velocity', 'leeches'].indexOf(subTab))} * ((100% - 0.75rem) / 4))`,
             width: `calc((100% - 0.75rem) / 4)`,
             transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
           }}
@@ -1271,15 +1304,22 @@ export default function SmartReviewHub({
                     {(() => {
                       const allTopics = [];
                       subjectTrackerData.forEach(subDoc => {
-                        if (adHocSelectedSubject !== 'all' && subDoc.subject !== adHocSelectedSubject) return;
+                        const currentSubject = (subDoc.subject || subDoc.id || '').trim();
+                        if (
+                          adHocSelectedSubject !== 'all' &&
+                          currentSubject.toLowerCase() !== adHocSelectedSubject.toLowerCase()
+                        ) {
+                          return;
+                        }
                         if (subDoc.topics) {
                           Object.values(subDoc.topics).forEach(t => {
                             if (!t || !t.name) return;
-                            const matchesSearch = !adHocSearch.trim() ||
-                              t.name.toLowerCase().includes(adHocSearch.toLowerCase()) ||
-                              subDoc.subject.toLowerCase().includes(adHocSearch.toLowerCase());
+                            const term = adHocSearch.trim().toLowerCase();
+                            const matchesSearch = !term ||
+                              t.name.toLowerCase().includes(term) ||
+                              currentSubject.toLowerCase().includes(term);
                             if (matchesSearch) {
-                              allTopics.push({ ...t, subject: subDoc.subject });
+                              allTopics.push({ ...t, subject: currentSubject });
                             }
                           });
                         }
@@ -1522,18 +1562,20 @@ function TopicCard({
 
     // 2. Bottom-Up: Sync parents so parent is checked ONLY if ALL children are checked
     function syncParentsBottomUp(nodeList) {
-      let allChildrenChecked = true;
+      if (!Array.isArray(nodeList)) return true;
+      let allSiblingsChecked = true;
+
       for (const node of nodeList) {
         const nodeId = node.id || node.title;
         if (Array.isArray(node.children) && node.children.length > 0) {
-          const childStatus = syncParentsBottomUp(node.children);
-          nextMap[nodeId] = childStatus;
+          const areChildrenAllChecked = syncParentsBottomUp(node.children);
+          nextMap[nodeId] = areChildrenAllChecked;
         }
         if (!nextMap[nodeId]) {
-          allChildrenChecked = false;
+          allSiblingsChecked = false;
         }
       }
-      return allChildrenChecked;
+      return allSiblingsChecked;
     }
 
     syncParentsBottomUp(topicHints.tree);

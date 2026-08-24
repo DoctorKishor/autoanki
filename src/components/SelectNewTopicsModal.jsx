@@ -63,7 +63,8 @@ export default function SelectNewTopicsModal({
           // A topic is unstudied if reviewCount === 0 and no lastReviewDate
           const isUnstudied = (!topic.reviewCount || topic.reviewCount === 0) && !topic.lastReviewDate;
           if (isUnstudied) {
-            const pageWeight = getTopicPageWeight(topic, topicsList);
+            const rawWeight = getTopicPageWeight(topic, topicsList);
+            const pageWeight = (typeof rawWeight === 'number' && !isNaN(rawWeight) && rawWeight > 0) ? rawWeight : 1;
             const { pageLabel } = parsePageNumbers(topic);
             const pred = calculatePredictiveTopicTime(topic, subjectTrackerData, studyLogs);
             const estMinutes = pred.predictedMinutes;
@@ -180,20 +181,31 @@ export default function SelectNewTopicsModal({
     const recentHistory = [];
     const ratingLabels = { 1: 'Again (Lapse)', 2: 'Hard', 3: 'Good', 4: 'Easy' };
 
-    if (studyLogs && typeof studyLogs === 'object') {
+    const extractLog = (l, dateStr = null) => {
+      if (!l || !l.topicName) return;
+      recentHistory.push({
+        subject: l.subject || 'General',
+        topicName: l.topicName,
+        date: l.dateStr || dateStr || (l.timestamp ? l.timestamp.split('T')[0] : 'Recent'),
+        rating: l.rating || 3,
+        ratingLabel: ratingLabels[l.rating] || 'Good'
+      });
+    };
+
+    if (Array.isArray(studyLogs)) {
+      studyLogs.forEach(item => {
+        if (item && Array.isArray(item.fsrsLogs)) {
+          item.fsrsLogs.forEach(l => extractLog(l, item.dateStr || item.date));
+        } else if (item && item.topicName) {
+          extractLog(item);
+        }
+      });
+    } else if (studyLogs && typeof studyLogs === 'object') {
       Object.entries(studyLogs).forEach(([dateStr, dayLog]) => {
         if (dayLog && Array.isArray(dayLog.fsrsLogs)) {
-          dayLog.fsrsLogs.forEach(l => {
-            if (l && l.topicName) {
-              recentHistory.push({
-                subject: l.subject || 'General',
-                topicName: l.topicName,
-                date: dateStr,
-                rating: l.rating || 3,
-                ratingLabel: ratingLabels[l.rating] || 'Good'
-              });
-            }
-          });
+          dayLog.fsrsLogs.forEach(l => extractLog(l, dateStr));
+        } else if (dayLog && dayLog.topicName) {
+          extractLog(dayLog, dateStr);
         }
       });
     }

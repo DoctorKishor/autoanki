@@ -54,11 +54,11 @@ export default function FsrsStatsTab({ subjectTrackerData = [], studyLogs = [], 
     if (rawFsrsLogs.length === 0) return [];
 
     const now = new Date();
-    let cutoff = new Date();
+    let cutoff = new Date(now);
 
-    if (timeRange === '1M') cutoff.setDate(now.getDate() - 30);
-    else if (timeRange === '3M') cutoff.setDate(now.getDate() - 90);
-    else if (timeRange === '1Y') cutoff.setDate(now.getDate() - 365);
+    if (timeRange === '1M') cutoff.setMonth(cutoff.getMonth() - 1);
+    else if (timeRange === '3M') cutoff.setMonth(cutoff.getMonth() - 3);
+    else if (timeRange === '1Y') cutoff.setFullYear(cutoff.getFullYear() - 1);
     else cutoff = new Date(0); // All time
 
     return rawFsrsLogs.filter(log => {
@@ -267,8 +267,8 @@ export default function FsrsStatsTab({ subjectTrackerData = [], studyLogs = [], 
           <div
             className="absolute top-1 bottom-1 bg-indigo-600 rounded-lg sm:rounded-xl shadow-md"
             style={{
-              left: timeRange === '1M' ? '4px' : timeRange === '3M' ? 'calc(25% + 1px)' : timeRange === '1Y' ? 'calc(50% + 1px)' : 'calc(75% + 1px)',
-              width: 'calc(25% - 5px)',
+              width: 'calc((100% - 0.5rem) / 4)',
+              left: `calc(0.25rem + ${['1M', '3M', '1Y', 'ALL'].indexOf(timeRange)} * ((100% - 0.5rem) / 4))`,
               transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
             }}
           />

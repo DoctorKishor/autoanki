@@ -327,8 +327,8 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
                         isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
                       }`}
                       style={{
-                        width: 'calc(33.333% - 3px)',
-                        left: activeScopeTab === 'preset' ? '2px' : activeScopeTab === 'subject' ? 'calc(33.333% + 1px)' : 'calc(66.666%)',
+                        width: 'calc((100% - 0.5rem) / 3)',
+                        left: `calc(0.25rem + ${['preset', 'subject', 'today'].indexOf(activeScopeTab)} * ((100% - 0.5rem) / 3))`,
                         transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
                       }}
                     />
@@ -904,16 +904,17 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
                   }`}>
                     <div className="flex items-center justify-between">
                       <label className={`text-xs font-black ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Retention Mode</label>
-                      <div className={`relative flex items-center p-1.5 rounded-2xl gap-1 shrink-0 select-none ${
+                      <div className={`relative grid grid-cols-2 p-1 rounded-2xl gap-1 shrink-0 select-none w-48 sm:w-56 ${
                         isDark ? 'neu-pressed-dark border border-slate-700/60' : 'neu-pressed-light border border-slate-200/80'
                       }`}>
                         {/* Single Sliding Pill Indicator */}
                         <div
-                          className={`absolute top-1.5 bottom-1.5 w-24 rounded-xl shadow-md ${
+                          className={`absolute top-1 bottom-1 rounded-xl shadow-md ${
                             isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
                           }`}
                           style={{
-                            left: `calc(0.375rem + ${(tempConfig.retentionMode === 'perSubject' ? 1 : 0)} * (6rem + 0.25rem))`,
+                            width: 'calc(50% - 4px)',
+                            left: `calc(2px + ${(tempConfig.retentionMode === 'perSubject' ? 1 : 0)} * 50%)`,
                             transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'
                           }}
                         />
@@ -924,8 +925,9 @@ export default function FsrsSettingsModal({ isOpen, onClose, fsrsConfig, onSaveC
                         ].map(item => (
                           <button
                             key={item.id}
+                            type="button"
                             onClick={() => setTempConfig({ ...tempConfig, retentionMode: item.id })}
-                            className={`relative w-24 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${
+                            className={`relative py-1.5 text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${
                               (tempConfig.retentionMode || 'global') === item.id || (item.id === 'global' && tempConfig.retentionMode !== 'perSubject')
                                 ? 'text-white font-extrabold'
                                 : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
