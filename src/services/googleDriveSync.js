@@ -802,12 +802,15 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
             if (!existingLog) {
               await putLocalItem(STORES.CAMP_DAILY_LOGS, log);
             } else {
-              const mergedSessions = [...(existingLog.sessions || [])];
-              const existSessionKeys = new Set(mergedSessions.map(s => s.id || s.startedAt || (s.subject + '_' + s.duration)));
-              (log.sessions || []).forEach(s => {
-                const k = s.id || s.startedAt || (s.subject + '_' + s.duration);
-                if (!existSessionKeys.has(k)) {
-                  mergedSessions.push(s);
+              const mergedSessions = Array.isArray(existingLog.sessions) ? [...existingLog.sessions] : [];
+              const existSessionKeys = new Set(mergedSessions.map(s => s?.id || s?.startedAt || (s ? s.subject + '_' + s.duration : '')));
+              const incomingSessions = Array.isArray(log.sessions) ? log.sessions : [];
+              incomingSessions.forEach(s => {
+                if (s) {
+                  const k = s.id || s.startedAt || (s.subject + '_' + s.duration);
+                  if (!existSessionKeys.has(k)) {
+                    mergedSessions.push(s);
+                  }
                 }
               });
               await putLocalItem(STORES.CAMP_DAILY_LOGS, {
@@ -1516,7 +1519,10 @@ async function executeOneWayPush(accessToken, vaultFolderId, mediaFolderId, loca
 
   // Background non-blocking media sync (includes active and trash pages)
   setTimeout(() => {
-    const allMediaPages = [...(localData.pages || []), ...(localData.trashPages || [])];
+    const allMediaPages = [
+      ...(Array.isArray(localData?.pages) ? localData.pages : []),
+      ...(Array.isArray(localData?.trashPages) ? localData.trashPages : [])
+    ];
     syncMediaToDrive(accessToken, mediaFolderId, allMediaPages).catch(e => {
       console.warn('[GDriveSync] Background media upload error:', e);
     });
