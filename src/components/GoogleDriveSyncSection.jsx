@@ -140,7 +140,7 @@ export default function GoogleDriveSyncSection({
     setErrorMsg('');
     setIsAuthenticating(true);
     try {
-      const state = await requestGoogleDriveToken({ prompt: 'consent' });
+      const state = await requestGoogleDriveToken({ prompt: '' });
       setAuthState(state);
       if (state?.accessToken) {
         const q = await getGoogleDriveStorageQuota(state.accessToken);

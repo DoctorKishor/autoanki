@@ -101,32 +101,64 @@ export async function saveCustomGoogleClientId(clientId) {
 
 /**
  * Retrieves the currently persisted Google Drive authentication session.
+ * Checks IndexedDB settings first, falling back to localStorage cache to guarantee persistence across sessions.
  * @returns {Promise<object|null>}
  */
 export async function getGoogleDriveAuthState() {
   try {
-    const authState = await getLocalSetting(GOOGLE_DRIVE_AUTH_KEY, null);
+    let authState = await getLocalSetting(GOOGLE_DRIVE_AUTH_KEY, null);
+    if (!authState && typeof localStorage !== 'undefined') {
+      const cached = localStorage.getItem('autoanki_gdrive_auth');
+      if (cached) {
+        try {
+          authState = JSON.parse(cached);
+          // Restore to IndexedDB if it was only in localStorage
+          if (authState) {
+            saveLocalSetting(GOOGLE_DRIVE_AUTH_KEY, authState).catch(() => {});
+          }
+        } catch {}
+      }
+    }
     if (!authState || typeof authState !== 'object') return null;
     return authState;
   } catch (err) {
-    console.error('[GoogleAuth] Error reading auth state from LocalDB:', err);
+    console.warn('[GoogleAuth] Reading auth state fallback from localStorage:', err);
+    if (typeof localStorage !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('autoanki_gdrive_auth');
+        return cached ? JSON.parse(cached) : null;
+      } catch {}
+    }
     return null;
   }
 }
 
 /**
- * Saves Google Drive auth state to LocalDB and dispatches a window event.
+ * Saves Google Drive auth state to LocalDB and localStorage and dispatches a window event.
  * @param {object} authState 
  */
 export async function saveGoogleDriveAuthState(authState) {
   try {
     await saveLocalSetting(GOOGLE_DRIVE_AUTH_KEY, authState);
+    if (typeof localStorage !== 'undefined') {
+      if (authState) {
+        localStorage.setItem('autoanki_gdrive_auth', JSON.stringify(authState));
+      } else {
+        localStorage.removeItem('autoanki_gdrive_auth');
+      }
+    }
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('gdrive-auth-changed', { detail: authState }));
     }
     return authState;
   } catch (err) {
     console.error('[GoogleAuth] Error saving auth state to LocalDB:', err);
+    if (typeof localStorage !== 'undefined') {
+      try {
+        if (authState) localStorage.setItem('autoanki_gdrive_auth', JSON.stringify(authState));
+        else localStorage.removeItem('autoanki_gdrive_auth');
+      } catch {}
+    }
     throw err;
   }
 }
@@ -207,13 +239,17 @@ export async function initGoogleTokenClient(customClientId = null) {
 }
 
 /**
- * Initiates the Google OAuth 2.0 popup flow to acquire a fresh access token.
+ * Initiates the Google OAuth 2.0 token flow. Uses email hint and empty prompt where possible
+ * to reuse existing authorization without prompting the user repeatedly.
  * @param {object} [options]
- * @param {string} [options.prompt] 'consent' | 'select_account' | ''
+ * @param {string} [options.prompt] '' | 'select_account' | 'consent'
+ * @param {string} [options.hint] User's email to bypass account selector
  * @returns {Promise<object>} Fresh auth state { accessToken, expiresAt, user }
  */
-export async function requestGoogleDriveToken({ prompt = '' } = {}) {
+export async function requestGoogleDriveToken({ prompt = '', hint = '' } = {}) {
   const tokenClient = await initGoogleTokenClient();
+  const existingState = await getGoogleDriveAuthState();
+  const userHint = hint || existingState?.user?.email || '';
 
   return new Promise((resolve, reject) => {
     tokenClient.callback = async (resp) => {
@@ -228,12 +264,13 @@ export async function requestGoogleDriveToken({ prompt = '' } = {}) {
         const expiresInSec = Number(resp.expires_in) || 3599;
         const expiresAt = Date.now() + (expiresInSec * 1000);
 
-        // Fetch basic profile info
-        let userProfile = { name: 'Google User', email: '', picture: '' };
+        // Fetch basic profile info if not already cached
+        let userProfile = existingState?.user || { name: 'Google User', email: userHint, picture: '' };
         try {
-          userProfile = await fetchGoogleUserProfile(accessToken);
+          const freshProfile = await fetchGoogleUserProfile(accessToken);
+          if (freshProfile?.name) userProfile = freshProfile;
         } catch (profileErr) {
-          console.warn('[GoogleAuth] Could not fetch profile, continuing with token:', profileErr);
+          console.warn('[GoogleAuth] Could not fetch profile, keeping existing profile:', profileErr);
         }
 
         const authState = {
@@ -242,7 +279,7 @@ export async function requestGoogleDriveToken({ prompt = '' } = {}) {
           scope: resp.scope || GOOGLE_DRIVE_SCOPES,
           tokenType: resp.token_type || 'Bearer',
           user: userProfile,
-          connectedAt: new Date().toISOString(),
+          connectedAt: existingState?.connectedAt || new Date().toISOString(),
           clientId: currentClientId
         };
 
@@ -253,7 +290,11 @@ export async function requestGoogleDriveToken({ prompt = '' } = {}) {
       }
     };
 
-    tokenClient.requestAccessToken({ prompt });
+    const requestConfig = {};
+    if (prompt) requestConfig.prompt = prompt;
+    if (userHint) requestConfig.hint = userHint;
+
+    tokenClient.requestAccessToken(requestConfig);
   });
 }
 
@@ -261,7 +302,7 @@ let tokenRefreshPromise = null;
 
 /**
  * Returns a valid, unexpired access token for Google Drive API requests.
- * If expired or expiring within 2 minutes, attempts interactive re-auth if interactive is true.
+ * If expired or expiring within 2 minutes, seamlessly requests a token renewal using user email hint.
  * @param {boolean} [interactive=false]
  * @returns {Promise<string|null>}
  */
@@ -286,9 +327,9 @@ export async function getValidAccessToken(interactive = false) {
     return refreshed?.accessToken || null;
   }
 
-  tokenRefreshPromise = requestGoogleDriveToken({ prompt: '' })
+  tokenRefreshPromise = requestGoogleDriveToken({ prompt: '', hint: state.user?.email || '' })
     .catch((err) => {
-      console.warn('[GoogleAuth] Re-auth failed:', err);
+      console.warn('[GoogleAuth] Seamless token renewal failed:', err);
       return null;
     })
     .finally(() => {
@@ -301,7 +342,7 @@ export async function getValidAccessToken(interactive = false) {
 
 /**
  * Safely disconnects Google Drive by revoking tokens locally and from Google,
- * clearing the stored auth session in LocalDB without modifying any user data or flashcards.
+ * clearing the stored auth session in LocalDB and localStorage without modifying any user data or flashcards.
  * @returns {Promise<boolean>}
  */
 export async function disconnectGoogleDrive() {
@@ -323,8 +364,11 @@ export async function disconnectGoogleDrive() {
       }
     }
 
-    // Remove auth state from settings
+    // Remove auth state from settings and localStorage
     await saveLocalSetting(GOOGLE_DRIVE_AUTH_KEY, null);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('autoanki_gdrive_auth');
+    }
     tokenClientInstance = null;
 
     if (typeof window !== 'undefined') {
@@ -337,3 +381,4 @@ export async function disconnectGoogleDrive() {
     throw err;
   }
 }
+
