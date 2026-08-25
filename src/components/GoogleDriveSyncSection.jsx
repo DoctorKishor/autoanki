@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Cloud, RefreshCw, LogOut, CheckCircle2, AlertCircle, HardDrive,
   Settings as SettingsIcon, ShieldCheck, ChevronDown, ChevronUp, Loader2, Sparkles,
-  Layers, Database
+  Layers, Database, Terminal
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -17,6 +17,7 @@ import {
 } from '../services/googleDriveAuth';
 import { syncWithGoogleDrive, getGoogleDriveVaultStorageSize } from '../services/googleDriveSync';
 import { calculateDetailedStorageBreakdown } from '../services/localDb';
+import DiagnosticsLogsModal from './DiagnosticsLogsModal';
 
 export default function GoogleDriveSyncSection({
   isDark,
@@ -38,6 +39,7 @@ export default function GoogleDriveSyncSection({
   const [lastSyncTime, setLastSyncTime] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [showClientSettings, setShowClientSettings] = useState(false);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [clientIdInput, setClientIdInput] = useState('');
   const [activeClientId, setActiveClientId] = useState(DEFAULT_GOOGLE_CLIENT_ID);
   const [isSavingClientId, setIsSavingClientId] = useState(false);
@@ -570,34 +572,56 @@ export default function GoogleDriveSyncSection({
                     </span>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={handleManualSync}
-                    disabled={isSyncing}
-                    className={`w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl font-black text-xs uppercase tracking-wider transition-all duration-300 cursor-pointer active:scale-95 disabled:opacity-50 ${
-                      justSynced
-                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-500/25 scale-[1.02]'
-                        : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20 hover:opacity-95'
-                    }`}
-                  >
-                    {justSynced ? (
-                      <>
-                        <Sparkles className="w-4 h-4 text-emerald-200 animate-pulse" />
-                        <span>Vault Synced ✨</span>
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                        <span>{isSyncing ? 'Synchronizing…' : 'Sync Now'}</span>
-                      </>
-                    )}
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                    <button
+                      type="button"
+                      onClick={() => setShowDiagnostics(true)}
+                      className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-2xl font-black text-xs uppercase tracking-wider transition-all active:scale-95 cursor-pointer border ${
+                        isDark 
+                          ? 'bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border-cyan-500/30' 
+                          : 'bg-cyan-50 hover:bg-cyan-100 text-cyan-700 border-cyan-300'
+                      }`}
+                    >
+                      <Terminal className="w-3.5 h-3.5" />
+                      <span>Diagnostics & Logs</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleManualSync}
+                      disabled={isSyncing}
+                      className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl font-black text-xs uppercase tracking-wider transition-all duration-300 cursor-pointer active:scale-95 disabled:opacity-50 ${
+                        justSynced
+                          ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-500/25 scale-[1.02]'
+                          : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20 hover:opacity-95'
+                      }`}
+                    >
+                      {justSynced ? (
+                        <>
+                          <Sparkles className="w-4 h-4 text-emerald-200 animate-pulse" />
+                          <span>Vault Synced ✨</span>
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                          <span>{isSyncing ? 'Synchronizing…' : 'Sync Now'}</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </motion.div>
             )}
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Real-time In-App System Diagnostics & Logs Viewer */}
+      <DiagnosticsLogsModal
+        isOpen={showDiagnostics}
+        onClose={() => setShowDiagnostics(false)}
+        themeMode={isDark ? 'dark' : 'light'}
+      />
     </motion.div>
   );
 }

@@ -35,8 +35,10 @@ import {
   base64ToArrayBuffer,
   serializeBinaryValues,
   deserializeBinaryValues,
-  LS_KEYS_TO_SNAPSHOT
+  LS_KEYS_TO_SNAPSHOT,
+  setMutationNotificationSuppressed
 } from './localDb.js';
+import logger from './logger.js';
 
 export const VAULT_FOLDER_NAME = 'AutoAnki_Sync_Vault';
 export const MEDIA_FOLDER_NAME = 'media';
@@ -71,27 +73,29 @@ export function getDeviceId() {
 export function canonicalStringify(obj) {
   if (obj === null || typeof obj !== 'object') return JSON.stringify(obj);
   if (Array.isArray(obj)) {
-    const stringifiedItems = obj.map(canonicalStringify);
-    stringifiedItems.sort();
-    return '[' + stringifiedItems.join(',') + ']';
+    return '[' + obj.map(canonicalStringify).join(',') + ']';
   }
   const sortedKeys = Object.keys(obj).sort();
   return '{' + sortedKeys.map(k => JSON.stringify(k) + ':' + canonicalStringify(obj[k])).join(',') + '}';
 }
 
 /**
- * Computes a fast, deterministic FNV-1a 32-bit hex hash of any string or serialized object.
+ * Computes a fast, deterministic, collision-resistant 64-bit dual-seed FNV-1a hex hash.
  * @param {string|object} input 
- * @returns {string} 8-character hex string
+ * @returns {string} 16-character hex string
  */
 export function computeHash(input) {
   const str = typeof input === 'string' ? input : canonicalStringify(input);
-  let hash = 0x811c9dc5;
+  let hash1 = 0x811c9dc5;
+  let hash2 = 0x9e3779b9;
   for (let i = 0; i < str.length; i++) {
-    hash ^= str.charCodeAt(i);
-    hash = (hash * 0x01000193) >>> 0;
+    const code = str.charCodeAt(i);
+    hash1 ^= code;
+    hash1 = (hash1 * 0x01000193) >>> 0;
+    hash2 ^= code;
+    hash2 = ((hash2 * 0x01000193) + (hash1 >>> 5)) >>> 0;
   }
-  return hash.toString(16).padStart(8, '0');
+  return hash1.toString(16).padStart(8, '0') + hash2.toString(16).padStart(8, '0');
 }
 
 /**
@@ -377,14 +381,16 @@ export async function extractLocalBundles() {
     trashCards: serializeBinaryValues(trashCards)
   };
 
-  // 2. Curriculum Topics Bundle
+  // 2. Curriculum Topics Bundle (with Tombstone Support)
   const topics = (await getAllLocalTopics()) || [];
+  const trashTopics = (await getLocalKV('trash_topics')) || [];
   const pytData = (await getAllLocalItems(STORES.PYT_DATA)) || [];
   const subjectTracker = (await getLocalKV('subject_tracker_data')) || [];
   const pytUserProgress = (await getLocalKV('pyt_user_progress')) || [];
   const textbooksMetadata = (await getLocalKV('textbooks_metadata')) || [];
   const curriculumBundle = {
     topics: serializeBinaryValues(topics),
+    trashTopics: serializeBinaryValues(trashTopics),
     pytData: serializeBinaryValues(pytData),
     subjectTracker,
     pytUserProgress,
@@ -398,14 +404,15 @@ export async function extractLocalBundles() {
   const campDailyLogs = (await getAllLocalItems(STORES.CAMP_DAILY_LOGS)) || [];
   const timerState = (await getLocalKV('timerState')) || null;
   const syncTodayStr = new Date().toLocaleDateString('en-CA');
-  const activeNewTopicsToday = (await getLocalKV('active_new_topics_' + syncTodayStr)) || (await getLocalKV('active_new_topics_today')) || [];
+  const activeNewTopicsList = (await getLocalKV('active_new_topics_' + syncTodayStr)) || (await getLocalKV('active_new_topics_today')) || [];
   const studyLogsBundle = {
     studyLogs,
     studySchedule,
     scheduleTemplates,
     campDailyLogs,
     timerState,
-    activeNewTopicsToday
+    activeNewTopicsDate: syncTodayStr,
+    activeNewTopicsToday: activeNewTopicsList
   };
 
   // 4. FSRS Config & Settings Bundle (including 24 synchronized localStorage settings)
@@ -538,9 +545,12 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
   const totalSteps = 7;
   let step = 0;
 
+  // Suppress local mutation notifications during bulk bundle hydration to prevent auto-push feedback loops
+  setMutationNotificationSuppressed(true);
+  try {
   // 1. Cards Bundle (Timestamp-Aware, Tombstone Pruning & FSRS Safe)
   if (bundles['cards_bundle.json']) {
-    emit(++step, totalSteps, 'Hydrating Flashcards & FSRS memory states…');
+    emit(++step, totalSteps, 'Hydrating Flashcards & FSRS memory statesΓÇª');
     const b = bundles['cards_bundle.json'];
     const incomingCards = deserializeBinaryValues(b.flashcards || []);
     const incomingTrash = deserializeBinaryValues(b.trashCards || []);
@@ -560,7 +570,7 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
         if (inc && inc.id) {
           const localDeletedAt = localTrashMap.get(inc.id);
           const incTime = safeTimestamp(inc.updatedAt || inc.lastReviewDate || inc.createdAt);
-          if (localDeletedAt && localDeletedAt >= incTime) {
+          if (localDeletedAt && localDeletedAt > incTime) {
             return;
           }
 
@@ -570,8 +580,26 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
           } else {
             const localRevTime = safeTimestamp(localCard.lastReviewDate || 0);
             const incRevTime = safeTimestamp(inc.lastReviewDate || 0);
-            const latestRev = incRevTime >= localRevTime ? inc : localCard;
-            const earliestRev = incRevTime >= localRevTime ? localCard : inc;
+            
+            let latestRev = localCard;
+            if (incRevTime > localRevTime) {
+              latestRev = inc;
+            } else if (localRevTime > incRevTime) {
+              latestRev = localCard;
+            } else {
+              // Tie-break: prefer higher stability, then higher reps
+              const incStab = Number(inc.stability || 0);
+              const locStab = Number(localCard.stability || 0);
+              if (incStab > locStab) {
+                latestRev = inc;
+              } else if (locStab > incStab) {
+                latestRev = localCard;
+              } else {
+                const incReps = Number(inc.reps || 0);
+                const locReps = Number(localCard.reps || 0);
+                latestRev = incReps > locReps ? inc : localCard;
+              }
+            }
 
             const localContentTime = safeTimestamp(localCard.updatedAt || localCard.createdAt || 0);
             const incContentTime = safeTimestamp(inc.updatedAt || inc.createdAt || 0);
@@ -579,12 +607,13 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
 
             // Merge: preserve latest content edits AND latest FSRS review parameters
             const mergedCard = {
-              ...earliestRev,
+              ...localCard,
+              ...inc,
               ...latestContent,
               stability: latestRev.stability !== undefined ? latestRev.stability : (latestContent.stability ?? 0),
               difficulty: latestRev.difficulty !== undefined ? latestRev.difficulty : (latestContent.difficulty ?? 0),
-              reps: Math.max(localCard.reps || 0, inc.reps || 0, latestRev.reps || 0),
-              lapses: Math.max(localCard.lapses || 0, inc.lapses || 0, latestRev.lapses || 0),
+              reps: latestRev.reps !== undefined ? latestRev.reps : (latestContent.reps ?? 0),
+              lapses: latestRev.lapses !== undefined ? latestRev.lapses : (latestContent.lapses ?? 0),
               due: latestRev.due || latestContent.due,
               state: latestRev.state !== undefined ? latestRev.state : latestContent.state,
               lastReviewDate: latestRev.lastReviewDate || latestContent.lastReviewDate,
@@ -602,7 +631,7 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
         const remoteDeletedAt = incomingTrashMap.get(id);
         if (remoteDeletedAt) {
           const localCardTime = safeTimestamp(card.updatedAt || card.lastReviewDate || card.createdAt);
-          if (remoteDeletedAt >= localCardTime) {
+          if (remoteDeletedAt > localCardTime) {
             map.delete(id);
           }
         }
@@ -615,7 +644,7 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
       incomingTrash.forEach(c => {
         if (c && c.id) {
           const exist = mergedTrashMap.get(c.id);
-          if (!exist || safeTimestamp(c.deletedAt) >= safeTimestamp(exist.deletedAt)) {
+          if (!exist || safeTimestamp(c.deletedAt) > safeTimestamp(exist.deletedAt)) {
             mergedTrashMap.set(c.id, c);
           }
         }
@@ -626,9 +655,10 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
 
   // 2. Curriculum Topics
   if (bundles['curriculum_topics.json']) {
-    emit(++step, totalSteps, 'Hydrating Curriculum Topics & PYT Progress…');
+    emit(++step, totalSteps, 'Hydrating Curriculum Topics & PYT ProgressΓÇª');
     const b = bundles['curriculum_topics.json'];
     const incomingTopics = deserializeBinaryValues(b.topics || []);
+    const incomingTrashTopics = deserializeBinaryValues(b.trashTopics || []);
     const incomingPyt = deserializeBinaryValues(b.pytData || []);
 
     if (strategy === 'replace') {
@@ -645,6 +675,8 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
         tx.oncomplete = () => resolve(true);
         tx.onerror = () => reject(tx.error);
       });
+
+      await setLocalKV('trash_topics', incomingTrashTopics);
 
       // Atomic clear and put for pytData
       await new Promise((resolve, reject) => {
@@ -665,20 +697,51 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
     } else {
       if (Array.isArray(incomingTopics)) {
         const existingTopics = (await getAllLocalTopics()) || [];
+        const localTrashTopics = (await getLocalKV('trash_topics')) || [];
+        const localTrashMap = new Map(localTrashTopics.map(t => [t.id, safeTimestamp(t.deletedAt)]));
+        const incomingTrashMap = new Map(incomingTrashTopics.map(t => [t.id, safeTimestamp(t.deletedAt)]));
         const topMap = new Map(existingTopics.map(t => [t.id, t]));
+
         incomingTopics.forEach(incT => {
           if (incT && incT.id) {
+            const localDeletedAt = localTrashMap.get(incT.id);
+            const incTime = safeTimestamp(incT.updatedAt || incT.createdAt);
+            if (localDeletedAt && localDeletedAt > incTime) return;
+
             const locT = topMap.get(incT.id);
             if (!locT) {
               topMap.set(incT.id, incT);
             } else {
               const locTime = safeTimestamp(locT.updatedAt || locT.createdAt);
-              const incTime = safeTimestamp(incT.updatedAt || incT.createdAt);
               topMap.set(incT.id, incTime >= locTime ? { ...locT, ...incT } : { ...incT, ...locT });
             }
           }
         });
+
+        // Prune topics deleted remotely
+        for (const [id, topic] of topMap.entries()) {
+          const remoteDeletedAt = incomingTrashMap.get(id);
+          if (remoteDeletedAt) {
+            const localTopicTime = safeTimestamp(topic.updatedAt || topic.createdAt);
+            if (remoteDeletedAt > localTopicTime) {
+              topMap.delete(id);
+            }
+          }
+        }
+
         await saveAllLocalTopics(Array.from(topMap.values()));
+
+        // Merge trash topics
+        const mergedTrashTopics = new Map(localTrashTopics.map(t => [t.id, t]));
+        incomingTrashTopics.forEach(t => {
+          if (t && t.id) {
+            const exist = mergedTrashTopics.get(t.id);
+            if (!exist || safeTimestamp(t.deletedAt) > safeTimestamp(exist.deletedAt)) {
+              mergedTrashTopics.set(t.id, t);
+            }
+          }
+        });
+        await setLocalKV('trash_topics', Array.from(mergedTrashTopics.values()));
       }
 
       if (Array.isArray(incomingPyt)) {
@@ -694,7 +757,7 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
 
   // 3. Study Logs (Deep Merging & Session/GT Unioning)
   if (bundles['study_logs.json']) {
-    emit(++step, totalSteps, 'Hydrating Study Logs & Velocity Telemetry…');
+    emit(++step, totalSteps, 'Hydrating Study Logs & Velocity TelemetryΓÇª');
     const b = bundles['study_logs.json'];
     const incomingLogs = b.studyLogs || {};
 
@@ -731,46 +794,34 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
           const existingFsrs = Array.isArray(cur.fsrsLogs) ? cur.fsrsLogs : [];
           const incomingFsrs = Array.isArray(incLog?.fsrsLogs) ? incLog.fsrsLogs : [];
 
-          // Union FSRS logs by unique review timestamp or log key
+          // Union FSRS logs by unique review timestamp or deterministic content key
           const fsrsMap = new Map();
-          existingFsrs.forEach(l => {
-            const k = l.timestamp || (l.cardId + '_' + (l.rating || 'rev'));
-            fsrsMap.set(k, l);
-          });
-          incomingFsrs.forEach(l => {
-            const k = l.timestamp || (l.cardId + '_' + (l.rating || 'rev'));
-            if (!fsrsMap.has(k)) fsrsMap.set(k, l);
-          });
+          const getFsrsKey = (l) => l.id || (l.cardId && l.timestamp ? `${l.cardId}_${l.rating || 'r'}_${l.timestamp}` : computeHash(canonicalStringify(l)));
+          existingFsrs.forEach(l => { if (l) fsrsMap.set(getFsrsKey(l), l); });
+          incomingFsrs.forEach(l => { if (l) { const k = getFsrsKey(l); if (!fsrsMap.has(k)) fsrsMap.set(k, l); } });
 
-          // Union study sessions by ID or start timestamp
+          // Union study sessions by unique session ID or deterministic content key
           const existingSessions = Array.isArray(cur.sessions) ? cur.sessions : [];
           const incomingSessions = Array.isArray(incLog?.sessions) ? incLog.sessions : [];
           const sessionMap = new Map();
-          existingSessions.forEach(s => {
-            const k = s.id || s.startedAt || s.timestamp || (s.subject + '_' + s.duration);
-            sessionMap.set(k, s);
-          });
-          incomingSessions.forEach(s => {
-            const k = s.id || s.startedAt || s.timestamp || (s.subject + '_' + s.duration);
-            if (!sessionMap.has(k)) sessionMap.set(k, s);
-          });
+          const getSessionKey = (s) => s.id || (s.subject && s.startedAt ? `${s.subject}_${s.startedAt}_${s.duration || 0}` : computeHash(canonicalStringify(s)));
+          existingSessions.forEach(s => { if (s) sessionMap.set(getSessionKey(s), s); });
+          incomingSessions.forEach(s => { if (s) { const k = getSessionKey(s); if (!sessionMap.has(k)) sessionMap.set(k, s); } });
 
           // Union Grand Tests (GTs)
           const existingGts = Array.isArray(cur.gts) ? cur.gts : [];
           const incomingGts = Array.isArray(incLog?.gts) ? incLog.gts : [];
           const gtMap = new Map();
-          existingGts.forEach(g => {
-            const k = g.id || (g.testName + '_' + (g.date || g.timestamp));
-            gtMap.set(k, g);
-          });
-          incomingGts.forEach(g => {
-            const k = g.id || (g.testName + '_' + (g.date || g.timestamp));
-            if (!gtMap.has(k)) gtMap.set(k, g);
-          });
+          const getGtKey = (g) => g.id || (g.testName && (g.date || g.timestamp) ? `${g.testName}_${g.date || g.timestamp}` : computeHash(canonicalStringify(g)));
+          existingGts.forEach(g => { if (g) gtMap.set(getGtKey(g), g); });
+          incomingGts.forEach(g => { if (g) { const k = getGtKey(g); if (!gtMap.has(k)) gtMap.set(k, g); } });
+
+          const allSessions = Array.from(sessionMap.values());
+          const sessionHours = allSessions.reduce((sum, s) => sum + (Number(s.duration || s.minutes || 0) / 60 || Number(s.hours || 0)), 0);
+          const totalHours = sessionHours > 0 ? Number(sessionHours.toFixed(2)) : Math.max(cur.studyHours || cur.hours || 0, incLog?.studyHours || incLog?.hours || 0);
 
           const totalCards = Math.max(cur.totalCardsReviewed || cur.cards || 0, incLog?.totalCardsReviewed || incLog?.cards || 0, fsrsMap.size);
           const totalQuestions = Math.max(cur.totalQuestionsAttempted || cur.questions || 0, incLog?.totalQuestionsAttempted || incLog?.questions || 0);
-          const totalHours = Math.max(cur.studyHours || cur.hours || 0, incLog?.studyHours || incLog?.hours || 0);
 
           merged[dateKey] = {
             ...cur,
@@ -783,7 +834,7 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
             studyHours: totalHours,
             pages: Math.max(cur.pages || 0, incLog?.pages || 0),
             fsrsLogs: Array.from(fsrsMap.values()),
-            sessions: Array.from(sessionMap.values()),
+            sessions: allSessions,
             gts: Array.from(gtMap.values())
           };
         }
@@ -824,8 +875,8 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
         }
       }
       if (Array.isArray(b.activeNewTopicsToday)) {
-        const hydTodayStr = new Date().toLocaleDateString('en-CA');
-        await setLocalKV('active_new_topics_' + hydTodayStr, b.activeNewTopicsToday);
+        const targetDateStr = b.activeNewTopicsDate || new Date().toLocaleDateString('en-CA');
+        await setLocalKV('active_new_topics_' + targetDateStr, b.activeNewTopicsToday);
         await setLocalKV('active_new_topics_today', b.activeNewTopicsToday);
       }
     }
@@ -833,7 +884,7 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
 
   // 4. FSRS Config & Settings (including synchronized localStorage settings)
   if (bundles['fsrs_config.json']) {
-    emit(++step, totalSteps, 'Hydrating FSRS-6 Config, Hints & Preferences…');
+    emit(++step, totalSteps, 'Hydrating FSRS-6 Config, Hints & PreferencesΓÇª');
     const b = bundles['fsrs_config.json'];
     if (b.fsrsConfig) await saveFSRSConfig(b.fsrsConfig);
     if (b.localUserProfile) await setLocalKV('local_user_profile', b.localUserProfile);
@@ -898,7 +949,7 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
 
   // 5. CAMP Tracker
   if (bundles['camp_tracker.json']) {
-    emit(++step, totalSteps, 'Hydrating CAMP tracker logs…');
+    emit(++step, totalSteps, 'Hydrating CAMP tracker logsΓÇª');
     const b = bundles['camp_tracker.json'];
     if (Array.isArray(b.campTracker)) {
       for (const t of b.campTracker) {
@@ -914,7 +965,7 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
 
   // 6. Scanned Pages & Image Occlusions (Zero-Data-Loss Restoration with Tombstone Pruning)
   if (bundles['pages_bundle.json']) {
-    emit(++step, totalSteps, 'Hydrating Scanned Pages & Image Occlusions…');
+    emit(++step, totalSteps, 'Hydrating Scanned Pages & Image OcclusionsΓÇª');
     const b = bundles['pages_bundle.json'];
     const incomingPages = deserializeBinaryValues(b.pages || []);
     const incomingTrashPages = deserializeBinaryValues(b.trashPages || []);
@@ -945,7 +996,7 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
         if (p && p.id) {
           const localDeletedAt = localTrashMap.get(p.id);
           const incTime = safeTimestamp(p.updatedAt || p.createdAt);
-          if (localDeletedAt && localDeletedAt >= incTime) {
+          if (localDeletedAt && localDeletedAt > incTime) {
             // Page was deleted locally after incoming version was updated
             return;
           }
@@ -970,7 +1021,7 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
         const remoteDeletedAt = incomingTrashMap.get(id);
         if (remoteDeletedAt) {
           const localPageTime = safeTimestamp(page.updatedAt || page.createdAt);
-          if (remoteDeletedAt >= localPageTime) {
+          if (remoteDeletedAt > localPageTime) {
             map.delete(id);
           }
         }
@@ -983,7 +1034,7 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
       incomingTrashPages.forEach(p => {
         if (p && p.id) {
           const exist = mergedTrashPages.get(p.id);
-          if (!exist || safeTimestamp(p.deletedAt) >= safeTimestamp(exist.deletedAt)) {
+          if (!exist || safeTimestamp(p.deletedAt) > safeTimestamp(exist.deletedAt)) {
             mergedTrashPages.set(p.id, p);
           }
         }
@@ -996,6 +1047,9 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
 
   // Emit hydration event so React views reload fresh state
   emitDataHydratedEvent({ strategy, bundleKeys: Object.keys(bundles) });
+  } finally {
+    setMutationNotificationSuppressed(false);
+  }
 }
 
 /**
@@ -1193,19 +1247,23 @@ function buildConflictDiffDetails(localManifest, remoteManifest, modifiedBundleN
  * @param {Function} [options.onConflict] Callback for conflict resolution modal
  * @returns {Promise<{ success: boolean, action: string, message: string }>}
  */
-// Storage key for last known synchronized bundle hashes
-const LAST_SYNCED_HASHES_KEY = 'autoanki_last_synced_hashes';
+// Storage key prefix for last known synchronized bundle hashes per device
+const LAST_SYNCED_HASHES_PREFIX = 'autoanki_synced_hashes_';
+
+function getDeviceAncestorKey() {
+  return `${LAST_SYNCED_HASHES_PREFIX}${getDeviceId()}`;
+}
 
 async function getLastSyncedHashes() {
   try {
-    const fromIdb = await getLocalKV(LAST_SYNCED_HASHES_KEY);
+    const key = getDeviceAncestorKey();
+    const fromIdb = await getLocalKV(key);
     if (fromIdb && typeof fromIdb === 'object') return fromIdb;
-    if (typeof localStorage !== 'undefined') {
-      const stored = localStorage.getItem(LAST_SYNCED_HASHES_KEY);
-      if (stored) return JSON.parse(stored);
-    }
+    // Fallback to legacy shared key if migrating
+    const legacy = await getLocalKV('autoanki_last_synced_hashes');
+    if (legacy && typeof legacy === 'object') return legacy;
   } catch (e) {
-    console.warn('[GDriveSync] Error getting last synced hashes:', e);
+    console.warn('[GDriveSync] Error getting last synced hashes from LocalDB:', e);
   }
   return null;
 }
@@ -1213,13 +1271,411 @@ async function getLastSyncedHashes() {
 async function saveLastSyncedHashes(hashes) {
   if (!hashes || typeof hashes !== 'object') return;
   try {
-    await setLocalKV(LAST_SYNCED_HASHES_KEY, hashes);
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(LAST_SYNCED_HASHES_KEY, JSON.stringify(hashes));
-    }
+    await setLocalKV(getDeviceAncestorKey(), hashes);
   } catch (e) {
-    console.warn('[GDriveSync] Error saving last synced hashes:', e);
+    console.warn('[GDriveSync] Error saving last synced hashes to LocalDB:', e);
   }
+}
+
+/**
+ * Merges local bundles with downloaded remote bundles completely in-memory,
+ * producing a new staged bundle set and manifest without mutating IndexedDB.
+ */
+export function mergeBundlesInMemory(localData, downloadedBundles) {
+  const localBundles = localData.bundles || {};
+  const merged = { ...localBundles };
+
+  // 1. Cards Bundle (Timestamp-aware, Tie-breaking & Tombstone Pruning)
+  if (downloadedBundles['cards_bundle.json']) {
+    const locCardsB = localBundles['cards_bundle.json'] || {};
+    const remCardsB = downloadedBundles['cards_bundle.json'] || {};
+    const locCards = deserializeBinaryValues(locCardsB.flashcards || []);
+    const locTrash = deserializeBinaryValues(locCardsB.trashCards || []);
+    const remCards = deserializeBinaryValues(remCardsB.flashcards || []);
+    const remTrash = deserializeBinaryValues(remCardsB.trashCards || []);
+
+    const locTrashMap = new Map(locTrash.map(c => [c.id, safeTimestamp(c.deletedAt)]));
+    const remTrashMap = new Map(remTrash.map(c => [c.id, safeTimestamp(c.deletedAt)]));
+    const cardMap = new Map(locCards.map(c => [c.id, c]));
+
+    remCards.forEach(inc => {
+      if (inc && inc.id) {
+        const localDeletedAt = locTrashMap.get(inc.id);
+        const incTime = safeTimestamp(inc.updatedAt || inc.lastReviewDate || inc.createdAt);
+        if (localDeletedAt && localDeletedAt > incTime) return;
+
+        const localCard = cardMap.get(inc.id);
+        if (!localCard) {
+          cardMap.set(inc.id, inc);
+        } else {
+          const localRevTime = safeTimestamp(localCard.lastReviewDate || 0);
+          const incRevTime = safeTimestamp(inc.lastReviewDate || 0);
+
+          let latestRev = localCard;
+          if (incRevTime > localRevTime) {
+            latestRev = inc;
+          } else if (localRevTime > incRevTime) {
+            latestRev = localCard;
+          } else {
+            // Tie-break: prefer higher stability, then higher reps
+            const incStab = Number(inc.stability || 0);
+            const locStab = Number(localCard.stability || 0);
+            if (incStab > locStab) {
+              latestRev = inc;
+            } else if (locStab > incStab) {
+              latestRev = localCard;
+            } else {
+              const incReps = Number(inc.reps || 0);
+              const locReps = Number(localCard.reps || 0);
+              latestRev = incReps > locReps ? inc : localCard;
+            }
+          }
+
+          const localContentTime = safeTimestamp(localCard.updatedAt || localCard.createdAt || 0);
+          const incContentTime = safeTimestamp(inc.updatedAt || inc.createdAt || 0);
+          const latestContent = incContentTime >= localContentTime ? inc : localCard;
+
+          const mergedCard = {
+            ...localCard,
+            ...inc,
+            ...latestContent,
+            stability: latestRev.stability !== undefined ? latestRev.stability : (latestContent.stability ?? 0),
+            difficulty: latestRev.difficulty !== undefined ? latestRev.difficulty : (latestContent.difficulty ?? 0),
+            reps: latestRev.reps !== undefined ? latestRev.reps : (latestContent.reps ?? 0),
+            lapses: latestRev.lapses !== undefined ? latestRev.lapses : (latestContent.lapses ?? 0),
+            due: latestRev.due || latestContent.due,
+            state: latestRev.state !== undefined ? latestRev.state : latestContent.state,
+            lastReviewDate: latestRev.lastReviewDate || latestContent.lastReviewDate,
+            scheduledDays: latestRev.scheduledDays !== undefined ? latestRev.scheduledDays : latestContent.scheduledDays,
+            history: Array.isArray(latestRev.history) && latestRev.history.length > 0 ? latestRev.history : (latestContent.history || []),
+            updatedAt: new Date(Math.max(localContentTime, incContentTime, localRevTime, incRevTime, Date.now())).toISOString()
+          };
+          cardMap.set(inc.id, mergedCard);
+        }
+      }
+    });
+
+    for (const [id, card] of cardMap.entries()) {
+      const remoteDeletedAt = remTrashMap.get(id);
+      if (remoteDeletedAt) {
+        const localCardTime = safeTimestamp(card.updatedAt || card.lastReviewDate || card.createdAt);
+        if (remoteDeletedAt > localCardTime) {
+          cardMap.delete(id);
+        }
+      }
+    }
+
+    const mergedTrashMap = new Map(locTrash.map(c => [c.id, c]));
+    remTrash.forEach(c => {
+      if (c && c.id) {
+        const exist = mergedTrashMap.get(c.id);
+        if (!exist || safeTimestamp(c.deletedAt) > safeTimestamp(exist.deletedAt)) {
+          mergedTrashMap.set(c.id, c);
+        }
+      }
+    });
+
+    merged['cards_bundle.json'] = {
+      flashcards: serializeBinaryValues(Array.from(cardMap.values())),
+      trashCards: serializeBinaryValues(Array.from(mergedTrashMap.values()))
+    };
+  }
+
+  // 2. Curriculum Topics (with Tombstone Support)
+  if (downloadedBundles['curriculum_topics.json']) {
+    const locCur = localBundles['curriculum_topics.json'] || {};
+    const remCur = downloadedBundles['curriculum_topics.json'] || {};
+    const locTopics = deserializeBinaryValues(locCur.topics || []);
+    const locTrashTopics = deserializeBinaryValues(locCur.trashTopics || []);
+    const remTopics = deserializeBinaryValues(remCur.topics || []);
+    const remTrashTopics = deserializeBinaryValues(remCur.trashTopics || []);
+
+    const locTrashMap = new Map(locTrashTopics.map(t => [t.id, safeTimestamp(t.deletedAt)]));
+    const remTrashMap = new Map(remTrashTopics.map(t => [t.id, safeTimestamp(t.deletedAt)]));
+    const topicMap = new Map(locTopics.map(t => [t.id, t]));
+
+    remTopics.forEach(incT => {
+      if (incT && incT.id) {
+        const localDeletedAt = locTrashMap.get(incT.id);
+        const incTime = safeTimestamp(incT.updatedAt || incT.createdAt);
+        if (localDeletedAt && localDeletedAt > incTime) return;
+
+        const locT = topicMap.get(incT.id);
+        if (!locT) {
+          topicMap.set(incT.id, incT);
+        } else {
+          const locTime = safeTimestamp(locT.updatedAt || locT.createdAt);
+          const incTime = safeTimestamp(incT.updatedAt || incT.createdAt);
+          topicMap.set(incT.id, incTime >= locTime ? { ...locT, ...incT } : { ...incT, ...locT });
+        }
+      }
+    });
+
+    for (const [id, topic] of topicMap.entries()) {
+      const remoteDeletedAt = remTrashMap.get(id);
+      if (remoteDeletedAt) {
+        const localTopicTime = safeTimestamp(topic.updatedAt || topic.createdAt);
+        if (remoteDeletedAt > localTopicTime) {
+          topicMap.delete(id);
+        }
+      }
+    }
+
+    const mergedTrashTopics = new Map(locTrashTopics.map(t => [t.id, t]));
+    remTrashTopics.forEach(t => {
+      if (t && t.id) {
+        const exist = mergedTrashTopics.get(t.id);
+        if (!exist || safeTimestamp(t.deletedAt) > safeTimestamp(exist.deletedAt)) {
+          mergedTrashTopics.set(t.id, t);
+        }
+      }
+    });
+
+    const locPyt = deserializeBinaryValues(locCur.pytData || []);
+    const remPyt = deserializeBinaryValues(remCur.pytData || []);
+    const pytMap = new Map();
+    locPyt.forEach(p => { if (p && p.key) pytMap.set(p.key, p); });
+    remPyt.forEach(p => { if (p && p.key && !pytMap.has(p.key)) pytMap.set(p.key, p); });
+
+    merged['curriculum_topics.json'] = {
+      topics: serializeBinaryValues(Array.from(topicMap.values())),
+      trashTopics: serializeBinaryValues(Array.from(mergedTrashTopics.values())),
+      pytData: serializeBinaryValues(Array.from(pytMap.values())),
+      subjectTracker: remCur.subjectTracker || locCur.subjectTracker || [],
+      pytUserProgress: remCur.pytUserProgress || locCur.pytUserProgress || [],
+      textbooksMetadata: remCur.textbooksMetadata || locCur.textbooksMetadata || []
+    };
+  }
+
+  // 3. Study Logs (Additive Sessions, Collision-Resistant Keys & Canonical Dates)
+  if (downloadedBundles['study_logs.json']) {
+    const locLogB = localBundles['study_logs.json'] || {};
+    const remLogB = downloadedBundles['study_logs.json'] || {};
+    const locLogs = locLogB.studyLogs || {};
+    const remLogs = remLogB.studyLogs || {};
+
+    const mergedLogs = { ...locLogs };
+
+    for (const [dateKey, incLog] of Object.entries(remLogs)) {
+      if (!mergedLogs[dateKey]) {
+        mergedLogs[dateKey] = incLog;
+      } else {
+        const cur = mergedLogs[dateKey];
+        const existingFsrs = Array.isArray(cur.fsrsLogs) ? cur.fsrsLogs : [];
+        const incomingFsrs = Array.isArray(incLog?.fsrsLogs) ? incLog.fsrsLogs : [];
+
+        const fsrsMap = new Map();
+        const getFsrsKey = (l) => l.id || (l.cardId && l.timestamp ? `${l.cardId}_${l.rating || 'r'}_${l.timestamp}` : computeHash(canonicalStringify(l)));
+        existingFsrs.forEach(l => { if (l) fsrsMap.set(getFsrsKey(l), l); });
+        incomingFsrs.forEach(l => { if (l) { const k = getFsrsKey(l); if (!fsrsMap.has(k)) fsrsMap.set(k, l); } });
+
+        const existingSessions = Array.isArray(cur.sessions) ? cur.sessions : [];
+        const incomingSessions = Array.isArray(incLog?.sessions) ? incLog.sessions : [];
+        const sessionMap = new Map();
+        const getSessionKey = (s) => s.id || (s.subject && s.startedAt ? `${s.subject}_${s.startedAt}_${s.duration || 0}` : computeHash(canonicalStringify(s)));
+        existingSessions.forEach(s => { if (s) sessionMap.set(getSessionKey(s), s); });
+        incomingSessions.forEach(s => { if (s) { const k = getSessionKey(s); if (!sessionMap.has(k)) sessionMap.set(k, s); } });
+
+        const existingGts = Array.isArray(cur.gts) ? cur.gts : [];
+        const incomingGts = Array.isArray(incLog?.gts) ? incLog.gts : [];
+        const gtMap = new Map();
+        const getGtKey = (g) => g.id || (g.testName && (g.date || g.timestamp) ? `${g.testName}_${g.date || g.timestamp}` : computeHash(canonicalStringify(g)));
+        existingGts.forEach(g => { if (g) gtMap.set(getGtKey(g), g); });
+        incomingGts.forEach(g => { if (g) { const k = getGtKey(g); if (!gtMap.has(k)) gtMap.set(k, g); } });
+
+        const allSessions = Array.from(sessionMap.values());
+        const sessionHours = allSessions.reduce((sum, s) => sum + (Number(s.duration || s.minutes || 0) / 60 || Number(s.hours || 0)), 0);
+        const totalHours = sessionHours > 0 ? Number(sessionHours.toFixed(2)) : Math.max(cur.studyHours || cur.hours || 0, incLog?.studyHours || incLog?.hours || 0);
+
+        const totalCards = Math.max(cur.totalCardsReviewed || cur.cards || 0, incLog?.totalCardsReviewed || incLog?.cards || 0, fsrsMap.size);
+        const totalQuestions = Math.max(cur.totalQuestionsAttempted || cur.questions || 0, incLog?.totalQuestionsAttempted || incLog?.questions || 0);
+
+        mergedLogs[dateKey] = {
+          ...cur,
+          ...incLog,
+          cards: totalCards,
+          totalCardsReviewed: totalCards,
+          questions: totalQuestions,
+          totalQuestionsAttempted: totalQuestions,
+          hours: totalHours,
+          studyHours: totalHours,
+          pages: Math.max(cur.pages || 0, incLog?.pages || 0),
+          fsrsLogs: Array.from(fsrsMap.values()),
+          sessions: allSessions,
+          gts: Array.from(gtMap.values())
+        };
+      }
+    }
+
+    const mergedSched = { ...(locLogB.studySchedule || {}), ...(remLogB.studySchedule || {}) };
+    const mergedTemplates = remLogB.scheduleTemplates || locLogB.scheduleTemplates || [];
+
+    const locCampLogs = Array.isArray(locLogB.campDailyLogs) ? locLogB.campDailyLogs : [];
+    const remCampLogs = Array.isArray(remLogB.campDailyLogs) ? remLogB.campDailyLogs : [];
+    const campDailyMap = new Map();
+    locCampLogs.forEach(l => { if (l && l.dateStr) campDailyMap.set(l.dateStr, l); });
+    remCampLogs.forEach(l => {
+      if (l && l.dateStr) {
+        const exist = campDailyMap.get(l.dateStr);
+        if (!exist) {
+          campDailyMap.set(l.dateStr, l);
+        } else {
+          const mergedSess = Array.isArray(exist.sessions) ? [...exist.sessions] : [];
+          const sKeys = new Set(mergedSess.map(s => s?.id || s?.startedAt || (s ? s.subject + '_' + s.duration : '')));
+          (Array.isArray(l.sessions) ? l.sessions : []).forEach(s => {
+            if (s) {
+              const k = s.id || s.startedAt || (s.subject + '_' + s.duration);
+              if (!sKeys.has(k)) mergedSess.push(s);
+            }
+          });
+          campDailyMap.set(l.dateStr, { ...exist, ...l, sessions: mergedSess });
+        }
+      }
+    });
+
+    merged['study_logs.json'] = {
+      studyLogs: mergedLogs,
+      studySchedule: mergedSched,
+      scheduleTemplates: mergedTemplates,
+      campDailyLogs: Array.from(campDailyMap.values()),
+      timerState: remLogB.timerState || locLogB.timerState || null,
+      activeNewTopicsDate: remLogB.activeNewTopicsDate || locLogB.activeNewTopicsDate,
+      activeNewTopicsToday: remLogB.activeNewTopicsToday || locLogB.activeNewTopicsToday || []
+    };
+  }
+
+  // 4. FSRS Config & Settings
+  if (downloadedBundles['fsrs_config.json']) {
+    const locFsrs = localBundles['fsrs_config.json'] || {};
+    const remFsrs = downloadedBundles['fsrs_config.json'] || {};
+
+    const promptMap = new Map((locFsrs.customPrompts || []).map(p => [p.id, p]));
+    (remFsrs.customPrompts || []).forEach(p => { if (p && p.id && !promptMap.has(p.id)) promptMap.set(p.id, p); });
+
+    // Non-destructive snapshot merge: preserve local preferences
+    const mergedLs = { ...(remFsrs.localStorageSnapshot || {}) };
+    Object.entries(locFsrs.localStorageSnapshot || {}).forEach(([k, v]) => {
+      if (v !== null && v !== undefined && v !== '') {
+        mergedLs[k] = v;
+      }
+    });
+
+    merged['fsrs_config.json'] = {
+      ...locFsrs,
+      ...remFsrs,
+      customPrompts: Array.from(promptMap.values()),
+      localStorageSnapshot: mergedLs
+    };
+  }
+
+  // 5. CAMP Tracker
+  if (downloadedBundles['camp_tracker.json']) {
+    const locCamp = localBundles['camp_tracker.json'] || {};
+    const remCamp = downloadedBundles['camp_tracker.json'] || {};
+    const trkMap = new Map((locCamp.campTracker || []).map(t => [t.id, t]));
+    (remCamp.campTracker || []).forEach(t => { if (t && t.id) trkMap.set(t.id, t); });
+
+    const datMap = new Map((locCamp.campData || []).map(d => [d.key, d]));
+    (remCamp.campData || []).forEach(d => { if (d && d.key) datMap.set(d.key, d); });
+
+    merged['camp_tracker.json'] = {
+      campTracker: Array.from(trkMap.values()),
+      campData: Array.from(datMap.values())
+    };
+  }
+
+  // 6. Pages & Occlusions
+  if (downloadedBundles['pages_bundle.json']) {
+    const locPagesB = localBundles['pages_bundle.json'] || {};
+    const remPagesB = downloadedBundles['pages_bundle.json'] || {};
+    const locPages = deserializeBinaryValues(locPagesB.pages || []);
+    const locTrash = deserializeBinaryValues(locPagesB.trashPages || []);
+    const remPages = deserializeBinaryValues(remPagesB.pages || []);
+    const remTrash = deserializeBinaryValues(remPagesB.trashPages || []);
+
+    const locTrashMap = new Map(locTrash.map(p => [p.id, safeTimestamp(p.deletedAt)]));
+    const remTrashMap = new Map(remTrash.map(p => [p.id, safeTimestamp(p.deletedAt)]));
+    const pageMap = new Map(locPages.map(p => [p.id, p]));
+
+    remPages.forEach(p => {
+      if (p && p.id) {
+        const localDeletedAt = locTrashMap.get(p.id);
+        const incTime = safeTimestamp(p.updatedAt || p.createdAt);
+        if (localDeletedAt && localDeletedAt > incTime) return;
+
+        const locP = pageMap.get(p.id);
+        if (!locP) {
+          pageMap.set(p.id, p);
+        } else {
+          const locTime = safeTimestamp(locP.updatedAt || locP.createdAt);
+          pageMap.set(p.id, incTime >= locTime ? { ...locP, ...p } : { ...p, ...locP });
+        }
+      }
+    });
+
+    for (const [id, page] of pageMap.entries()) {
+      const remoteDeletedAt = remTrashMap.get(id);
+      if (remoteDeletedAt) {
+        const localPageTime = safeTimestamp(page.updatedAt || page.createdAt);
+        if (remoteDeletedAt > localPageTime) {
+          pageMap.delete(id);
+        }
+      }
+    }
+
+    const mergedTrashMap = new Map(locTrash.map(p => [p.id, p]));
+    remTrash.forEach(p => {
+      if (p && p.id) {
+        const exist = mergedTrashMap.get(p.id);
+        if (!exist || safeTimestamp(p.deletedAt) > safeTimestamp(exist.deletedAt)) {
+          mergedTrashMap.set(p.id, p);
+        }
+      }
+    });
+
+    merged['pages_bundle.json'] = {
+      pages: serializeBinaryValues(Array.from(pageMap.values())),
+      trashPages: serializeBinaryValues(Array.from(mergedTrashMap.values()))
+    };
+  }
+
+  // Compute fresh hashes
+  const hashes = {
+    cards_bundle: computeHash(merged['cards_bundle.json']),
+    curriculum_topics: computeHash(merged['curriculum_topics.json']),
+    study_logs: computeHash(merged['study_logs.json']),
+    fsrs_config: computeHash(merged['fsrs_config.json']),
+    camp_tracker: computeHash(merged['camp_tracker.json']),
+    pages_bundle: computeHash(merged['pages_bundle.json'])
+  };
+
+  const flashcards = deserializeBinaryValues(merged['cards_bundle.json']?.flashcards || []);
+  const topics = deserializeBinaryValues(merged['curriculum_topics.json']?.topics || []);
+  const studyLogs = merged['study_logs.json']?.studyLogs || {};
+  const pages = deserializeBinaryValues(merged['pages_bundle.json']?.pages || []);
+
+  const manifest = {
+    version: '2.1',
+    engine: 'AutoAnki Google Drive Sync',
+    deviceId: getDeviceId(),
+    timestamp: new Date().toISOString(),
+    schemaVersion: 4,
+    hashes,
+    stats: {
+      cardsCount: flashcards.length,
+      topicsCount: topics.length,
+      logsDaysCount: Object.keys(studyLogs).length,
+      pagesCount: pages.length,
+      mediaCount: pages.length
+    }
+  };
+
+  return {
+    manifest,
+    bundles: merged,
+    pages: localData.pages,
+    trashPages: localData.trashPages
+  };
 }
 
 export async function syncWithGoogleDrive(options = {}) {
@@ -1227,9 +1683,10 @@ export async function syncWithGoogleDrive(options = {}) {
     try {
       const lockPromise = navigator.locks.request('autoanki_gdrive_sync', { ifAvailable: true }, async (lock) => {
         if (!lock) {
-          if (isSyncInProgress) {
-            return { success: false, action: 'busy', message: 'Sync already in progress in another tab.' };
-          }
+          return { success: false, action: 'busy', message: 'Sync already in progress in another tab or process.' };
+        }
+        if (isSyncInProgress) {
+          return { success: false, action: 'busy', message: 'Sync already in progress.' };
         }
         return await executeSyncInternal(options);
       });
@@ -1241,10 +1698,9 @@ export async function syncWithGoogleDrive(options = {}) {
 
       const result = await Promise.race([lockPromise, timeoutPromise]);
       if (result !== null) return result;
-      // Fallback if lock timed out on mobile background resume
-      return await executeSyncInternal(options);
+      return { success: false, action: 'lock_timeout', message: 'Sync lock acquisition timed out. Please try again.' };
     } catch (err) {
-      console.warn('[GDriveSync] Web lock error, bypassing to direct sync:', err);
+      console.warn('[GDriveSync] Web lock error, falling back to guarded sync:', err);
       return await executeSyncInternal(options);
     }
   } else {
@@ -1273,13 +1729,14 @@ async function executeSyncInternal({
   };
 
   isSyncInProgress = true;
+  logger.sync('START', 'Initiating Google Drive synchronization...', { force, interactive });
   emitSyncEvent('started', { message: 'Initiating Google Drive synchronization…' });
 
   try {
     const accessToken = await getValidAccessToken(interactive);
     if (!accessToken) {
       if (!interactive) {
-        console.log('[GDriveSync] Silent background sync paused: access token expired.');
+        logger.sync('TOKEN-PAUSED', 'Silent background sync paused: access token expired.');
         return { success: false, action: 'token_expired', message: 'Token expired. Background sync paused.' };
       }
       throw new Error('Could not obtain a valid Google access token. Please re-authenticate.');
@@ -1287,6 +1744,7 @@ async function executeSyncInternal({
 
     emit(1, 10, 'Connecting to Google Drive Vault…');
     const { vaultFolderId, mediaFolderId } = await ensureSyncVault(accessToken);
+    logger.sync('VAULT-CONNECTED', 'Connected to Google Drive Vault and media directory.', { vaultFolderId, mediaFolderId });
 
     // List files currently in the vault
     const remoteFiles = await listFilesInFolder(accessToken, vaultFolderId);
@@ -1299,8 +1757,13 @@ async function executeSyncInternal({
       emit(2, 10, 'Checking cloud manifest…');
       try {
         remoteManifest = await downloadDriveFile(accessToken, remoteManifestFile.id, true);
+        logger.sync('MANIFEST-DOWNLOADED', 'Retrieved remote cloud manifest.', {
+          timestamp: remoteManifest?.timestamp,
+          stats: remoteManifest?.stats,
+          deviceId: remoteManifest?.deviceId
+        });
       } catch (e) {
-        console.warn('[GDriveSync] Could not read remote manifest:', e);
+        logger.warn('MANIFEST-READ-FAIL', 'Could not read remote manifest:', e);
       }
     }
 
@@ -1308,12 +1771,20 @@ async function executeSyncInternal({
     emit(3, 10, 'Calculating local entity checksums…');
     const localData = await extractLocalBundles();
     const localManifest = localData.manifest;
+    logger.sync('LOCAL-EXTRACTED', 'Calculated local entity checksums & manifest stats.', {
+      stats: localManifest.stats,
+      hashes: localManifest.hashes
+    });
 
     // Check if cloud vault is completely empty (first-time push)
     if (!remoteManifest) {
+      logger.sync('INITIAL-PUSH', 'Uploading initial collection to Google Drive...');
       emit(4, 10, 'Uploading initial collection to Google Drive…');
       const res = await executeOneWayPush(accessToken, vaultFolderId, mediaFolderId, localData, remoteFileMap, emit);
-      if (res.success) await saveLastSyncedHashes(localManifest.hashes);
+      if (res.success) {
+        await saveLastSyncedHashes(localManifest.hashes);
+        logger.sync('INITIAL-PUSH-SUCCESS', 'Initial collection upload complete.');
+      }
       return res;
     }
 
@@ -1325,6 +1796,7 @@ async function executeSyncInternal({
     const isIdentical = Object.keys(localHashes).every(k => localHashes[k] === remoteHashes[k]);
     if (isIdentical && !force) {
       await saveLastSyncedHashes(localHashes);
+      logger.sync('UP-TO-DATE', 'Local and remote collections are 100% identical. No-op.');
       emit(10, 10, 'Everything is up to date.');
       emitSyncEvent('synced', { message: 'In sync with Google Drive.' });
       return { success: true, action: 'noop', message: 'Everything is up to date.' };
@@ -1335,69 +1807,67 @@ async function executeSyncInternal({
     const hasRemoteData = remoteManifest.stats && ((remoteManifest.stats.cardsCount || 0) > 0 || (remoteManifest.stats.topicsCount || 0) > 0 || (remoteManifest.stats.pagesCount || 0) > 0);
 
     if (isLocalEmpty && hasRemoteData && !force) {
-      console.log('[GDriveSync] Local device is uninitialized/empty. Fast-forward downloading from cloud…');
+      logger.sync('FAST-FORWARD-DOWNLOAD', 'Local device is uninitialized. Downloading complete collection from cloud...');
       emit(3, 10, 'Downloading your collection from Google Drive…');
       const res = await executeOneWayDownload(accessToken, vaultFolderId, mediaFolderId, remoteFileMap, emit);
       if (res.success) {
         await saveLastSyncedHashes(remoteHashes);
+        logger.sync('FAST-FORWARD-DOWNLOAD-SUCCESS', 'Local database restored with cloud collection.');
       }
       return res;
     }
 
     // Fast-Forward Analysis:
-    // Check if local has made 0 modifications since last sync with cloud (Clean Fast-Forward Download)
     const isLocalClean = lastSyncedHashes && Object.keys(lastSyncedHashes).length > 0 &&
       Object.keys(localHashes).every(k => localHashes[k] === lastSyncedHashes[k]);
 
-    // Check if remote has made 0 modifications since last sync (Clean Fast-Forward Push)
     const isRemoteClean = lastSyncedHashes && Object.keys(lastSyncedHashes).length > 0 &&
       Object.keys(remoteHashes).length > 0 &&
       Object.keys(remoteHashes).every(k => remoteHashes[k] === lastSyncedHashes[k]);
 
-    // Scenario 1: Clean Fast-Forward Download (Mobile is catching up to Desktop without local edits)
+    // Scenario 1: Clean Fast-Forward Download
     if (isLocalClean && !force) {
-      console.log('[GDriveSync] Fast-forwarding local database to newer cloud version…');
+      logger.sync('FAST-FORWARD-DOWNLOAD', 'Local had zero edits since last sync. Fast-forwarding local database to newer cloud version...');
       emit(3, 10, 'Fast-forwarding to newer cloud version…');
       const res = await executeOneWayDownload(accessToken, vaultFolderId, mediaFolderId, remoteFileMap, emit);
       if (res.success) {
         await saveLastSyncedHashes(remoteHashes);
+        logger.sync('FAST-FORWARD-DOWNLOAD-SUCCESS', 'Local database updated to cloud state.');
       }
       return res;
     }
 
-    // Scenario 2: Clean Fast-Forward Push (Local has edits and Cloud hasn't changed since last sync)
+    // Scenario 2: Clean Fast-Forward Push
     if (isRemoteClean && !force) {
-      console.log('[GDriveSync] Fast-forwarding cloud to newer local version…');
+      logger.sync('FAST-FORWARD-PUSH', 'Remote had zero edits since last sync. Pushing local changes to cloud...');
       emit(3, 10, 'Pushing local changes to cloud…');
       const res = await executeOneWayPush(accessToken, vaultFolderId, mediaFolderId, localData, remoteFileMap, emit);
       if (res.success) {
         await saveLastSyncedHashes(localHashes);
+        logger.sync('FAST-FORWARD-PUSH-SUCCESS', 'Cloud updated to fresh local state.');
       }
       return res;
     }
 
-    // Scenario 3: True Divergence (Both devices edited data since last sync)
+    // Scenario 3: Divergence (Both devices edited data since last sync)
     const isSameDevice = remoteManifest.deviceId === localManifest.deviceId;
 
-    // Identify which bundles have changed
     const modifiedBundleNames = Object.keys(localData.bundles).filter(name => {
       const bundleKey = name.replace('.json', '');
       return localHashes[bundleKey] !== remoteHashes[bundleKey];
     });
 
-    console.log('[GDriveSync] Modified divergent bundles:', modifiedBundleNames);
+    logger.sync('DIVERGENCE', 'Divergent bundles detected across devices:', { modifiedBundleNames });
 
     if (modifiedBundleNames.length > 0) {
-      // Check if primary content bundles conflict between separate devices
       const cardsConflict = localHashes.cards_bundle !== remoteHashes.cards_bundle;
       const topicsConflict = localHashes.curriculum_topics !== remoteHashes.curriculum_topics;
       const pagesConflict = localHashes.pages_bundle !== remoteHashes.pages_bundle;
 
-      // Build granular difference analysis for user transparency
       const diffDetails = buildConflictDiffDetails(localManifest, remoteManifest, modifiedBundleNames, localHashes, remoteHashes);
 
-      // Only trigger conflict modal if user is in interactive mode and distinct devices have divergent primary content
       if (interactive && !isSameDevice && (cardsConflict || topicsConflict || pagesConflict) && onConflict && !force) {
+        logger.sync('CONFLICT-PROMPT', 'Prompting user for interactive conflict choice...');
         emitSyncEvent('conflict', { message: 'Conflict detected between local and cloud versions.' });
         const conflictResolution = await new Promise((resolve) => {
           onConflict({
@@ -1422,6 +1892,8 @@ async function executeSyncInternal({
           });
         });
 
+        logger.sync('CONFLICT-RESOLVED', `User chose resolution: ${conflictResolution}`);
+
         if (conflictResolution === 'upload') {
           const res = await executeOneWayPush(accessToken, vaultFolderId, mediaFolderId, localData, remoteFileMap, emit);
           if (res.success) await saveLastSyncedHashes(localHashes);
@@ -1431,8 +1903,7 @@ async function executeSyncInternal({
           if (res.success) await saveLastSyncedHashes(remoteHashes);
           return res;
         } else if (conflictResolution === 'merge') {
-          console.log('[GDriveSync] User opted for smart non-destructive merge.');
-          // Falls through to pre-merge snapshot & smart delta merge below
+          logger.sync('MERGE-OPTED', 'User selected smart non-destructive merge.');
         } else {
           emitSyncEvent('cancelled', { message: 'Sync cancelled by user.' });
           return { success: false, action: 'cancelled', message: 'Sync cancelled by user.' };
@@ -1440,14 +1911,15 @@ async function executeSyncInternal({
       }
 
       // Safe Pre-Merge Snapshot (Rollback Guarantee)
+      logger.sync('SAFETY-SNAPSHOT', 'Creating automatic pre-sync local safety snapshot...');
       emit(4, 10, 'Creating pre-sync safety snapshot…');
       try {
         await saveInternalSnapshot('pre_cloud_sync_merge');
       } catch (snapErr) {
-        console.warn('[GDriveSync] Pre-merge snapshot warning:', snapErr);
+        logger.warn('SAFETY-SNAPSHOT-WARN', 'Pre-merge snapshot warning:', snapErr);
       }
 
-      // Smart delta merge: download remote modified bundles, merge in-memory, push new unified manifest
+      // Download remote modified bundles
       emit(5, 10, 'Downloading modified cloud bundles (Phase 1)…');
       const downloadedBundles = {};
       for (const bName of modifiedBundleNames) {
@@ -1458,32 +1930,49 @@ async function executeSyncInternal({
         }
       }
 
-      emit(7, 10, 'Merging non-conflicting records…');
-      await hydrateLocalBundles(downloadedBundles, 'merge', (s, t, m) => emit(7, 10, m));
+      // Phase 1: In-Memory Merge
+      logger.sync('TWO-PHASE-COMMIT-1', 'Staging non-destructive in-memory merge...');
+      emit(7, 10, 'Staging non-destructive in-memory merge…');
+      const stagedMergedData = mergeBundlesInMemory(localData, downloadedBundles);
+      logger.sync('MERGE-STATS', 'Staged merged dataset calculated:', stagedMergedData.manifest.stats);
 
-      // After merge, re-extract and push unified bundles
-      emit(8, 10, 'Pushing synchronized manifest to Drive…');
-      const updatedLocalData = await extractLocalBundles();
-      const res = await executeOneWayPush(accessToken, vaultFolderId, mediaFolderId, updatedLocalData, remoteFileMap, emit);
-      if (res.success) {
-        await saveLastSyncedHashes(updatedLocalData.manifest.hashes);
-        // Phase 2: If pages were updated remotely, download missing media in background
-        if (modifiedBundleNames.includes('pages_bundle.json')) {
-          setTimeout(() => {
-            syncMediaFromDrive(accessToken, mediaFolderId).catch(e => {
-              console.warn('[GDriveSync] Background delta media download error:', e);
-            });
-          }, 200);
-        }
+      // Phase 2: Push Merged Bundles to Google Drive First (Two-Phase Commit)
+      logger.sync('TWO-PHASE-COMMIT-2', 'Pushing merged collection to Google Drive first...');
+      emit(8, 10, 'Pushing merged collection to Google Drive…');
+      const pushRes = await executeOneWayPush(accessToken, vaultFolderId, mediaFolderId, stagedMergedData, remoteFileMap, emit);
+      
+      if (!pushRes.success) {
+        throw new Error(`Cloud upload failed: ${pushRes.message || 'Unknown network error'}`);
       }
-      return res;
+
+      // Phase 3: Hydrate Local IndexedDB only after confirmed Google Drive receipt
+      logger.sync('TWO-PHASE-COMMIT-3', 'Committing merged collection to local IndexedDB...');
+      emit(9, 10, 'Committing merged collection to local storage…');
+      await hydrateLocalBundles(stagedMergedData.bundles, 'replace', (s, t, m) => emit(9, 10, m));
+      await saveLastSyncedHashes(stagedMergedData.manifest.hashes);
+
+      // Phase 4: Download missing media in background if pages bundle changed
+      if (modifiedBundleNames.includes('pages_bundle.json')) {
+        logger.sync('MEDIA-SYNC-QUEUE', 'Queueing background delta media sync...');
+        setTimeout(() => {
+          syncMediaFromDrive(accessToken, mediaFolderId).catch(e => {
+            logger.warn('MEDIA-SYNC-WARN', 'Background delta media download error:', e);
+          });
+        }, 200);
+      }
+
+      logger.sync('SUCCESS', 'Two-phase merge and sync completed successfully!');
+      emit(10, 10, 'Synchronization complete.');
+      emitSyncEvent('synced', { message: 'Sync finished successfully.' });
+      return { success: true, action: 'merged', message: 'Merged and synchronized successfully with Google Drive.' };
     }
 
+    logger.sync('SUCCESS', 'Synchronization complete.');
     emit(10, 10, 'Synchronization complete.');
     emitSyncEvent('synced', { message: 'Sync finished successfully.' });
     return { success: true, action: 'synced', message: 'Sync finished successfully.' };
   } catch (err) {
-    console.error('[GDriveSync] Sync error:', err);
+    logger.error('SYNC-FAIL', 'Google Drive synchronization failed:', err);
     emitSyncEvent('error', { error: err.message });
     return { success: false, action: 'error', message: err.message };
   } finally {
@@ -1500,13 +1989,13 @@ async function executeOneWayPush(accessToken, vaultFolderId, mediaFolderId, loca
 
   // 1. Upload all partitioned bundles
   for (const [fileName, bundleObj] of Object.entries(localData.bundles)) {
-    emit(++step, total, `Uploading ${fileName}…`);
+    emit(++step, total, `Uploading ${fileName}ΓÇª`);
     const existingFile = remoteFileMap.get(fileName);
     await uploadDriveFile(accessToken, vaultFolderId, fileName, bundleObj, existingFile?.id);
   }
 
   // 2. Upload manifest.json
-  emit(++step, total, 'Writing manifest.json…');
+  emit(++step, total, 'Writing manifest.jsonΓÇª');
   const existingManifest = remoteFileMap.get('manifest.json');
   await uploadDriveFile(accessToken, vaultFolderId, 'manifest.json', localData.manifest, existingManifest?.id);
 
@@ -1532,25 +2021,30 @@ async function executeOneWayPush(accessToken, vaultFolderId, mediaFolderId, loca
 }
 
 /**
- * Executes a safe one-way download from Google Drive, taking a local snapshot first.
+ * Executes a safe one-way download from Google Drive with completeness validation.
  */
 async function executeOneWayDownload(accessToken, vaultFolderId, mediaFolderId, remoteFileMap, emit) {
-  emit(1, 6, 'Creating automatic pre-sync local snapshot…');
-  await saveInternalSnapshot('pre_cloud_sync_snapshot');
-
-  emit(2, 6, 'Downloading all JSON bundles from Google Drive (Phase 1)…');
+  emit(1, 6, 'Downloading all JSON bundles from Google Drive (Phase 1)ΓÇª');
   const downloadedBundles = {};
-  for (const [name, file] of remoteFileMap.entries()) {
-    if (name.endsWith('.json') && name !== 'manifest.json') {
-      emit(3, 6, `Downloading ${name}…`);
-      downloadedBundles[name] = await downloadDriveFile(accessToken, file.id, true);
-    }
+  const filesToDownload = Array.from(remoteFileMap.entries()).filter(([name]) => name.endsWith('.json') && name !== 'manifest.json');
+  
+  for (const [name, file] of filesToDownload) {
+    emit(2, 6, `Downloading ${name}ΓÇª`);
+    downloadedBundles[name] = await downloadDriveFile(accessToken, file.id, true);
   }
 
-  emit(4, 6, 'Replacing local database with cloud collection…');
+  // Completeness check: make sure we got bundles
+  if (Object.keys(downloadedBundles).length === 0 && filesToDownload.length > 0) {
+    throw new Error('Downloaded bundles are empty or incomplete.');
+  }
+
+  emit(3, 6, 'Creating automatic pre-sync local snapshotΓÇª');
+  await saveInternalSnapshot('pre_cloud_sync_snapshot');
+
+  emit(4, 6, 'Replacing local database with cloud collectionΓÇª');
   await hydrateLocalBundles(downloadedBundles, 'replace', (s, t, m) => emit(5, 6, m));
 
-  emit(6, 6, 'Cloud download complete. Queueing media downloads…');
+  emit(6, 6, 'Cloud download complete. Queueing media downloadsΓÇª');
   emitSyncEvent('synced', { message: 'Cloud collection restored.' });
 
   // Phase 2: Non-blocking background media download
@@ -1564,11 +2058,15 @@ async function executeOneWayDownload(accessToken, vaultFolderId, mediaFolderId, 
 }
 
 /**
- * Phase 2: Uploads local scanned page images to the Drive /media folder in the background.
+ * Phase 2: Uploads local scanned page images to the Drive /media folder in the background with dynamic token refresh.
  */
 async function syncMediaToDrive(accessToken, mediaFolderId, pages) {
   if (!Array.isArray(pages) || pages.length === 0) return;
-  const remoteMediaFiles = await listFilesInFolder(accessToken, mediaFolderId);
+  
+  let currentToken = (await getValidAccessToken(false)) || accessToken;
+  if (!currentToken) return;
+
+  const remoteMediaFiles = await listFilesInFolder(currentToken, mediaFolderId);
   const existingNames = new Set(remoteMediaFiles.map(f => f.name));
 
   const pagesToUpload = pages.filter(p => p && p.id && !existingNames.has(`page_${p.id}.webp`));
@@ -1604,7 +2102,9 @@ async function syncMediaToDrive(accessToken, mediaFolderId, pages) {
 
     if (buffer && buffer.byteLength > 0) {
       try {
-        await uploadDriveMediaFile(accessToken, mediaFolderId, mediaName, mimeType, buffer);
+        const freshToken = (await getValidAccessToken(false)) || currentToken;
+        if (freshToken) currentToken = freshToken;
+        await uploadDriveMediaFile(currentToken, mediaFolderId, mediaName, mimeType, buffer);
       } catch (err) {
         console.warn(`[GDriveSync] Failed to upload media ${mediaName}:`, err);
       }
@@ -1626,10 +2126,13 @@ async function syncMediaToDrive(accessToken, mediaFolderId, pages) {
 }
 
 /**
- * Phase 2: Downloads missing images from the Drive /media folder in chunked batches.
+ * Phase 2: Downloads missing images from the Drive /media folder in chunked batches with dynamic token refresh.
  */
 async function syncMediaFromDrive(accessToken, mediaFolderId) {
-  const remoteMedia = await listFilesInFolder(accessToken, mediaFolderId);
+  let currentToken = (await getValidAccessToken(false)) || accessToken;
+  if (!currentToken) return;
+
+  const remoteMedia = await listFilesInFolder(currentToken, mediaFolderId);
   if (remoteMedia.length === 0) return;
 
   const localPages = (await getLocalPages()) || [];
@@ -1663,9 +2166,12 @@ async function syncMediaFromDrive(accessToken, mediaFolderId) {
   let downloadedCount = 0;
   for (let i = 0; i < missingFiles.length; i += BATCH_SIZE) {
     const chunk = missingFiles.slice(i, i + BATCH_SIZE);
+    const freshToken = (await getValidAccessToken(false)) || currentToken;
+    if (freshToken) currentToken = freshToken;
+
     await Promise.all(chunk.map(async ({ file, pageId }) => {
       try {
-        const arrayBuf = await downloadDriveFile(accessToken, file.id, false);
+        const arrayBuf = await downloadDriveFile(currentToken, file.id, false);
         const localPage = localPageMap.get(pageId);
         if (localPage) {
           localPage.data = arrayBuf;
@@ -1673,7 +2179,6 @@ async function syncMediaFromDrive(accessToken, mediaFolderId) {
           const dataUrl = `data:image/webp;base64,${base64Str}`;
           localPage.imageUrl = dataUrl;
           localPage.originalImage = dataUrl;
-          localPage.updatedAt = new Date().toISOString();
           hasUpdates = true;
         }
       } catch (e) {
@@ -1691,25 +2196,30 @@ async function syncMediaFromDrive(accessToken, mediaFolderId) {
   }
 
   if (hasUpdates) {
-    // Re-fetch fresh pages from storage before saving to prevent clobbering concurrent user edits
-    const currentPages = (await getLocalPages()) || [];
-    const currentMap = new Map(currentPages.map(p => [p.id, p]));
-    for (const [id, updatedP] of localPageMap.entries()) {
-      if (currentMap.has(id)) {
-        const existingCur = currentMap.get(id);
-        if (!existingCur.data && updatedP.data) {
-          existingCur.data = updatedP.data;
-        }
-        if (!existingCur.imageUrl && updatedP.imageUrl) {
-          existingCur.imageUrl = updatedP.imageUrl;
-        }
-        if (!existingCur.originalImage && updatedP.originalImage) {
-          existingCur.originalImage = updatedP.originalImage;
+    setMutationNotificationSuppressed(true);
+    try {
+      // Re-fetch fresh pages from storage before saving to prevent clobbering concurrent user edits
+      const currentPages = (await getLocalPages()) || [];
+      const currentMap = new Map(currentPages.map(p => [p.id, p]));
+      for (const [id, updatedP] of localPageMap.entries()) {
+        if (currentMap.has(id)) {
+          const existingCur = currentMap.get(id);
+          if (!existingCur.data && updatedP.data) {
+            existingCur.data = updatedP.data;
+          }
+          if (!existingCur.imageUrl && updatedP.imageUrl) {
+            existingCur.imageUrl = updatedP.imageUrl;
+          }
+          if (!existingCur.originalImage && updatedP.originalImage) {
+            existingCur.originalImage = updatedP.originalImage;
+          }
         }
       }
+      await saveLocalPages(Array.from(currentMap.values()));
+      emitDataHydratedEvent({ type: 'media_hydrated' });
+    } finally {
+      setMutationNotificationSuppressed(false);
     }
-    await saveLocalPages(Array.from(currentMap.values()));
-    emitDataHydratedEvent({ type: 'media_hydrated' });
   }
 
   emitSyncEvent('synced', {
@@ -1723,23 +2233,27 @@ async function syncMediaFromDrive(accessToken, mediaFolderId) {
 
 /**
  * Triggers a debounced smart push when decks or reviews are completed.
- * Enforces a 5s debounce and a 30s cooldown.
+ * Enforces a 5s debounce with a 30s cooldown and trailing timer guarantees.
  */
 export function triggerDebouncedSmartPush() {
   if (autoSyncDebounceTimer) clearTimeout(autoSyncDebounceTimer);
 
   autoSyncDebounceTimer = setTimeout(async () => {
     const now = Date.now();
-    if (now - lastAutoPushTimestamp < AUTO_PUSH_COOLDOWN_MS) {
-      console.log('[GDriveSync] Auto-push skipped due to cooldown window.');
+    const elapsed = now - lastAutoPushTimestamp;
+    if (elapsed < AUTO_PUSH_COOLDOWN_MS) {
+      const remaining = AUTO_PUSH_COOLDOWN_MS - elapsed;
+      console.log(`[GDriveSync] Auto-push deferred for remaining cooldown (${Math.round(remaining / 1000)}s)`);
+      if (autoSyncDebounceTimer) clearTimeout(autoSyncDebounceTimer);
+      autoSyncDebounceTimer = setTimeout(triggerDebouncedSmartPush, remaining + 500);
       return;
     }
 
     const auth = await getGoogleDriveAuthState();
     if (!auth?.accessToken) return;
 
-    lastAutoPushTimestamp = now;
-    console.log('[GDriveSync] Triggering debounced smart push to Google Drive…');
+    lastAutoPushTimestamp = Date.now();
+    console.log('[GDriveSync] Triggering debounced smart push to Google DriveΓÇª');
     syncWithGoogleDrive({ force: false, interactive: false }).catch(err => {
       console.warn('[GDriveSync] Smart push error:', err);
     });
@@ -1816,8 +2330,29 @@ export async function getGoogleDriveVaultStorageSize(accessToken) {
 // ============================================================================
 
 export const TIMER_STATE_FILE = 'timer_state.json';
-let lastPushedTimerTimestamp = 0;
-let lastKnownRemoteTimerModified = null;
+const TIMER_META_KEY = 'autoanki_remote_timer_sync_meta';
+
+function getStoredTimerMeta() {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const stored = localStorage.getItem(TIMER_META_KEY);
+      if (stored) return JSON.parse(stored);
+    }
+  } catch (e) {}
+  return { lastPushed: 0, lastKnownRemoteModified: null };
+}
+
+function saveStoredTimerMeta(lastPushed, lastKnownRemoteModified) {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(TIMER_META_KEY, JSON.stringify({ lastPushed, lastKnownRemoteModified }));
+    }
+  } catch (e) {}
+}
+
+const initialTimerMeta = getStoredTimerMeta();
+let lastPushedTimerTimestamp = initialTimerMeta.lastPushed || 0;
+let lastKnownRemoteTimerModified = initialTimerMeta.lastKnownRemoteModified || null;
 let timerPushDebounceTimer = null;
 
 /**
@@ -1867,6 +2402,7 @@ export async function pushTimerStateToDrive(timerState, immediate = true) {
       if (uploaded?.modifiedTime) {
         lastKnownRemoteTimerModified = uploaded.modifiedTime;
       }
+      saveStoredTimerMeta(lastPushedTimerTimestamp, lastKnownRemoteTimerModified);
     } catch (err) {
       console.warn('[GDriveTimer] Failed to push timer state to Drive:', err);
     }
@@ -1903,6 +2439,7 @@ export async function checkAndSyncRemoteTimerState(onRemoteUpdate) {
     if (!remoteState || typeof remoteState !== 'object') return false;
 
     lastKnownRemoteTimerModified = remoteFile.modifiedTime;
+    saveStoredTimerMeta(lastPushedTimerTimestamp, lastKnownRemoteTimerModified);
 
     const localDeviceId = getDeviceId();
     // Ignore if update originated from this same device earlier

@@ -5,6 +5,8 @@
  * web workers, and offline desktop/mobile environments without any external dependencies.
  */
 
+import logger from './logger.js';
+
 const DB_NAME = 'AutoAnkiLocalDB';
 const DB_VERSION = 3;
 
@@ -201,8 +203,35 @@ export async function getAllLocalTopics() {
   return Array.isArray(topics) ? topics : [];
 }
 
-export async function deleteLocalTopic(id) {
-  return deleteLocalItem(STORES.TOPICS, id);
+export async function getLocalTrashTopics() {
+  const list = await getLocalKV('trash_topics');
+  return Array.isArray(list) ? list : [];
+}
+
+export async function saveLocalTrashTopics(trashList) {
+  if (!Array.isArray(trashList)) return;
+  await setLocalKV('trash_topics', trashList);
+}
+
+export async function deleteLocalTopic(id, topicObj = null) {
+  logger.db('DELETE-TOPIC', `Deleting topic ID: ${id} ("${topicObj?.name || ''}")`);
+  const res = await deleteLocalItem(STORES.TOPICS, id);
+  try {
+    const trash = (await getLocalKV('trash_topics')) || [];
+    const filtered = trash.filter(t => t?.id !== id);
+    filtered.push({
+      id,
+      name: topicObj?.name || '',
+      subject: topicObj?.subject || '',
+      deletedAt: new Date().toISOString()
+    });
+    await setLocalKV('trash_topics', filtered);
+    logger.db('TOMBSTONE-RECORDED', `Recorded topic tombstone in trash_topics (Total trash: ${filtered.length})`);
+  } catch (e) {
+    logger.warn('TOMBSTONE-ERROR', 'Error recording topic tombstone:', e);
+  }
+  notifyLocalMutation('topics');
+  return res;
 }
 
 // --- TOPICS STORAGE (MUTEX PROTECTED) ---
@@ -210,13 +239,20 @@ let topicsWriteMutex = Promise.resolve();
 
 export async function saveAllLocalTopics(topicsArray) {
   if (!Array.isArray(topicsArray)) return;
+  logger.db('WRITE-TOPICS', `Writing ${topicsArray.length} topic(s) to IndexedDB...`);
   topicsWriteMutex = topicsWriteMutex.then(async () => {
     const db = await initDB();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(STORES.TOPICS, 'readwrite');
       const store = tx.objectStore(STORES.TOPICS);
-      tx.oncomplete = () => resolve(true);
-      tx.onerror = () => reject(tx.error);
+      tx.oncomplete = () => {
+        logger.db('WRITE-TOPICS-SUCCESS', `Committed ${topicsArray.length} topic(s) to IndexedDB.`);
+        resolve(true);
+      };
+      tx.onerror = () => {
+        logger.error('WRITE-TOPICS-FAIL', 'Failed to commit topics to IndexedDB:', tx.error);
+        reject(tx.error);
+      };
       for (const item of topicsArray) {
         if (item && item.id) {
           store.put({
@@ -227,10 +263,24 @@ export async function saveAllLocalTopics(topicsArray) {
       }
     });
   }).catch(err => {
-    console.error("[LocalDB] saveAllLocalTopics mutex error:", err);
+    logger.error('TOPICS-MUTEX-FAIL', 'saveAllLocalTopics mutex error:', err);
   });
   notifyLocalMutation('topics');
   return topicsWriteMutex;
+}
+
+let mutationSuppressDepth = 0;
+
+export function setMutationNotificationSuppressed(suppressed) {
+  if (suppressed) {
+    mutationSuppressDepth++;
+  } else {
+    mutationSuppressDepth = Math.max(0, mutationSuppressDepth - 1);
+  }
+}
+
+export function isMutationNotificationSuppressed() {
+  return mutationSuppressDepth > 0;
 }
 
 /**
@@ -238,6 +288,7 @@ export async function saveAllLocalTopics(topicsArray) {
  * allowing background sync engines to trigger debounced cloud pushes.
  */
 export function notifyLocalMutation(mutationType = 'mutation') {
+  if (mutationSuppressDepth > 0) return;
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('localdb-mutation', {
       detail: { type: mutationType, timestamp: Date.now() }
@@ -248,7 +299,13 @@ export function notifyLocalMutation(mutationType = 'mutation') {
 // --- SETTINGS & PREFERENCES ---
 export async function saveLocalSetting(key, value) {
   await putLocalItem(STORES.SETTINGS, { key, value, updatedAt: new Date().toISOString() });
-  if (key !== 'google_drive_auth' && key !== 'google_drive_sync_state' && key !== 'autoanki_last_synced_hashes') {
+  const internalKeys = new Set([
+    'google_drive_auth',
+    'google_drive_sync_state',
+    'autoanki_last_synced_hashes',
+    'last_synced_hashes'
+  ]);
+  if (!internalKeys.has(key)) {
     notifyLocalMutation('setting:' + key);
   }
   return value;
@@ -399,6 +456,7 @@ export async function replaceAllLocalCards(cardsArray) {
 
 export async function saveLocalCards(cardsInput) {
   if (!Array.isArray(cardsInput) || cardsInput.length === 0) return getLocalCards();
+  logger.db('WRITE-CARDS', `Saving ${cardsInput.length} flashcard(s) to IndexedDB...`);
   cardsWriteMutex = cardsWriteMutex.then(async () => {
     const existing = await getLocalCards();
     const map = new Map(existing.map(c => [c.id, c]));
@@ -409,10 +467,11 @@ export async function saveLocalCards(cardsInput) {
     });
     const merged = Array.from(map.values());
     await setLocalKV('flashcards', merged);
+    logger.db('WRITE-CARDS-SUCCESS', `Committed flashcards to IndexedDB (Total cards: ${merged.length})`);
     notifyLocalMutation('cards:save');
     return merged;
   }).catch(err => {
-    console.error("[LocalDB] saveLocalCards mutex error:", err);
+    logger.error('CARDS-MUTEX-FAIL', 'saveLocalCards mutex error:', err);
     return getLocalCards();
   });
   return cardsWriteMutex;
@@ -420,18 +479,21 @@ export async function saveLocalCards(cardsInput) {
 
 export async function saveLocalCard(card) {
   if (!card || !card.id) return null;
+  logger.db('SAVE-CARD', `Saving card ID: ${card.id} ("${(card.front || card.question || '').substring(0, 30)}...")`);
   return saveLocalCards([card]);
 }
 
 export async function deleteLocalCard(cardId) {
+  logger.db('DELETE-CARD', `Deleting card ID: ${cardId}`);
   cardsWriteMutex = cardsWriteMutex.then(async () => {
     const cards = await getLocalCards();
     const filtered = cards.filter(c => c.id !== cardId);
     await setLocalKV('flashcards', filtered);
+    logger.db('DELETE-CARD-SUCCESS', `Card removed from active store (Remaining: ${filtered.length})`);
     notifyLocalMutation('cards:delete');
     return filtered;
   }).catch(err => {
-    console.error("[LocalDB] deleteLocalCard mutex error:", err);
+    logger.error('CARD-DELETE-FAIL', 'deleteLocalCard mutex error:', err);
     return getLocalCards();
   });
   return cardsWriteMutex;
@@ -1322,7 +1384,7 @@ export async function calculateDetailedStorageBreakdown() {
         strokeColor: '#0ea5e9',
         bytes: cardsTopicsBytes,
         count: cards.length + topics.length + trashCards.length,
-        label: `${cards.length} Cards · ${topics.length} Topics`,
+        label: `${cards.length} Cards ┬╖ ${topics.length} Topics`,
         clearable: false
       },
       studyLogs: {
@@ -1335,7 +1397,7 @@ export async function calculateDetailedStorageBreakdown() {
         strokeColor: '#6366f1',
         bytes: studyLogsBytes,
         count: Object.keys(studyLogs).length + campTracker.length + campDailyLogs.length,
-        label: `${Object.keys(studyLogs).length} Review Days · CAMP Logs`,
+        label: `${Object.keys(studyLogs).length} Review Days ┬╖ CAMP Logs`,
         clearable: false
       },
       pytTracker: {
@@ -1348,7 +1410,7 @@ export async function calculateDetailedStorageBreakdown() {
         strokeColor: '#f59e0b',
         bytes: pytTrackerBytes,
         count: curriculumTopics.length + subjectTracker.length,
-        label: `${curriculumTopics.length} PYT Subjects · ${subjectTracker.length} Tracker Docs`,
+        label: `${curriculumTopics.length} PYT Subjects ┬╖ ${subjectTracker.length} Tracker Docs`,
         clearable: false
       },
       aiHints: {
@@ -1361,7 +1423,7 @@ export async function calculateDetailedStorageBreakdown() {
         strokeColor: '#14b8a6',
         bytes: aiHintsBytes,
         count: topicHints.length + prompts.length,
-        label: `${topicHints.length} Cached Hints · ${prompts.length} Prompts`,
+        label: `${topicHints.length} Cached Hints ┬╖ ${prompts.length} Prompts`,
         clearable: true,
         clearActionType: 'aiHints'
       },
@@ -1375,7 +1437,7 @@ export async function calculateDetailedStorageBreakdown() {
         strokeColor: '#a855f7',
         bytes: settingsBytes,
         count: Object.keys(settings).length + localStorageItemCount,
-        label: `${Object.keys(settings).length} Config Keys · ${localStorageItemCount} Local Items`,
+        label: `${Object.keys(settings).length} Config Keys ┬╖ ${localStorageItemCount} Local Items`,
         clearable: false
       }
     }
@@ -1773,7 +1835,7 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
     });
   };
 
-  // Helper: merge KV entries by key (put each one — IDB put is upsert)
+  // Helper: merge KV entries by key (put each one ΓÇö IDB put is upsert)
   const mergeKV = async (records) => {
     if (!Array.isArray(records) || records.length === 0) return;
     for (const r of records) { if (r && r.key) await putLocalItem(STORES.KV_STORE, r); }
@@ -1791,9 +1853,9 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
   let step = 0;
 
   try {
-    // ── Bundle: cards_fsrs ──────────────────────────────────────────────
+    // ΓöÇΓöÇ Bundle: cards_fsrs ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
     if (bundles.includes('cards_fsrs')) {
-      emit(++step, totalSteps, 'Restoring Flashcards & FSRS States…');
+      emit(++step, totalSteps, 'Restoring Flashcards & FSRS StatesΓÇª');
       const cardKv = kvSubset(['flashcards']);
       if (strategy === 'replace') {
         // Remove flashcards KV entry then put incoming
@@ -1828,9 +1890,9 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
       report.restored.push('cards_fsrs');
     }
 
-    // ── Bundle: topics_curriculum ────────────────────────────────────────
+    // ΓöÇΓöÇ Bundle: topics_curriculum ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
     if (bundles.includes('topics_curriculum')) {
-      emit(++step, totalSteps, 'Restoring Curriculum Topics & PYT Progress…');
+      emit(++step, totalSteps, 'Restoring Curriculum Topics & PYT ProgressΓÇª');
       if (strategy === 'replace') {
         if (stores.topics) await atomicClearAndPut(STORES.TOPICS, stores.topics);
         if (stores.pyt_data) await atomicClearAndPut(STORES.PYT_DATA, stores.pyt_data);
@@ -1863,9 +1925,9 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
       report.restored.push('topics_curriculum');
     }
 
-    // ── Bundle: study_logs_velocity ──────────────────────────────────────
+    // ΓöÇΓöÇ Bundle: study_logs_velocity ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
     if (bundles.includes('study_logs_velocity')) {
-      emit(++step, totalSteps, 'Restoring Study Logs & Velocity Telemetry…');
+      emit(++step, totalSteps, 'Restoring Study Logs & Velocity TelemetryΓÇª');
       if (strategy === 'replace') {
         if (stores.camp_tracker) await atomicClearAndPut(STORES.CAMP_TRACKER, stores.camp_tracker);
         if (stores.camp_data) await atomicClearAndPut(STORES.CAMP_DATA, stores.camp_data);
@@ -1925,9 +1987,9 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
       report.restored.push('study_logs_velocity');
     }
 
-    // ── Bundle: scans_media ──────────────────────────────────────────────
+    // ΓöÇΓöÇ Bundle: scans_media ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
     if (bundles.includes('scans_media')) {
-      emit(++step, totalSteps, 'Restoring Scanned Pages & Textbook Metadata…');
+      emit(++step, totalSteps, 'Restoring Scanned Pages & Textbook MetadataΓÇª');
       const pagesKvs = kvSubset(['pages', 'textbooks_metadata']);
       if (strategy === 'replace') {
         await deleteLocalItem(STORES.KV_STORE, 'pages');
@@ -1951,16 +2013,16 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
       report.restored.push('scans_media');
     }
 
-    // ── Bundle: settings_prompts ─────────────────────────────────────────
+    // ΓöÇΓöÇ Bundle: settings_prompts ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
     if (bundles.includes('settings_prompts')) {
-      emit(++step, totalSteps, 'Restoring FSRS-6 Config, API Keys & Prompts…');
+      emit(++step, totalSteps, 'Restoring FSRS-6 Config, API Keys & PromptsΓÇª');
       if (strategy === 'replace') {
         if (stores.settings) await atomicClearAndPut(STORES.SETTINGS, stores.settings);
         if (stores.hint_quota) await atomicClearAndPut(STORES.HINT_QUOTA, stores.hint_quota);
         if (stores.topic_hints) await atomicClearAndPut(STORES.TOPIC_HINTS, stores.topic_hints);
         await mergeKV(kvSubset(['custom_prompts', 'local_user_profile']));
       } else {
-        // Merge: put all settings (upsert by key — non-destructive)
+        // Merge: put all settings (upsert by key ΓÇö non-destructive)
         if (Array.isArray(stores.settings)) await bulkPut(STORES.SETTINGS, stores.settings);
         if (Array.isArray(stores.topic_hints)) await bulkPut(STORES.TOPIC_HINTS, stores.topic_hints);
         if (Array.isArray(stores.hint_quota)) await bulkPut(STORES.HINT_QUOTA, stores.hint_quota);
@@ -1969,9 +2031,9 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
       report.restored.push('settings_prompts');
     }
 
-    // ── Bundle: recycle_bin ───────────────────────────────────────────────
+    // ΓöÇΓöÇ Bundle: recycle_bin ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
     if (bundles.includes('recycle_bin')) {
-      emit(++step, totalSteps, 'Restoring Recycle Bin…');
+      emit(++step, totalSteps, 'Restoring Recycle BinΓÇª');
       const trashKvs = kvSubset(['trash_pages', 'trash_cards']);
       if (strategy === 'replace') {
         for (const r of trashKvs) await putLocalItem(STORES.KV_STORE, r);
@@ -1988,8 +2050,8 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
       report.restored.push('recycle_bin');
     }
 
-    // ── Restore localStorage snapshot ─────────────────────────────────────
-    emit(++step, totalSteps, 'Restoring LocalStorage preferences…');
+    // ΓöÇΓöÇ Restore localStorage snapshot ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    emit(++step, totalSteps, 'Restoring LocalStorage preferencesΓÇª');
     const lsSnap = payload.localStorageSnapshot;
     if (lsSnap && typeof lsSnap === 'object') {
       try {
