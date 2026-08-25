@@ -11,7 +11,7 @@ import {
   Flame, Trophy, Award, Clock, BookOpen, Activity, Timer, Hourglass, ListChecks, GitMerge,
   Puzzle, Heart, Flag,
   Music, Quote, BarChart as BarChartIcon, Maximize2, MonitorPlay, GripVertical, Code2, Volume2, VolumeX,
-  ChevronUp, Edit2, Layout, ExternalLink, Minimize2, Brain, Sun, Moon, HardDrive
+  ChevronUp, Edit2, Layout, ExternalLink, Minimize2, Brain, Sun, Moon, HardDrive, Terminal
 } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import JSZip from 'jszip';
@@ -21,6 +21,7 @@ import AboutDashboard from './components/AboutDashboard';
 import StorageUsageSection from './components/StorageUsageSection';
 import GoogleDriveSyncSection from './components/GoogleDriveSyncSection';
 import GoogleDriveConflictModal from './components/GoogleDriveConflictModal';
+import DiagnosticsLogsModal from './components/DiagnosticsLogsModal';
 import { getGoogleDriveAuthState } from './services/googleDriveAuth';
 import { syncWithGoogleDrive, triggerDebouncedSmartPush, handleAppExitKeepaliveSync, pushTimerStateToDrive, checkAndSyncRemoteTimerState } from './services/googleDriveSync';
 import {
@@ -3980,6 +3981,7 @@ export default function App() {
   const [activeSettingsFeatureKey, setActiveSettingsFeatureKey] = useState('cardGeneration');
   const [customModelInput, setCustomModelInput] = useState('');
   const [openSettingsSections, setOpenSettingsSections] = useState(new Set());
+  const [isDiagnosticsLogsOpen, setIsDiagnosticsLogsOpen] = useState(false);
 
   const handleSettingsSectionClick = (key) => {
     setOpenSettingsSections(prev => {
@@ -4895,7 +4897,56 @@ export default function App() {
               )}
             </AnimatePresence>
           </motion.div>
+
+          {/* Section 8: System Diagnostics & Health Logs (Standalone, Full 2-col span) */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.35 }}
+            className={`lg:col-span-2 ${settingsThemeMode === 'dark' ? 'neu-card-dark text-slate-100' : 'neu-card-light text-slate-800'} p-4 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl space-y-4 overflow-hidden border ${settingsThemeMode === 'dark' ? 'border-cyan-500/20' : 'border-cyan-200'}`}
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className={settingsThemeMode === 'dark' ? 'p-3 rounded-2xl neu-pressed-dark text-cyan-400 border border-cyan-500/30' : 'p-3 rounded-2xl neu-pressed-light text-cyan-600 border border-cyan-300'}>
+                  <Terminal className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className={`text-base font-black uppercase tracking-wider ${settingsThemeMode === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      System Diagnostics & Health Logs
+                    </h2>
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-cyan-500/15 text-cyan-400 border border-cyan-500/30">
+                      Telemetry & Invariants
+                    </span>
+                  </div>
+                  <p className={`text-xs font-medium ${settingsThemeMode === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                    Inspect background activity, view database operations, and run automated invariant health checks.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsDiagnosticsLogsOpen(true)}
+                className={`flex items-center justify-center gap-2 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider transition-all duration-300 active:scale-95 cursor-pointer border shrink-0 ${
+                  settingsThemeMode === 'dark'
+                    ? 'bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border-cyan-500/40 shadow-lg shadow-cyan-500/10'
+                    : 'bg-cyan-600 hover:bg-cyan-700 text-white shadow-lg shadow-cyan-600/20'
+                }`}
+              >
+                <Terminal className="w-4 h-4" />
+                <span>Open Diagnostics & Health Hub</span>
+              </button>
+            </div>
+          </motion.div>
         </div>
+
+        {/* Standalone In-App System Diagnostics & Health Modal */}
+        <DiagnosticsLogsModal
+          isOpen={isDiagnosticsLogsOpen}
+          onClose={() => setIsDiagnosticsLogsOpen(false)}
+          themeMode={settingsThemeMode}
+        />
       </motion.div>
     );
   };
