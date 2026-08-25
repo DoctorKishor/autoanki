@@ -1301,12 +1301,12 @@ export function mergeSubjectTrackerArrays(localTracker = [], remoteTracker = [])
       }
       
       // Both exist: perform field-level intelligent merge
-      const locReviewDate = safeTimestamp(locT.lastReviewDate || locT.updatedAt);
-      const remReviewDate = safeTimestamp(remT.lastReviewDate || remT.updatedAt);
-      const locReps = Number(locT.reviewCount || 0);
-      const remReps = Number(remT.reviewCount || 0);
-      const locHasReviews = locReps > 0 || (locT.stability != null && locT.stability > 0);
-      const remHasReviews = remReps > 0 || (remT.stability != null && remT.stability > 0);
+      const locReviewDate = safeTimestamp(locT.lastReviewDate);
+      const remReviewDate = safeTimestamp(remT.lastReviewDate);
+      const locReps = Number(locT.reviewCount || (Array.isArray(locT.studyDates) ? locT.studyDates.length : 0));
+      const remReps = Number(remT.reviewCount || (Array.isArray(remT.studyDates) ? remT.studyDates.length : 0));
+      const locHasReviews = locReps > 0 || (locT.stability != null && locT.stability > 0) || (Array.isArray(locT.studyDates) && locT.studyDates.length > 0);
+      const remHasReviews = remReps > 0 || (remT.stability != null && remT.stability > 0) || (Array.isArray(remT.studyDates) && remT.studyDates.length > 0);
       
       let baseTopic = locT;
       if (locHasReviews && !remHasReviews) {
@@ -1322,7 +1322,9 @@ export function mergeSubjectTrackerArrays(localTracker = [], remoteTracker = [])
       } else if (remReps > locReps) {
         baseTopic = remT;
       } else {
-        baseTopic = locT;
+        const locTime = safeTimestamp(locT.updatedAt || locT.createdAt);
+        const remTime = safeTimestamp(remT.updatedAt || remT.createdAt);
+        baseTopic = remTime > locTime ? remT : locT;
       }
       
       // Union studyDates deduplicated and sorted
@@ -1421,7 +1423,7 @@ export function mergePytUserProgress(localProg = [], remoteProg = []) {
 }
 
 /**
- * Merges textbooks metadata non-destructively based on latest updatedAt timestamp.
+ * Merges textbooks metadata with timestamp awareness.
  */
 export function mergeTextbooksMetadata(localBooks = [], remoteBooks = []) {
   const locList = Array.isArray(localBooks) ? localBooks : [];
@@ -1429,17 +1431,12 @@ export function mergeTextbooksMetadata(localBooks = [], remoteBooks = []) {
   const map = new Map();
   
   locList.forEach(b => {
-    if (b) {
-      const k = String(b.id || b.filename || '').trim().toLowerCase();
-      if (k) map.set(k, { ...b });
-    }
+    if (b && b.id) map.set(b.id, { ...b });
   });
   
   remList.forEach(remB => {
-    if (!remB) return;
-    const k = String(remB.id || remB.filename || '').trim().toLowerCase();
-    if (!k) return;
-    
+    if (!remB || !remB.id) return;
+    const k = remB.id;
     if (!map.has(k)) {
       map.set(k, { ...remB });
       return;
@@ -1500,10 +1497,11 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}) {
 
       const allSessions = Array.from(sessionMap.values());
       const sessionHours = allSessions.reduce((sum, s) => sum + (Number(s.duration || s.minutes || 0) / 60 || Number(s.hours || 0)), 0);
-      const totalHours = sessionHours > 0 ? Number(sessionHours.toFixed(2)) : Math.max(cur.studyHours || cur.hours || 0, incLog?.studyHours || incLog?.hours || 0);
+      const totalHours = sessionHours > 0 ? Number(sessionHours.toFixed(2)) : Math.max(Number(cur.studyHours || cur.hours || 0), Number(incLog?.studyHours || incLog?.hours || 0));
 
-      const totalCards = Math.max(cur.totalCardsReviewed || cur.cards || 0, incLog?.totalCardsReviewed || incLog?.cards || 0, fsrsMap.size);
-      const totalQuestions = Math.max(cur.totalQuestionsAttempted || cur.questions || 0, incLog?.totalQuestionsAttempted || incLog?.questions || 0);
+      const totalCards = Math.max(Number(cur.totalCardsReviewed || cur.cards || 0), Number(incLog?.totalCardsReviewed || incLog?.cards || 0), fsrsMap.size);
+      const totalQuestions = Math.max(Number(cur.totalQuestionsAttempted || cur.questions || 0), Number(incLog?.totalQuestionsAttempted || incLog?.questions || 0));
+      const totalPages = Math.max(Number(cur.pages || 0), Number(incLog?.pages || 0));
 
       mergedLogs[dateKey] = {
         ...cur,
@@ -1514,7 +1512,7 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}) {
         totalQuestionsAttempted: totalQuestions,
         hours: totalHours,
         studyHours: totalHours,
-        pages: Math.max(cur.pages || 0, incLog?.pages || 0),
+        pages: totalPages,
         fsrsLogs: Array.from(fsrsMap.values()),
         sessions: allSessions,
         gts: Array.from(gtMap.values())
