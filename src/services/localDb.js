@@ -2149,6 +2149,11 @@ export async function saveInternalSnapshot(label = 'auto', customPayload = null)
   };
 
   await putLocalItem(STORES.SNAPSHOTS, manifest);
+  try {
+    await pruneOldSnapshots(3);
+  } catch (err) {
+    console.warn('[LocalDB] Automatic snapshot pruning warning:', err);
+  }
   return manifest;
 }
 
@@ -2179,7 +2184,7 @@ export async function deleteInternalSnapshot(id) {
  * Keeps the `maxCount` most recent snapshots and deletes the rest.
  * @param {number} maxCount
  */
-export async function pruneOldSnapshots(maxCount = 5) {
+export async function pruneOldSnapshots(maxCount = 3) {
   const all = await getAllInternalSnapshots();
   if (all.length <= maxCount) return;
   const toDelete = all.slice(maxCount);

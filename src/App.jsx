@@ -5224,6 +5224,8 @@ export default function App() {
   const [gdriveConflictData, setGdriveConflictData] = useState(null);
   const [justSynced, setJustSynced] = useState(false);
   const justSyncedTimerRef = useRef(null);
+  const [hasDownloadedRemoteChanges, setHasDownloadedRemoteChanges] = useState(false);
+  const downloadReloadTimerRef = useRef(null);
 
   // Initialize and listen to Google Drive Auth & Sync events
   useEffect(() => {
@@ -8930,6 +8932,12 @@ export default function App() {
   useEffect(() => {
     const handleDataHydrated = async (e) => {
       console.log('[App] Cloud data hydrated from Google Drive. Refreshing active state...', e?.detail);
+      setHasDownloadedRemoteChanges(true);
+      if (downloadReloadTimerRef.current) clearTimeout(downloadReloadTimerRef.current);
+      downloadReloadTimerRef.current = setTimeout(() => {
+        setHasDownloadedRemoteChanges(false);
+      }, 7000);
+
       try {
         if (typeof loadAllCards === 'function') await loadAllCards(true);
         if (typeof loadPages === 'function') await loadPages(true);
@@ -9099,6 +9107,7 @@ export default function App() {
     return () => {
       window.removeEventListener('gdrive-data-hydrated', handleDataHydrated);
       window.removeEventListener('pagehide', handleAppExitKeepaliveSync);
+      if (downloadReloadTimerRef.current) clearTimeout(downloadReloadTimerRef.current);
     };
   }, [loadAllCards, loadPages, loadStudyLogs, loadTrash, loadInternalSnapshots]);
 
