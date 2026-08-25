@@ -2047,7 +2047,6 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
       scheduleTemplates: mergedTemplates,
       campDailyLogs: Array.from(campDailyMap.values()),
       timerState: remLogB.timerState || locLogB.timerState || null,
-      activeNewTopicsDate: remLogB.activeNewTopicsDate || locLogB.activeNewTopicsDate,
       activeNewTopicsToday: remLogB.activeNewTopicsToday || locLogB.activeNewTopicsToday || []
     };
   }
@@ -2058,7 +2057,18 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
     const remFsrs = downloadedBundles['fsrs_config.json'] || {};
 
     const promptMap = new Map((locFsrs.customPrompts || []).map(p => [p.id, p]));
-    (remFsrs.customPrompts || []).forEach(p => { if (p && p.id && !promptMap.has(p.id)) promptMap.set(p.id, p); });
+    (remFsrs.customPrompts || []).forEach(p => {
+      if (p && p.id) {
+        if (!promptMap.has(p.id)) {
+          promptMap.set(p.id, p);
+        } else {
+          const locP = promptMap.get(p.id);
+          const locTime = safeTimestamp(locP.updatedAt || locP.createdAt);
+          const remTime = safeTimestamp(p.updatedAt || p.createdAt);
+          promptMap.set(p.id, remTime >= locTime ? p : locP);
+        }
+      }
+    });
 
     // Non-destructive snapshot merge: preserve local preferences
     const mergedLs = { ...(remFsrs.localStorageSnapshot || {}) };
