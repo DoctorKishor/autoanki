@@ -69,14 +69,39 @@ export function getDeviceId() {
 }
 
 /**
- * Serializes an object deterministically with recursively sorted keys.
+ * Extracts a canonical deterministic identifier for an object in an array.
+ */
+function getEntityKey(el) {
+  if (!el || typeof el !== 'object') return null;
+  if (el.id !== undefined && el.id !== null) return `id:${el.id}`;
+  if (el.key !== undefined && el.key !== null) return `key:${el.key}`;
+  if (el.topicId !== undefined && el.topicId !== null) return `topicId:${el.topicId}`;
+  if (el.topicName !== undefined && el.topicName !== null) return `topicName:${el.topicName}`;
+  if (el.dateStr !== undefined && el.dateStr !== null) return `dateStr:${el.dateStr}`;
+  if (el.subject !== undefined && el.subject !== null) return `subject:${el.subject}`;
+  if (el.date !== undefined && el.date !== null) return `date:${el.date}`;
+  if (el.name !== undefined && el.name !== null) return `name:${el.name}`;
+  return null;
+}
+
+/**
+ * Serializes an object deterministically with recursively sorted keys and entity-sorted arrays.
  * @param {any} obj
  * @returns {string}
  */
 export function canonicalStringify(obj) {
   if (obj === null || typeof obj !== 'object') return JSON.stringify(obj);
   if (Array.isArray(obj)) {
-    return '[' + obj.map(canonicalStringify).join(',') + ']';
+    const hasEntityKeys = obj.length > 1 && obj.some(el => el && typeof el === 'object' && getEntityKey(el) !== null);
+    let arr = obj;
+    if (hasEntityKeys) {
+      arr = [...obj].sort((a, b) => {
+        const keyA = getEntityKey(a) || canonicalStringify(a);
+        const keyB = getEntityKey(b) || canonicalStringify(b);
+        return keyA < keyB ? -1 : keyA > keyB ? 1 : 0;
+      });
+    }
+    return '[' + arr.map(canonicalStringify).join(',') + ']';
   }
   const sortedKeys = Object.keys(obj).sort();
   return '{' + sortedKeys.map(k => JSON.stringify(k) + ':' + canonicalStringify(obj[k])).join(',') + '}';
@@ -419,19 +444,17 @@ export async function extractLocalBundles() {
   const scheduleTemplates = (await getLocalKV('schedule_templates')) || [];
   const campDailyLogs = (await getAllLocalItems(STORES.CAMP_DAILY_LOGS)) || [];
   const timerState = (await getLocalKV('timerState')) || null;
-  const syncTodayStr = new Date().toLocaleDateString('en-CA');
-  const activeNewTopicsList = (await getLocalKV('active_new_topics_' + syncTodayStr)) || (await getLocalKV('active_new_topics_today')) || [];
+  const activeNewTopicsToday = (await getLocalKV('active_new_topics_today')) || [];
   const studyLogsBundle = {
     studyLogs,
     studySchedule,
     scheduleTemplates,
     campDailyLogs,
     timerState,
-    activeNewTopicsDate: syncTodayStr,
-    activeNewTopicsToday: activeNewTopicsList
+    activeNewTopicsToday
   };
 
-  // 4. FSRS Config & Settings Bundle (including 24 synchronized localStorage settings)
+  // 4. FSRS Config & Settings Bundle (including persistent cross-device settings)
   const fsrsConfig = (await getFSRSConfig()) || {};
   const settings = (await getAllLocalItems(STORES.SETTINGS)) || [];
   const filteredSettings = settings.filter(s => s?.key !== 'google_drive_auth');
@@ -439,22 +462,27 @@ export async function extractLocalBundles() {
   const hintQuota = (await getAllLocalItems(STORES.HINT_QUOTA)) || [];
   const customPrompts = (await getLocalKV('custom_prompts')) || [];
   const localUserProfile = (await getLocalKV('local_user_profile')) || null;
-  const aiRecommendations = (await getLocalKV('ai_topic_recommendations_' + syncTodayStr)) || (await getLocalKV('ai_topic_recommendations')) || null;
+  const aiRecommendations = (await getLocalKV('ai_topic_recommendations')) || null;
 
   const localStorageSnapshot = {};
   if (typeof window !== 'undefined' && window.localStorage) {
     try {
+      const EXCLUDED_SYNC_LS_KEYS = new Set([
+        'autoanki_device_id',
+        'local_device_id',
+        'obs_device_id',
+        'obs_paired_uid',
+        'autoanki_gdrive_auth',
+        'autoanki_pending_sync_launch',
+        'auto_anki_last_auto_backup',
+        'auto_anki_last_manual_backup'
+      ]);
       (LS_KEYS_TO_SNAPSHOT || []).forEach(key => {
-        const val = localStorage.getItem(key);
-        if (val !== null && val !== undefined) localStorageSnapshot[key] = val;
-      });
-      for (let i = 0; i < window.localStorage.length; i++) {
-        const k = window.localStorage.key(i);
-        if (k && (k.startsWith('camp_sessions_') || k.startsWith('camp_bedToBook_'))) {
-          const val = window.localStorage.getItem(k);
-          if (val !== null && val !== undefined) localStorageSnapshot[k] = val;
+        if (!EXCLUDED_SYNC_LS_KEYS.has(key) && !key.startsWith('autoanki_synced_hashes_')) {
+          const val = localStorage.getItem(key);
+          if (val !== null && val !== undefined) localStorageSnapshot[key] = val;
         }
-      }
+      });
     } catch (e) {
       console.warn('[GDriveSync] Error capturing localStorage settings:', e);
     }
@@ -635,7 +663,7 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
               lastReviewDate: latestRev.lastReviewDate || latestContent.lastReviewDate,
               scheduledDays: latestRev.scheduledDays !== undefined ? latestRev.scheduledDays : latestContent.scheduledDays,
               history: Array.isArray(latestRev.history) && latestRev.history.length > 0 ? latestRev.history : (latestContent.history || []),
-              updatedAt: new Date(Math.max(localContentTime, incContentTime, localRevTime, incRevTime, Date.now())).toISOString()
+              updatedAt: new Date(Math.max(localContentTime, incContentTime, localRevTime, incRevTime)).toISOString()
             };
             map.set(inc.id, mergedCard);
           }
@@ -848,50 +876,101 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
           }
         }
       }
-      if (Array.isArray(b.activeNewTopicsToday)) {
-        const targetDateStr = b.activeNewTopicsDate || new Date().toLocaleDateString('en-CA');
-        await setLocalKV('active_new_topics_' + targetDateStr, b.activeNewTopicsToday);
+      if (b.activeNewTopicsToday) {
         await setLocalKV('active_new_topics_today', b.activeNewTopicsToday);
       }
     }
   }
 
-  // 4. FSRS Config & Settings (including synchronized localStorage settings)
+  // 4. FSRS Config & Settings (including persistent cross-device settings)
   if (bundles['fsrs_config.json']) {
-    emit(++step, totalSteps, 'Hydrating FSRS-6 Config, Hints & PreferencesΓÇª');
+    emit(++step, totalSteps, 'Hydrating FSRS-6 Config, Hints & Preferences…');
     const b = bundles['fsrs_config.json'];
     if (b.fsrsConfig) await saveFSRSConfig(b.fsrsConfig);
     if (b.localUserProfile) await setLocalKV('local_user_profile', b.localUserProfile);
     if (b.aiRecommendations) {
-      const hydTodayStr = new Date().toLocaleDateString('en-CA');
-      await setLocalKV('ai_topic_recommendations_' + hydTodayStr, b.aiRecommendations);
       await setLocalKV('ai_topic_recommendations', b.aiRecommendations);
     }
 
-    // Merge custom prompts non-destructively
-    if (Array.isArray(b.customPrompts)) {
-      const existingPrompts = (await getLocalKV('custom_prompts')) || [];
-      const promptMap = new Map(existingPrompts.map(p => [p.id, p]));
-      b.customPrompts.forEach(p => {
-        if (p && p.id && !promptMap.has(p.id)) promptMap.set(p.id, p);
+    if (strategy === 'replace') {
+      if (Array.isArray(b.customPrompts)) {
+        await setLocalKV('custom_prompts', b.customPrompts);
+      }
+      const db = await initDB();
+      // Atomic clear and put for TOPIC_HINTS
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(STORES.TOPIC_HINTS, 'readwrite');
+        const st = tx.objectStore(STORES.TOPIC_HINTS);
+        const clearReq = st.clear();
+        clearReq.onsuccess = () => {
+          if (Array.isArray(b.topicHints)) {
+            b.topicHints.forEach(h => { if (h && h.topicId) st.put(h); });
+          }
+        };
+        clearReq.onerror = () => reject(clearReq.error);
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => reject(tx.error);
       });
-      await setLocalKV('custom_prompts', Array.from(promptMap.values()));
-    }
 
-    if (Array.isArray(b.topicHints)) {
-      for (const h of b.topicHints) {
-        if (h && h.topicId) await putLocalItem(STORES.TOPIC_HINTS, h);
+      // Atomic clear and put for HINT_QUOTA
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(STORES.HINT_QUOTA, 'readwrite');
+        const st = tx.objectStore(STORES.HINT_QUOTA);
+        const clearReq = st.clear();
+        clearReq.onsuccess = () => {
+          if (Array.isArray(b.hintQuota)) {
+            b.hintQuota.forEach(q => { if (q && q.dateStr) st.put(q); });
+          }
+        };
+        clearReq.onerror = () => reject(clearReq.error);
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => reject(tx.error);
+      });
+
+      // For SETTINGS: preserve local google_drive_auth, replace all other keys
+      const localAuth = await getLocalSetting('google_drive_auth');
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(STORES.SETTINGS, 'readwrite');
+        const st = tx.objectStore(STORES.SETTINGS);
+        const clearReq = st.clear();
+        clearReq.onsuccess = () => {
+          if (localAuth) st.put({ key: 'google_drive_auth', value: localAuth });
+          if (Array.isArray(b.settings)) {
+            b.settings.forEach(s => {
+              if (s && s.key && s.key !== 'google_drive_auth') st.put(s);
+            });
+          }
+        };
+        clearReq.onerror = () => reject(clearReq.error);
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => reject(tx.error);
+      });
+    } else {
+      // Merge custom prompts non-destructively
+      if (Array.isArray(b.customPrompts)) {
+        const existingPrompts = (await getLocalKV('custom_prompts')) || [];
+        const promptMap = new Map(existingPrompts.map(p => [p.id, p]));
+        b.customPrompts.forEach(p => {
+          if (p && p.id && !promptMap.has(p.id)) promptMap.set(p.id, p);
+        });
+        await setLocalKV('custom_prompts', Array.from(promptMap.values()));
       }
-    }
-    if (Array.isArray(b.hintQuota)) {
-      for (const q of b.hintQuota) {
-        if (q && q.dateStr) await putLocalItem(STORES.HINT_QUOTA, q);
+
+      if (Array.isArray(b.topicHints)) {
+        for (const h of b.topicHints) {
+          if (h && h.topicId) await putLocalItem(STORES.TOPIC_HINTS, h);
+        }
       }
-    }
-    if (Array.isArray(b.settings)) {
-      for (const s of b.settings) {
-        if (s && s.key && s.key !== 'google_drive_auth') {
-          await putLocalItem(STORES.SETTINGS, s);
+      if (Array.isArray(b.hintQuota)) {
+        for (const q of b.hintQuota) {
+          if (q && q.dateStr) await putLocalItem(STORES.HINT_QUOTA, q);
+        }
+      }
+      if (Array.isArray(b.settings)) {
+        for (const s of b.settings) {
+          if (s && s.key && s.key !== 'google_drive_auth') {
+            await putLocalItem(STORES.SETTINGS, s);
+          }
         }
       }
     }
@@ -904,13 +983,14 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
             'autoanki_device_id',
             'local_device_id',
             'obs_device_id',
+            'obs_paired_uid',
             'autoanki_gdrive_auth',
             'autoanki_pending_sync_launch',
             'auto_anki_last_auto_backup',
             'auto_anki_last_manual_backup'
           ]);
           Object.entries(b.localStorageSnapshot).forEach(([k, v]) => {
-            if (v !== null && v !== undefined && !DEVICE_SPECIFIC_KEYS.has(k)) {
+            if (v !== null && v !== undefined && !DEVICE_SPECIFIC_KEYS.has(k) && !k.startsWith('autoanki_synced_hashes_')) {
               localStorage.setItem(k, v);
             }
           });
@@ -923,16 +1003,49 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
 
   // 5. CAMP Tracker
   if (bundles['camp_tracker.json']) {
-    emit(++step, totalSteps, 'Hydrating CAMP tracker logsΓÇª');
+    emit(++step, totalSteps, 'Hydrating CAMP tracker logs…');
     const b = bundles['camp_tracker.json'];
-    if (Array.isArray(b.campTracker)) {
-      for (const t of b.campTracker) {
-        if (t && t.id) await putLocalItem(STORES.CAMP_TRACKER, t);
+    if (strategy === 'replace') {
+      const db = await initDB();
+      // Atomic clear and replace for CAMP_TRACKER
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(STORES.CAMP_TRACKER, 'readwrite');
+        const st = tx.objectStore(STORES.CAMP_TRACKER);
+        const clearReq = st.clear();
+        clearReq.onsuccess = () => {
+          if (Array.isArray(b.campTracker)) {
+            b.campTracker.forEach(t => { if (t && t.id) st.put(t); });
+          }
+        };
+        clearReq.onerror = () => reject(clearReq.error);
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => reject(tx.error);
+      });
+
+      // Atomic clear and replace for CAMP_DATA
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(STORES.CAMP_DATA, 'readwrite');
+        const st = tx.objectStore(STORES.CAMP_DATA);
+        const clearReq = st.clear();
+        clearReq.onsuccess = () => {
+          if (Array.isArray(b.campData)) {
+            b.campData.forEach(d => { if (d && d.key) st.put(d); });
+          }
+        };
+        clearReq.onerror = () => reject(clearReq.error);
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => reject(tx.error);
+      });
+    } else {
+      if (Array.isArray(b.campTracker)) {
+        for (const t of b.campTracker) {
+          if (t && t.id) await putLocalItem(STORES.CAMP_TRACKER, t);
+        }
       }
-    }
-    if (Array.isArray(b.campData)) {
-      for (const d of b.campData) {
-        if (d && d.key) await putLocalItem(STORES.CAMP_DATA, d);
+      if (Array.isArray(b.campData)) {
+        for (const d of b.campData) {
+          if (d && d.key) await putLocalItem(STORES.CAMP_DATA, d);
+        }
       }
     }
   }
@@ -1339,7 +1452,7 @@ export function mergeSubjectTrackerArrays(localTracker = [], remoteTracker = [])
       const mergedNotes = baseTopic.notes || locT.notes || remT.notes;
       const mergedMnemonics = baseTopic.mnemonics || locT.mnemonics || remT.mnemonics;
       
-      const latestTopicTime = Math.max(locReviewDate, remReviewDate, safeTimestamp(locT.updatedAt), safeTimestamp(remT.updatedAt), Date.now());
+      const latestTopicTime = Math.max(locReviewDate, remReviewDate, safeTimestamp(locT.updatedAt), safeTimestamp(remT.updatedAt));
       
       mergedTopics[tKey] = {
         ...remT,
@@ -1351,7 +1464,7 @@ export function mergeSubjectTrackerArrays(localTracker = [], remoteTracker = [])
         ...(mergedNotes !== undefined ? { notes: mergedNotes } : {}),
         ...(mergedMnemonics !== undefined ? { mnemonics: mergedMnemonics } : {}),
         studyDates: combinedStudyDates,
-        updatedAt: new Date(latestTopicTime).toISOString()
+        updatedAt: new Date(latestTopicTime || 0).toISOString()
       };
     });
     
@@ -1367,7 +1480,7 @@ export function mergeSubjectTrackerArrays(localTracker = [], remoteTracker = [])
       id: locDoc.id || remDoc.id || key,
       subject: locDoc.subject || remDoc.subject || key,
       topics: mergedTopics,
-      updatedAt: new Date(maxDocTime || Date.now()).toISOString()
+      updatedAt: new Date(maxDocTime || 0).toISOString()
     });
   });
   
@@ -1795,7 +1908,7 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
             lastRating: latestRev.lastRating,
             retrievability: latestRev.retrievability,
             history: Array.from(new Set([...(localCard.history || []), ...(inc.history || [])])),
-            updatedAt: new Date(Math.max(localModTime, incModTime, Date.now())).toISOString()
+            updatedAt: new Date(Math.max(localModTime, incModTime)).toISOString()
           };
 
           cardMap.set(inc.id, mergedCard);
@@ -2200,7 +2313,8 @@ async function executeSyncInternal({
       emit(4, 10, 'Uploading initial collection to Google Drive…');
       const res = await executeOneWayPush(accessToken, vaultFolderId, mediaFolderId, localData, remoteFileMap, emit);
       if (res.success) {
-        await saveLastSyncedHashes(localManifest.hashes);
+        const postData = await extractLocalBundles();
+        await saveLastSyncedHashes(postData.manifest.hashes);
         logger.sync('INITIAL-PUSH-SUCCESS', 'Initial collection upload complete.');
       }
       return res;
@@ -2229,7 +2343,8 @@ async function executeSyncInternal({
       emit(3, 10, 'Downloading your collection from Google Drive…');
       const res = await executeOneWayDownload(accessToken, vaultFolderId, mediaFolderId, remoteFileMap, emit);
       if (res.success) {
-        await saveLastSyncedHashes(remoteHashes);
+        const postData = await extractLocalBundles();
+        await saveLastSyncedHashes(postData.manifest.hashes);
         logger.sync('FAST-FORWARD-DOWNLOAD-SUCCESS', 'Local database restored with cloud collection.');
       }
       return res;
@@ -2249,7 +2364,8 @@ async function executeSyncInternal({
       emit(3, 10, 'Fast-forwarding to newer cloud version…');
       const res = await executeOneWayDownload(accessToken, vaultFolderId, mediaFolderId, remoteFileMap, emit);
       if (res.success) {
-        await saveLastSyncedHashes(remoteHashes);
+        const postData = await extractLocalBundles();
+        await saveLastSyncedHashes(postData.manifest.hashes);
         logger.sync('FAST-FORWARD-DOWNLOAD-SUCCESS', 'Local database updated to cloud state.');
       }
       return res;
@@ -2261,7 +2377,8 @@ async function executeSyncInternal({
       emit(3, 10, 'Pushing local changes to cloud…');
       const res = await executeOneWayPush(accessToken, vaultFolderId, mediaFolderId, localData, remoteFileMap, emit);
       if (res.success) {
-        await saveLastSyncedHashes(localHashes);
+        const postData = await extractLocalBundles();
+        await saveLastSyncedHashes(postData.manifest.hashes);
         logger.sync('FAST-FORWARD-PUSH-SUCCESS', 'Cloud updated to fresh local state.');
       }
       return res;
@@ -2314,11 +2431,17 @@ async function executeSyncInternal({
 
         if (conflictResolution === 'upload') {
           const res = await executeOneWayPush(accessToken, vaultFolderId, mediaFolderId, localData, remoteFileMap, emit);
-          if (res.success) await saveLastSyncedHashes(localHashes);
+          if (res.success) {
+            const postData = await extractLocalBundles();
+            await saveLastSyncedHashes(postData.manifest.hashes);
+          }
           return res;
         } else if (conflictResolution === 'download') {
           const res = await executeOneWayDownload(accessToken, vaultFolderId, mediaFolderId, remoteFileMap, emit);
-          if (res.success) await saveLastSyncedHashes(remoteHashes);
+          if (res.success) {
+            const postData = await extractLocalBundles();
+            await saveLastSyncedHashes(postData.manifest.hashes);
+          }
           return res;
         } else if (conflictResolution === 'merge') {
           logger.sync('MERGE-OPTED', 'User selected smart non-destructive merge.');
@@ -2367,7 +2490,8 @@ async function executeSyncInternal({
       logger.sync('TWO-PHASE-COMMIT-3', 'Committing merged collection to local IndexedDB...');
       emit(9, 10, 'Committing merged collection to local storage…');
       await hydrateLocalBundles(stagedMergedData.bundles, 'replace', (s, t, m) => emit(9, 10, m));
-      await saveLastSyncedHashes(stagedMergedData.manifest.hashes);
+      const postHydrationLocal = await extractLocalBundles();
+      await saveLastSyncedHashes(postHydrationLocal.manifest.hashes);
 
       // Phase 4: Download missing media in background if pages bundle changed
       if (modifiedBundleNames.includes('pages_bundle.json')) {
@@ -2409,15 +2533,18 @@ async function executeOneWayPush(accessToken, vaultFolderId, mediaFolderId, loca
 
   // 1. Upload all partitioned bundles
   for (const [fileName, bundleObj] of Object.entries(localData.bundles)) {
-    emit(++step, total, `Uploading ${fileName}ΓÇª`);
+    emit(++step, total, `Uploading ${fileName}…`);
     const existingFile = remoteFileMap.get(fileName);
     await uploadDriveFile(accessToken, vaultFolderId, fileName, bundleObj, existingFile?.id);
   }
 
   // 2. Upload manifest.json
-  emit(++step, total, 'Writing manifest.jsonΓÇª');
+  emit(++step, total, 'Writing manifest.json…');
   const existingManifest = remoteFileMap.get('manifest.json');
   await uploadDriveFile(accessToken, vaultFolderId, 'manifest.json', localData.manifest, existingManifest?.id);
+
+  const postPushLocal = await extractLocalBundles();
+  await saveLastSyncedHashes(postPushLocal.manifest.hashes);
 
   // 3. Queue Phase 2: Non-blocking media uploads
   emit(++step, total, 'Sync complete! Media queued in background.');
@@ -2444,12 +2571,12 @@ async function executeOneWayPush(accessToken, vaultFolderId, mediaFolderId, loca
  * Executes a safe one-way download from Google Drive with completeness validation.
  */
 async function executeOneWayDownload(accessToken, vaultFolderId, mediaFolderId, remoteFileMap, emit) {
-  emit(1, 6, 'Downloading all JSON bundles from Google Drive (Phase 1)ΓÇª');
+  emit(1, 6, 'Downloading all JSON bundles from Google Drive (Phase 1)…');
   const downloadedBundles = {};
   const filesToDownload = Array.from(remoteFileMap.entries()).filter(([name]) => name.endsWith('.json') && name !== 'manifest.json');
   
   for (const [name, file] of filesToDownload) {
-    emit(2, 6, `Downloading ${name}ΓÇª`);
+    emit(2, 6, `Downloading ${name}…`);
     downloadedBundles[name] = await downloadDriveFile(accessToken, file.id, true);
   }
 
@@ -2458,13 +2585,16 @@ async function executeOneWayDownload(accessToken, vaultFolderId, mediaFolderId, 
     throw new Error('Downloaded bundles are empty or incomplete.');
   }
 
-  emit(3, 6, 'Creating automatic pre-sync local snapshotΓÇª');
+  emit(3, 6, 'Creating automatic pre-sync local snapshot…');
   await saveInternalSnapshot('pre_cloud_sync_snapshot');
 
-  emit(4, 6, 'Replacing local database with cloud collectionΓÇª');
+  emit(4, 6, 'Replacing local database with cloud collection…');
   await hydrateLocalBundles(downloadedBundles, 'replace', (s, t, m) => emit(5, 6, m));
 
-  emit(6, 6, 'Cloud download complete. Queueing media downloadsΓÇª');
+  const postHydrationLocal = await extractLocalBundles();
+  await saveLastSyncedHashes(postHydrationLocal.manifest.hashes);
+
+  emit(6, 6, 'Cloud download complete. Queueing media downloads…');
   emitSyncEvent('synced', { message: 'Cloud collection restored.' });
 
   // Phase 2: Non-blocking background media download
