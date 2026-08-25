@@ -6355,9 +6355,11 @@ export default function App() {
   }, [fsQuoteShuffleInterval]);
 
   const lastSavedPreferencesRef = useRef('');
+  const isStudyRoomLoadedRef = useRef(false);
 
   // 1. Immediately save to localStorage on layout changes
   useEffect(() => {
+    if (!isStudyRoomLoadedRef.current) return;
     const prefsObj = {
       fsYoutubeVideoId,
       fsBgVideoBlur,
@@ -6404,6 +6406,7 @@ export default function App() {
 
   // 2. Debounced auto-sync to Local DB
   useEffect(() => {
+    if (!user || !isStudyRoomLoadedRef.current) return;
     const prefsObj = {
       fsYoutubeVideoId,
       fsBgVideoBlur,
@@ -6487,8 +6490,10 @@ export default function App() {
         const serialized = JSON.stringify(data);
         lastSavedPreferencesRef.current = serialized;
       }
+      isStudyRoomLoadedRef.current = true;
     }).catch(err => {
       console.warn("[LocalDB] Could not fetch layout preferences:", err);
+      isStudyRoomLoadedRef.current = true;
     });
   }, []);
 
@@ -7264,18 +7269,21 @@ export default function App() {
   const [notesModalTopic, setNotesModalTopic] = useState(null);
   const [examProfiles, setExamProfiles] = useState([]);
   const isExamProfilesLoaded = useRef(false);
+  const lastSavedExamProfilesRef = useRef(null);
 
   useEffect(() => {
     let isMounted = true;
     getLocalSetting('exam_profiles').then(saved => {
       if (!isMounted) return;
       if (saved && Array.isArray(saved)) {
+        lastSavedExamProfilesRef.current = JSON.stringify(saved);
         setExamProfiles(saved);
       } else {
         try {
           const localSaved = localStorage.getItem('auto_anki_exam_profiles');
           if (localSaved) {
             const parsed = JSON.parse(localSaved);
+            lastSavedExamProfilesRef.current = JSON.stringify(parsed);
             setExamProfiles(parsed);
             saveLocalSetting('exam_profiles', parsed);
           }
@@ -7284,12 +7292,18 @@ export default function App() {
         }
       }
       isExamProfilesLoaded.current = true;
-    }).catch(err => console.warn('[LocalDB] Error reading exam profiles:', err));
+    }).catch(err => {
+      console.warn('[LocalDB] Error reading exam profiles:', err);
+      isExamProfilesLoaded.current = true;
+    });
     return () => { isMounted = false; };
   }, []);
 
   useEffect(() => {
     if (!isExamProfilesLoaded.current) return;
+    const serialized = JSON.stringify(examProfiles);
+    if (serialized === lastSavedExamProfilesRef.current) return;
+    lastSavedExamProfilesRef.current = serialized;
     saveLocalSetting('exam_profiles', examProfiles).catch(err => {
       console.warn("Failed saving exam profiles to LocalDB:", err);
     });
@@ -7436,6 +7450,9 @@ export default function App() {
   const [obsTimerBackground, setObsTimerBackground] = useState('sunset');
   const [obsTimerBgTheme, setObsTimerBgTheme] = useState('gradient');
 
+  const isObsLoadedRef = useRef(false);
+  const lastSavedObsConfigRef = useRef(null);
+
   // OBS Customizer Settings: Load from LocalDB
   useEffect(() => {
     if (isObsOverlay) return;
@@ -7456,33 +7473,45 @@ export default function App() {
         if (data.obsHideCompleted !== undefined) setObsHideCompleted(data.obsHideCompleted);
         if (data.obsTimerBackground !== undefined) setObsTimerBackground(data.obsTimerBackground);
         if (data.obsTimerBgTheme !== undefined) setObsTimerBgTheme(data.obsTimerBgTheme);
+
+        lastSavedObsConfigRef.current = JSON.stringify(data);
       }
-    }).catch(err => console.error("[LocalDB] Error loading OBS customizer config:", err));
+      isObsLoadedRef.current = true;
+    }).catch(err => {
+      console.error("[LocalDB] Error loading OBS customizer config:", err);
+      isObsLoadedRef.current = true;
+    });
   }, [isObsOverlay]);
 
   // OBS Customizer Settings: Persist to LocalDB
   const obsConfigSaveTimeoutRef = useRef(null);
   useEffect(() => {
-    if (isObsOverlay) return;
+    if (isObsOverlay || !isObsLoadedRef.current) return;
+    const configObj = {
+      obsSelectedWidget,
+      obsTheme,
+      obsBgColor,
+      obsTextColor,
+      obsFontSize,
+      obsBorderRadius,
+      obsBorderColor,
+      obsBorderWidth,
+      obsOpacity,
+      obsShowNotes,
+      obsShowChecklist,
+      obsShowUpcoming,
+      obsHideCompleted,
+      obsTimerBackground,
+      obsTimerBgTheme
+    };
+    const serialized = JSON.stringify(configObj);
+    if (serialized === lastSavedObsConfigRef.current) return;
+
     if (obsConfigSaveTimeoutRef.current) clearTimeout(obsConfigSaveTimeoutRef.current);
     obsConfigSaveTimeoutRef.current = setTimeout(() => {
-      saveLocalSetting('obsCustomizerConfig', {
-        obsSelectedWidget,
-        obsTheme,
-        obsBgColor,
-        obsTextColor,
-        obsFontSize,
-        obsBorderRadius,
-        obsBorderColor,
-        obsBorderWidth,
-        obsOpacity,
-        obsShowNotes,
-        obsShowChecklist,
-        obsShowUpcoming,
-        obsHideCompleted,
-        obsTimerBackground,
-        obsTimerBgTheme
-      }).catch(err => console.error("[LocalDB] Error saving OBS customizer config:", err));
+      saveLocalSetting('obsCustomizerConfig', configObj)
+        .then(() => { lastSavedObsConfigRef.current = serialized; })
+        .catch(err => console.error("[LocalDB] Error saving OBS customizer config:", err));
     }, 400);
     return () => {
       if (obsConfigSaveTimeoutRef.current) clearTimeout(obsConfigSaveTimeoutRef.current);
@@ -7514,6 +7543,25 @@ export default function App() {
   const deferredHierarchy = useDeferredValue(hierarchy);
   const [showMobileFolderTree, setShowMobileFolderTree] = useState(false);
   const [deckPaths, setDeckPaths] = useState([]);
+  const isHierarchyLoadedRef = useRef(false);
+  const lastSavedDeckPathsRef = useRef(null);
+
+  // Load initial hierarchy deckPaths from LocalDB
+  useEffect(() => {
+    let isMounted = true;
+    getLocalSetting('hierarchy').then(data => {
+      if (!isMounted) return;
+      if (data?.paths && Array.isArray(data.paths)) {
+        setDeckPaths(data.paths);
+        lastSavedDeckPathsRef.current = JSON.stringify(data.paths);
+      }
+      isHierarchyLoadedRef.current = true;
+    }).catch(err => {
+      console.warn('[LocalDB] Error loading hierarchy paths:', err);
+      isHierarchyLoadedRef.current = true;
+    });
+    return () => { isMounted = false; };
+  }, []);
 
   // DERIVED EFFECTIVE DECK PATHS & AUTO-HEAL
   const effectiveDeckPaths = useMemo(() => {
@@ -7535,17 +7583,21 @@ export default function App() {
   }, [deckPaths, libraryPages, cards]);
 
   useEffect(() => {
-    // Skip AutoHeal while a folder move/rename is in progress to prevent race-condition duplicates
-    if (isFolderMoveInProgress.current) return;
+    // Skip AutoHeal until hierarchy has resolved from LocalDB and while a folder move/rename is in progress
+    if (!isHierarchyLoadedRef.current || isFolderMoveInProgress.current) return;
 
     if (effectiveDeckPaths.length > deckPaths.length) {
       const missing = effectiveDeckPaths.filter(p => !deckPaths.includes(p));
       if (missing.length > 0) {
-        console.log(`[AutoHeal] Discovered ${missing.length} unlisted folder path(s), updating Local DB settings:`, missing);
-        setDeckPaths(effectiveDeckPaths);
-        getLocalSetting('hierarchy').then(existing => {
-          saveLocalSetting('hierarchy', { ...(existing || {}), paths: effectiveDeckPaths }).catch(err => console.warn('[AutoHeal] Failed to sync deckPaths:', err));
-        });
+        const serialized = JSON.stringify(effectiveDeckPaths);
+        if (serialized !== lastSavedDeckPathsRef.current) {
+          console.log(`[AutoHeal] Discovered ${missing.length} unlisted folder path(s), updating Local DB settings:`, missing);
+          setDeckPaths(effectiveDeckPaths);
+          lastSavedDeckPathsRef.current = serialized;
+          getLocalSetting('hierarchy').then(existing => {
+            saveLocalSetting('hierarchy', { ...(existing || {}), paths: effectiveDeckPaths }).catch(err => console.warn('[AutoHeal] Failed to sync deckPaths:', err));
+          });
+        }
       }
     }
     if (effectiveDeckPaths.length > 0 && (!hierarchy || (!effectiveDeckPaths.includes(hierarchy) && hierarchy !== 'Root' && hierarchy !== 'PENDING_REVIEW' && hierarchy !== 'COMPANION_SCANS'))) {

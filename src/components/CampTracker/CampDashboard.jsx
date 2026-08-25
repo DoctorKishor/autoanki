@@ -134,6 +134,12 @@ export default function CampDashboard({
   const obsBroadcastChannelRef = useRef(null);
   const obsBroadcastDebounceRef = useRef(null);
 
+  const lastSavedStudentInfoRef = useRef(null);
+  const lastSavedHistoryRef = useRef(null);
+  const lastSavedTimerHistoryRef = useRef(null);
+  const lastSavedBedToBookRef = useRef({});
+  const lastSavedSessionsRef = useRef({});
+
   const [showYesterdayPrompt, setShowYesterdayPrompt] = useState(false);
   const [yesterdayLabelText, setYesterdayLabelText] = useState('');
   const [yesterdayDateVal, setYesterdayDateVal] = useState('');
@@ -183,21 +189,30 @@ export default function CampDashboard({
 
         if (histData && Array.isArray(histData)) {
           setHistory(histData);
+          lastSavedHistoryRef.current = JSON.stringify(histData);
           localStorage.setItem('camp_history', JSON.stringify(histData));
         }
 
         if (thData && Array.isArray(thData)) {
           setTimerHistory(thData);
+          lastSavedTimerHistoryRef.current = JSON.stringify(thData);
           localStorage.setItem('camp_timer_history', JSON.stringify(thData));
         }
 
         if (infoData && typeof infoData === 'object') {
           setStudentInfo(infoData);
+          lastSavedStudentInfoRef.current = JSON.stringify(infoData);
           localStorage.setItem('camp_student_info', JSON.stringify(infoData));
         }
 
         if (dailyLog && dailyLog.sessions) {
-          setSessions(normalizeSessions(dailyLog.sessions));
+          const norm = normalizeSessions(dailyLog.sessions);
+          setSessions(norm);
+          lastSavedSessionsRef.current[selectedDate] = JSON.stringify(norm);
+        }
+        if (dailyLog && dailyLog.bedToBook) {
+          setBedToBook(dailyLog.bedToBook);
+          lastSavedBedToBookRef.current[selectedDate] = dailyLog.bedToBook;
         }
       } catch (err) {
         console.error("[LocalDB] Error loading CAMP data:", err);
@@ -236,15 +251,19 @@ export default function CampDashboard({
           if (log.sessions) {
             const norm = normalizeSessions(log.sessions);
             setSessions(norm);
+            lastSavedSessionsRef.current[selectedDate] = JSON.stringify(norm);
             localStorage.setItem(`camp_sessions_${selectedDate}`, JSON.stringify(norm));
           } else {
             setSessions({ preLunch: [], midDay: [], postDinner: [] });
+            lastSavedSessionsRef.current[selectedDate] = JSON.stringify({ preLunch: [], midDay: [], postDinner: [] });
           }
           if (log.bedToBook) {
             setBedToBook(log.bedToBook);
+            lastSavedBedToBookRef.current[selectedDate] = log.bedToBook;
             localStorage.setItem(`camp_bedToBook_${selectedDate}`, log.bedToBook);
           } else {
             setBedToBook('Less than 45 mins');
+            lastSavedBedToBookRef.current[selectedDate] = 'Less than 45 mins';
           }
         } else {
           const savedSessions = localStorage.getItem(`camp_sessions_${selectedDate}`);
@@ -260,6 +279,8 @@ export default function CampDashboard({
           const b2bValue = savedB2B || 'Less than 45 mins';
           setSessions(parsedSessions);
           setBedToBook(b2bValue);
+          lastSavedSessionsRef.current[selectedDate] = JSON.stringify(parsedSessions);
+          lastSavedBedToBookRef.current[selectedDate] = b2bValue;
         }
       } catch (err) {
         console.error("[LocalDB] Error loading daily CAMP log:", err);
@@ -279,10 +300,13 @@ export default function CampDashboard({
   // 2. Persist Student Info
   useEffect(() => {
     if (!hasLoadedLocalDb) return;
-    localStorage.setItem('camp_student_info', JSON.stringify(studentInfo));
+    const serialized = JSON.stringify(studentInfo);
+    if (serialized === lastSavedStudentInfoRef.current) return;
+    localStorage.setItem('camp_student_info', serialized);
     clearTimeout(studentInfoDebounceRef.current);
     studentInfoDebounceRef.current = setTimeout(() => {
       saveLocalCampData('student_info', studentInfo);
+      lastSavedStudentInfoRef.current = serialized;
     }, 500);
     return () => clearTimeout(studentInfoDebounceRef.current);
   }, [studentInfo, hasLoadedLocalDb]);
@@ -290,20 +314,25 @@ export default function CampDashboard({
   // 3. Persist Daily Inputs based on selectedDate
   useEffect(() => {
     if (!hasLoadedLocalDb || isLoadingDateRef.current || currentB2bDateRef.current !== selectedDate) return;
+    if (bedToBook === lastSavedBedToBookRef.current[selectedDate]) return;
     localStorage.setItem(`camp_bedToBook_${selectedDate}`, bedToBook);
     clearTimeout(bedToBookDebounceRef.current);
     bedToBookDebounceRef.current = setTimeout(() => {
       saveLocalCampDailyLogs(selectedDate, { bedToBook });
+      lastSavedBedToBookRef.current[selectedDate] = bedToBook;
     }, 500);
     return () => clearTimeout(bedToBookDebounceRef.current);
   }, [bedToBook, selectedDate, hasLoadedLocalDb]);
 
   useEffect(() => {
     if (!hasLoadedLocalDb || isLoadingDateRef.current || currentSessionsDateRef.current !== selectedDate) return;
-    localStorage.setItem(`camp_sessions_${selectedDate}`, JSON.stringify(sessions));
+    const serialized = JSON.stringify(sessions);
+    if (serialized === lastSavedSessionsRef.current[selectedDate]) return;
+    localStorage.setItem(`camp_sessions_${selectedDate}`, serialized);
     clearTimeout(sessionsDebounceRef.current);
     sessionsDebounceRef.current = setTimeout(() => {
       saveLocalCampDailyLogs(selectedDate, { sessions });
+      lastSavedSessionsRef.current[selectedDate] = serialized;
     }, 500);
     return () => clearTimeout(sessionsDebounceRef.current);
   }, [sessions, selectedDate, hasLoadedLocalDb]);
@@ -311,20 +340,26 @@ export default function CampDashboard({
   // 3a. Persist History & Timer History based on state changes
   useEffect(() => {
     if (!hasLoadedLocalDb) return;
-    localStorage.setItem('camp_history', JSON.stringify(history));
+    const serialized = JSON.stringify(history);
+    if (serialized === lastSavedHistoryRef.current) return;
+    localStorage.setItem('camp_history', serialized);
     clearTimeout(historyDebounceRef.current);
     historyDebounceRef.current = setTimeout(() => {
       saveLocalCampData('history', history);
+      lastSavedHistoryRef.current = serialized;
     }, 500);
     return () => clearTimeout(historyDebounceRef.current);
   }, [history, hasLoadedLocalDb]);
 
   useEffect(() => {
     if (!hasLoadedLocalDb) return;
-    localStorage.setItem('camp_timer_history', JSON.stringify(timerHistory));
+    const serialized = JSON.stringify(timerHistory);
+    if (serialized === lastSavedTimerHistoryRef.current) return;
+    localStorage.setItem('camp_timer_history', serialized);
     clearTimeout(timerHistoryDebounceRef.current);
     timerHistoryDebounceRef.current = setTimeout(() => {
       saveLocalCampData('timer_history', timerHistory);
+      lastSavedTimerHistoryRef.current = serialized;
     }, 500);
     return () => clearTimeout(timerHistoryDebounceRef.current);
   }, [timerHistory, hasLoadedLocalDb]);
