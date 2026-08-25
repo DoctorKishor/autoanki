@@ -8900,7 +8900,11 @@ export default function App() {
           freshHierarchy,
           freshApiKeys,
           freshBottomNav,
-          freshDashboard
+          freshDashboard,
+          freshStudyRoomPrefs,
+          freshStudyRoomBgs,
+          freshObsConfig,
+          freshUserProfile
         ] = await Promise.all([
           getAllLocalPytTopics().catch(() => []),
           getAllLocalPytProgress().catch(() => []),
@@ -8916,7 +8920,11 @@ export default function App() {
           getLocalSetting('hierarchy').catch(() => null),
           getLocalSetting('apiKeys').catch(() => null),
           getLocalSetting('bottomNav').catch(() => null),
-          getLocalSetting('dashboard').catch(() => null)
+          getLocalSetting('dashboard').catch(() => null),
+          getLocalSetting('studyRoomPreferences').catch(() => null),
+          getLocalSetting('studyRoomBackgrounds').catch(() => null),
+          getLocalSetting('obsCustomizerConfig').catch(() => null),
+          getLocalKV('local_user_profile').catch(() => null)
         ]);
 
         if (Array.isArray(pytList)) setPytTopicsList(pytList);
@@ -8957,6 +8965,51 @@ export default function App() {
           if (freshApiKeys.autoBackupEnabled !== undefined) setAutoBackupEnabled(freshApiKeys.autoBackupEnabled);
           if (freshApiKeys.autoBackupFrequency !== undefined) setAutoBackupFrequency(freshApiKeys.autoBackupFrequency);
           if (freshApiKeys.autoBackupRetention !== undefined) setAutoBackupRetention(freshApiKeys.autoBackupRetention);
+        }
+
+        // Refresh Study Room Preferences
+        if (freshStudyRoomPrefs) {
+          if (freshStudyRoomPrefs.fsYoutubeVideoId !== undefined) setFsYoutubeVideoId(freshStudyRoomPrefs.fsYoutubeVideoId);
+          if (freshStudyRoomPrefs.fsBgVideoBlur !== undefined) setFsBgVideoBlur(freshStudyRoomPrefs.fsBgVideoBlur);
+          if (freshStudyRoomPrefs.fsBgVideoStartTime !== undefined) setFsBgVideoStartTime(freshStudyRoomPrefs.fsBgVideoStartTime);
+          if (freshStudyRoomPrefs.fullscreenTimerBg !== undefined) setFullscreenTimerBg(freshStudyRoomPrefs.fullscreenTimerBg);
+          if (freshStudyRoomPrefs.fullscreenTimerStyle !== undefined) setFullscreenTimerStyle(freshStudyRoomPrefs.fullscreenTimerStyle);
+          if (freshStudyRoomPrefs.fsBgCategory !== undefined) setFsBgCategory(freshStudyRoomPrefs.fsBgCategory);
+          if (freshStudyRoomPrefs.fsBgVideoVolume !== undefined) setFsBgVideoVolume(freshStudyRoomPrefs.fsBgVideoVolume);
+          if (freshStudyRoomPrefs.fsSoundVolumes !== undefined) setFsSoundVolumes(freshStudyRoomPrefs.fsSoundVolumes);
+          if (freshStudyRoomPrefs.fsWidgets !== undefined) setFsWidgets(freshStudyRoomPrefs.fsWidgets);
+          if (freshStudyRoomPrefs.fsTimerFontSize !== undefined) setFsTimerFontSize(freshStudyRoomPrefs.fsTimerFontSize);
+          if (freshStudyRoomPrefs.fsTimerOpacity !== undefined) setFsTimerOpacity(freshStudyRoomPrefs.fsTimerOpacity);
+          if (freshStudyRoomPrefs.fsTimerPos !== undefined) setFsTimerPos(freshStudyRoomPrefs.fsTimerPos);
+          if (freshStudyRoomPrefs.fsTimerMoved !== undefined) setFsTimerMoved(freshStudyRoomPrefs.fsTimerMoved);
+          if (freshStudyRoomPrefs.fsTimerBlendMode !== undefined) setFsTimerBlendMode(freshStudyRoomPrefs.fsTimerBlendMode || 'normal');
+          if (freshStudyRoomPrefs.fsQuoteVisible !== undefined) setFsQuoteVisible(freshStudyRoomPrefs.fsQuoteVisible);
+          if (freshStudyRoomPrefs.fsCurrentQuoteIndex !== undefined) setFsCurrentQuoteIndex(freshStudyRoomPrefs.fsCurrentQuoteIndex);
+          if (freshStudyRoomPrefs.fsQuoteShuffleInterval !== undefined) setFsQuoteShuffleInterval(freshStudyRoomPrefs.fsQuoteShuffleInterval);
+        }
+
+        // Refresh Study Room Custom Backgrounds
+        if (freshStudyRoomBgs && freshStudyRoomBgs.categories) {
+          setFsBgCategories(freshStudyRoomBgs.categories);
+        }
+
+        // Refresh OBS Customizer Config
+        if (freshObsConfig) {
+          if (freshObsConfig.obsSelectedWidget !== undefined) setObsSelectedWidget(freshObsConfig.obsSelectedWidget);
+          if (freshObsConfig.obsTheme !== undefined) setObsTheme(freshObsConfig.obsTheme);
+          if (freshObsConfig.obsBgColor !== undefined) setObsBgColor(freshObsConfig.obsBgColor);
+          if (freshObsConfig.obsTextColor !== undefined) setObsTextColor(freshObsConfig.obsTextColor);
+          if (freshObsConfig.obsFontSize !== undefined) setObsFontSize(freshObsConfig.obsFontSize);
+          if (freshObsConfig.obsBorderRadius !== undefined) setObsBorderRadius(freshObsConfig.obsBorderRadius);
+          if (freshObsConfig.obsBorderColor !== undefined) setObsBorderColor(freshObsConfig.obsBorderColor);
+          if (freshObsConfig.obsBorderWidth !== undefined) setObsBorderWidth(freshObsConfig.obsBorderWidth);
+          if (freshObsConfig.obsOpacity !== undefined) setObsOpacity(freshObsConfig.obsOpacity);
+          if (freshObsConfig.obsShowNotes !== undefined) setObsShowNotes(freshObsConfig.obsShowNotes);
+          if (freshObsConfig.obsShowChecklist !== undefined) setObsShowChecklist(freshObsConfig.obsShowChecklist);
+          if (freshObsConfig.obsShowUpcoming !== undefined) setObsShowUpcoming(freshObsConfig.obsShowUpcoming);
+          if (freshObsConfig.obsHideCompleted !== undefined) setObsHideCompleted(freshObsConfig.obsHideCompleted);
+          if (freshObsConfig.obsTimerBackground !== undefined) setObsTimerBackground(freshObsConfig.obsTimerBackground);
+          if (freshObsConfig.obsTimerBgTheme !== undefined) setObsTimerBgTheme(freshObsConfig.obsTimerBgTheme);
         }
 
         // Refresh LocalStorage-backed reactive settings

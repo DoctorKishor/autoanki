@@ -1459,6 +1459,206 @@ export function mergeTextbooksMetadata(localBooks = [], remoteBooks = []) {
 }
 
 /**
+ * Merges two FSRS configuration objects across all 7 categories deeply and non-destructively.
+ */
+export function mergeFsrsConfigs(loc = {}, rem = {}) {
+  if (!loc || typeof loc !== 'object') return rem || {};
+  if (!rem || typeof rem !== 'object') return loc || {};
+
+  const locTime = safeTimestamp(loc.updatedAt || loc.lastModified);
+  const remTime = safeTimestamp(rem.updatedAt || rem.lastModified);
+  const winnerBase = remTime > locTime ? rem : loc;
+
+  // 1. Daily Limits
+  const locDaily = loc.dailyLimits || {};
+  const remDaily = rem.dailyLimits || {};
+  const mergedSubjectOverrides = {
+    ...(remDaily.subjectOverrides || {}),
+    ...(locDaily.subjectOverrides || {})
+  };
+  Object.keys(locDaily.subjectOverrides || {}).forEach(sub => {
+    if (remDaily.subjectOverrides && remDaily.subjectOverrides[sub]) {
+      const locSub = locDaily.subjectOverrides[sub];
+      const remSub = remDaily.subjectOverrides[sub];
+      mergedSubjectOverrides[sub] = (locTime >= remTime) ? { ...remSub, ...locSub } : { ...locSub, ...remSub };
+    }
+  });
+
+  const mergedDailyLimits = {
+    ...remDaily,
+    ...locDaily,
+    ...winnerBase.dailyLimits,
+    subjectOverrides: mergedSubjectOverrides,
+    todayOverride: locDaily.todayOverride || remDaily.todayOverride || null
+  };
+
+  // 2. New Topics
+  const mergedNewTopics = {
+    ...(rem.newTopics || {}),
+    ...(loc.newTopics || {}),
+    ...(winnerBase.newTopics || {})
+  };
+
+  // 3. Lapses & Leeches
+  const mergedLapses = {
+    ...(rem.lapses || {}),
+    ...(loc.lapses || {}),
+    ...(winnerBase.lapses || {})
+  };
+
+  // 4. Display Order
+  const mergedDisplayOrder = {
+    ...(rem.displayOrder || {}),
+    ...(loc.displayOrder || {}),
+    ...(winnerBase.displayOrder || {})
+  };
+
+  // 5. Easy Days
+  const mergedEasyDays = {
+    ...(rem.easyDays || {}),
+    ...(loc.easyDays || {}),
+    ...(winnerBase.easyDays || {})
+  };
+
+  // 6. Advanced Rules
+  const mergedAdvancedRules = {
+    ...(rem.advancedRules || {}),
+    ...(loc.advancedRules || {}),
+    ...(winnerBase.advancedRules || {})
+  };
+
+  // 7. Per-Subject Retention
+  const mergedPerSubjectRetention = {
+    ...(rem.perSubjectRetention || {}),
+    ...(loc.perSubjectRetention || {})
+  };
+
+  // Weights: preserve custom weights if present
+  let mergedWeights = winnerBase.weights || loc.weights || rem.weights;
+
+  return {
+    ...rem,
+    ...loc,
+    ...winnerBase,
+    dailyLimits: mergedDailyLimits,
+    newTopics: mergedNewTopics,
+    lapses: mergedLapses,
+    displayOrder: mergedDisplayOrder,
+    easyDays: mergedEasyDays,
+    advancedRules: mergedAdvancedRules,
+    perSubjectRetention: mergedPerSubjectRetention,
+    weights: mergedWeights,
+    updatedAt: new Date(Math.max(locTime, remTime, Date.now())).toISOString()
+  };
+}
+
+/**
+ * Merges IndexedDB settings store arrays by setting key with timestamp awareness.
+ */
+export function mergeSettingsArrays(locSettings = [], remSettings = []) {
+  const locList = Array.isArray(locSettings) ? locSettings : [];
+  const remList = Array.isArray(remSettings) ? remSettings : [];
+  const map = new Map();
+
+  locList.forEach(s => {
+    if (s && (s.key || s.id)) {
+      map.set(s.key || s.id, { ...s });
+    }
+  });
+
+  remList.forEach(remS => {
+    if (!remS || (!remS.key && !remS.id)) return;
+    const k = remS.key || remS.id;
+    if (!map.has(k)) {
+      map.set(k, { ...remS });
+      return;
+    }
+
+    const locS = map.get(k);
+    const locTime = safeTimestamp(locS.updatedAt || locS.lastModified || (typeof locS.value === 'object' ? locS.value?.updatedAt : 0));
+    const remTime = safeTimestamp(remS.updatedAt || remS.lastModified || (typeof remS.value === 'object' ? remS.value?.updatedAt : 0));
+
+    let mergedValue = remTime > locTime ? remS.value : locS.value;
+    if (typeof locS.value === 'object' && typeof remS.value === 'object' && locS.value !== null && remS.value !== null) {
+      if (Array.isArray(locS.value) && Array.isArray(remS.value)) {
+        mergedValue = remTime > locTime ? remS.value : locS.value;
+      } else {
+        mergedValue = remTime > locTime ? { ...locS.value, ...remS.value } : { ...remS.value, ...locS.value };
+      }
+    }
+
+    const winner = remTime > locTime ? remS : locS;
+    map.set(k, {
+      ...locS,
+      ...remS,
+      ...winner,
+      value: mergedValue,
+      updatedAt: new Date(Math.max(locTime, remTime, Date.now())).toISOString()
+    });
+  });
+
+  return Array.from(map.values());
+}
+
+/**
+ * Merges Topic Hints arrays by topicId with timestamp awareness.
+ */
+export function mergeTopicHintsArrays(locHints = [], remHints = []) {
+  const locList = Array.isArray(locHints) ? locHints : [];
+  const remList = Array.isArray(remHints) ? remHints : [];
+  const map = new Map();
+
+  locList.forEach(h => {
+    if (h && h.topicId) map.set(h.topicId, h);
+  });
+
+  remList.forEach(remH => {
+    if (!remH || !remH.topicId) return;
+    const k = remH.topicId;
+    if (!map.has(k)) {
+      map.set(k, remH);
+      return;
+    }
+    const locH = map.get(k);
+    const locTime = safeTimestamp(locH.generatedAt || locH.updatedAt);
+    const remTime = safeTimestamp(remH.generatedAt || remH.updatedAt);
+    map.set(k, remTime > locTime ? remH : locH);
+  });
+
+  return Array.from(map.values());
+}
+
+/**
+ * Merges Hint Quota arrays by dateStr.
+ */
+export function mergeHintQuotaArrays(locQuota = [], remQuota = []) {
+  const locList = Array.isArray(locQuota) ? locQuota : [];
+  const remList = Array.isArray(remQuota) ? remQuota : [];
+  const map = new Map();
+
+  locList.forEach(q => {
+    if (q && q.dateStr) map.set(q.dateStr, q);
+  });
+
+  remList.forEach(remQ => {
+    if (!remQ || !remQ.dateStr) return;
+    const k = remQ.dateStr;
+    if (!map.has(k)) {
+      map.set(k, remQ);
+      return;
+    }
+    const locQ = map.get(k);
+    map.set(k, {
+      ...locQ,
+      ...remQ,
+      count: Math.max(Number(locQ.count || 0), Number(remQ.count || 0))
+    });
+  });
+
+  return Array.from(map.values());
+}
+
+/**
  * Merges study logs objects across dates with collision-resistant FSRS log unioning.
  */
 export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}) {
@@ -1548,7 +1748,9 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
       if (inc && inc.id) {
         const localDeletedAt = locTrashMap.get(inc.id);
         const incTime = safeTimestamp(inc.updatedAt || inc.lastReviewDate || inc.createdAt);
-        if (localDeletedAt && localDeletedAt > incTime) return;
+        if (localDeletedAt && localDeletedAt > incTime) {
+          return;
+        }
 
         const localCard = cardMap.get(inc.id);
         if (!localCard) {
@@ -1556,46 +1758,46 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
         } else {
           const localRevTime = safeTimestamp(localCard.lastReviewDate || 0);
           const incRevTime = safeTimestamp(inc.lastReviewDate || 0);
-
+          
           let latestRev = localCard;
           if (incRevTime > localRevTime) {
             latestRev = inc;
           } else if (localRevTime > incRevTime) {
             latestRev = localCard;
           } else {
-            // Tie-break: prefer higher stability, then higher reps
-            const incStab = Number(inc.stability || 0);
-            const locStab = Number(localCard.stability || 0);
-            if (incStab > locStab) {
-              latestRev = inc;
-            } else if (locStab > incStab) {
-              latestRev = localCard;
-            } else {
-              const incReps = Number(inc.reps || 0);
-              const locReps = Number(localCard.reps || 0);
-              latestRev = incReps > locReps ? inc : localCard;
-            }
+            const locReps = localCard.reps || localCard.reviewCount || 0;
+            const incReps = inc.reps || inc.reviewCount || 0;
+            latestRev = incReps >= locReps ? inc : localCard;
           }
 
-          const localContentTime = safeTimestamp(localCard.updatedAt || localCard.createdAt || 0);
-          const incContentTime = safeTimestamp(inc.updatedAt || inc.createdAt || 0);
-          const latestContent = incContentTime >= localContentTime ? inc : localCard;
+          const localModTime = safeTimestamp(localCard.updatedAt || localCard.createdAt);
+          const incModTime = safeTimestamp(inc.updatedAt || inc.createdAt);
+          const latestContent = incModTime > localModTime ? inc : localCard;
 
           const mergedCard = {
             ...localCard,
             ...inc,
-            ...latestContent,
-            stability: latestRev.stability !== undefined ? latestRev.stability : (latestContent.stability ?? 0),
-            difficulty: latestRev.difficulty !== undefined ? latestRev.difficulty : (latestContent.difficulty ?? 0),
-            reps: latestRev.reps !== undefined ? latestRev.reps : (latestContent.reps ?? 0),
-            lapses: latestRev.lapses !== undefined ? latestRev.lapses : (latestContent.lapses ?? 0),
-            due: latestRev.due || latestContent.due,
-            state: latestRev.state !== undefined ? latestRev.state : latestContent.state,
-            lastReviewDate: latestRev.lastReviewDate || latestContent.lastReviewDate,
-            scheduledDays: latestRev.scheduledDays !== undefined ? latestRev.scheduledDays : latestContent.scheduledDays,
-            history: Array.isArray(latestRev.history) && latestRev.history.length > 0 ? latestRev.history : (latestContent.history || []),
-            updatedAt: new Date(Math.max(localContentTime, incContentTime, localRevTime, incRevTime, Date.now())).toISOString()
+            front: latestContent.front,
+            back: latestContent.back,
+            note: latestContent.note,
+            notes: latestContent.notes,
+            hint: latestContent.hint,
+            tags: Array.from(new Set([...(localCard.tags || []), ...(inc.tags || [])])),
+            due: latestRev.due,
+            stability: latestRev.stability,
+            difficulty: latestRev.difficulty,
+            elapsed_days: latestRev.elapsed_days,
+            scheduled_days: latestRev.scheduled_days,
+            reps: Math.max(localCard.reps || 0, inc.reps || 0),
+            lapses: Math.max(localCard.lapses || 0, inc.lapses || 0),
+            state: latestRev.state,
+            lastReviewDate: latestRev.lastReviewDate,
+            lastRating: latestRev.lastRating,
+            retrievability: latestRev.retrievability,
+            history: Array.from(new Set([...(localCard.history || []), ...(inc.history || [])])),
+            updatedAt: new Date(Math.max(localModTime, incModTime, Date.now())).toISOString()
           };
+
           cardMap.set(inc.id, mergedCard);
         }
       }
@@ -1627,7 +1829,7 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
     };
   }
 
-  // 2. Curriculum Topics (with Tombstone Support)
+  // 2. Curriculum Topics (Non-destructive Topic & PYT Merging)
   if (downloadedBundles['curriculum_topics.json']) {
     const locCur = localBundles['curriculum_topics.json'] || {};
     const remCur = downloadedBundles['curriculum_topics.json'] || {};
@@ -1651,7 +1853,6 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
           topicMap.set(incT.id, incT);
         } else {
           const locTime = safeTimestamp(locT.updatedAt || locT.createdAt);
-          const incTime = safeTimestamp(incT.updatedAt || incT.createdAt);
           topicMap.set(incT.id, incTime >= locTime ? { ...locT, ...incT } : { ...incT, ...locT });
         }
       }
@@ -1738,7 +1939,7 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
     };
   }
 
-  // 4. FSRS Config & Settings
+  // 4. FSRS Config & Settings (Deep Non-Destructive Merge Across All 7 Categories & Settings)
   if (downloadedBundles['fsrs_config.json']) {
     const locFsrs = localBundles['fsrs_config.json'] || {};
     const remFsrs = downloadedBundles['fsrs_config.json'] || {};
@@ -1754,10 +1955,21 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
       }
     });
 
+    const mergedFsrsConfig = mergeFsrsConfigs(locFsrs.fsrsConfig, remFsrs.fsrsConfig);
+    const mergedSettings = mergeSettingsArrays(locFsrs.settings, remFsrs.settings);
+    const mergedTopicHints = mergeTopicHintsArrays(locFsrs.topicHints, remFsrs.topicHints);
+    const mergedHintQuota = mergeHintQuotaArrays(locFsrs.hintQuota, remFsrs.hintQuota);
+    const mergedUserProfile = { ...(remFsrs.localUserProfile || {}), ...(locFsrs.localUserProfile || {}) };
+    const mergedAiRecs = locFsrs.aiRecommendations || remFsrs.aiRecommendations || null;
+
     merged['fsrs_config.json'] = {
-      ...locFsrs,
-      ...remFsrs,
+      fsrsConfig: mergedFsrsConfig,
+      settings: mergedSettings,
+      topicHints: mergedTopicHints,
+      hintQuota: mergedHintQuota,
       customPrompts: Array.from(promptMap.values()),
+      localUserProfile: mergedUserProfile,
+      aiRecommendations: mergedAiRecs,
       localStorageSnapshot: mergedLs
     };
   }
