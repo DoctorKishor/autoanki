@@ -7217,6 +7217,17 @@ export default function App() {
   const [reviewUndoStack, setReviewUndoStack] = useState([]);
   const [reviewRedoStack, setReviewRedoStack] = useState([]);
 
+  // --- EAGER HYDRATION OF SUBJECT TRACKER DATA ON MOUNT ---
+  useEffect(() => {
+    let isMounted = true;
+    getLocalSubjectTrackerData().then(data => {
+      if (isMounted && Array.isArray(data)) {
+        setSubjectTrackerData(data);
+      }
+    }).catch(err => console.warn('[LocalDB] Error reading subjectTrackerData on boot:', err));
+    return () => { isMounted = false; };
+  }, []);
+
   // Global Keyboard Shortcut Listener for Undo (Ctrl+Z / Cmd+Z) and Redo (Ctrl+Y / Cmd+Shift+Z)
   useEffect(() => {
     const handleGlobalUndoRedoKeys = (e) => {
@@ -8649,7 +8660,8 @@ export default function App() {
 
   // Helper to purge legacy orphan FSRS logs from IndexedDB that do not match active subjectTrackerData studyDates
   const sanitizeStudyLogsWithTracker = (rawLogs, trackerList) => {
-    if (!rawLogs || typeof rawLogs !== 'object' || !Array.isArray(trackerList)) {
+    // Guard against unpopulated or empty trackerList to prevent accidental purging of valid study logs
+    if (!rawLogs || typeof rawLogs !== 'object' || !Array.isArray(trackerList) || trackerList.length === 0) {
       return { cleanedLogs: rawLogs || {}, modified: false };
     }
 
@@ -8712,7 +8724,10 @@ export default function App() {
     setIsStudyLogsLoading(true);
     try {
       const logs = await getLocalStudyLogs();
-      const { cleanedLogs, modified } = sanitizeStudyLogsWithTracker(logs || {}, subjectTrackerData);
+      const currentTracker = (Array.isArray(subjectTrackerData) && subjectTrackerData.length > 0)
+        ? subjectTrackerData
+        : (await getLocalSubjectTrackerData()) || [];
+      const { cleanedLogs, modified } = sanitizeStudyLogsWithTracker(logs || {}, currentTracker);
       setStudyLogs(cleanedLogs);
       if (modified) {
         replaceAllLocalStudyLogs(cleanedLogs).catch(err => console.error("[LocalDB] Error saving sanitized study logs:", err));
@@ -8730,10 +8745,15 @@ export default function App() {
     if (['dashboard', 'cards', 'library', 'study', 'analytics', 'export', 'prompt', 'obsOverlay'].includes(currentTab)) {
       loadAllCards();
     }
-    if (['dashboard', 'study', 'analytics', 'correlation', 'obsOverlay', 'smartRepetition'].includes(currentTab)) {
+    if (['dashboard', 'study', 'analytics', 'correlation', 'obsOverlay', 'smartReview', 'smartRepetition'].includes(currentTab)) {
       loadStudyLogs();
     }
   }, [currentTab, loadAllCards, loadPages, loadStudyLogs]);
+
+  // --- EAGER STUDY LOGS HYDRATION ON INITIAL MOUNT ---
+  useEffect(() => {
+    loadStudyLogs();
+  }, [loadStudyLogs]);
 
   // --- FOLDER/HIERARCHY CHANGE: TRIGGER FOLDER CARD LOAD ---
   useEffect(() => {
