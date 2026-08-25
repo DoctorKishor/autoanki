@@ -483,12 +483,29 @@ export async function saveLocalCard(card) {
   return saveLocalCards([card]);
 }
 
-export async function deleteLocalCard(cardId) {
+export async function deleteLocalCard(cardId, cardObj = null) {
   logger.db('DELETE-CARD', `Deleting card ID: ${cardId}`);
   cardsWriteMutex = cardsWriteMutex.then(async () => {
     const cards = await getLocalCards();
+    const target = cardObj || cards.find(c => c.id === cardId) || { id: cardId };
     const filtered = cards.filter(c => c.id !== cardId);
     await setLocalKV('flashcards', filtered);
+
+    // Record tombstone in trash_cards
+    try {
+      const trash = (await getLocalKV('trash_cards')) || [];
+      const fTrash = trash.filter(c => c?.id !== cardId);
+      fTrash.push({
+        ...target,
+        id: cardId,
+        deletedAt: new Date().toISOString()
+      });
+      await setLocalKV('trash_cards', fTrash);
+      logger.db('TOMBSTONE-RECORDED', `Recorded card tombstone in trash_cards (Total trash: ${fTrash.length})`);
+    } catch (e) {
+      logger.warn('TOMBSTONE-ERROR', 'Error recording card tombstone:', e);
+    }
+
     logger.db('DELETE-CARD-SUCCESS', `Card removed from active store (Remaining: ${filtered.length})`);
     notifyLocalMutation('cards:delete');
     return filtered;
@@ -546,11 +563,28 @@ export async function saveLocalPage(pageObj) {
   return saveLocalPages([pageObj]);
 }
 
-export async function deleteLocalPage(pageId) {
+export async function deleteLocalPage(pageId, pageObj = null) {
   pagesWriteMutex = pagesWriteMutex.then(async () => {
     const pages = await getLocalPages();
+    const target = pageObj || pages.find(p => p.id === pageId) || { id: pageId };
     const filtered = pages.filter(p => p.id !== pageId);
     await setLocalKV('pages', filtered);
+
+    // Record tombstone in trash_pages
+    try {
+      const trash = (await getLocalKV('trash_pages')) || [];
+      const fTrash = trash.filter(p => p?.id !== pageId);
+      fTrash.push({
+        ...target,
+        id: pageId,
+        deletedAt: new Date().toISOString()
+      });
+      await setLocalKV('trash_pages', fTrash);
+      logger.db('TOMBSTONE-RECORDED', `Recorded page tombstone in trash_pages (Total trash: ${fTrash.length})`);
+    } catch (e) {
+      logger.warn('TOMBSTONE-ERROR', 'Error recording page tombstone:', e);
+    }
+
     notifyLocalMutation('pages:delete');
     return filtered;
   }).catch(err => {
