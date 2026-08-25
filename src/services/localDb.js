@@ -747,7 +747,9 @@ export async function saveLocalTimerState(updates) {
   return timerStateWritePromise;
 }
 
-// --- SUBJECT TRACKER HELPERS ---
+// --- SUBJECT TRACKER HELPERS (MUTEX PROTECTED & TIMESTAMP-AWARE) ---
+let subjectTrackerWriteMutex = Promise.resolve();
+
 export async function getLocalSubjectTrackerData() {
   const data = await getLocalKV('subject_tracker_data');
   return Array.isArray(data) ? data : [];
@@ -763,19 +765,58 @@ export async function saveLocalSubjectTrackerDoc(docId, docData) {
   }
   if (!normalizedDocId) return await getLocalSubjectTrackerData();
 
-  const current = await getLocalSubjectTrackerData();
-  const idx = current.findIndex(d => d.id === normalizedDocId);
-  const updated = idx >= 0
-    ? current.map(d => d.id === normalizedDocId ? { ...d, ...normalizedDocData, id: normalizedDocId } : d)
-    : [...current, { id: normalizedDocId, ...normalizedDocData }];
-  await setLocalKV('subject_tracker_data', updated);
-  return updated;
+  subjectTrackerWriteMutex = subjectTrackerWriteMutex.then(async () => {
+    const current = await getLocalSubjectTrackerData();
+    const idx = current.findIndex(d => d.id === normalizedDocId);
+    const existing = idx >= 0 ? current[idx] : null;
+
+    const existingTopics = existing?.topics && typeof existing.topics === 'object' ? existing.topics : {};
+    const incomingTopics = normalizedDocData?.topics && typeof normalizedDocData.topics === 'object' ? normalizedDocData.topics : {};
+
+    const mergedTopics = { ...existingTopics };
+    Object.entries(incomingTopics).forEach(([tName, tObj]) => {
+      const prevTopic = existingTopics[tName];
+      mergedTopics[tName] = {
+        ...(prevTopic || {}),
+        ...(tObj || {}),
+        updatedAt: tObj?.updatedAt || new Date().toISOString()
+      };
+    });
+
+    const docToSave = {
+      ...existing,
+      ...normalizedDocData,
+      id: normalizedDocId,
+      subject: normalizedDocData.subject || existing?.subject || normalizedDocId,
+      topics: mergedTopics,
+      updatedAt: normalizedDocData.updatedAt || new Date().toISOString()
+    };
+
+    const updated = idx >= 0
+      ? current.map(d => d.id === normalizedDocId ? docToSave : d)
+      : [...current, docToSave];
+
+    await setLocalKV('subject_tracker_data', updated);
+    logger.db('SAVE-SUBJECT-TRACKER', `Saved subject tracker doc "${normalizedDocId}" with ${Object.keys(mergedTopics).length} topics`);
+    return updated;
+  }).catch(err => {
+    console.error("[LocalDB] saveLocalSubjectTrackerDoc mutex error:", err);
+    return getLocalSubjectTrackerData();
+  });
+
+  return subjectTrackerWriteMutex;
 }
 
 export async function replaceAllLocalSubjectTrackerData(dataArray) {
-  const finalArray = Array.isArray(dataArray) ? dataArray : [];
-  await setLocalKV('subject_tracker_data', finalArray);
-  return finalArray;
+  subjectTrackerWriteMutex = subjectTrackerWriteMutex.then(async () => {
+    const finalArray = Array.isArray(dataArray) ? dataArray : [];
+    await setLocalKV('subject_tracker_data', finalArray);
+    return finalArray;
+  }).catch(err => {
+    console.error("[LocalDB] replaceAllLocalSubjectTrackerData mutex error:", err);
+    return dataArray || [];
+  });
+  return subjectTrackerWriteMutex;
 }
 
 // --- STUDY SCHEDULE HELPERS ---

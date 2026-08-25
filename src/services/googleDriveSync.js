@@ -24,6 +24,8 @@ import {
   saveLocalCards,
   getAllLocalTopics,
   saveAllLocalTopics,
+  getLocalSubjectTrackerData,
+  saveLocalSubjectTrackerDoc,
   getLocalStudyLogs,
   saveLocalStudyLog,
   getFSRSConfig,
@@ -386,7 +388,7 @@ export async function extractLocalBundles() {
   const topics = (await getAllLocalTopics()) || [];
   const trashTopics = (await getLocalKV('trash_topics')) || [];
   const pytData = (await getAllLocalItems(STORES.PYT_DATA)) || [];
-  const subjectTracker = (await getLocalKV('subject_tracker_data')) || [];
+  const subjectTracker = (await getLocalSubjectTrackerData()) || (await getLocalKV('subject_tracker_data')) || [];
   const pytUserProgress = (await getLocalKV('pyt_user_progress')) || [];
   const textbooksMetadata = (await getLocalKV('textbooks_metadata')) || [];
   const curriculumBundle = {
@@ -397,6 +399,19 @@ export async function extractLocalBundles() {
     pytUserProgress,
     textbooksMetadata
   };
+
+  // Compute total curriculum topics (standalone topics + subject tracker topics + PYT entries)
+  let totalTopicsCount = topics.length;
+  if (Array.isArray(subjectTracker)) {
+    subjectTracker.forEach(doc => {
+      if (doc && doc.topics && typeof doc.topics === 'object') {
+        totalTopicsCount += Object.keys(doc.topics).length;
+      }
+    });
+  }
+  if (Array.isArray(pytData)) {
+    totalTopicsCount += pytData.length;
+  }
 
   // 3. Study Logs Bundle
   const studyLogs = (await getLocalStudyLogs()) || {};
@@ -513,7 +528,7 @@ export async function extractLocalBundles() {
     hashes,
     stats: {
       cardsCount: flashcards.length,
-      topicsCount: topics.length,
+      topicsCount: totalTopicsCount,
       logsDaysCount: Object.keys(studyLogs).length,
       pagesCount: pages.length,
       mediaCount: pages.length
@@ -750,15 +765,27 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
           if (item && item.key) await putLocalItem(STORES.PYT_DATA, item);
         }
       }
-      if (b.subjectTracker) await setLocalKV('subject_tracker_data', b.subjectTracker);
-      if (b.pytUserProgress) await setLocalKV('pyt_user_progress', b.pytUserProgress);
-      if (b.textbooksMetadata) await setLocalKV('textbooks_metadata', b.textbooksMetadata);
+
+      // Non-destructive entity-level merge for Subject Tracker Topics & FSRS states
+      const localSubjectTracker = (await getLocalSubjectTrackerData()) || (await getLocalKV('subject_tracker_data')) || [];
+      const mergedTracker = mergeSubjectTrackerArrays(localSubjectTracker, b.subjectTracker || []);
+      await setLocalKV('subject_tracker_data', mergedTracker);
+
+      // Non-destructive merge for PYT user progress
+      const localPytProg = (await getLocalKV('pyt_user_progress')) || [];
+      const mergedPytProg = mergePytUserProgress(localPytProg, b.pytUserProgress || []);
+      await setLocalKV('pyt_user_progress', mergedPytProg);
+
+      // Non-destructive merge for textbooks metadata
+      const localBooks = (await getLocalKV('textbooks_metadata')) || [];
+      const mergedBooks = mergeTextbooksMetadata(localBooks, b.textbooksMetadata || []);
+      await setLocalKV('textbooks_metadata', mergedBooks);
     }
   }
 
   // 3. Study Logs (Deep Merging & Session/GT Unioning)
   if (bundles['study_logs.json']) {
-    emit(++step, totalSteps, 'Hydrating Study Logs & Velocity TelemetryΓÇª');
+    emit(++step, totalSteps, 'Hydrating Study Logs & Velocity Telemetry…');
     const b = bundles['study_logs.json'];
     const incomingLogs = b.studyLogs || {};
 
@@ -785,61 +812,7 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
     } else {
       // Deep-merge study logs by date with session unioning
       const existing = (await getLocalStudyLogs()) || {};
-      const merged = { ...existing };
-
-      for (const [dateKey, incLog] of Object.entries(incomingLogs)) {
-        if (!merged[dateKey]) {
-          merged[dateKey] = incLog;
-        } else {
-          const cur = merged[dateKey];
-          const existingFsrs = Array.isArray(cur.fsrsLogs) ? cur.fsrsLogs : [];
-          const incomingFsrs = Array.isArray(incLog?.fsrsLogs) ? incLog.fsrsLogs : [];
-
-          // Union FSRS logs by unique review timestamp or deterministic content key
-          const fsrsMap = new Map();
-          const getFsrsKey = (l) => l.id || (l.cardId && l.timestamp ? `${l.cardId}_${l.rating || 'r'}_${l.timestamp}` : computeHash(canonicalStringify(l)));
-          existingFsrs.forEach(l => { if (l) fsrsMap.set(getFsrsKey(l), l); });
-          incomingFsrs.forEach(l => { if (l) { const k = getFsrsKey(l); if (!fsrsMap.has(k)) fsrsMap.set(k, l); } });
-
-          // Union study sessions by unique session ID or deterministic content key
-          const existingSessions = Array.isArray(cur.sessions) ? cur.sessions : [];
-          const incomingSessions = Array.isArray(incLog?.sessions) ? incLog.sessions : [];
-          const sessionMap = new Map();
-          const getSessionKey = (s) => s.id || (s.subject && s.startedAt ? `${s.subject}_${s.startedAt}_${s.duration || 0}` : computeHash(canonicalStringify(s)));
-          existingSessions.forEach(s => { if (s) sessionMap.set(getSessionKey(s), s); });
-          incomingSessions.forEach(s => { if (s) { const k = getSessionKey(s); if (!sessionMap.has(k)) sessionMap.set(k, s); } });
-
-          // Union Grand Tests (GTs)
-          const existingGts = Array.isArray(cur.gts) ? cur.gts : [];
-          const incomingGts = Array.isArray(incLog?.gts) ? incLog.gts : [];
-          const gtMap = new Map();
-          const getGtKey = (g) => g.id || (g.testName && (g.date || g.timestamp) ? `${g.testName}_${g.date || g.timestamp}` : computeHash(canonicalStringify(g)));
-          existingGts.forEach(g => { if (g) gtMap.set(getGtKey(g), g); });
-          incomingGts.forEach(g => { if (g) { const k = getGtKey(g); if (!gtMap.has(k)) gtMap.set(k, g); } });
-
-          const allSessions = Array.from(sessionMap.values());
-          const sessionHours = allSessions.reduce((sum, s) => sum + (Number(s.duration || s.minutes || 0) / 60 || Number(s.hours || 0)), 0);
-          const totalHours = sessionHours > 0 ? Number(sessionHours.toFixed(2)) : Math.max(cur.studyHours || cur.hours || 0, incLog?.studyHours || incLog?.hours || 0);
-
-          const totalCards = Math.max(cur.totalCardsReviewed || cur.cards || 0, incLog?.totalCardsReviewed || incLog?.cards || 0, fsrsMap.size);
-          const totalQuestions = Math.max(cur.totalQuestionsAttempted || cur.questions || 0, incLog?.totalQuestionsAttempted || incLog?.questions || 0);
-
-          merged[dateKey] = {
-            ...cur,
-            ...incLog,
-            cards: totalCards,
-            totalCardsReviewed: totalCards,
-            questions: totalQuestions,
-            totalQuestionsAttempted: totalQuestions,
-            hours: totalHours,
-            studyHours: totalHours,
-            pages: Math.max(cur.pages || 0, incLog?.pages || 0),
-            fsrsLogs: Array.from(fsrsMap.values()),
-            sessions: allSessions,
-            gts: Array.from(gtMap.values())
-          };
-        }
-      }
+      const merged = mergeStudyLogsObjects(existing, incomingLogs);
       await setLocalKV('study_logs', merged);
 
       if (b.studySchedule) {
@@ -1279,6 +1252,280 @@ export async function saveLastSyncedHashes(hashes) {
 }
 
 /**
+ * Merges two Subject Tracker arrays at the entity and topic level with timestamp & FSRS awareness.
+ * Guarantees Zero-Data-Loss: newer ratings, study dates, and notes always win.
+ */
+export function mergeSubjectTrackerArrays(localTracker = [], remoteTracker = []) {
+  const locList = Array.isArray(localTracker) ? localTracker : [];
+  const remList = Array.isArray(remoteTracker) ? remoteTracker : [];
+  
+  const map = new Map();
+  
+  // Index all local subject documents
+  locList.forEach(doc => {
+    if (doc) {
+      const key = String(doc.id || doc.subject || '').trim().toLowerCase();
+      if (key) map.set(key, { ...doc });
+    }
+  });
+  
+  // Merge remote subject documents
+  remList.forEach(remDoc => {
+    if (!remDoc) return;
+    const key = String(remDoc.id || remDoc.subject || '').trim().toLowerCase();
+    if (!key) return;
+    
+    if (!map.has(key)) {
+      map.set(key, { ...remDoc });
+      return;
+    }
+    
+    const locDoc = map.get(key);
+    const locTopics = locDoc.topics && typeof locDoc.topics === 'object' ? locDoc.topics : {};
+    const remTopics = remDoc.topics && typeof remDoc.topics === 'object' ? remDoc.topics : {};
+    
+    const mergedTopics = { ...locTopics };
+    const allTopicKeys = new Set([...Object.keys(locTopics), ...Object.keys(remTopics)]);
+    
+    allTopicKeys.forEach(tKey => {
+      const locT = locTopics[tKey];
+      const remT = remTopics[tKey];
+      
+      if (!locT && remT) {
+        mergedTopics[tKey] = remT;
+        return;
+      }
+      if (locT && !remT) {
+        mergedTopics[tKey] = locT;
+        return;
+      }
+      
+      // Both exist: perform field-level intelligent merge
+      const locReviewDate = safeTimestamp(locT.lastReviewDate || locT.updatedAt);
+      const remReviewDate = safeTimestamp(remT.lastReviewDate || remT.updatedAt);
+      const locReps = Number(locT.reviewCount || 0);
+      const remReps = Number(remT.reviewCount || 0);
+      const locHasReviews = locReps > 0 || (locT.stability != null && locT.stability > 0);
+      const remHasReviews = remReps > 0 || (remT.stability != null && remT.stability > 0);
+      
+      let baseTopic = locT;
+      if (locHasReviews && !remHasReviews) {
+        baseTopic = locT;
+      } else if (remHasReviews && !locHasReviews) {
+        baseTopic = remT;
+      } else if (locReviewDate > remReviewDate) {
+        baseTopic = locT;
+      } else if (remReviewDate > locReviewDate) {
+        baseTopic = remT;
+      } else if (locReps > remReps) {
+        baseTopic = locT;
+      } else if (remReps > locReps) {
+        baseTopic = remT;
+      } else {
+        baseTopic = locT;
+      }
+      
+      // Union studyDates deduplicated and sorted
+      const locDates = Array.isArray(locT.studyDates) ? locT.studyDates : [];
+      const remDates = Array.isArray(remT.studyDates) ? remT.studyDates : [];
+      const combinedStudyDates = Array.from(new Set([...locDates, ...remDates])).filter(Boolean).sort();
+      
+      // Non-destructive preservation of page, mnemonics, notes
+      const mergedPage = baseTopic.page || locT.page || remT.page || '';
+      const mergedPageCount = baseTopic.pageCount || locT.pageCount || remT.pageCount;
+      const mergedPageWeight = baseTopic.pageWeight || locT.pageWeight || remT.pageWeight;
+      const mergedNotes = baseTopic.notes || locT.notes || remT.notes;
+      const mergedMnemonics = baseTopic.mnemonics || locT.mnemonics || remT.mnemonics;
+      
+      const latestTopicTime = Math.max(locReviewDate, remReviewDate, safeTimestamp(locT.updatedAt), safeTimestamp(remT.updatedAt), Date.now());
+      
+      mergedTopics[tKey] = {
+        ...remT,
+        ...locT,
+        ...baseTopic,
+        page: mergedPage,
+        ...(mergedPageCount !== undefined ? { pageCount: mergedPageCount } : {}),
+        ...(mergedPageWeight !== undefined ? { pageWeight: mergedPageWeight } : {}),
+        ...(mergedNotes !== undefined ? { notes: mergedNotes } : {}),
+        ...(mergedMnemonics !== undefined ? { mnemonics: mergedMnemonics } : {}),
+        studyDates: combinedStudyDates,
+        updatedAt: new Date(latestTopicTime).toISOString()
+      };
+    });
+    
+    const maxDocTime = Math.max(
+      safeTimestamp(locDoc.updatedAt),
+      safeTimestamp(remDoc.updatedAt),
+      ...Object.values(mergedTopics).map(t => safeTimestamp(t.updatedAt || t.lastReviewDate))
+    );
+    
+    map.set(key, {
+      ...remDoc,
+      ...locDoc,
+      id: locDoc.id || remDoc.id || key,
+      subject: locDoc.subject || remDoc.subject || key,
+      topics: mergedTopics,
+      updatedAt: new Date(maxDocTime || Date.now()).toISOString()
+    });
+  });
+  
+  return Array.from(map.values());
+}
+
+/**
+ * Merges PYT user progress by subject ID, taking the maximum review/completion count per topic.
+ */
+export function mergePytUserProgress(localProg = [], remoteProg = []) {
+  const locList = Array.isArray(localProg) ? localProg : [];
+  const remList = Array.isArray(remoteProg) ? remoteProg : [];
+  const map = new Map();
+  
+  locList.forEach(p => {
+    if (p) {
+      const k = String(p.id || p.subject || '').trim().toLowerCase();
+      if (k) map.set(k, { ...p });
+    }
+  });
+  
+  remList.forEach(remP => {
+    if (!remP) return;
+    const k = String(remP.id || remP.subject || '').trim().toLowerCase();
+    if (!k) return;
+    
+    if (!map.has(k)) {
+      map.set(k, { ...remP });
+      return;
+    }
+    
+    const locP = map.get(k);
+    const locMap = locP.progress_map || {};
+    const remMap = remP.progress_map || {};
+    const mergedMap = { ...locMap };
+    
+    Object.entries(remMap).forEach(([tKey, val]) => {
+      mergedMap[tKey] = Math.max(Number(locMap[tKey] || 0), Number(val || 0));
+    });
+    
+    const maxTime = Math.max(safeTimestamp(locP.updatedAt), safeTimestamp(remP.updatedAt), Date.now());
+    map.set(k, {
+      ...remP,
+      ...locP,
+      id: locP.id || remP.id || k,
+      subject: locP.subject || remP.subject || k,
+      progress_map: mergedMap,
+      updatedAt: new Date(maxTime).toISOString()
+    });
+  });
+  
+  return Array.from(map.values());
+}
+
+/**
+ * Merges textbooks metadata non-destructively based on latest updatedAt timestamp.
+ */
+export function mergeTextbooksMetadata(localBooks = [], remoteBooks = []) {
+  const locList = Array.isArray(localBooks) ? localBooks : [];
+  const remList = Array.isArray(remoteBooks) ? remoteBooks : [];
+  const map = new Map();
+  
+  locList.forEach(b => {
+    if (b) {
+      const k = String(b.id || b.filename || '').trim().toLowerCase();
+      if (k) map.set(k, { ...b });
+    }
+  });
+  
+  remList.forEach(remB => {
+    if (!remB) return;
+    const k = String(remB.id || remB.filename || '').trim().toLowerCase();
+    if (!k) return;
+    
+    if (!map.has(k)) {
+      map.set(k, { ...remB });
+      return;
+    }
+    
+    const locB = map.get(k);
+    const locTime = safeTimestamp(locB.updatedAt || locB.lastOpened || 0);
+    const remTime = safeTimestamp(remB.updatedAt || remB.lastOpened || 0);
+    const winner = remTime >= locTime ? remB : locB;
+    
+    map.set(k, {
+      ...locB,
+      ...remB,
+      ...winner,
+      updatedAt: new Date(Math.max(locTime, remTime, Date.now())).toISOString()
+    });
+  });
+  
+  return Array.from(map.values());
+}
+
+/**
+ * Merges study logs objects across dates with collision-resistant FSRS log unioning.
+ */
+export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}) {
+  const mergedLogs = { ...(locLogs || {}) };
+
+  for (const [dateKey, incLog] of Object.entries(remLogs || {})) {
+    if (!mergedLogs[dateKey]) {
+      mergedLogs[dateKey] = incLog;
+    } else {
+      const cur = mergedLogs[dateKey];
+      const existingFsrs = Array.isArray(cur.fsrsLogs) ? cur.fsrsLogs : [];
+      const incomingFsrs = Array.isArray(incLog?.fsrsLogs) ? incLog.fsrsLogs : [];
+
+      const fsrsMap = new Map();
+      const getFsrsKey = (l) => l.id || 
+        (l.cardId && l.timestamp ? `${l.cardId}_${l.rating || 'r'}_${l.timestamp}` : 
+        (l.topicName && (l.timestamp || l.dateStr) ? `${l.topicName}_${l.rating || 'r'}_${l.timestamp || l.dateStr}` : 
+        computeHash(canonicalStringify(l))));
+      
+      existingFsrs.forEach(l => { if (l) fsrsMap.set(getFsrsKey(l), l); });
+      incomingFsrs.forEach(l => { if (l) { const k = getFsrsKey(l); if (!fsrsMap.has(k)) fsrsMap.set(k, l); } });
+
+      const existingSessions = Array.isArray(cur.sessions) ? cur.sessions : [];
+      const incomingSessions = Array.isArray(incLog?.sessions) ? incLog.sessions : [];
+      const sessionMap = new Map();
+      const getSessionKey = (s) => s.id || (s.subject && s.startedAt ? `${s.subject}_${s.startedAt}_${s.duration || 0}` : computeHash(canonicalStringify(s)));
+      existingSessions.forEach(s => { if (s) sessionMap.set(getSessionKey(s), s); });
+      incomingSessions.forEach(s => { if (s) { const k = getSessionKey(s); if (!sessionMap.has(k)) sessionMap.set(k, s); } });
+
+      const existingGts = Array.isArray(cur.gts) ? cur.gts : [];
+      const incomingGts = Array.isArray(incLog?.gts) ? incLog.gts : [];
+      const gtMap = new Map();
+      const getGtKey = (g) => g.id || (g.testName && (g.date || g.timestamp) ? `${g.testName}_${g.date || g.timestamp}` : computeHash(canonicalStringify(g)));
+      existingGts.forEach(g => { if (g) gtMap.set(getGtKey(g), g); });
+      incomingGts.forEach(g => { if (g) { const k = getGtKey(g); if (!gtMap.has(k)) gtMap.set(k, g); } });
+
+      const allSessions = Array.from(sessionMap.values());
+      const sessionHours = allSessions.reduce((sum, s) => sum + (Number(s.duration || s.minutes || 0) / 60 || Number(s.hours || 0)), 0);
+      const totalHours = sessionHours > 0 ? Number(sessionHours.toFixed(2)) : Math.max(cur.studyHours || cur.hours || 0, incLog?.studyHours || incLog?.hours || 0);
+
+      const totalCards = Math.max(cur.totalCardsReviewed || cur.cards || 0, incLog?.totalCardsReviewed || incLog?.cards || 0, fsrsMap.size);
+      const totalQuestions = Math.max(cur.totalQuestionsAttempted || cur.questions || 0, incLog?.totalQuestionsAttempted || incLog?.questions || 0);
+
+      mergedLogs[dateKey] = {
+        ...cur,
+        ...incLog,
+        cards: totalCards,
+        totalCardsReviewed: totalCards,
+        questions: totalQuestions,
+        totalQuestionsAttempted: totalQuestions,
+        hours: totalHours,
+        studyHours: totalHours,
+        pages: Math.max(cur.pages || 0, incLog?.pages || 0),
+        fsrsLogs: Array.from(fsrsMap.values()),
+        sessions: allSessions,
+        gts: Array.from(gtMap.values())
+      };
+    }
+  }
+
+  return mergedLogs;
+}
+
+/**
  * Merges local bundles with downloaded remote bundles completely in-memory,
  * producing a new staged bundle set and manifest without mutating IndexedDB.
  */
@@ -1442,9 +1689,9 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
       topics: serializeBinaryValues(Array.from(topicMap.values())),
       trashTopics: serializeBinaryValues(Array.from(mergedTrashTopics.values())),
       pytData: serializeBinaryValues(Array.from(pytMap.values())),
-      subjectTracker: remCur.subjectTracker || locCur.subjectTracker || [],
-      pytUserProgress: remCur.pytUserProgress || locCur.pytUserProgress || [],
-      textbooksMetadata: remCur.textbooksMetadata || locCur.textbooksMetadata || []
+      subjectTracker: mergeSubjectTrackerArrays(locCur.subjectTracker || [], remCur.subjectTracker || []),
+      pytUserProgress: mergePytUserProgress(locCur.pytUserProgress || [], remCur.pytUserProgress || []),
+      textbooksMetadata: mergeTextbooksMetadata(locCur.textbooksMetadata || [], remCur.textbooksMetadata || [])
     };
   }
 
@@ -1455,59 +1702,7 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
     const locLogs = locLogB.studyLogs || {};
     const remLogs = remLogB.studyLogs || {};
 
-    const mergedLogs = { ...locLogs };
-
-    for (const [dateKey, incLog] of Object.entries(remLogs)) {
-      if (!mergedLogs[dateKey]) {
-        mergedLogs[dateKey] = incLog;
-      } else {
-        const cur = mergedLogs[dateKey];
-        const existingFsrs = Array.isArray(cur.fsrsLogs) ? cur.fsrsLogs : [];
-        const incomingFsrs = Array.isArray(incLog?.fsrsLogs) ? incLog.fsrsLogs : [];
-
-        const fsrsMap = new Map();
-        const getFsrsKey = (l) => l.id || (l.cardId && l.timestamp ? `${l.cardId}_${l.rating || 'r'}_${l.timestamp}` : computeHash(canonicalStringify(l)));
-        existingFsrs.forEach(l => { if (l) fsrsMap.set(getFsrsKey(l), l); });
-        incomingFsrs.forEach(l => { if (l) { const k = getFsrsKey(l); if (!fsrsMap.has(k)) fsrsMap.set(k, l); } });
-
-        const existingSessions = Array.isArray(cur.sessions) ? cur.sessions : [];
-        const incomingSessions = Array.isArray(incLog?.sessions) ? incLog.sessions : [];
-        const sessionMap = new Map();
-        const getSessionKey = (s) => s.id || (s.subject && s.startedAt ? `${s.subject}_${s.startedAt}_${s.duration || 0}` : computeHash(canonicalStringify(s)));
-        existingSessions.forEach(s => { if (s) sessionMap.set(getSessionKey(s), s); });
-        incomingSessions.forEach(s => { if (s) { const k = getSessionKey(s); if (!sessionMap.has(k)) sessionMap.set(k, s); } });
-
-        const existingGts = Array.isArray(cur.gts) ? cur.gts : [];
-        const incomingGts = Array.isArray(incLog?.gts) ? incLog.gts : [];
-        const gtMap = new Map();
-        const getGtKey = (g) => g.id || (g.testName && (g.date || g.timestamp) ? `${g.testName}_${g.date || g.timestamp}` : computeHash(canonicalStringify(g)));
-        existingGts.forEach(g => { if (g) gtMap.set(getGtKey(g), g); });
-        incomingGts.forEach(g => { if (g) { const k = getGtKey(g); if (!gtMap.has(k)) gtMap.set(k, g); } });
-
-        const allSessions = Array.from(sessionMap.values());
-        const sessionHours = allSessions.reduce((sum, s) => sum + (Number(s.duration || s.minutes || 0) / 60 || Number(s.hours || 0)), 0);
-        const totalHours = sessionHours > 0 ? Number(sessionHours.toFixed(2)) : Math.max(cur.studyHours || cur.hours || 0, incLog?.studyHours || incLog?.hours || 0);
-
-        const totalCards = Math.max(cur.totalCardsReviewed || cur.cards || 0, incLog?.totalCardsReviewed || incLog?.cards || 0, fsrsMap.size);
-        const totalQuestions = Math.max(cur.totalQuestionsAttempted || cur.questions || 0, incLog?.totalQuestionsAttempted || incLog?.questions || 0);
-
-        mergedLogs[dateKey] = {
-          ...cur,
-          ...incLog,
-          cards: totalCards,
-          totalCardsReviewed: totalCards,
-          questions: totalQuestions,
-          totalQuestionsAttempted: totalQuestions,
-          hours: totalHours,
-          studyHours: totalHours,
-          pages: Math.max(cur.pages || 0, incLog?.pages || 0),
-          fsrsLogs: Array.from(fsrsMap.values()),
-          sessions: allSessions,
-          gts: Array.from(gtMap.values())
-        };
-      }
-    }
-
+    const mergedLogs = mergeStudyLogsObjects(locLogs, remLogs);
     const mergedSched = { ...(locLogB.studySchedule || {}), ...(remLogB.studySchedule || {}) };
     const mergedTemplates = remLogB.scheduleTemplates || locLogB.scheduleTemplates || [];
 
@@ -1654,6 +1849,18 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
   const topics = deserializeBinaryValues(merged['curriculum_topics.json']?.topics || []);
   const studyLogs = merged['study_logs.json']?.studyLogs || {};
   const pages = deserializeBinaryValues(merged['pages_bundle.json']?.pages || []);
+  const curBundle = merged['curriculum_topics.json'] || {};
+
+  let totalCurriculumTopicsCount = topics.length;
+  if (Array.isArray(curBundle.subjectTracker)) {
+    curBundle.subjectTracker.forEach(doc => {
+      if (doc && doc.topics && typeof doc.topics === 'object') {
+        totalCurriculumTopicsCount += Object.keys(doc.topics).length;
+      }
+    });
+  }
+  const pytItems = deserializeBinaryValues(curBundle.pytData || []);
+  totalCurriculumTopicsCount += pytItems.length;
 
   const manifest = {
     version: '2.1',
@@ -1664,7 +1871,7 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
     hashes,
     stats: {
       cardsCount: flashcards.length,
-      topicsCount: topics.length,
+      topicsCount: totalCurriculumTopicsCount,
       logsDaysCount: Object.keys(studyLogs).length,
       pagesCount: pages.length,
       mediaCount: pages.length

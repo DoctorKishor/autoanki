@@ -56,7 +56,14 @@ export async function runSystemIntegrityCheck(options = {}) {
     ]);
 
     const totalCards = Array.isArray(cards) ? cards.length : 0;
-    const totalTopics = Array.isArray(topics) ? topics.length : 0;
+    let totalTopics = Array.isArray(topics) ? topics.length : 0;
+    if (Array.isArray(subjectTrackerData)) {
+      subjectTrackerData.forEach(sub => {
+        if (sub?.topics && typeof sub.topics === 'object') {
+          totalTopics += Object.keys(sub.topics).length;
+        }
+      });
+    }
     const totalPages = Array.isArray(pages) ? pages.length : 0;
     const totalStudyLogDays = studyLogs && typeof studyLogs === 'object' ? Object.keys(studyLogs).length : 0;
 

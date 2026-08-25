@@ -15478,6 +15478,7 @@ JSON Format:
     topicsMap[cleanTopicName].lastReviewDate = fsrsResult.lastReviewDate;
     topicsMap[cleanTopicName].reviewCount = fsrsResult.reviewCount;
     topicsMap[cleanTopicName].lapses = fsrsResult.lapses != null ? fsrsResult.lapses : (topicsMap[cleanTopicName].lapses || 0) + (rating === 1 ? 1 : 0);
+    topicsMap[cleanTopicName].updatedAt = new Date().toISOString();
 
     if (!Array.isArray(topicsMap[cleanTopicName].studyDates)) {
       topicsMap[cleanTopicName].studyDates = [];
