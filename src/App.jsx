@@ -65,6 +65,7 @@ import {
   getAllLocalItems, STORES
 } from './services/localDb';
 import { calculateNextFSRSState, calculateInitialState, DEFAULT_FSRS6_WEIGHTS, getTopicPageLength, recalculateTopicFSRSFromLogs } from './services/fsrsEngine';
+import { runSystemIntegrityCheck } from './services/healthChecker';
 import { motion, AnimatePresence } from 'framer-motion';
 import UiverseButton from './components/UiverseButton';
 import UiverseGlassRadio from './components/UiverseGlassRadio';
@@ -3762,6 +3763,15 @@ const NeumorphicDropdown = ({ value, onChange, options, isDark, label }) => {
 };
 
 export default function App() {
+  // Automated background System Health & Invariant Check on Startup
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      runSystemIntegrityCheck({ silent: true }).catch(err => {
+        console.warn('[HealthCheck] Startup invariant check error:', err);
+      });
+    }, 3500);
+    return () => clearTimeout(timer);
+  }, []);
 
   const formatAppDate = (dateStr) => {
     if (!dateStr) return '';

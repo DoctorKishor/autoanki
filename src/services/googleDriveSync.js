@@ -39,6 +39,7 @@ import {
   setMutationNotificationSuppressed
 } from './localDb.js';
 import logger from './logger.js';
+import { runSystemIntegrityCheck } from './healthChecker.js';
 
 export const VAULT_FOLDER_NAME = 'AutoAnki_Sync_Vault';
 export const MEDIA_FOLDER_NAME = 'media';
@@ -1254,7 +1255,7 @@ function getDeviceAncestorKey() {
   return `${LAST_SYNCED_HASHES_PREFIX}${getDeviceId()}`;
 }
 
-async function getLastSyncedHashes() {
+export async function getLastSyncedHashes() {
   try {
     const key = getDeviceAncestorKey();
     const fromIdb = await getLocalKV(key);
@@ -1268,7 +1269,7 @@ async function getLastSyncedHashes() {
   return null;
 }
 
-async function saveLastSyncedHashes(hashes) {
+export async function saveLastSyncedHashes(hashes) {
   if (!hashes || typeof hashes !== 'object') return;
   try {
     await setLocalKV(getDeviceAncestorKey(), hashes);
@@ -1964,12 +1965,14 @@ async function executeSyncInternal({
       logger.sync('SUCCESS', 'Two-phase merge and sync completed successfully!');
       emit(10, 10, 'Synchronization complete.');
       emitSyncEvent('synced', { message: 'Sync finished successfully.' });
+      setTimeout(() => runSystemIntegrityCheck({ silent: true }).catch(console.warn), 1000);
       return { success: true, action: 'merged', message: 'Merged and synchronized successfully with Google Drive.' };
     }
 
     logger.sync('SUCCESS', 'Synchronization complete.');
     emit(10, 10, 'Synchronization complete.');
     emitSyncEvent('synced', { message: 'Sync finished successfully.' });
+    setTimeout(() => runSystemIntegrityCheck({ silent: true }).catch(console.warn), 1000);
     return { success: true, action: 'synced', message: 'Sync finished successfully.' };
   } catch (err) {
     logger.error('SYNC-FAIL', 'Google Drive synchronization failed:', err);

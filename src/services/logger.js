@@ -174,9 +174,20 @@ class DiagnosticsLogger {
     return this.addEntry('error', tag, message, data);
   }
 
+  anomaly(tag, message, data = null) {
+    const formattedTag = `⚠️ [LOGIC-ANOMALY:${tag}]`;
+    if (data !== null && data !== undefined) {
+      console.warn(formattedTag, message, data);
+    } else {
+      console.warn(formattedTag, message);
+    }
+    return this.addEntry('anomaly', tag, message, data);
+  }
+
   getLogs(filter = 'all') {
     if (!filter || filter === 'all') return [...this.buffer];
     if (filter === 'errors') return this.buffer.filter(l => l.level === 'error');
+    if (filter === 'anomalies') return this.buffer.filter(l => l.level === 'anomaly');
     if (filter === 'sync') return this.buffer.filter(l => l.level === 'sync');
     if (filter === 'db') return this.buffer.filter(l => l.level === 'db');
     if (filter === 'fsrs') return this.buffer.filter(l => l.level === 'fsrs');

@@ -15,9 +15,14 @@ import {
   Brain, 
   ChevronDown, 
   ChevronRight,
-  Filter
+  Filter,
+  ShieldCheck,
+  Activity,
+  CheckCircle2,
+  AlertTriangle
 } from 'lucide-react';
 import logger from '../services/logger';
+import { runSystemIntegrityCheck, getLatestHealthReport } from '../services/healthChecker';
 
 export default function DiagnosticsLogsModal({
   isOpen,
@@ -26,11 +31,13 @@ export default function DiagnosticsLogsModal({
 }) {
   const isDark = themeMode === 'dark';
   const [logs, setLogs] = useState([]);
-  const [filter, setFilter] = useState('all'); // 'all', 'errors', 'sync', 'db', 'fsrs'
+  const [filter, setFilter] = useState('all'); // 'all', 'errors', 'anomalies', 'sync', 'db', 'fsrs'
   const [searchQuery, setSearchQuery] = useState('');
   const [copied, setCopied] = useState(false);
   const [expandedLogIds, setExpandedLogIds] = useState(new Set());
   const [autoScroll, setAutoScroll] = useState(true);
+  const [isRunningHealthCheck, setIsRunningHealthCheck] = useState(false);
+  const [healthReport, setHealthReport] = useState(null);
   const logsContainerRef = useRef(null);
 
   // Subscribe to logger real-time updates
@@ -38,9 +45,12 @@ export default function DiagnosticsLogsModal({
     if (!isOpen) return;
 
     setLogs(logger.getLogs('all'));
+    setHealthReport(getLatestHealthReport());
 
     const unsubscribe = logger.subscribe((newEntry, allLogs) => {
       setLogs(allLogs ? [...allLogs] : logger.getLogs('all'));
+      const latest = getLatestHealthReport();
+      if (latest) setHealthReport(latest);
     });
 
     return () => unsubscribe();
@@ -53,19 +63,33 @@ export default function DiagnosticsLogsModal({
     }
   }, [logs, autoScroll, filter, searchQuery]);
 
+  const handleRunHealthCheck = async () => {
+    setIsRunningHealthCheck(true);
+    try {
+      const res = await runSystemIntegrityCheck({ silent: false });
+      setHealthReport(res);
+    } catch (e) {
+      console.warn('Health check execution error:', e);
+    } finally {
+      setIsRunningHealthCheck(false);
+    }
+  };
+
   const counts = useMemo(() => {
     const total = logs.length;
     const errors = logs.filter(l => l.level === 'error').length;
+    const anomalies = logs.filter(l => l.level === 'anomaly').length;
     const sync = logs.filter(l => l.level === 'sync').length;
     const db = logs.filter(l => l.level === 'db').length;
     const fsrs = logs.filter(l => l.level === 'fsrs').length;
-    return { all: total, errors, sync, db, fsrs };
+    return { all: total, errors, anomalies, sync, db, fsrs };
   }, [logs]);
 
   const filteredLogs = useMemo(() => {
     return logs.filter(l => {
       // Filter category
       if (filter === 'errors' && l.level !== 'error') return false;
+      if (filter === 'anomalies' && l.level !== 'anomaly') return false;
       if (filter === 'sync' && l.level !== 'sync') return false;
       if (filter === 'db' && l.level !== 'db') return false;
       if (filter === 'fsrs' && l.level !== 'fsrs') return false;
@@ -119,6 +143,7 @@ export default function DiagnosticsLogsModal({
     logger.clearLogs();
     setLogs([]);
     setExpandedLogIds(new Set());
+    setHealthReport(null);
   };
 
   if (!isOpen) return null;
@@ -127,6 +152,8 @@ export default function DiagnosticsLogsModal({
     switch (level) {
       case 'error':
         return <span className="px-2 py-0.5 rounded text-[11px] font-bold tracking-wider uppercase bg-rose-500/20 text-rose-400 border border-rose-500/30">ERROR</span>;
+      case 'anomaly':
+        return <span className="px-2 py-0.5 rounded text-[11px] font-bold tracking-wider uppercase bg-amber-500/25 text-amber-300 border border-amber-500/40">ANOMALY</span>;
       case 'warn':
         return <span className="px-2 py-0.5 rounded text-[11px] font-bold tracking-wider uppercase bg-amber-500/20 text-amber-400 border border-amber-500/30">WARN</span>;
       case 'sync':
@@ -213,6 +240,25 @@ export default function DiagnosticsLogsModal({
             {/* Action Buttons */}
             <div className="flex items-center gap-2">
               <button
+                onClick={handleRunHealthCheck}
+                disabled={isRunningHealthCheck}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl border transition-all ${
+                  isRunningHealthCheck
+                    ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30'
+                    : isDark
+                    ? 'bg-cyan-500/10 hover:bg-cyan-500/20 border-cyan-500/30 text-cyan-400'
+                    : 'bg-cyan-50 hover:bg-cyan-100 border-cyan-300 text-cyan-700'
+                }`}
+              >
+                {isRunningHealthCheck ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-cyan-400" />
+                ) : (
+                  <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
+                )}
+                {isRunningHealthCheck ? 'Checking…' : 'Run Health Check'}
+              </button>
+
+              <button
                 onClick={handleCopyAll}
                 className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl border transition-all ${
                   copied
@@ -256,6 +302,7 @@ export default function DiagnosticsLogsModal({
 
             {[
               { id: 'all', label: 'All', count: counts.all, color: 'cyan' },
+              { id: 'anomalies', label: 'Anomalies', count: counts.anomalies, color: 'amber' },
               { id: 'errors', label: 'Errors', count: counts.errors, color: 'rose' },
               { id: 'sync', label: 'Sync', count: counts.sync, color: 'sky' },
               { id: 'db', label: 'LocalDB', count: counts.db, color: 'emerald' },
@@ -301,6 +348,29 @@ export default function DiagnosticsLogsModal({
             </div>
           </div>
         </div>
+
+        {/* Health Check Status Banner */}
+        {healthReport && (
+          <div className={`px-4 py-2.5 border-b flex items-center justify-between gap-3 text-xs ${
+            healthReport.isHealthy
+              ? isDark ? 'bg-emerald-950/30 border-emerald-800/40 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+              : isDark ? 'bg-amber-950/30 border-amber-800/40 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'
+          }`}>
+            <div className="flex items-center gap-2">
+              {healthReport.isHealthy ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              ) : (
+                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+              )}
+              <span className="font-medium">
+                {healthReport.summary}
+              </span>
+            </div>
+            <span className="text-[11px] opacity-75 font-mono">
+              {new Date(healthReport.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            </span>
+          </div>
+        )}
 
         {/* Log Viewer Terminal Body */}
         <div
