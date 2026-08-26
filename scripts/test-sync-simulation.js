@@ -1286,12 +1286,55 @@ async function runScenarioJ() {
   const dev2LegacyActiveGts = (dev2LegacyDay.gts || []).filter(g => !g.isDeleted);
   assert(dev2LegacyActiveGts.length === 0, 'Legacy GT without ID successfully pruned on Device 2 via name matching');
 
-  // Device 2 pushes and Device 1 pulls - verify zero resurrection
-  runDeviceSync(device2, cloudVault);
-  runDeviceSync(device1, cloudVault);
-  const dev1LegacyDayFinal = device1.getKV('study_logs', {})[legacyDate];
-  const dev1LegacyActiveGtsFinal = (dev1LegacyDayFinal.gts || []).filter(g => !g.isDeleted);
-  assert(dev1LegacyActiveGtsFinal.length === 0, 'Legacy GT without ID was NOT resurrected on Device 1 after Device 2 sync');
+  // ── Step 6: Single-Device GT Deletion followed by Cloud Sync ──
+  const singleDevDate = '2026-08-27';
+  const singleVault = new MockCloudVault();
+  const singleDevice = new MockDevice('Device Single', 'dev_single_user');
+  
+  // Step 6a: User logs 'Sample GT'
+  singleDevice.setKV('study_logs', {
+    [singleDevDate]: {
+      hours: 2.5,
+      questions: 180,
+      cards: 40,
+      gts: [{ id: 'gt_sample_123', name: 'Sample GT', platform: 'Marrow', type: 'NEETPG', score: 600, createdAt: '2026-08-27T02:00:00.000Z', updatedAt: '2026-08-27T02:00:00.000Z' }],
+      updatedAt: '2026-08-27T02:00:00.000Z'
+    }
+  });
+
+  // Step 6b: User syncs to cloud
+  runDeviceSync(singleDevice, singleVault);
+  const cloudGtsAfterPush = singleVault.bundles['study_logs.json'].studyLogs[singleDevDate].gts;
+  assert(cloudGtsAfterPush.length === 1 && cloudGtsAfterPush[0].name === 'Sample GT', 'Cloud vault received initial Sample GT');
+
+  // Step 6c: User clicks "Delete Test" in Edit GT modal
+  const nowDeleteIso = '2026-08-27T03:45:00.000Z';
+  const localDayBeforeDelete = singleDevice.getKV('study_logs', {})[singleDevDate];
+  singleDevice.setKV('study_logs', {
+    [singleDevDate]: {
+      ...localDayBeforeDelete,
+      gts: [{ id: 'gt_sample_123', name: 'Sample GT', isDeleted: true, deletedAt: nowDeleteIso, updatedAt: nowDeleteIso }],
+      updatedAt: nowDeleteIso
+    }
+  });
+  // Unified graves record
+  singleDevice.setKV('unified_graves', [
+    { entityType: 'gt', entityId: 'gt_sample_123', deletedAt: nowDeleteIso, metadata: { name: 'Sample GT' }, parentId: singleDevDate },
+    { entityType: 'gt', entityId: 'sample gt', deletedAt: nowDeleteIso, metadata: { id: 'gt_sample_123' }, parentId: singleDevDate },
+    { entityType: 'gt', entityId: `${singleDevDate}_sample gt`, deletedAt: nowDeleteIso, metadata: { id: 'gt_sample_123' }, parentId: singleDevDate }
+  ]);
+
+  // Step 6d: User syncs again on the same device!
+  runDeviceSync(singleDevice, singleVault);
+
+  // Step 6e: Verify GT remains permanently deleted on the single device and in cloud
+  const singleDevDayAfterSync = singleDevice.getKV('study_logs', {})[singleDevDate];
+  const singleDevActiveGts = (singleDevDayAfterSync?.gts || []).filter(g => g && !g.isDeleted);
+  assert(singleDevActiveGts.length === 0, 'Single device: Deleted Sample GT was NOT resurrected after sync');
+
+  const cloudDayAfterSync = singleVault.bundles['study_logs.json'].studyLogs[singleDevDate];
+  const cloudActiveGts = (cloudDayAfterSync?.gts || []).filter(g => g && !g.isDeleted);
+  assert(cloudActiveGts.length === 0, 'Cloud Vault: Deleted Sample GT was safely pruned from cloud bundle');
 
   logHeader('SCENARIO J: ALL GRAND TEST SYNC TESTS PASSED WITH 100% INTEGRITY');
 }

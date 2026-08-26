@@ -10457,17 +10457,27 @@ JSON Format:
   };
 
   const handleDeleteTimelineGt = async (dateStr, gtIndex) => {
-    if (!dateStr || gtIndex === null || gtIndex === undefined) return;
+    if (!dateStr) return;
     if (!window.confirm("Are you sure you want to delete this mock test? This will update your synced records.")) return;
     try {
       setIsSaving(true);
       const currentDayLog = studyLogs[dateStr] || {};
       const currentGts = currentDayLog.gts || [];
-      const gtToDelete = currentGts[gtIndex];
+      const targetName = (editGtName || '').trim();
+      
+      let actualIndex = -1;
+      if (targetName) {
+        actualIndex = currentGts.findIndex(g => (g?.name || g?.testName || '').trim().toLowerCase() === targetName.toLowerCase());
+      }
+      if (actualIndex === -1 && gtIndex !== null && gtIndex !== undefined) {
+        actualIndex = gtIndex;
+      }
+
+      const gtToDelete = actualIndex >= 0 ? currentGts[actualIndex] : null;
       const nowIso = new Date().toISOString();
 
-      const gtId = gtToDelete?.id || (gtToDelete?.name ? `gt_${gtToDelete.name.trim().toLowerCase().replace(/\s+/g, '_')}` : `gt_${Date.now()}`);
-      const gtName = (gtToDelete?.name || gtToDelete?.testName || '').trim();
+      const gtId = gtToDelete?.id || (targetName ? `gt_${targetName.toLowerCase().replace(/\s+/g, '_')}` : `gt_${Date.now()}`);
+      const gtName = (gtToDelete?.name || gtToDelete?.testName || targetName).trim();
 
       // Record immutable tombstone in unified graves registry
       await recordTombstone('gt', String(gtId), { parentId: String(dateStr), deletedAt: nowIso, metadata: { name: gtName } });
@@ -10477,11 +10487,13 @@ JSON Format:
       }
 
       // Create tombstoned record of the deleted GT so sync propagates the deletion
-      const tombstonedGt = gtToDelete ? { ...gtToDelete, id: gtId, isDeleted: true, deletedAt: nowIso } : null;
-      const updatedGts = currentGts.filter((_, idx) => idx !== gtIndex);
-      if (tombstonedGt) {
-        updatedGts.push(tombstonedGt);
-      }
+      const tombstonedGt = { ...(gtToDelete || {}), id: gtId, name: gtName, isDeleted: true, deletedAt: nowIso, updatedAt: nowIso };
+      const updatedGts = currentGts.filter((g, idx) => {
+        if (gtName && (g?.name || g?.testName || '').trim().toLowerCase() === gtName.toLowerCase()) return false;
+        if (actualIndex >= 0 && idx === actualIndex) return false;
+        return true;
+      });
+      updatedGts.push(tombstonedGt);
 
       const updatedDayLog = { 
         ...currentDayLog, 
@@ -10495,7 +10507,7 @@ JSON Format:
         ...prev,
         [dateStr]: {
           ...updatedDayLog,
-          gts: updatedGts.filter(g => !g.isDeleted)
+          gts: updatedGts.filter(g => g && !g.isDeleted)
         }
       }));
       setIsEditGtModalOpen(false);

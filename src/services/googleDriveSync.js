@@ -1032,7 +1032,8 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
       // Deep-merge study logs by date with session unioning and tombstone pruning
       const existing = (await getLocalStudyLogs()) || {};
       const localTrash = (await getTrashStudyLogs()) || (await getLocalKV('trash_study_logs')) || [];
-      const merged = mergeStudyLogsObjects(existing, incomingLogs, localTrash, incomingTrash);
+      const unifiedGraves = (await getUnifiedGraves()) || [];
+      const merged = mergeStudyLogsObjects(existing, incomingLogs, localTrash, incomingTrash, unifiedGraves);
       await setLocalKV('study_logs', merged);
 
       // Merge and union trash study logs
@@ -2187,17 +2188,31 @@ export function mergeHintQuotaArrays(locQuota = [], remQuota = []) {
 /**
  * Merges study logs objects across dates with collision-resistant FSRS log unioning and tombstone pruning.
  */
-export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs = [], remTrashLogs = []) {
+export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs = [], remTrashLogs = [], unifiedGraves = []) {
   const mergedLogs = { ...(locLogs || {}) };
 
   const locTrashMap = new Map((locTrashLogs || []).map(t => [t.dateKey, safeTimestamp(t.deletedAt)]));
   const remTrashMap = new Map((remTrashLogs || []).map(t => [t.dateKey, safeTimestamp(t.deletedAt)]));
 
+  const gtGravesMap = new Map();
+  (unifiedGraves || []).forEach(g => {
+    if (g && (g.entityType === 'gt' || g.type === 'gt')) {
+      const delTime = safeTimestamp(g.deletedAt || g.timestamp || 0);
+      if (g.entityId) gtGravesMap.set(String(g.entityId).toLowerCase(), delTime);
+      if (g.metadata?.name) {
+        gtGravesMap.set(String(g.metadata.name).trim().toLowerCase(), delTime);
+        if (g.parentId) {
+          gtGravesMap.set(`${String(g.parentId).trim().toLowerCase()}_${String(g.metadata.name).trim().toLowerCase()}`, delTime);
+        }
+      }
+    }
+  });
+
   // 1. Prune local logs if remote deleted them after their last update
   for (const [dateKey, log] of Object.entries(mergedLogs)) {
     const remDeletedAt = remTrashMap.get(dateKey);
     if (remDeletedAt) {
-      const logTime = safeTimestamp(log?.updatedAt || log?.lastReviewDate || log?.dateStr || 0);
+      const logTime = safeTimestamp(log?.updatedAt || log?.lastReviewDate || 0);
       if (remDeletedAt > logTime) {
         delete mergedLogs[dateKey];
       }
@@ -2208,7 +2223,7 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
   for (const [dateKey, incLog] of Object.entries(remLogs || {})) {
     const locDeletedAt = locTrashMap.get(dateKey);
     const remDeletedAt = remTrashMap.get(dateKey);
-    const incTime = safeTimestamp(incLog?.updatedAt || incLog?.lastReviewDate || incLog?.dateStr || 0);
+    const incTime = safeTimestamp(incLog?.updatedAt || incLog?.lastReviewDate || 0);
 
     // If local deleted this log after incoming update, do NOT resurrect
     if (locDeletedAt && locDeletedAt > incTime) {
@@ -2287,24 +2302,60 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
         return computeHash(canonicalStringify(g));
       };
 
-      existingGts.forEach(g => { if (g) gtMap.set(getGtKey(g), g); });
+      const isGtTombstonedInGraves = (g) => {
+        if (!g) return false;
+        const gId = g.id ? String(g.id).toLowerCase() : '';
+        const gName = (g.name || g.testName || '').trim().toLowerCase();
+        const gDateName = `${dateKey.toLowerCase()}_${gName}`;
+        const gModTime = safeTimestamp(g.updatedAt || g.createdAt || 0);
+
+        if (gId && gtGravesMap.has(gId) && gtGravesMap.get(gId) >= gModTime) return true;
+        if (gName && gtGravesMap.has(gName) && gtGravesMap.get(gName) >= gModTime) return true;
+        if (gName && gtGravesMap.has(gDateName) && gtGravesMap.get(gDateName) >= gModTime) return true;
+        return false;
+      };
+
+      existingGts.forEach(g => { 
+        if (g) {
+          if (isGtTombstonedInGraves(g)) {
+            gtMap.set(getGtKey(g), { ...g, isDeleted: true, deletedAt: new Date(gtGravesMap.get(g.id) || Date.now()).toISOString() });
+          } else {
+            gtMap.set(getGtKey(g), g);
+          }
+        }
+      });
+
       incomingGts.forEach(g => {
         if (g) {
           const k = getGtKey(g);
+          if (isGtTombstonedInGraves(g)) {
+            return;
+          }
+
           if (!gtMap.has(k)) {
             gtMap.set(k, g);
           } else {
             const locGt = gtMap.get(k);
-            const locGtTime = safeTimestamp(locGt.updatedAt || locGt.createdAt || locGt.deletedAt || curTime || 0);
-            const remGtTime = safeTimestamp(g.updatedAt || g.createdAt || g.deletedAt || incTime || 0);
-            gtMap.set(k, remGtTime >= locGtTime ? g : locGt);
+            if (locGt.isDeleted || locGt.deletedAt) {
+              const locDelTime = safeTimestamp(locGt.deletedAt || locGt.updatedAt || curTime || 0);
+              const remModTime = safeTimestamp(g.updatedAt || g.createdAt || 0);
+              if (remModTime > locDelTime) {
+                gtMap.set(k, g);
+              } else {
+                gtMap.set(k, locGt);
+              }
+            } else {
+              const locGtTime = safeTimestamp(locGt.updatedAt || locGt.createdAt || curTime || 0);
+              const remGtTime = safeTimestamp(g.updatedAt || g.createdAt || incTime || 0);
+              gtMap.set(k, remGtTime >= locGtTime ? g : locGt);
+            }
           }
         }
       });
 
       // Prune deleted GTs if marked with isDeleted or deletedAt
       for (const [gKey, gObj] of gtMap.entries()) {
-        if (gObj.isDeleted || gObj.deletedAt) {
+        if (gObj.isDeleted || gObj.deletedAt || isGtTombstonedInGraves(gObj)) {
           gtMap.delete(gKey);
         }
       }
@@ -2531,8 +2582,8 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
     const remLogs = remLogB.studyLogs || {};
     const locTrashLogs = locLogB.trashStudyLogs || [];
     const remTrashLogs = remLogB.trashStudyLogs || [];
-
-    const mergedLogs = mergeStudyLogsObjects(locLogs, remLogs, locTrashLogs, remTrashLogs);
+    const unifiedGraves = (downloadedBundles['pages_bundle.json']?.unifiedGraves) || (localBundles['pages_bundle.json']?.unifiedGraves) || [];
+    const mergedLogs = mergeStudyLogsObjects(locLogs, remLogs, locTrashLogs, remTrashLogs, unifiedGraves);
 
     // Merge trash study logs with latest deletedAt
     const mergedTrashLogsMap = new Map((locTrashLogs || []).map(t => [t.dateKey, t]));
