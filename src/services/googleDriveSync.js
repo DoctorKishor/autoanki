@@ -468,11 +468,25 @@ export async function ensureSyncVault(accessToken) {
 export async function extractLocalBundles() {
   const bundles = {};
   const hashes = {};
+  let maxEntityUpdatedAt = 0;
+
+  const trackTimestamp = (val) => {
+    const ts = safeTimestamp(val);
+    if (ts > maxEntityUpdatedAt) maxEntityUpdatedAt = ts;
+  };
 
   // 1. Cards Bundle
   const flashcards = (await getLocalKV('flashcards')) || [];
   const trashCards = (await getLocalKV('trash_cards')) || [];
   const cardsCount = flashcards.length;
+
+  flashcards.forEach(c => {
+    if (c) trackTimestamp(c.updatedAt || c.lastReviewDate || c.createdAt);
+  });
+  trashCards.forEach(tc => {
+    if (tc) trackTimestamp(tc.deletedAt);
+  });
+
   bundles['cards_bundle.json'] = {
     flashcards: serializeBinaryValues(flashcards),
     trashCards: serializeBinaryValues(trashCards)
@@ -487,6 +501,16 @@ export async function extractLocalBundles() {
   const pytUserProgress = (await getLocalKV('pyt_user_progress')) || [];
   const textbooksMetadata = (await getLocalKV('textbooks_metadata')) || [];
   
+  topics.forEach(t => {
+    if (t) trackTimestamp(t.updatedAt || t.lastReviewDate || t.createdAt);
+  });
+  trashTopics.forEach(tt => {
+    if (tt) trackTimestamp(tt.deletedAt);
+  });
+  if (Array.isArray(pytData)) {
+    pytData.forEach(p => { if (p) trackTimestamp(p.updatedAt || p.createdAt); });
+  }
+
   let totalTopicsCount = topics.length;
   if (Array.isArray(subjectTracker)) {
     subjectTracker.forEach(doc => {
@@ -519,6 +543,13 @@ export async function extractLocalBundles() {
   const activeNewTopicsToday = (await getLocalKV('active_new_topics_today')) || [];
   const logsDaysCount = Object.keys(studyLogs).length;
 
+  Object.entries(studyLogs).forEach(([dateKey, log]) => {
+    trackTimestamp(log?.updatedAt || dateKey);
+  });
+  trashStudyLogs.forEach(tl => {
+    if (tl) trackTimestamp(tl.deletedAt);
+  });
+
   bundles['study_logs.json'] = {
     studyLogs,
     trashStudyLogs,
@@ -540,6 +571,10 @@ export async function extractLocalBundles() {
   const localUserProfile = (await getLocalKV('local_user_profile')) || null;
   const aiRecommendations = (await getLocalKV('ai_topic_recommendations')) || null;
 
+  customPrompts.forEach(p => {
+    if (p) trackTimestamp(p.updatedAt || p.createdAt);
+  });
+
   const localStorageSnapshot = {};
   if (typeof window !== 'undefined' && window.localStorage) {
     try {
@@ -551,7 +586,17 @@ export async function extractLocalBundles() {
         'autoanki_gdrive_auth',
         'autoanki_pending_sync_launch',
         'auto_anki_last_auto_backup',
-        'auto_anki_last_manual_backup'
+        'auto_anki_last_manual_backup',
+        'auto_anki_expanded_nav_category',
+        'active_nav_category',
+        'active_tab',
+        'active_view',
+        'current_view',
+        'study_active_tab',
+        'last_visited_route',
+        'active_subject_filter',
+        'active_page_index',
+        'autoanki_diagnostics_logs'
       ]);
       (LS_KEYS_TO_SNAPSHOT || []).forEach(key => {
         if (!EXCLUDED_SYNC_LS_KEYS.has(key) && !key.startsWith('autoanki_synced_hashes_')) {
@@ -590,6 +635,13 @@ export async function extractLocalBundles() {
   const trashPages = (await getLocalKV('trash_pages')) || [];
   const pagesCount = pages.length;
 
+  pages.forEach(p => {
+    if (p) trackTimestamp(p.updatedAt || p.createdAt);
+  });
+  trashPages.forEach(tp => {
+    if (tp) trackTimestamp(tp.deletedAt);
+  });
+
   const cleanPageForBundle = (p) => {
     if (!p || typeof p !== 'object') return p;
     const copy = { ...p };
@@ -617,6 +669,7 @@ export async function extractLocalBundles() {
     engine: 'AutoAnki Google Drive Sync',
     deviceId: getDeviceId(),
     timestamp: new Date().toISOString(),
+    lastModifiedTimestamp: maxEntityUpdatedAt > 0 ? new Date(maxEntityUpdatedAt).toISOString() : null,
     syncVersion: Date.now(),
     schemaVersion: 4,
     hashes,
@@ -1218,23 +1271,33 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
  * Builds a rich, human-readable breakdown of differences between Local Device and Google Drive Cloud.
  */
 function buildConflictDiffDetails(localManifest, remoteManifest, modifiedBundleNames, localHashes, remoteHashes) {
-  const localTime = new Date(localManifest?.timestamp || 0).getTime();
-  const remoteTime = new Date(remoteManifest?.timestamp || 0).getTime();
+  const localTime = safeTimestamp(localManifest?.lastModifiedTimestamp || localManifest?.lastModified) ||
+    (localManifest?.timestamp ? new Date(localManifest.timestamp).getTime() : 0);
+  const remoteTime = safeTimestamp(remoteManifest?.lastModifiedTimestamp || remoteManifest?.lastModified) ||
+    (remoteManifest?.timestamp ? new Date(remoteManifest.timestamp).getTime() : 0);
   const timeDiffMs = Math.abs(localTime - remoteTime);
   const timeDiffMinutes = Math.round(timeDiffMs / 60000);
 
   let timeRelation = 'equal';
-  let timeDiffText = 'Both versions were saved around the same time.';
-  if (localTime > remoteTime) {
+  let timeDiffText = 'Both collections have user edits around the same time.';
+  if (localTime > 0 && remoteTime > 0) {
+    if (localTime > remoteTime) {
+      timeRelation = 'local_newer';
+      timeDiffText = timeDiffMinutes >= 60
+        ? `Local device has user edits ~${Math.round(timeDiffMinutes / 60)} hour(s) more recent than Cloud`
+        : `Local device has user edits ${timeDiffMinutes || '< 1'} minute(s) more recent than Cloud`;
+    } else if (remoteTime > localTime) {
+      timeRelation = 'remote_newer';
+      timeDiffText = timeDiffMinutes >= 60
+        ? `Cloud version has user edits ~${Math.round(timeDiffMinutes / 60)} hour(s) more recent than Local`
+        : `Cloud version has user edits ${timeDiffMinutes || '< 1'} minute(s) more recent than Local`;
+    }
+  } else if (localTime > 0) {
     timeRelation = 'local_newer';
-    timeDiffText = timeDiffMinutes >= 60
-      ? `Local device was saved ~${Math.round(timeDiffMinutes / 60)} hour(s) more recently than Cloud`
-      : `Local device was saved ${timeDiffMinutes || '< 1'} minute(s) more recently than Cloud`;
-  } else if (remoteTime > localTime) {
+    timeDiffText = 'Local device contains recent user edits.';
+  } else if (remoteTime > 0) {
     timeRelation = 'remote_newer';
-    timeDiffText = timeDiffMinutes >= 60
-      ? `Cloud version was saved ~${Math.round(timeDiffMinutes / 60)} hour(s) more recently than Local`
-      : `Cloud version was saved ${timeDiffMinutes || '< 1'} minute(s) more recently than Local`;
+    timeDiffText = 'Cloud version contains recent user edits.';
   }
 
   const bundleDifferences = [];
@@ -2601,7 +2664,8 @@ async function executeSyncInternal({
               topicsCount: localManifest.stats.topicsCount,
               logsDaysCount: localManifest.stats.logsDaysCount,
               pagesCount: localManifest.stats.pagesCount,
-              timestamp: localManifest.timestamp,
+              timestamp: localManifest.lastModifiedTimestamp || localManifest.timestamp,
+              lastModified: localManifest.lastModifiedTimestamp,
               deviceId: localManifest.deviceId
             },
             remote: {
@@ -2609,7 +2673,8 @@ async function executeSyncInternal({
               topicsCount: freshRemoteManifest?.stats?.topicsCount || remoteManifest.stats?.topicsCount || 0,
               logsDaysCount: freshRemoteManifest?.stats?.logsDaysCount || remoteManifest.stats?.logsDaysCount || 0,
               pagesCount: freshRemoteManifest?.stats?.pagesCount || remoteManifest.stats?.pagesCount || 0,
-              timestamp: freshRemoteManifest?.timestamp || remoteManifest.timestamp,
+              timestamp: freshRemoteManifest?.lastModifiedTimestamp || remoteManifest.lastModifiedTimestamp || freshRemoteManifest?.timestamp || remoteManifest.timestamp,
+              lastModified: freshRemoteManifest?.lastModifiedTimestamp || remoteManifest.lastModifiedTimestamp,
               deviceId: freshRemoteManifest?.deviceId || remoteManifest.deviceId
             },
             diffDetails,

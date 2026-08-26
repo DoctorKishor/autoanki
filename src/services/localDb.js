@@ -1667,7 +1667,6 @@ export const LS_KEYS_TO_SNAPSHOT = [
   'local_device_id',
   'obs_device_id',
   'obs_paired_uid',
-  'auto_anki_expanded_nav_category',
   'auto_anki_exam_profiles',
   'study_room_layout_prefs',
   'fs_quick_notes',

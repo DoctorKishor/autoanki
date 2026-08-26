@@ -65,10 +65,18 @@ export default function GoogleDriveConflictModal({
     }
   };
 
-  const localTime = new Date(local?.timestamp || 0).getTime();
-  const remoteTime = new Date(remote?.timestamp || 0).getTime();
-  const isLocalNewer = localTime > remoteTime;
-  const isRemoteNewer = remoteTime > localTime;
+  const safeTime = (obj) => {
+    if (!obj) return 0;
+    const raw = obj.lastModified || obj.lastModifiedTimestamp || obj.timestamp;
+    if (!raw) return 0;
+    const t = new Date(raw).getTime();
+    return isNaN(t) ? 0 : t;
+  };
+
+  const localTime = safeTime(local);
+  const remoteTime = safeTime(remote);
+  const isLocalNewer = localTime > 0 && localTime > remoteTime;
+  const isRemoteNewer = remoteTime > 0 && remoteTime > localTime;
 
   return (
     <AnimatePresence>
@@ -171,7 +179,7 @@ export default function GoogleDriveConflictModal({
                 </div>
                 <div className="flex justify-between py-1">
                   <span className={isDark ? 'text-gray-400' : 'text-gray-500'}>Last Modified</span>
-                  <span className="font-mono font-bold text-[10px]">{formatTimestamp(local?.timestamp)}</span>
+                  <span className="font-mono font-bold text-[10px]">{formatTimestamp(local?.lastModified || local?.lastModifiedTimestamp || local?.timestamp)}</span>
                 </div>
               </div>
             </div>
@@ -211,7 +219,7 @@ export default function GoogleDriveConflictModal({
                 </div>
                 <div className="flex justify-between py-1">
                   <span className={isDark ? 'text-gray-400' : 'text-gray-500'}>Last Modified</span>
-                  <span className="font-mono font-bold text-[10px]">{formatTimestamp(remote?.timestamp)}</span>
+                  <span className="font-mono font-bold text-[10px]">{formatTimestamp(remote?.lastModified || remote?.lastModifiedTimestamp || remote?.timestamp)}</span>
                 </div>
               </div>
             </div>
