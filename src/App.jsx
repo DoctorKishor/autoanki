@@ -52,7 +52,7 @@ import {
   getLocalKV, setLocalKV, getLocalPrompts, replaceAllLocalPrompts, saveLocalPrompt, deleteLocalPrompt,
   getAllLocalPytTopics, saveLocalPytTopic, getAllLocalPytProgress, saveLocalPytProgressDoc,
   getLocalTextbooksMetadata, saveLocalTextbooksMetadata,
-  getLocalStudyLogs, saveLocalStudyLog, replaceAllLocalStudyLogs,
+  getLocalStudyLogs, saveLocalStudyLog, replaceAllLocalStudyLogs, deleteLocalStudyLog,
   getLocalSubjectTrackerData, saveLocalSubjectTrackerDoc, replaceAllLocalSubjectTrackerData,
   getLocalStudySchedule, saveLocalScheduleEntry, replaceAllLocalStudySchedule,
   getLocalScheduleTemplates, saveLocalScheduleTemplate, deleteLocalScheduleTemplate, replaceAllLocalScheduleTemplates,
@@ -10591,21 +10591,56 @@ JSON Format:
     if (!loggerDate) return;
     try {
       setIsSaving(true);
-      const logData = {
-        questions: Number(loggerQuestions) || 0,
-        cards: Number(loggerCards) || 0,
-        pages: Number(loggerPages) || 0,
-        hours: Number((Number(loggerHoursPart) + (Number(loggerMinutesPart) || 0) / 60).toFixed(3)),
-        gts: loggerGtsList || []
-      };
-      await saveLocalStudyLog(loggerDate, logData);
-      // Optimistic update: patch local studyLogs so charts/analytics update immediately
-      setStudyLogs(prev => ({ ...prev, [loggerDate]: { ...(prev[loggerDate] || {}), ...logData } }));
+      const questions = Number(loggerQuestions) || 0;
+      const cards = Number(loggerCards) || 0;
+      const pages = Number(loggerPages) || 0;
+      const hours = Number((Number(loggerHoursPart) + (Number(loggerMinutesPart) || 0) / 60).toFixed(3));
+      const gts = loggerGtsList || [];
+
+      // If the user saves a completely empty log (all zeros, no GTs), treat it as a delete
+      // so that we write a tombstone and the sync engine won't resurrect it from the cloud.
+      const isEffectivelyEmpty = questions === 0 && cards === 0 && pages === 0 && hours === 0 && gts.length === 0;
+
+      if (isEffectivelyEmpty && studyLogs[loggerDate]) {
+        // Record tombstone so sync knows this date was intentionally cleared
+        await deleteLocalStudyLog(loggerDate);
+        setStudyLogs(prev => {
+          const next = { ...prev };
+          delete next[loggerDate];
+          return next;
+        });
+      } else if (!isEffectivelyEmpty) {
+        const logData = { questions, cards, pages, hours, gts };
+        await saveLocalStudyLog(loggerDate, logData);
+        // Optimistic update: patch local studyLogs so charts/analytics update immediately
+        setStudyLogs(prev => ({ ...prev, [loggerDate]: { ...(prev[loggerDate] || {}), ...logData } }));
+      }
+      // If isEffectivelyEmpty and no existing log, just close — nothing to save or delete
       setIsStudyLoggerModalOpen(false);
       setIsSaving(false);
     } catch (err) {
       console.error("Error saving daily stats:", err);
       alert("Failed to save study log: " + err.message);
+      setIsSaving(false);
+    }
+  };
+
+  const deleteStudyLog = async (dateKey) => {
+    if (!dateKey) return;
+    if (!window.confirm(`Delete the entire study log for ${dateKey}? This cannot be undone.`)) return;
+    try {
+      setIsSaving(true);
+      await deleteLocalStudyLog(dateKey);
+      setStudyLogs(prev => {
+        const next = { ...prev };
+        delete next[dateKey];
+        return next;
+      });
+      setIsStudyLoggerModalOpen(false);
+      setIsSaving(false);
+    } catch (err) {
+      console.error('[LocalDB] Error deleting study log:', err);
+      alert('Failed to delete study log: ' + err.message);
       setIsSaving(false);
     }
   };
@@ -13224,7 +13259,24 @@ JSON Format:
               </div>
 
               {/* Modal Footer Controls */}
-              <div className={`px-4 py-3 sm:px-6 sm:py-4 border-t flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2.5 sm:gap-4 ${isDark ? 'border-white/10 bg-[#1c2128]' : 'bg-gray-50 border-slate-200'}`}>
+              <div className={`px-4 py-3 sm:px-6 sm:py-4 border-t flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-4 ${isDark ? 'border-white/10 bg-[#1c2128]' : 'bg-gray-50 border-slate-200'}`}>
+                {/* Left: Delete Log (only shown when a log exists for this date) */}
+                <div className="flex items-center">
+                  {studyLogs[loggerDate] && (
+                    <button
+                      onClick={() => deleteStudyLog(loggerDate)}
+                      disabled={isSaving}
+                      className={`px-4 py-2.5 text-xs font-black rounded-2xl flex items-center gap-1.5 active:scale-95 transition-all disabled:opacity-50 cursor-pointer ${
+                        isDark ? 'text-red-400 hover:bg-red-500/15 border border-red-500/25' : 'text-red-600 hover:bg-red-50 border border-red-200'
+                      }`}
+                      title="Delete this day's entire study log (tombstones the entry so sync won't restore it)"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Delete Log
+                    </button>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-2 sm:flex items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
                   <button
                     onClick={() => setIsStudyLoggerModalOpen(false)}
