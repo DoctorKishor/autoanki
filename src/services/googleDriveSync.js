@@ -45,7 +45,9 @@ import {
   deserializeBinaryValues,
   LS_KEYS_TO_SNAPSHOT,
   setMutationNotificationSuppressed,
-  isMutationNotificationSuppressed
+  isMutationNotificationSuppressed,
+  getUnifiedGraves,
+  saveUnifiedGraves
 } from './localDb.js';
 import logger from './logger.js';
 import { runSystemIntegrityCheck } from './healthChecker.js';
@@ -689,9 +691,12 @@ export async function extractLocalBundles() {
   // 5. CAMP Tracker Bundle
   const campTracker = (await getAllLocalItems(STORES.CAMP_TRACKER)) || [];
   const campData = (await getAllLocalItems(STORES.CAMP_DATA)) || [];
+  const trashCamp = (await getLocalKV('trash_camp')) || [];
+  trashCamp.forEach(tc => { if (tc) trackTimestamp(tc.deletedAt); });
   bundles['camp_tracker.json'] = {
     campTracker,
-    campData
+    campData,
+    trashCamp
   };
   hashes.camp_tracker = computeHash(bundles['camp_tracker.json']);
 
@@ -723,9 +728,17 @@ export async function extractLocalBundles() {
     return copy;
   };
 
+  // Include unified graves in pages_bundle for cross-device tombstone propagation
+  const unifiedGraves = (await getUnifiedGraves()) || [];
+  const trashPrompts = (await getLocalKV('trash_prompts')) || [];
+  unifiedGraves.forEach(g => { if (g) trackTimestamp(g.deletedAt); });
+  trashPrompts.forEach(p => { if (p) trackTimestamp(p.deletedAt); });
+
   bundles['pages_bundle.json'] = {
     pages: serializeBinaryValues(pages.map(cleanPageForBundle)),
-    trashPages: serializeBinaryValues(trashPages.map(cleanPageForBundle))
+    trashPages: serializeBinaryValues(trashPages.map(cleanPageForBundle)),
+    unifiedGraves,
+    trashPrompts
   };
   hashes.pages_bundle = computeHash(bundles['pages_bundle.json']);
 
@@ -1137,12 +1150,28 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
         tx.onerror = () => reject(tx.error);
       });
     } else {
-      // Merge custom prompts non-destructively
+      // Merge custom prompts non-destructively, pruning tombstoned entries
       if (Array.isArray(b.customPrompts)) {
         const existingPrompts = (await getLocalKV('custom_prompts')) || [];
         const promptMap = new Map(existingPrompts.map(p => [p.id, p]));
+        // Determine the combined set of prompt tombstones
+        const localTrashPrompts = (await getLocalKV('trash_prompts')) || [];
+        const localTrashPromptMap = new Map(localTrashPrompts.map(p => [p.id, safeTimestamp(p.deletedAt)]));
         b.customPrompts.forEach(p => {
-          if (p && p.id && !promptMap.has(p.id)) promptMap.set(p.id, p);
+          if (p && p.id) {
+            const localDeletedAt = localTrashPromptMap.get(p.id);
+            const incTime = safeTimestamp(p.updatedAt || p.createdAt);
+            // Only add if not locally tombstoned after the incoming version
+            if (!localDeletedAt || localDeletedAt <= incTime) {
+              const existing = promptMap.get(p.id);
+              if (!existing) {
+                promptMap.set(p.id, p);
+              } else {
+                const locTime = safeTimestamp(existing.updatedAt || existing.createdAt);
+                promptMap.set(p.id, incTime >= locTime ? p : existing);
+              }
+            }
+          }
         });
         await setLocalKV('custom_prompts', Array.from(promptMap.values()));
       }
@@ -1229,6 +1258,25 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
         }
       }
     }
+
+    // Always persist trashCamp tombstones (both strategies)
+    if (Array.isArray(b.trashCamp)) {
+      try {
+        const localTrashCamp = (await getLocalKV('trash_camp')) || [];
+        const trashCampMap = new Map(localTrashCamp.map(t => [t.id, t]));
+        b.trashCamp.forEach(t => {
+          if (t && t.id) {
+            const exist = trashCampMap.get(t.id);
+            if (!exist || safeTimestamp(t.deletedAt) > safeTimestamp(exist.deletedAt)) {
+              trashCampMap.set(t.id, t);
+            }
+          }
+        });
+        await setLocalKV('trash_camp', Array.from(trashCampMap.values()));
+      } catch (e) {
+        console.warn('[GDriveSync] Error hydrating trashCamp:', e);
+      }
+    }
   }
 
   // 6. Scanned Pages & Image Occlusions (Zero-Data-Loss Restoration with Tombstone Pruning)
@@ -1308,6 +1356,45 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
         }
       });
       await setLocalKV('trash_pages', Array.from(mergedTrashPages.values()));
+    }
+
+    // Always persist unified graves from the incoming bundle (both strategies)
+    if (Array.isArray(b.unifiedGraves)) {
+      try {
+        const localGraves = (await getLocalKV('unified_graves')) || [];
+        const gravesMap = new Map(localGraves.map(g => [`${g.entityType}::${g.entityId}`, g]));
+        b.unifiedGraves.forEach(g => {
+          if (g && g.entityType && g.entityId) {
+            const k = `${g.entityType}::${g.entityId}`;
+            const exist = gravesMap.get(k);
+            if (!exist || safeTimestamp(g.deletedAt) > safeTimestamp(exist.deletedAt)) {
+              gravesMap.set(k, g);
+            }
+          }
+        });
+        await setLocalKV('unified_graves', Array.from(gravesMap.values()));
+      } catch (e) {
+        console.warn('[GDriveSync] Error hydrating unified graves:', e);
+      }
+    }
+
+    // Always persist trashPrompts from the incoming bundle (both strategies)
+    if (Array.isArray(b.trashPrompts)) {
+      try {
+        const localTrashPrompts = (await getLocalKV('trash_prompts')) || [];
+        const trashPromptMap = new Map(localTrashPrompts.map(p => [p.id, p]));
+        b.trashPrompts.forEach(p => {
+          if (p && p.id) {
+            const exist = trashPromptMap.get(p.id);
+            if (!exist || safeTimestamp(p.deletedAt) > safeTimestamp(exist.deletedAt)) {
+              trashPromptMap.set(p.id, p);
+            }
+          }
+        });
+        await setLocalKV('trash_prompts', Array.from(trashPromptMap.values()));
+      } catch (e) {
+        console.warn('[GDriveSync] Error hydrating trashPrompts:', e);
+      }
     }
   }
 
@@ -2192,7 +2279,8 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
       const existingGts = Array.isArray(cur.gts) ? cur.gts : [];
       const incomingGts = Array.isArray(incLog?.gts) ? incLog.gts : [];
       const gtMap = new Map();
-      const getGtKey = (g) => g.id || (g.testName && (g.date || g.timestamp) ? `${g.testName}_${g.date || g.timestamp}` : computeHash(canonicalStringify(g)));
+      const getGtKey = (g) => g.id || ((g.name || g.testName) ? `gt_${g.name || g.testName}` : computeHash(canonicalStringify(g)));
+
       existingGts.forEach(g => { if (g) gtMap.set(getGtKey(g), g); });
       incomingGts.forEach(g => {
         if (g) {
@@ -2201,12 +2289,19 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
             gtMap.set(k, g);
           } else {
             const locGt = gtMap.get(k);
-            const locGtTime = safeTimestamp(locGt.updatedAt || locGt.date || locGt.timestamp || 0);
-            const remGtTime = safeTimestamp(g.updatedAt || g.date || g.timestamp || 0);
+            const locGtTime = safeTimestamp(locGt.updatedAt || locGt.createdAt || locGt.deletedAt || 0);
+            const remGtTime = safeTimestamp(g.updatedAt || g.createdAt || g.deletedAt || 0);
             gtMap.set(k, remGtTime >= locGtTime ? g : locGt);
           }
         }
       });
+
+      // Prune deleted GTs if marked with isDeleted or deletedAt
+      for (const [gKey, gObj] of gtMap.entries()) {
+        if (gObj.isDeleted || gObj.deletedAt) {
+          gtMap.delete(gKey);
+        }
+      }
 
       const allSessions = Array.from(sessionMap.values());
       const sessionHours = allSessions.reduce((sum, s) => sum + (Number(s.duration || s.minutes || 0) / 60 || Number(s.hours || 0)), 0);
@@ -2580,9 +2675,29 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
       }
     });
 
-    // Prune deleted tasks
+    // Merge trashCamp tombstones with latest deletedAt
+    const locTrashCamp = Array.isArray(locCamp.trashCamp) ? locCamp.trashCamp : [];
+    const remTrashCamp = Array.isArray(remCamp.trashCamp) ? remCamp.trashCamp : [];
+    const trashCampMap = new Map(locTrashCamp.map(t => [t.id, t]));
+    remTrashCamp.forEach(t => {
+      if (t && t.id) {
+        const exist = trashCampMap.get(t.id);
+        if (!exist || safeTimestamp(t.deletedAt) > safeTimestamp(exist.deletedAt)) {
+          trashCampMap.set(t.id, t);
+        }
+      }
+    });
+    const mergedTrashCamp = Array.from(trashCampMap.values());
+
+    // Prune camp tasks tombstoned in the merged trash registry
     for (const [id, task] of trkMap.entries()) {
-      if (task.isDeleted || task.deletedAt) {
+      const campGrave = trashCampMap.get(id);
+      if (campGrave) {
+        const taskTime = safeTimestamp(task.updatedAt || task.createdAt);
+        if (safeTimestamp(campGrave.deletedAt) >= taskTime) {
+          trkMap.delete(id);
+        }
+      } else if (task.isDeleted && task.deletedAt) {
         trkMap.delete(id);
       }
     }
@@ -2604,7 +2719,8 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
 
     merged['camp_tracker.json'] = {
       campTracker: Array.from(trkMap.values()),
-      campData: Array.from(datMap.values())
+      campData: Array.from(datMap.values()),
+      trashCamp: mergedTrashCamp
     };
   }
 
@@ -2657,9 +2773,40 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
       }
     });
 
+    // Merge unified graves (take latest deletedAt per entityType::entityId)
+    const locGraves = Array.isArray(locPagesB.unifiedGraves) ? locPagesB.unifiedGraves : [];
+    const remGraves = Array.isArray(remPagesB.unifiedGraves) ? remPagesB.unifiedGraves : [];
+    const gravesMap = new Map(locGraves.map(g => [`${g.entityType}::${g.entityId}`, g]));
+    remGraves.forEach(g => {
+      if (g && g.entityType && g.entityId) {
+        const k = `${g.entityType}::${g.entityId}`;
+        const exist = gravesMap.get(k);
+        if (!exist || safeTimestamp(g.deletedAt) > safeTimestamp(exist.deletedAt)) {
+          gravesMap.set(k, g);
+        }
+      }
+    });
+    const mergedUnifiedGraves = Array.from(gravesMap.values());
+
+    // Merge trashPrompts
+    const locTrashPrompts = Array.isArray(locPagesB.trashPrompts) ? locPagesB.trashPrompts : [];
+    const remTrashPrompts = Array.isArray(remPagesB.trashPrompts) ? remPagesB.trashPrompts : [];
+    const trashPromptMap = new Map(locTrashPrompts.map(p => [p.id, p]));
+    remTrashPrompts.forEach(p => {
+      if (p && p.id) {
+        const exist = trashPromptMap.get(p.id);
+        if (!exist || safeTimestamp(p.deletedAt) > safeTimestamp(exist.deletedAt)) {
+          trashPromptMap.set(p.id, p);
+        }
+      }
+    });
+    const mergedTrashPrompts = Array.from(trashPromptMap.values());
+
     merged['pages_bundle.json'] = {
       pages: serializeBinaryValues(Array.from(pageMap.values())),
-      trashPages: serializeBinaryValues(Array.from(mergedTrashMap.values()))
+      trashPages: serializeBinaryValues(Array.from(mergedTrashMap.values())),
+      unifiedGraves: mergedUnifiedGraves,
+      trashPrompts: mergedTrashPrompts
     };
   }
 

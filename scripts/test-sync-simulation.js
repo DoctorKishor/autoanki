@@ -1096,6 +1096,167 @@ async function runScenarioI() {
   logHeader('SCENARIO I: ALL UNDO/REDO + UNIFIED GRAVES TESTS PASSED');
 }
 
+// ============================================================================
+// Scenario J: Grand Tests (GTs) Bidirectional Sync & Mutation Parity
+// Tests that:
+//   1. GT creation propagates across devices
+//   2. GT edits update in-place with LWW and never duplicate
+//   3. Single GT deletion does not resurrect on sync
+//   4. Concurrent GT additions from two devices merge cleanly
+// ============================================================================
+async function runScenarioJ() {
+  logHeader('SCENARIO J: Grand Tests (GTs) Bidirectional Sync & Mutation Parity');
+
+  const cloudVault = new MockCloudVault();
+  const device1 = new MockDevice('Device-1 (Laptop)', 'dev_1_gt_test');
+  const device2 = new MockDevice('Device-2 (Tablet)', 'dev_2_gt_test');
+
+  const dateStr = '2026-08-27';
+
+  // ── Step 1: Device 1 logs Grand Test 14 ──
+  const gt1 = {
+    id: 'gt_1787780001_abc',
+    name: 'Marrow Grand Test 14',
+    platform: 'Marrow',
+    type: 'NEETPG',
+    totalQs: 200,
+    correct: 140,
+    incorrect: 45,
+    score: 515,
+    maxMarks: 800,
+    scoreStr: '515/800',
+    accuracy: 76,
+    percentile: 98.4,
+    createdAt: '2026-08-27T08:00:00.000Z',
+    updatedAt: '2026-08-27T08:00:00.000Z'
+  };
+
+  device1.setKV('study_logs', {
+    [dateStr]: {
+      hours: 4.5,
+      questions: 200,
+      cards: 100,
+      gts: [gt1],
+      updatedAt: '2026-08-27T08:00:00.000Z'
+    }
+  });
+
+  runDeviceSync(device1, cloudVault);
+  runDeviceSync(device2, cloudVault);
+
+  // Device 2 should have received GT 14
+  const dev2Logs1 = device2.getKV('study_logs', {})[dateStr];
+  assert(dev2Logs1 && dev2Logs1.gts && dev2Logs1.gts.length === 1, 'Device 2 received initial Grand Test');
+  assert(dev2Logs1.gts[0].id === 'gt_1787780001_abc', 'Device 2 has correct GT ID');
+  assert(dev2Logs1.gts[0].score === 515, 'Device 2 has correct GT score');
+
+  // ── Step 2: Device 1 edits GT 14 (corrects score to 530) ──
+  const gt1Edited = {
+    ...gt1,
+    correct: 145,
+    incorrect: 40,
+    score: 540,
+    scoreStr: '540/800',
+    accuracy: 78,
+    updatedAt: '2026-08-27T09:00:00.000Z'
+  };
+
+  device1.setKV('study_logs', {
+    [dateStr]: {
+      hours: 4.5,
+      questions: 200,
+      cards: 100,
+      gts: [gt1Edited],
+      updatedAt: '2026-08-27T09:00:00.000Z'
+    }
+  });
+
+  runDeviceSync(device1, cloudVault);
+  runDeviceSync(device2, cloudVault);
+
+  // Device 2 should have updated GT 14 in place with ZERO duplicates
+  const dev2Logs2 = device2.getKV('study_logs', {})[dateStr];
+  assert(dev2Logs2.gts.length === 1, 'Device 2 has exactly 1 GT (no duplicate created after edit)');
+  assert(dev2Logs2.gts[0].score === 540, 'Device 2 has updated GT score 540');
+
+  // ── Step 3: Concurrent GT additions on both devices ──
+  // Device 1 adds Cerebellum GT 2
+  const gtDev1 = {
+    id: 'gt_1787780002_dev1',
+    name: 'Cerebellum Mock 2',
+    platform: 'Cerebellum',
+    type: 'NEETPG',
+    score: 480,
+    createdAt: '2026-08-27T10:00:00.000Z',
+    updatedAt: '2026-08-27T10:00:00.000Z'
+  };
+  device1.setKV('study_logs', {
+    [dateStr]: {
+      hours: 5.0,
+      questions: 400,
+      cards: 100,
+      gts: [gt1Edited, gtDev1],
+      updatedAt: '2026-08-27T10:00:00.000Z'
+    }
+  });
+
+  // Device 2 adds Prepladder GT 5
+  const gtDev2 = {
+    id: 'gt_1787780003_dev2',
+    name: 'Prepladder National Mock 5',
+    platform: 'PrepLadder',
+    type: 'INICET',
+    score: 135,
+    createdAt: '2026-08-27T10:05:00.000Z',
+    updatedAt: '2026-08-27T10:05:00.000Z'
+  };
+  device2.setKV('study_logs', {
+    [dateStr]: {
+      hours: 5.5,
+      questions: 400,
+      cards: 100,
+      gts: [gt1Edited, gtDev2],
+      updatedAt: '2026-08-27T10:05:00.000Z'
+    }
+  });
+
+  // Device 1 pushes first, Device 2 syncs & merges, Device 1 pulls merged
+  runDeviceSync(device1, cloudVault);
+  runDeviceSync(device2, cloudVault);
+  runDeviceSync(device1, cloudVault);
+
+  const dev1FinalGts = device1.getKV('study_logs', {})[dateStr].gts;
+  const dev2FinalGts = device2.getKV('study_logs', {})[dateStr].gts;
+
+  assert(dev1FinalGts.length === 3, 'Device 1 has all 3 merged Grand Tests');
+  assert(dev2FinalGts.length === 3, 'Device 2 has all 3 merged Grand Tests');
+  assert(dev1FinalGts.some(g => g.id === 'gt_1787780002_dev1'), 'Device 1 preserved Cerebellum Mock 2');
+  assert(dev1FinalGts.some(g => g.id === 'gt_1787780003_dev2'), 'Device 1 received Prepladder National Mock 5');
+
+  // ── Step 4: Device 1 deletes Cerebellum Mock 2 (records tombstone) ──
+  const gtsAfterDelete = dev1FinalGts
+    .filter(g => g.id !== 'gt_1787780002_dev1')
+    .concat([{ id: 'gt_1787780002_dev1', isDeleted: true, deletedAt: '2026-08-27T11:00:00.000Z' }]);
+
+  device1.setKV('study_logs', {
+    [dateStr]: {
+      ...device1.getKV('study_logs', {})[dateStr],
+      gts: gtsAfterDelete,
+      updatedAt: '2026-08-27T11:00:00.000Z'
+    }
+  });
+
+  runDeviceSync(device1, cloudVault);
+  runDeviceSync(device2, cloudVault);
+
+  const dev2RawGts = device2.getKV('study_logs', {})[dateStr].gts || [];
+  const dev2ActiveGts = dev2RawGts.filter(g => !g.isDeleted);
+  assert(dev2ActiveGts.length === 2, 'Device 2 pruned deleted Grand Test');
+  assert(!dev2ActiveGts.some(g => g.id === 'gt_1787780002_dev1'), 'Deleted Cerebellum Mock 2 NOT resurrected on Device 2');
+
+  logHeader('SCENARIO J: ALL GRAND TEST SYNC TESTS PASSED WITH 100% INTEGRITY');
+}
+
 runTestSuite().catch(err => {
   console.error(`${colors.red}Test Suite Encountered Fatal Error:${colors.reset}`, err);
   process.exit(1);
@@ -1105,3 +1266,9 @@ runScenarioI().catch(err => {
   console.error(`${colors.red}Scenario I Encountered Fatal Error:${colors.reset}`, err);
   process.exit(1);
 });
+
+runScenarioJ().catch(err => {
+  console.error(`${colors.red}Scenario J Encountered Fatal Error:${colors.reset}`, err);
+  process.exit(1);
+});
+

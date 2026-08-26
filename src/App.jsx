@@ -10456,22 +10456,43 @@ JSON Format:
   };
 
   const handleDeleteTimelineGt = async (dateStr, gtIndex) => {
-    if (!dateStr) return;
+    if (!dateStr || gtIndex === null || gtIndex === undefined) return;
+    if (!window.confirm("Are you sure you want to delete this mock test? This will update your synced records.")) return;
     try {
+      setIsSaving(true);
       const currentDayLog = studyLogs[dateStr] || {};
       const currentGts = currentDayLog.gts || [];
-      const updatedGts = currentGts.filter((_, idx) => idx !== gtIndex);
+      const gtToDelete = currentGts[gtIndex];
+      const nowIso = new Date().toISOString();
 
-      const updatedDayLog = { ...currentDayLog, gts: updatedGts };
+      // Create tombstoned record of the deleted GT so sync propagates the deletion
+      const tombstonedGt = gtToDelete ? { ...gtToDelete, isDeleted: true, deletedAt: nowIso } : null;
+      const updatedGts = currentGts.filter((_, idx) => idx !== gtIndex);
+      if (tombstonedGt) {
+        updatedGts.push(tombstonedGt);
+      }
+
+      const updatedDayLog = { 
+        ...currentDayLog, 
+        gts: updatedGts,
+        updatedAt: nowIso
+      };
       await saveLocalStudyLog(dateStr, updatedDayLog);
 
+      // In local UI state, only show active non-deleted GTs
       setStudyLogs(prev => ({
         ...prev,
-        [dateStr]: updatedDayLog
+        [dateStr]: {
+          ...updatedDayLog,
+          gts: updatedGts.filter(g => !g.isDeleted)
+        }
       }));
+      setIsEditGtModalOpen(false);
+      setIsSaving(false);
     } catch (err) {
       console.error("[LocalDB] Error deleting GT from timeline:", err);
       alert("Failed to delete mock test: " + err.message);
+      setIsSaving(false);
     }
   };
 
@@ -10543,7 +10564,11 @@ JSON Format:
       }
     });
 
+    const nowIso = new Date().toISOString();
     const newGt = {
+      id: `gt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      createdAt: nowIso,
+      updatedAt: nowIso,
       name: loggerGtName.trim(),
       platform: loggerGtPlatform.trim(),
       type: loggerGtType,
@@ -13717,7 +13742,23 @@ JSON Format:
               </div>
 
               {/* Modal Footer */}
-              <div className={`px-4 py-3 sm:px-6 sm:py-4 border-t flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2.5 sm:gap-4 ${isDark ? 'border-white/10 bg-[#1c2128]' : 'bg-[#e6ecf5] border-slate-300/60'}`}>
+              <div className={`px-4 py-3 sm:px-6 sm:py-4 border-t flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-4 ${isDark ? 'border-white/10 bg-[#1c2128]' : 'bg-[#e6ecf5] border-slate-300/60'}`}>
+                {/* Left: Delete Mock Test */}
+                <div className="flex items-center">
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteTimelineGt(editGtTargetDate, editGtTargetIndex)}
+                    disabled={isSaving}
+                    className={`px-4 py-2.5 text-xs font-black rounded-2xl flex items-center gap-1.5 active:scale-95 transition-all disabled:opacity-50 cursor-pointer ${
+                      isDark ? 'text-red-400 hover:bg-red-500/15 border border-red-500/25' : 'text-red-600 hover:bg-red-50 border border-red-200'
+                    }`}
+                    title="Delete this mock test from records"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Delete Test
+                  </button>
+                </div>
+
                 <div className="grid grid-cols-2 sm:flex items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
                   <button
                     onClick={() => setIsEditGtModalOpen(false)}
@@ -14640,7 +14681,11 @@ JSON Format:
       }
     });
 
+    const nowIso = new Date().toISOString();
     const newGt = {
+      id: `gt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      createdAt: nowIso,
+      updatedAt: nowIso,
       name: loggerGtName.trim(),
       platform: loggerGtPlatform.trim(),
       type: loggerGtType,
@@ -14766,7 +14811,11 @@ JSON Format:
       }
     });
 
+    const existingGt = (studyLogs[editGtTargetDate]?.gts || [])[editGtTargetIndex] || {};
     const updatedGt = {
+      id: existingGt.id || `gt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      createdAt: existingGt.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       name: editGtName.trim() || `Mock Test ${editGtTargetIndex + 1}`,
       platform: editGtPlatform.trim(),
       type: editGtType,
@@ -14797,9 +14846,10 @@ JSON Format:
       const gts = [...(log.gts || [])];
       gts[editGtTargetIndex] = updatedGt;
       log.gts = gts;
+      log.updatedAt = new Date().toISOString();
       updatedLogs[editGtTargetDate] = log;
 
-      await saveLocalStudyLog(editGtTargetDate, { gts });
+      await saveLocalStudyLog(editGtTargetDate, { gts, updatedAt: log.updatedAt });
 
       setStudyLogs(updatedLogs);
       setIsEditGtModalOpen(false);
