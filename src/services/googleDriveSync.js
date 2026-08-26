@@ -93,20 +93,21 @@ function getEntityKey(el) {
  * @returns {string}
  */
 export function canonicalStringify(obj) {
-  if (obj === null || typeof obj !== 'object') return JSON.stringify(obj);
+  if (obj === null || obj === undefined) return 'null';
+  if (typeof obj !== 'object') return JSON.stringify(obj);
   if (Array.isArray(obj)) {
     const hasEntityKeys = obj.length > 1 && obj.some(el => el && typeof el === 'object' && getEntityKey(el) !== null);
     let arr = obj;
     if (hasEntityKeys) {
       arr = [...obj].sort((a, b) => {
-        const keyA = getEntityKey(a) || canonicalStringify(a);
-        const keyB = getEntityKey(b) || canonicalStringify(b);
-        return keyA < keyB ? -1 : keyA > keyB ? 1 : 0;
+        const keyA = String(getEntityKey(a) || canonicalStringify(a) || '');
+        const keyB = String(getEntityKey(b) || canonicalStringify(b) || '');
+        return keyA.localeCompare(keyB);
       });
     }
     return '[' + arr.map(canonicalStringify).join(',') + ']';
   }
-  const sortedKeys = Object.keys(obj).sort();
+  const sortedKeys = Object.keys(obj).filter(k => obj[k] !== undefined).sort();
   return '{' + sortedKeys.map(k => JSON.stringify(k) + ':' + canonicalStringify(obj[k])).join(',') + '}';
 }
 
@@ -2442,7 +2443,25 @@ async function executeSyncInternal({
       return localHashes[bundleKey] !== remoteHashes[bundleKey];
     });
 
-    logger.sync('DIVERGENCE', 'Divergent bundles detected across devices:', { modifiedBundleNames });
+    const hashDiff = {};
+    ['cards_bundle', 'curriculum_topics', 'study_logs', 'fsrs_config', 'camp_tracker', 'pages_bundle'].forEach(k => {
+      hashDiff[k] = {
+        local: localHashes[k] || 'missing',
+        remote: remoteHashes[k] || 'missing',
+        ancestor: lastSyncedHashes?.[k] || 'none',
+        localChanged: localHashes[k] !== lastSyncedHashes?.[k],
+        remoteChanged: remoteHashes[k] !== lastSyncedHashes?.[k],
+        inSync: localHashes[k] === remoteHashes[k]
+      };
+    });
+
+    logger.sync('DIVERGENCE', 'Divergent bundles detected across devices:', {
+      modifiedBundleNames,
+      isLocalClean,
+      isRemoteClean,
+      hashDiff
+    });
+    console.log('[GDriveSync] Detailed 6-bundle hash divergence audit:', JSON.stringify(hashDiff, null, 2));
 
     if (modifiedBundleNames.length > 0) {
       const cardsConflict = localHashes.cards_bundle !== remoteHashes.cards_bundle;

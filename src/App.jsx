@@ -8854,12 +8854,9 @@ export default function App() {
       const currentTracker = (Array.isArray(subjectTrackerData) && subjectTrackerData.length > 0)
         ? subjectTrackerData
         : (await getLocalSubjectTrackerData()) || [];
-      const { cleanedLogs, modified: cleanedModified } = sanitizeStudyLogsWithTracker(logs || {}, currentTracker);
-      const { reconciledLogs, reconciled } = reconcileTrackerWithStudyLogs(cleanedLogs, currentTracker);
+      const { cleanedLogs } = sanitizeStudyLogsWithTracker(logs || {}, currentTracker);
+      const { reconciledLogs } = reconcileTrackerWithStudyLogs(cleanedLogs, currentTracker);
       setStudyLogs(reconciledLogs);
-      if (cleanedModified || reconciled) {
-        replaceAllLocalStudyLogs(reconciledLogs).catch(err => console.error("[LocalDB] Error saving reconciled study logs:", err));
-      }
       studyLogsLoaded.current = true;
     } catch (err) { console.error('Failed to load study logs from IndexedDB:', err); }
     finally { setIsStudyLogsLoading(false); }
@@ -8993,14 +8990,11 @@ export default function App() {
         if (Array.isArray(booksMeta)) setTextbooksMetadata(booksMeta);
         if (Array.isArray(trackerData)) setSubjectTrackerData(trackerData);
 
-        // Immediate study logs reconciliation with fresh tracker data to prevent stale React closure desync
+        // Immediate in-memory study logs reconciliation with fresh tracker data to prevent stale React closure desync
         const cleanTracker = Array.isArray(trackerData) ? trackerData : [];
-        const { cleanedLogs, modified: cleanedModified } = sanitizeStudyLogsWithTracker(rawLogs || {}, cleanTracker);
-        const { reconciledLogs, reconciled } = reconcileTrackerWithStudyLogs(cleanedLogs, cleanTracker);
+        const { cleanedLogs } = sanitizeStudyLogsWithTracker(rawLogs || {}, cleanTracker);
+        const { reconciledLogs } = reconcileTrackerWithStudyLogs(cleanedLogs, cleanTracker);
         setStudyLogs(reconciledLogs);
-        if (cleanedModified || reconciled) {
-          replaceAllLocalStudyLogs(reconciledLogs).catch(err => console.error("[LocalDB] Error saving reconciled study logs on cloud hydration:", err));
-        }
 
         if (scheduleMap && typeof scheduleMap === 'object') setStudySchedule(scheduleMap);
         if (Array.isArray(templatesList)) setScheduleTemplates(templatesList);
