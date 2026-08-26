@@ -972,7 +972,7 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
 
       // Non-destructive entity-level merge for Subject Tracker Topics & FSRS states
       const localSubjectTracker = (await getLocalSubjectTrackerData()) || (await getLocalKV('subject_tracker_data')) || [];
-      const mergedTracker = mergeSubjectTrackerArrays(localSubjectTracker, b.subjectTracker || []);
+      const mergedTracker = mergeSubjectTrackerArrays(localSubjectTracker, b.subjectTracker || [], localTrashTopics, incomingTrashTopics);
       await setLocalKV('subject_tracker_data', mergedTracker);
 
       // Non-destructive merge for PYT user progress
@@ -1626,13 +1626,54 @@ export async function saveLastSyncedHashes(hashes) {
 }
 
 /**
- * Merges two Subject Tracker arrays at the entity and topic level with timestamp & FSRS awareness.
+ * Merges Subject Tracker array documents with topic-level LWW conflict resolution and deletion awareness.
  * Guarantees Zero-Data-Loss: newer ratings, study dates, and notes always win.
  */
-export function mergeSubjectTrackerArrays(localTracker = [], remoteTracker = []) {
+export function mergeSubjectTrackerArrays(localTracker = [], remoteTracker = [], localTrashTopics = [], remoteTrashTopics = []) {
   const locList = Array.isArray(localTracker) ? localTracker : [];
   const remList = Array.isArray(remoteTracker) ? remoteTracker : [];
   
+  const locTrash = Array.isArray(localTrashTopics) ? localTrashTopics : [];
+  const remTrash = Array.isArray(remoteTrashTopics) ? remoteTrashTopics : [];
+
+  // Index tombstones by topicId, topicName, and composite keys
+  const trashTimeMap = new Map();
+  [...locTrash, ...remTrash].forEach(t => {
+    if (!t) return;
+    const delTime = safeTimestamp(t.deletedAt);
+    if (t.id) {
+      trashTimeMap.set(String(t.id).toLowerCase(), Math.max(delTime, trashTimeMap.get(String(t.id).toLowerCase()) || 0));
+    }
+    if (t.topicName) {
+      trashTimeMap.set(String(t.topicName).toLowerCase(), Math.max(delTime, trashTimeMap.get(String(t.topicName).toLowerCase()) || 0));
+    }
+    if (t.name) {
+      trashTimeMap.set(String(t.name).toLowerCase(), Math.max(delTime, trashTimeMap.get(String(t.name).toLowerCase()) || 0));
+    }
+    if (t.docId && t.topicName) {
+      const compKey = `${String(t.docId).toLowerCase()}_${String(t.topicName).toLowerCase()}`;
+      trashTimeMap.set(compKey, Math.max(delTime, trashTimeMap.get(compKey) || 0));
+    }
+  });
+
+  const isTopicTombstoned = (docId, tKey, topicObj) => {
+    const dTime = safeTimestamp(topicObj?.updatedAt || topicObj?.lastReviewDate || topicObj?.createdAt || 0);
+    const keysToCheck = [
+      topicObj?.id ? String(topicObj.id).toLowerCase() : null,
+      tKey ? String(tKey).toLowerCase() : null,
+      topicObj?.name ? String(topicObj.name).toLowerCase() : null,
+      docId && tKey ? `${String(docId).toLowerCase()}_${String(tKey).toLowerCase()}` : null
+    ].filter(Boolean);
+
+    for (const k of keysToCheck) {
+      const delTime = trashTimeMap.get(k);
+      if (delTime && delTime >= dTime) {
+        return true;
+      }
+    }
+    return false;
+  };
+
   const map = new Map();
   
   // Index all local subject documents
@@ -1650,7 +1691,14 @@ export function mergeSubjectTrackerArrays(localTracker = [], remoteTracker = [])
     if (!key) return;
     
     if (!map.has(key)) {
-      map.set(key, { ...remDoc });
+      const remTopics = remDoc.topics && typeof remDoc.topics === 'object' ? remDoc.topics : {};
+      const filteredRemTopics = {};
+      Object.entries(remTopics).forEach(([tKey, tObj]) => {
+        if (!isTopicTombstoned(key, tKey, tObj)) {
+          filteredRemTopics[tKey] = tObj;
+        }
+      });
+      map.set(key, { ...remDoc, topics: filteredRemTopics });
       return;
     }
     
@@ -1667,6 +1715,11 @@ export function mergeSubjectTrackerArrays(localTracker = [], remoteTracker = [])
     allTopicKeys.forEach(tKey => {
       const locT = locTopics[tKey];
       const remT = remTopics[tKey];
+
+      // Prune if tombstoned
+      if (isTopicTombstoned(key, tKey, locT || remT)) {
+        return;
+      }
       
       // Topic only in remote
       if (!locT && remT) {
@@ -1683,7 +1736,7 @@ export function mergeSubjectTrackerArrays(localTracker = [], remoteTracker = [])
       if (locT && !remT) {
         const locTopicTime = safeTimestamp(locT.updatedAt || locT.lastReviewDate || locT.createdAt || 0);
         // If remote doc was updated more recently than this local topic was touched, remote doc deleted it
-        if (remDocTime > locTopicTime && locTopicTime > 0) {
+        if (remDocTime > locTopicTime && remDocTime > 0) {
           return; // Prune (deletion wins)
         }
         mergedTopics[tKey] = locT;
@@ -2363,7 +2416,7 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
       topics: serializeBinaryValues(Array.from(topicMap.values())),
       trashTopics: serializeBinaryValues(Array.from(mergedTrashTopics.values())),
       pytData: serializeBinaryValues(Array.from(pytMap.values())),
-      subjectTracker: mergeSubjectTrackerArrays(locCur.subjectTracker || [], remCur.subjectTracker || []),
+      subjectTracker: mergeSubjectTrackerArrays(locCur.subjectTracker || [], remCur.subjectTracker || [], locTrashTopics, remTrashTopics),
       pytUserProgress: mergePytUserProgress(locCur.pytUserProgress || [], remCur.pytUserProgress || []),
       textbooksMetadata: mergeTextbooksMetadata(locCur.textbooksMetadata || [], remCur.textbooksMetadata || [])
     };

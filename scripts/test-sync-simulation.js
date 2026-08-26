@@ -928,9 +928,32 @@ async function runTestSuite() {
   device1.setKV('trash_pages', d1TrashPages);
   runDeviceSync(device1, cloudVault);
 
-  // Device 2 pulls -> page_occlusion_1 is pruned on Device 2
+  // 5. Primary Curriculum Topic Deletion via trash_topics Tombstone
+  device1.stores.topics.push({
+    id: 'topic_del_tombstone_1',
+    name: 'Obsolete Anatomy Section',
+    subject: 'Anatomy',
+    updatedAt: '2026-08-27T08:00:00.000Z'
+  });
+  runDeviceSync(device1, cloudVault);
   runDeviceSync(device2, cloudVault);
-  assert(!device2.getKV('pages', []).some(p => p.id === 'page_occlusion_1'), 'Deleted scanned page pruned on Device 2 via trash_pages tombstone');
+  assert(device2.stores.topics.some(t => t.id === 'topic_del_tombstone_1'), 'Device 2 received topic_del_tombstone_1');
+
+  // Device 1 deletes topic_del_tombstone_1 and records tombstone in trash_topics
+  device1.stores.topics = device1.stores.topics.filter(t => t.id !== 'topic_del_tombstone_1');
+  const d1TrashTopics = device1.getKV('trash_topics', []);
+  d1TrashTopics.push({
+    id: 'topic_del_tombstone_1',
+    name: 'Obsolete Anatomy Section',
+    subject: 'Anatomy',
+    deletedAt: '2026-08-27T10:15:00.000Z'
+  });
+  device1.setKV('trash_topics', d1TrashTopics);
+  runDeviceSync(device1, cloudVault);
+
+  // Device 2 pulls -> topic is pruned on Device 2 via trash_topics tombstone
+  runDeviceSync(device2, cloudVault);
+  assert(!device2.stores.topics.some(t => t.id === 'topic_del_tombstone_1'), 'Deleted curriculum topic pruned on Device 2 via trash_topics tombstone without resurrection');
 
   // Clean No-op verification
   const finalActionD1 = runDeviceSync(device1, cloudVault);

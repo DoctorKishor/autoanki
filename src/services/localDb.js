@@ -853,10 +853,36 @@ export async function saveLocalSubjectTrackerDoc(docId, docData) {
     const existingTopics = existing?.topics && typeof existing.topics === 'object' ? existing.topics : {};
     const incomingTopics = normalizedDocData?.topics && typeof normalizedDocData.topics === 'object' ? normalizedDocData.topics : {};
 
-    const mergedTopics = { ...existingTopics };
+    // Detect deleted topics when incomingTopics is provided as a complete replacement dictionary
+    const deletedTopicKeys = Object.keys(existingTopics).filter(k => !Object.prototype.hasOwnProperty.call(incomingTopics, k));
+    if (deletedTopicKeys.length > 0) {
+      try {
+        const trash = (await getLocalKV('trash_topics')) || [];
+        const nowIso = new Date().toISOString();
+        deletedTopicKeys.forEach(tKey => {
+          const oldT = existingTopics[tKey];
+          const topicId = oldT?.id || `${normalizedDocId}_${tKey}`;
+          if (!trash.some(t => t.id === topicId || (t.docId === normalizedDocId && t.topicName === tKey))) {
+            trash.push({
+              id: topicId,
+              docId: normalizedDocId,
+              topicName: tKey,
+              name: oldT?.name || tKey,
+              subject: normalizedDocData.subject || existing?.subject || normalizedDocId,
+              deletedAt: nowIso
+            });
+          }
+        });
+        await setLocalKV('trash_topics', trash);
+      } catch (e) {
+        console.warn("[LocalDB] Error recording subject tracker topic tombstone:", e);
+      }
+    }
+
+    const topicsToSave = {};
     Object.entries(incomingTopics).forEach(([tName, tObj]) => {
       const prevTopic = existingTopics[tName];
-      mergedTopics[tName] = {
+      topicsToSave[tName] = {
         ...(prevTopic || {}),
         ...(tObj || {}),
         updatedAt: tObj?.updatedAt || new Date().toISOString()
@@ -868,7 +894,7 @@ export async function saveLocalSubjectTrackerDoc(docId, docData) {
       ...normalizedDocData,
       id: normalizedDocId,
       subject: normalizedDocData.subject || existing?.subject || normalizedDocId,
-      topics: mergedTopics,
+      topics: topicsToSave,
       updatedAt: normalizedDocData.updatedAt || new Date().toISOString()
     };
 
@@ -877,7 +903,8 @@ export async function saveLocalSubjectTrackerDoc(docId, docData) {
       : [...current, docToSave];
 
     await setLocalKV('subject_tracker_data', updated);
-    logger.db('SAVE-SUBJECT-TRACKER', `Saved subject tracker doc "${normalizedDocId}" with ${Object.keys(mergedTopics).length} topics`);
+    notifyLocalMutation('subject_tracker');
+    logger.db('SAVE-SUBJECT-TRACKER', `Saved subject tracker doc "${normalizedDocId}" with ${Object.keys(topicsToSave).length} topics (Pruned ${deletedTopicKeys.length} deleted)`);
     return updated;
   }).catch(err => {
     console.error("[LocalDB] saveLocalSubjectTrackerDoc mutex error:", err);
