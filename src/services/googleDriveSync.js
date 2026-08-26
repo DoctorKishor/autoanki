@@ -399,34 +399,50 @@ async function uploadDriveMediaFile(accessToken, mediaFolderId, fileName, mimeTy
 }
 
 /**
- * Downloads a file's content from Google Drive by file ID.
+ * Downloads a file's content by file ID from Google Drive.
  */
-async function downloadDriveFile(accessToken, fileId, isJson = true) {
+export async function downloadDriveFile(accessToken, fileId, isJson = true) {
   const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
-  const res = await fetchWithTimeout(url, {
+  const response = await fetch(url, {
     headers: { Authorization: `Bearer ${accessToken}` }
-  }, 30000);
+  });
 
-  if (!res.ok) {
-    throw new Error(`Failed to download file ${fileId} from Drive: ${res.status} ${res.statusText}`);
+  if (!response.ok) {
+    throw new Error(`Failed to download file ${fileId}: ${response.status} ${response.statusText}`);
   }
 
   if (isJson) {
-    return await res.json();
+    return await response.json();
+  } else {
+    return await response.blob();
   }
-  return await res.arrayBuffer();
 }
 
 /**
- * Locates or creates the AutoAnki_Sync_Vault folder and its /media subfolder.
+ * Deletes a file from Google Drive.
+ */
+export async function deleteDriveFile(accessToken, fileId) {
+  const url = `https://www.googleapis.com/drive/v3/files/${fileId}`;
+  const response = await fetch(url, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+  if (!response.ok && response.status !== 404) {
+    throw new Error(`Failed to delete Google Drive file ${fileId}: ${response.status}`);
+  }
+  return true;
+}
+
+/**
+ * Initializes or resolves the primary Sync Vault folder and media subfolder.
  */
 export async function ensureSyncVault(accessToken) {
-  let vault = await findDriveItem(accessToken, VAULT_FOLDER_NAME, null, true);
+  let vault = await findDriveFolder(accessToken, VAULT_FOLDER_NAME);
   if (!vault) {
-    vault = await createDriveFolder(accessToken, VAULT_FOLDER_NAME, null);
+    vault = await createDriveFolder(accessToken, VAULT_FOLDER_NAME);
   }
 
-  let media = await findDriveItem(accessToken, MEDIA_FOLDER_NAME, vault.id, true);
+  let media = await findDriveFolder(accessToken, MEDIA_FOLDER_NAME, vault.id);
   if (!media) {
     media = await createDriveFolder(accessToken, MEDIA_FOLDER_NAME, vault.id);
   }
@@ -439,16 +455,21 @@ export async function ensureSyncVault(accessToken) {
 // ============================================================================
 
 /**
- * Gathers and serializes local data into partitioned chunks, adhering to Zero-Data-Loss rules.
+ * Gathers and serializes local data into partitioned chunks sequentially to prevent memory spikes.
  */
 export async function extractLocalBundles() {
+  const bundles = {};
+  const hashes = {};
+
   // 1. Cards Bundle
   const flashcards = (await getLocalKV('flashcards')) || [];
   const trashCards = (await getLocalKV('trash_cards')) || [];
-  const cardsBundle = {
+  const cardsCount = flashcards.length;
+  bundles['cards_bundle.json'] = {
     flashcards: serializeBinaryValues(flashcards),
     trashCards: serializeBinaryValues(trashCards)
   };
+  hashes.cards_bundle = computeHash(bundles['cards_bundle.json']);
 
   // 2. Curriculum Topics Bundle (with Tombstone Support)
   const topics = (await getAllLocalTopics()) || [];
@@ -457,16 +478,7 @@ export async function extractLocalBundles() {
   const subjectTracker = (await getLocalSubjectTrackerData()) || (await getLocalKV('subject_tracker_data')) || [];
   const pytUserProgress = (await getLocalKV('pyt_user_progress')) || [];
   const textbooksMetadata = (await getLocalKV('textbooks_metadata')) || [];
-  const curriculumBundle = {
-    topics: serializeBinaryValues(topics),
-    trashTopics: serializeBinaryValues(trashTopics),
-    pytData: serializeBinaryValues(pytData),
-    subjectTracker,
-    pytUserProgress,
-    textbooksMetadata
-  };
-
-  // Compute total curriculum topics (standalone topics + subject tracker topics + PYT entries)
+  
   let totalTopicsCount = topics.length;
   if (Array.isArray(subjectTracker)) {
     subjectTracker.forEach(doc => {
@@ -479,6 +491,16 @@ export async function extractLocalBundles() {
     totalTopicsCount += pytData.length;
   }
 
+  bundles['curriculum_topics.json'] = {
+    topics: serializeBinaryValues(topics),
+    trashTopics: serializeBinaryValues(trashTopics),
+    pytData: serializeBinaryValues(pytData),
+    subjectTracker,
+    pytUserProgress,
+    textbooksMetadata
+  };
+  hashes.curriculum_topics = computeHash(bundles['curriculum_topics.json']);
+
   // 3. Study Logs Bundle (with Tombstone Support)
   const studyLogs = (await getLocalStudyLogs()) || {};
   const trashStudyLogs = (await getTrashStudyLogs()) || (await getLocalKV('trash_study_logs')) || [];
@@ -487,7 +509,9 @@ export async function extractLocalBundles() {
   const campDailyLogs = (await getAllLocalItems(STORES.CAMP_DAILY_LOGS)) || [];
   const timerState = (await getLocalKV('timerState')) || null;
   const activeNewTopicsToday = (await getLocalKV('active_new_topics_today')) || [];
-  const studyLogsBundle = {
+  const logsDaysCount = Object.keys(studyLogs).length;
+
+  bundles['study_logs.json'] = {
     studyLogs,
     trashStudyLogs,
     studySchedule,
@@ -496,8 +520,9 @@ export async function extractLocalBundles() {
     timerState,
     activeNewTopicsToday
   };
+  hashes.study_logs = computeHash(bundles['study_logs.json']);
 
-  // 4. FSRS Config & Settings Bundle (including persistent cross-device settings)
+  // 4. FSRS Config & Settings Bundle
   const fsrsConfig = (await getFSRSConfig()) || {};
   const settings = (await getAllLocalItems(STORES.SETTINGS)) || [];
   const filteredSettings = settings.filter(s => s?.key !== 'google_drive_auth');
@@ -531,7 +556,7 @@ export async function extractLocalBundles() {
     }
   }
 
-  const fsrsBundle = {
+  bundles['fsrs_config.json'] = {
     fsrsConfig,
     settings: filteredSettings,
     topicHints,
@@ -541,20 +566,22 @@ export async function extractLocalBundles() {
     aiRecommendations,
     localStorageSnapshot
   };
+  hashes.fsrs_config = computeHash(bundles['fsrs_config.json']);
 
   // 5. CAMP Tracker Bundle
   const campTracker = (await getAllLocalItems(STORES.CAMP_TRACKER)) || [];
   const campData = (await getAllLocalItems(STORES.CAMP_DATA)) || [];
-  const campBundle = {
+  bundles['camp_tracker.json'] = {
     campTracker,
     campData
   };
+  hashes.camp_tracker = computeHash(bundles['camp_tracker.json']);
 
-  // 6. Scanned Pages & Occlusions Metadata Bundle (Zero-Data-Loss Guaranteed)
+  // 6. Scanned Pages & Occlusions Metadata Bundle (Streamlined & Sanitized)
   const pages = (await getLocalPages()) || [];
   const trashPages = (await getLocalKV('trash_pages')) || [];
-  
-  // Separate heavy image binary payload & Base64 strings from metadata for cloud JSON chunking
+  const pagesCount = pages.length;
+
   const cleanPageForBundle = (p) => {
     if (!p || typeof p !== 'object') return p;
     const copy = { ...p };
@@ -571,23 +598,11 @@ export async function extractLocalBundles() {
     return copy;
   };
 
-  const pagesMetadata = pages.map(cleanPageForBundle);
-  const trashPagesMetadata = trashPages.map(cleanPageForBundle);
-
-  const pagesBundle = {
-    pages: serializeBinaryValues(pagesMetadata),
-    trashPages: serializeBinaryValues(trashPagesMetadata)
+  bundles['pages_bundle.json'] = {
+    pages: serializeBinaryValues(pages.map(cleanPageForBundle)),
+    trashPages: serializeBinaryValues(trashPages.map(cleanPageForBundle))
   };
-
-  // Compute hashes
-  const hashes = {
-    cards_bundle: computeHash(cardsBundle),
-    curriculum_topics: computeHash(curriculumBundle),
-    study_logs: computeHash(studyLogsBundle),
-    fsrs_config: computeHash(fsrsBundle),
-    camp_tracker: computeHash(campBundle),
-    pages_bundle: computeHash(pagesBundle)
-  };
+  hashes.pages_bundle = computeHash(bundles['pages_bundle.json']);
 
   const manifest = {
     version: '2.1',
@@ -598,26 +613,17 @@ export async function extractLocalBundles() {
     schemaVersion: 4,
     hashes,
     stats: {
-      cardsCount: flashcards.length,
+      cardsCount,
       topicsCount: totalTopicsCount,
-      logsDaysCount: Object.keys(studyLogs).length,
-      pagesCount: pages.length,
-      mediaCount: pages.length
+      logsDaysCount,
+      pagesCount,
+      mediaCount: pagesCount
     }
   };
 
   return {
     manifest,
-    bundles: {
-      'cards_bundle.json': cardsBundle,
-      'curriculum_topics.json': curriculumBundle,
-      'study_logs.json': studyLogsBundle,
-      'fsrs_config.json': fsrsBundle,
-      'camp_tracker.json': campBundle,
-      'pages_bundle.json': pagesBundle
-    },
-    pages,
-    trashPages
+    bundles
   };
 }
 
@@ -2443,14 +2449,18 @@ async function executeSyncInternal({
     }
 
     // Compare hashes against both local and last-synced ancestor hashes
-    const localHashes = localManifest.hashes;
+    const localHashes = localManifest.hashes || {};
     const remoteHashes = remoteManifest.hashes || {};
     const lastSyncedHashes = await getLastSyncedHashes();
 
-    const isIdentical = Object.keys(localHashes).every(k => localHashes[k] === remoteHashes[k]);
-    if (isIdentical && !force) {
+    const ALL_BUNDLES = ['cards_bundle', 'curriculum_topics', 'study_logs', 'fsrs_config', 'camp_tracker', 'pages_bundle'];
+    const allHashesMatch = ALL_BUNDLES.every(k => localHashes[k] && remoteHashes[k] && localHashes[k] === remoteHashes[k]);
+
+    if (allHashesMatch && !force) {
       await saveLastSyncedHashes(localHashes);
-      logger.sync('UP-TO-DATE', 'Local and remote collections are 100% identical. No-op.');
+      logger.sync('UP-TO-DATE', '[NO-OP] Local and cloud hashes are 100% identical. Skipping download/upload.', {
+        hashes: localHashes
+      });
       emit(10, 10, 'Everything is up to date.');
       emitSyncEvent('synced', { message: 'In sync with Google Drive.' });
       return { success: true, action: 'noop', message: 'Everything is up to date.' };
@@ -2463,7 +2473,10 @@ async function executeSyncInternal({
     if (isLocalEmpty && hasRemoteData && !force) {
       logger.sync('FAST-FORWARD-DOWNLOAD', 'Local device is uninitialized. Downloading complete collection from cloud...');
       emit(3, 10, 'Downloading your collection from Google Drive…');
-      const res = await executeOneWayDownload(accessToken, vaultFolderId, mediaFolderId, remoteFileMap, emit);
+      const res = await executeOneWayDownload(accessToken, vaultFolderId, mediaFolderId, remoteFileMap, emit, {
+        localHashes,
+        remoteHashes
+      });
       if (res.success) {
         const postData = await extractLocalBundles();
         await saveLastSyncedHashes(postData.manifest.hashes);
@@ -2484,7 +2497,10 @@ async function executeSyncInternal({
     if (isLocalClean && !force) {
       logger.sync('FAST-FORWARD-DOWNLOAD', 'Local had zero edits since last sync. Fast-forwarding local database to newer cloud version...');
       emit(3, 10, 'Fast-forwarding to newer cloud version…');
-      const res = await executeOneWayDownload(accessToken, vaultFolderId, mediaFolderId, remoteFileMap, emit);
+      const res = await executeOneWayDownload(accessToken, vaultFolderId, mediaFolderId, remoteFileMap, emit, {
+        localHashes,
+        remoteHashes
+      });
       if (res.success) {
         const postData = await extractLocalBundles();
         await saveLastSyncedHashes(postData.manifest.hashes);
@@ -2602,7 +2618,10 @@ async function executeSyncInternal({
           }
           return res;
         } else if (conflictResolution === 'download') {
-          const res = await executeOneWayDownload(accessToken, vaultFolderId, mediaFolderId, freshRemoteFileMap, emit);
+          const res = await executeOneWayDownload(accessToken, vaultFolderId, mediaFolderId, freshRemoteFileMap, emit, {
+            localHashes,
+            remoteHashes: currentRemoteHashes
+          });
           if (res.success) {
             const postData = await extractLocalBundles();
             await saveLastSyncedHashes(postData.manifest.hashes);
@@ -2614,15 +2633,6 @@ async function executeSyncInternal({
           emitSyncEvent('cancelled', { message: 'Sync cancelled by user.' });
           return { success: false, action: 'cancelled', message: 'Sync cancelled by user.' };
         }
-      }
-
-      // Safe Pre-Merge Snapshot (Rollback Guarantee)
-      logger.sync('SAFETY-SNAPSHOT', 'Creating automatic pre-sync local safety snapshot...');
-      emit(4, 10, 'Creating pre-sync safety snapshot…');
-      try {
-        await saveInternalSnapshot('pre_cloud_sync_merge');
-      } catch (snapErr) {
-        logger.warn('SAFETY-SNAPSHOT-WARN', 'Pre-merge snapshot warning:', snapErr);
       }
 
       // Download remote modified bundles
@@ -2775,27 +2785,45 @@ async function executeOneWayPush(accessToken, vaultFolderId, mediaFolderId, loca
 }
 
 /**
- * Executes a safe one-way download from Google Drive with completeness validation.
+ * Executes a safe one-way download from Google Drive with completeness validation & selective bundle downloads.
  */
-async function executeOneWayDownload(accessToken, vaultFolderId, mediaFolderId, remoteFileMap, emit) {
-  emit(1, 6, 'Downloading all JSON bundles from Google Drive (Phase 1)…');
+async function executeOneWayDownload(accessToken, vaultFolderId, mediaFolderId, remoteFileMap, emit, { localHashes = null, remoteHashes = null } = {}) {
+  emit(1, 6, 'Checking cloud bundles for delta download…');
   const downloadedBundles = {};
   const filesToDownload = Array.from(remoteFileMap.entries()).filter(([name]) => name.endsWith('.json') && name !== 'manifest.json');
   
+  const locHashes = localHashes || {};
+  const remHashes = remoteHashes || {};
+  let downloadedCount = 0;
+  let skippedCount = 0;
+
   for (const [name, file] of filesToDownload) {
+    const bundleKey = name.replace('.json', '');
+    const isUntouched = locHashes[bundleKey] && remHashes[bundleKey] && (locHashes[bundleKey] === remHashes[bundleKey]);
+
+    if (isUntouched) {
+      logger.sync('BUNDLE-DOWNLOAD-SKIPPED', `Skipping download for untouched bundle: ${name} (hash match: ${locHashes[bundleKey]})`);
+      skippedCount++;
+      continue;
+    }
+
     emit(2, 6, `Downloading ${name}…`);
     downloadedBundles[name] = await downloadDriveFile(accessToken, file.id, true);
+    downloadedCount++;
   }
 
-  // Completeness check: make sure we got bundles
-  if (Object.keys(downloadedBundles).length === 0 && filesToDownload.length > 0) {
-    throw new Error('Downloaded bundles are empty or incomplete.');
+  logger.sync('SELECTIVE-DOWNLOAD-SUMMARY', `Download fetched ${downloadedCount} modified bundle(s), skipped ${skippedCount} unchanged bundle(s).`);
+
+  // If no bundles actually changed, we're up to date
+  if (downloadedCount === 0 && filesToDownload.length > 0) {
+    const postHydrationLocal = await extractLocalBundles();
+    await saveLastSyncedHashes(postHydrationLocal.manifest.hashes);
+    emit(6, 6, 'Everything is up to date.');
+    emitSyncEvent('synced', { message: 'Cloud collection already in sync.' });
+    return { success: true, action: 'noop', message: 'Collection is already up to date.' };
   }
 
-  emit(3, 6, 'Creating automatic pre-sync local snapshot…');
-  await saveInternalSnapshot('pre_cloud_sync_snapshot');
-
-  emit(4, 6, 'Replacing local database with cloud collection…');
+  emit(4, 6, 'Applying cloud updates to local database…');
   await hydrateLocalBundles(downloadedBundles, 'replace', (s, t, m) => emit(5, 6, m));
 
   const postHydrationLocal = await extractLocalBundles();
@@ -2804,12 +2832,14 @@ async function executeOneWayDownload(accessToken, vaultFolderId, mediaFolderId, 
   emit(6, 6, 'Cloud download complete. Queueing media downloads…');
   emitSyncEvent('synced', { message: 'Cloud collection restored.' });
 
-  // Phase 2: Non-blocking background media download
-  setTimeout(() => {
-    syncMediaFromDrive(accessToken, mediaFolderId).catch(e => {
-      console.warn('[GDriveSync] Background media download error:', e);
-    });
-  }, 100);
+  // Phase 2: Non-blocking background media download if pages_bundle was among downloaded bundles
+  if (downloadedBundles['pages_bundle.json']) {
+    setTimeout(() => {
+      syncMediaFromDrive(accessToken, mediaFolderId).catch(e => {
+        console.warn('[GDriveSync] Background media download error:', e);
+      });
+    }, 100);
+  }
 
   return { success: true, action: 'downloaded', message: 'Collection successfully downloaded from Google Drive.' };
 }

@@ -1801,6 +1801,32 @@ export function deserializeBinaryValues(obj) {
 async function dumpStore(storeName) {
   try {
     const items = (await getAllLocalItems(storeName)) || [];
+    if (storeName === STORES.KV_STORE) {
+      const sanitized = items.map(item => {
+        if (item && (item.key === 'pages' || item.key === 'trash_pages') && Array.isArray(item.value)) {
+          return {
+            ...item,
+            value: item.value.map(p => {
+              if (!p || typeof p !== 'object') return p;
+              const copy = { ...p };
+              if (copy.data instanceof ArrayBuffer || copy.data?.__type === 'ArrayBuffer') {
+                copy.hasMedia = true;
+                delete copy.data;
+              }
+              ['originalImage', 'imageUrl', 'image', 'preview', 'thumbnail', 'base64', 'compressedImage'].forEach(field => {
+                if (typeof copy[field] === 'string' && (copy[field].startsWith('data:') || copy[field].startsWith('blob:') || copy[field].length > 1024)) {
+                  copy.hasMedia = true;
+                  delete copy[field];
+                }
+              });
+              return copy;
+            })
+          };
+        }
+        return item;
+      });
+      return serializeBinaryValues(sanitized);
+    }
     return serializeBinaryValues(items);
   } catch (e) {
     console.warn(`[LocalDB] dumpStore(${storeName}) failed:`, e);

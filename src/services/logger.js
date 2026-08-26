@@ -6,6 +6,50 @@
 const MAX_BUFFER_SIZE = 300;
 const STORAGE_KEY = 'autoanki_diagnostics_logs';
 
+function sanitizeLogData(data, depth = 0) {
+  if (data === null || data === undefined) return null;
+  if (depth > 2) return '[Nested Object]';
+
+  if (data instanceof Error) {
+    return {
+      name: data.name,
+      message: data.message,
+      stack: data.stack ? data.stack.split('\n').slice(0, 3).join('\n') : undefined
+    };
+  }
+
+  if (Array.isArray(data)) {
+    if (data.length > 20) {
+      return `[Array of ${data.length} items]`;
+    }
+    return data.slice(0, 20).map(item => sanitizeLogData(item, depth + 1));
+  }
+
+  if (typeof data === 'object') {
+    const sanitized = {};
+    const keys = Object.keys(data).slice(0, 30);
+    for (const key of keys) {
+      const val = data[key];
+      if (Array.isArray(val) && val.length > 20) {
+        sanitized[key] = `[Array of ${val.length} items]`;
+      } else if (typeof val === 'string' && val.length > 256) {
+        sanitized[key] = val.substring(0, 100) + `… (${val.length} chars)`;
+      } else if (typeof val === 'object' && val !== null) {
+        sanitized[key] = sanitizeLogData(val, depth + 1);
+      } else {
+        sanitized[key] = val;
+      }
+    }
+    return sanitized;
+  }
+
+  if (typeof data === 'string' && data.length > 512) {
+    return data.substring(0, 200) + `… (${data.length} chars)`;
+  }
+
+  return data;
+}
+
 class DiagnosticsLogger {
   constructor() {
     this.buffer = [];
@@ -64,20 +108,10 @@ class DiagnosticsLogger {
 
     let safeData = null;
     if (data !== null && data !== undefined) {
-      if (data instanceof Error) {
-        safeData = {
-          name: data.name,
-          message: data.message,
-          stack: data.stack
-        };
-      } else if (typeof data === 'object') {
-        try {
-          safeData = JSON.parse(JSON.stringify(data));
-        } catch {
-          safeData = String(data);
-        }
-      } else {
-        safeData = data;
+      try {
+        safeData = sanitizeLogData(data);
+      } catch {
+        safeData = String(data).substring(0, 200);
       }
     }
 

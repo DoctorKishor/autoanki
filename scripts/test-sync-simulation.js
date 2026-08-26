@@ -306,10 +306,17 @@ function runDeviceSync(device, cloudVault, options = {}) {
   const locHashes = localData.manifest.hashes;
   const remHashes = remoteData.manifest.hashes;
   const ancHashes = device.lastSyncedHashes;
+  const bundleNames = ['cards_bundle', 'curriculum_topics', 'study_logs', 'fsrs_config', 'camp_tracker', 'pages_bundle'];
+
+  // Pure Inertia: All 6 bundles exact hash match
+  const allExactMatch = bundleNames.every(b => locHashes[b] && remHashes[b] && locHashes[b] === remHashes[b]);
+  if (allExactMatch) {
+    device.lastSyncedHashes = locHashes;
+    return 'clean_noop';
+  }
 
   let isLocalClean = true;
   let isRemoteClean = true;
-  const bundleNames = ['cards_bundle', 'curriculum_topics', 'study_logs', 'fsrs_config', 'camp_tracker', 'pages_bundle'];
 
   const isEmptyLocal = (
     (!device.stores.topics || device.stores.topics.length === 0) &&
@@ -330,16 +337,7 @@ function runDeviceSync(device, cloudVault, options = {}) {
     }
   }
 
-  // Pure Inertia: Both clean or exact hash match
-  let allExactMatch = true;
-  for (const b of bundleNames) {
-    if (locHashes[b] !== remHashes[b]) {
-      allExactMatch = false;
-      break;
-    }
-  }
-
-  if (allExactMatch || (isLocalClean && isRemoteClean)) {
+  if (isLocalClean && isRemoteClean) {
     device.lastSyncedHashes = locHashes;
     return 'clean_noop';
   }
