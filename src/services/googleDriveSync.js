@@ -2892,6 +2892,13 @@ async function executeSyncInternal({
       emit(10, 10, msg);
       emitSyncEvent('synced', { message: msg });
       setTimeout(() => runSystemIntegrityCheck({ silent: true }).catch(console.warn), 1000);
+      if (mediaFolderId) {
+        setTimeout(() => {
+          syncMediaFromDrive(accessToken, mediaFolderId).catch(e => {
+            logger.warn('MEDIA-SYNC-WARN', 'Background media check error:', e);
+          });
+        }, 300);
+      }
       return { success: true, action: force ? 'synced' : 'noop', message: msg };
     }
 
@@ -3257,20 +3264,45 @@ async function executeOneWayDownload(accessToken, vaultFolderId, mediaFolderId, 
 }
 
 /**
- * Phase 2: Uploads local scanned page images to the Drive /media folder in the background with dynamic token refresh.
+ * Phase 2: Uploads local scanned page images and card attachments to the Drive /media folder in the background.
  */
-async function syncMediaToDrive(accessToken, mediaFolderId, pages) {
-  if (!Array.isArray(pages) || pages.length === 0) return;
-  
+export async function syncMediaToDrive(accessToken, mediaFolderId, pages = [], cards = null) {
   let currentToken = (await getValidAccessToken(false)) || accessToken;
-  if (!currentToken) return;
+  if (!currentToken || !mediaFolderId) return;
+
+  const localPages = Array.isArray(pages) && pages.length > 0 ? pages : ((await getLocalPages()) || []);
+  const localCards = Array.isArray(cards) ? cards : ((await getLocalKV('flashcards')) || []);
 
   const remoteMediaFiles = await listFilesInFolder(currentToken, mediaFolderId);
   const existingNames = new Set(remoteMediaFiles.map(f => f.name));
 
-  const pagesToUpload = pages.filter(p => p && p.id && !existingNames.has(`page_${p.id}.webp`));
-  const totalMedia = pagesToUpload.length;
+  const itemsToUpload = [];
+
+  // 1. Pages to upload
+  for (const p of localPages) {
+    if (!p || !p.id) continue;
+    const mediaName = `page_${p.id}.webp`;
+    if (!existingNames.has(mediaName)) {
+      const candidate = p.data || p.originalImage || p.imageUrl || p.base64;
+      if (candidate) itemsToUpload.push({ type: 'page', id: p.id, name: mediaName, candidate });
+    }
+  }
+
+  // 2. Flashcard custom images to upload
+  for (const c of localCards) {
+    if (!c || !c.id) continue;
+    const mediaName = `card_${c.id}.webp`;
+    if (!existingNames.has(mediaName)) {
+      const candidate = c.customImage || (typeof c.imageUrl === 'string' && c.imageUrl.startsWith('data:') ? c.imageUrl : null) || c.base64;
+      if (candidate) itemsToUpload.push({ type: 'card', id: c.id, name: mediaName, candidate });
+    }
+  }
+
+  const totalMedia = itemsToUpload.length;
   if (totalMedia === 0) return;
+
+  logger.sync('MEDIA-UPLOAD-START', `Found ${totalMedia} media files pending upload to Google Drive...`);
+  console.log(`[GDriveSync] [MEDIA-UPLOAD-START] Uploading ${totalMedia} media file(s) to Google Drive /media folder...`);
 
   emitSyncEvent('syncing', {
     message: `Uploading media 0/${totalMedia} (0%)`,
@@ -3280,14 +3312,11 @@ async function syncMediaToDrive(accessToken, mediaFolderId, pages) {
   });
 
   let uploadedCount = 0;
-  for (const page of pagesToUpload) {
-    const mediaName = `page_${page.id}.webp`;
-
+  for (const item of itemsToUpload) {
     let buffer = null;
     let mimeType = 'image/webp';
 
-    const candidate = page.data || page.originalImage || page.imageUrl;
-
+    const candidate = item.candidate;
     if (candidate instanceof ArrayBuffer) {
       buffer = candidate;
     } else if (typeof candidate === 'string' && candidate.startsWith('data:')) {
@@ -3297,15 +3326,17 @@ async function syncMediaToDrive(accessToken, mediaFolderId, pages) {
       buffer = base64ToArrayBuffer(parts[1]);
     } else if (candidate?.__type === 'ArrayBuffer' && candidate.base64) {
       buffer = base64ToArrayBuffer(candidate.base64);
+    } else if (typeof candidate === 'string' && candidate.length > 100 && !candidate.startsWith('http')) {
+      buffer = base64ToArrayBuffer(candidate);
     }
 
     if (buffer && buffer.byteLength > 0) {
       try {
         const freshToken = (await getValidAccessToken(false)) || currentToken;
         if (freshToken) currentToken = freshToken;
-        await uploadDriveMediaFile(currentToken, mediaFolderId, mediaName, mimeType, buffer);
+        await uploadDriveMediaFile(currentToken, mediaFolderId, item.name, mimeType, buffer);
       } catch (err) {
-        console.warn(`[GDriveSync] Failed to upload media ${mediaName}:`, err);
+        console.warn(`[GDriveSync] Failed to upload media ${item.name}:`, err);
       }
     }
 
@@ -3319,39 +3350,62 @@ async function syncMediaToDrive(accessToken, mediaFolderId, pages) {
     });
   }
 
+  logger.sync('MEDIA-UPLOADED', `Uploaded ${uploadedCount}/${totalMedia} media items to cloud vault.`);
+  console.log(`[GDriveSync] [MEDIA-UPLOADED] ${uploadedCount}/${totalMedia} media item(s) uploaded successfully.`);
   emitSyncEvent('synced', {
     message: `All media synchronized (${totalMedia}/${totalMedia})`
   });
 }
 
 /**
- * Phase 2: Downloads missing images from the Drive /media folder in chunked batches with dynamic token refresh.
+ * Phase 2: Downloads missing images and card attachments from the Drive /media folder in chunked batches.
  */
-async function syncMediaFromDrive(accessToken, mediaFolderId) {
+export async function syncMediaFromDrive(accessToken, mediaFolderId) {
   let currentToken = (await getValidAccessToken(false)) || accessToken;
-  if (!currentToken) return;
+  if (!currentToken || !mediaFolderId) return;
+
+  logger.sync('MEDIA-SYNC-START', 'Checking remote media folder for missing media items...', { mediaFolderId });
+  console.log('[GDriveSync] [MEDIA-SYNC-START] Checking remote media folder for missing media items...');
 
   const remoteMedia = await listFilesInFolder(currentToken, mediaFolderId);
-  if (remoteMedia.length === 0) return;
+  if (remoteMedia.length === 0) {
+    logger.sync('MEDIA-SYNC-EMPTY', 'No media files found in remote media folder.');
+    return;
+  }
 
   const localPages = (await getLocalPages()) || [];
-  const localPageMap = new Map(localPages.map(p => [p.id, p]));
-  let hasUpdates = false;
+  const localPageMap = new Map(localPages.map(p => [String(p.id), p]));
+  const localCards = (await getLocalKV('flashcards')) || [];
+  const localCardMap = new Map(localCards.map(c => [String(c.id), c]));
+  let hasPageUpdates = false;
+  let hasCardUpdates = false;
 
-  // Filter missing media files
+  // Identify missing media files for pages & cards
   const missingFiles = [];
   for (const file of remoteMedia) {
-    const match = file.name.match(/^page_(.*?)\./);
-    if (!match) continue;
-    const pageId = match[1];
-    const localPage = localPageMap.get(pageId);
-    if (localPage && !localPage.data && !localPage.imageUrl && !localPage.originalImage) {
-      missingFiles.push({ file, pageId });
+    const pageMatch = file.name.match(/^page_([^.]+)/i);
+    const cardMatch = file.name.match(/^card_([^.]+)/i);
+
+    if (pageMatch) {
+      const pageId = pageMatch[1];
+      const localPage = localPageMap.get(String(pageId));
+      if (localPage && !localPage.data && !localPage.imageUrl && !localPage.originalImage && !localPage.base64) {
+        missingFiles.push({ type: 'page', file, id: pageId });
+      }
+    } else if (cardMatch) {
+      const cardId = cardMatch[1];
+      const localCard = localCardMap.get(String(cardId));
+      if (localCard && !localCard.customImage && !localCard.imageUrl && !localCard.base64) {
+        missingFiles.push({ type: 'card', file, id: cardId });
+      }
     }
   }
 
   const totalToDownload = missingFiles.length;
-  if (totalToDownload === 0) return;
+  if (totalToDownload === 0) {
+    logger.sync('MEDIA-SYNC-UP-TO-DATE', 'All local pages and cards have media hydrated.');
+    return;
+  }
 
   emitSyncEvent('syncing', {
     message: `Downloading media 0/${totalToDownload} (0%)`,
@@ -3360,7 +3414,7 @@ async function syncMediaFromDrive(accessToken, mediaFolderId) {
     mediaProgress: { current: 0, total: totalToDownload, percent: 0, type: 'download' }
   });
 
-  // Download in throttled batches of 4 to protect mobile RAM
+  // Download in throttled batches of 4 to protect mobile memory
   const BATCH_SIZE = 4;
   let downloadedCount = 0;
   for (let i = 0; i < missingFiles.length; i += BATCH_SIZE) {
@@ -3368,20 +3422,34 @@ async function syncMediaFromDrive(accessToken, mediaFolderId) {
     const freshToken = (await getValidAccessToken(false)) || currentToken;
     if (freshToken) currentToken = freshToken;
 
-    await Promise.all(chunk.map(async ({ file, pageId }) => {
+    await Promise.all(chunk.map(async ({ type, file, id }) => {
       try {
         const arrayBuf = await downloadDriveFile(currentToken, file.id, false);
-        const localPage = localPageMap.get(pageId);
-        if (localPage) {
-          localPage.data = arrayBuf;
-          const base64Str = arrayBufferToBase64(arrayBuf);
-          const dataUrl = `data:image/webp;base64,${base64Str}`;
-          localPage.imageUrl = dataUrl;
-          localPage.originalImage = dataUrl;
-          hasUpdates = true;
+        const base64Str = arrayBufferToBase64(arrayBuf);
+        const mimeType = file.mimeType || 'image/webp';
+        const dataUrl = `data:${mimeType};base64,${base64Str}`;
+
+        if (type === 'page') {
+          const localPage = localPageMap.get(String(id));
+          if (localPage) {
+            localPage.data = arrayBuf;
+            localPage.imageUrl = dataUrl;
+            localPage.originalImage = dataUrl;
+            localPage.base64 = dataUrl;
+            localPage.hasMedia = true;
+            hasPageUpdates = true;
+          }
+        } else if (type === 'card') {
+          const localCard = localCardMap.get(String(id));
+          if (localCard) {
+            localCard.customImage = dataUrl;
+            localCard.imageUrl = dataUrl;
+            localCard.base64 = dataUrl;
+            hasCardUpdates = true;
+          }
         }
       } catch (e) {
-        console.warn(`[GDriveSync] Could not download media for page ${pageId}:`, e);
+        console.warn(`[GDriveSync] Could not download media for ${type} ${id}:`, e);
       }
     }));
     downloadedCount = Math.min(totalToDownload, i + chunk.length);
@@ -3394,32 +3462,49 @@ async function syncMediaFromDrive(accessToken, mediaFolderId) {
     });
   }
 
-  if (hasUpdates) {
+  // Persist hydrated media back into IndexedDB
+  if (hasPageUpdates || hasCardUpdates) {
     setMutationNotificationSuppressed(true);
     try {
-      // Re-fetch fresh pages from storage before saving to prevent clobbering concurrent user edits
-      const currentPages = (await getLocalPages()) || [];
-      const currentMap = new Map(currentPages.map(p => [p.id, p]));
-      for (const [id, updatedP] of localPageMap.entries()) {
-        if (currentMap.has(id)) {
-          const existingCur = currentMap.get(id);
-          if (!existingCur.data && updatedP.data) {
-            existingCur.data = updatedP.data;
-          }
-          if (!existingCur.imageUrl && updatedP.imageUrl) {
-            existingCur.imageUrl = updatedP.imageUrl;
-          }
-          if (!existingCur.originalImage && updatedP.originalImage) {
-            existingCur.originalImage = updatedP.originalImage;
+      if (hasPageUpdates) {
+        const currentPages = (await getLocalPages()) || [];
+        const currentMap = new Map(currentPages.map(p => [String(p.id), p]));
+        for (const [id, updatedP] of localPageMap.entries()) {
+          if (currentMap.has(id)) {
+            const existingCur = currentMap.get(id);
+            if (!existingCur.data && updatedP.data) existingCur.data = updatedP.data;
+            if (!existingCur.imageUrl && updatedP.imageUrl) existingCur.imageUrl = updatedP.imageUrl;
+            if (!existingCur.originalImage && updatedP.originalImage) existingCur.originalImage = updatedP.originalImage;
+            if (!existingCur.base64 && updatedP.base64) existingCur.base64 = updatedP.base64;
+            existingCur.hasMedia = true;
           }
         }
+        await saveLocalPages(Array.from(currentMap.values()));
       }
-      await saveLocalPages(Array.from(currentMap.values()));
+
+      if (hasCardUpdates) {
+        const currentCards = (await getLocalKV('flashcards')) || [];
+        const currentMap = new Map(currentCards.map(c => [String(c.id), c]));
+        for (const [id, updatedC] of localCardMap.entries()) {
+          if (currentMap.has(id)) {
+            const existingCur = currentMap.get(id);
+            if (!existingCur.customImage && updatedC.customImage) existingCur.customImage = updatedC.customImage;
+            if (!existingCur.imageUrl && updatedC.imageUrl) existingCur.imageUrl = updatedC.imageUrl;
+            if (!existingCur.base64 && updatedC.base64) existingCur.base64 = updatedC.base64;
+          }
+        }
+        await setLocalKV('flashcards', Array.from(currentMap.values()));
+      }
+
       const postMediaLocal = await extractLocalBundles();
       await saveLastSyncedHashes(postMediaLocal.manifest.hashes);
     } finally {
       setMutationNotificationSuppressed(false);
     }
+
+    logger.sync('MEDIA-PERSISTED', `Successfully persisted ${downloadedCount}/${totalToDownload} media items to local storage.`);
+    console.log(`[GDriveSync] [MEDIA-DOWNLOADED] ${downloadedCount} / ${totalToDownload}`);
+    console.log(`[GDriveSync] [MEDIA-PERSISTED] Successfully persisted ${downloadedCount} media item(s) to IndexedDB.`);
     emitDataHydratedEvent({ type: 'media_hydrated' });
   }
 
