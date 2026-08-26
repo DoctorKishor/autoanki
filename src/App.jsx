@@ -6745,6 +6745,8 @@ export default function App() {
   const [isEditGtModalOpen, setIsEditGtModalOpen] = useState(false);
   const [editGtTargetDate, setEditGtTargetDate] = useState('');
   const [editGtTargetIndex, setEditGtTargetIndex] = useState(null);
+  const [editGtTargetId, setEditGtTargetId] = useState('');
+  const [editGtTargetOrigName, setEditGtTargetOrigName] = useState('');
   const [editGtName, setEditGtName] = useState('');
   const [editGtPlatform, setEditGtPlatform] = useState('');
   const [editGtType, setEditGtType] = useState('NEETPG');
@@ -14776,6 +14778,8 @@ JSON Format:
   const handleOpenEditGtModal = (dateStr, index, gt) => {
     setEditGtTargetDate(dateStr);
     setEditGtTargetIndex(index);
+    setEditGtTargetId(gt.id || '');
+    setEditGtTargetOrigName((gt.name || gt.testName || '').trim());
     setEditGtName(gt.name || '');
     setEditGtPlatform(gt.platform || '');
     setEditGtType(gt.type || 'NEETPG');
@@ -14838,12 +14842,29 @@ JSON Format:
       }
     });
 
-    const existingGt = (studyLogs[editGtTargetDate]?.gts || [])[editGtTargetIndex] || {};
+    const currentGts = studyLogs[editGtTargetDate]?.gts || [];
+    let actualIndex = -1;
+    if (editGtTargetId) {
+      actualIndex = currentGts.findIndex(g => g && String(g.id).toLowerCase() === String(editGtTargetId).toLowerCase());
+    }
+    if (actualIndex === -1 && editGtTargetOrigName) {
+      actualIndex = currentGts.findIndex(g => (g?.name || g?.testName || '').trim().toLowerCase() === editGtTargetOrigName.toLowerCase());
+    }
+    if (actualIndex === -1 && editGtTargetIndex !== null && editGtTargetIndex !== undefined) {
+      actualIndex = editGtTargetIndex;
+    }
+
+    const existingGt = actualIndex >= 0 ? currentGts[actualIndex] : {};
+    const nowIso = new Date().toISOString();
+    const finalGtId = existingGt.id || editGtTargetId || `gt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const finalGtName = editGtName.trim() || `Mock Test ${(actualIndex >= 0 ? actualIndex : 0) + 1}`;
+
     const updatedGt = {
-      id: existingGt.id || `gt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      createdAt: existingGt.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      name: editGtName.trim() || `Mock Test ${editGtTargetIndex + 1}`,
+      ...(existingGt || {}),
+      id: finalGtId,
+      createdAt: existingGt.createdAt || nowIso,
+      updatedAt: nowIso,
+      name: finalGtName,
       platform: editGtPlatform.trim(),
       type: editGtType,
       neetPattern: editGtType === 'NEETPG' ? editNeetPattern : null,
@@ -14866,14 +14887,25 @@ JSON Format:
       subjects: cleanedSubjects
     };
 
+    // If the GT was renamed and the original name had no explicit ID in legacy cloud copies, tombstone the old name
+    if (editGtTargetOrigName && editGtTargetOrigName.trim().toLowerCase() !== finalGtName.trim().toLowerCase()) {
+      const oldCleanName = editGtTargetOrigName.trim();
+      await recordTombstone('gt', oldCleanName.toLowerCase(), { parentId: String(editGtTargetDate), deletedAt: nowIso, metadata: { replacedBy: finalGtId, newName: finalGtName } });
+      await recordTombstone('gt', `${String(editGtTargetDate).toLowerCase()}_${oldCleanName.toLowerCase()}`, { parentId: String(editGtTargetDate), deletedAt: nowIso, metadata: { replacedBy: finalGtId, newName: finalGtName } });
+    }
+
     try {
       setIsSaving(true);
       const updatedLogs = { ...studyLogs };
       const log = updatedLogs[editGtTargetDate] || { questions: 0, cards: 0, hours: 0, gts: [] };
       const gts = [...(log.gts || [])];
-      gts[editGtTargetIndex] = updatedGt;
+      if (actualIndex >= 0 && actualIndex < gts.length) {
+        gts[actualIndex] = updatedGt;
+      } else {
+        gts.push(updatedGt);
+      }
       log.gts = gts;
-      log.updatedAt = new Date().toISOString();
+      log.updatedAt = nowIso;
       updatedLogs[editGtTargetDate] = log;
 
       await saveLocalStudyLog(editGtTargetDate, { gts, updatedAt: log.updatedAt });
@@ -14883,7 +14915,7 @@ JSON Format:
       setIsSaving(false);
 
       // Auto-trigger updating selected active GT analysis to reflect the edits instantly!
-      setSelectedGtForAnalysisId(`${editGtTargetDate}_${editGtTargetIndex}`);
+      setSelectedGtForAnalysisId(`${editGtTargetDate}_${actualIndex >= 0 ? actualIndex : 0}`);
     } catch (err) {
       console.error("Error editing GT entry:", err);
       alert("Failed to edit mock test: " + err.message);

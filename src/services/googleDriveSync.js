@@ -2293,14 +2293,6 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
 
       const existingGts = Array.isArray(cur.gts) ? cur.gts : [];
       const incomingGts = Array.isArray(incLog?.gts) ? incLog.gts : [];
-      const gtMap = new Map();
-      const getGtKey = (g) => {
-        if (!g) return '';
-        const cleanName = (g.name || g.testName || '').trim().toLowerCase();
-        if (cleanName) return `name:${cleanName}`;
-        if (g.id) return `id:${g.id}`;
-        return computeHash(canonicalStringify(g));
-      };
 
       const isGtTombstonedInGraves = (g) => {
         if (!g) return false;
@@ -2315,50 +2307,79 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
         return false;
       };
 
+      const reconciledGts = [];
+      const findMatchingGtIndex = (target) => {
+        if (!target) return -1;
+        const targetId = target.id ? String(target.id).toLowerCase() : '';
+        const targetName = (target.name || target.testName || '').trim().toLowerCase();
+
+        return reconciledGts.findIndex(item => {
+          if (!item) return false;
+          const itemId = item.id ? String(item.id).toLowerCase() : '';
+          const itemName = (item.name || item.testName || '').trim().toLowerCase();
+
+          // 1. Exact ID match (primary identifier)
+          if (targetId && itemId && targetId === itemId) return true;
+
+          // 2. Exact Name match (fallback for legacy records or un-identified entries)
+          if (targetName && itemName && targetName === itemName) return true;
+
+          return false;
+        });
+      };
+
+      // 1. Seed with local GTs
       existingGts.forEach(g => { 
         if (g) {
           if (isGtTombstonedInGraves(g)) {
-            gtMap.set(getGtKey(g), { ...g, isDeleted: true, deletedAt: new Date(gtGravesMap.get(g.id) || Date.now()).toISOString() });
+            reconciledGts.push({ ...g, isDeleted: true, deletedAt: new Date(gtGravesMap.get(g.id) || Date.now()).toISOString() });
           } else {
-            gtMap.set(getGtKey(g), g);
+            reconciledGts.push({ ...g });
           }
         }
       });
 
-      incomingGts.forEach(g => {
-        if (g) {
-          const k = getGtKey(g);
-          if (isGtTombstonedInGraves(g)) {
-            return;
-          }
+      // 2. Merge remote incoming GTs
+      incomingGts.forEach(remGt => {
+        if (!remGt) return;
+        if (isGtTombstonedInGraves(remGt)) {
+          return;
+        }
 
-          if (!gtMap.has(k)) {
-            gtMap.set(k, g);
+        const matchIdx = findMatchingGtIndex(remGt);
+        if (matchIdx === -1) {
+          // No local match, append remote GT
+          reconciledGts.push(remGt);
+        } else {
+          // Existing match found: resolve conflict with LWW
+          const locGt = reconciledGts[matchIdx];
+          const locIsDel = locGt.isDeleted || locGt.deletedAt;
+          const remIsDel = remGt.isDeleted || remGt.deletedAt;
+
+          const locGtTime = safeTimestamp(locGt.updatedAt || locGt.createdAt || curTime || 0);
+          const remGtTime = safeTimestamp(remGt.updatedAt || remGt.createdAt || incTime || 0);
+
+          if (remIsDel && !locIsDel) {
+            if (remGtTime >= locGtTime) {
+              reconciledGts[matchIdx] = { ...locGt, ...remGt, isDeleted: true };
+            }
+          } else if (locIsDel && !remIsDel) {
+            if (remGtTime > locGtTime) {
+              reconciledGts[matchIdx] = { ...locGt, ...remGt, isDeleted: false, deletedAt: undefined };
+            }
           } else {
-            const locGt = gtMap.get(k);
-            if (locGt.isDeleted || locGt.deletedAt) {
-              const locDelTime = safeTimestamp(locGt.deletedAt || locGt.updatedAt || curTime || 0);
-              const remModTime = safeTimestamp(g.updatedAt || g.createdAt || 0);
-              if (remModTime > locDelTime) {
-                gtMap.set(k, g);
-              } else {
-                gtMap.set(k, locGt);
-              }
+            // Both active or both deleted: LWW determines winner, preserving valid ID
+            if (remGtTime >= locGtTime) {
+              reconciledGts[matchIdx] = { ...locGt, ...remGt, id: remGt.id || locGt.id };
             } else {
-              const locGtTime = safeTimestamp(locGt.updatedAt || locGt.createdAt || curTime || 0);
-              const remGtTime = safeTimestamp(g.updatedAt || g.createdAt || incTime || 0);
-              gtMap.set(k, remGtTime >= locGtTime ? g : locGt);
+              reconciledGts[matchIdx] = { ...remGt, ...locGt, id: locGt.id || remGt.id };
             }
           }
         }
       });
 
-      // Prune deleted GTs if marked with isDeleted or deletedAt
-      for (const [gKey, gObj] of gtMap.entries()) {
-        if (gObj.isDeleted || gObj.deletedAt || isGtTombstonedInGraves(gObj)) {
-          gtMap.delete(gKey);
-        }
-      }
+      // 3. Prune deleted GTs and tombstoned GTs
+      const activeGts = reconciledGts.filter(g => g && !g.isDeleted && !g.deletedAt && !isGtTombstonedInGraves(g));
 
       const allSessions = Array.from(sessionMap.values());
       const sessionHours = allSessions.reduce((sum, s) => sum + (Number(s.duration || s.minutes || 0) / 60 || Number(s.hours || 0)), 0);
@@ -2419,7 +2440,7 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
         pages: totalPages,
         fsrsLogs: Array.from(fsrsMap.values()),
         sessions: allSessions,
-        gts: Array.from(gtMap.values()),
+        gts: activeGts,
         updatedAt: latestUpdatedAt
       };
     }
