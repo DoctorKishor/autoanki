@@ -244,17 +244,27 @@ export async function initGoogleTokenClient(customClientId = null) {
  * @param {object} [options]
  * @param {string} [options.prompt] '' | 'select_account' | 'consent'
  * @param {string} [options.hint] User's email to bypass account selector
+ * @param {number} [options.timeoutMs] Optional timeout in milliseconds
  * @returns {Promise<object>} Fresh auth state { accessToken, expiresAt, user }
  */
-export async function requestGoogleDriveToken({ prompt = '', hint = '' } = {}) {
+export async function requestGoogleDriveToken({ prompt = '', hint = '', timeoutMs = 15000 } = {}) {
   const tokenClient = await initGoogleTokenClient();
   const existingState = await getGoogleDriveAuthState();
   const userHint = hint || existingState?.user?.email || '';
 
   return new Promise((resolve, reject) => {
+    let timer = null;
+    if (timeoutMs > 0) {
+      timer = setTimeout(() => {
+        reject(new Error('Google OAuth token request timed out.'));
+      }, timeoutMs);
+    }
+
     tokenClient.callback = async (resp) => {
+      if (timer) clearTimeout(timer);
+
       if (resp.error) {
-        console.error('[GoogleAuth] OAuth error response:', resp);
+        console.debug('[GoogleAuth] OAuth response error:', resp.error, resp.error_description);
         reject(new Error(resp.error_description || resp.error || 'Google authentication was cancelled or failed.'));
         return;
       }
@@ -290,18 +300,24 @@ export async function requestGoogleDriveToken({ prompt = '', hint = '' } = {}) {
       }
     };
 
-    const requestConfig = {};
-    if (prompt) requestConfig.prompt = prompt;
+    const requestConfig = {
+      prompt: prompt !== undefined ? prompt : ''
+    };
     if (userHint) requestConfig.hint = userHint;
 
-    tokenClient.requestAccessToken(requestConfig);
+    try {
+      tokenClient.requestAccessToken(requestConfig);
+    } catch (reqErr) {
+      if (timer) clearTimeout(timer);
+      reject(reqErr);
+    }
   });
 }
 
 let tokenRefreshPromise = null;
 
 /**
- * Checks if the Google Drive access token is expired or expiring within 2 minutes.
+ * Checks if the Google Drive access token is expired or expiring within 5 minutes.
  * @param {object} state
  * @returns {boolean}
  */
@@ -309,45 +325,68 @@ export function isGoogleDriveTokenExpired(state) {
   if (!state || !state.accessToken) return true;
   if (!state.expiresAt) return false;
   const now = Date.now();
-  const bufferMs = 2 * 60 * 1000; // 2 minute buffer
+  const bufferMs = 5 * 60 * 1000; // 5 minute proactive renewal buffer
   return state.expiresAt - now < bufferMs;
 }
 
 /**
  * Returns a valid, unexpired access token for Google Drive API requests.
- * If expired or expiring within 2 minutes and interactive=true, seamlessly requests a token renewal using user email hint.
- * If expired and interactive=false, dispatches a 'gdrive-token-expired' event so UI can show renewal indicator.
+ * Automatically performs silent background renewal using tokenClient.requestAccessToken({ prompt: '' })
+ * without disturbing the user or opening popups.
+ * Only triggers an interactive prompt if interactive=true and silent background renewal fails.
  * @param {boolean} [interactive=false]
  * @returns {Promise<string|null>}
  */
 export async function getValidAccessToken(interactive = false) {
   const state = await getGoogleDriveAuthState();
-  if (!state || !state.accessToken) return null;
+  if (!state || (!state.accessToken && !state.user?.email)) return null;
 
   const isExpiring = isGoogleDriveTokenExpired(state);
 
-  if (!isExpiring) {
+  // 1. If token is completely valid and not expiring, return immediately
+  if (!isExpiring && state.accessToken) {
     return state.accessToken;
   }
 
-  if (!interactive) {
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('gdrive-token-expired', {
-        detail: { email: state.user?.email || '', expiredAt: state.expiresAt }
-      }));
+  // 2. Attempt silent background renewal first (no popups, prompt: '')
+  try {
+    const silentToken = await renewGoogleDriveToken('', 8000);
+    if (silentToken) {
+      return silentToken;
     }
-    return null;
+  } catch (e) {
+    console.debug('[GoogleAuth] Silent background token renewal unavailable:', e?.message || e);
   }
 
-  return await renewGoogleDriveToken();
+  // 3. If silent renewal failed and interactive prompt is permitted (e.g. user clicked Sync button)
+  if (interactive) {
+    try {
+      const interactiveToken = await renewGoogleDriveToken('select_account', 60000);
+      if (interactiveToken) {
+        return interactiveToken;
+      }
+    } catch (interactiveErr) {
+      console.warn('[GoogleAuth] Interactive token renewal failed:', interactiveErr);
+    }
+  }
+
+  // 4. Fallback: If not strictly expired, still allow existing token
+  const isStrictlyExpired = state.expiresAt ? Date.now() >= state.expiresAt : !state.accessToken;
+  if (!isStrictlyExpired && state.accessToken) {
+    return state.accessToken;
+  }
+
+  return null;
 }
 
 /**
- * Explicitly renews the Google Drive OAuth 2.0 access token using GIS with user email hint.
+ * Renews the Google Drive OAuth 2.0 access token using GIS with user email hint.
+ * Reuses concurrent in-flight promises to eliminate duplicate token requests.
  * @param {string} [prompt='']
+ * @param {number} [timeoutMs=15000]
  * @returns {Promise<string|null>} Fresh access token or null
  */
-export async function renewGoogleDriveToken(prompt = '') {
+export async function renewGoogleDriveToken(prompt = '', timeoutMs = 15000) {
   const state = await getGoogleDriveAuthState();
   if (!state) return null;
 
@@ -356,9 +395,9 @@ export async function renewGoogleDriveToken(prompt = '') {
     return refreshed?.accessToken || null;
   }
 
-  const p = requestGoogleDriveToken({ prompt, hint: state.user?.email || '' })
+  const p = requestGoogleDriveToken({ prompt, hint: state.user?.email || '', timeoutMs })
     .catch((err) => {
-      console.warn('[GoogleAuth] Token renewal failed:', err);
+      console.debug('[GoogleAuth] Token renewal attempt result:', err?.message || err);
       return null;
     })
     .finally(() => {

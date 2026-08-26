@@ -2369,7 +2369,7 @@ async function executeSyncInternal({
   }
 
   const authState = await getGoogleDriveAuthState();
-  if (!authState || !authState.accessToken) {
+  if (!authState || (!authState.accessToken && !authState.user?.email)) {
     return { success: false, action: 'unauthenticated', message: 'Google Drive is not connected.' };
   }
 

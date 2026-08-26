@@ -12,8 +12,7 @@ import {
   getGoogleDriveStorageQuota,
   getActiveGoogleClientId,
   saveCustomGoogleClientId,
-  DEFAULT_GOOGLE_CLIENT_ID,
-  isGoogleDriveTokenExpired
+  DEFAULT_GOOGLE_CLIENT_ID
 } from '../services/googleDriveAuth';
 import {
   syncWithGoogleDrive,
@@ -278,17 +277,10 @@ export default function GoogleDriveSyncSection({
                 Google Drive Cloud Sync
               </h2>
               {authState ? (
-                isGoogleDriveTokenExpired(authState) ? (
-                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                    Session Paused
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-green-500/15 text-green-400 border border-green-500/30">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                    Connected
-                  </span>
-                )
+                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-green-500/15 text-green-400 border border-green-500/30">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                  Connected
+                </span>
               ) : (
                 <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-gray-500/15 text-gray-400 border border-gray-500/30">
                   Offline Only
@@ -323,27 +315,6 @@ export default function GoogleDriveSyncSection({
                 <div className="flex-1">
                   <strong>Sync Error:</strong> {errorMsg}
                 </div>
-              </div>
-            )}
-
-            {/* Token Expiration Banner */}
-            {authState && isGoogleDriveTokenExpired(authState) && (
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-2xl bg-amber-950/30 border border-amber-500/30 text-amber-300 text-xs">
-                <div className="flex items-start gap-2.5">
-                  <RefreshCw className="w-4 h-4 shrink-0 mt-0.5 text-amber-400 animate-spin-slow" />
-                  <div>
-                    <strong className="block font-bold">Google Session Expired</strong>
-                    <span>Google OAuth security tokens expire periodically. Click to renew your session for seamless background syncing.</span>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleSignIn}
-                  disabled={isAuthenticating}
-                  className="px-3.5 py-1.5 rounded-xl font-black text-[11px] bg-amber-500 text-black hover:bg-amber-400 active:scale-95 transition cursor-pointer shrink-0"
-                >
-                  {isAuthenticating ? 'Renewing…' : 'Renew Session 🔑'}
-                </button>
               </div>
             )}
 
