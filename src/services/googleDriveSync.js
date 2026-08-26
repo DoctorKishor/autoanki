@@ -2663,14 +2663,16 @@ async function executeSyncInternal({
     const ALL_BUNDLES = ['cards_bundle', 'curriculum_topics', 'study_logs', 'fsrs_config', 'camp_tracker', 'pages_bundle'];
     const allHashesMatch = ALL_BUNDLES.every(k => localHashes[k] && remoteHashes[k] && localHashes[k] === remoteHashes[k]);
 
-    if (allHashesMatch && !force) {
+    if (allHashesMatch) {
       await saveLastSyncedHashes(localHashes);
-      logger.sync('IN-SYNC', '[NO-OP] All 6 bundles match remote cloud manifest.', {
-        hashes: localHashes
-      });
-      emit(10, 10, 'Everything is up to date.');
-      emitSyncEvent('synced', { message: 'All 6 bundles match remote cloud manifest.' });
-      return { success: true, action: 'noop', message: 'All 6 bundles match remote cloud manifest.' };
+      const msg = force
+        ? 'Manual sync verified: all 6 bundles match cloud state.'
+        : 'All 6 bundles match remote cloud manifest.';
+      logger.sync('IN-SYNC', `[NO-OP] ${msg}`, { hashes: localHashes });
+      emit(10, 10, msg);
+      emitSyncEvent('synced', { message: msg });
+      setTimeout(() => runSystemIntegrityCheck({ silent: true }).catch(console.warn), 1000);
+      return { success: true, action: force ? 'synced' : 'noop', message: msg };
     }
 
     // Scenario 0: Fresh/empty local device auto fast-forward
@@ -2760,14 +2762,16 @@ async function executeSyncInternal({
       return localHashes[bundleKey] !== currentRemoteHashes[bundleKey];
     });
 
-    if (modifiedBundleNames.length === 0 && !force) {
+    if (modifiedBundleNames.length === 0) {
       await saveLastSyncedHashes(localHashes);
-      logger.sync('IN-SYNC', '[NO-OP] All 6 bundles match remote cloud manifest.', {
-        hashes: localHashes
-      });
-      emit(10, 10, 'Everything is up to date.');
-      emitSyncEvent('synced', { message: 'All 6 bundles match remote cloud manifest.' });
-      return { success: true, action: 'noop', message: 'All 6 bundles match remote cloud manifest.' };
+      const msg = force
+        ? 'Manual sync verified: all 6 bundles match cloud state.'
+        : 'All 6 bundles match remote cloud manifest.';
+      logger.sync('IN-SYNC', `[NO-OP] ${msg}`, { hashes: localHashes });
+      emit(10, 10, msg);
+      emitSyncEvent('synced', { message: msg });
+      setTimeout(() => runSystemIntegrityCheck({ silent: true }).catch(console.warn), 1000);
+      return { success: true, action: force ? 'synced' : 'noop', message: msg };
     }
 
     const hashDiff = {};
