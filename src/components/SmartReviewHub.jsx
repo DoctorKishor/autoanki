@@ -1018,6 +1018,7 @@ export default function SmartReviewHub({
                   (d.subject && d.subject.toLowerCase() === subDocId)
                 );
                 if (subDoc && subDoc.topics) {
+                  const nowIso = new Date().toISOString();
                   const updatedTopics = { ...subDoc.topics };
                   topicsInSub.forEach(top => {
                     const targetKey = Object.keys(updatedTopics).find(k =>
@@ -1028,11 +1029,12 @@ export default function SmartReviewHub({
                       updatedTopics[targetKey] = {
                         ...updatedTopics[targetKey],
                         activatedDate: todayStr,
-                        isPickedForToday: true
+                        isPickedForToday: true,
+                        updatedAt: nowIso
                       };
                     }
                   });
-                  await onUpdateSubjectDoc(subDoc.id || subDocId, { topics: updatedTopics });
+                  await onUpdateSubjectDoc(subDoc.id || subDocId, { topics: updatedTopics, updatedAt: nowIso });
                 }
               }
             })().catch(err => console.error("[SmartReviewHub] Error in sequential batch topic activation:", err));

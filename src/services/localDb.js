@@ -866,16 +866,18 @@ export async function saveLocalPytProgressDoc(docId, docData) {
   if (!docId) return null;
   const currentList = await getAllLocalPytProgress();
   const existingIdx = currentList.findIndex(d => d.id === docId);
+  const nowIso = new Date().toISOString();
   let updatedList;
   if (existingIdx >= 0) {
     updatedList = [...currentList];
     updatedList[existingIdx] = {
       ...updatedList[existingIdx],
       ...docData,
-      id: docId
+      id: docId,
+      updatedAt: docData?.updatedAt || nowIso
     };
   } else {
-    updatedList = [...currentList, { id: docId, ...docData }];
+    updatedList = [...currentList, { id: docId, ...docData, updatedAt: docData?.updatedAt || nowIso }];
   }
   await setLocalKV('pyt_user_progress', updatedList);
   return updatedList;
@@ -1110,7 +1112,12 @@ export async function getLocalStudySchedule() {
 export async function saveLocalScheduleEntry(dateStr, entryData) {
   if (!dateStr) return await getLocalStudySchedule();
   const current = await getLocalStudySchedule();
-  const mergedEntry = { ...(current[dateStr] || {}), ...entryData };
+  const nowIso = new Date().toISOString();
+  const mergedEntry = { 
+    ...(current[dateStr] || {}), 
+    ...entryData,
+    updatedAt: entryData?.updatedAt || nowIso
+  };
 
   const hasTasks = Array.isArray(mergedEntry.tasks) && mergedEntry.tasks.length > 0;
   const hasNotes = typeof mergedEntry.notes === 'string' && mergedEntry.notes.trim().length > 0;

@@ -570,9 +570,20 @@ export async function extractLocalBundles() {
   let totalTopicsCount = topics.length;
   if (Array.isArray(subjectTracker)) {
     subjectTracker.forEach(doc => {
-      if (doc && doc.topics && typeof doc.topics === 'object') {
-        totalTopicsCount += Object.keys(doc.topics).length;
+      if (doc) {
+        trackTimestamp(doc.updatedAt);
+        if (doc.topics && typeof doc.topics === 'object') {
+          totalTopicsCount += Object.keys(doc.topics).length;
+          Object.values(doc.topics).forEach(t => {
+            if (t) trackTimestamp(t.updatedAt || t.lastReviewDate || t.createdAt);
+          });
+        }
       }
+    });
+  }
+  if (Array.isArray(pytUserProgress)) {
+    pytUserProgress.forEach(p => {
+      if (p) trackTimestamp(p.updatedAt);
     });
   }
   if (Array.isArray(pytData)) {
@@ -601,7 +612,22 @@ export async function extractLocalBundles() {
 
   Object.entries(studyLogs).forEach(([dateKey, log]) => {
     trackTimestamp(log?.updatedAt || dateKey);
+    if (log && Array.isArray(log.fsrsLogs)) {
+      log.fsrsLogs.forEach(l => {
+        if (l) trackTimestamp(l.timestamp || l.updatedAt);
+      });
+    }
   });
+  if (studySchedule && typeof studySchedule === 'object') {
+    Object.values(studySchedule).forEach(s => {
+      if (s) {
+        trackTimestamp(s.updatedAt);
+        if (Array.isArray(s.tasks)) {
+          s.tasks.forEach(t => { if (t) trackTimestamp(t.updatedAt); });
+        }
+      }
+    });
+  }
   trashStudyLogs.forEach(tl => {
     if (tl) trackTimestamp(tl.deletedAt);
   });
@@ -1050,7 +1076,7 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
 
       if (b.studySchedule) {
         const existSched = (await getLocalKV('study_schedule')) || {};
-        await setLocalKV('study_schedule', { ...existSched, ...b.studySchedule });
+        await setLocalKV('study_schedule', mergeStudyScheduleObjects(existSched, b.studySchedule));
       }
       if (b.scheduleTemplates) await setLocalKV('schedule_templates', b.scheduleTemplates);
       if (Array.isArray(b.campDailyLogs)) {
@@ -1811,22 +1837,12 @@ export function mergeSubjectTrackerArrays(localTracker = [], remoteTracker = [],
       
       // Topic only in remote
       if (!locT && remT) {
-        const remTopicTime = safeTimestamp(remT.updatedAt || remT.lastReviewDate || remT.createdAt || 0);
-        // If local doc was updated more recently than this remote topic was touched, local doc deleted it
-        if (locDocTime > remTopicTime && remTopicTime > 0) {
-          return; // Prune (deletion wins)
-        }
         mergedTopics[tKey] = remT;
         return;
       }
       
       // Topic only in local
       if (locT && !remT) {
-        const locTopicTime = safeTimestamp(locT.updatedAt || locT.lastReviewDate || locT.createdAt || 0);
-        // If remote doc was updated more recently than this local topic was touched, remote doc deleted it
-        if (remDocTime > locTopicTime && remDocTime > 0) {
-          return; // Prune (deletion wins)
-        }
         mergedTopics[tKey] = locT;
         return;
       }
@@ -1857,19 +1873,21 @@ export function mergeSubjectTrackerArrays(localTracker = [], remoteTracker = [],
       const remDates = Array.isArray(remT.studyDates) ? remT.studyDates : [];
       const combinedStudyDates = Array.from(new Set([...locDates, ...remDates])).filter(Boolean).sort();
       
-      const mergedPage = winnerTopic.page || locT.page || remT.page || '';
-      const mergedPageCount = winnerTopic.pageCount !== undefined ? winnerTopic.pageCount : (locT.pageCount || remT.pageCount);
-      const mergedPageWeight = winnerTopic.pageWeight !== undefined ? winnerTopic.pageWeight : (locT.pageWeight || remT.pageWeight);
-      const mergedNotes = winnerTopic.notes !== undefined ? winnerTopic.notes : (locT.notes || remT.notes);
-      const mergedMnemonics = winnerTopic.mnemonics !== undefined ? winnerTopic.mnemonics : (locT.mnemonics || remT.mnemonics);
+      const mergedPage = winnerTopic.page !== undefined ? winnerTopic.page : (locT.page !== undefined ? locT.page : (remT.page || ''));
+      const mergedEndPage = winnerTopic.endPage !== undefined ? winnerTopic.endPage : (locT.endPage !== undefined ? locT.endPage : (remT.endPage || ''));
+      const mergedPageCount = winnerTopic.pageCount !== undefined ? winnerTopic.pageCount : (locT.pageCount !== undefined ? locT.pageCount : remT.pageCount);
+      const mergedPageWeight = winnerTopic.pageWeight !== undefined ? winnerTopic.pageWeight : (locT.pageWeight !== undefined ? locT.pageWeight : remT.pageWeight);
+      const mergedNotes = winnerTopic.notes !== undefined ? winnerTopic.notes : (locT.notes !== undefined ? locT.notes : remT.notes);
+      const mergedMnemonics = winnerTopic.mnemonics !== undefined ? winnerTopic.mnemonics : (locT.mnemonics !== undefined ? locT.mnemonics : remT.mnemonics);
       
-      const latestTopicTime = Math.max(locReviewDate, remReviewDate, locTopicTime, remTopicTime, safeTimestamp(winnerTopic.updatedAt));
+      const latestTopicTime = Math.max(locReviewDate, remReviewDate, locTopicTime, remTopicTime, safeTimestamp(winnerTopic.updatedAt), Date.now());
       
       mergedTopics[tKey] = {
         ...locT,
         ...remT,
         ...winnerTopic,
         page: mergedPage,
+        ...(mergedEndPage !== undefined ? { endPage: mergedEndPage } : {}),
         ...(mergedPageCount !== undefined ? { pageCount: mergedPageCount } : {}),
         ...(mergedPageWeight !== undefined ? { pageWeight: mergedPageWeight } : {}),
         ...(mergedNotes !== undefined ? { notes: mergedNotes } : {}),
@@ -1902,7 +1920,7 @@ export function mergeSubjectTrackerArrays(localTracker = [], remoteTracker = [],
 }
 
 /**
- * Merges PYT user progress by subject ID, taking the maximum review/completion count per topic.
+ * Merges PYT user progress by subject ID, taking the maximum review/completion count per topic and unioning page/merge maps.
  */
 export function mergePytUserProgress(localProg = [], remoteProg = []) {
   const locList = Array.isArray(localProg) ? localProg : [];
@@ -1934,6 +1952,14 @@ export function mergePytUserProgress(localProg = [], remoteProg = []) {
     Object.entries(remMap).forEach(([tKey, val]) => {
       mergedMap[tKey] = Math.max(Number(locMap[tKey] || 0), Number(val || 0));
     });
+
+    const locPages = locP.pages_map || {};
+    const remPages = remP.pages_map || {};
+    const mergedPages = { ...locPages, ...remPages };
+
+    const locMerged = locP.merged_topics || {};
+    const remMerged = remP.merged_topics || {};
+    const mergedTopics = { ...locMerged, ...remMerged };
     
     const maxTime = Math.max(safeTimestamp(locP.updatedAt), safeTimestamp(remP.updatedAt), Date.now());
     map.set(k, {
@@ -1942,11 +1968,95 @@ export function mergePytUserProgress(localProg = [], remoteProg = []) {
       id: locP.id || remP.id || k,
       subject: locP.subject || remP.subject || k,
       progress_map: mergedMap,
+      pages_map: mergedPages,
+      merged_topics: mergedTopics,
       updatedAt: new Date(maxTime).toISOString()
     });
   });
   
   return Array.from(map.values());
+}
+
+/**
+ * Merges Study Schedule objects by date, merging tasks non-destructively.
+ */
+export function mergeStudyScheduleObjects(locSched = {}, remSched = {}) {
+  const loc = (locSched && typeof locSched === 'object') ? locSched : {};
+  const rem = (remSched && typeof remSched === 'object') ? remSched : {};
+  const merged = {};
+  const allDates = new Set([...Object.keys(loc), ...Object.keys(rem)]);
+
+  allDates.forEach(dateStr => {
+    const locDay = loc[dateStr];
+    const remDay = rem[dateStr];
+
+    if (!locDay && remDay) {
+      merged[dateStr] = remDay;
+      return;
+    }
+    if (locDay && !remDay) {
+      merged[dateStr] = locDay;
+      return;
+    }
+
+    // Both exist for this date
+    const locTasks = Array.isArray(locDay?.tasks) ? locDay.tasks : [];
+    const remTasks = Array.isArray(remDay?.tasks) ? remDay.tasks : [];
+
+    const getTaskKey = (t) => {
+      if (t.id) return String(t.id).toLowerCase();
+      const sub = (t.subject || '').trim().toLowerCase();
+      const top = (t.topicName || t.topic || '').trim().toLowerCase();
+      if (sub || top) return `${sub}_${top}`;
+      return computeHash(canonicalStringify(t));
+    };
+
+    const taskMap = new Map();
+    locTasks.forEach(t => {
+      if (t) taskMap.set(getTaskKey(t), { ...t });
+    });
+
+    remTasks.forEach(remT => {
+      if (!remT) return;
+      const k = getTaskKey(remT);
+      if (!taskMap.has(k)) {
+        taskMap.set(k, { ...remT });
+      } else {
+        const locT = taskMap.get(k);
+        const locTTime = safeTimestamp(locT.updatedAt || locDay.updatedAt || 0);
+        const remTTime = safeTimestamp(remT.updatedAt || remDay.updatedAt || 0);
+
+        // If either marked it completed, it stays completed (max state / CRDT)
+        const isCompleted = Boolean(locT.completed || remT.completed);
+        const winner = remTTime >= locTTime ? remT : locT;
+        const rating = winner.rating || locT.rating || remT.rating;
+
+        taskMap.set(k, {
+          ...locT,
+          ...remT,
+          ...winner,
+          completed: isCompleted,
+          ...(rating ? { rating } : {}),
+          updatedAt: new Date(Math.max(locTTime, remTTime, Date.now())).toISOString()
+        });
+      }
+    });
+
+    const maxDayTime = Math.max(
+      safeTimestamp(locDay?.updatedAt || 0),
+      safeTimestamp(remDay?.updatedAt || 0),
+      ...Array.from(taskMap.values()).map(t => safeTimestamp(t.updatedAt || 0))
+    );
+
+    merged[dateStr] = {
+      ...remDay,
+      ...locDay,
+      tasks: Array.from(taskMap.values()),
+      updatedAt: new Date(maxDayTime || Date.now()).toISOString()
+    };
+  });
+
+  return merged;
 }
 
 /**
@@ -2388,41 +2498,21 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
       const baseLog = isLocalFresher ? cur : incLog;
       const otherLog = isLocalFresher ? incLog : cur;
 
-      let totalHours;
-      let totalCards;
-      let totalQuestions;
-      let totalPages;
+      const locCards = (cur.cards !== undefined && cur.cards !== null && cur.cards !== '') ? Number(cur.cards) : Number(cur.totalCardsReviewed || 0);
+      const remCards = (incLog?.cards !== undefined && incLog?.cards !== null && incLog?.cards !== '') ? Number(incLog.cards) : Number(incLog?.totalCardsReviewed || 0);
+      const totalCards = Math.max(locCards, remCards, fsrsMap.size);
 
-      if (curTime !== incTime) {
-        // Clear LWW: The fresher record's explicit user values take precedence
-        totalHours = (baseLog.hours !== undefined && baseLog.hours !== null && baseLog.hours !== '') 
-          ? Number(baseLog.hours) 
-          : ((baseLog.studyHours !== undefined && baseLog.studyHours !== null && baseLog.studyHours !== '')
-            ? Number(baseLog.studyHours)
-            : (sessionHours > 0 ? Number(sessionHours.toFixed(2)) : Number(otherLog?.hours || otherLog?.studyHours || 0)));
+      const locQuestions = (cur.questions !== undefined && cur.questions !== null && cur.questions !== '') ? Number(cur.questions) : Number(cur.totalQuestionsAttempted || 0);
+      const remQuestions = (incLog?.questions !== undefined && incLog?.questions !== null && incLog?.questions !== '') ? Number(incLog.questions) : Number(incLog?.totalQuestionsAttempted || 0);
+      const totalQuestions = Math.max(locQuestions, remQuestions);
 
-        totalCards = (baseLog.cards !== undefined && baseLog.cards !== null && baseLog.cards !== '') 
-          ? Number(baseLog.cards) 
-          : ((baseLog.totalCardsReviewed !== undefined && baseLog.totalCardsReviewed !== null && baseLog.totalCardsReviewed !== '')
-            ? Number(baseLog.totalCardsReviewed)
-            : Math.max(Number(otherLog?.cards || otherLog?.totalCardsReviewed || 0), fsrsMap.size));
+      const locPages = Number(cur.pages || 0);
+      const remPages = Number(incLog?.pages || 0);
+      const totalPages = Math.max(locPages, remPages);
 
-        totalQuestions = (baseLog.questions !== undefined && baseLog.questions !== null && baseLog.questions !== '') 
-          ? Number(baseLog.questions) 
-          : ((baseLog.totalQuestionsAttempted !== undefined && baseLog.totalQuestionsAttempted !== null && baseLog.totalQuestionsAttempted !== '')
-            ? Number(baseLog.totalQuestionsAttempted)
-            : Number(otherLog?.questions || otherLog?.totalQuestionsAttempted || 0));
-
-        totalPages = (baseLog.pages !== undefined && baseLog.pages !== null && baseLog.pages !== '') 
-          ? Number(baseLog.pages) 
-          : Number(otherLog?.pages || 0);
-      } else {
-        // Equal timestamps (or both missing/legacy logs): combine conservatively
-        totalHours = sessionHours > 0 ? Number(sessionHours.toFixed(2)) : Math.max(Number(cur.studyHours || cur.hours || 0), Number(incLog?.studyHours || incLog?.hours || 0));
-        totalCards = Math.max(Number(cur.totalCardsReviewed || cur.cards || 0), Number(incLog?.totalCardsReviewed || incLog?.cards || 0), fsrsMap.size);
-        totalQuestions = Math.max(Number(cur.totalQuestionsAttempted || cur.questions || 0), Number(incLog?.totalQuestionsAttempted || incLog?.questions || 0));
-        totalPages = Math.max(Number(cur.pages || 0), Number(incLog?.pages || 0));
-      }
+      const locHours = (cur.hours !== undefined && cur.hours !== null && cur.hours !== '') ? Number(cur.hours) : Number(cur.studyHours || 0);
+      const remHours = (incLog?.hours !== undefined && incLog?.hours !== null && incLog?.hours !== '') ? Number(incLog.hours) : Number(incLog?.studyHours || 0);
+      const totalHours = sessionHours > 0 ? Number(sessionHours.toFixed(2)) : Math.max(locHours, remHours);
 
       const latestUpdatedAt = isLocalFresher
         ? (cur.updatedAt || new Date(curTime || Date.now()).toISOString())
@@ -2654,7 +2744,7 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
       }
     });
 
-    const mergedSched = { ...(locLogB.studySchedule || {}), ...(remLogB.studySchedule || {}) };
+    const mergedSched = mergeStudyScheduleObjects(locLogB.studySchedule || {}, remLogB.studySchedule || {});
     const mergedTemplates = remLogB.scheduleTemplates || locLogB.scheduleTemplates || [];
 
     const locCampLogs = Array.isArray(locLogB.campDailyLogs) ? locLogB.campDailyLogs : [];

@@ -9266,6 +9266,7 @@ export default function App() {
     const cleanTopicName = topicName.trim();
     let cleanPage = String(pageNumber || "").trim();
     let cleanEndPage = String(endPage || "").trim();
+    const nowIso = new Date().toISOString();
 
     const p1 = parseInt(cleanPage, 10);
     const p2 = parseInt(cleanEndPage, 10);
@@ -9282,10 +9283,12 @@ export default function App() {
       const updatedTopics = {
         ...currentTopics,
         [cleanTopicName]: {
+          ...(currentTopics[cleanTopicName] || {}),
           name: cleanTopicName,
           page: cleanPage,
           endPage: cleanEndPage,
-          studyDates: currentTopics[cleanTopicName]?.studyDates || []
+          studyDates: currentTopics[cleanTopicName]?.studyDates || [],
+          updatedAt: nowIso
         }
       };
 
@@ -9294,7 +9297,7 @@ export default function App() {
         id: docId,
         subject: subject.trim(),
         topics: updatedTopics,
-        updatedAt: new Date().toISOString()
+        updatedAt: nowIso
       };
 
       saveLocalSubjectTrackerDoc(docId, updatedDoc).catch(err => console.error("[LocalDB] Error adding tracker topic:", err));
@@ -9306,6 +9309,7 @@ export default function App() {
   const handleAddBulkTrackerTopics = async (subject, newTopicsList) => {
     if (!subject || !Array.isArray(newTopicsList) || newTopicsList.length === 0) return 0;
     const docId = subject.trim().toLowerCase();
+    const nowIso = new Date().toISOString();
     let countAdded = 0;
 
     setSubjectTrackerData(prev => {
@@ -9320,10 +9324,12 @@ export default function App() {
           const cleanPage = typeof topic === 'object' && topic.page ? String(topic.page).trim() : '';
           const cleanEndPage = typeof topic === 'object' && topic.endPage ? String(topic.endPage).trim() : '';
           currentTopics[cleanName] = {
+            ...(currentTopics[cleanName] || {}),
             name: cleanName,
             page: cleanPage,
             endPage: cleanEndPage,
-            studyDates: currentTopics[cleanName]?.studyDates || []
+            studyDates: currentTopics[cleanName]?.studyDates || [],
+            updatedAt: nowIso
           };
           countAdded++;
         }
@@ -9333,7 +9339,7 @@ export default function App() {
         ...(docExists || { id: docId, subject: subject.trim() }),
         subject: subject.trim(),
         topics: currentTopics,
-        updatedAt: new Date().toISOString()
+        updatedAt: nowIso
       };
 
       saveLocalSubjectTrackerDoc(docId, updatedDoc).catch(err => console.error("[LocalDB] Bulk add tracker topics error:", err));
@@ -9348,12 +9354,14 @@ export default function App() {
     if (!subject || !topicName) return;
     const docId = subject.trim().toLowerCase();
     const cleanTopicName = topicName.trim();
+    const nowIso = new Date().toISOString();
 
     const existingDoc = subjectTrackerData.find(p => p.id === docId);
     const currentTopics = existingDoc && existingDoc.topics ? JSON.parse(JSON.stringify(existingDoc.topics)) : {};
     const topicObj = currentTopics[cleanTopicName] || { name: cleanTopicName, studyDates: [] };
 
     topicObj.notes = notesHtml;
+    topicObj.updatedAt = nowIso;
     currentTopics[cleanTopicName] = topicObj;
 
     const updatedDoc = {
@@ -9361,7 +9369,7 @@ export default function App() {
       id: docId,
       subject: subject.trim(),
       topics: currentTopics,
-      updatedAt: new Date().toISOString()
+      updatedAt: nowIso
     };
 
     setSubjectTrackerData(prev => {
@@ -9919,6 +9927,7 @@ JSON Format:
     topicObj.lastReviewDate = fsrsResult.lastReviewDate;
     topicObj.reviewCount = fsrsResult.reviewCount;
     topicObj.lapses = fsrsResult.lapses != null ? fsrsResult.lapses : (topicObj.lapses || 0) + (rating === 1 ? 1 : 0);
+    topicObj.updatedAt = new Date().toISOString();
 
     if (!Array.isArray(topicObj.studyDates)) {
       topicObj.studyDates = [];
@@ -9935,7 +9944,7 @@ JSON Format:
       id: docId,
       subject: subjectName,
       topics: topicsMap,
-      updatedAt: new Date().toISOString()
+      updatedAt: topicObj.updatedAt
     };
 
     // 1. Optimistic React State Update
@@ -10105,6 +10114,7 @@ JSON Format:
 
     const isNowEmpty = updatedDates.length === 0 || remainingLogs.length === 0;
 
+    const nowIso = new Date().toISOString();
     let updatedTopicObj;
     if (isNowEmpty) {
       updatedTopicObj = {
@@ -10118,15 +10128,19 @@ JSON Format:
         nextReviewDue: null,
         interval: null,
         retrievability: null,
-        isLeech: false
+        isLeech: false,
+        updatedAt: nowIso
       };
     } else {
-      updatedTopicObj = recalculateTopicFSRSFromLogs(
-        { ...topicObj, studyDates: updatedDates },
-        remainingLogs,
-        fsrsConfig,
-        subjectTrackerData
-      );
+      updatedTopicObj = {
+        ...recalculateTopicFSRSFromLogs(
+          { ...topicObj, studyDates: updatedDates },
+          remainingLogs,
+          fsrsConfig,
+          subjectTrackerData
+        ),
+        updatedAt: nowIso
+      };
     }
 
     const updatedTopics = {
@@ -10139,7 +10153,7 @@ JSON Format:
       id: docId,
       subject: subject.trim(),
       topics: updatedTopics,
-      updatedAt: new Date().toISOString()
+      updatedAt: nowIso
     };
 
     setSubjectTrackerData(prev => {

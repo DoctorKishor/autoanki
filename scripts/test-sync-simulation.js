@@ -19,6 +19,7 @@ import {
   canonicalStringify,
   mergeSubjectTrackerArrays,
   mergePytUserProgress,
+  mergeStudyScheduleObjects,
   mergeTextbooksMetadata,
   mergeFsrsConfigs,
   mergeSettingsArrays,
@@ -349,7 +350,9 @@ function runDeviceSync(device, cloudVault, options = {}) {
   const isEmptyLocal = (
     (!device.stores.topics || device.stores.topics.length === 0) &&
     (!device.getKV('flashcards') || device.getKV('flashcards').length === 0) &&
-    (!device.getKV('subject_tracker_data') || device.getKV('subject_tracker_data').length === 0)
+    (!device.getKV('subject_tracker_data') || device.getKV('subject_tracker_data').length === 0) &&
+    (!device.getKV('study_schedule') || Object.keys(device.getKV('study_schedule')).length === 0) &&
+    (!device.getKV('study_logs') || Object.keys(device.getKV('study_logs')).length === 0)
   );
 
   if (!ancHashes) {
@@ -1370,6 +1373,281 @@ async function runScenarioJ() {
   logHeader('SCENARIO J: ALL GRAND TEST SYNC TESTS PASSED WITH 100% INTEGRITY');
 }
 
+/**
+ * SCENARIO K: Granular Sub-Entity Subject Tracker CRDT Merging (Topic X on Dev A, Topic Y on Dev B)
+ * Verifies that independent topic additions and ratings on separate devices are never lost or pruned during sync.
+ */
+async function runScenarioK() {
+  logHeader('SCENARIO K: Concurrent Subject Tracker Sub-Entity Merging (Device A: Topic X, Device B: Topic Y)');
+
+  const cloudVault = new MockCloudVault();
+  const devA = new MockDevice('Device A', 'dev_a_user');
+  const devB = new MockDevice('Device B', 'dev_b_user');
+
+  const baseTracker = [
+    {
+      id: 'anatomy',
+      subject: 'Anatomy',
+      topics: {
+        brachial_plexus: {
+          name: 'Brachial Plexus',
+          page: '12',
+          studyDates: ['2026-08-20'],
+          stability: 2.5,
+          difficulty: 5.0,
+          reviewCount: 1,
+          lastReviewDate: '2026-08-20T10:00:00.000Z',
+          updatedAt: '2026-08-20T10:00:00.000Z'
+        }
+      },
+      updatedAt: '2026-08-20T10:00:00.000Z'
+    }
+  ];
+
+  devA.setKV('subject_tracker_data', baseTracker);
+  runDeviceSync(devA, cloudVault); // Initial upload to cloud
+  runDeviceSync(devB, cloudVault); // Dev B downloads base state
+
+  // Step 1: Device A adds & rates "Topic X" (Femoral Triangle) offline
+  const trackerA = devA.getKV('subject_tracker_data');
+  trackerA[0].topics.femoral_triangle = {
+    name: 'Femoral Triangle',
+    page: '45',
+    studyDates: ['2026-08-27'],
+    stability: 3.1,
+    difficulty: 4.2,
+    reviewCount: 1,
+    lastReviewDate: '2026-08-27T08:00:00.000Z',
+    updatedAt: '2026-08-27T08:00:00.000Z'
+  };
+  trackerA[0].updatedAt = '2026-08-27T08:00:00.000Z';
+  devA.setKV('subject_tracker_data', trackerA);
+
+  // Step 2: Device B independently adds & rates "Topic Y" (Popliteal Fossa) offline
+  const trackerB = devB.getKV('subject_tracker_data');
+  trackerB[0].topics.popliteal_fossa = {
+    name: 'Popliteal Fossa',
+    page: '68',
+    studyDates: ['2026-08-27'],
+    stability: 4.0,
+    difficulty: 3.8,
+    reviewCount: 1,
+    lastReviewDate: '2026-08-27T09:00:00.000Z',
+    updatedAt: '2026-08-27T09:00:00.000Z'
+  };
+  trackerB[0].updatedAt = '2026-08-27T09:00:00.000Z';
+  devB.setKV('subject_tracker_data', trackerB);
+
+  // Step 3: Device B syncs first -> pushes Topic Y to cloud
+  const actionB = runDeviceSync(devB, cloudVault);
+  assert(actionB === 'fast_forward_push', 'Device B fast-forward pushes Topic Y to cloud');
+
+  // Step 4: Device A syncs second -> performs Two-Way Delta Merge
+  const actionA = runDeviceSync(devA, cloudVault);
+  assert(actionA === 'two_way_merge', 'Device A performs Two-Way Delta Merge with cloud');
+
+  // Verify Device A has ALL 3 topics: Brachial Plexus, Femoral Triangle (Topic X), and Popliteal Fossa (Topic Y)
+  const mergedTrackerA = devA.getKV('subject_tracker_data');
+  const topicsA = mergedTrackerA[0].topics;
+  assert(topicsA.brachial_plexus !== undefined, 'Device A preserved base topic (Brachial Plexus)');
+  assert(topicsA.femoral_triangle !== undefined, 'Device A PRESERVED local Topic X (Femoral Triangle) - Zero Data Loss!');
+  assert(topicsA.popliteal_fossa !== undefined, 'Device A integrated remote Topic Y (Popliteal Fossa)');
+  assert(topicsA.femoral_triangle.stability === 3.1, 'Topic X has exact FSRS stability 3.1');
+  assert(topicsA.popliteal_fossa.stability === 4.0, 'Topic Y has exact FSRS stability 4.0');
+
+  // Step 5: Device B syncs again -> pulls merged state from cloud
+  const actionB2 = runDeviceSync(devB, cloudVault);
+  assert(actionB2 === 'fast_forward_pull' || actionB2 === 'two_way_merge', 'Device B pulls merged state from cloud');
+
+  const mergedTrackerB = devB.getKV('subject_tracker_data');
+  const topicsB = mergedTrackerB[0].topics;
+  assert(topicsB.brachial_plexus !== undefined, 'Device B preserved base topic (Brachial Plexus)');
+  assert(topicsB.femoral_triangle !== undefined, 'Device B received Topic X (Femoral Triangle) from Device A');
+  assert(topicsB.popliteal_fossa !== undefined, 'Device B preserved Topic Y (Popliteal Fossa)');
+
+  logHeader('SCENARIO K: ALL SUB-ENTITY TRACKER MERGE TESTS PASSED');
+}
+
+/**
+ * SCENARIO L: Intentional Clear & Tombstone-Safe LWW Merge
+ * Verifies that clearing notes/pages with newer timestamps wins over old data,
+ * and deleting topics records permanent tombstones that prevent cloud resurrection.
+ */
+async function runScenarioL() {
+  logHeader('SCENARIO L: Intentional Clear & Tombstone-Safe LWW Merge');
+
+  const cloudVault = new MockCloudVault();
+  const devA = new MockDevice('Device A', 'dev_a_user');
+  const devB = new MockDevice('Device B', 'dev_b_user');
+
+  const initialTracker = [
+    {
+      id: 'pharmacology',
+      subject: 'Pharmacology',
+      topics: {
+        antibiotics: {
+          name: 'Antibiotics',
+          page: '100',
+          endPage: '120',
+          notes: '<p>Cephalosporins and penicillins</p>',
+          studyDates: ['2026-08-15'],
+          updatedAt: '2026-08-15T10:00:00.000Z'
+        },
+        antivirals: {
+          name: 'Antivirals',
+          page: '150',
+          studyDates: ['2026-08-16'],
+          updatedAt: '2026-08-16T10:00:00.000Z'
+        }
+      },
+      updatedAt: '2026-08-16T10:00:00.000Z'
+    }
+  ];
+
+  devA.setKV('subject_tracker_data', initialTracker);
+  runDeviceSync(devA, cloudVault);
+  runDeviceSync(devB, cloudVault);
+
+  // Step 1: Device A intentionally clears page numbers to empty string and updates notes at t = 2026-08-27T10:00:00Z
+  const trackerA = devA.getKV('subject_tracker_data');
+  trackerA[0].topics.antibiotics = {
+    ...trackerA[0].topics.antibiotics,
+    page: '',
+    endPage: '',
+    notes: '<p>Updated high-yield mechanism only</p>',
+    updatedAt: '2026-08-27T10:00:00.000Z'
+  };
+  trackerA[0].updatedAt = '2026-08-27T10:00:00.000Z';
+  devA.setKV('subject_tracker_data', trackerA);
+
+  // Step 2: Device A deletes topic "antivirals" at t = 2026-08-27T10:05:00Z
+  delete trackerA[0].topics.antivirals;
+  devA.setKV('subject_tracker_data', trackerA);
+  devA.setKV('trash_topics', [
+    {
+      id: 'antivirals',
+      topicName: 'Antivirals',
+      docId: 'pharmacology',
+      deletedAt: '2026-08-27T10:05:00.000Z'
+    }
+  ]);
+
+  // Step 3: Device A syncs -> pushes cleared fields and tombstone to cloud
+  runDeviceSync(devA, cloudVault);
+
+  // Step 4: Device B syncs -> pulls updates from cloud
+  runDeviceSync(devB, cloudVault);
+
+  // Step 5: Verify Device B has cleared page ("") and updated notes, and antivirals is PRUNED
+  const trackerB = devB.getKV('subject_tracker_data');
+  const antiB = trackerB[0].topics.antibiotics;
+  assert(antiB.page === '', 'Intentional page clearance to empty string preserved on Device B');
+  assert(antiB.endPage === '', 'Intentional endPage clearance to empty string preserved on Device B');
+  assert(antiB.notes === '<p>Updated high-yield mechanism only</p>', 'Updated notes preserved on Device B');
+  assert(trackerB[0].topics.antivirals === undefined, 'Deleted topic (Antivirals) was pruned on Device B via tombstone');
+
+  logHeader('SCENARIO L: ALL INTENTIONAL CLEAR & TOMBSTONE TESTS PASSED');
+}
+
+/**
+ * SCENARIO M: Study Schedule Task CRDT Union & Monotonic Metrics Preservation
+ * Verifies that concurrent tasks scheduled on the same date across devices are unioned without loss,
+ * and daily review counters (cards, questions, hours) are strictly preserved.
+ */
+async function runScenarioM() {
+  logHeader('SCENARIO M: Study Schedule Task CRDT Union & Monotonic Metrics');
+
+  const cloudVault = new MockCloudVault();
+  const devA = new MockDevice('Device A', 'dev_a_user');
+  const devB = new MockDevice('Device B', 'dev_b_user');
+
+  const testDate = '2026-08-27';
+
+  // Base state: both devices know about testDate with Task 1
+  const baseSched = {
+    [testDate]: {
+      date: testDate,
+      tasks: [
+        { id: 'task_1', subject: 'Anatomy', topicName: 'Brachial Plexus', completed: false, updatedAt: '2026-08-27T07:00:00.000Z' }
+      ],
+      updatedAt: '2026-08-27T07:00:00.000Z'
+    }
+  };
+  devA.setKV('study_schedule', baseSched);
+  runDeviceSync(devA, cloudVault);
+  runDeviceSync(devB, cloudVault);
+
+  // Device A completes Task 1 and adds Task 2 (pending)
+  devA.setKV('study_schedule', {
+    [testDate]: {
+      date: testDate,
+      tasks: [
+        { id: 'task_1', subject: 'Anatomy', topicName: 'Brachial Plexus', completed: true, rating: 3, updatedAt: '2026-08-27T08:00:00.000Z' },
+        { id: 'task_2', subject: 'Pathology', topicName: 'Cell Injury', completed: false, updatedAt: '2026-08-27T08:00:00.000Z' }
+      ],
+      updatedAt: '2026-08-27T08:00:00.000Z'
+    }
+  });
+  devA.setKV('study_logs', {
+    [testDate]: {
+      cards: 35,
+      questions: 0,
+      hours: 1.5,
+      updatedAt: '2026-08-27T08:00:00.000Z'
+    }
+  });
+
+  // Device B independently adds Task 2 (completed) and Task 3 (pending)
+  devB.setKV('study_schedule', {
+    [testDate]: {
+      date: testDate,
+      tasks: [
+        { id: 'task_1', subject: 'Anatomy', topicName: 'Brachial Plexus', completed: false, updatedAt: '2026-08-27T07:00:00.000Z' },
+        { id: 'task_2', subject: 'Pathology', topicName: 'Cell Injury', completed: true, rating: 4, updatedAt: '2026-08-27T09:00:00.000Z' },
+        { id: 'task_3', subject: 'Pharmacology', topicName: 'Beta Blockers', completed: false, updatedAt: '2026-08-27T09:00:00.000Z' }
+      ],
+      updatedAt: '2026-08-27T09:00:00.000Z'
+    }
+  });
+  devB.setKV('study_logs', {
+    [testDate]: {
+      cards: 10,
+      questions: 50,
+      hours: 2.0,
+      updatedAt: '2026-08-27T09:00:00.000Z'
+    }
+  });
+
+  // Device A syncs first
+  runDeviceSync(devA, cloudVault);
+
+  // Device B syncs second
+  runDeviceSync(devB, cloudVault);
+
+  // Device A syncs third to pull full merge
+  runDeviceSync(devA, cloudVault);
+
+  // Verify Device A schedule has ALL 3 tasks, with Task 1 & Task 2 completed
+  const schedA = devA.getKV('study_schedule')[testDate];
+  assert(schedA && Array.isArray(schedA.tasks), 'Device A has tasks array for testDate');
+  assert(schedA.tasks.length === 3, 'Device A schedule has all 3 unioned tasks');
+
+  const task1 = schedA.tasks.find(t => t.id === 'task_1');
+  const task2 = schedA.tasks.find(t => t.id === 'task_2');
+  const task3 = schedA.tasks.find(t => t.id === 'task_3');
+  assert(task1 && task1.completed === true, 'Task 1 is completed');
+  assert(task2 && task2.completed === true, 'Task 2 is completed (marked completed on Dev B)');
+  assert(task3 && task3.completed === false, 'Task 3 is preserved as pending');
+
+  // Verify study log counters are monotonically preserved
+  const logA = devA.getKV('study_logs')[testDate];
+  assert(logA.cards >= 35, 'Cards count is at least 35 (max of 35 and 10)');
+  assert(logA.questions >= 50, 'Questions count is at least 50 (max of 0 and 50)');
+  assert(logA.hours >= 2.0, 'Hours count is at least 2.0 (max of 1.5 and 2.0)');
+
+  logHeader('SCENARIO M: ALL STUDY SCHEDULE CRDT UNION TESTS PASSED');
+}
+
 runTestSuite().catch(err => {
   console.error(`${colors.red}Test Suite Encountered Fatal Error:${colors.reset}`, err);
   process.exit(1);
@@ -1382,6 +1660,21 @@ runScenarioI().catch(err => {
 
 runScenarioJ().catch(err => {
   console.error(`${colors.red}Scenario J Encountered Fatal Error:${colors.reset}`, err);
+  process.exit(1);
+});
+
+runScenarioK().catch(err => {
+  console.error(`${colors.red}Scenario K Encountered Fatal Error:${colors.reset}`, err);
+  process.exit(1);
+});
+
+runScenarioL().catch(err => {
+  console.error(`${colors.red}Scenario L Encountered Fatal Error:${colors.reset}`, err);
+  process.exit(1);
+});
+
+runScenarioM().catch(err => {
+  console.error(`${colors.red}Scenario M Encountered Fatal Error:${colors.reset}`, err);
   process.exit(1);
 });
 
