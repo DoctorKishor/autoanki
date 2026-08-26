@@ -10673,7 +10673,7 @@ JSON Format:
           return docChanged ? { ...doc, topics: nextTopics, updatedAt: new Date().toISOString() } : doc;
         });
         if (trackerChanged) {
-          saveLocalSubjectTrackerData(updated).catch(e => console.error('[LocalDB] Error updating tracker on study log deletion:', e));
+          replaceAllLocalSubjectTrackerData(updated).catch(e => console.error('[LocalDB] Error updating tracker on study log deletion:', e));
         }
         return updated;
       });
