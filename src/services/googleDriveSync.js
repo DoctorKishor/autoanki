@@ -563,17 +563,59 @@ export async function extractLocalBundles() {
 
   // 4. FSRS Config & Settings Bundle
   const fsrsConfig = (await getFSRSConfig()) || {};
-  const settings = (await getAllLocalItems(STORES.SETTINGS)) || [];
-  const filteredSettings = settings.filter(s => s?.key !== 'google_drive_auth');
-  const topicHints = (await getAllLocalItems(STORES.TOPIC_HINTS)) || [];
-  const hintQuota = (await getAllLocalItems(STORES.HINT_QUOTA)) || [];
-  const customPrompts = (await getLocalKV('custom_prompts')) || [];
-  const localUserProfile = (await getLocalKV('local_user_profile')) || null;
-  const aiRecommendations = (await getLocalKV('ai_topic_recommendations')) || null;
+
+  // Transient / runtime keys in STORES.SETTINGS that must never be synced or hashed
+  const EXCLUDED_SETTINGS_KEYS = new Set([
+    'google_drive_auth',
+    'google_drive_sync_state',
+    'autoanki_last_synced_hashes',
+    'last_synced_hashes',
+    'autoanki_pending_sync_launch',
+    'obsToken',
+    'fsrs_config' // fsrsConfig is already included cleanly as top-level fsrsConfig
+  ]);
+
+  const rawSettings = (await getAllLocalItems(STORES.SETTINGS)) || [];
+  const filteredSettings = rawSettings
+    .filter(s => {
+      if (!s || !s.key) return false;
+      if (EXCLUDED_SETTINGS_KEYS.has(s.key)) return false;
+      if (/^(temp_|active_|cached_|gdrive_|sync_|autoanki_)/i.test(s.key)) return false;
+      return true;
+    })
+    .map(s => ({
+      key: s.key,
+      value: s.value
+      // Omit local/divergent updatedAt to guarantee cross-device hash equality
+    }))
+    .sort((a, b) => a.key.localeCompare(b.key));
+
+  const rawTopicHints = (await getAllLocalItems(STORES.TOPIC_HINTS)) || [];
+  const topicHints = rawTopicHints
+    .filter(h => h && h.topicId)
+    .sort((a, b) => (a.topicId || '').localeCompare(b.topicId || ''));
+
+  const rawHintQuota = (await getAllLocalItems(STORES.HINT_QUOTA)) || [];
+  const hintQuota = rawHintQuota
+    .filter(q => q && q.dateStr)
+    .sort((a, b) => (a.dateStr || '').localeCompare(b.dateStr || ''));
+
+  const rawCustomPrompts = (await getLocalKV('custom_prompts')) || [];
+  const customPrompts = (Array.isArray(rawCustomPrompts) ? rawCustomPrompts : [])
+    .filter(p => p && p.id)
+    .sort((a, b) => (a.id || '').localeCompare(b.id || ''));
 
   customPrompts.forEach(p => {
     if (p) trackTimestamp(p.updatedAt || p.createdAt);
   });
+
+  const rawUserProfile = (await getLocalKV('local_user_profile')) || null;
+  const localUserProfile = rawUserProfile ? { ...rawUserProfile } : null;
+  if (localUserProfile) {
+    delete localUserProfile.deviceId;
+  }
+
+  const aiRecommendations = (await getLocalKV('ai_topic_recommendations')) || null;
 
   const localStorageSnapshot = {};
   if (typeof window !== 'undefined' && window.localStorage) {
@@ -583,6 +625,7 @@ export async function extractLocalBundles() {
         'local_device_id',
         'obs_device_id',
         'obs_paired_uid',
+        'obs_token',
         'autoanki_gdrive_auth',
         'autoanki_pending_sync_launch',
         'auto_anki_last_auto_backup',
@@ -596,10 +639,26 @@ export async function extractLocalBundles() {
         'last_visited_route',
         'active_subject_filter',
         'active_page_index',
-        'autoanki_diagnostics_logs'
+        'autoanki_diagnostics_logs',
+        'camp_student_info',
+        'camp_history',
+        'camp_timer_history',
+        'lastSyncTime',
+        'sync_status',
+        'google_drive_sync_state'
       ]);
-      (LS_KEYS_TO_SNAPSHOT || []).forEach(key => {
-        if (!EXCLUDED_SYNC_LS_KEYS.has(key) && !key.startsWith('autoanki_synced_hashes_')) {
+      const candidateKeys = Array.from(new Set(LS_KEYS_TO_SNAPSHOT || []));
+      candidateKeys.sort();
+      candidateKeys.forEach(key => {
+        if (
+          !EXCLUDED_SYNC_LS_KEYS.has(key) &&
+          !key.startsWith('autoanki_synced_hashes_') &&
+          !key.startsWith('autoanki_') &&
+          !key.startsWith('gdrive_') &&
+          !key.startsWith('camp_sessions_') &&
+          !key.startsWith('camp_bedToBook_') &&
+          !/^(temp_|active_|cached_|sync_)/i.test(key)
+        ) {
           const val = localStorage.getItem(key);
           if (val !== null && val !== undefined) localStorageSnapshot[key] = val;
         }
@@ -1264,6 +1323,74 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
         emitDataHydratedEvent({ strategy, bundleKeys: Object.keys(bundles) });
       }
     }
+  }
+}
+
+/**
+ * Detailed audit of divergent keys between local and remote bundles.
+ * Logs exact differing properties for fsrs_config or other bundles to the console.
+ */
+export function debugAuditBundleDiff(bundleKey, localBundle, remoteBundle) {
+  if (!localBundle || !remoteBundle) {
+    console.log(`[GDriveSync] [DEBUG-DIFF] ${bundleKey}: One side is missing (local: ${Boolean(localBundle)}, remote: ${Boolean(remoteBundle)})`);
+    return;
+  }
+
+  if (bundleKey === 'fsrs_config' || bundleKey === 'fsrs_config.json') {
+    const diffs = {};
+
+    // 1. Settings diff
+    const locSettings = new Map((localBundle.settings || []).map(s => [s.key, s.value]));
+    const remSettings = new Map((remoteBundle.settings || []).map(s => [s.key, s.value]));
+    const allSettingKeys = new Set([...locSettings.keys(), ...remSettings.keys()]);
+    const settingsDiff = [];
+    allSettingKeys.forEach(k => {
+      const locVal = locSettings.get(k);
+      const remVal = remSettings.get(k);
+      if (canonicalStringify(locVal) !== canonicalStringify(remVal)) {
+        settingsDiff.push({ key: k, local: locVal, remote: remVal });
+      }
+    });
+    if (settingsDiff.length > 0) diffs.settings = settingsDiff;
+
+    // 2. LocalStorage diff
+    const locLs = localBundle.localStorageSnapshot || {};
+    const remLs = remoteBundle.localStorageSnapshot || {};
+    const allLsKeys = new Set([...Object.keys(locLs), ...Object.keys(remLs)]);
+    const lsDiff = [];
+    allLsKeys.forEach(k => {
+      if (locLs[k] !== remLs[k]) {
+        lsDiff.push({ key: k, local: locLs[k], remote: remLs[k] });
+      }
+    });
+    if (lsDiff.length > 0) diffs.localStorageSnapshot = lsDiff;
+
+    // 3. FSRS config diff
+    if (canonicalStringify(localBundle.fsrsConfig) !== canonicalStringify(remoteBundle.fsrsConfig)) {
+      diffs.fsrsConfig = {
+        local: localBundle.fsrsConfig,
+        remote: remoteBundle.fsrsConfig
+      };
+    }
+
+    // 4. Custom prompts diff
+    if (canonicalStringify(localBundle.customPrompts) !== canonicalStringify(remoteBundle.customPrompts)) {
+      diffs.customPrompts = {
+        localCount: (localBundle.customPrompts || []).length,
+        remoteCount: (remoteBundle.customPrompts || []).length
+      };
+    }
+
+    // 5. Topic hints / Hint quota diff
+    if (canonicalStringify(localBundle.topicHints) !== canonicalStringify(remoteBundle.topicHints)) {
+      diffs.topicHints = { localCount: (localBundle.topicHints || []).length, remoteCount: (remoteBundle.topicHints || []).length };
+    }
+    if (canonicalStringify(localBundle.hintQuota) !== canonicalStringify(remoteBundle.hintQuota)) {
+      diffs.hintQuota = { local: localBundle.hintQuota, remote: remoteBundle.hintQuota };
+    }
+
+    console.warn('[GDriveSync] [DEBUG-DIFF] fsrs_config divergence breakdown:', JSON.stringify(diffs, null, 2));
+    logger.sync('FSRS-CONFIG-DIFF', 'fsrs_config divergence breakdown:', diffs);
   }
 }
 
@@ -2646,6 +2773,15 @@ async function executeSyncInternal({
       hashDiff
     });
     console.log('[GDriveSync] Detailed 6-bundle hash divergence audit:', JSON.stringify(hashDiff, null, 2));
+
+    if (modifiedBundleNames.includes('fsrs_config.json')) {
+      const remoteFsrsFile = freshRemoteFileMap.get('fsrs_config.json');
+      if (remoteFsrsFile) {
+        downloadDriveFile(accessToken, remoteFsrsFile.id, true).then(remoteFsrs => {
+          debugAuditBundleDiff('fsrs_config', localData.bundles['fsrs_config.json'], remoteFsrs);
+        }).catch(() => {});
+      }
+    }
 
     if (modifiedBundleNames.length > 0) {
       const cardsConflict = localHashes.cards_bundle !== currentRemoteHashes.cards_bundle;

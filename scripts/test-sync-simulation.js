@@ -117,10 +117,18 @@ class MockDevice {
     const timerState = this.getKV('timerState', null);
     const activeNewTopicsToday = this.getKV('active_new_topics_today', []);
     const fsrsConfig = this.getSetting('fsrs_config', {});
-    const settings = this.stores.settings.filter(s => s.key !== 'google_drive_auth');
-    const topicHints = this.stores.topic_hints;
-    const hintQuota = this.stores.hint_quota;
-    const customPrompts = this.getKV('custom_prompts', []);
+    const EXCLUDED_SETTINGS_KEYS = new Set([
+      'google_drive_auth', 'google_drive_sync_state', 'autoanki_last_synced_hashes',
+      'last_synced_hashes', 'autoanki_pending_sync_launch', 'obsToken', 'fsrs_config'
+    ]);
+    const settings = this.stores.settings
+      .filter(s => s && s.key && !EXCLUDED_SETTINGS_KEYS.has(s.key) && !/^(temp_|active_|cached_|gdrive_|sync_|autoanki_)/i.test(s.key))
+      .map(s => ({ key: s.key, value: s.value }))
+      .sort((a, b) => a.key.localeCompare(b.key));
+
+    const topicHints = (this.stores.topic_hints || []).sort((a, b) => (a.topicId || '').localeCompare(b.topicId || ''));
+    const hintQuota = (this.stores.hint_quota || []).sort((a, b) => (a.dateStr || '').localeCompare(b.dateStr || ''));
+    const customPrompts = (this.getKV('custom_prompts', []) || []).sort((a, b) => (a.id || '').localeCompare(b.id || ''));
     const localUserProfile = this.getKV('local_user_profile', null);
     const aiRecommendations = this.getKV('ai_topic_recommendations', null);
     const campTracker = this.stores.camp_tracker;
@@ -128,12 +136,24 @@ class MockDevice {
 
     // Filter localStorage preferences
     const excludedKeys = new Set([
-      'local_device_id', 'obs_device_id', 'obs_paired_uid',
-      'autoanki_device_id', 'autoanki_gdrive_auth', 'autoanki_pending_sync_launch'
+      'local_device_id', 'obs_device_id', 'obs_paired_uid', 'obs_token',
+      'autoanki_device_id', 'autoanki_gdrive_auth', 'autoanki_pending_sync_launch',
+      'auto_anki_expanded_nav_category', 'active_nav_category', 'active_tab',
+      'active_view', 'current_view', 'study_active_tab', 'last_visited_route',
+      'camp_student_info', 'camp_history', 'camp_timer_history', 'lastSyncTime', 'sync_status'
     ]);
     const lsSnapshot = {};
-    for (const [k, v] of Object.entries(this.localStorage)) {
-      if (!excludedKeys.has(k) && !k.startsWith('camp_sessions_') && !k.startsWith('camp_bedToBook_')) {
+    const candidateKeys = Object.keys(this.localStorage).sort();
+    for (const k of candidateKeys) {
+      const v = this.localStorage[k];
+      if (
+        !excludedKeys.has(k) &&
+        !k.startsWith('camp_sessions_') &&
+        !k.startsWith('camp_bedToBook_') &&
+        !k.startsWith('autoanki_') &&
+        !k.startsWith('gdrive_') &&
+        !/^(temp_|active_|cached_|sync_)/i.test(k)
+      ) {
         lsSnapshot[k] = v;
       }
     }
@@ -224,10 +244,9 @@ class MockDevice {
       // 4. FSRS Config
       if (downloadedBundles['fsrs_config.json']) {
         const b = downloadedBundles['fsrs_config.json'];
+        const filtered = (b.settings || []).filter(s => s && s.key && s.key !== 'google_drive_auth' && s.key !== 'fsrs_config');
+        this.stores.settings = filtered;
         if (b.fsrsConfig) this.setSetting('fsrs_config', b.fsrsConfig);
-        if (b.settings) {
-          this.stores.settings = b.settings.filter(s => s.key !== 'google_drive_auth');
-        }
         this.stores.topic_hints = b.topicHints || [];
         this.stores.hint_quota = b.hintQuota || [];
         this.setKV('custom_prompts', b.customPrompts || []);
@@ -327,6 +346,8 @@ function runDeviceSync(device, cloudVault, options = {}) {
   if (!ancHashes) {
     if (isEmptyLocal && remoteData && remoteData.manifest) {
       device.hydrateBundles(remoteData.bundles, 'replace');
+      const postData = device.extractBundles();
+      device.lastSyncedHashes = postData.manifest.hashes;
       return 'fast_forward_pull';
     }
     isLocalClean = false;
@@ -345,6 +366,8 @@ function runDeviceSync(device, cloudVault, options = {}) {
   // Fast-Forward Pull: Local is clean, Remote has changes
   if (isLocalClean && !isRemoteClean) {
     device.hydrateBundles(remoteData.bundles, 'replace');
+    const postData = device.extractBundles();
+    device.lastSyncedHashes = postData.manifest.hashes;
     return 'fast_forward_pull';
   }
 
