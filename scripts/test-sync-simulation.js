@@ -116,7 +116,10 @@ class MockDevice {
     const campDailyLogs = this.stores.camp_daily_logs;
     const timerState = this.getKV('timerState', null);
     const activeNewTopicsToday = this.getKV('active_new_topics_today', []);
-    const fsrsConfig = this.getSetting('fsrs_config', {});
+    const rawFsrs = this.getSetting('fsrs_config', {});
+    const fsrsConfig = { ...rawFsrs };
+    delete fsrsConfig.updatedAt;
+    delete fsrsConfig.lastModified;
     const EXCLUDED_SETTINGS_KEYS = new Set([
       'google_drive_auth', 'google_drive_sync_state', 'autoanki_last_synced_hashes',
       'last_synced_hashes', 'autoanki_pending_sync_launch', 'obsToken', 'fsrs_config'

@@ -462,6 +462,60 @@ export async function ensureSyncVault(accessToken) {
 // PARTITIONED LOCAL DATA EXTRACTION & HYDRATION
 // ============================================================================
 
+export const EXCLUDED_SETTINGS_KEYS = new Set([
+  'google_drive_auth',
+  'google_drive_sync_state',
+  'autoanki_last_synced_hashes',
+  'last_synced_hashes',
+  'autoanki_pending_sync_launch',
+  'obsToken',
+  'obs_token',
+  'fsrs_config'
+]);
+
+export const EXCLUDED_SYNC_LS_KEYS = new Set([
+  'autoanki_device_id',
+  'local_device_id',
+  'obs_device_id',
+  'obs_paired_uid',
+  'obs_token',
+  'autoanki_gdrive_auth',
+  'autoanki_pending_sync_launch',
+  'auto_anki_last_auto_backup',
+  'auto_anki_last_manual_backup',
+  'auto_anki_expanded_nav_category',
+  'active_nav_category',
+  'active_tab',
+  'active_view',
+  'current_view',
+  'study_active_tab',
+  'last_visited_route',
+  'active_subject_filter',
+  'active_page_index',
+  'autoanki_diagnostics_logs',
+  'camp_student_info',
+  'camp_history',
+  'camp_timer_history',
+  'lastSyncTime',
+  'sync_status',
+  'google_drive_sync_state'
+]);
+
+export function isCleanSettingKey(key) {
+  if (!key || typeof key !== 'string') return false;
+  if (EXCLUDED_SETTINGS_KEYS.has(key)) return false;
+  if (/^(temp_|active_|cached_|gdrive_|sync_|autoanki_)/i.test(key)) return false;
+  return true;
+}
+
+export function isCleanLsKey(key) {
+  if (!key || typeof key !== 'string') return false;
+  if (EXCLUDED_SYNC_LS_KEYS.has(key)) return false;
+  if (key.startsWith('autoanki_') || key.startsWith('gdrive_') || key.startsWith('camp_sessions_') || key.startsWith('camp_bedToBook_') || key.startsWith('camp_')) return false;
+  if (/^(temp_|active_|cached_|sync_)/i.test(key)) return false;
+  return true;
+}
+
 /**
  * Gathers and serializes local data into partitioned chunks sequentially to prevent memory spikes.
  */
@@ -562,27 +616,14 @@ export async function extractLocalBundles() {
   hashes.study_logs = computeHash(bundles['study_logs.json']);
 
   // 4. FSRS Config & Settings Bundle
-  const fsrsConfig = (await getFSRSConfig()) || {};
-
-  // Transient / runtime keys in STORES.SETTINGS that must never be synced or hashed
-  const EXCLUDED_SETTINGS_KEYS = new Set([
-    'google_drive_auth',
-    'google_drive_sync_state',
-    'autoanki_last_synced_hashes',
-    'last_synced_hashes',
-    'autoanki_pending_sync_launch',
-    'obsToken',
-    'fsrs_config' // fsrsConfig is already included cleanly as top-level fsrsConfig
-  ]);
+  const rawFsrs = (await getFSRSConfig()) || {};
+  const fsrsConfig = { ...rawFsrs };
+  delete fsrsConfig.updatedAt;
+  delete fsrsConfig.lastModified;
 
   const rawSettings = (await getAllLocalItems(STORES.SETTINGS)) || [];
   const filteredSettings = rawSettings
-    .filter(s => {
-      if (!s || !s.key) return false;
-      if (EXCLUDED_SETTINGS_KEYS.has(s.key)) return false;
-      if (/^(temp_|active_|cached_|gdrive_|sync_|autoanki_)/i.test(s.key)) return false;
-      return true;
-    })
+    .filter(s => s && s.key && isCleanSettingKey(s.key))
     .map(s => ({
       key: s.key,
       value: s.value
@@ -620,45 +661,10 @@ export async function extractLocalBundles() {
   const localStorageSnapshot = {};
   if (typeof window !== 'undefined' && window.localStorage) {
     try {
-      const EXCLUDED_SYNC_LS_KEYS = new Set([
-        'autoanki_device_id',
-        'local_device_id',
-        'obs_device_id',
-        'obs_paired_uid',
-        'obs_token',
-        'autoanki_gdrive_auth',
-        'autoanki_pending_sync_launch',
-        'auto_anki_last_auto_backup',
-        'auto_anki_last_manual_backup',
-        'auto_anki_expanded_nav_category',
-        'active_nav_category',
-        'active_tab',
-        'active_view',
-        'current_view',
-        'study_active_tab',
-        'last_visited_route',
-        'active_subject_filter',
-        'active_page_index',
-        'autoanki_diagnostics_logs',
-        'camp_student_info',
-        'camp_history',
-        'camp_timer_history',
-        'lastSyncTime',
-        'sync_status',
-        'google_drive_sync_state'
-      ]);
       const candidateKeys = Array.from(new Set(LS_KEYS_TO_SNAPSHOT || []));
       candidateKeys.sort();
       candidateKeys.forEach(key => {
-        if (
-          !EXCLUDED_SYNC_LS_KEYS.has(key) &&
-          !key.startsWith('autoanki_synced_hashes_') &&
-          !key.startsWith('autoanki_') &&
-          !key.startsWith('gdrive_') &&
-          !key.startsWith('camp_sessions_') &&
-          !key.startsWith('camp_bedToBook_') &&
-          !/^(temp_|active_|cached_|sync_)/i.test(key)
-        ) {
+        if (isCleanLsKey(key)) {
           const val = localStorage.getItem(key);
           if (val !== null && val !== undefined) localStorageSnapshot[key] = val;
         }
@@ -1112,7 +1118,7 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
         tx.onerror = () => reject(tx.error);
       });
 
-      // For SETTINGS: preserve local google_drive_auth, replace all other keys
+      // For SETTINGS: preserve local google_drive_auth, replace all other clean keys
       const localAuth = await getLocalSetting('google_drive_auth');
       await new Promise((resolve, reject) => {
         const tx = db.transaction(STORES.SETTINGS, 'readwrite');
@@ -1122,7 +1128,7 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
           if (localAuth) st.put({ key: 'google_drive_auth', value: localAuth });
           if (Array.isArray(b.settings)) {
             b.settings.forEach(s => {
-              if (s && s.key && s.key !== 'google_drive_auth') st.put(s);
+              if (s && s.key && isCleanSettingKey(s.key)) st.put(s);
             });
           }
         };
@@ -1153,7 +1159,7 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
       }
       if (Array.isArray(b.settings)) {
         for (const s of b.settings) {
-          if (s && s.key && s.key !== 'google_drive_auth') {
+          if (s && s.key && isCleanSettingKey(s.key)) {
             await putLocalItem(STORES.SETTINGS, s);
           }
         }
@@ -1164,18 +1170,8 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
     if (b.localStorageSnapshot && typeof b.localStorageSnapshot === 'object') {
       try {
         if (typeof window !== 'undefined' && window.localStorage) {
-          const DEVICE_SPECIFIC_KEYS = new Set([
-            'autoanki_device_id',
-            'local_device_id',
-            'obs_device_id',
-            'obs_paired_uid',
-            'autoanki_gdrive_auth',
-            'autoanki_pending_sync_launch',
-            'auto_anki_last_auto_backup',
-            'auto_anki_last_manual_backup'
-          ]);
           Object.entries(b.localStorageSnapshot).forEach(([k, v]) => {
-            if (v !== null && v !== undefined && !DEVICE_SPECIFIC_KEYS.has(k) && !k.startsWith('autoanki_synced_hashes_')) {
+            if (v !== null && v !== undefined && isCleanLsKey(k)) {
               localStorage.setItem(k, v);
             }
           });
@@ -1917,7 +1913,7 @@ export function mergeFsrsConfigs(loc = {}, rem = {}) {
   // Weights: preserve custom weights if present
   let mergedWeights = winnerBase.weights || loc.weights || rem.weights;
 
-  return {
+  const result = {
     ...rem,
     ...loc,
     ...winnerBase,
@@ -1928,9 +1924,11 @@ export function mergeFsrsConfigs(loc = {}, rem = {}) {
     easyDays: mergedEasyDays,
     advancedRules: mergedAdvancedRules,
     perSubjectRetention: mergedPerSubjectRetention,
-    weights: mergedWeights,
-    updatedAt: new Date(Math.max(locTime, remTime, Date.now())).toISOString()
+    weights: mergedWeights
   };
+  delete result.updatedAt;
+  delete result.lastModified;
+  return result;
 }
 
 /**
@@ -1942,16 +1940,18 @@ export function mergeSettingsArrays(locSettings = [], remSettings = []) {
   const map = new Map();
 
   locList.forEach(s => {
-    if (s && (s.key || s.id)) {
-      map.set(s.key || s.id, { ...s });
+    if (s && (s.key || s.id) && isCleanSettingKey(s.key || s.id)) {
+      map.set(s.key || s.id, { key: s.key || s.id, value: s.value });
     }
   });
 
   remList.forEach(remS => {
     if (!remS || (!remS.key && !remS.id)) return;
     const k = remS.key || remS.id;
+    if (!isCleanSettingKey(k)) return;
+
     if (!map.has(k)) {
-      map.set(k, { ...remS });
+      map.set(k, { key: k, value: remS.value });
       return;
     }
 
@@ -1968,17 +1968,13 @@ export function mergeSettingsArrays(locSettings = [], remSettings = []) {
       }
     }
 
-    const winner = remTime > locTime ? remS : locS;
     map.set(k, {
-      ...locS,
-      ...remS,
-      ...winner,
-      value: mergedValue,
-      updatedAt: new Date(Math.max(locTime, remTime, Date.now())).toISOString()
+      key: k,
+      value: mergedValue
     });
   });
 
-  return Array.from(map.values());
+  return Array.from(map.values()).sort((a, b) => a.key.localeCompare(b.key));
 }
 
 /**
@@ -2385,11 +2381,20 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
       }
     });
 
-    // Non-destructive snapshot merge: preserve local preferences
-    const mergedLs = { ...(remFsrs.localStorageSnapshot || {}) };
-    Object.entries(locFsrs.localStorageSnapshot || {}).forEach(([k, v]) => {
-      if (v !== null && v !== undefined && v !== '') {
-        mergedLs[k] = v;
+    // Clean, scrubbed localStorage merge: purge all dirty/runtime keys from remote
+    const mergedLs = {};
+    const allLsKeys = new Set([
+      ...Object.keys(remFsrs.localStorageSnapshot || {}),
+      ...Object.keys(locFsrs.localStorageSnapshot || {})
+    ]);
+    Array.from(allLsKeys).sort().forEach(k => {
+      if (isCleanLsKey(k)) {
+        const locVal = locFsrs.localStorageSnapshot?.[k];
+        const remVal = remFsrs.localStorageSnapshot?.[k];
+        const v = (locVal !== undefined && locVal !== null && locVal !== '') ? locVal : remVal;
+        if (v !== undefined && v !== null && v !== '') {
+          mergedLs[k] = v;
+        }
       }
     });
 
@@ -2398,6 +2403,7 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
     const mergedTopicHints = mergeTopicHintsArrays(locFsrs.topicHints, remFsrs.topicHints);
     const mergedHintQuota = mergeHintQuotaArrays(locFsrs.hintQuota, remFsrs.hintQuota);
     const mergedUserProfile = { ...(remFsrs.localUserProfile || {}), ...(locFsrs.localUserProfile || {}) };
+    if (mergedUserProfile) delete mergedUserProfile.deviceId;
     const mergedAiRecs = locFsrs.aiRecommendations || remFsrs.aiRecommendations || null;
 
     merged['fsrs_config.json'] = {
@@ -2405,7 +2411,7 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
       settings: mergedSettings,
       topicHints: mergedTopicHints,
       hintQuota: mergedHintQuota,
-      customPrompts: Array.from(promptMap.values()),
+      customPrompts: Array.from(promptMap.values()).sort((a, b) => (a.id || '').localeCompare(b.id || '')),
       localUserProfile: mergedUserProfile,
       aiRecommendations: mergedAiRecs,
       localStorageSnapshot: mergedLs
