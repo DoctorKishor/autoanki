@@ -2665,12 +2665,12 @@ async function executeSyncInternal({
 
     if (allHashesMatch && !force) {
       await saveLastSyncedHashes(localHashes);
-      logger.sync('UP-TO-DATE', '[NO-OP] Local and cloud hashes are 100% identical. Skipping download/upload.', {
+      logger.sync('IN-SYNC', '[NO-OP] All 6 bundles match remote cloud manifest.', {
         hashes: localHashes
       });
       emit(10, 10, 'Everything is up to date.');
-      emitSyncEvent('synced', { message: 'In sync with Google Drive.' });
-      return { success: true, action: 'noop', message: 'Everything is up to date.' };
+      emitSyncEvent('synced', { message: 'All 6 bundles match remote cloud manifest.' });
+      return { success: true, action: 'noop', message: 'All 6 bundles match remote cloud manifest.' };
     }
 
     // Scenario 0: Fresh/empty local device auto fast-forward
@@ -2759,6 +2759,16 @@ async function executeSyncInternal({
       const bundleKey = name.replace('.json', '');
       return localHashes[bundleKey] !== currentRemoteHashes[bundleKey];
     });
+
+    if (modifiedBundleNames.length === 0 && !force) {
+      await saveLastSyncedHashes(localHashes);
+      logger.sync('IN-SYNC', '[NO-OP] All 6 bundles match remote cloud manifest.', {
+        hashes: localHashes
+      });
+      emit(10, 10, 'Everything is up to date.');
+      emitSyncEvent('synced', { message: 'All 6 bundles match remote cloud manifest.' });
+      return { success: true, action: 'noop', message: 'All 6 bundles match remote cloud manifest.' };
+    }
 
     const hashDiff = {};
     ['cards_bundle', 'curriculum_topics', 'study_logs', 'fsrs_config', 'camp_tracker', 'pages_bundle'].forEach(k => {
