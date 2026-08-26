@@ -195,7 +195,7 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 25000) {
  * Searches for a file or folder by name and parent folder ID.
  * Enforces sorting by createdTime asc so all client devices deterministically bind to the earliest canonical folder.
  */
-async function findDriveItem(accessToken, name, parentFolderId = null, isFolder = false) {
+export async function findDriveItem(accessToken, name, parentFolderId = null, isFolder = false) {
   const mimeQuery = isFolder ? "mimeType = 'application/vnd.google-apps.folder'" : "mimeType != 'application/vnd.google-apps.folder'";
   const parentQuery = parentFolderId ? `'${parentFolderId}' in parents` : "'root' in parents";
   const query = `name = '${name}' and ${mimeQuery} and ${parentQuery} and trashed = false`;
@@ -211,6 +211,13 @@ async function findDriveItem(accessToken, name, parentFolderId = null, isFolder 
 
   const data = await res.json();
   return (data.files && data.files.length > 0) ? data.files[0] : null;
+}
+
+/**
+ * Searches for a folder by name and parent folder ID.
+ */
+export async function findDriveFolder(accessToken, folderName, parentFolderId = null) {
+  return await findDriveItem(accessToken, folderName, parentFolderId, true);
 }
 
 /**
@@ -403,9 +410,9 @@ async function uploadDriveMediaFile(accessToken, mediaFolderId, fileName, mimeTy
  */
 export async function downloadDriveFile(accessToken, fileId, isJson = true) {
   const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     headers: { Authorization: `Bearer ${accessToken}` }
-  });
+  }, 35000);
 
   if (!response.ok) {
     throw new Error(`Failed to download file ${fileId}: ${response.status} ${response.statusText}`);
@@ -423,10 +430,10 @@ export async function downloadDriveFile(accessToken, fileId, isJson = true) {
  */
 export async function deleteDriveFile(accessToken, fileId) {
   const url = `https://www.googleapis.com/drive/v3/files/${fileId}`;
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${accessToken}` }
-  });
+  }, 20000);
   if (!response.ok && response.status !== 404) {
     throw new Error(`Failed to delete Google Drive file ${fileId}: ${response.status}`);
   }
