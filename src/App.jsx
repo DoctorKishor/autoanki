@@ -63,7 +63,8 @@ import {
   getLocalUserProfile, saveLocalUserProfile,
   exportFullUniversalSnapshot, importUniversalSnapshot,
   saveInternalSnapshot, getAllInternalSnapshots, deleteInternalSnapshot, pruneOldSnapshots,
-  getAllLocalItems, STORES
+  getAllLocalItems, STORES,
+  revokeTombstone
 } from './services/localDb';
 import { calculateNextFSRSState, calculateInitialState, DEFAULT_FSRS6_WEIGHTS, getTopicPageLength, recalculateTopicFSRSFromLogs } from './services/fsrsEngine';
 import { runSystemIntegrityCheck } from './services/healthChecker';
@@ -15873,6 +15874,22 @@ JSON Format:
           topics: topicsMap,
           updatedAt: new Date().toISOString()
         };
+
+        // Revoke tombstone from unified graves so sync doesn't evict the restored topic
+        const restoredTopicId = deletedTopicObj?.id || `${targetDocId}_${topicName}`;
+        revokeTombstone('tracker_topic', String(restoredTopicId)).catch(err =>
+          console.warn('[LocalDB] Failed to revoke tracker_topic tombstone on Undo:', err)
+        );
+        // Also remove from trash_topics KV (uses top-level statically imported getLocalKV/setLocalKV)
+        Promise.resolve().then(async () => {
+          try {
+            const trash = (await getLocalKV('trash_topics')) || [];
+            const cleaned = trash.filter(t => t?.id !== restoredTopicId && !(t?.docId === targetDocId && t?.topicName === topicName));
+            await setLocalKV('trash_topics', cleaned);
+          } catch (e) {
+            console.warn('[LocalDB] Failed to clean trash_topics on Undo:', e);
+          }
+        });
 
         saveLocalSubjectTrackerDoc(targetDocId, updatedDoc).catch(err => console.error("[LocalDB] Error restoring deleted topic:", err));
 

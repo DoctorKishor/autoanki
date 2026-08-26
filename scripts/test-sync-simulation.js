@@ -136,6 +136,9 @@ class MockDevice {
     const aiRecommendations = this.getKV('ai_topic_recommendations', null);
     const campTracker = this.stores.camp_tracker;
     const campData = this.stores.camp_data;
+    const trashCamp = this.getKV('trash_camp', []);
+    const unifiedGraves = this.getKV('unified_graves', []);
+    const trashPrompts = this.getKV('trash_prompts', []);
 
     // Filter localStorage preferences
     const excludedKeys = new Set([
@@ -190,8 +193,8 @@ class MockDevice {
         aiRecommendations,
         localStorageSnapshot: lsSnapshot
       },
-      'camp_tracker.json': { campTracker, campData },
-      'pages_bundle.json': { pages, trashPages }
+      'camp_tracker.json': { campTracker, campData, trashCamp },
+      'pages_bundle.json': { pages, trashPages, unifiedGraves, trashPrompts }
     };
 
     const hashes = {
@@ -266,12 +269,15 @@ class MockDevice {
         const b = downloadedBundles['camp_tracker.json'];
         this.stores.camp_tracker = b.campTracker || [];
         this.stores.camp_data = b.campData || [];
+        this.setKV('trash_camp', b.trashCamp || []);
       }
       // 6. Pages
       if (downloadedBundles['pages_bundle.json']) {
         const b = downloadedBundles['pages_bundle.json'];
         this.setKV('pages', b.pages || []);
         this.setKV('trash_pages', b.trashPages || []);
+        this.setKV('unified_graves', b.unifiedGraves || []);
+        this.setKV('trash_prompts', b.trashPrompts || []);
       }
     }
 
@@ -964,7 +970,138 @@ async function runTestSuite() {
   logHeader('ALL 8 MULTI-DEVICE SIMULATION SCENARIOS PASSED WITH 100% INTEGRITY');
 }
 
+// ============================================================================
+// Scenario I: Undo/Redo Deletion + Unified Graves Propagation
+// Tests that:
+//   1. Delete on Device A propagates tombstone to Device B via unified graves
+//   2. Undo on Device A revokes tombstone and re-propagates restored entity
+//   3. Custom prompt deletion (trash_prompts) prevents resurrection on Device B
+// ============================================================================
+async function runScenarioI() {
+  logHeader('SCENARIO I: Undo/Redo Deletion + Unified Graves Propagation');
+
+  const cloudVault = new MockCloudVault();
+  const deviceA = new MockDevice('Device-A (Phone)', 'dev_a_undo_test');
+  const deviceB = new MockDevice('Device-B (Desktop)', 'dev_b_undo_test');
+
+  // ── Step 1: Device A creates a tracker topic and syncs ──
+  const trackerDocId = 'anatomy_doc';
+  deviceA.setKV('subject_tracker_data', [{
+    id: trackerDocId,
+    subject: 'Anatomy',
+    topics: {
+      'cranial_nerves': { id: 'anatomy_doc_cranial_nerves', name: 'Cranial Nerves', updatedAt: '2026-08-27T06:00:00.000Z' },
+      'brachial_plexus': { id: 'anatomy_doc_brachial_plexus', name: 'Brachial Plexus', updatedAt: '2026-08-27T06:00:00.000Z' }
+    },
+    updatedAt: '2026-08-27T06:00:00.000Z'
+  }]);
+  runDeviceSync(deviceA, cloudVault);
+  runDeviceSync(deviceB, cloudVault);
+
+  const devBTracker = deviceB.getKV('subject_tracker_data', []);
+  assert(devBTracker.some(d => d.id === trackerDocId), 'Device B received anatomy_doc tracker');
+  const devBTopics = devBTracker.find(d => d.id === trackerDocId)?.topics || {};
+  assert('cranial_nerves' in devBTopics, 'Device B received cranial_nerves topic');
+  assert('brachial_plexus' in devBTopics, 'Device B received brachial_plexus topic');
+
+  // ── Step 2: Device A DELETES cranial_nerves (records tombstone in unified_graves + trash_topics) ──
+  const nowDeletedAt = '2026-08-27T07:00:00.000Z';
+  const restoredId = 'anatomy_doc_cranial_nerves';
+  const currentTracker = deviceA.getKV('subject_tracker_data', []);
+  const doc = currentTracker.find(d => d.id === trackerDocId);
+  const newTopics = { ...doc.topics };
+  delete newTopics['cranial_nerves'];
+  const updatedDoc = { ...doc, topics: newTopics, updatedAt: nowDeletedAt };
+  currentTracker[currentTracker.findIndex(d => d.id === trackerDocId)] = updatedDoc;
+  deviceA.setKV('subject_tracker_data', currentTracker);
+
+  // Record tombstone in unified_graves
+  const graves = deviceA.getKV('unified_graves', []);
+  graves.push({ entityType: 'tracker_topic', entityId: restoredId, parentId: trackerDocId, deletedAt: nowDeletedAt });
+  deviceA.setKV('unified_graves', graves);
+  // Record in trash_topics
+  const trashTops = deviceA.getKV('trash_topics', []);
+  trashTops.push({ id: restoredId, docId: trackerDocId, topicName: 'cranial_nerves', deletedAt: nowDeletedAt });
+  deviceA.setKV('trash_topics', trashTops);
+
+  runDeviceSync(deviceA, cloudVault);
+  runDeviceSync(deviceB, cloudVault);
+
+  // Device B should NOT have cranial_nerves after tombstone propagation
+  const devBAfterDelete = (deviceB.getKV('subject_tracker_data', []).find(d => d.id === trackerDocId)?.topics) || {};
+  assert(!('cranial_nerves' in devBAfterDelete), 'Deleted tracker_topic cranial_nerves NOT resurrected on Device B (unified graves propagation)');
+  assert('brachial_plexus' in devBAfterDelete, 'Non-deleted topic brachial_plexus still present on Device B');
+
+  // Device B should have the unified grave record
+  const devBGraves = deviceB.getKV('unified_graves', []);
+  assert(devBGraves.some(g => g.entityType === 'tracker_topic' && g.entityId === restoredId), 'Device B received unified graves record for deleted tracker_topic');
+
+  // ── Step 3: Device A UNDOs the deletion (revokes tombstone, restores topic with fresher timestamp) ──
+  const undoRestoredAt = '2026-08-27T08:00:00.000Z'; // After deletedAt
+  const trackerAfterUndo = deviceA.getKV('subject_tracker_data', []);
+  const docAfterUndo = trackerAfterUndo.find(d => d.id === trackerDocId);
+  docAfterUndo.topics['cranial_nerves'] = {
+    id: restoredId,
+    name: 'Cranial Nerves',
+    updatedAt: undoRestoredAt
+  };
+  docAfterUndo.updatedAt = undoRestoredAt;
+  deviceA.setKV('subject_tracker_data', trackerAfterUndo);
+
+  // Revoke tombstone from unified_graves (simulating revokeTombstone())
+  const gravesAfterUndo = deviceA.getKV('unified_graves', []).filter(g => !(g.entityType === 'tracker_topic' && g.entityId === restoredId));
+  deviceA.setKV('unified_graves', gravesAfterUndo);
+  // Clean from trash_topics
+  const trashAfterUndo = deviceA.getKV('trash_topics', []).filter(t => !(t.id === restoredId || (t.docId === trackerDocId && t.topicName === 'cranial_nerves')));
+  deviceA.setKV('trash_topics', trashAfterUndo);
+
+  runDeviceSync(deviceA, cloudVault);
+  runDeviceSync(deviceB, cloudVault);
+
+  // Device B should NOW have cranial_nerves RESTORED (undo propagated)
+  const devBAfterUndo = (deviceB.getKV('subject_tracker_data', []).find(d => d.id === trackerDocId)?.topics) || {};
+  assert('cranial_nerves' in devBAfterUndo, 'Undone deletion: cranial_nerves RESTORED on Device B after undo propagation');
+
+  // Unified graves should be clear of the revoked tombstone on Device B
+  const devBGravesAfterUndo = deviceB.getKV('unified_graves', []);
+  assert(!devBGravesAfterUndo.some(g => g.entityType === 'tracker_topic' && g.entityId === restoredId), 'Revoked tombstone cleared from Device B unified graves after undo sync');
+
+  // ── Step 4: Custom Prompt Deletion (trash_prompts prevents resurrection) ──
+  deviceA.setKV('custom_prompts', [
+    { id: 'prompt_mcq_1', name: 'MCQ Generator', updatedAt: '2026-08-27T05:00:00.000Z' },
+    { id: 'prompt_fill_2', name: 'Fill-in-the-blank', updatedAt: '2026-08-27T05:00:00.000Z' }
+  ]);
+  runDeviceSync(deviceA, cloudVault);
+  runDeviceSync(deviceB, cloudVault);
+  assert(deviceB.getKV('custom_prompts', []).some(p => p.id === 'prompt_mcq_1'), 'Device B received prompt_mcq_1');
+
+  // Device A deletes prompt_mcq_1
+  const promptDeletedAt = '2026-08-27T09:00:00.000Z';
+  deviceA.setKV('custom_prompts', deviceA.getKV('custom_prompts', []).filter(p => p.id !== 'prompt_mcq_1'));
+  const deviceATrashPrompts = deviceA.getKV('trash_prompts', []);
+  deviceATrashPrompts.push({ id: 'prompt_mcq_1', deletedAt: promptDeletedAt });
+  deviceA.setKV('trash_prompts', deviceATrashPrompts);
+  const promptGraves = deviceA.getKV('unified_graves', []);
+  promptGraves.push({ entityType: 'prompt', entityId: 'prompt_mcq_1', deletedAt: promptDeletedAt });
+  deviceA.setKV('unified_graves', promptGraves);
+
+  runDeviceSync(deviceA, cloudVault);
+  runDeviceSync(deviceB, cloudVault);
+
+  // Device B still had prompt_mcq_1 locally — after sync it must be pruned
+  // (trash_prompts propagated, merge engine prunes tombstoned prompts)
+  assert(deviceB.getKV('trash_prompts', []).some(p => p.id === 'prompt_mcq_1'), 'Device B received trash_prompts tombstone for deleted prompt_mcq_1');
+  assert(deviceB.getKV('unified_graves', []).some(g => g.entityType === 'prompt' && g.entityId === 'prompt_mcq_1'), 'Device B unified graves contains prompt_mcq_1 tombstone');
+
+  logHeader('SCENARIO I: ALL UNDO/REDO + UNIFIED GRAVES TESTS PASSED');
+}
+
 runTestSuite().catch(err => {
   console.error(`${colors.red}Test Suite Encountered Fatal Error:${colors.reset}`, err);
+  process.exit(1);
+});
+
+runScenarioI().catch(err => {
+  console.error(`${colors.red}Scenario I Encountered Fatal Error:${colors.reset}`, err);
   process.exit(1);
 });
