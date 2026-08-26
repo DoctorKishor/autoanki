@@ -10612,7 +10612,17 @@ JSON Format:
           return next;
         });
       } else if (!isEffectivelyEmpty) {
-        const logData = { questions, cards, pages, hours, gts, updatedAt: nowIso };
+        const logData = {
+          questions,
+          totalQuestionsAttempted: questions,
+          cards,
+          totalCardsReviewed: cards,
+          pages,
+          hours,
+          studyHours: hours,
+          gts,
+          updatedAt: nowIso
+        };
         await saveLocalStudyLog(loggerDate, logData);
         // Optimistic update: patch local studyLogs so charts/analytics update immediately
         setStudyLogs(prev => ({ ...prev, [loggerDate]: { ...(prev[loggerDate] || {}), ...logData } }));

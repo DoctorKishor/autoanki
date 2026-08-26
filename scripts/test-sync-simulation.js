@@ -780,6 +780,37 @@ async function runTestSuite() {
   assert(d1MergedLogs['2026-08-20'] === undefined, 'Study log 2026-08-20 was NOT resurrected on Device 1');
   assert(d1MergedLogs['2026-08-27'] !== undefined, 'Study log 2026-08-27 received on Device 1');
 
+  // Step 4: Device 1 edits the study log metrics down (e.g. user corrected manual report) and syncs
+  const d1LogsEdit = device1.getKV('study_logs');
+  d1LogsEdit['2026-08-27'] = {
+    ...d1LogsEdit['2026-08-27'],
+    questions: 20,
+    totalQuestionsAttempted: 20,
+    cards: 4,
+    totalCardsReviewed: 4,
+    pages: 27,
+    hours: 1.5,
+    studyHours: 1.5,
+    updatedAt: '2026-08-27T10:30:00.000Z'
+  };
+  device1.setKV('study_logs', d1LogsEdit);
+
+  // Device 1 syncs edited metrics to cloud
+  runDeviceSync(device1, cloudVault);
+  const d1LogsAfterSync = device1.getKV('study_logs');
+  assert(d1LogsAfterSync['2026-08-27'].questions === 20, 'Device 1 preserved edited questions: 20 (not overwritten by pre-sync value)');
+  assert(d1LogsAfterSync['2026-08-27'].cards === 4, 'Device 1 preserved edited cards: 4 (not overwritten by pre-sync value 30)');
+  assert(d1LogsAfterSync['2026-08-27'].pages === 27, 'Device 1 preserved edited pages: 27');
+  assert(d1LogsAfterSync['2026-08-27'].hours === 1.5, 'Device 1 preserved edited hours: 1.5');
+
+  // Device 2 syncs and receives Device 1's edited study log metrics
+  runDeviceSync(device2, cloudVault);
+  const d2LogsAfterSync = device2.getKV('study_logs');
+  assert(d2LogsAfterSync['2026-08-27'].questions === 20, 'Device 2 received edited questions: 20');
+  assert(d2LogsAfterSync['2026-08-27'].cards === 4, 'Device 2 received edited cards: 4');
+  assert(d2LogsAfterSync['2026-08-27'].pages === 27, 'Device 2 received edited pages: 27');
+  assert(d2LogsAfterSync['2026-08-27'].hours === 1.5, 'Device 2 received edited hours: 1.5');
+
   // --------------------------------------------------------------------------
   // SCENARIO G: Optimistic Cloud Concurrency Check & Fast-Forward Fallback
   // --------------------------------------------------------------------------

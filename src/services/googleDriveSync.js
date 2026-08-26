@@ -2362,17 +2362,54 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
 
       const allSessions = Array.from(sessionMap.values());
       const sessionHours = allSessions.reduce((sum, s) => sum + (Number(s.duration || s.minutes || 0) / 60 || Number(s.hours || 0)), 0);
-      const totalHours = sessionHours > 0 ? Number(sessionHours.toFixed(2)) : Math.max(Number(cur.studyHours || cur.hours || 0), Number(incLog?.studyHours || incLog?.hours || 0));
 
-      const totalCards = Math.max(Number(cur.totalCardsReviewed || cur.cards || 0), Number(incLog?.totalCardsReviewed || incLog?.cards || 0), fsrsMap.size);
-      const totalQuestions = Math.max(Number(cur.totalQuestionsAttempted || cur.questions || 0), Number(incLog?.totalQuestionsAttempted || incLog?.questions || 0));
-      const totalPages = Math.max(Number(cur.pages || 0), Number(incLog?.pages || 0));
+      const isLocalFresher = curTime >= incTime;
+      const baseLog = isLocalFresher ? cur : incLog;
+      const otherLog = isLocalFresher ? incLog : cur;
 
-      const latestUpdatedAt = Math.max(curTime, incTime, Date.now());
+      let totalHours;
+      let totalCards;
+      let totalQuestions;
+      let totalPages;
+
+      if (curTime !== incTime) {
+        // Clear LWW: The fresher record's explicit user values take precedence
+        totalHours = (baseLog.hours !== undefined && baseLog.hours !== null && baseLog.hours !== '') 
+          ? Number(baseLog.hours) 
+          : ((baseLog.studyHours !== undefined && baseLog.studyHours !== null && baseLog.studyHours !== '')
+            ? Number(baseLog.studyHours)
+            : (sessionHours > 0 ? Number(sessionHours.toFixed(2)) : Number(otherLog?.hours || otherLog?.studyHours || 0)));
+
+        totalCards = (baseLog.cards !== undefined && baseLog.cards !== null && baseLog.cards !== '') 
+          ? Number(baseLog.cards) 
+          : ((baseLog.totalCardsReviewed !== undefined && baseLog.totalCardsReviewed !== null && baseLog.totalCardsReviewed !== '')
+            ? Number(baseLog.totalCardsReviewed)
+            : Math.max(Number(otherLog?.cards || otherLog?.totalCardsReviewed || 0), fsrsMap.size));
+
+        totalQuestions = (baseLog.questions !== undefined && baseLog.questions !== null && baseLog.questions !== '') 
+          ? Number(baseLog.questions) 
+          : ((baseLog.totalQuestionsAttempted !== undefined && baseLog.totalQuestionsAttempted !== null && baseLog.totalQuestionsAttempted !== '')
+            ? Number(baseLog.totalQuestionsAttempted)
+            : Number(otherLog?.questions || otherLog?.totalQuestionsAttempted || 0));
+
+        totalPages = (baseLog.pages !== undefined && baseLog.pages !== null && baseLog.pages !== '') 
+          ? Number(baseLog.pages) 
+          : Number(otherLog?.pages || 0);
+      } else {
+        // Equal timestamps (or both missing/legacy logs): combine conservatively
+        totalHours = sessionHours > 0 ? Number(sessionHours.toFixed(2)) : Math.max(Number(cur.studyHours || cur.hours || 0), Number(incLog?.studyHours || incLog?.hours || 0));
+        totalCards = Math.max(Number(cur.totalCardsReviewed || cur.cards || 0), Number(incLog?.totalCardsReviewed || incLog?.cards || 0), fsrsMap.size);
+        totalQuestions = Math.max(Number(cur.totalQuestionsAttempted || cur.questions || 0), Number(incLog?.totalQuestionsAttempted || incLog?.questions || 0));
+        totalPages = Math.max(Number(cur.pages || 0), Number(incLog?.pages || 0));
+      }
+
+      const latestUpdatedAt = isLocalFresher
+        ? (cur.updatedAt || new Date(curTime || Date.now()).toISOString())
+        : (incLog?.updatedAt || new Date(incTime || Date.now()).toISOString());
 
       mergedLogs[dateKey] = {
-        ...cur,
-        ...incLog,
+        ...otherLog,
+        ...baseLog,
         cards: totalCards,
         totalCardsReviewed: totalCards,
         questions: totalQuestions,
@@ -2383,7 +2420,7 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
         fsrsLogs: Array.from(fsrsMap.values()),
         sessions: allSessions,
         gts: Array.from(gtMap.values()),
-        updatedAt: new Date(latestUpdatedAt).toISOString()
+        updatedAt: latestUpdatedAt
       };
     }
   }
