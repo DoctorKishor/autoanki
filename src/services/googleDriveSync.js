@@ -44,7 +44,8 @@ import {
   serializeBinaryValues,
   deserializeBinaryValues,
   LS_KEYS_TO_SNAPSHOT,
-  setMutationNotificationSuppressed
+  setMutationNotificationSuppressed,
+  isMutationNotificationSuppressed
 } from './localDb.js';
 import logger from './logger.js';
 import { runSystemIntegrityCheck } from './healthChecker.js';
@@ -639,8 +640,9 @@ export async function extractLocalBundles() {
  * @param {object} bundles Downloaded bundles keyed by filename
  * @param {'merge'|'replace'} strategy Merge non-destructively or replace
  * @param {Function} [onProgress] Progress reporter
+ * @param {object} [options] Advanced options (e.g. deferUnsuppress)
  */
-export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgress = null) {
+export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgress = null, options = {}) {
   const emit = (step, total, msg) => { if (onProgress) onProgress(step, total, msg); };
   const totalSteps = 7;
   let step = 0;
@@ -1202,11 +1204,13 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
   }
 
   emit(++step, totalSteps, 'Local database hydrated successfully.');
-
-  // Emit hydration event so React views reload fresh state
-  emitDataHydratedEvent({ strategy, bundleKeys: Object.keys(bundles) });
   } finally {
-    setMutationNotificationSuppressed(false);
+    if (!options.deferUnsuppress) {
+      setMutationNotificationSuppressed(false);
+      if (!options.suppressEvent) {
+        emitDataHydratedEvent({ strategy, bundleKeys: Object.keys(bundles) });
+      }
+    }
   }
 }
 
@@ -2673,9 +2677,21 @@ async function executeSyncInternal({
       // Phase 3: Hydrate Local IndexedDB only after confirmed Google Drive receipt
       logger.sync('TWO-PHASE-COMMIT-3', 'Committing merged collection to local IndexedDB...');
       emit(9, 10, 'Committing merged collection to local storage…');
-      await hydrateLocalBundles(stagedMergedData.bundles, 'replace', (s, t, m) => emit(9, 10, m));
-      const postHydrationLocal = await extractLocalBundles();
-      await saveLastSyncedHashes(postHydrationLocal.manifest.hashes);
+      setMutationNotificationSuppressed(true);
+      try {
+        await hydrateLocalBundles(stagedMergedData.bundles, 'replace', (s, t, m) => emit(9, 10, m), { deferUnsuppress: true });
+        const postHydrationLocal = await extractLocalBundles();
+        await saveLastSyncedHashes(postHydrationLocal.manifest.hashes);
+      } finally {
+        setMutationNotificationSuppressed(false);
+      }
+
+      if (autoSyncDebounceTimer) {
+        clearTimeout(autoSyncDebounceTimer);
+        autoSyncDebounceTimer = null;
+      }
+      lastAutoPushTimestamp = Date.now();
+      emitDataHydratedEvent({ strategy: 'replace', bundleKeys: Object.keys(stagedMergedData.bundles) });
 
       // Phase 4: Download missing media in background if pages bundle changed
       if (modifiedBundleNames.includes('pages_bundle.json')) {
@@ -2831,13 +2847,25 @@ async function executeOneWayDownload(accessToken, vaultFolderId, mediaFolderId, 
   }
 
   emit(4, 6, 'Applying cloud updates to local database…');
-  await hydrateLocalBundles(downloadedBundles, 'replace', (s, t, m) => emit(5, 6, m));
+  setMutationNotificationSuppressed(true);
+  try {
+    await hydrateLocalBundles(downloadedBundles, 'replace', (s, t, m) => emit(5, 6, m), { deferUnsuppress: true });
+    const postHydrationLocal = await extractLocalBundles();
+    await saveLastSyncedHashes(postHydrationLocal.manifest.hashes);
+  } finally {
+    setMutationNotificationSuppressed(false);
+  }
 
-  const postHydrationLocal = await extractLocalBundles();
-  await saveLastSyncedHashes(postHydrationLocal.manifest.hashes);
+  // Clear any auto-sync debounce timer and reset cooldown
+  if (autoSyncDebounceTimer) {
+    clearTimeout(autoSyncDebounceTimer);
+    autoSyncDebounceTimer = null;
+  }
+  lastAutoPushTimestamp = Date.now();
 
   emit(6, 6, 'Cloud download complete. Queueing media downloads…');
   emitSyncEvent('synced', { message: 'Cloud collection restored.' });
+  emitDataHydratedEvent({ strategy: 'replace', bundleKeys: Object.keys(downloadedBundles) });
 
   // Phase 2: Non-blocking background media download if pages_bundle was among downloaded bundles
   if (downloadedBundles['pages_bundle.json']) {
@@ -3010,10 +3038,12 @@ async function syncMediaFromDrive(accessToken, mediaFolderId) {
         }
       }
       await saveLocalPages(Array.from(currentMap.values()));
-      emitDataHydratedEvent({ type: 'media_hydrated' });
+      const postMediaLocal = await extractLocalBundles();
+      await saveLastSyncedHashes(postMediaLocal.manifest.hashes);
     } finally {
       setMutationNotificationSuppressed(false);
     }
+    emitDataHydratedEvent({ type: 'media_hydrated' });
   }
 
   emitSyncEvent('synced', {
@@ -3047,7 +3077,7 @@ export function triggerDebouncedSmartPush() {
     if (!auth?.accessToken) return;
 
     lastAutoPushTimestamp = Date.now();
-    console.log('[GDriveSync] Triggering debounced smart push to Google DriveΓÇª');
+    console.log('[GDriveSync] Triggering debounced smart push to Google Drive…');
     syncWithGoogleDrive({ force: false, interactive: false }).catch(err => {
       console.warn('[GDriveSync] Smart push error:', err);
     });
@@ -3057,7 +3087,7 @@ export function triggerDebouncedSmartPush() {
 // Auto-listen to local database mutations to trigger debounced cloud pushes
 if (typeof window !== 'undefined') {
   window.addEventListener('localdb-mutation', () => {
-    if (!isSyncInProgress) {
+    if (!isSyncInProgress && !isMutationNotificationSuppressed()) {
       triggerDebouncedSmartPush();
     }
   });
