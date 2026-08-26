@@ -3020,7 +3020,8 @@ async function executeOneWayPush(accessToken, vaultFolderId, mediaFolderId, loca
 async function executeOneWayDownload(accessToken, vaultFolderId, mediaFolderId, remoteFileMap, emit, { localHashes = null, remoteHashes = null } = {}) {
   emit(1, 6, 'Checking cloud bundles for delta download…');
   const downloadedBundles = {};
-  const filesToDownload = Array.from(remoteFileMap.entries()).filter(([name]) => name.endsWith('.json') && name !== 'manifest.json');
+  const ALL_BUNDLE_NAMES = new Set(['cards_bundle.json', 'curriculum_topics.json', 'study_logs.json', 'fsrs_config.json', 'camp_tracker.json', 'pages_bundle.json']);
+  const filesToDownload = Array.from(remoteFileMap.entries()).filter(([name]) => ALL_BUNDLE_NAMES.has(name));
   
   const locHashes = localHashes || {};
   const remHashes = remoteHashes || {};
@@ -3042,7 +3043,7 @@ async function executeOneWayDownload(accessToken, vaultFolderId, mediaFolderId, 
     downloadedCount++;
   }
 
-  logger.sync('SELECTIVE-DOWNLOAD-SUMMARY', `Download fetched ${downloadedCount} modified bundle(s), skipped ${skippedCount} unchanged bundle(s).`);
+  logger.sync('SELECTIVE-DOWNLOAD-SUMMARY', `Download fetched ${downloadedCount} modified bundle(s), skipped ${skippedCount} unchanged bundle(s) (total ${filesToDownload.length}).`);
 
   // If no bundles actually changed, we're up to date
   if (downloadedCount === 0 && filesToDownload.length > 0) {
@@ -3055,12 +3056,46 @@ async function executeOneWayDownload(accessToken, vaultFolderId, mediaFolderId, 
 
   emit(4, 6, 'Applying cloud updates to local database…');
   setMutationNotificationSuppressed(true);
+  let postHydrationLocal = null;
   try {
     await hydrateLocalBundles(downloadedBundles, 'replace', (s, t, m) => emit(5, 6, m), { deferUnsuppress: true });
-    const postHydrationLocal = await extractLocalBundles();
+    postHydrationLocal = await extractLocalBundles();
     await saveLastSyncedHashes(postHydrationLocal.manifest.hashes);
   } finally {
     setMutationNotificationSuppressed(false);
+  }
+
+  // Post-Download Cloud Re-Baseline:
+  // If local sanitization scrubbed legacy dirty keys from incoming bundles (e.g. fsrs_config),
+  // immediately update the cloud bundle and manifest so the cloud vault matches the sanitized baseline and breaks download loops.
+  if (postHydrationLocal && postHydrationLocal.manifest && postHydrationLocal.manifest.hashes) {
+    const cleanLocalHashes = postHydrationLocal.manifest.hashes;
+    const divergentSanitizedBundles = [];
+
+    for (const [fileName, bundleObj] of Object.entries(postHydrationLocal.bundles)) {
+      const bundleKey = fileName.replace('.json', '');
+      if (remHashes[bundleKey] && cleanLocalHashes[bundleKey] && remHashes[bundleKey] !== cleanLocalHashes[bundleKey]) {
+        divergentSanitizedBundles.push(fileName);
+      }
+    }
+
+    if (divergentSanitizedBundles.length > 0) {
+      logger.sync('RE-BASELINE-CLOUD', `Sanitization produced cleaner hash than legacy cloud manifest for [${divergentSanitizedBundles.join(', ')}]. Re-baselining cloud vault to eliminate download loop...`, {
+        cleanLocalHashes,
+        remHashes
+      });
+      emit(5, 6, 'Re-baselining cloud vault with sanitized configuration…');
+      for (const bName of divergentSanitizedBundles) {
+        const existingFile = remoteFileMap.get(bName);
+        await uploadDriveFile(accessToken, vaultFolderId, bName, postHydrationLocal.bundles[bName], existingFile?.id);
+      }
+      const existingManifest = remoteFileMap.get('manifest.json');
+      await uploadDriveFile(accessToken, vaultFolderId, 'manifest.json', postHydrationLocal.manifest, existingManifest?.id);
+
+      // Re-anchor lastSyncedHashes to the clean baseline
+      await saveLastSyncedHashes(cleanLocalHashes);
+      logger.sync('RE-BASELINE-COMPLETE', 'Cloud vault successfully re-baselined to sanitized hashes.');
+    }
   }
 
   // Clear any auto-sync debounce timer and reset cooldown

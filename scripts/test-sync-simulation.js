@@ -351,6 +351,10 @@ function runDeviceSync(device, cloudVault, options = {}) {
       device.hydrateBundles(remoteData.bundles, 'replace');
       const postData = device.extractBundles();
       device.lastSyncedHashes = postData.manifest.hashes;
+      const divergent = bundleNames.some(b => remHashes[b] && postData.manifest.hashes[b] && remHashes[b] !== postData.manifest.hashes[b]);
+      if (divergent) {
+        cloudVault.upload(postData.manifest, postData.bundles);
+      }
       return 'fast_forward_pull';
     }
     isLocalClean = false;
@@ -371,6 +375,10 @@ function runDeviceSync(device, cloudVault, options = {}) {
     device.hydrateBundles(remoteData.bundles, 'replace');
     const postData = device.extractBundles();
     device.lastSyncedHashes = postData.manifest.hashes;
+    const divergent = bundleNames.some(b => remHashes[b] && postData.manifest.hashes[b] && remHashes[b] !== postData.manifest.hashes[b]);
+    if (divergent) {
+      cloudVault.upload(postData.manifest, postData.bundles);
+    }
     return 'fast_forward_pull';
   }
 
