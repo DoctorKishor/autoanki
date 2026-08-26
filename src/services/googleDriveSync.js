@@ -1655,86 +1655,95 @@ export function mergeSubjectTrackerArrays(localTracker = [], remoteTracker = [])
     }
     
     const locDoc = map.get(key);
+    const locDocTime = safeTimestamp(locDoc.updatedAt || locDoc.createdAt || 0);
+    const remDocTime = safeTimestamp(remDoc.updatedAt || remDoc.createdAt || 0);
+
     const locTopics = locDoc.topics && typeof locDoc.topics === 'object' ? locDoc.topics : {};
     const remTopics = remDoc.topics && typeof remDoc.topics === 'object' ? remDoc.topics : {};
     
-    const mergedTopics = { ...locTopics };
+    const mergedTopics = {};
     const allTopicKeys = new Set([...Object.keys(locTopics), ...Object.keys(remTopics)]);
     
     allTopicKeys.forEach(tKey => {
       const locT = locTopics[tKey];
       const remT = remTopics[tKey];
       
+      // Topic only in remote
       if (!locT && remT) {
+        const remTopicTime = safeTimestamp(remT.updatedAt || remT.lastReviewDate || remT.createdAt || 0);
+        // If local doc was updated more recently than this remote topic was touched, local doc deleted it
+        if (locDocTime > remTopicTime && remTopicTime > 0) {
+          return; // Prune (deletion wins)
+        }
         mergedTopics[tKey] = remT;
         return;
       }
+      
+      // Topic only in local
       if (locT && !remT) {
+        const locTopicTime = safeTimestamp(locT.updatedAt || locT.lastReviewDate || locT.createdAt || 0);
+        // If remote doc was updated more recently than this local topic was touched, remote doc deleted it
+        if (remDocTime > locTopicTime && locTopicTime > 0) {
+          return; // Prune (deletion wins)
+        }
         mergedTopics[tKey] = locT;
         return;
       }
       
-      // Both exist: perform field-level intelligent merge
+      // Both exist: resolve by Last-Write-Wins and FSRS state recency
       const locReviewDate = safeTimestamp(locT.lastReviewDate);
       const remReviewDate = safeTimestamp(remT.lastReviewDate);
-      const locReps = Number(locT.reviewCount || (Array.isArray(locT.studyDates) ? locT.studyDates.length : 0));
-      const remReps = Number(remT.reviewCount || (Array.isArray(remT.studyDates) ? remT.studyDates.length : 0));
-      const locHasReviews = locReps > 0 || (locT.stability != null && locT.stability > 0) || (Array.isArray(locT.studyDates) && locT.studyDates.length > 0);
-      const remHasReviews = remReps > 0 || (remT.stability != null && remT.stability > 0) || (Array.isArray(remT.studyDates) && remT.studyDates.length > 0);
-      
-      let baseTopic = locT;
-      if (locHasReviews && !remHasReviews) {
-        baseTopic = locT;
-      } else if (remHasReviews && !locHasReviews) {
-        baseTopic = remT;
+      const locTopicTime = safeTimestamp(locT.updatedAt || locT.createdAt || 0);
+      const remTopicTime = safeTimestamp(remT.updatedAt || remT.createdAt || 0);
+
+      let winnerTopic = locT;
+      if (remReviewDate > locReviewDate) {
+        winnerTopic = remT;
       } else if (locReviewDate > remReviewDate) {
-        baseTopic = locT;
-      } else if (remReviewDate > locReviewDate) {
-        baseTopic = remT;
-      } else if (locReps > remReps) {
-        baseTopic = locT;
-      } else if (remReps > locReps) {
-        baseTopic = remT;
+        winnerTopic = locT;
+      } else if (remTopicTime > locTopicTime) {
+        winnerTopic = remT;
+      } else if (locTopicTime > remTopicTime) {
+        winnerTopic = locT;
       } else {
-        const locTime = safeTimestamp(locT.updatedAt || locT.createdAt);
-        const remTime = safeTimestamp(remT.updatedAt || remT.createdAt);
-        baseTopic = remTime > locTime ? remT : locT;
+        const locReps = Number(locT.reviewCount || (Array.isArray(locT.studyDates) ? locT.studyDates.length : 0));
+        const remReps = Number(remT.reviewCount || (Array.isArray(remT.studyDates) ? remT.studyDates.length : 0));
+        winnerTopic = remReps >= locReps ? remT : locT;
       }
       
-      // Union studyDates deduplicated and sorted
+      // Non-destructive preservation of study dates & notes
       const locDates = Array.isArray(locT.studyDates) ? locT.studyDates : [];
       const remDates = Array.isArray(remT.studyDates) ? remT.studyDates : [];
       const combinedStudyDates = Array.from(new Set([...locDates, ...remDates])).filter(Boolean).sort();
       
-      // Non-destructive preservation of page, mnemonics, notes
-      const mergedPage = baseTopic.page || locT.page || remT.page || '';
-      const mergedPageCount = baseTopic.pageCount || locT.pageCount || remT.pageCount;
-      const mergedPageWeight = baseTopic.pageWeight || locT.pageWeight || remT.pageWeight;
-      const mergedNotes = baseTopic.notes || locT.notes || remT.notes;
-      const mergedMnemonics = baseTopic.mnemonics || locT.mnemonics || remT.mnemonics;
+      const mergedPage = winnerTopic.page || locT.page || remT.page || '';
+      const mergedPageCount = winnerTopic.pageCount !== undefined ? winnerTopic.pageCount : (locT.pageCount || remT.pageCount);
+      const mergedPageWeight = winnerTopic.pageWeight !== undefined ? winnerTopic.pageWeight : (locT.pageWeight || remT.pageWeight);
+      const mergedNotes = winnerTopic.notes !== undefined ? winnerTopic.notes : (locT.notes || remT.notes);
+      const mergedMnemonics = winnerTopic.mnemonics !== undefined ? winnerTopic.mnemonics : (locT.mnemonics || remT.mnemonics);
       
-      const latestTopicTime = Math.max(locReviewDate, remReviewDate, safeTimestamp(locT.updatedAt), safeTimestamp(remT.updatedAt));
+      const latestTopicTime = Math.max(locReviewDate, remReviewDate, locTopicTime, remTopicTime, safeTimestamp(winnerTopic.updatedAt));
       
       mergedTopics[tKey] = {
-        ...remT,
         ...locT,
-        ...baseTopic,
+        ...remT,
+        ...winnerTopic,
         page: mergedPage,
         ...(mergedPageCount !== undefined ? { pageCount: mergedPageCount } : {}),
         ...(mergedPageWeight !== undefined ? { pageWeight: mergedPageWeight } : {}),
         ...(mergedNotes !== undefined ? { notes: mergedNotes } : {}),
         ...(mergedMnemonics !== undefined ? { mnemonics: mergedMnemonics } : {}),
         studyDates: combinedStudyDates,
-        reviewCount: Math.max(Number(baseTopic.reviewCount || 0), Number(locT.reviewCount || 0), Number(remT.reviewCount || 0), combinedStudyDates.length),
-        reps: Math.max(Number(baseTopic.reps || 0), Number(locT.reps || 0), Number(remT.reps || 0), combinedStudyDates.length),
-        activatedDate: baseTopic.activatedDate || locT.activatedDate || remT.activatedDate || null,
-        updatedAt: new Date(latestTopicTime || 0).toISOString()
+        reviewCount: Math.max(Number(winnerTopic.reviewCount || 0), Number(locT.reviewCount || 0), Number(remT.reviewCount || 0), combinedStudyDates.length),
+        reps: Math.max(Number(winnerTopic.reps || 0), Number(locT.reps || 0), Number(remT.reps || 0), combinedStudyDates.length),
+        activatedDate: winnerTopic.activatedDate || locT.activatedDate || remT.activatedDate || null,
+        updatedAt: new Date(latestTopicTime || Date.now()).toISOString()
       };
     });
     
     const maxDocTime = Math.max(
-      safeTimestamp(locDoc.updatedAt),
-      safeTimestamp(remDoc.updatedAt),
+      locDocTime,
+      remDocTime,
       ...Object.values(mergedTopics).map(t => safeTimestamp(t.updatedAt || t.lastReviewDate))
     );
     
@@ -1744,7 +1753,7 @@ export function mergeSubjectTrackerArrays(localTracker = [], remoteTracker = [])
       id: locDoc.id || remDoc.id || key,
       subject: locDoc.subject || remDoc.subject || key,
       topics: mergedTopics,
-      updatedAt: new Date(maxDocTime || 0).toISOString()
+      updatedAt: new Date(maxDocTime || Date.now()).toISOString()
     });
   });
   
@@ -2074,6 +2083,8 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
       mergedLogs[dateKey] = incLog;
     } else {
       const cur = mergedLogs[dateKey];
+      const curTime = safeTimestamp(cur.updatedAt || cur.lastReviewDate || 0);
+
       const existingFsrs = Array.isArray(cur.fsrsLogs) ? cur.fsrsLogs : [];
       const incomingFsrs = Array.isArray(incLog?.fsrsLogs) ? incLog.fsrsLogs : [];
 
@@ -2084,21 +2095,65 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
         computeHash(canonicalStringify(l))));
       
       existingFsrs.forEach(l => { if (l) fsrsMap.set(getFsrsKey(l), l); });
-      incomingFsrs.forEach(l => { if (l) { const k = getFsrsKey(l); if (!fsrsMap.has(k)) fsrsMap.set(k, l); } });
+      incomingFsrs.forEach(l => {
+        if (l) {
+          const k = getFsrsKey(l);
+          if (!fsrsMap.has(k)) {
+            fsrsMap.set(k, l);
+          } else {
+            const locItem = fsrsMap.get(k);
+            const locItemTime = safeTimestamp(locItem.timestamp || locItem.updatedAt || 0);
+            const remItemTime = safeTimestamp(l.timestamp || l.updatedAt || 0);
+            fsrsMap.set(k, remItemTime >= locItemTime ? l : locItem);
+          }
+        }
+      });
 
       const existingSessions = Array.isArray(cur.sessions) ? cur.sessions : [];
       const incomingSessions = Array.isArray(incLog?.sessions) ? incLog.sessions : [];
       const sessionMap = new Map();
       const getSessionKey = (s) => s.id || (s.subject && s.startedAt ? `${s.subject}_${s.startedAt}_${s.duration || 0}` : computeHash(canonicalStringify(s)));
+      
       existingSessions.forEach(s => { if (s) sessionMap.set(getSessionKey(s), s); });
-      incomingSessions.forEach(s => { if (s) { const k = getSessionKey(s); if (!sessionMap.has(k)) sessionMap.set(k, s); } });
+      incomingSessions.forEach(s => {
+        if (s) {
+          const k = getSessionKey(s);
+          if (!sessionMap.has(k)) {
+            sessionMap.set(k, s);
+          } else {
+            const locSess = sessionMap.get(k);
+            const locSessTime = safeTimestamp(locSess.updatedAt || locSess.startedAt || 0);
+            const remSessTime = safeTimestamp(s.updatedAt || s.startedAt || 0);
+            sessionMap.set(k, remSessTime >= locSessTime ? s : locSess);
+          }
+        }
+      });
+
+      // Prune deleted sessions if marked with isDeleted
+      for (const [sKey, sObj] of sessionMap.entries()) {
+        if (sObj.isDeleted || sObj.deletedAt) {
+          sessionMap.delete(sKey);
+        }
+      }
 
       const existingGts = Array.isArray(cur.gts) ? cur.gts : [];
       const incomingGts = Array.isArray(incLog?.gts) ? incLog.gts : [];
       const gtMap = new Map();
       const getGtKey = (g) => g.id || (g.testName && (g.date || g.timestamp) ? `${g.testName}_${g.date || g.timestamp}` : computeHash(canonicalStringify(g)));
       existingGts.forEach(g => { if (g) gtMap.set(getGtKey(g), g); });
-      incomingGts.forEach(g => { if (g) { const k = getGtKey(g); if (!gtMap.has(k)) gtMap.set(k, g); } });
+      incomingGts.forEach(g => {
+        if (g) {
+          const k = getGtKey(g);
+          if (!gtMap.has(k)) {
+            gtMap.set(k, g);
+          } else {
+            const locGt = gtMap.get(k);
+            const locGtTime = safeTimestamp(locGt.updatedAt || locGt.date || locGt.timestamp || 0);
+            const remGtTime = safeTimestamp(g.updatedAt || g.date || g.timestamp || 0);
+            gtMap.set(k, remGtTime >= locGtTime ? g : locGt);
+          }
+        }
+      });
 
       const allSessions = Array.from(sessionMap.values());
       const sessionHours = allSessions.reduce((sum, s) => sum + (Number(s.duration || s.minutes || 0) / 60 || Number(s.hours || 0)), 0);
@@ -2108,7 +2163,6 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
       const totalQuestions = Math.max(Number(cur.totalQuestionsAttempted || cur.questions || 0), Number(incLog?.totalQuestionsAttempted || incLog?.questions || 0));
       const totalPages = Math.max(Number(cur.pages || 0), Number(incLog?.pages || 0));
 
-      const curTime = safeTimestamp(cur.updatedAt || cur.lastReviewDate || 0);
       const latestUpdatedAt = Math.max(curTime, incTime, Date.now());
 
       mergedLogs[dateKey] = {
@@ -2191,20 +2245,21 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
             note: latestContent.note,
             notes: latestContent.notes,
             hint: latestContent.hint,
-            tags: Array.from(new Set([...(localCard.tags || []), ...(inc.tags || [])])),
+            tags: Array.isArray(latestContent.tags) ? latestContent.tags : (localCard.tags || []),
+            rects: latestContent.rects || latestContent.occlusions || localCard.rects || inc.rects || [],
             due: latestRev.due,
             stability: latestRev.stability,
             difficulty: latestRev.difficulty,
             elapsed_days: latestRev.elapsed_days,
             scheduled_days: latestRev.scheduled_days,
-            reps: Math.max(localCard.reps || 0, inc.reps || 0),
-            lapses: Math.max(localCard.lapses || 0, inc.lapses || 0),
+            reps: latestRev.reps !== undefined ? latestRev.reps : Math.max(localCard.reps || 0, inc.reps || 0),
+            lapses: latestRev.lapses !== undefined ? latestRev.lapses : Math.max(localCard.lapses || 0, inc.lapses || 0),
             state: latestRev.state,
             lastReviewDate: latestRev.lastReviewDate,
             lastRating: latestRev.lastRating,
             retrievability: latestRev.retrievability,
-            history: Array.from(new Set([...(localCard.history || []), ...(inc.history || [])])),
-            updatedAt: new Date(Math.max(localModTime, incModTime)).toISOString()
+            history: latestRev.history || localCard.history || inc.history || [],
+            updatedAt: new Date(Math.max(localModTime, incModTime, safeTimestamp(latestRev.updatedAt || 0))).toISOString()
           };
 
           cardMap.set(inc.id, mergedCard);
@@ -2291,7 +2346,18 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
     const remPyt = deserializeBinaryValues(remCur.pytData || []);
     const pytMap = new Map();
     locPyt.forEach(p => { if (p && p.key) pytMap.set(p.key, p); });
-    remPyt.forEach(p => { if (p && p.key && !pytMap.has(p.key)) pytMap.set(p.key, p); });
+    remPyt.forEach(p => {
+      if (p && p.key) {
+        const locP = pytMap.get(p.key);
+        if (!locP) {
+          pytMap.set(p.key, p);
+        } else {
+          const locTime = safeTimestamp(locP.updatedAt || locP.createdAt);
+          const remTime = safeTimestamp(p.updatedAt || p.createdAt);
+          pytMap.set(p.key, remTime >= locTime ? p : locP);
+        }
+      }
+    });
 
     merged['curriculum_topics.json'] = {
       topics: serializeBinaryValues(Array.from(topicMap.values())),
@@ -2338,15 +2404,31 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
         if (!exist) {
           campDailyMap.set(l.dateStr, l);
         } else {
-          const mergedSess = Array.isArray(exist.sessions) ? [...exist.sessions] : [];
-          const sKeys = new Set(mergedSess.map(s => s?.id || s?.startedAt || (s ? s.subject + '_' + s.duration : '')));
+          const locLTime = safeTimestamp(exist.updatedAt || 0);
+          const remLTime = safeTimestamp(l.updatedAt || 0);
+          const sessionMap = new Map();
+          (Array.isArray(exist.sessions) ? exist.sessions : []).forEach(s => {
+            if (s) sessionMap.set(s.id || s.startedAt || (s.subject + '_' + s.duration), s);
+          });
           (Array.isArray(l.sessions) ? l.sessions : []).forEach(s => {
             if (s) {
               const k = s.id || s.startedAt || (s.subject + '_' + s.duration);
-              if (!sKeys.has(k)) mergedSess.push(s);
+              if (!sessionMap.has(k)) {
+                sessionMap.set(k, s);
+              } else {
+                const locS = sessionMap.get(k);
+                const locSTime = safeTimestamp(locS.updatedAt || locS.startedAt || 0);
+                const remSTime = safeTimestamp(s.updatedAt || s.startedAt || 0);
+                sessionMap.set(k, remSTime >= locSTime ? s : locS);
+              }
             }
           });
-          campDailyMap.set(l.dateStr, { ...exist, ...l, sessions: mergedSess });
+          campDailyMap.set(l.dateStr, {
+            ...exist,
+            ...l,
+            sessions: Array.from(sessionMap.values()),
+            updatedAt: new Date(Math.max(locLTime, remLTime, Date.now())).toISOString()
+          });
         }
       }
     });
@@ -2367,19 +2449,27 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
     const locFsrs = localBundles['fsrs_config.json'] || {};
     const remFsrs = downloadedBundles['fsrs_config.json'] || {};
 
-    const promptMap = new Map((locFsrs.customPrompts || []).map(p => [p.id, p]));
+    const promptMap = new Map();
+    (locFsrs.customPrompts || []).forEach(p => { if (p && p.id) promptMap.set(p.id, p); });
     (remFsrs.customPrompts || []).forEach(p => {
       if (p && p.id) {
-        if (!promptMap.has(p.id)) {
+        const locP = promptMap.get(p.id);
+        if (!locP) {
           promptMap.set(p.id, p);
         } else {
-          const locP = promptMap.get(p.id);
           const locTime = safeTimestamp(locP.updatedAt || locP.createdAt);
           const remTime = safeTimestamp(p.updatedAt || p.createdAt);
           promptMap.set(p.id, remTime >= locTime ? p : locP);
         }
       }
     });
+
+    // Prune deleted prompts
+    for (const [id, p] of promptMap.entries()) {
+      if (p.isDeleted || p.deletedAt) {
+        promptMap.delete(id);
+      }
+    }
 
     // Clean, scrubbed localStorage merge: purge all dirty/runtime keys from remote
     const mergedLs = {};
@@ -2422,11 +2512,42 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
   if (downloadedBundles['camp_tracker.json']) {
     const locCamp = localBundles['camp_tracker.json'] || {};
     const remCamp = downloadedBundles['camp_tracker.json'] || {};
-    const trkMap = new Map((locCamp.campTracker || []).map(t => [t.id, t]));
-    (remCamp.campTracker || []).forEach(t => { if (t && t.id) trkMap.set(t.id, t); });
+    const trkMap = new Map();
+    (locCamp.campTracker || []).forEach(t => { if (t && t.id) trkMap.set(t.id, t); });
+    (remCamp.campTracker || []).forEach(remT => {
+      if (remT && remT.id) {
+        const locT = trkMap.get(remT.id);
+        if (!locT) {
+          trkMap.set(remT.id, remT);
+        } else {
+          const locTime = safeTimestamp(locT.updatedAt || locT.createdAt);
+          const remTime = safeTimestamp(remT.updatedAt || remT.createdAt);
+          trkMap.set(remT.id, remTime >= locTime ? { ...locT, ...remT } : { ...remT, ...locT });
+        }
+      }
+    });
 
-    const datMap = new Map((locCamp.campData || []).map(d => [d.key, d]));
-    (remCamp.campData || []).forEach(d => { if (d && d.key) datMap.set(d.key, d); });
+    // Prune deleted tasks
+    for (const [id, task] of trkMap.entries()) {
+      if (task.isDeleted || task.deletedAt) {
+        trkMap.delete(id);
+      }
+    }
+
+    const datMap = new Map();
+    (locCamp.campData || []).forEach(d => { if (d && d.key) datMap.set(d.key, d); });
+    (remCamp.campData || []).forEach(remD => {
+      if (remD && remD.key) {
+        const locD = datMap.get(remD.key);
+        if (!locD) {
+          datMap.set(remD.key, remD);
+        } else {
+          const locTime = safeTimestamp(locD.updatedAt || locD.lastModified);
+          const remTime = safeTimestamp(remD.updatedAt || remD.lastModified);
+          datMap.set(remD.key, remTime >= locTime ? { ...locD, ...remD } : { ...remD, ...locD });
+        }
+      }
+    });
 
     merged['camp_tracker.json'] = {
       campTracker: Array.from(trkMap.values()),

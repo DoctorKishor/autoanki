@@ -826,7 +826,119 @@ async function runTestSuite() {
   const d1FinalPrompts = device1.getKV('custom_prompts');
   assert(d1FinalPrompts.some(p => p.id === 'prompt_device1_concurrent') && d1FinalPrompts.some(p => p.id === 'prompt_device2_concurrent'), 'Device 1 has both concurrent prompts without data loss');
 
-  logHeader('ALL 7 MULTI-DEVICE SIMULATION SCENARIOS PASSED WITH 100% INTEGRITY');
+  // --------------------------------------------------------------------------
+  // SCENARIO H: Universal Sub-Entity LWW & Deletion Reconciliation
+  // --------------------------------------------------------------------------
+  logHeader('SCENARIO H: Universal Sub-Entity LWW & Deletion Reconciliation across All 6 Bundles');
+
+  // 1. Flashcard Tag Removal (LWW Content Edit)
+  const d1Cards = device1.getKV('flashcards', []);
+  d1Cards.push({
+    id: 'card_lww_1',
+    front: 'LWW Front',
+    back: 'LWW Back',
+    tags: ['anatomy', 'cranial-nerves', 'high-yield'],
+    updatedAt: '2026-08-27T08:00:00.000Z'
+  });
+  device1.setKV('flashcards', d1Cards);
+  runDeviceSync(device1, cloudVault);
+  runDeviceSync(device2, cloudVault);
+
+  // Device 1 removes the 'cranial-nerves' tag and stamps updatedAt
+  const d1CardsUpdated = device1.getKV('flashcards', []);
+  const c1 = d1CardsUpdated.find(c => c.id === 'card_lww_1');
+  c1.tags = ['anatomy', 'high-yield'];
+  c1.updatedAt = '2026-08-27T09:00:00.000Z';
+  device1.setKV('flashcards', d1CardsUpdated);
+  runDeviceSync(device1, cloudVault);
+
+  // Device 2 pulls cloud state -> tag must be removed on Device 2 without resurrection
+  runDeviceSync(device2, cloudVault);
+  const d2Card = device2.getKV('flashcards', []).find(c => c.id === 'card_lww_1');
+  assert(!d2Card.tags.includes('cranial-nerves'), 'Device 2 pruned deleted card tag according to LWW');
+  assert(d2Card.tags.includes('anatomy') && d2Card.tags.includes('high-yield'), 'Device 2 preserved active card tags');
+
+  // 2. Subject Tracker Topic Deletion (Topic Pruning in Tracker Document)
+  const d1TrackerH = device1.getKV('subject_tracker_data', []);
+  const anatDoc = d1TrackerH.find(d => d.subject === 'Anatomy') || { id: 'anatomy', subject: 'Anatomy', topics: {} };
+  anatDoc.topics['temp_deleted_topic'] = {
+    name: 'Temporary Topic',
+    page: '12',
+    updatedAt: '2026-08-27T08:00:00.000Z'
+  };
+  anatDoc.updatedAt = '2026-08-27T08:00:00.000Z';
+  if (!d1TrackerH.find(d => d.subject === 'Anatomy')) d1TrackerH.push(anatDoc);
+  device1.setKV('subject_tracker_data', d1TrackerH);
+  runDeviceSync(device1, cloudVault);
+  runDeviceSync(device2, cloudVault);
+
+  // Device 1 deletes 'temp_deleted_topic' from Anatomy document and updates document timestamp
+  const d1TrackerUpdated = device1.getKV('subject_tracker_data', []);
+  const d1Anat = d1TrackerUpdated.find(d => d.subject === 'Anatomy');
+  delete d1Anat.topics['temp_deleted_topic'];
+  d1Anat.updatedAt = '2026-08-27T09:30:00.000Z';
+  device1.setKV('subject_tracker_data', d1TrackerUpdated);
+  runDeviceSync(device1, cloudVault);
+
+  // Device 2 pulls -> verifies 'temp_deleted_topic' was pruned on Device 2
+  runDeviceSync(device2, cloudVault);
+  const d2Anat = device2.getKV('subject_tracker_data', []).find(d => d.subject === 'Anatomy');
+  assert(d2Anat.topics['temp_deleted_topic'] === undefined, 'Deleted tracker sub-topic was pruned on Device 2 via LWW doc timestamp');
+
+  // 3. CAMP Task Deletion via Tombstone / isDeleted
+  device1.stores.camp_tracker.push({
+    id: 'camp_task_1',
+    title: 'Review Biochem 10 pages',
+    date: '2026-08-27',
+    updatedAt: '2026-08-27T08:00:00.000Z'
+  });
+  runDeviceSync(device1, cloudVault);
+  runDeviceSync(device2, cloudVault);
+
+  // Device 2 marks task deleted
+  const d2Task = device2.stores.camp_tracker.find(t => t.id === 'camp_task_1');
+  d2Task.isDeleted = true;
+  d2Task.deletedAt = '2026-08-27T09:45:00.000Z';
+  d2Task.updatedAt = '2026-08-27T09:45:00.000Z';
+  runDeviceSync(device2, cloudVault);
+
+  // Device 1 pulls -> task is pruned
+  runDeviceSync(device1, cloudVault);
+  assert(!device1.stores.camp_tracker.some(t => t.id === 'camp_task_1' && !t.isDeleted), 'Deleted CAMP task pruned on Device 1');
+
+  // 4. Scanned Page Deletion via Tombstone
+  const d1Pages = device1.getKV('pages', []);
+  d1Pages.push({
+    id: 'page_occlusion_1',
+    title: 'Anatomy Head & Neck Scan',
+    updatedAt: '2026-08-27T08:00:00.000Z'
+  });
+  device1.setKV('pages', d1Pages);
+  runDeviceSync(device1, cloudVault);
+  runDeviceSync(device2, cloudVault);
+
+  // Device 1 deletes page_occlusion_1 and records tombstone in trash_pages
+  const d1PagesUpdated = device1.getKV('pages', []).filter(p => p.id !== 'page_occlusion_1');
+  device1.setKV('pages', d1PagesUpdated);
+  const d1TrashPages = device1.getKV('trash_pages', []);
+  d1TrashPages.push({
+    id: 'page_occlusion_1',
+    deletedAt: '2026-08-27T10:00:00.000Z'
+  });
+  device1.setKV('trash_pages', d1TrashPages);
+  runDeviceSync(device1, cloudVault);
+
+  // Device 2 pulls -> page_occlusion_1 is pruned on Device 2
+  runDeviceSync(device2, cloudVault);
+  assert(!device2.getKV('pages', []).some(p => p.id === 'page_occlusion_1'), 'Deleted scanned page pruned on Device 2 via trash_pages tombstone');
+
+  // Clean No-op verification
+  const finalActionD1 = runDeviceSync(device1, cloudVault);
+  const finalActionD2 = runDeviceSync(device2, cloudVault);
+  assert(finalActionD1 === 'clean_noop', 'Device 1 is in 100% clean sync');
+  assert(finalActionD2 === 'clean_noop', 'Device 2 is in 100% clean sync');
+
+  logHeader('ALL 8 MULTI-DEVICE SIMULATION SCENARIOS PASSED WITH 100% INTEGRITY');
 }
 
 runTestSuite().catch(err => {
