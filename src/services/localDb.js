@@ -734,15 +734,61 @@ export async function getLocalStudyLogs() {
   return (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
 }
 
+export async function getTrashStudyLogs() {
+  const list = await getLocalKV('trash_study_logs');
+  return Array.isArray(list) ? list : [];
+}
+
+export async function saveTrashStudyLogs(trashList) {
+  if (!Array.isArray(trashList)) return;
+  await setLocalKV('trash_study_logs', trashList);
+}
+
 export async function saveLocalStudyLog(dateStr, logData) {
   if (!dateStr) return await getLocalStudyLogs();
   studyLogsWriteMutex = studyLogsWriteMutex.then(async () => {
     const current = await getLocalStudyLogs();
-    const updated = { ...current, [dateStr]: { ...(current[dateStr] || {}), ...logData } };
+    const existingDay = current[dateStr] || {};
+    const updatedDay = {
+      ...existingDay,
+      ...logData,
+      updatedAt: logData?.updatedAt || new Date().toISOString()
+    };
+    const updated = { ...current, [dateStr]: updatedDay };
     await setLocalKV('study_logs', updated);
     return updated;
   }).catch(err => {
     console.error("[LocalDB] saveLocalStudyLog mutex error:", err);
+    return getLocalStudyLogs();
+  });
+  return studyLogsWriteMutex;
+}
+
+export async function deleteLocalStudyLog(dateKey) {
+  if (!dateKey) return await getLocalStudyLogs();
+  studyLogsWriteMutex = studyLogsWriteMutex.then(async () => {
+    const current = await getLocalStudyLogs();
+    const updated = { ...current };
+    delete updated[dateKey];
+    await setLocalKV('study_logs', updated);
+
+    try {
+      const trash = (await getLocalKV('trash_study_logs')) || [];
+      const filtered = Array.isArray(trash) ? trash.filter(t => t?.dateKey !== dateKey) : [];
+      filtered.push({
+        dateKey,
+        deletedAt: new Date().toISOString()
+      });
+      await setLocalKV('trash_study_logs', filtered);
+      logger.db('TOMBSTONE-RECORDED', `Recorded study log tombstone in trash_study_logs for ${dateKey} (Total: ${filtered.length})`);
+    } catch (e) {
+      console.warn('[LocalDB] Error recording study log tombstone:', e);
+    }
+
+    notifyLocalMutation('study_logs:delete');
+    return updated;
+  }).catch(err => {
+    console.error("[LocalDB] deleteLocalStudyLog mutex error:", err);
     return getLocalStudyLogs();
   });
   return studyLogsWriteMutex;
@@ -1584,6 +1630,8 @@ export async function clearAiHintsCacheLocal() {
 export async function purgeRecycleBinLocal() {
   await setLocalKV('trash_pages', []);
   await setLocalKV('trash_cards', []);
+  await setLocalKV('trash_topics', []);
+  await setLocalKV('trash_study_logs', []);
   return true;
 }
 
@@ -2109,16 +2157,19 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
     // ΓöÇΓöÇ Bundle: recycle_bin ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
     if (bundles.includes('recycle_bin')) {
       emit(++step, totalSteps, 'Restoring Recycle BinΓÇª');
-      const trashKvs = kvSubset(['trash_pages', 'trash_cards']);
+      const trashKvs = kvSubset(['trash_pages', 'trash_cards', 'trash_topics', 'trash_study_logs']);
       if (strategy === 'replace') {
         for (const r of trashKvs) await putLocalItem(STORES.KV_STORE, r);
       } else {
-        // Merge trash: union by id
+        // Merge trash: union by id or dateKey
         for (const r of trashKvs) {
           const existing = (await getLocalKV(r.key)) || [];
           const incoming = r.value || [];
-          const map = new Map(existing.map(x => [x.id, x]));
-          incoming.forEach(x => { if (x && x.id && !map.has(x.id)) map.set(x.id, x); });
+          const map = new Map(existing.map(x => [x.id || x.dateKey, x]));
+          incoming.forEach(x => {
+            const k = x?.id || x?.dateKey;
+            if (x && k && !map.has(k)) map.set(k, x);
+          });
           await setLocalKV(r.key, Array.from(map.values()));
         }
       }
@@ -2275,6 +2326,9 @@ export default {
   getLocalTextbooksMetadata,
   saveLocalTextbooksMetadata,
   getLocalStudyLogs,
+  getTrashStudyLogs,
+  saveTrashStudyLogs,
+  deleteLocalStudyLog,
   saveLocalStudyLog,
   replaceAllLocalStudyLogs,
   getLocalSubjectTrackerData,

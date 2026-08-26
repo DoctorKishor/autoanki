@@ -247,7 +247,7 @@ export async function runSystemIntegrityCheck(options = {}) {
     let emptyMediaPagesCount = 0;
     (pages || []).forEach(p => {
       if (p && p.id) {
-        const hasData = p.data || p.imageUrl || p.originalImage;
+        const hasData = p.hasMedia || p.data || p.imageUrl || p.originalImage;
         if (!hasData) {
           emptyMediaPagesCount++;
           if (emptyMediaPagesCount <= 3) {

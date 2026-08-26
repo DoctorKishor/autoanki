@@ -30,6 +30,9 @@ import {
   getLocalSubjectTrackerData,
   saveLocalSubjectTrackerDoc,
   getLocalStudyLogs,
+  getTrashStudyLogs,
+  saveTrashStudyLogs,
+  deleteLocalStudyLog,
   saveLocalStudyLog,
   getFSRSConfig,
   saveFSRSConfig,
@@ -476,8 +479,9 @@ export async function extractLocalBundles() {
     totalTopicsCount += pytData.length;
   }
 
-  // 3. Study Logs Bundle
+  // 3. Study Logs Bundle (with Tombstone Support)
   const studyLogs = (await getLocalStudyLogs()) || {};
+  const trashStudyLogs = (await getTrashStudyLogs()) || (await getLocalKV('trash_study_logs')) || [];
   const studySchedule = (await getLocalKV('study_schedule')) || {};
   const scheduleTemplates = (await getLocalKV('schedule_templates')) || [];
   const campDailyLogs = (await getAllLocalItems(STORES.CAMP_DAILY_LOGS)) || [];
@@ -485,6 +489,7 @@ export async function extractLocalBundles() {
   const activeNewTopicsToday = (await getLocalKV('active_new_topics_today')) || [];
   const studyLogsBundle = {
     studyLogs,
+    trashStudyLogs,
     studySchedule,
     scheduleTemplates,
     campDailyLogs,
@@ -551,19 +556,18 @@ export async function extractLocalBundles() {
   
   // Separate heavy image binary payload & Base64 strings from metadata for cloud JSON chunking
   const cleanPageForBundle = (p) => {
+    if (!p || typeof p !== 'object') return p;
     const copy = { ...p };
     if (copy.data instanceof ArrayBuffer || copy.data?.__type === 'ArrayBuffer') {
       copy.hasMedia = true;
       delete copy.data;
     }
-    if (typeof copy.originalImage === 'string' && copy.originalImage.startsWith('data:')) {
-      copy.hasMedia = true;
-      delete copy.originalImage;
-    }
-    if (typeof copy.imageUrl === 'string' && copy.imageUrl.startsWith('data:')) {
-      copy.hasMedia = true;
-      delete copy.imageUrl;
-    }
+    ['originalImage', 'imageUrl', 'image', 'preview', 'thumbnail', 'base64', 'compressedImage'].forEach(field => {
+      if (typeof copy[field] === 'string' && (copy[field].startsWith('data:') || copy[field].startsWith('blob:') || copy[field].length > 1024)) {
+        copy.hasMedia = true;
+        delete copy[field];
+      }
+    });
     return copy;
   };
 
@@ -590,6 +594,7 @@ export async function extractLocalBundles() {
     engine: 'AutoAnki Google Drive Sync',
     deviceId: getDeviceId(),
     timestamp: new Date().toISOString(),
+    syncVersion: Date.now(),
     schemaVersion: 4,
     hashes,
     stats: {
@@ -849,14 +854,16 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
     }
   }
 
-  // 3. Study Logs (Deep Merging & Session/GT Unioning)
+  // 3. Study Logs (Deep Merging & Session/GT Unioning with Tombstone Pruning)
   if (bundles['study_logs.json']) {
     emit(++step, totalSteps, 'Hydrating Study Logs & Velocity Telemetry…');
     const b = bundles['study_logs.json'];
     const incomingLogs = b.studyLogs || {};
+    const incomingTrash = b.trashStudyLogs || [];
 
     if (strategy === 'replace') {
       await setLocalKV('study_logs', incomingLogs);
+      await setLocalKV('trash_study_logs', incomingTrash);
       if (b.studySchedule) await setLocalKV('study_schedule', b.studySchedule);
       if (b.scheduleTemplates) await setLocalKV('schedule_templates', b.scheduleTemplates);
       if (b.timerState) await setLocalKV('timerState', b.timerState);
@@ -876,10 +883,23 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
         });
       }
     } else {
-      // Deep-merge study logs by date with session unioning
+      // Deep-merge study logs by date with session unioning and tombstone pruning
       const existing = (await getLocalStudyLogs()) || {};
-      const merged = mergeStudyLogsObjects(existing, incomingLogs);
+      const localTrash = (await getTrashStudyLogs()) || (await getLocalKV('trash_study_logs')) || [];
+      const merged = mergeStudyLogsObjects(existing, incomingLogs, localTrash, incomingTrash);
       await setLocalKV('study_logs', merged);
+
+      // Merge and union trash study logs
+      const mergedTrashMap = new Map(localTrash.map(t => [t.dateKey, t]));
+      incomingTrash.forEach(t => {
+        if (t && t.dateKey) {
+          const exist = mergedTrashMap.get(t.dateKey);
+          if (!exist || safeTimestamp(t.deletedAt) > safeTimestamp(exist.deletedAt)) {
+            mergedTrashMap.set(t.dateKey, t);
+          }
+        }
+      });
+      await setLocalKV('trash_study_logs', Array.from(mergedTrashMap.values()));
 
       if (b.studySchedule) {
         const existSched = (await getLocalKV('study_schedule')) || {};
@@ -1813,12 +1833,40 @@ export function mergeHintQuotaArrays(locQuota = [], remQuota = []) {
 }
 
 /**
- * Merges study logs objects across dates with collision-resistant FSRS log unioning.
+ * Merges study logs objects across dates with collision-resistant FSRS log unioning and tombstone pruning.
  */
-export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}) {
+export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs = [], remTrashLogs = []) {
   const mergedLogs = { ...(locLogs || {}) };
 
+  const locTrashMap = new Map((locTrashLogs || []).map(t => [t.dateKey, safeTimestamp(t.deletedAt)]));
+  const remTrashMap = new Map((remTrashLogs || []).map(t => [t.dateKey, safeTimestamp(t.deletedAt)]));
+
+  // 1. Prune local logs if remote deleted them after their last update
+  for (const [dateKey, log] of Object.entries(mergedLogs)) {
+    const remDeletedAt = remTrashMap.get(dateKey);
+    if (remDeletedAt) {
+      const logTime = safeTimestamp(log?.updatedAt || log?.lastReviewDate || log?.dateStr || 0);
+      if (remDeletedAt > logTime) {
+        delete mergedLogs[dateKey];
+      }
+    }
+  }
+
+  // 2. Process incoming remote logs
   for (const [dateKey, incLog] of Object.entries(remLogs || {})) {
+    const locDeletedAt = locTrashMap.get(dateKey);
+    const remDeletedAt = remTrashMap.get(dateKey);
+    const incTime = safeTimestamp(incLog?.updatedAt || incLog?.lastReviewDate || incLog?.dateStr || 0);
+
+    // If local deleted this log after incoming update, do NOT resurrect
+    if (locDeletedAt && locDeletedAt > incTime) {
+      continue;
+    }
+    // If remote itself deleted this log after incoming update, do NOT resurrect
+    if (remDeletedAt && remDeletedAt > incTime) {
+      continue;
+    }
+
     if (!mergedLogs[dateKey]) {
       mergedLogs[dateKey] = incLog;
     } else {
@@ -1857,6 +1905,9 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}) {
       const totalQuestions = Math.max(Number(cur.totalQuestionsAttempted || cur.questions || 0), Number(incLog?.totalQuestionsAttempted || incLog?.questions || 0));
       const totalPages = Math.max(Number(cur.pages || 0), Number(incLog?.pages || 0));
 
+      const curTime = safeTimestamp(cur.updatedAt || cur.lastReviewDate || 0);
+      const latestUpdatedAt = Math.max(curTime, incTime, Date.now());
+
       mergedLogs[dateKey] = {
         ...cur,
         ...incLog,
@@ -1869,7 +1920,8 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}) {
         pages: totalPages,
         fsrsLogs: Array.from(fsrsMap.values()),
         sessions: allSessions,
-        gts: Array.from(gtMap.values())
+        gts: Array.from(gtMap.values()),
+        updatedAt: new Date(latestUpdatedAt).toISOString()
       };
     }
   }
@@ -2048,14 +2100,28 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
     };
   }
 
-  // 3. Study Logs (Additive Sessions, Collision-Resistant Keys & Canonical Dates)
+  // 3. Study Logs (Additive Sessions, Collision-Resistant Keys & Canonical Dates with Tombstone Pruning)
   if (downloadedBundles['study_logs.json']) {
     const locLogB = localBundles['study_logs.json'] || {};
     const remLogB = downloadedBundles['study_logs.json'] || {};
     const locLogs = locLogB.studyLogs || {};
     const remLogs = remLogB.studyLogs || {};
+    const locTrashLogs = locLogB.trashStudyLogs || [];
+    const remTrashLogs = remLogB.trashStudyLogs || [];
 
-    const mergedLogs = mergeStudyLogsObjects(locLogs, remLogs);
+    const mergedLogs = mergeStudyLogsObjects(locLogs, remLogs, locTrashLogs, remTrashLogs);
+
+    // Merge trash study logs with latest deletedAt
+    const mergedTrashLogsMap = new Map((locTrashLogs || []).map(t => [t.dateKey, t]));
+    (remTrashLogs || []).forEach(t => {
+      if (t && t.dateKey) {
+        const exist = mergedTrashLogsMap.get(t.dateKey);
+        if (!exist || safeTimestamp(t.deletedAt) > safeTimestamp(exist.deletedAt)) {
+          mergedTrashLogsMap.set(t.dateKey, t);
+        }
+      }
+    });
+
     const mergedSched = { ...(locLogB.studySchedule || {}), ...(remLogB.studySchedule || {}) };
     const mergedTemplates = remLogB.scheduleTemplates || locLogB.scheduleTemplates || [];
 
@@ -2084,6 +2150,7 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
 
     merged['study_logs.json'] = {
       studyLogs: mergedLogs,
+      trashStudyLogs: Array.from(mergedTrashLogsMap.values()),
       studySchedule: mergedSched,
       scheduleTemplates: mergedTemplates,
       campDailyLogs: Array.from(campDailyMap.values()),
@@ -2241,6 +2308,7 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
     engine: 'AutoAnki Google Drive Sync',
     deviceId: getDeviceId(),
     timestamp: new Date().toISOString(),
+    syncVersion: Date.now(),
     schemaVersion: 4,
     hashes,
     stats: {
@@ -2341,6 +2409,7 @@ async function executeSyncInternal({
         remoteManifest = await downloadDriveFile(accessToken, remoteManifestFile.id, true);
         logger.sync('MANIFEST-DOWNLOADED', 'Retrieved remote cloud manifest.', {
           timestamp: remoteManifest?.timestamp,
+          syncVersion: remoteManifest?.syncVersion,
           stats: remoteManifest?.stats,
           deviceId: remoteManifest?.deviceId
         });
@@ -2348,6 +2417,7 @@ async function executeSyncInternal({
         logger.warn('MANIFEST-READ-FAIL', 'Could not read remote manifest:', e);
       }
     }
+    const initialRemoteSyncVersion = remoteManifest?.syncVersion || null;
 
     // Extract local data
     emit(3, 10, 'Calculating local entity checksums…');
@@ -2355,7 +2425,8 @@ async function executeSyncInternal({
     const localManifest = localData.manifest;
     logger.sync('LOCAL-EXTRACTED', 'Calculated local entity checksums & manifest stats.', {
       stats: localManifest.stats,
-      hashes: localManifest.hashes
+      hashes: localManifest.hashes,
+      syncVersion: localManifest.syncVersion
     });
 
     // Check if cloud vault is completely empty (first-time push)
@@ -2422,36 +2493,59 @@ async function executeSyncInternal({
       return res;
     }
 
-    // Scenario 2: Clean Fast-Forward Push
+    // Scenario 2: Clean Fast-Forward Push (with Optimistic Concurrency Protection)
     if (isRemoteClean && !force) {
       logger.sync('FAST-FORWARD-PUSH', 'Remote had zero edits since last sync. Pushing local changes to cloud...');
       emit(3, 10, 'Pushing local changes to cloud…');
-      const res = await executeOneWayPush(accessToken, vaultFolderId, mediaFolderId, localData, remoteFileMap, emit);
-      if (res.success) {
+      const pushRes = await executeOneWayPush(accessToken, vaultFolderId, mediaFolderId, localData, remoteFileMap, emit, {
+        expectedRemoteSyncVersion: initialRemoteSyncVersion,
+        remoteHashes: remoteManifest?.hashes
+      });
+
+      if (pushRes.success) {
         const postData = await extractLocalBundles();
         await saveLastSyncedHashes(postData.manifest.hashes);
         logger.sync('FAST-FORWARD-PUSH-SUCCESS', 'Cloud updated to fresh local state.');
+        return pushRes;
+      } else if (pushRes.action === 'concurrency_conflict') {
+        logger.sync('CONCURRENCY-FALLBACK', 'Fast-forward push aborted due to concurrent cloud modification. Falling back to Scenario 3 (Two-Way Delta Merge)...');
+        // Fall through to Scenario 3
+      } else {
+        return pushRes;
       }
-      return res;
     }
 
-    // Scenario 3: Divergence (Both devices edited data since last sync)
+    // Scenario 3: Divergence (Both devices edited data or concurrent push fell back)
     const isSameDevice = remoteManifest.deviceId === localManifest.deviceId;
+
+    // Refresh remote files and manifest if concurrent updates happened
+    const freshRemoteFiles = await listFilesInFolder(accessToken, vaultFolderId);
+    const freshRemoteFileMap = new Map(freshRemoteFiles.map(f => [f.name, f]));
+    let freshRemoteManifest = remoteManifest;
+    const freshManifestFile = freshRemoteFileMap.get('manifest.json');
+    if (freshManifestFile) {
+      try {
+        freshRemoteManifest = await downloadDriveFile(accessToken, freshManifestFile.id, true);
+      } catch (e) {
+        logger.warn('FRESH-MANIFEST-READ-FAIL', 'Could not refresh remote manifest:', e);
+      }
+    }
+    const currentRemoteHashes = freshRemoteManifest?.hashes || remoteHashes || {};
 
     const modifiedBundleNames = Object.keys(localData.bundles).filter(name => {
       const bundleKey = name.replace('.json', '');
-      return localHashes[bundleKey] !== remoteHashes[bundleKey];
+      return localHashes[bundleKey] !== currentRemoteHashes[bundleKey];
     });
 
     const hashDiff = {};
     ['cards_bundle', 'curriculum_topics', 'study_logs', 'fsrs_config', 'camp_tracker', 'pages_bundle'].forEach(k => {
       hashDiff[k] = {
         local: localHashes[k] || 'missing',
-        remote: remoteHashes[k] || 'missing',
+        remote: currentRemoteHashes[k] || 'missing',
         ancestor: lastSyncedHashes?.[k] || 'none',
         localChanged: localHashes[k] !== lastSyncedHashes?.[k],
-        remoteChanged: remoteHashes[k] !== lastSyncedHashes?.[k],
-        inSync: localHashes[k] === remoteHashes[k]
+        remoteChanged: currentRemoteHashes[k] !== lastSyncedHashes?.[k],
+        inSync: localHashes[k] === currentRemoteHashes[k]
       };
     });
 
@@ -2464,11 +2558,11 @@ async function executeSyncInternal({
     console.log('[GDriveSync] Detailed 6-bundle hash divergence audit:', JSON.stringify(hashDiff, null, 2));
 
     if (modifiedBundleNames.length > 0) {
-      const cardsConflict = localHashes.cards_bundle !== remoteHashes.cards_bundle;
-      const topicsConflict = localHashes.curriculum_topics !== remoteHashes.curriculum_topics;
-      const pagesConflict = localHashes.pages_bundle !== remoteHashes.pages_bundle;
+      const cardsConflict = localHashes.cards_bundle !== currentRemoteHashes.cards_bundle;
+      const topicsConflict = localHashes.curriculum_topics !== currentRemoteHashes.curriculum_topics;
+      const pagesConflict = localHashes.pages_bundle !== currentRemoteHashes.pages_bundle;
 
-      const diffDetails = buildConflictDiffDetails(localManifest, remoteManifest, modifiedBundleNames, localHashes, remoteHashes);
+      const diffDetails = buildConflictDiffDetails(localManifest, freshRemoteManifest || remoteManifest, modifiedBundleNames, localHashes, currentRemoteHashes);
 
       if (interactive && !isSameDevice && (cardsConflict || topicsConflict || pagesConflict) && onConflict && !force) {
         logger.sync('CONFLICT-PROMPT', 'Prompting user for interactive conflict choice...');
@@ -2484,12 +2578,12 @@ async function executeSyncInternal({
               deviceId: localManifest.deviceId
             },
             remote: {
-              cardsCount: remoteManifest.stats?.cardsCount || 0,
-              topicsCount: remoteManifest.stats?.topicsCount || 0,
-              logsDaysCount: remoteManifest.stats?.logsDaysCount || 0,
-              pagesCount: remoteManifest.stats?.pagesCount || 0,
-              timestamp: remoteManifest.timestamp,
-              deviceId: remoteManifest.deviceId
+              cardsCount: freshRemoteManifest?.stats?.cardsCount || remoteManifest.stats?.cardsCount || 0,
+              topicsCount: freshRemoteManifest?.stats?.topicsCount || remoteManifest.stats?.topicsCount || 0,
+              logsDaysCount: freshRemoteManifest?.stats?.logsDaysCount || remoteManifest.stats?.logsDaysCount || 0,
+              pagesCount: freshRemoteManifest?.stats?.pagesCount || remoteManifest.stats?.pagesCount || 0,
+              timestamp: freshRemoteManifest?.timestamp || remoteManifest.timestamp,
+              deviceId: freshRemoteManifest?.deviceId || remoteManifest.deviceId
             },
             diffDetails,
             onResolve: resolve
@@ -2499,14 +2593,16 @@ async function executeSyncInternal({
         logger.sync('CONFLICT-RESOLVED', `User chose resolution: ${conflictResolution}`);
 
         if (conflictResolution === 'upload') {
-          const res = await executeOneWayPush(accessToken, vaultFolderId, mediaFolderId, localData, remoteFileMap, emit);
+          const res = await executeOneWayPush(accessToken, vaultFolderId, mediaFolderId, localData, freshRemoteFileMap, emit, {
+            remoteHashes: currentRemoteHashes
+          });
           if (res.success) {
             const postData = await extractLocalBundles();
             await saveLastSyncedHashes(postData.manifest.hashes);
           }
           return res;
         } else if (conflictResolution === 'download') {
-          const res = await executeOneWayDownload(accessToken, vaultFolderId, mediaFolderId, remoteFileMap, emit);
+          const res = await executeOneWayDownload(accessToken, vaultFolderId, mediaFolderId, freshRemoteFileMap, emit);
           if (res.success) {
             const postData = await extractLocalBundles();
             await saveLastSyncedHashes(postData.manifest.hashes);
@@ -2533,7 +2629,7 @@ async function executeSyncInternal({
       emit(5, 10, 'Downloading modified cloud bundles (Phase 1)…');
       const downloadedBundles = {};
       for (const bName of modifiedBundleNames) {
-        const rFile = remoteFileMap.get(bName);
+        const rFile = freshRemoteFileMap.get(bName);
         if (rFile) {
           emit(6, 10, `Downloading ${bName}…`);
           downloadedBundles[bName] = await downloadDriveFile(accessToken, rFile.id, true);
@@ -2546,10 +2642,12 @@ async function executeSyncInternal({
       const stagedMergedData = mergeBundlesInMemory(localData, downloadedBundles);
       logger.sync('MERGE-STATS', 'Staged merged dataset calculated:', stagedMergedData.manifest.stats);
 
-      // Phase 2: Push Merged Bundles to Google Drive First (Two-Phase Commit)
+      // Phase 2: Push Merged Bundles to Google Drive First (Two-Phase Commit with selective upload)
       logger.sync('TWO-PHASE-COMMIT-2', 'Pushing merged collection to Google Drive first...');
       emit(8, 10, 'Pushing merged collection to Google Drive…');
-      const pushRes = await executeOneWayPush(accessToken, vaultFolderId, mediaFolderId, stagedMergedData, remoteFileMap, emit);
+      const pushRes = await executeOneWayPush(accessToken, vaultFolderId, mediaFolderId, stagedMergedData, freshRemoteFileMap, emit, {
+        remoteHashes: currentRemoteHashes
+      });
       
       if (!pushRes.success) {
         throw new Error(`Cloud upload failed: ${pushRes.message || 'Unknown network error'}`);
@@ -2594,20 +2692,60 @@ async function executeSyncInternal({
 }
 
 /**
- * Executes a safe one-way push from LocalDB to Google Drive.
+ * Executes a safe one-way push from LocalDB to Google Drive with optimistic concurrency and per-bundle selective uploads.
  */
-async function executeOneWayPush(accessToken, vaultFolderId, mediaFolderId, localData, remoteFileMap, emit) {
+async function executeOneWayPush(accessToken, vaultFolderId, mediaFolderId, localData, remoteFileMap, emit, { expectedRemoteSyncVersion = null, remoteHashes = null } = {}) {
+  // Pre-flight Optimistic Concurrency Check
+  if (expectedRemoteSyncVersion !== null && remoteFileMap.has('manifest.json')) {
+    const manifestFile = remoteFileMap.get('manifest.json');
+    if (manifestFile) {
+      try {
+        const latestRemoteManifest = await downloadDriveFile(accessToken, manifestFile.id, true);
+        const latestVersion = latestRemoteManifest?.syncVersion || null;
+        if (latestVersion !== null && latestVersion !== expectedRemoteSyncVersion) {
+          logger.sync('CONCURRENCY-CONFLICT', 'Remote syncVersion mismatch before push: concurrent upload detected.', {
+            expected: expectedRemoteSyncVersion,
+            actual: latestVersion
+          });
+          return {
+            success: false,
+            action: 'concurrency_conflict',
+            message: 'Cloud vault was updated concurrently by another device. Aborting push to perform delta merge.'
+          };
+        }
+      } catch (err) {
+        logger.warn('CONCURRENCY-CHECK-WARN', 'Could not verify remote manifest syncVersion:', err);
+      }
+    }
+  }
+
   let step = 4;
   const total = 4 + Object.keys(localData.bundles).length + 2;
 
-  // 1. Upload all partitioned bundles
-  for (const [fileName, bundleObj] of Object.entries(localData.bundles)) {
-    emit(++step, total, `Uploading ${fileName}…`);
-    const existingFile = remoteFileMap.get(fileName);
-    await uploadDriveFile(accessToken, vaultFolderId, fileName, bundleObj, existingFile?.id);
-  }
+  const localHashes = localData.manifest?.hashes || {};
+  const remHashes = remoteHashes || {};
+  let uploadedCount = 0;
+  let skippedCount = 0;
 
-  // 2. Upload manifest.json
+  // 1. Upload only modified or new bundles (Note-shelf selective delta upload)
+  for (const [fileName, bundleObj] of Object.entries(localData.bundles)) {
+    const bundleKey = fileName.replace('.json', '');
+    const existingFile = remoteFileMap.get(fileName);
+
+    const isUntouched = existingFile && remHashes[bundleKey] && (localHashes[bundleKey] === remHashes[bundleKey]);
+    if (isUntouched) {
+      logger.sync('BUNDLE-SKIPPED', `Skipping upload for untouched bundle: ${fileName} (hash match: ${localHashes[bundleKey]})`);
+      skippedCount++;
+      continue;
+    }
+
+    emit(++step, total, `Uploading ${fileName}…`);
+    await uploadDriveFile(accessToken, vaultFolderId, fileName, bundleObj, existingFile?.id);
+    uploadedCount++;
+  }
+  logger.sync('SELECTIVE-UPLOAD-SUMMARY', `Push uploaded ${uploadedCount} modified bundle(s), skipped ${skippedCount} unchanged bundle(s).`);
+
+  // 2. Upload manifest.json (always upload updated manifest)
   emit(++step, total, 'Writing manifest.json…');
   const existingManifest = remoteFileMap.get('manifest.json');
   await uploadDriveFile(accessToken, vaultFolderId, 'manifest.json', localData.manifest, existingManifest?.id);
@@ -2615,22 +2753,22 @@ async function executeOneWayPush(accessToken, vaultFolderId, mediaFolderId, loca
   const postPushLocal = await extractLocalBundles();
   await saveLastSyncedHashes(postPushLocal.manifest.hashes);
 
-  // 3. Queue Phase 2: Non-blocking media uploads
+  // 3. Queue Phase 2: Non-blocking media uploads (reads directly from DB to prevent heap closures)
   emit(++step, total, 'Sync complete! Media queued in background.');
   emitSyncEvent('synced', {
     lastSynced: localData.manifest.timestamp,
     stats: localData.manifest.stats
   });
 
-  // Background non-blocking media sync (includes active and trash pages)
-  setTimeout(() => {
-    const allMediaPages = [
-      ...(Array.isArray(localData?.pages) ? localData.pages : []),
-      ...(Array.isArray(localData?.trashPages) ? localData.trashPages : [])
-    ];
-    syncMediaToDrive(accessToken, mediaFolderId, allMediaPages).catch(e => {
+  setTimeout(async () => {
+    try {
+      const activePages = (await getLocalPages()) || [];
+      const trashPages = (await getLocalKV('trash_pages')) || [];
+      const allMediaPages = [...activePages, ...trashPages];
+      await syncMediaToDrive(accessToken, mediaFolderId, allMediaPages);
+    } catch (e) {
       console.warn('[GDriveSync] Background media upload error:', e);
-    });
+    }
   }, 100);
 
   return { success: true, action: 'uploaded', message: 'Collection uploaded successfully to Google Drive.' };

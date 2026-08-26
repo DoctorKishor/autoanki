@@ -110,6 +110,7 @@ class MockDevice {
     const pytUserProgress = this.getKV('pyt_user_progress', []);
     const textbooksMetadata = this.getKV('textbooks_metadata', []);
     const studyLogs = this.getKV('study_logs', {});
+    const trashStudyLogs = this.getKV('trash_study_logs', []);
     const studySchedule = this.getKV('study_schedule', {});
     const scheduleTemplates = this.getKV('schedule_templates', []);
     const campDailyLogs = this.stores.camp_daily_logs;
@@ -149,6 +150,7 @@ class MockDevice {
       },
       'study_logs.json': {
         studyLogs,
+        trashStudyLogs,
         studySchedule,
         scheduleTemplates,
         campDailyLogs,
@@ -183,6 +185,7 @@ class MockDevice {
         version: '2.1',
         deviceId: this.deviceId,
         timestamp: new Date().toISOString(),
+        syncVersion: Date.now(),
         hashes
       },
       bundles
@@ -211,6 +214,7 @@ class MockDevice {
       if (downloadedBundles['study_logs.json']) {
         const b = downloadedBundles['study_logs.json'];
         this.setKV('study_logs', b.studyLogs || {});
+        this.setKV('trash_study_logs', b.trashStudyLogs || []);
         this.setKV('study_schedule', b.studySchedule || {});
         this.setKV('schedule_templates', b.scheduleTemplates || []);
         this.stores.camp_daily_logs = b.campDailyLogs || [];
@@ -284,11 +288,12 @@ class MockCloudVault {
 
 /**
  * Executes a simulated sync workflow between a MockDevice and MockCloudVault.
- * Returns the action taken: 'initial_push' | 'fast_forward_push' | 'fast_forward_pull' | 'two_way_merge' | 'clean_noop'
+ * Returns the action taken: 'initial_push' | 'fast_forward_push' | 'fast_forward_pull' | 'two_way_merge' | 'clean_noop' | 'concurrent_fallback_merge'
  */
-function runDeviceSync(device, cloudVault) {
+function runDeviceSync(device, cloudVault, options = {}) {
   const localData = device.extractBundles();
-  const remoteData = cloudVault.download();
+  const remoteData = options.initialRemoteData || cloudVault.download();
+  const expectedRemoteSyncVersion = options.expectedRemoteSyncVersion !== undefined ? options.expectedRemoteSyncVersion : remoteData?.manifest?.syncVersion;
 
   // 1. Initial Cloud Setup
   if (!remoteData || !remoteData.manifest) {
@@ -347,6 +352,17 @@ function runDeviceSync(device, cloudVault) {
 
   // Fast-Forward Push: Remote is clean, Local has changes
   if (!isLocalClean && isRemoteClean) {
+    // Optimistic Concurrency Check: If remote changed concurrently, fall back to two-way merge
+    if (expectedRemoteSyncVersion !== undefined && cloudVault.manifest && cloudVault.manifest.syncVersion !== expectedRemoteSyncVersion) {
+      const refreshedRemote = cloudVault.download();
+      const mergedResult = mergeBundlesInMemory(localData, refreshedRemote.bundles);
+      device.hydrateBundles(mergedResult.bundles || mergedResult, 'replace');
+      const postMergeData = device.extractBundles();
+      cloudVault.upload(postMergeData.manifest, postMergeData.bundles);
+      device.lastSyncedHashes = postMergeData.manifest.hashes;
+      return 'concurrent_fallback_merge';
+    }
+
     cloudVault.upload(localData.manifest, localData.bundles);
     const postData = device.extractBundles();
     device.lastSyncedHashes = postData.manifest.hashes;
@@ -652,7 +668,133 @@ async function runTestSuite() {
   const actionE4 = runDeviceSync(device1, cloudVault);
   assert(actionE4 === 'clean_noop', 'Device 1 remains inert after deletion sync');
 
-  logHeader('ALL 5 MULTI-DEVICE SIMULATION SCENARIOS PASSED WITH 100% INTEGRITY');
+  // --------------------------------------------------------------------------
+  // SCENARIO F: Study Log Tombstone Propagation & Soft-Deletion Resurrection Prevention
+  // --------------------------------------------------------------------------
+  logHeader('SCENARIO F: Study Log Tombstone Propagation & Soft-Deletion Resurrection Prevention');
+
+  // Baseline: Device 1 creates review logs for 2026-08-20 and 2026-08-26
+  const initialStudyLogs = {
+    '2026-08-20': {
+      dateStr: '2026-08-20',
+      cards: 15,
+      totalCardsReviewed: 15,
+      studyHours: 0.5,
+      updatedAt: '2026-08-20T10:00:00.000Z',
+      fsrsLogs: [{ topicName: 'Circle of Willis', rating: 'Good', timestamp: '2026-08-20T10:00:00.000Z' }]
+    },
+    '2026-08-26': {
+      dateStr: '2026-08-26',
+      cards: 25,
+      totalCardsReviewed: 25,
+      studyHours: 1.0,
+      updatedAt: '2026-08-26T12:00:00.000Z',
+      fsrsLogs: [{ topicName: 'Cardiac Cycle', rating: 'Easy', timestamp: '2026-08-26T12:00:00.000Z' }]
+    }
+  };
+  device1.setKV('study_logs', initialStudyLogs);
+  const actionF1 = runDeviceSync(device1, cloudVault);
+  assert(actionF1 === 'fast_forward_push', 'Device 1 pushes initial study logs');
+
+  const actionF2 = runDeviceSync(device2, cloudVault);
+  assert(actionF2 === 'fast_forward_pull', 'Device 2 pulls initial study logs');
+  assert(device2.getKV('study_logs')['2026-08-20'] !== undefined, 'Device 2 has study log for 2026-08-20');
+
+  // Device 1 deletes the 2026-08-20 study log and records a tombstone
+  const d1LogsF = device1.getKV('study_logs');
+  delete d1LogsF['2026-08-20'];
+  device1.setKV('study_logs', d1LogsF);
+  const d1TrashStudyLogs = device1.getKV('trash_study_logs', []);
+  d1TrashStudyLogs.push({
+    dateKey: '2026-08-20',
+    deletedAt: '2026-08-26T14:00:00.000Z'
+  });
+  device1.setKV('trash_study_logs', d1TrashStudyLogs);
+
+  const actionF3 = runDeviceSync(device1, cloudVault);
+  assert(actionF3 === 'fast_forward_push', 'Device 1 pushes study log deletion tombstone');
+
+  // Device 2 concurrently adds a new study log for 2026-08-27 while still having 2026-08-20 in local store
+  const d2LogsF = device2.getKV('study_logs');
+  d2LogsF['2026-08-27'] = {
+    dateStr: '2026-08-27',
+    cards: 30,
+    totalCardsReviewed: 30,
+    studyHours: 1.2,
+    updatedAt: '2026-08-27T09:00:00.000Z',
+    fsrsLogs: [{ topicName: 'Brachial Plexus', rating: 'Good', timestamp: '2026-08-27T09:00:00.000Z' }]
+  };
+  device2.setKV('study_logs', d2LogsF);
+
+  // Device 2 performs delta sync
+  const actionF4 = runDeviceSync(device2, cloudVault);
+  assert(actionF4 === 'two_way_merge', 'Device 2 performs two-way merge with cloud');
+
+  // Verify: 2026-08-20 is PRUNED on Device 2 (not resurrected), and 2026-08-27 is preserved
+  const d2MergedLogs = device2.getKV('study_logs');
+  assert(d2MergedLogs['2026-08-20'] === undefined, 'Deleted study log 2026-08-20 was pruned on Device 2 via tombstone');
+  assert(d2MergedLogs['2026-08-27'] !== undefined, 'New study log 2026-08-27 was preserved on Device 2');
+
+  // Device 1 pulls merged cloud state
+  const actionF5 = runDeviceSync(device1, cloudVault);
+  assert(actionF5 === 'fast_forward_pull', 'Device 1 pulls merged study logs from cloud');
+  const d1MergedLogs = device1.getKV('study_logs');
+  assert(d1MergedLogs['2026-08-20'] === undefined, 'Study log 2026-08-20 was NOT resurrected on Device 1');
+  assert(d1MergedLogs['2026-08-27'] !== undefined, 'Study log 2026-08-27 received on Device 1');
+
+  // --------------------------------------------------------------------------
+  // SCENARIO G: Optimistic Cloud Concurrency Check & Fast-Forward Fallback
+  // --------------------------------------------------------------------------
+  logHeader('SCENARIO G: Optimistic Cloud Concurrency Check & Fast-Forward Fallback');
+
+  // Both devices are currently in sync. Capture initial cloud state & syncVersion
+  const initialRemoteData = cloudVault.download();
+  const initialCloudSyncVersion = cloudVault.manifest.syncVersion;
+
+  // Device 1 makes a local modification (adds a custom prompt)
+  const prompts1 = device1.getKV('custom_prompts');
+  prompts1.push({
+    id: 'prompt_device1_concurrent',
+    name: 'Device 1 Prompt',
+    content: 'Created by Device 1',
+    updatedAt: '2026-08-26T15:00:00.000Z'
+  });
+  device1.setKV('custom_prompts', prompts1);
+
+  // Device 2 makes a concurrent local modification (adds a different custom prompt)
+  const prompts2 = device2.getKV('custom_prompts');
+  prompts2.push({
+    id: 'prompt_device2_concurrent',
+    name: 'Device 2 Prompt',
+    content: 'Created by Device 2',
+    updatedAt: '2026-08-26T15:05:00.000Z'
+  });
+  device2.setKV('custom_prompts', prompts2);
+
+  // Device 1 syncs first -> performs fast-forward push and updates cloud syncVersion
+  const actionG1 = runDeviceSync(device1, cloudVault);
+  assert(actionG1 === 'fast_forward_push', 'Device 1 successfully fast-forward pushes its change first');
+  const updatedCloudSyncVersion = cloudVault.manifest.syncVersion;
+  assert(updatedCloudSyncVersion !== initialCloudSyncVersion, 'Cloud vault syncVersion was updated after Device 1 push');
+
+  // Device 2 attempts to sync with the initialRemoteData captured before Device 1 pushed
+  const actionG2 = runDeviceSync(device2, cloudVault, { initialRemoteData, expectedRemoteSyncVersion: initialCloudSyncVersion });
+  assert(actionG2 === 'concurrent_fallback_merge', 'Device 2 detects concurrency mismatch and falls back to Two-Way Delta Merge');
+
+  // Verify: Cloud vault contains BOTH Device 1 and Device 2 prompts (no clobbering!)
+  const cloudPrompts = cloudVault.bundles['fsrs_config.json'].customPrompts;
+  const hasD1Prompt = cloudPrompts.some(p => p.id === 'prompt_device1_concurrent');
+  const hasD2Prompt = cloudPrompts.some(p => p.id === 'prompt_device2_concurrent');
+  assert(hasD1Prompt, 'Cloud vault preserved Device 1 concurrent prompt');
+  assert(hasD2Prompt, 'Cloud vault preserved Device 2 concurrent prompt');
+
+  // Device 1 fast-forward pulls the final merged cloud state
+  const actionG3 = runDeviceSync(device1, cloudVault);
+  assert(actionG3 === 'fast_forward_pull', 'Device 1 fast-forward pulls merged cloud state');
+  const d1FinalPrompts = device1.getKV('custom_prompts');
+  assert(d1FinalPrompts.some(p => p.id === 'prompt_device1_concurrent') && d1FinalPrompts.some(p => p.id === 'prompt_device2_concurrent'), 'Device 1 has both concurrent prompts without data loss');
+
+  logHeader('ALL 7 MULTI-DEVICE SIMULATION SCENARIOS PASSED WITH 100% INTEGRITY');
 }
 
 runTestSuite().catch(err => {
