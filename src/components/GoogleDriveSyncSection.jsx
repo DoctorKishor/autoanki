@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Cloud, RefreshCw, LogOut, CheckCircle2, AlertCircle, HardDrive,
   Settings as SettingsIcon, ShieldCheck, ChevronDown, ChevronUp, Loader2, Sparkles,
-  Layers, Database, Terminal
+  Layers, Database, Terminal, Copy, Check, Hash, CheckCheck
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -15,7 +15,12 @@ import {
   DEFAULT_GOOGLE_CLIENT_ID,
   isGoogleDriveTokenExpired
 } from '../services/googleDriveAuth';
-import { syncWithGoogleDrive, getGoogleDriveVaultStorageSize } from '../services/googleDriveSync';
+import {
+  syncWithGoogleDrive,
+  getGoogleDriveVaultStorageSize,
+  getGoogleDriveVaultInfo,
+  getSyncStateOverview
+} from '../services/googleDriveSync';
 import { calculateDetailedStorageBreakdown } from '../services/localDb';
 import DiagnosticsLogsModal from './DiagnosticsLogsModal';
 
@@ -44,6 +49,11 @@ export default function GoogleDriveSyncSection({
   const [activeClientId, setActiveClientId] = useState(DEFAULT_GOOGLE_CLIENT_ID);
   const [isSavingClientId, setIsSavingClientId] = useState(false);
 
+  const [vaultInfo, setVaultInfo] = useState(null);
+  const [syncOverview, setSyncOverview] = useState(null);
+  const [copiedFolderId, setCopiedFolderId] = useState(false);
+  const [showVaultCheck, setShowVaultCheck] = useState(true);
+
   const [justSynced, setJustSynced] = useState(false);
 
   // Compute local and cloud storage metrics
@@ -70,6 +80,22 @@ export default function GoogleDriveSyncSection({
     }
   }, []);
 
+  // Compute vault info and state overview
+  const refreshVaultOverview = useCallback(async (token) => {
+    try {
+      const overview = await getSyncStateOverview();
+      if (overview) setSyncOverview(overview);
+      if (token) {
+        const vInfo = await getGoogleDriveVaultInfo(token);
+        if (vInfo) setVaultInfo(vInfo);
+      } else {
+        setVaultInfo(null);
+      }
+    } catch (err) {
+      console.warn('[GDriveSection] Error calculating vault overview:', err);
+    }
+  }, []);
+
   // Load persistent auth state and client ID on mount
   const refreshAuthState = useCallback(async () => {
     try {
@@ -83,13 +109,15 @@ export default function GoogleDriveSyncSection({
         const q = await getGoogleDriveStorageQuota(state.accessToken);
         setQuota(q);
         refreshStorageMetrics(state.accessToken);
+        refreshVaultOverview(state.accessToken);
       } else {
         refreshStorageMetrics(null);
+        refreshVaultOverview(null);
       }
     } catch (e) {
       console.warn('[GDriveSection] Error loading auth state:', e);
     }
-  }, [refreshStorageMetrics]);
+  }, [refreshStorageMetrics, refreshVaultOverview]);
 
   useEffect(() => {
     refreshAuthState();
@@ -101,10 +129,12 @@ export default function GoogleDriveSyncSection({
       if (freshState?.accessToken) {
         getGoogleDriveStorageQuota(freshState.accessToken).then(setQuota);
         refreshStorageMetrics(freshState.accessToken);
+        refreshVaultOverview(freshState.accessToken);
       } else {
         setQuota(null);
         setVaultStorage(null);
         refreshStorageMetrics(null);
+        refreshVaultOverview(null);
       }
     };
 
@@ -121,10 +151,11 @@ export default function GoogleDriveSyncSection({
         setJustSynced(true);
         if (justSyncedTimer) clearTimeout(justSyncedTimer);
         justSyncedTimer = setTimeout(() => setJustSynced(false), 2800);
-        // Refresh vault size after sync
+        // Refresh vault size & state overview after sync
         getGoogleDriveAuthState().then(state => {
           if (state?.accessToken) {
             refreshStorageMetrics(state.accessToken);
+            refreshVaultOverview(state.accessToken);
           }
         });
       } else if (status === 'error') {
@@ -560,6 +591,136 @@ export default function GoogleDriveSyncSection({
                     </span>
                   </div>
                 )}
+
+                {/* Vault Info & Multi-Device State Verification Card */}
+                <motion.div
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`p-4 sm:p-5 rounded-2xl border space-y-3.5 ${
+                    isDark ? 'neu-pressed-dark border-gray-800' : 'neu-pressed-light border-gray-200'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                      <h4 className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        Vault Info & State Check
+                      </h4>
+                    </div>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      Cross-Device Parity
+                    </span>
+                  </div>
+
+                  {/* Connected Email & Folder ID Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {/* Connected Account Email */}
+                    <div className={`p-3 rounded-xl border ${isDark ? 'neu-card-dark border-gray-800' : 'neu-card-light border-gray-200/80'}`}>
+                      <div className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400">
+                        Connected Google Account
+                      </div>
+                      <div className={`text-xs font-bold font-mono mt-0.5 truncate ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>
+                        {authState.user?.email || 'Authenticated'}
+                      </div>
+                    </div>
+
+                    {/* Vault Folder ID with Copy Button */}
+                    <div className={`p-3 rounded-xl border flex items-center justify-between gap-2 ${isDark ? 'neu-card-dark border-gray-800' : 'neu-card-light border-gray-200/80'}`}>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400">
+                          Drive Vault Folder ID
+                        </div>
+                        <div className={`text-xs font-mono font-bold mt-0.5 truncate ${isDark ? 'text-blue-300' : 'text-blue-700'}`} title={vaultInfo?.vaultFolderId || 'Resolving...'}>
+                          {vaultInfo?.vaultFolderId || (loadingStorage ? 'Resolving…' : 'AutoAnki_Sync_Vault')}
+                        </div>
+                      </div>
+                      {vaultInfo?.vaultFolderId && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (navigator.clipboard && vaultInfo.vaultFolderId) {
+                              navigator.clipboard.writeText(vaultInfo.vaultFolderId);
+                              setCopiedFolderId(true);
+                              setTimeout(() => setCopiedFolderId(false), 2000);
+                            }
+                          }}
+                          className={`p-1.5 rounded-lg border text-xs transition active:scale-95 cursor-pointer shrink-0 ${
+                            copiedFolderId
+                              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                              : isDark ? 'neu-btn-dark text-gray-300' : 'neu-btn-light text-gray-600'
+                          }`}
+                          title="Copy Vault Folder ID to Clipboard"
+                        >
+                          {copiedFolderId ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Summary Metric Badges: Topics, Cards, Logs */}
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className={`p-2.5 rounded-xl border ${isDark ? 'neu-card-dark border-gray-800' : 'neu-card-light border-gray-200/80'}`}>
+                      <div className="text-[9px] font-extrabold uppercase tracking-wider text-gray-400">Total Topics</div>
+                      <div className={`text-sm font-black font-mono mt-0.5 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        {syncOverview?.stats?.topicsCount ?? '—'}
+                      </div>
+                    </div>
+
+                    <div className={`p-2.5 rounded-xl border ${isDark ? 'neu-card-dark border-gray-800' : 'neu-card-light border-gray-200/80'}`}>
+                      <div className="text-[9px] font-extrabold uppercase tracking-wider text-gray-400">Total Cards</div>
+                      <div className={`text-sm font-black font-mono mt-0.5 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        {syncOverview?.stats?.cardsCount ?? '—'}
+                      </div>
+                    </div>
+
+                    <div className={`p-2.5 rounded-xl border ${isDark ? 'neu-card-dark border-gray-800' : 'neu-card-light border-gray-200/80'}`}>
+                      <div className="text-[9px] font-extrabold uppercase tracking-wider text-gray-400">Study Log Days</div>
+                      <div className={`text-sm font-black font-mono mt-0.5 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        {syncOverview?.stats?.logsDaysCount ?? '—'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 6 Bundle Checksums Grid */}
+                  <div className="space-y-1.5 pt-1">
+                    <div className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 flex items-center justify-between">
+                      <span>Bundle Checksums (Compare Desktop vs Mobile)</span>
+                      <span className="font-mono text-[9px] text-gray-500">SHA-256 (First 8 chars)</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                      {[
+                        { key: 'cards_bundle', label: 'Cards' },
+                        { key: 'curriculum_topics', label: 'Topics' },
+                        { key: 'study_logs', label: 'Logs' },
+                        { key: 'fsrs_config', label: 'FSRS' },
+                        { key: 'camp_tracker', label: 'CAMP' },
+                        { key: 'pages_bundle', label: 'Pages' }
+                      ].map(b => {
+                        const localH = syncOverview?.localHashes?.[b.key] || '';
+                        const lastSyncedH = syncOverview?.lastSyncedHashes?.[b.key] || '';
+                        const isSynced = localH && lastSyncedH && localH === lastSyncedH;
+                        return (
+                          <div
+                            key={b.key}
+                            className={`p-2 rounded-xl border flex items-center justify-between text-[10px] font-mono ${
+                              isDark ? 'neu-card-dark border-gray-800/80' : 'neu-card-light border-gray-200/80'
+                            }`}
+                            title={`Local Hash: ${localH || 'None'}\nLast Synced Hash: ${lastSyncedH || 'None'}`}
+                          >
+                            <span className="font-sans font-bold text-gray-400">{b.label}:</span>
+                            <div className="flex items-center gap-1">
+                              <span className={`font-mono font-semibold ${isSynced ? (isDark ? 'text-emerald-400' : 'text-emerald-600') : (isDark ? 'text-amber-400' : 'text-amber-600')}`}>
+                                {localH ? localH.slice(0, 8) : '——'}
+                              </span>
+                              {isSynced && <Check className="w-3 h-3 text-emerald-400 shrink-0" />}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </motion.div>
 
                 {/* Sync Actions & Metrics */}
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">

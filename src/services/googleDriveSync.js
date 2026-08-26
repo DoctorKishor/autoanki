@@ -186,13 +186,14 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 25000) {
 
 /**
  * Searches for a file or folder by name and parent folder ID.
+ * Enforces sorting by createdTime asc so all client devices deterministically bind to the earliest canonical folder.
  */
 async function findDriveItem(accessToken, name, parentFolderId = null, isFolder = false) {
   const mimeQuery = isFolder ? "mimeType = 'application/vnd.google-apps.folder'" : "mimeType != 'application/vnd.google-apps.folder'";
   const parentQuery = parentFolderId ? `'${parentFolderId}' in parents` : "'root' in parents";
   const query = `name = '${name}' and ${mimeQuery} and ${parentQuery} and trashed = false`;
 
-  const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name,mimeType,modifiedTime,size)&pageSize=10`;
+  const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&orderBy=${encodeURIComponent('createdTime asc')}&fields=files(id,name,mimeType,createdTime,modifiedTime,size)&pageSize=10`;
   const res = await fetchWithTimeout(url, {
     headers: { Authorization: `Bearer ${accessToken}` }
   });
@@ -203,6 +204,39 @@ async function findDriveItem(accessToken, name, parentFolderId = null, isFolder 
 
   const data = await res.json();
   return (data.files && data.files.length > 0) ? data.files[0] : null;
+}
+
+/**
+ * Retrieves the canonical Google Drive Vault folder ID and media folder ID.
+ */
+export async function getGoogleDriveVaultInfo(accessToken) {
+  if (!accessToken) return null;
+  try {
+    const { vaultFolderId, mediaFolderId } = await ensureSyncVault(accessToken);
+    return { vaultFolderId, mediaFolderId };
+  } catch (e) {
+    console.warn('[GDriveSync] Failed to retrieve vault info:', e);
+    return null;
+  }
+}
+
+/**
+ * Returns a high-level summary of local collection stats and bundle hashes for cross-device verification.
+ */
+export async function getSyncStateOverview() {
+  try {
+    const localData = await extractLocalBundles();
+    const lastSyncedHashes = await getLastSyncedHashes();
+    return {
+      stats: localData.manifest.stats,
+      localHashes: localData.manifest.hashes,
+      lastSyncedHashes: lastSyncedHashes || {},
+      timestamp: localData.manifest.timestamp
+    };
+  } catch (e) {
+    console.warn('[GDriveSync] Failed to retrieve sync state overview:', e);
+    return null;
+  }
 }
 
 /**
@@ -1464,6 +1498,9 @@ export function mergeSubjectTrackerArrays(localTracker = [], remoteTracker = [])
         ...(mergedNotes !== undefined ? { notes: mergedNotes } : {}),
         ...(mergedMnemonics !== undefined ? { mnemonics: mergedMnemonics } : {}),
         studyDates: combinedStudyDates,
+        reviewCount: Math.max(Number(baseTopic.reviewCount || 0), Number(locT.reviewCount || 0), Number(remT.reviewCount || 0), combinedStudyDates.length),
+        reps: Math.max(Number(baseTopic.reps || 0), Number(locT.reps || 0), Number(remT.reps || 0), combinedStudyDates.length),
+        activatedDate: baseTopic.activatedDate || locT.activatedDate || remT.activatedDate || null,
         updatedAt: new Date(latestTopicTime || 0).toISOString()
       };
     });

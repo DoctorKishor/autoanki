@@ -8941,7 +8941,6 @@ export default function App() {
       try {
         if (typeof loadAllCards === 'function') await loadAllCards(true);
         if (typeof loadPages === 'function') await loadPages(true);
-        if (typeof loadStudyLogs === 'function') await loadStudyLogs(true);
         if (typeof loadTrash === 'function') await loadTrash(true);
         if (typeof loadInternalSnapshots === 'function') await loadInternalSnapshots();
 
@@ -8950,6 +8949,7 @@ export default function App() {
           pytProg,
           booksMeta,
           trackerData,
+          rawLogs,
           scheduleMap,
           templatesList,
           activeTopics,
@@ -8970,6 +8970,7 @@ export default function App() {
           getAllLocalPytProgress().catch(() => []),
           getLocalTextbooksMetadata().catch(() => []),
           getLocalSubjectTrackerData().catch(() => []),
+          getLocalStudyLogs().catch(() => ({})),
           getLocalStudySchedule().catch(() => ({})),
           getLocalScheduleTemplates().catch(() => []),
           getActiveNewTopicIds(todayStr).catch(() => []),
@@ -8991,6 +8992,16 @@ export default function App() {
         if (Array.isArray(pytProg)) setUserPytProgress(pytProg);
         if (Array.isArray(booksMeta)) setTextbooksMetadata(booksMeta);
         if (Array.isArray(trackerData)) setSubjectTrackerData(trackerData);
+
+        // Immediate study logs reconciliation with fresh tracker data to prevent stale React closure desync
+        const cleanTracker = Array.isArray(trackerData) ? trackerData : [];
+        const { cleanedLogs, modified: cleanedModified } = sanitizeStudyLogsWithTracker(rawLogs || {}, cleanTracker);
+        const { reconciledLogs, reconciled } = reconcileTrackerWithStudyLogs(cleanedLogs, cleanTracker);
+        setStudyLogs(reconciledLogs);
+        if (cleanedModified || reconciled) {
+          replaceAllLocalStudyLogs(reconciledLogs).catch(err => console.error("[LocalDB] Error saving reconciled study logs on cloud hydration:", err));
+        }
+
         if (scheduleMap && typeof scheduleMap === 'object') setStudySchedule(scheduleMap);
         if (Array.isArray(templatesList)) setScheduleTemplates(templatesList);
         if (Array.isArray(activeTopics) && activeTopics.length > 0) setActiveNewTopicIds(activeTopics);
