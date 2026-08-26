@@ -64,6 +64,7 @@ import {
   exportFullUniversalSnapshot, importUniversalSnapshot,
   saveInternalSnapshot, getAllInternalSnapshots, deleteInternalSnapshot, pruneOldSnapshots,
   getAllLocalItems, STORES,
+  recordTombstone,
   revokeTombstone
 } from './services/localDb';
 import { calculateNextFSRSState, calculateInitialState, DEFAULT_FSRS6_WEIGHTS, getTopicPageLength, recalculateTopicFSRSFromLogs } from './services/fsrsEngine';
@@ -10465,8 +10466,18 @@ JSON Format:
       const gtToDelete = currentGts[gtIndex];
       const nowIso = new Date().toISOString();
 
+      const gtId = gtToDelete?.id || (gtToDelete?.name ? `gt_${gtToDelete.name.trim().toLowerCase().replace(/\s+/g, '_')}` : `gt_${Date.now()}`);
+      const gtName = (gtToDelete?.name || gtToDelete?.testName || '').trim();
+
+      // Record immutable tombstone in unified graves registry
+      await recordTombstone('gt', String(gtId), { parentId: String(dateStr), deletedAt: nowIso, metadata: { name: gtName } });
+      if (gtName) {
+        await recordTombstone('gt', gtName.toLowerCase(), { parentId: String(dateStr), deletedAt: nowIso, metadata: { id: gtId } });
+        await recordTombstone('gt', `${String(dateStr).toLowerCase()}_${gtName.toLowerCase()}`, { parentId: String(dateStr), deletedAt: nowIso, metadata: { id: gtId } });
+      }
+
       // Create tombstoned record of the deleted GT so sync propagates the deletion
-      const tombstonedGt = gtToDelete ? { ...gtToDelete, isDeleted: true, deletedAt: nowIso } : null;
+      const tombstonedGt = gtToDelete ? { ...gtToDelete, id: gtId, isDeleted: true, deletedAt: nowIso } : null;
       const updatedGts = currentGts.filter((_, idx) => idx !== gtIndex);
       if (tombstonedGt) {
         updatedGts.push(tombstonedGt);
@@ -10621,6 +10632,27 @@ JSON Format:
       const pages = Number(loggerPages) || 0;
       const hours = Number((Number(loggerHoursPart) + (Number(loggerMinutesPart) || 0) / 60).toFixed(3));
       const gts = loggerGtsList || [];
+      const nowIso = new Date().toISOString();
+
+      // Detect any GTs that were removed during this edit and record tombstones
+      const existingGts = studyLogs[loggerDate]?.gts || [];
+      for (const oldGt of existingGts) {
+        if (oldGt && !oldGt.isDeleted) {
+          const stillExists = gts.some(newGt => 
+            (oldGt.id && newGt.id === oldGt.id) ||
+            ((oldGt.name || oldGt.testName) && (newGt.name || newGt.testName) === (oldGt.name || oldGt.testName))
+          );
+          if (!stillExists) {
+            const gtId = oldGt.id || (oldGt.name ? `gt_${oldGt.name.trim().toLowerCase().replace(/\s+/g, '_')}` : `gt_${Date.now()}`);
+            const gtName = (oldGt.name || oldGt.testName || '').trim();
+            await recordTombstone('gt', String(gtId), { parentId: String(loggerDate), deletedAt: nowIso, metadata: { name: gtName } });
+            if (gtName) {
+              await recordTombstone('gt', gtName.toLowerCase(), { parentId: String(loggerDate), deletedAt: nowIso, metadata: { id: gtId } });
+              await recordTombstone('gt', `${String(loggerDate).toLowerCase()}_${gtName.toLowerCase()}`, { parentId: String(loggerDate), deletedAt: nowIso, metadata: { id: gtId } });
+            }
+          }
+        }
+      }
 
       // If the user saves a completely empty log (all zeros, no GTs), treat it as a delete
       // so that we write a tombstone and the sync engine won't resurrect it from the cloud.
@@ -10635,7 +10667,7 @@ JSON Format:
           return next;
         });
       } else if (!isEffectivelyEmpty) {
-        const logData = { questions, cards, pages, hours, gts };
+        const logData = { questions, cards, pages, hours, gts, updatedAt: nowIso };
         await saveLocalStudyLog(loggerDate, logData);
         // Optimistic update: patch local studyLogs so charts/analytics update immediately
         setStudyLogs(prev => ({ ...prev, [loggerDate]: { ...(prev[loggerDate] || {}), ...logData } }));
@@ -12165,7 +12197,7 @@ JSON Format:
               const mPart = Math.round((hoursVal - hPart) * 60);
               setLoggerHoursPart(hPart > 0 ? String(hPart) : '');
               setLoggerMinutesPart(mPart > 0 ? String(mPart) : '');
-              setLoggerGtsList(log.gts || []);
+              setLoggerGtsList((log.gts || []).filter(g => g && !g.isDeleted));
               setIsAddingGt(false);
               setIsStudyLoggerModalOpen(true);
             }}
@@ -12733,7 +12765,7 @@ JSON Format:
                               const mPart = Math.round((hoursVal - hPart) * 60);
                               setLoggerHoursPart(hPart > 0 ? String(hPart) : '');
                               setLoggerMinutesPart(mPart > 0 ? String(mPart) : '');
-                              setLoggerGtsList(cellLog.gts || []);
+                              setLoggerGtsList((cellLog.gts || []).filter(g => g && !g.isDeleted));
                               setIsAddingGt(false);
                               setIsStudyLoggerModalOpen(true);
                             }}
@@ -12832,7 +12864,7 @@ JSON Format:
                       const mPart = Math.round((hoursVal - hPart) * 60);
                       setLoggerHoursPart(hPart > 0 ? String(hPart) : '');
                       setLoggerMinutesPart(mPart > 0 ? String(mPart) : '');
-                      setLoggerGtsList(log.gts || []);
+                      setLoggerGtsList((log.gts || []).filter(g => g && !g.isDeleted));
                       setIsAddingGt(false);
                     }}
                     className={`w-full p-3 rounded-xl outline-none text-xs font-semibold ${isDark ? 'neu-pressed-dark border border-white/10 text-slate-100' : 'neu-pressed-light border border-slate-200 text-slate-900'
