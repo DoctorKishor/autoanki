@@ -84,9 +84,9 @@ export default function CampDashboard({
   const [studentInfo, setStudentInfo] = useState(() => {
     const saved = localStorage.getItem('camp_student_info');
     return saved ? JSON.parse(saved) : {
-      name: 'Kishor Anbashagan',
-      email: 'kishor.kct2158@gmail.com',
-      phone: '+919943360010'
+      name: '',
+      email: '',
+      phone: ''
     };
   });
 
