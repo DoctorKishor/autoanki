@@ -8775,76 +8775,9 @@ export default function App() {
   };
 
   // Helper to reconcile subjectTrackerData reviewed topics with studyLogs
-  // Synthesizes missing daily log / FSRS log entries if a topic has recorded studyDates or reviewCount but no log entries
+  // Ensures raw study logs are preserved cleanly without phantom log synthesis or mutating page/card inflation
   const reconcileTrackerWithStudyLogs = (rawLogs, trackerList) => {
-    if (!trackerList || !Array.isArray(trackerList) || trackerList.length === 0) {
-      return { reconciledLogs: rawLogs || {}, reconciled: false };
-    }
-
-    const nextLogs = { ...(rawLogs || {}) };
-    let reconciled = false;
-
-    trackerList.forEach(subDoc => {
-      const subName = subDoc.subject || subDoc.id || '';
-      if (!subDoc.topics || typeof subDoc.topics !== 'object') return;
-
-      Object.values(subDoc.topics).forEach(topic => {
-        if (!topic || typeof topic.name !== 'string') return;
-        const topicName = topic.name;
-        const studyDates = Array.isArray(topic.studyDates) ? topic.studyDates : [];
-        if (studyDates.length === 0 && (!topic.reviewCount || topic.reviewCount <= 0)) return;
-
-        // Collect all dates for this topic
-        const datesToVerify = Array.from(new Set([
-          ...studyDates,
-          topic.lastReviewDate ? (topic.lastReviewDate.includes('T') ? topic.lastReviewDate.split('T')[0] : topic.lastReviewDate) : null
-        ])).filter(Boolean);
-
-        datesToVerify.forEach(dStr => {
-          const dayLog = nextLogs[dStr] || { questions: 0, cards: 0, hours: 0, pages: 0, gts: [], fsrsLogs: [] };
-          const fsrsLogs = Array.isArray(dayLog.fsrsLogs) ? [...dayLog.fsrsLogs] : [];
-
-          // Check if this topic already has an fsrsLog for this date
-          const hasLog = fsrsLogs.some(l => 
-            l && l.topicName && l.topicName.trim().toLowerCase() === topicName.trim().toLowerCase() &&
-            (!l.subject || l.subject.trim().toLowerCase() === subName.trim().toLowerCase())
-          );
-
-          if (!hasLog) {
-            reconciled = true;
-            const pWeight = Number(topic.pageWeight || (topic.endPage && topic.page ? Math.max(1, topic.endPage - topic.page + 1) : 1)) || 1;
-            const synthesizedLog = {
-              id: `syn_${subName}_${topicName}_${dStr}_${Date.now()}`.replace(/\s+/g, '_'),
-              topicName: topicName,
-              subject: subName,
-              dateStr: dStr,
-              rating: topic.lastRating || 'good',
-              stability: topic.stability ?? 2.5,
-              difficulty: topic.difficulty ?? 5.0,
-              interval: topic.interval ?? 1,
-              retrievability: topic.retrievability ?? 0.9,
-              reviewCount: topic.reviewCount || 1,
-              pageWeight: pWeight,
-              page: topic.page || null,
-              endPage: topic.endPage || null,
-              timestamp: new Date(dStr + 'T12:00:00.000Z').toISOString(),
-              duration: topic.lastDuration || 300,
-              isSynthesized: true
-            };
-            fsrsLogs.push(synthesizedLog);
-            nextLogs[dStr] = {
-              ...dayLog,
-              cards: Math.max(Number(dayLog.cards || 0), fsrsLogs.length),
-              totalCardsReviewed: Math.max(Number(dayLog.totalCardsReviewed || dayLog.cards || 0), fsrsLogs.length),
-              pages: Math.max(Number(dayLog.pages || 0), (dayLog.pages || 0) + pWeight),
-              fsrsLogs: fsrsLogs
-            };
-          }
-        });
-      });
-    });
-
-    return { reconciledLogs: nextLogs, reconciled };
+    return { reconciledLogs: rawLogs || {}, reconciled: false };
   };
 
   // --- LAZY STUDY LOGS LOADER (IndexedDB Offline-First) ---
@@ -10705,6 +10638,46 @@ JSON Format:
         delete next[dateKey];
         return next;
       });
+
+      // Prune this date from all topics in subjectTrackerData and reset FSRS for zero-log topics
+      setSubjectTrackerData(prevTracker => {
+        if (!Array.isArray(prevTracker) || prevTracker.length === 0) return prevTracker;
+        let trackerChanged = false;
+        const updated = prevTracker.map(doc => {
+          if (!doc.topics || typeof doc.topics !== 'object') return doc;
+          let docChanged = false;
+          const nextTopics = { ...doc.topics };
+          Object.keys(nextTopics).forEach(topKey => {
+            const topic = nextTopics[topKey];
+            if (topic && Array.isArray(topic.studyDates) && topic.studyDates.includes(dateKey)) {
+              docChanged = true;
+              trackerChanged = true;
+              const nextStudyDates = topic.studyDates.filter(d => d !== dateKey);
+              const isUnstudied = nextStudyDates.length === 0;
+              nextTopics[topKey] = {
+                ...topic,
+                studyDates: nextStudyDates,
+                reviewCount: Math.max(0, (topic.reviewCount || 1) - 1),
+                lastReviewDate: nextStudyDates.length > 0 ? nextStudyDates[nextStudyDates.length - 1] : null,
+                ...(isUnstudied ? {
+                  stability: null,
+                  difficulty: null,
+                  interval: 0,
+                  retrievability: null,
+                  lapses: 0,
+                  isLeech: false
+                } : {})
+              };
+            }
+          });
+          return docChanged ? { ...doc, topics: nextTopics, updatedAt: new Date().toISOString() } : doc;
+        });
+        if (trackerChanged) {
+          saveLocalSubjectTrackerData(updated).catch(e => console.error('[LocalDB] Error updating tracker on study log deletion:', e));
+        }
+        return updated;
+      });
+
       setIsStudyLoggerModalOpen(false);
       setIsSaving(false);
     } catch (err) {
