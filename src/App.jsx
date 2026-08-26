@@ -10391,31 +10391,46 @@ JSON Format:
     setLoggerGtsList(prev => prev.filter((_, idx) => idx !== index));
   };
 
-  const handleDeleteTimelineGt = async (dateStr, gtIndex) => {
+  const handleDeleteTimelineGt = async (dateStr, targetGtOrId, fallbackIndex) => {
     if (!dateStr) return;
     if (!window.confirm("Are you sure you want to delete this mock test? This will update your synced records.")) return;
     try {
       setIsSaving(true);
       const currentDayLog = studyLogs[dateStr] || {};
-      const currentGts = currentDayLog.gts || [];
-      const targetName = (editGtName || '').trim();
-      
+      const currentGts = Array.isArray(currentDayLog.gts) ? currentDayLog.gts : [];
+
+      let targetId = '';
+      let targetName = '';
+      if (typeof targetGtOrId === 'object' && targetGtOrId !== null) {
+        targetId = targetGtOrId.id || '';
+        targetName = (targetGtOrId.name || targetGtOrId.testName || '').trim();
+      } else if (typeof targetGtOrId === 'string' && targetGtOrId.trim()) {
+        targetId = targetGtOrId.trim();
+      }
+      if (!targetId && editGtTargetId) targetId = editGtTargetId;
+      if (!targetName && editGtTargetOrigName) targetName = editGtTargetOrigName.trim();
+
       let actualIndex = -1;
-      if (targetName) {
+      if (targetId) {
+        actualIndex = currentGts.findIndex(g => g && String(g.id).toLowerCase() === String(targetId).toLowerCase());
+      }
+      if (actualIndex === -1 && targetName) {
         actualIndex = currentGts.findIndex(g => (g?.name || g?.testName || '').trim().toLowerCase() === targetName.toLowerCase());
       }
-      if (actualIndex === -1 && gtIndex !== null && gtIndex !== undefined) {
-        actualIndex = gtIndex;
+      if (actualIndex === -1 && fallbackIndex !== null && fallbackIndex !== undefined) {
+        actualIndex = fallbackIndex;
       }
 
       const gtToDelete = actualIndex >= 0 ? currentGts[actualIndex] : null;
       const nowIso = new Date().toISOString();
 
-      const gtId = gtToDelete?.id || (targetName ? `gt_${targetName.toLowerCase().replace(/\s+/g, '_')}` : `gt_${Date.now()}`);
+      const gtId = gtToDelete?.id || targetId || (targetName ? `gt_${targetName.toLowerCase().replace(/\s+/g, '_')}` : `gt_${Date.now()}`);
       const gtName = (gtToDelete?.name || gtToDelete?.testName || targetName).trim();
 
       // Record immutable tombstone in unified graves registry
-      await recordTombstone('gt', String(gtId), { parentId: String(dateStr), deletedAt: nowIso, metadata: { name: gtName } });
+      if (gtId) {
+        await recordTombstone('gt', String(gtId), { parentId: String(dateStr), deletedAt: nowIso, metadata: { name: gtName } });
+      }
       if (gtName) {
         await recordTombstone('gt', gtName.toLowerCase(), { parentId: String(dateStr), deletedAt: nowIso, metadata: { id: gtId } });
         await recordTombstone('gt', `${String(dateStr).toLowerCase()}_${gtName.toLowerCase()}`, { parentId: String(dateStr), deletedAt: nowIso, metadata: { id: gtId } });
@@ -10424,6 +10439,7 @@ JSON Format:
       // Create tombstoned record of the deleted GT so sync propagates the deletion
       const tombstonedGt = { ...(gtToDelete || {}), id: gtId, name: gtName, isDeleted: true, deletedAt: nowIso, updatedAt: nowIso };
       const updatedGts = currentGts.filter((g, idx) => {
+        if (gtId && g && String(g.id).toLowerCase() === String(gtId).toLowerCase()) return false;
         if (gtName && (g?.name || g?.testName || '').trim().toLowerCase() === gtName.toLowerCase()) return false;
         if (actualIndex >= 0 && idx === actualIndex) return false;
         return true;
@@ -10437,13 +10453,10 @@ JSON Format:
       };
       await saveLocalStudyLog(dateStr, updatedDayLog);
 
-      // In local UI state, only show active non-deleted GTs
+      // In local UI state, keep updatedDayLog with tombstone so subsequent actions preserve the tombstone
       setStudyLogs(prev => ({
         ...prev,
-        [dateStr]: {
-          ...updatedDayLog,
-          gts: updatedGts.filter(g => g && !g.isDeleted)
-        }
+        [dateStr]: updatedDayLog
       }));
       setIsEditGtModalOpen(false);
       setIsSaving(false);
@@ -10454,7 +10467,7 @@ JSON Format:
     }
   };
 
-  const handleAddGt = () => {
+  const handleAddGt = async () => {
     if (!loggerGtName.trim()) {
       alert("Please enter a test name.");
       return;
@@ -10527,6 +10540,7 @@ JSON Format:
       id: `gt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       createdAt: nowIso,
       updatedAt: nowIso,
+      isDeleted: false,
       name: loggerGtName.trim(),
       platform: loggerGtPlatform.trim(),
       type: loggerGtType,
@@ -10549,6 +10563,15 @@ JSON Format:
       notes: loggerGtNotes.trim(),
       subjects: cleanedSubjects
     };
+
+    // Revoke any previous tombstone for this ID or test name
+    await revokeTombstone('gt', String(newGt.id));
+    if (newGt.name) {
+      await revokeTombstone('gt', newGt.name.toLowerCase());
+      if (loggerDate) {
+        await revokeTombstone('gt', `${String(loggerDate).toLowerCase()}_${newGt.name.toLowerCase()}`);
+      }
+    }
 
     setLoggerGtsList(prev => [...prev, newGt]);
 
@@ -10578,14 +10601,25 @@ JSON Format:
       const cards = Number(loggerCards) || 0;
       const pages = Number(loggerPages) || 0;
       const hours = Number((Number(loggerHoursPart) + (Number(loggerMinutesPart) || 0) / 60).toFixed(3));
-      const gts = loggerGtsList || [];
+      const activeGts = (loggerGtsList || []).filter(g => g && !g.isDeleted);
       const nowIso = new Date().toISOString();
 
-      // Detect any GTs that were removed during this edit and record tombstones
-      const existingGts = studyLogs[loggerDate]?.gts || [];
+      // Revoke tombstones for all active GTs being saved
+      for (const gt of activeGts) {
+        if (gt.id) await revokeTombstone('gt', String(gt.id));
+        if (gt.name) {
+          await revokeTombstone('gt', gt.name.toLowerCase());
+          await revokeTombstone('gt', `${String(loggerDate).toLowerCase()}_${gt.name.toLowerCase()}`);
+        }
+      }
+
+      // Detect any GTs that were removed during this edit and record tombstones + preserve tombstoned copy for sync
+      const existingGts = Array.isArray(studyLogs[loggerDate]?.gts) ? studyLogs[loggerDate].gts : [];
+      const finalGts = [...activeGts];
+
       for (const oldGt of existingGts) {
-        if (oldGt && !oldGt.isDeleted) {
-          const stillExists = gts.some(newGt => 
+        if (oldGt) {
+          const stillExists = activeGts.some(newGt => 
             (oldGt.id && newGt.id === oldGt.id) ||
             ((oldGt.name || oldGt.testName) && (newGt.name || newGt.testName) === (oldGt.name || oldGt.testName))
           );
@@ -10597,13 +10631,14 @@ JSON Format:
               await recordTombstone('gt', gtName.toLowerCase(), { parentId: String(loggerDate), deletedAt: nowIso, metadata: { id: gtId } });
               await recordTombstone('gt', `${String(loggerDate).toLowerCase()}_${gtName.toLowerCase()}`, { parentId: String(loggerDate), deletedAt: nowIso, metadata: { id: gtId } });
             }
+            finalGts.push({ ...oldGt, id: gtId, name: gtName, isDeleted: true, deletedAt: nowIso, updatedAt: nowIso });
+          } else if (oldGt.isDeleted) {
+            finalGts.push(oldGt);
           }
         }
       }
 
-      // If the user saves a completely empty log (all zeros, no GTs), treat it as a delete
-      // so that we write a tombstone and the sync engine won't resurrect it from the cloud.
-      const isEffectivelyEmpty = questions === 0 && cards === 0 && pages === 0 && hours === 0 && gts.length === 0;
+      const isEffectivelyEmpty = questions === 0 && cards === 0 && pages === 0 && hours === 0 && activeGts.length === 0;
 
       if (isEffectivelyEmpty && studyLogs[loggerDate]) {
         // Record tombstone so sync knows this date was intentionally cleared
@@ -10622,14 +10657,13 @@ JSON Format:
           pages,
           hours,
           studyHours: hours,
-          gts,
+          gts: finalGts,
           updatedAt: nowIso
         };
         await saveLocalStudyLog(loggerDate, logData);
         // Optimistic update: patch local studyLogs so charts/analytics update immediately
         setStudyLogs(prev => ({ ...prev, [loggerDate]: { ...(prev[loggerDate] || {}), ...logData } }));
       }
-      // If isEffectivelyEmpty and no existing log, just close — nothing to save or delete
       setIsStudyLoggerModalOpen(false);
       setIsSaving(false);
     } catch (err) {
@@ -13776,7 +13810,7 @@ JSON Format:
                 <div className="flex items-center">
                   <button
                     type="button"
-                    onClick={() => handleDeleteTimelineGt(editGtTargetDate, editGtTargetIndex)}
+                    onClick={() => handleDeleteTimelineGt(editGtTargetDate, editGtTargetId || editGtTargetOrigName, editGtTargetIndex)}
                     disabled={isSaving}
                     className={`px-4 py-2.5 text-xs font-black rounded-2xl flex items-center gap-1.5 active:scale-95 transition-all disabled:opacity-50 cursor-pointer ${
                       isDark ? 'text-red-400 hover:bg-red-500/15 border border-red-500/25' : 'text-red-600 hover:bg-red-50 border border-red-200'
@@ -14539,8 +14573,7 @@ JSON Format:
         questions: newQuestions,
         cards: newCards,
         pages: newPages,
-        sessions: updatedSessions,
-        gts: todayLog.gts || []
+        sessions: updatedSessions
       });
 
       // Optimistic local state update
@@ -14611,8 +14644,7 @@ JSON Format:
         questions: newQuestions,
         cards: newCards,
         pages: newPages,
-        sessions: updatedSessions,
-        gts: todayLog.gts || []
+        sessions: updatedSessions
       });
 
       // Optimistic local state update
@@ -14711,11 +14743,13 @@ JSON Format:
     });
 
     const nowIso = new Date().toISOString();
+    const newGtId = `gt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const newGtName = loggerGtName.trim();
     const newGt = {
-      id: `gt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      id: newGtId,
       createdAt: nowIso,
       updatedAt: nowIso,
-      name: loggerGtName.trim(),
+      name: newGtName,
       platform: loggerGtPlatform.trim(),
       type: loggerGtType,
       neetPattern: loggerGtType === 'NEETPG' ? loggerNeetPattern : null,
@@ -14746,9 +14780,25 @@ JSON Format:
 
       const updatedGts = [...(todayLog.gts || []), newGt];
 
+      // Revoke any previous tombstones with matching ID or name so Google Drive sync does not suppress the new GT
+      await revokeTombstone('gt', newGtId);
+      await revokeTombstone('gt', newGtName.toLowerCase());
+      await revokeTombstone('gt', `${String(localToday).toLowerCase()}_${newGtName.toLowerCase()}`);
+
       await saveLocalStudyLog(localToday, {
-        gts: updatedGts
+        gts: updatedGts,
+        updatedAt: nowIso
       });
+
+      // Synchronize in-memory React state so the UI and subsequent actions immediately reflect the new GT
+      setStudyLogs(prev => ({
+        ...prev,
+        [localToday]: {
+          ...(prev[localToday] || {}),
+          gts: updatedGts,
+          updatedAt: nowIso
+        }
+      }));
 
       // Reset GT form inputs
       setLoggerGtName('');
@@ -14886,6 +14936,11 @@ JSON Format:
       notes: editGtNotes.trim(),
       subjects: cleanedSubjects
     };
+
+    // Revoke any tombstone on the updated GT ID and Name
+    await revokeTombstone('gt', finalGtId);
+    await revokeTombstone('gt', finalGtName.toLowerCase());
+    await revokeTombstone('gt', `${String(editGtTargetDate).toLowerCase()}_${finalGtName.toLowerCase()}`);
 
     // If the GT was renamed and the original name had no explicit ID in legacy cloud copies, tombstone the old name
     if (editGtTargetOrigName && editGtTargetOrigName.trim().toLowerCase() !== finalGtName.trim().toLowerCase()) {
