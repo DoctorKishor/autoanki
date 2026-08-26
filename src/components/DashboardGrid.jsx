@@ -229,7 +229,7 @@ export default function DashboardGrid({
   const progressPercent = Math.min(100, Math.round((cardsToday / dailyCardTarget) * 100));
 
   // Streak alert status
-  const isStreakSafe = cardsToday > 0 || hoursToday > 0 || questionsToday > 0 || pagesToday > 0 || (todayLog.gts && todayLog.gts.length > 0);
+  const isStreakSafe = cardsToday > 0 || hoursToday > 0 || questionsToday > 0 || pagesToday > 0 || (todayLog.gts && todayLog.gts.filter(g => g && !g.isDeleted).length > 0);
 
   // Total study stats overall
   const totalReviewsCount = useMemo(() => {
@@ -247,8 +247,8 @@ export default function DashboardGrid({
   // Grand Tests
   const grandTestsList = useMemo(() => {
     return Object.entries(studyLogs)
-      .filter(([_, log]) => log.gts && log.gts.length > 0)
-      .flatMap(([dateStr, log]) => log.gts.map((gt, idx) => ({ ...gt, date: dateStr, name: gt.name || `GT ${idx + 1}` })))
+      .filter(([_, log]) => log.gts && log.gts.filter(g => g && !g.isDeleted).length > 0)
+      .flatMap(([dateStr, log]) => (log.gts || []).filter(g => g && !g.isDeleted).map((gt, idx) => ({ ...gt, date: dateStr, name: gt.name || `GT ${idx + 1}` })))
       .sort((a, b) => a.date.localeCompare(b.date));
   }, [studyLogs]);
 
@@ -1667,7 +1667,7 @@ export default function DashboardGrid({
                 const hoursDone = log?.hours || 0;
                 const questionsDone = log?.questions || 0;
                 const pagesDone = log?.pages || 0;
-                const gtsDone = log?.gts?.length || 0;
+                const gtsDone = (log?.gts || []).filter(g => g && !g.isDeleted).length;
                 const hasStudied = cardsDone > 0 || hoursDone > 0 || questionsDone > 0 || pagesDone > 0 || gtsDone > 0;
 
                 let colorClass = isDark ? 'bg-slate-800/80 border-slate-750 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-500';

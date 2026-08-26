@@ -6812,7 +6812,7 @@ export default function App() {
     Object.keys(studyLogs).sort().forEach(dateStr => {
       const log = studyLogs[dateStr];
       if (log.gts && Array.isArray(log.gts)) {
-        log.gts.forEach((gt, idx) => {
+        log.gts.filter(gt => gt && !gt.isDeleted).forEach((gt, idx) => {
           const inferredType = (() => {
             if (gt.type) {
               const t = String(gt.type).toUpperCase();
@@ -12292,7 +12292,7 @@ JSON Format:
                       Object.keys(studyLogs).forEach(d => {
                         const log = studyLogs[d];
                         if (log && Array.isArray(log.gts)) {
-                          log.gts.forEach(gt => gtsList.push(gt));
+                          log.gts.filter(gt => gt && !gt.isDeleted).forEach(gt => gtsList.push(gt));
                         }
                       });
                       return (
@@ -12308,7 +12308,7 @@ JSON Format:
                     Object.keys(studyLogs).forEach(dateStr => {
                       const log = studyLogs[dateStr];
                       if (log && Array.isArray(log.gts)) {
-                        log.gts.forEach((gt, idx) => {
+                        log.gts.filter(gt => gt && !gt.isDeleted).forEach((gt, idx) => {
                           list.push({
                             ...gt,
                             date: dateStr,
@@ -15166,7 +15166,7 @@ JSON Format:
     const totalReviewsCount = Object.values(studyLogs).reduce((sum, log) => sum + (log.cards || 0), 0);
     const totalDurationMinutes = Math.round(Object.values(studyLogs).reduce((sum, log) => sum + (log.hours || 0), 0) * 60);
     // Pass Rate & Retention from GT logs (approximated from accuracy)
-    const allGts = Object.values(studyLogs).flatMap(log => log.gts || []);
+    const allGts = Object.values(studyLogs).flatMap(log => (log.gts || []).filter(g => g && !g.isDeleted));
     const avgAccuracy = allGts.length > 0
       ? Math.round(allGts.reduce((s, g) => s + (g.accuracy || 0), 0) / allGts.length)
       : 0;
@@ -35056,7 +35056,7 @@ Return your response strictly as a JSON object matching this schema:
                             Object.keys(studyLogs).sort().forEach(dateStr => {
                               const log = studyLogs[dateStr];
                               if (log.gts && Array.isArray(log.gts)) {
-                                log.gts.forEach((gt, idx) => {
+                                log.gts.filter(gt => gt && !gt.isDeleted).forEach((gt, idx) => {
                                   // Extract score and percentile safely
                                   let parsedScore = Number(gt.score);
                                   if (isNaN(parsedScore)) {

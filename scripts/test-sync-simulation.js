@@ -1236,7 +1236,7 @@ async function runScenarioJ() {
   // ── Step 4: Device 1 deletes Cerebellum Mock 2 (records tombstone) ──
   const gtsAfterDelete = dev1FinalGts
     .filter(g => g.id !== 'gt_1787780002_dev1')
-    .concat([{ id: 'gt_1787780002_dev1', isDeleted: true, deletedAt: '2026-08-27T11:00:00.000Z' }]);
+    .concat([{ id: 'gt_1787780002_dev1', name: 'Cerebellum Mock 2', isDeleted: true, deletedAt: '2026-08-27T11:00:00.000Z' }]);
 
   device1.setKV('study_logs', {
     [dateStr]: {
@@ -1252,7 +1252,46 @@ async function runScenarioJ() {
   const dev2RawGts = device2.getKV('study_logs', {})[dateStr].gts || [];
   const dev2ActiveGts = dev2RawGts.filter(g => !g.isDeleted);
   assert(dev2ActiveGts.length === 2, 'Device 2 pruned deleted Grand Test');
-  assert(!dev2ActiveGts.some(g => g.id === 'gt_1787780002_dev1'), 'Deleted Cerebellum Mock 2 NOT resurrected on Device 2');
+  assert(!dev2ActiveGts.some(g => g.id === 'gt_1787780002_dev1' || g.name === 'Cerebellum Mock 2'), 'Deleted Cerebellum Mock 2 NOT resurrected on Device 2');
+
+  // ── Step 5: Legacy GT without ID cross-device deletion ──
+  // Device 2 has a legacy GT with no ID
+  const legacyDate = '2026-08-28';
+  device2.setKV('study_logs', {
+    [legacyDate]: {
+      hours: 3.0,
+      questions: 200,
+      cards: 50,
+      gts: [{ name: 'Legacy Marrow GT 1', platform: 'Marrow', type: 'NEETPG', score: 480, createdAt: '2026-08-28T08:00:00.000Z' }],
+      updatedAt: '2026-08-28T08:00:00.000Z'
+    }
+  });
+  runDeviceSync(device2, cloudVault);
+  runDeviceSync(device1, cloudVault);
+
+  // Device 1 deletes this legacy test
+  const dev1LegacyDay = device1.getKV('study_logs', {})[legacyDate];
+  device1.setKV('study_logs', {
+    [legacyDate]: {
+      ...dev1LegacyDay,
+      gts: [{ name: 'Legacy Marrow GT 1', isDeleted: true, deletedAt: '2026-08-28T09:00:00.000Z' }],
+      updatedAt: '2026-08-28T09:00:00.000Z'
+    }
+  });
+
+  runDeviceSync(device1, cloudVault);
+  runDeviceSync(device2, cloudVault);
+
+  const dev2LegacyDay = device2.getKV('study_logs', {})[legacyDate];
+  const dev2LegacyActiveGts = (dev2LegacyDay.gts || []).filter(g => !g.isDeleted);
+  assert(dev2LegacyActiveGts.length === 0, 'Legacy GT without ID successfully pruned on Device 2 via name matching');
+
+  // Device 2 pushes and Device 1 pulls - verify zero resurrection
+  runDeviceSync(device2, cloudVault);
+  runDeviceSync(device1, cloudVault);
+  const dev1LegacyDayFinal = device1.getKV('study_logs', {})[legacyDate];
+  const dev1LegacyActiveGtsFinal = (dev1LegacyDayFinal.gts || []).filter(g => !g.isDeleted);
+  assert(dev1LegacyActiveGtsFinal.length === 0, 'Legacy GT without ID was NOT resurrected on Device 1 after Device 2 sync');
 
   logHeader('SCENARIO J: ALL GRAND TEST SYNC TESTS PASSED WITH 100% INTEGRITY');
 }

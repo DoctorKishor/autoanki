@@ -180,6 +180,103 @@ export async function clearLocalStore(storeName) {
 }
 
 // ==========================================
+// UNIFIED GRAVES TOMBSTONE REGISTRY
+// ==========================================
+// Central immutable deletion log keyed by entityType + entityId.
+// Schema: { entityType: string, entityId: string, parentId?: string, deletedAt: string }
+// entityType values: 'card', 'topic', 'tracker_topic', 'study_log', 'page', 'prompt', 'camp_task'
+
+const GRAVES_KV_KEY = 'unified_graves';
+
+export async function getUnifiedGraves() {
+  const list = await getLocalKV(GRAVES_KV_KEY);
+  return Array.isArray(list) ? list : [];
+}
+
+export async function saveUnifiedGraves(gravesList) {
+  if (!Array.isArray(gravesList)) return;
+  await setLocalKV(GRAVES_KV_KEY, gravesList);
+}
+
+/**
+ * Records an immutable deletion tombstone into the unified graves registry.
+ * @param {string} entityType - One of: 'card','topic','tracker_topic','study_log','page','prompt','camp_task'
+ * @param {string} entityId   - The unique ID of the deleted entity
+ * @param {{ parentId?: string, metadata?: object, deletedAt?: string }} opts
+ */
+export async function recordTombstone(entityType, entityId, opts = {}) {
+  if (!entityType || !entityId) return;
+  try {
+    const graves = await getUnifiedGraves();
+    const compositeKey = `${entityType}::${entityId}`;
+    const existing = graves.findIndex(g => `${g.entityType}::${g.entityId}` === compositeKey);
+    const nowIso = opts.deletedAt || new Date().toISOString();
+    const grave = {
+      entityType,
+      entityId: String(entityId),
+      parentId: opts.parentId || null,
+      deletedAt: nowIso,
+      ...(opts.metadata ? { metadata: opts.metadata } : {})
+    };
+    if (existing >= 0) {
+      // Only update if the new deletion is more recent
+      if (new Date(nowIso) >= new Date(graves[existing].deletedAt)) {
+        graves[existing] = grave;
+      }
+    } else {
+      graves.push(grave);
+    }
+    await saveUnifiedGraves(graves);
+    logger.db('GRAVES-RECORD', `[${entityType}] Tombstone recorded for ID: ${entityId}`);
+  } catch (e) {
+    logger.warn('GRAVES-ERROR', `Failed to record tombstone for ${entityType}:${entityId}:`, e);
+  }
+}
+
+/**
+ * Revokes (removes) a tombstone from the unified graves registry.
+ * Must be called when a user UNDOES a deletion to prevent ghost eviction on sync.
+ * @param {string} entityType
+ * @param {string} entityId
+ */
+export async function revokeTombstone(entityType, entityId) {
+  if (!entityType || !entityId) return;
+  try {
+    const graves = await getUnifiedGraves();
+    const compositeKey = `${entityType}::${entityId}`;
+    const filtered = graves.filter(g => `${g.entityType}::${g.entityId}` !== compositeKey);
+    if (filtered.length !== graves.length) {
+      await saveUnifiedGraves(filtered);
+      logger.db('GRAVES-REVOKE', `[${entityType}] Tombstone revoked for ID: ${entityId} (Undo action)`);
+    }
+  } catch (e) {
+    logger.warn('GRAVES-ERROR', `Failed to revoke tombstone for ${entityType}:${entityId}:`, e);
+  }
+}
+
+/**
+ * Checks if an entity is tombstoned with a deletion timestamp >= its last modification time.
+ * @param {string} entityType
+ * @param {string} entityId
+ * @param {string|number} modifiedAt - ISO string or epoch of the entity's last modification
+ * @returns {boolean}
+ */
+export async function isEntityTombstoned(entityType, entityId, modifiedAt) {
+  if (!entityType || !entityId) return false;
+  try {
+    const graves = await getUnifiedGraves();
+    const compositeKey = `${entityType}::${entityId}`;
+    const grave = graves.find(g => `${g.entityType}::${g.entityId}` === compositeKey);
+    if (!grave) return false;
+    const delTime = new Date(grave.deletedAt).getTime();
+    const modTime = modifiedAt ? new Date(modifiedAt).getTime() : 0;
+    return delTime >= modTime;
+  } catch (e) {
+    return false;
+  }
+}
+
+// ==========================================
 // DOMAIN-SPECIFIC CONVENIENCE API
 // ==========================================
 
@@ -215,6 +312,7 @@ export async function saveLocalTrashTopics(trashList) {
 
 export async function deleteLocalTopic(id, topicObj = null) {
   logger.db('DELETE-TOPIC', `Deleting topic ID: ${id} ("${topicObj?.name || ''}")`);
+  const nowIso = new Date().toISOString();
   const res = await deleteLocalItem(STORES.TOPICS, id);
   try {
     const trash = (await getLocalKV('trash_topics')) || [];
@@ -223,13 +321,19 @@ export async function deleteLocalTopic(id, topicObj = null) {
       id,
       name: topicObj?.name || '',
       subject: topicObj?.subject || '',
-      deletedAt: new Date().toISOString()
+      deletedAt: nowIso
     });
     await setLocalKV('trash_topics', filtered);
     logger.db('TOMBSTONE-RECORDED', `Recorded topic tombstone in trash_topics (Total trash: ${filtered.length})`);
   } catch (e) {
     logger.warn('TOMBSTONE-ERROR', 'Error recording topic tombstone:', e);
   }
+  // Also record to unified graves registry
+  await recordTombstone('topic', String(id), {
+    parentId: topicObj?.subject || null,
+    deletedAt: nowIso,
+    metadata: { name: topicObj?.name || '' }
+  });
   notifyLocalMutation('topics');
   return res;
 }
@@ -339,6 +443,42 @@ export async function getLocalCampRecord(id) {
 export async function getAllLocalCampRecords() {
   return getAllLocalItems(STORES.CAMP_TRACKER);
 }
+
+export async function deleteLocalCampTask(taskId, taskObj = null) {
+  const nowIso = new Date().toISOString();
+  try {
+    const existing = taskObj || (await getLocalCampRecord(taskId));
+    // Soft-delete: keep record with isDeleted + deletedAt for merge engine
+    const deletedRecord = {
+      ...(existing || { id: taskId }),
+      id: taskId,
+      isDeleted: true,
+      deletedAt: nowIso,
+      updatedAt: nowIso
+    };
+    await putLocalItem(STORES.CAMP_TRACKER, deletedRecord);
+
+    // Record tombstone in trash_camp
+    try {
+      const trash = (await getLocalKV('trash_camp')) || [];
+      const fTrash = trash.filter(t => t?.id !== taskId);
+      fTrash.push({ id: taskId, deletedAt: nowIso });
+      await setLocalKV('trash_camp', fTrash);
+      logger.db('TOMBSTONE-RECORDED', `Recorded camp task tombstone in trash_camp (Total: ${fTrash.length})`);
+    } catch (e) {
+      logger.warn('TOMBSTONE-ERROR', 'Error recording camp task tombstone:', e);
+    }
+
+    // Also record to unified graves registry
+    await recordTombstone('camp_task', String(taskId), { deletedAt: nowIso });
+    notifyLocalMutation('camp:delete');
+    return true;
+  } catch (err) {
+    console.error(`[LocalDB] deleteLocalCampTask error for ID ${taskId}:`, err);
+    return false;
+  }
+}
+
 
 export async function getLocalCampData(key, defaultValue = null) {
   if (!key) return defaultValue;
@@ -485,6 +625,7 @@ export async function saveLocalCard(card) {
 
 export async function deleteLocalCard(cardId, cardObj = null) {
   logger.db('DELETE-CARD', `Deleting card ID: ${cardId}`);
+  const nowIso = new Date().toISOString();
   cardsWriteMutex = cardsWriteMutex.then(async () => {
     const cards = await getLocalCards();
     const target = cardObj || cards.find(c => c.id === cardId) || { id: cardId };
@@ -498,13 +639,16 @@ export async function deleteLocalCard(cardId, cardObj = null) {
       fTrash.push({
         ...target,
         id: cardId,
-        deletedAt: new Date().toISOString()
+        deletedAt: nowIso
       });
       await setLocalKV('trash_cards', fTrash);
       logger.db('TOMBSTONE-RECORDED', `Recorded card tombstone in trash_cards (Total trash: ${fTrash.length})`);
     } catch (e) {
       logger.warn('TOMBSTONE-ERROR', 'Error recording card tombstone:', e);
     }
+
+    // Also record to unified graves registry
+    await recordTombstone('card', String(cardId), { deletedAt: nowIso });
 
     logger.db('DELETE-CARD-SUCCESS', `Card removed from active store (Remaining: ${filtered.length})`);
     notifyLocalMutation('cards:delete');
@@ -564,6 +708,7 @@ export async function saveLocalPage(pageObj) {
 }
 
 export async function deleteLocalPage(pageId, pageObj = null) {
+  const nowIso = new Date().toISOString();
   pagesWriteMutex = pagesWriteMutex.then(async () => {
     const pages = await getLocalPages();
     const target = pageObj || pages.find(p => p.id === pageId) || { id: pageId };
@@ -577,13 +722,16 @@ export async function deleteLocalPage(pageId, pageObj = null) {
       fTrash.push({
         ...target,
         id: pageId,
-        deletedAt: new Date().toISOString()
+        deletedAt: nowIso
       });
       await setLocalKV('trash_pages', fTrash);
       logger.db('TOMBSTONE-RECORDED', `Recorded page tombstone in trash_pages (Total trash: ${fTrash.length})`);
     } catch (e) {
       logger.warn('TOMBSTONE-ERROR', 'Error recording page tombstone:', e);
     }
+
+    // Also record to unified graves registry
+    await recordTombstone('page', String(pageId), { deletedAt: nowIso });
 
     notifyLocalMutation('pages:delete');
     return filtered;
@@ -630,9 +778,26 @@ export async function saveLocalPrompt(promptObj) {
 }
 
 export async function deleteLocalPrompt(promptId) {
+  const nowIso = new Date().toISOString();
   const prompts = await getLocalPrompts();
+  const target = prompts.find(p => p.id === promptId) || { id: promptId };
   const filtered = prompts.filter(p => p.id !== promptId);
   await replaceAllLocalPrompts(filtered);
+
+  // Record tombstone in trash_prompts
+  try {
+    const trash = (await getLocalKV('trash_prompts')) || [];
+    const fTrash = trash.filter(t => t?.id !== promptId);
+    fTrash.push({ ...target, id: promptId, deletedAt: nowIso });
+    await setLocalKV('trash_prompts', fTrash);
+    logger.db('TOMBSTONE-RECORDED', `Recorded prompt tombstone in trash_prompts (Total: ${fTrash.length})`);
+  } catch (e) {
+    logger.warn('TOMBSTONE-ERROR', 'Error recording prompt tombstone:', e);
+  }
+
+  // Also record to unified graves registry
+  await recordTombstone('prompt', String(promptId), { deletedAt: nowIso });
+  notifyLocalMutation('prompts:delete');
   return filtered;
 }
 
@@ -766,6 +931,7 @@ export async function saveLocalStudyLog(dateStr, logData) {
 
 export async function deleteLocalStudyLog(dateKey) {
   if (!dateKey) return await getLocalStudyLogs();
+  const nowIso = new Date().toISOString();
   studyLogsWriteMutex = studyLogsWriteMutex.then(async () => {
     const current = await getLocalStudyLogs();
     const updated = { ...current };
@@ -777,13 +943,16 @@ export async function deleteLocalStudyLog(dateKey) {
       const filtered = Array.isArray(trash) ? trash.filter(t => t?.dateKey !== dateKey) : [];
       filtered.push({
         dateKey,
-        deletedAt: new Date().toISOString()
+        deletedAt: nowIso
       });
       await setLocalKV('trash_study_logs', filtered);
       logger.db('TOMBSTONE-RECORDED', `Recorded study log tombstone in trash_study_logs for ${dateKey} (Total: ${filtered.length})`);
     } catch (e) {
       console.warn('[LocalDB] Error recording study log tombstone:', e);
     }
+
+    // Also record to unified graves registry
+    await recordTombstone('study_log', String(dateKey), { deletedAt: nowIso });
 
     notifyLocalMutation('study_logs:delete');
     return updated;
@@ -859,7 +1028,7 @@ export async function saveLocalSubjectTrackerDoc(docId, docData) {
       try {
         const trash = (await getLocalKV('trash_topics')) || [];
         const nowIso = new Date().toISOString();
-        deletedTopicKeys.forEach(tKey => {
+        for (const tKey of deletedTopicKeys) {
           const oldT = existingTopics[tKey];
           const topicId = oldT?.id || `${normalizedDocId}_${tKey}`;
           if (!trash.some(t => t.id === topicId || (t.docId === normalizedDocId && t.topicName === tKey))) {
@@ -872,7 +1041,13 @@ export async function saveLocalSubjectTrackerDoc(docId, docData) {
               deletedAt: nowIso
             });
           }
-        });
+          // Also record to unified graves registry
+          await recordTombstone('tracker_topic', String(topicId), {
+            parentId: normalizedDocId,
+            deletedAt: nowIso,
+            metadata: { topicName: tKey, docId: normalizedDocId }
+          });
+        }
         await setLocalKV('trash_topics', trash);
       } catch (e) {
         console.warn("[LocalDB] Error recording subject tracker topic tombstone:", e);

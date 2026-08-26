@@ -2279,7 +2279,13 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
       const existingGts = Array.isArray(cur.gts) ? cur.gts : [];
       const incomingGts = Array.isArray(incLog?.gts) ? incLog.gts : [];
       const gtMap = new Map();
-      const getGtKey = (g) => g.id || ((g.name || g.testName) ? `gt_${g.name || g.testName}` : computeHash(canonicalStringify(g)));
+      const getGtKey = (g) => {
+        if (!g) return '';
+        const cleanName = (g.name || g.testName || '').trim().toLowerCase();
+        if (cleanName) return `name:${cleanName}`;
+        if (g.id) return `id:${g.id}`;
+        return computeHash(canonicalStringify(g));
+      };
 
       existingGts.forEach(g => { if (g) gtMap.set(getGtKey(g), g); });
       incomingGts.forEach(g => {
@@ -2289,8 +2295,8 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
             gtMap.set(k, g);
           } else {
             const locGt = gtMap.get(k);
-            const locGtTime = safeTimestamp(locGt.updatedAt || locGt.createdAt || locGt.deletedAt || 0);
-            const remGtTime = safeTimestamp(g.updatedAt || g.createdAt || g.deletedAt || 0);
+            const locGtTime = safeTimestamp(locGt.updatedAt || locGt.createdAt || locGt.deletedAt || curTime || 0);
+            const remGtTime = safeTimestamp(g.updatedAt || g.createdAt || g.deletedAt || incTime || 0);
             gtMap.set(k, remGtTime >= locGtTime ? g : locGt);
           }
         }
