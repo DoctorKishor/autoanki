@@ -2500,8 +2500,8 @@ export function mergeSubjectTrackerArrays(localTracker = [], remoteTracker = [],
         nextReviewDue: winnerTopic.nextReviewDue !== undefined ? winnerTopic.nextReviewDue : null,
         lastReviewDate: winnerTopic.lastReviewDate !== undefined ? winnerTopic.lastReviewDate : (finalStudyDates.length > 0 ? finalStudyDates[finalStudyDates.length - 1] : null),
         lapses: winnerTopic.lapses !== undefined ? winnerTopic.lapses : 0,
-        isLeech: Boolean(winnerTopic.isLeech),
-        activatedDate: winnerTopic.activatedDate || locT.activatedDate || remT.activatedDate || null,
+        activatedDate: winnerTopic.activatedDate !== undefined ? winnerTopic.activatedDate : null,
+        isPickedForToday: winnerTopic.isPickedForToday !== undefined ? Boolean(winnerTopic.isPickedForToday) : false,
         updatedAt: new Date(latestTopicTime || Date.now()).toISOString()
       };
     });

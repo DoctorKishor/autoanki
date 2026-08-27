@@ -757,6 +757,65 @@ console.log('\nTEST 13: Multi-Device Collaborative Subject Topic Mutation & Dele
   assert(topics['Nose'].reviewCount === 0, 'Nose remains unstudied');
 }
 
+// -----------------------------------------------------------------------------
+// TEST 14: Two-Way Collaborative Sync on Removing Topic from Today's Queue (X button)
+// -----------------------------------------------------------------------------
+console.log("\nTEST 14: 2-Way Collaborative Sync on Removing Topic from Queue (X Button) & Picked Topics");
+{
+  const t0 = new Date('2026-08-28T08:00:00Z').toISOString();
+  const tPick = new Date('2026-08-28T08:15:00Z').toISOString();
+  const tRemove = new Date('2026-08-28T08:30:00Z').toISOString();
+  const tRemotePick = new Date('2026-08-28T08:25:00Z').toISOString();
+
+  // Device 1:
+  // - Had picked Topic A and Topic B at tPick
+  // - User clicked 'X' to remove Topic B from today's queue at tRemove (tRemove > tPick)
+  const locTracker = [
+    {
+      id: 'ent',
+      subject: 'ENT',
+      topics: {
+        'Ear: Part 1': { name: 'Ear: Part 1', activatedDate: '2026-08-28', isPickedForToday: true, updatedAt: tPick },
+        'Ear: Part 2': { name: 'Ear: Part 2', activatedDate: null, isPickedForToday: false, updatedAt: tRemove },
+        'Ear: Part 3': { name: 'Ear: Part 3', activatedDate: null, isPickedForToday: false, updatedAt: t0 }
+      },
+      updatedAt: tRemove
+    }
+  ];
+
+  // Device 2:
+  // - Still has old state for Topic B from tPick (picked)
+  // - Concurrently picked Topic C (Ear: Part 3) at tRemotePick (tRemotePick > t0)
+  const remTracker = [
+    {
+      id: 'ent',
+      subject: 'ENT',
+      topics: {
+        'Ear: Part 1': { name: 'Ear: Part 1', activatedDate: '2026-08-28', isPickedForToday: true, updatedAt: tPick },
+        'Ear: Part 2': { name: 'Ear: Part 2', activatedDate: '2026-08-28', isPickedForToday: true, updatedAt: tPick },
+        'Ear: Part 3': { name: 'Ear: Part 3', activatedDate: '2026-08-28', isPickedForToday: true, updatedAt: tRemotePick }
+      },
+      updatedAt: tRemotePick
+    }
+  ];
+
+  const merged = mergeSubjectTrackerArrays(locTracker, remTracker, [], [], []);
+  const entDoc = merged.find(d => d.id === 'ent');
+
+  assert(entDoc !== undefined, 'ENT doc exists in merged tracker');
+  const topics = entDoc.topics;
+
+  // 1. Device 1's removal of Topic B (Ear: Part 2) with X button MUST be preserved (NOT resurrected by Device 2)
+  assert(topics['Ear: Part 2'].isPickedForToday === false, 'Ear: Part 2 is NOT picked for today (Removal preserved)');
+  assert(topics['Ear: Part 2'].activatedDate === null, 'Ear: Part 2 activatedDate is null (NOT resurrected)');
+
+  // 2. Topic A (Ear: Part 1) picked by Device 1 is preserved
+  assert(topics['Ear: Part 1'].isPickedForToday === true, 'Ear: Part 1 remains picked for today');
+
+  // 3. Topic C (Ear: Part 3) concurrently picked by Device 2 is cleanly merged
+  assert(topics['Ear: Part 3'].isPickedForToday === true, 'Ear: Part 3 concurrently picked on Device 2 is preserved');
+}
+
 console.log('\n======================================================');
 console.log(`🎉 ALL ${passedTests}/${totalTests} SYNC SIMULATION TESTS PASSED CLEANLY!`);
 console.log('======================================================\n');

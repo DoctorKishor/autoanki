@@ -15,6 +15,7 @@ import { calculateNextFSRSState, ensureCalibratedWeights } from '../services/fsr
 import { calculatePredictiveTopicTime, formatPredictedDuration } from '../services/predictiveTimingEngine';
 import PdfSlicePreviewModal from './PdfSlicePreviewModal';
 import { extractTopicPdfSlice } from '../services/pdfSliceService';
+import { triggerDebouncedSmartPush } from '../services/googleDriveSync';
 
 export function getLocalDateStr(d = new Date()) {
   if (typeof d === 'string') {
@@ -453,6 +454,7 @@ export default function SmartReviewHub({
 
   const handleRemoveNewTopic = (topicToRemove) => {
     if (!topicToRemove) return;
+    const nowIso = new Date().toISOString();
     const todayStr = getLocalDateStr();
     const cleanName = topicToRemove.name ? topicToRemove.name.trim().toLowerCase() : '';
     const topicId = topicToRemove.id || `${topicToRemove.subject}_${topicToRemove.name}`;
@@ -465,7 +467,12 @@ export default function SmartReviewHub({
       next.delete(`${subName}_${topicToRemove.name}`);
       next.delete(`${subName.toLowerCase()}_${cleanName}`);
 
-      saveActiveNewTopicIds(todayStr, Array.from(next)).catch(err => console.error("Failed to update active new topics in IndexedDB:", err));
+      const updatedList = Array.from(next);
+      saveActiveNewTopicIds(todayStr, updatedList).then(() => {
+        window.dispatchEvent(new CustomEvent('autoanki_topic_ids_changed', {
+          detail: { todayStr, updatedList }
+        }));
+      }).catch(err => console.error("Failed to update active new topics in IndexedDB:", err));
       return next;
     });
 
@@ -482,12 +489,15 @@ export default function SmartReviewHub({
         ) || topicToRemove.name;
         if (subDoc.topics[targetKey]) {
           const updatedTopics = { ...subDoc.topics };
-          const topicObj = { ...updatedTopics[targetKey] };
-          delete topicObj.activatedDate;
-          delete topicObj.isPickedForToday;
+          const topicObj = {
+            ...updatedTopics[targetKey],
+            activatedDate: null,
+            isPickedForToday: false,
+            updatedAt: nowIso
+          };
           updatedTopics[targetKey] = topicObj;
           const targetDocId = subDoc.id || docId;
-          onUpdateSubjectDoc(targetDocId, { topics: updatedTopics });
+          onUpdateSubjectDoc(targetDocId, { ...subDoc, topics: updatedTopics, updatedAt: nowIso });
         }
       }
     }
@@ -507,6 +517,7 @@ export default function SmartReviewHub({
 
     setToastMessage(`Removed "${topicToRemove.name}" from today's study list`);
     setTimeout(() => setToastMessage(''), 2500);
+    triggerDebouncedSmartPush();
   };
 
   const isReviewUnlimited = (dailyLimits.maxReviewPagesPerDay || 30) >= 9999;
@@ -993,6 +1004,7 @@ export default function SmartReviewHub({
             });
 
             (async () => {
+              const nowIso = new Date().toISOString();
               for (const [subDocId, topicsInSub] of Object.entries(subjectGroups)) {
                 const subDoc = subjectTrackerData.find(d =>
                   (d.id && d.id.toLowerCase() === subDocId) ||
@@ -1009,13 +1021,15 @@ export default function SmartReviewHub({
                       updatedTopics[targetKey] = {
                         ...updatedTopics[targetKey],
                         activatedDate: todayStr,
-                        isPickedForToday: true
+                        isPickedForToday: true,
+                        updatedAt: nowIso
                       };
                     }
                   });
-                  await onUpdateSubjectDoc(subDoc.id || subDocId, { topics: updatedTopics });
+                  await onUpdateSubjectDoc(subDoc.id || subDocId, { ...subDoc, topics: updatedTopics, updatedAt: nowIso });
                 }
               }
+              triggerDebouncedSmartPush();
             })().catch(err => console.error("[SmartReviewHub] Error in sequential batch topic activation:", err));
           }
 
