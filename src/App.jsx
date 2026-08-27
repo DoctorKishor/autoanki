@@ -18262,13 +18262,14 @@ JSON Format:
     if (schedulerContext && schedulerContext.dateStr && schedulerContext.taskId) {
       const sDate = schedulerContext.dateStr;
       const entry = studySchedule[sDate] || {};
+      const nowIso = new Date().toISOString();
       const updatedTasks = (entry.tasks || []).map(t => {
         if (t.id === schedulerContext.taskId) {
-          return { ...t, completed: true, rating };
+          return { ...t, completed: true, rating, updatedAt: nowIso };
         }
         return t;
       });
-      const updatedSchedule = await saveLocalScheduleEntry(sDate, { ...entry, tasks: updatedTasks });
+      const updatedSchedule = await saveLocalScheduleEntry(sDate, { ...entry, tasks: updatedTasks, updatedAt: nowIso });
       setStudySchedule(updatedSchedule);
     }
 
@@ -18293,13 +18294,14 @@ JSON Format:
     if (schedulerContext && schedulerContext.dateStr && schedulerContext.taskId) {
       const sDate = schedulerContext.dateStr;
       const entry = studySchedule[sDate] || {};
+      const nowIso = new Date().toISOString();
       const updatedTasks = (entry.tasks || []).map(t => {
         if (t.id === schedulerContext.taskId) {
-          return { ...t, completed: true, rating };
+          return { ...t, completed: true, rating, updatedAt: nowIso };
         }
         return t;
       });
-      const updatedSchedule = await saveLocalScheduleEntry(sDate, { ...entry, tasks: updatedTasks });
+      const updatedSchedule = await saveLocalScheduleEntry(sDate, { ...entry, tasks: updatedTasks, updatedAt: nowIso });
       setStudySchedule(updatedSchedule);
     }
 
@@ -18313,15 +18315,17 @@ JSON Format:
     const task = entry.tasks.find(t => t.id === taskId);
     if (!task) return;
 
+    const nowIso = new Date().toISOString();
+
     // 1. Custom text input tasks (isTrackerTask === false): simple toggle only, no FSRS/Tracker integration
     if (task.isTrackerTask === false) {
       const updatedTasks = entry.tasks.map(t => {
         if (t.id === taskId) {
-          return { ...t, completed: !t.completed };
+          return { ...t, completed: !t.completed, updatedAt: nowIso };
         }
         return t;
       });
-      const updatedSchedule = await saveLocalScheduleEntry(dateStr, { ...entry, tasks: updatedTasks });
+      const updatedSchedule = await saveLocalScheduleEntry(dateStr, { ...entry, tasks: updatedTasks, updatedAt: nowIso });
       setStudySchedule(updatedSchedule);
       return;
     }
@@ -18391,11 +18395,11 @@ JSON Format:
     if (!matchedSubject && task.isTrackerTask !== true) {
       const updatedTasks = entry.tasks.map(t => {
         if (t.id === taskId) {
-          return { ...t, completed: !t.completed };
+          return { ...t, completed: !t.completed, updatedAt: nowIso };
         }
         return t;
       });
-      const updatedSchedule = await saveLocalScheduleEntry(dateStr, { ...entry, tasks: updatedTasks });
+      const updatedSchedule = await saveLocalScheduleEntry(dateStr, { ...entry, tasks: updatedTasks, updatedAt: nowIso });
       setStudySchedule(updatedSchedule);
       return;
     }
@@ -18419,11 +18423,11 @@ JSON Format:
       // Unmarking: uncheck task in schedule & delete tracker study date/log
       const updatedTasks = entry.tasks.map(t => {
         if (t.id === taskId) {
-          return { ...t, completed: false, rating: undefined };
+          return { ...t, completed: false, rating: undefined, updatedAt: nowIso };
         }
         return t;
       });
-      const updatedSchedule = await saveLocalScheduleEntry(dateStr, { ...entry, tasks: updatedTasks });
+      const updatedSchedule = await saveLocalScheduleEntry(dateStr, { ...entry, tasks: updatedTasks, updatedAt: nowIso });
       setStudySchedule(updatedSchedule);
 
       await handleDeleteTrackerStudyDate(matchedSubject, matchedTopicName, null, dateStr);
@@ -18496,6 +18500,7 @@ JSON Format:
 
         const timeRangeStr = time ? time : `${formatTime12(startTime)} - ${formatTime12(endTime)}`;
 
+        const nowIso = new Date().toISOString();
         const isTracker = schedulerTaskSource === 'tracker';
         return {
           id: `task_${Date.now()}_${Math.random().toString(36).slice(2)}`,
@@ -18507,14 +18512,18 @@ JSON Format:
           startTime,
           endTime,
           color: "blue",
-          completed: false
+          completed: false,
+          updatedAt: nowIso
         };
       });
+      const nowIso = new Date().toISOString();
       const mergedTasks = [...existingTasks, ...newTasks];
       const payload = {
+        ...existingEntry,
         date: schedulerManualDate,
         notes: schedulerManualNotes.trim() ? schedulerManualNotes.trim() : (existingEntry.notes || ''),
-        tasks: mergedTasks
+        tasks: mergedTasks,
+        updatedAt: nowIso
       };
       const updatedSchedule = await saveLocalScheduleEntry(schedulerManualDate, payload);
       setStudySchedule(updatedSchedule);
@@ -18666,6 +18675,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
         const preExisting = latestSchedule[entry.date] || { tasks: [], notes: '' };
         const preExistingTasks = preExisting.tasks || [];
 
+        const nowIso = new Date().toISOString();
         const newTasks = (entry.tasks || []).map(t => {
           const rawTime = t.time.trim();
           const { startTime, endTime } = parseManualTimeRange(rawTime);
@@ -18677,14 +18687,15 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
             startTime,
             endTime,
             color: "blue",
-            completed: false
+            completed: false,
+            updatedAt: nowIso
           };
         }).filter(t => t.topic !== '');
 
         const mergedTasks = [...preExistingTasks, ...newTasks];
         const mergedNotes = entry.notes.trim() || preExisting.notes || '';
 
-        latestSchedule = await saveLocalScheduleEntry(entry.date, { date: entry.date, notes: mergedNotes, tasks: mergedTasks });
+        latestSchedule = await saveLocalScheduleEntry(entry.date, { ...preExisting, date: entry.date, notes: mergedNotes, tasks: mergedTasks, updatedAt: nowIso });
       }
       setStudySchedule(latestSchedule);
 
@@ -18704,9 +18715,18 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
   const handleSchedulerDeleteTask = async (dateStr, taskId) => {
     const entry = studySchedule[dateStr];
     if (!entry || !entry.tasks) return;
+    const nowIso = new Date().toISOString();
     const taskToDelete = entry.tasks.find(t => t.id === taskId);
     const updatedTasks = entry.tasks.filter(t => t.id !== taskId);
-    const updatedSchedule = await saveLocalScheduleEntry(dateStr, { tasks: updatedTasks });
+
+    // Record tombstone for the deleted schedule task
+    await recordTombstone('schedule_task', String(taskId), {
+      parentId: dateStr,
+      deletedAt: nowIso,
+      metadata: { dateStr, taskId, topic: taskToDelete?.topic }
+    });
+
+    const updatedSchedule = await saveLocalScheduleEntry(dateStr, { ...entry, tasks: updatedTasks, updatedAt: nowIso });
     setStudySchedule(updatedSchedule);
 
     if (taskToDelete && taskToDelete.completed && taskToDelete.topic) {
@@ -18717,6 +18737,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
   const handleSchedulerUpdateTask = async (dateStr, taskId, newTopic, startTime, endTime, color, completed, notes) => {
     const entry = studySchedule[dateStr] || { date: dateStr, notes: "", tasks: [] };
     const tasks = entry.tasks || [];
+    const nowIso = new Date().toISOString();
 
     const formattedStartTime = startTime || "09:00";
     const formattedEndTime = endTime || "10:00";
@@ -18740,24 +18761,29 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
           color: color || t.color || "blue",
           completed: newCompleted,
           time: timeRangeStr,
-          notes: newNotes
+          notes: newNotes,
+          updatedAt: nowIso
         } : t
       );
     } else {
+      const newId = taskId || `task_${Date.now()}_${Math.random().toString(36).slice(2)}`;
       const newTask = {
-        id: taskId || `task_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+        id: newId,
         topic: newTopic,
         startTime: formattedStartTime,
         endTime: formattedEndTime,
         color: color || "blue",
         completed: completed || false,
         time: timeRangeStr,
-        notes: newNotes
+        notes: newNotes,
+        updatedAt: nowIso
       };
+      // Revoke any tombstone if re-creating
+      await revokeTombstone('schedule_task', String(newId));
       updatedTasks = [...tasks, newTask];
     }
 
-    const updatedSchedule = await saveLocalScheduleEntry(dateStr, { date: dateStr, tasks: updatedTasks });
+    const updatedSchedule = await saveLocalScheduleEntry(dateStr, { ...entry, date: dateStr, tasks: updatedTasks, updatedAt: nowIso });
     setStudySchedule(updatedSchedule);
     setSchedulerEditingTask(null);
 
@@ -18799,6 +18825,7 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     const template = scheduleTemplates.find(t => t.id === templateId);
     if (!template) return;
 
+    const nowIso = new Date().toISOString();
     const newTasks = template.tasks.map(t => {
       const timeRangeStr = `${formatTime12(t.startTime)} - ${formatTime12(t.endTime)}`;
       return {
@@ -18809,13 +18836,15 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
         color: t.color || "blue",
         time: timeRangeStr,
         completed: false,
-        notes: t.notes || ""
+        notes: t.notes || "",
+        updatedAt: nowIso
       };
     });
 
     const updatedSchedule = await saveLocalScheduleEntry(schedulerSelectedDate, {
       date: schedulerSelectedDate,
-      tasks: newTasks
+      tasks: newTasks,
+      updatedAt: nowIso
     });
     setStudySchedule(updatedSchedule);
   };

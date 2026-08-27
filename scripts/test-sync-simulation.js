@@ -12,6 +12,7 @@
 
 import {
   mergeStudyLogsObjects,
+  mergeStudyScheduleObjects,
   mergeSubjectTrackerArrays,
   mergePytUserProgress,
   mergeBundlesInMemory
@@ -1001,6 +1002,152 @@ console.log("\nTEST 16: Manual Study Report Modal Edits & Unchanged Date Parity 
   const mergedC = mergeStudyLogsObjects(locLogsC, {}, [], [], remGravesC);
   assert(mergedC['2026-08-25'] !== undefined, 'Re-logged date after previous tombstone is PRESERVED (NOT deleted by older tombstone)');
   assert(mergedC['2026-08-25'].hours === 1.5, 'Re-logged date hours is 1.5');
+}
+
+// -----------------------------------------------------------------------------
+// TEST 17: Study Scheduler Task Completion, Edit, Deletion & Sync Parity
+// -----------------------------------------------------------------------------
+console.log('\nTEST 17: Study Scheduler Task Completion, Edit & Deletion Sync Parity');
+{
+  const t0 = new Date('2026-08-22T00:00:00Z').toISOString();
+  const t1_complete = new Date('2026-08-22T02:30:00Z').toISOString();
+  const t2_delete = new Date('2026-08-22T03:00:00Z').toISOString();
+  const t3_add = new Date('2026-08-22T03:30:00Z').toISOString();
+
+  // Scenario A: User marks task completed in Edit Study Slot modal (or checklist)
+  // Local (freshly completed at t1_complete):
+  const locSchedA = {
+    '2026-08-22': {
+      date: '2026-08-22',
+      updatedAt: t1_complete,
+      tasks: [
+        {
+          id: 'task_2222',
+          topic: '2222',
+          startTime: '02:00',
+          endTime: '03:00',
+          time: '02:00 AM - 03:00 AM',
+          completed: true,
+          rating: 4,
+          updatedAt: t1_complete
+        }
+      ]
+    }
+  };
+
+  // Remote (older uncompleted snapshot from before the edit, at t0):
+  const remSchedA = {
+    '2026-08-22': {
+      date: '2026-08-22',
+      updatedAt: t0,
+      tasks: [
+        {
+          id: 'task_2222',
+          topic: '2222',
+          startTime: '02:00',
+          endTime: '03:00',
+          time: '02:00 AM - 03:00 AM',
+          completed: false,
+          updatedAt: t0
+        }
+      ]
+    }
+  };
+
+  const mergedA = mergeStudyScheduleObjects(locSchedA, remSchedA, []);
+  assert(mergedA['2026-08-22'] !== undefined, '2026-08-22 schedule entry exists in merged result');
+  assert(mergedA['2026-08-22'].tasks.length === 1, 'Schedule date has 1 task');
+  assert(mergedA['2026-08-22'].tasks[0].completed === true, 'Task completed status is PRESERVED (completed === true) after sync');
+  assert(mergedA['2026-08-22'].tasks[0].rating === 4, 'Task rating is preserved');
+
+  // Scenario B: User deletes a scheduled task on Device 1 with tombstone recorded
+  // Local has deleted task_2222 (tasks array empty) at t2_delete:
+  const locSchedB = {
+    '2026-08-22': {
+      date: '2026-08-22',
+      notes: 'Revision Day',
+      updatedAt: t2_delete,
+      tasks: []
+    }
+  };
+  const gravesB = [
+    {
+      entityType: 'schedule_task',
+      entityId: 'task_2222',
+      parentId: '2026-08-22',
+      deletedAt: t2_delete,
+      metadata: { topic: '2222' }
+    }
+  ];
+
+  const mergedB = mergeStudyScheduleObjects(locSchedB, remSchedA, gravesB);
+  assert(mergedB['2026-08-22'] !== undefined, '2026-08-22 exists due to notes');
+  assert(mergedB['2026-08-22'].tasks.length === 0, 'Deleted scheduled task task_2222 is PRUNED and NOT resurrected');
+
+  // Scenario C: Concurrent Additions on same date (Device 1 adds Task A, Device 2 adds Task B)
+  const locSchedC = {
+    '2026-08-23': {
+      date: '2026-08-23',
+      updatedAt: t1_complete,
+      tasks: [
+        {
+          id: 'task_pathology',
+          topic: 'Pathology: Neoplasia',
+          startTime: '09:00',
+          endTime: '11:00',
+          completed: false,
+          updatedAt: t1_complete
+        }
+      ]
+    }
+  };
+  const remSchedC = {
+    '2026-08-23': {
+      date: '2026-08-23',
+      updatedAt: t3_add,
+      tasks: [
+        {
+          id: 'task_pharmacology',
+          topic: 'Pharmacology: Autonomics',
+          startTime: '14:00',
+          endTime: '16:00',
+          completed: false,
+          updatedAt: t3_add
+        }
+      ]
+    }
+  };
+
+  const mergedC = mergeStudyScheduleObjects(locSchedC, remSchedC, []);
+  assert(mergedC['2026-08-23'] !== undefined, '2026-08-23 exists');
+  assert(mergedC['2026-08-23'].tasks.length === 2, `Both concurrent tasks merged cleanly (found ${mergedC['2026-08-23'].tasks.length})`);
+  assert(mergedC['2026-08-23'].tasks.some(t => t.id === 'task_pathology'), 'Pathology task from Device 1 is preserved');
+  assert(mergedC['2026-08-23'].tasks.some(t => t.id === 'task_pharmacology'), 'Pharmacology task from Device 2 is merged');
+
+  // Scenario D: Full In-Memory Bundle Merge (mergeBundlesInMemory)
+  const localBundle = {
+    bundles: {
+      'study_logs.json': {
+        studyLogs: {},
+        trashStudyLogs: [],
+        studySchedule: locSchedA,
+        unifiedGraves: []
+      }
+    }
+  };
+  const downloadedBundle = {
+    'study_logs.json': {
+      studyLogs: {},
+      trashStudyLogs: [],
+      studySchedule: remSchedA,
+      unifiedGraves: []
+    }
+  };
+
+  const mergedBundleResult = mergeBundlesInMemory(localBundle, downloadedBundle);
+  const schedInBundle = mergedBundleResult.bundles['study_logs.json'].studySchedule;
+  assert(schedInBundle['2026-08-22'] !== undefined, 'Schedule exists in merged bundle');
+  assert(schedInBundle['2026-08-22'].tasks[0].completed === true, 'Task completed status preserved in full bundle merge');
 }
 
 console.log('\n======================================================');

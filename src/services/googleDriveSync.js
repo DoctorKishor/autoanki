@@ -1497,7 +1497,8 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
                 schedMap[dateStr] = liveSched;
               }
             });
-            finalSchedule = schedMap;
+            const unifiedGraves = (await getUnifiedGraves()) || [];
+            finalSchedule = mergeStudyScheduleObjects(schedMap, b.studySchedule || {}, unifiedGraves);
           }
         }
 
@@ -1543,7 +1544,8 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
 
         if (b.studySchedule) {
           const existSched = (await getLocalKV('study_schedule')) || {};
-          await setLocalKV('study_schedule', { ...existSched, ...b.studySchedule });
+          const mergedSched = mergeStudyScheduleObjects(existSched, b.studySchedule, unifiedGraves);
+          await setLocalKV('study_schedule', mergedSched);
         }
         if (b.scheduleTemplates) await setLocalKV('schedule_templates', b.scheduleTemplates);
         if (Array.isArray(b.campDailyLogs)) {
@@ -3184,6 +3186,150 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
 }
 
 /**
+ * Merges study schedule objects across dates with task-level LWW conflict resolution and tombstone pruning.
+ */
+export function mergeStudyScheduleObjects(locSched = {}, remSched = {}, unifiedGraves = []) {
+  const loc = (locSched && typeof locSched === 'object' && !Array.isArray(locSched)) ? locSched : {};
+  const rem = (remSched && typeof remSched === 'object' && !Array.isArray(remSched)) ? remSched : {};
+  const graves = Array.isArray(unifiedGraves) ? unifiedGraves : [];
+
+  const deadTasksMap = new Map();
+  const deadScheduleDatesMap = new Map();
+
+  graves.forEach(g => {
+    if (!g) return;
+    const type = g.entityType || g.type;
+    const delTime = safeTimestamp(g.deletedAt || g.timestamp || 0);
+    if (type === 'schedule_task') {
+      if (g.entityId) deadTasksMap.set(String(g.entityId).toLowerCase(), delTime);
+      if (g.metadata?.taskId) deadTasksMap.set(String(g.metadata.taskId).toLowerCase(), delTime);
+      if (g.metadata?.dateStr && g.metadata?.topic) {
+        deadTasksMap.set(`${String(g.metadata.dateStr)}_${String(g.metadata.topic).toLowerCase()}`, delTime);
+      }
+    } else if (type === 'study_schedule' || type === 'schedule_date') {
+      if (g.entityId) deadScheduleDatesMap.set(String(g.entityId), delTime);
+      if (g.metadata?.dateStr) deadScheduleDatesMap.set(String(g.metadata.dateStr), delTime);
+    }
+  });
+
+  const isTaskTombstoned = (t, dKey) => {
+    if (!t || typeof t !== 'object') return true;
+    const tTime = safeTimestamp(t.updatedAt || 0);
+    if (t.id) {
+      const delTime = deadTasksMap.get(String(t.id).toLowerCase());
+      if (delTime && delTime >= tTime) return true;
+    }
+    if (t.topic) {
+      const targetDate = t.date || dKey;
+      if (targetDate) {
+        const comboKey = `${String(targetDate)}_${String(t.topic).trim().toLowerCase()}`;
+        const comboDelTime = deadTasksMap.get(comboKey);
+        if (comboDelTime && comboDelTime >= tTime) return true;
+      }
+    }
+    return false;
+  };
+
+  const isScheduleDateTombstoned = (dKey, dObj) => {
+    const delTime = deadScheduleDatesMap.get(String(dKey));
+    if (!delTime) return false;
+    const dTime = safeTimestamp(dObj?.updatedAt || 0);
+    return delTime >= dTime;
+  };
+
+  const allDates = new Set([...Object.keys(loc), ...Object.keys(rem)]);
+  const merged = {};
+
+  for (const dateStr of allDates) {
+    const locDay = loc[dateStr];
+    const remDay = rem[dateStr];
+
+    // Check if entire date was tombstoned
+    if (!locDay && remDay && isScheduleDateTombstoned(dateStr, remDay)) continue;
+    if (locDay && !remDay && isScheduleDateTombstoned(dateStr, locDay)) continue;
+    if (locDay && remDay && isScheduleDateTombstoned(dateStr, locDay) && isScheduleDateTombstoned(dateStr, remDay)) continue;
+
+    // Date only in local
+    if (locDay && !remDay) {
+      const filteredTasks = (Array.isArray(locDay.tasks) ? locDay.tasks : []).filter(t => !isTaskTombstoned(t, dateStr));
+      const hasContent = filteredTasks.length > 0 || (locDay.notes && locDay.notes.trim()) || locDay.examTitle;
+      if (hasContent) {
+        merged[dateStr] = {
+          ...locDay,
+          tasks: filteredTasks
+        };
+      }
+      continue;
+    }
+
+    // Date only in remote
+    if (!locDay && remDay) {
+      const filteredTasks = (Array.isArray(remDay.tasks) ? remDay.tasks : []).filter(t => !isTaskTombstoned(t, dateStr));
+      const hasContent = filteredTasks.length > 0 || (remDay.notes && remDay.notes.trim()) || remDay.examTitle;
+      if (hasContent) {
+        merged[dateStr] = {
+          ...remDay,
+          tasks: filteredTasks
+        };
+      }
+      continue;
+    }
+
+    // Date in both local and remote: deep merge tasks & LWW day-level fields
+    const locDayTime = safeTimestamp(locDay.updatedAt || 0);
+    const remDayTime = safeTimestamp(remDay.updatedAt || 0);
+    const baseDay = remDayTime > locDayTime ? remDay : locDay;
+
+    const locTasks = (Array.isArray(locDay.tasks) ? locDay.tasks : []).filter(t => !isTaskTombstoned(t, dateStr));
+    const remTasks = (Array.isArray(remDay.tasks) ? remDay.tasks : []).filter(t => !isTaskTombstoned(t, dateStr));
+
+    const taskMap = new Map();
+    const getTaskKey = (t) => t.id ? String(t.id).toLowerCase() : `${t.startTime || ''}_${t.endTime || ''}_${String(t.topic || '').trim().toLowerCase()}`;
+
+    // Index local tasks
+    locTasks.forEach(t => {
+      taskMap.set(getTaskKey(t), t);
+    });
+
+    // Merge remote tasks with LWW
+    remTasks.forEach(remT => {
+      const k = getTaskKey(remT);
+      const locT = taskMap.get(k);
+      if (!locT) {
+        taskMap.set(k, remT);
+      } else {
+        // Task exists in both local and remote: resolve LWW strictly on task updatedAt
+        const locTaskTime = safeTimestamp(locT.updatedAt || 0);
+        const remTaskTime = safeTimestamp(remT.updatedAt || 0);
+
+        let winningTask = remTaskTime >= locTaskTime ? remT : locT;
+        taskMap.set(k, {
+          ...locT,
+          ...remT,
+          ...winningTask,
+          updatedAt: new Date(Math.max(locTaskTime, remTaskTime, Date.now())).toISOString()
+        });
+      }
+    });
+
+    const finalTaskList = Array.from(taskMap.values());
+    const hasContent = finalTaskList.length > 0 || (baseDay.notes && baseDay.notes.trim()) || baseDay.examTitle;
+
+    if (hasContent) {
+      merged[dateStr] = {
+        ...locDay,
+        ...remDay,
+        ...baseDay,
+        tasks: finalTaskList,
+        updatedAt: new Date(Math.max(locDayTime, remDayTime, Date.now())).toISOString()
+      };
+    }
+  }
+
+  return merged;
+}
+
+/**
  * Merges local bundles with downloaded remote bundles completely in-memory,
  * producing a new staged bundle set and manifest without mutating IndexedDB.
  */
@@ -3431,7 +3577,7 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
       }
     });
 
-    const mergedSched = { ...(locLogB.studySchedule || {}), ...(remLogB.studySchedule || {}) };
+    const mergedSched = mergeStudyScheduleObjects(locLogB.studySchedule || {}, remLogB.studySchedule || {}, canonicalUnifiedGraves);
     const mergedTemplates = remLogB.scheduleTemplates || locLogB.scheduleTemplates || [];
 
     const locCampLogs = Array.isArray(locLogB.campDailyLogs) ? locLogB.campDailyLogs : [];

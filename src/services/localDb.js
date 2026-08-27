@@ -1225,7 +1225,22 @@ export async function getLocalStudySchedule() {
 export async function saveLocalScheduleEntry(dateStr, entryData) {
   if (!dateStr) return await getLocalStudySchedule();
   const current = await getLocalStudySchedule();
-  const mergedEntry = { ...(current[dateStr] || {}), ...entryData };
+  const nowIso = new Date().toISOString();
+
+  // Ensure entryData has an updatedAt timestamp and tasks have individual updatedAt
+  const processedTasks = Array.isArray(entryData?.tasks)
+    ? entryData.tasks.map(t => ({
+        ...t,
+        updatedAt: t.updatedAt || entryData.updatedAt || nowIso
+      }))
+    : (entryData?.tasks !== undefined ? entryData.tasks : (current[dateStr]?.tasks || []));
+
+  const mergedEntry = {
+    ...(current[dateStr] || {}),
+    ...entryData,
+    tasks: processedTasks,
+    updatedAt: entryData?.updatedAt || nowIso
+  };
 
   const hasTasks = Array.isArray(mergedEntry.tasks) && mergedEntry.tasks.length > 0;
   const hasNotes = typeof mergedEntry.notes === 'string' && mergedEntry.notes.trim().length > 0;
@@ -1234,8 +1249,10 @@ export async function saveLocalScheduleEntry(dateStr, entryData) {
   const updated = { ...current };
   if (!hasTasks && !hasNotes && !hasExamTitle) {
     delete updated[dateStr];
+    await recordTombstone('study_schedule', String(dateStr), { deletedAt: nowIso, metadata: { dateStr } });
   } else {
     updated[dateStr] = mergedEntry;
+    await revokeTombstone('study_schedule', String(dateStr));
   }
 
   await setLocalKV('study_schedule', updated);
@@ -1247,6 +1264,8 @@ export async function deleteLocalScheduleEntry(dateStr) {
   const current = await getLocalStudySchedule();
   const updated = { ...current };
   delete updated[dateStr];
+  const nowIso = new Date().toISOString();
+  await recordTombstone('study_schedule', String(dateStr), { deletedAt: nowIso, metadata: { dateStr } });
   await setLocalKV('study_schedule', updated);
   return updated;
 }
