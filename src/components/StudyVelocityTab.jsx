@@ -92,9 +92,9 @@ export default function StudyVelocityTab({
 
   const allLogs = useMemo(() => {
     const raw = extractAllTimingLogs(studyLogs);
-    return raw.filter(l => l && (l.actualDurationMins || l.durationMins)).sort((a, b) => {
-      const tA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
-      const tB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+    return raw.filter(l => l && (l.topicName || l.subject)).sort((a, b) => {
+      const tA = a.timestamp ? new Date(a.timestamp).getTime() : (a.dateStr ? new Date(a.dateStr).getTime() : 0);
+      const tB = b.timestamp ? new Date(b.timestamp).getTime() : (b.dateStr ? new Date(b.dateStr).getTime() : 0);
       return tB - tA;
     });
   }, [studyLogs]);
@@ -765,9 +765,10 @@ export default function StudyVelocityTab({
             <tbody className="divide-y divide-slate-700/30 font-medium">
               {filteredLogs.length > 0 ? (
                 filteredLogs.slice(0, 25).map((log, idx) => {
-                  const duration = log.actualDurationMins || log.durationMins || 0;
+                  const rawDuration = log.actualDurationMins || log.durationMins;
+                  const duration = rawDuration != null && rawDuration > 0 ? rawDuration : null;
                   const pages = log.pageWeight || 1;
-                  const pace = log.minsPerPage || (pages > 0 ? Number((duration / pages).toFixed(1)) : duration);
+                  const pace = log.minsPerPage || (duration && pages > 0 ? Number((duration / pages).toFixed(1)) : null);
                   const dateDisplay = log.timestamp
                     ? new Date(log.timestamp).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
                     : (log.dateStr || 'Recent');
@@ -782,11 +783,15 @@ export default function StudyVelocityTab({
                       <td className="py-3 px-4 font-bold">{log.topicName || 'Topic'}</td>
                       <td className={`py-3 px-4 text-center font-black ${ratingColor}`}>{ratingLabel}</td>
                       <td className="py-3 px-4 text-center font-mono font-bold">{pages}</td>
-                      <td className="py-3 px-4 text-center font-mono font-black text-emerald-400">{duration}m</td>
-                      <td className="py-3 px-4 text-center font-mono font-bold">{pace} m/pg</td>
+                      <td className="py-3 px-4 text-center font-mono font-black text-emerald-400">
+                        {duration ? `${duration}m` : <span className="text-slate-400 font-normal italic text-[11px]">Untimed</span>}
+                      </td>
+                      <td className="py-3 px-4 text-center font-mono font-bold">
+                        {pace != null ? `${pace} m/pg` : <span className="text-slate-500 font-normal">—</span>}
+                      </td>
                       <td className="py-3 px-4 text-center">
                         <span className="text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider bg-slate-700/40 border border-slate-600/40">
-                          {log.revisionTier || 'NEW'}
+                          {log.revisionTier || 'R1'}
                         </span>
                       </td>
                     </tr>
