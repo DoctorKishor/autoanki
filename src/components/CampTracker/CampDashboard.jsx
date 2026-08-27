@@ -24,7 +24,9 @@ import {
   getLocalCampData,
   saveLocalCampData,
   getLocalCampDailyLogs,
-  saveLocalCampDailyLogs
+  saveLocalCampDailyLogs,
+  recordTombstone,
+  revokeTombstone
 } from '../../services/localDb';
 import CollapsibleCard from './CollapsibleCard';
 import ProgressChart from './ProgressChart';
@@ -651,11 +653,12 @@ export default function CampDashboard({
       isManuallyEditingRef.current = false;
     }, 2000);
 
+    const nowIso = new Date().toISOString();
     setSessions(prev => {
       const list = prev[sessionKey] || [];
       const updatedList = list.map(sess => {
         if (sess.id === sessionId) {
-          const updated = { ...sess };
+          const updated = { ...sess, updatedAt: nowIso };
           if (field === 'hours') {
             updated.hours = value;
           } else if (field === 'concentration') {
@@ -679,14 +682,19 @@ export default function CampDashboard({
       isManuallyEditingRef.current = false;
     }, 2000);
 
+    const nowIso = new Date().toISOString();
+    const newSessionId = 'manual_' + Date.now().toString() + '_' + Math.random().toString(36).substr(2, 5);
+    revokeTombstone('camp_session', newSessionId).catch(() => {});
+
     setSessions(prev => {
       const list = prev[sessionKey] || [];
       const newSession = {
-        id: 'manual_' + Date.now().toString() + '_' + Math.random().toString(36).substr(2, 5),
+        id: newSessionId,
         hours: '1.0',
         concentration: 7,
         type: 'notes',
-        isManual: true
+        isManual: true,
+        updatedAt: nowIso
       };
       return {
         ...prev,
@@ -702,6 +710,14 @@ export default function CampDashboard({
       isManuallyEditingRef.current = false;
     }, 2000);
 
+    if (sessionId) {
+      recordTombstone('camp_session', String(sessionId), {
+        dateStr: selectedDate,
+        sessionKey,
+        deletedAt: new Date().toISOString()
+      }).catch(e => console.warn('[CampDashboard] Error recording session tombstone:', e));
+    }
+
     setSessions(prev => {
       const list = prev[sessionKey] || [];
       const updatedList = list.filter(sess => sess.id !== sessionId);
@@ -714,6 +730,13 @@ export default function CampDashboard({
 
   // Deletes an entry from history and updates LocalStorage/State
   const handleDeleteHistoryItem = (indexToDelete) => {
+    const itemToDelete = history[indexToDelete];
+    if (itemToDelete) {
+      const entryKey = String(itemToDelete.fullDate || itemToDelete.date || itemToDelete.timestamp);
+      recordTombstone('camp_history_entry', entryKey, {
+        deletedAt: new Date().toISOString()
+      }).catch(e => console.warn('[CampDashboard] Error recording history entry tombstone:', e));
+    }
     const updatedHistory = history.filter((_, idx) => idx !== indexToDelete);
     setHistory(updatedHistory);
   };

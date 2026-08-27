@@ -431,9 +431,19 @@ export async function getAllLocalSettings() {
   return result;
 }
 
-// --- CAMP TRACKER ---
 export async function saveLocalCampRecord(id, data) {
-  await putLocalItem(STORES.CAMP_TRACKER, { id, ...data, updatedAt: new Date().toISOString() });
+  const nowIso = new Date().toISOString();
+  await putLocalItem(STORES.CAMP_TRACKER, { id, ...data, isDeleted: false, updatedAt: nowIso });
+  try {
+    const trash = (await getLocalKV('trash_camp')) || [];
+    const fTrash = trash.filter(t => t?.id !== id);
+    if (fTrash.length !== trash.length) {
+      await setLocalKV('trash_camp', fTrash);
+    }
+  } catch (e) {
+    logger.warn('TOMBSTONE-ERROR', 'Error cleaning trash_camp on recreation:', e);
+  }
+  await revokeTombstone('camp_task', String(id));
 }
 
 export async function getLocalCampRecord(id) {

@@ -15,6 +15,9 @@ import {
   mergeStudyScheduleObjects,
   mergeSubjectTrackerArrays,
   mergePytUserProgress,
+  mergeCampDailyLogs,
+  mergeCampData,
+  mergeCampTrackers,
   mergeBundlesInMemory
 } from '../src/services/googleDriveSync.js';
 
@@ -1148,6 +1151,159 @@ console.log('\nTEST 17: Study Scheduler Task Completion, Edit & Deletion Sync Pa
   const schedInBundle = mergedBundleResult.bundles['study_logs.json'].studySchedule;
   assert(schedInBundle['2026-08-22'] !== undefined, 'Schedule exists in merged bundle');
   assert(schedInBundle['2026-08-22'].tasks[0].completed === true, 'Task completed status preserved in full bundle merge');
+}
+
+// -----------------------------------------------------------------------------
+// TEST 18: CAMP Tracker, Daily Sessions & Multi-Device Sync Parity
+// -----------------------------------------------------------------------------
+console.log('\nTEST 18: CAMP Tracker, Daily Sessions & Multi-Device Sync Parity');
+{
+  const t0 = new Date('2026-08-20T00:00:00Z').toISOString();
+  const t1_edit = new Date('2026-08-20T01:00:00Z').toISOString();
+  const t2_edit = new Date('2026-08-20T02:00:00Z').toISOString();
+  const t3_delete = new Date('2026-08-20T03:00:00Z').toISOString();
+
+  // Scenario A: Concurrent Daily Sessions on Same Date (Device 1 logs preLunch, Device 2 logs midDay)
+  const locCampLogsA = [
+    {
+      dateStr: '2026-08-20',
+      bedToBook: 'Less than 30 mins',
+      updatedAt: t1_edit,
+      sessions: {
+        preLunch: [
+          {
+            id: 'sess_pre_1',
+            hours: '2.5',
+            concentration: 8,
+            type: 'notes',
+            isManual: true,
+            updatedAt: t1_edit
+          }
+        ],
+        midDay: [],
+        postDinner: []
+      }
+    }
+  ];
+
+  const remCampLogsA = [
+    {
+      dateStr: '2026-08-20',
+      bedToBook: 'Less than 45 mins',
+      updatedAt: t2_edit,
+      sessions: {
+        preLunch: [],
+        midDay: [
+          {
+            id: 'sess_mid_1',
+            hours: '3.0',
+            concentration: 9,
+            type: 'qbank',
+            questionsSolved: 100,
+            isManual: false,
+            updatedAt: t2_edit
+          }
+        ],
+        postDinner: []
+      }
+    }
+  ];
+
+  const mergedLogsA = mergeCampDailyLogs(locCampLogsA, remCampLogsA, []);
+  assert(mergedLogsA.length === 1, 'Merged CAMP logs has 1 date document');
+  assert(mergedLogsA[0].dateStr === '2026-08-20', 'Date is 2026-08-20');
+  assert(mergedLogsA[0].sessions.preLunch.length === 1, 'Device 1 preLunch session preserved');
+  assert(mergedLogsA[0].sessions.preLunch[0].id === 'sess_pre_1', 'preLunch session ID is sess_pre_1');
+  assert(mergedLogsA[0].sessions.midDay.length === 1, 'Device 2 midDay session merged cleanly');
+  assert(mergedLogsA[0].sessions.midDay[0].id === 'sess_mid_1', 'midDay session ID is sess_mid_1');
+  assert(mergedLogsA[0].bedToBook === 'Less than 45 mins', 'Fresher bedToBook value from Device 2 is applied');
+
+  // Scenario B: Session Deletion with Tombstone
+  const locCampLogsB = [
+    {
+      dateStr: '2026-08-20',
+      bedToBook: 'Less than 30 mins',
+      updatedAt: t3_delete,
+      sessions: {
+        preLunch: [],
+        midDay: [],
+        postDinner: []
+      }
+    }
+  ];
+  const gravesB = [
+    {
+      entityType: 'camp_session',
+      entityId: 'sess_pre_1',
+      deletedAt: t3_delete
+    }
+  ];
+
+  const mergedLogsB = mergeCampDailyLogs(locCampLogsB, locCampLogsA, gravesB);
+  assert(mergedLogsB.length === 1, 'Merged log exists');
+  assert(mergedLogsB[0].sessions.preLunch.length === 0, 'Tombstoned session sess_pre_1 is PRUNED and NOT resurrected');
+
+  // Scenario C: CAMP Data Merging (history across multiple days)
+  const locCampDataC = [
+    {
+      key: 'history',
+      data: [
+        { date: '20-Aug', fullDate: '2026-08-20', timestamp: 1787184000000, score: 8.5 }
+      ],
+      updatedAt: t1_edit
+    },
+    {
+      key: 'student_info',
+      data: { name: 'Scholar', email: 'scholar@local.com', phone: '123' },
+      updatedAt: t1_edit
+    }
+  ];
+
+  const remCampDataC = [
+    {
+      key: 'history',
+      data: [
+        { date: '21-Aug', fullDate: '2026-08-21', timestamp: 1787270400000, score: 9.0 }
+      ],
+      updatedAt: t2_edit
+    },
+    {
+      key: 'student_info',
+      data: { name: 'Scholar Pro', email: 'scholar@local.com', phone: '456' },
+      updatedAt: t2_edit
+    }
+  ];
+
+  const mergedDataC = mergeCampData(locCampDataC, remCampDataC);
+  const histItem = mergedDataC.find(d => d.key === 'history');
+  assert(histItem !== undefined, 'history exists in merged campData');
+  assert(histItem.data.length === 2, `Both days preserved in history (found ${histItem.data.length})`);
+  assert(histItem.data.some(h => h.fullDate === '2026-08-20'), 'Aug 20 from Device 1 preserved');
+  assert(histItem.data.some(h => h.fullDate === '2026-08-21'), 'Aug 21 from Device 2 merged');
+
+  const infoItem = mergedDataC.find(d => d.key === 'student_info');
+  assert(infoItem !== undefined, 'student_info exists');
+  assert(infoItem.data.name === 'Scholar Pro', 'Fresher name edit from Device 2 applied');
+  assert(infoItem.data.phone === '456', 'Fresher phone edit applied');
+
+  // Scenario D: CAMP Tracker Tasks (C1, C2 cycle tasks) with Tombstone
+  const locTrackerD = [
+    { id: 'camp_task_c1_1', title: 'Anatomy Cycle 1', cycle: 'C1', completed: true, updatedAt: t1_edit }
+  ];
+  const remTrackerD = [
+    { id: 'camp_task_c1_1', title: 'Anatomy Cycle 1', cycle: 'C1', completed: false, updatedAt: t0 },
+    { id: 'camp_task_c2_1', title: 'Physiology Cycle 2', cycle: 'C2', completed: true, updatedAt: t2_edit }
+  ];
+  const gravesD = [
+    { entityType: 'camp_task', entityId: 'camp_task_c3_old', deletedAt: t1_edit }
+  ];
+
+  const mergedTrackerD = mergeCampTrackers(locTrackerD, remTrackerD, [], gravesD);
+  assert(mergedTrackerD.length === 2, `Merged tracker has 2 active tasks (found ${mergedTrackerD.length})`);
+  const c1Task = mergedTrackerD.find(t => t.id === 'camp_task_c1_1');
+  assert(c1Task !== undefined && c1Task.completed === true, 'Device 1 completed state on C1 task is PRESERVED');
+  const c2Task = mergedTrackerD.find(t => t.id === 'camp_task_c2_1');
+  assert(c2Task !== undefined && c2Task.completed === true, 'Device 2 C2 task is MERGED');
 }
 
 console.log('\n======================================================');

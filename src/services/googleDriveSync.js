@@ -1549,31 +1549,10 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
         }
         if (b.scheduleTemplates) await setLocalKV('schedule_templates', b.scheduleTemplates);
         if (Array.isArray(b.campDailyLogs)) {
-          for (const log of b.campDailyLogs) {
-            if (log && log.dateStr) {
-              const existingLog = await getLocalItem(STORES.CAMP_DAILY_LOGS, log.dateStr);
-              if (!existingLog) {
-                await putLocalItem(STORES.CAMP_DAILY_LOGS, log);
-              } else {
-                const mergedSessions = Array.isArray(existingLog.sessions) ? [...existingLog.sessions] : [];
-                const existSessionKeys = new Set(mergedSessions.map(s => s?.id || s?.startedAt || (s ? s.subject + '_' + s.duration : '')));
-                const incomingSessions = Array.isArray(log.sessions) ? log.sessions : [];
-                incomingSessions.forEach(s => {
-                  if (s) {
-                    const k = s.id || s.startedAt || (s.subject + '_' + s.duration);
-                    if (!existSessionKeys.has(k)) {
-                      mergedSessions.push(s);
-                    }
-                  }
-                });
-                await putLocalItem(STORES.CAMP_DAILY_LOGS, {
-                  ...existingLog,
-                  ...log,
-                  sessions: mergedSessions,
-                  bedToBook: log.bedToBook || existingLog.bedToBook
-                });
-              }
-            }
+          const existingLogs = (await getAllLocalItems(STORES.CAMP_DAILY_LOGS)) || [];
+          const mergedLogs = mergeCampDailyLogs(existingLogs, b.campDailyLogs, unifiedGraves);
+          for (const log of mergedLogs) {
+            if (log && log.dateStr) await putLocalItem(STORES.CAMP_DAILY_LOGS, log);
           }
         }
         if (b.activeNewTopicsToday) {
@@ -1797,12 +1776,17 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
         });
       } else {
         if (Array.isArray(b.campTracker)) {
-          for (const t of b.campTracker) {
+          const liveCampTracker = (await getAllLocalItems(STORES.CAMP_TRACKER)) || [];
+          const localTrashCamp = (await getLocalKV('trash_camp')) || [];
+          const mergedTracker = mergeCampTrackers(liveCampTracker, b.campTracker, localTrashCamp, (await getUnifiedGraves()) || []);
+          for (const t of mergedTracker) {
             if (t && t.id) await putLocalItem(STORES.CAMP_TRACKER, t);
           }
         }
         if (Array.isArray(b.campData)) {
-          for (const d of b.campData) {
+          const liveCampData = (await getAllLocalItems(STORES.CAMP_DATA)) || [];
+          const mergedData = mergeCampData(liveCampData, b.campData);
+          for (const d of mergedData) {
             if (d && d.key) await putLocalItem(STORES.CAMP_DATA, d);
           }
         }
@@ -3330,6 +3314,271 @@ export function mergeStudyScheduleObjects(locSched = {}, remSched = {}, unifiedG
 }
 
 /**
+ * Normalizes CAMP daily log sessions into { preLunch: [], midDay: [], postDinner: [] }
+ */
+export function normalizeCampSessions(data) {
+  const cats = ['preLunch', 'midDay', 'postDinner'];
+  const norm = {};
+  cats.forEach(c => {
+    if (!data || !data[c]) {
+      norm[c] = [];
+    } else if (Array.isArray(data[c])) {
+      norm[c] = data[c];
+    } else {
+      const old = data[c];
+      const oldHrs = parseFloat(old.hours) || 0;
+      if (oldHrs > 0) {
+        norm[c] = [{
+          id: 'migrated_1',
+          hours: oldHrs.toString(),
+          concentration: Number(old.concentration) || 7,
+          type: 'notes',
+          isManual: false
+        }];
+      } else {
+        norm[c] = [];
+      }
+    }
+  });
+  return norm;
+}
+
+/**
+ * Merges CAMP Daily Logs (STORES.CAMP_DAILY_LOGS / campDailyLogs array) with session-level LWW,
+ * tombstone pruning, and bidirectional conflict resolution.
+ */
+export function mergeCampDailyLogs(locLogs = [], remLogs = [], unifiedGraves = []) {
+  const deadSessionsMap = new Map();
+  (unifiedGraves || []).forEach(g => {
+    if (g && (g.entityType === 'camp_session' || g.type === 'camp_session')) {
+      const delTime = safeTimestamp(g.deletedAt || g.timestamp || 0);
+      if (g.entityId) deadSessionsMap.set(String(g.entityId).toLowerCase(), Math.max(delTime, deadSessionsMap.get(String(g.entityId).toLowerCase()) || 0));
+    }
+  });
+
+  const isSessionTombstoned = (s) => {
+    if (!s) return false;
+    const k = String(s.id || '').toLowerCase();
+    if (!k) return false;
+    const delTime = deadSessionsMap.get(k);
+    const sTime = safeTimestamp(s.updatedAt || 0);
+    return Boolean(delTime && delTime >= sTime);
+  };
+
+  const locArray = Array.isArray(locLogs) ? locLogs : Object.values(locLogs || {});
+  const remArray = Array.isArray(remLogs) ? remLogs : Object.values(remLogs || {});
+
+  const dailyMap = new Map();
+  locArray.forEach(l => { if (l && l.dateStr) dailyMap.set(l.dateStr, l); });
+
+  remArray.forEach(remLog => {
+    if (!remLog || !remLog.dateStr) return;
+    const locLog = dailyMap.get(remLog.dateStr);
+    if (!locLog) {
+      const normRem = normalizeCampSessions(remLog.sessions);
+      const filteredNorm = {};
+      Object.keys(normRem).forEach(cat => {
+        filteredNorm[cat] = normRem[cat].filter(s => !isSessionTombstoned(s));
+      });
+      dailyMap.set(remLog.dateStr, { ...remLog, sessions: filteredNorm });
+    } else {
+      const locTime = safeTimestamp(locLog.updatedAt || 0);
+      const remTime = safeTimestamp(remLog.updatedAt || 0);
+      const winningLog = remTime >= locTime ? remLog : locLog;
+
+      const locSessions = normalizeCampSessions(locLog.sessions);
+      const remSessions = normalizeCampSessions(remLog.sessions);
+      const mergedSessions = {};
+
+      const cats = ['preLunch', 'midDay', 'postDinner'];
+      cats.forEach(cat => {
+        const catMap = new Map();
+        const getSessKey = (s) => s.id ? String(s.id).toLowerCase() : `${s.type || 'notes'}_${s.hours || ''}_${s.concentration || ''}`;
+
+        (locSessions[cat] || []).filter(s => !isSessionTombstoned(s)).forEach(s => {
+          catMap.set(getSessKey(s), s);
+        });
+
+        (remSessions[cat] || []).filter(s => !isSessionTombstoned(s)).forEach(remS => {
+          const k = getSessKey(remS);
+          const locS = catMap.get(k);
+          if (!locS) {
+            catMap.set(k, remS);
+          } else {
+            const locSTime = safeTimestamp(locS.updatedAt || locTime);
+            const remSTime = safeTimestamp(remS.updatedAt || remTime);
+            const winningS = remSTime >= locSTime ? remS : locS;
+            catMap.set(k, {
+              ...locS,
+              ...remS,
+              ...winningS,
+              updatedAt: new Date(Math.max(locSTime, remSTime, Date.now())).toISOString()
+            });
+          }
+        });
+
+        mergedSessions[cat] = Array.from(catMap.values());
+      });
+
+      dailyMap.set(remLog.dateStr, {
+        ...locLog,
+        ...remLog,
+        ...winningLog,
+        sessions: mergedSessions,
+        bedToBook: winningLog.bedToBook || locLog.bedToBook || remLog.bedToBook,
+        updatedAt: new Date(Math.max(locTime, remTime, Date.now())).toISOString()
+      });
+    }
+  });
+
+  return Array.from(dailyMap.values());
+}
+
+/**
+ * Merges CAMP Data stores (STORES.CAMP_DATA / campData array: history, timer_history, student_info)
+ */
+export function mergeCampData(locData = [], remData = []) {
+  const datMap = new Map();
+  (locData || []).forEach(d => { if (d && d.key) datMap.set(d.key, d); });
+
+  (remData || []).forEach(remD => {
+    if (!remD || !remD.key) return;
+    const locD = datMap.get(remD.key);
+    if (!locD) {
+      datMap.set(remD.key, remD);
+    } else {
+      const locTime = safeTimestamp(locD.updatedAt || 0);
+      const remTime = safeTimestamp(remD.updatedAt || 0);
+
+      if (remD.key === 'history') {
+        const locHist = Array.isArray(locD.data) ? locD.data : [];
+        const remHist = Array.isArray(remD.data) ? remD.data : [];
+        const histMap = new Map();
+        const getHistKey = (h) => h.fullDate || h.date || String(h.timestamp);
+
+        locHist.forEach(h => { if (h) histMap.set(getHistKey(h), h); });
+        remHist.forEach(h => {
+          if (!h) return;
+          const k = getHistKey(h);
+          const exist = histMap.get(k);
+          if (!exist) {
+            histMap.set(k, h);
+          } else {
+            const existTime = exist.timestamp || (exist.fullDate ? new Date(exist.fullDate).getTime() : 0);
+            const incomingTime = h.timestamp || (h.fullDate ? new Date(h.fullDate).getTime() : 0);
+            histMap.set(k, incomingTime >= existTime ? { ...exist, ...h } : { ...h, ...exist });
+          }
+        });
+
+        const mergedHistoryList = Array.from(histMap.values()).sort((a, b) => {
+          const timeA = a.timestamp || (a.fullDate ? new Date(a.fullDate).getTime() : 0);
+          const timeB = b.timestamp || (b.fullDate ? new Date(b.fullDate).getTime() : 0);
+          if (timeA && timeB) return timeA - timeB;
+          if (a.fullDate && b.fullDate) return a.fullDate.localeCompare(b.fullDate);
+          return 0;
+        });
+
+        datMap.set('history', {
+          key: 'history',
+          data: mergedHistoryList,
+          updatedAt: new Date(Math.max(locTime, remTime, Date.now())).toISOString()
+        });
+      } else if (remD.key === 'timer_history') {
+        const locTH = Array.isArray(locD.data) ? locD.data : [];
+        const remTH = Array.isArray(remD.data) ? remD.data : [];
+        const thMap = new Map();
+        const getThKey = (t) => t.id || `${t.date}_${t.period}_${t.hours}_${t.type || 'notes'}_${t.concentration || 7}`;
+
+        locTH.forEach(t => { if (t) thMap.set(getThKey(t), t); });
+        remTH.forEach(t => {
+          if (!t) return;
+          const k = getThKey(t);
+          const exist = thMap.get(k);
+          if (!exist) {
+            thMap.set(k, t);
+          } else {
+            thMap.set(k, { ...exist, ...t });
+          }
+        });
+
+        datMap.set('timer_history', {
+          key: 'timer_history',
+          data: Array.from(thMap.values()),
+          updatedAt: new Date(Math.max(locTime, remTime, Date.now())).toISOString()
+        });
+      } else if (remD.key === 'student_info') {
+        const winningData = remTime >= locTime ? remD.data : locD.data;
+        datMap.set('student_info', {
+          key: 'student_info',
+          data: { ...(locD.data || {}), ...(remD.data || {}), ...(winningData || {}) },
+          updatedAt: new Date(Math.max(locTime, remTime, Date.now())).toISOString()
+        });
+      } else {
+        const winningObj = remTime >= locTime ? remD : locD;
+        datMap.set(remD.key, {
+          ...locD,
+          ...remD,
+          ...winningObj,
+          updatedAt: new Date(Math.max(locTime, remTime, Date.now())).toISOString()
+        });
+      }
+    }
+  });
+
+  return Array.from(datMap.values());
+}
+
+/**
+ * Merges CAMP Tracker tasks (STORES.CAMP_TRACKER / campTracker array) with tombstone pruning.
+ */
+export function mergeCampTrackers(locTracker = [], remTracker = [], trashCamp = [], unifiedGraves = []) {
+  const deadCampMap = new Map();
+  (trashCamp || []).forEach(tc => {
+    if (tc && tc.id) deadCampMap.set(String(tc.id).toLowerCase(), safeTimestamp(tc.deletedAt));
+  });
+  (unifiedGraves || []).forEach(g => {
+    if (g && (g.entityType === 'camp_task' || g.type === 'camp_task')) {
+      const delTime = safeTimestamp(g.deletedAt || g.timestamp || 0);
+      if (g.entityId) deadCampMap.set(String(g.entityId).toLowerCase(), Math.max(delTime, deadCampMap.get(String(g.entityId).toLowerCase()) || 0));
+    }
+  });
+
+  const isCampTombstoned = (t) => {
+    if (!t || !t.id) return false;
+    const k = String(t.id).toLowerCase();
+    const delTime = deadCampMap.get(k);
+    const tTime = safeTimestamp(t.updatedAt || t.createdAt || 0);
+    return Boolean(delTime && delTime >= tTime);
+  };
+
+  const trkMap = new Map();
+  (locTracker || []).filter(t => !isCampTombstoned(t)).forEach(t => {
+    if (t && t.id) trkMap.set(String(t.id).toLowerCase(), t);
+  });
+
+  (remTracker || []).filter(t => !isCampTombstoned(t)).forEach(remT => {
+    if (!remT || !remT.id) return;
+    const k = String(remT.id).toLowerCase();
+    const locT = trkMap.get(k);
+    if (!locT) {
+      trkMap.set(k, remT);
+    } else {
+      const locTime = safeTimestamp(locT.updatedAt || locT.createdAt || 0);
+      const remTime = safeTimestamp(remT.updatedAt || remT.createdAt || 0);
+      const winningT = remTime >= locTime ? remT : locT;
+      trkMap.set(k, {
+        ...locT,
+        ...remT,
+        ...winningT,
+        updatedAt: new Date(Math.max(locTime, remTime, Date.now())).toISOString()
+      });
+    }
+  });
+
+  return Array.from(trkMap.values());
+}
+
+/**
  * Merges local bundles with downloaded remote bundles completely in-memory,
  * producing a new staged bundle set and manifest without mutating IndexedDB.
  */
@@ -3582,49 +3831,14 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
 
     const locCampLogs = Array.isArray(locLogB.campDailyLogs) ? locLogB.campDailyLogs : [];
     const remCampLogs = Array.isArray(remLogB.campDailyLogs) ? remLogB.campDailyLogs : [];
-    const campDailyMap = new Map();
-    locCampLogs.forEach(l => { if (l && l.dateStr) campDailyMap.set(l.dateStr, l); });
-    remCampLogs.forEach(l => {
-      if (l && l.dateStr) {
-        const exist = campDailyMap.get(l.dateStr);
-        if (!exist) {
-          campDailyMap.set(l.dateStr, l);
-        } else {
-          const locLTime = safeTimestamp(exist.updatedAt || 0);
-          const remLTime = safeTimestamp(l.updatedAt || 0);
-          const sessionMap = new Map();
-          (Array.isArray(exist.sessions) ? exist.sessions : []).forEach(s => {
-            if (s) sessionMap.set(s.id || s.startedAt || (s.subject + '_' + s.duration), s);
-          });
-          (Array.isArray(l.sessions) ? l.sessions : []).forEach(s => {
-            if (s) {
-              const k = s.id || s.startedAt || (s.subject + '_' + s.duration);
-              if (!sessionMap.has(k)) {
-                sessionMap.set(k, s);
-              } else {
-                const locS = sessionMap.get(k);
-                const locSTime = safeTimestamp(locS.updatedAt || locS.startedAt || 0);
-                const remSTime = safeTimestamp(s.updatedAt || s.startedAt || 0);
-                sessionMap.set(k, remSTime >= locSTime ? s : locS);
-              }
-            }
-          });
-          campDailyMap.set(l.dateStr, {
-            ...exist,
-            ...l,
-            sessions: Array.from(sessionMap.values()),
-            updatedAt: new Date(Math.max(locLTime, remLTime, Date.now())).toISOString()
-          });
-        }
-      }
-    });
+    const mergedCampDailyLogs = mergeCampDailyLogs(locCampLogs, remCampLogs, canonicalUnifiedGraves);
 
     merged['study_logs.json'] = {
       studyLogs: mergedLogs,
       trashStudyLogs: Array.from(mergedTrashLogsMap.values()),
       studySchedule: mergedSched,
       scheduleTemplates: mergedTemplates,
-      campDailyLogs: Array.from(campDailyMap.values()),
+      campDailyLogs: mergedCampDailyLogs,
       timerState: remLogB.timerState || locLogB.timerState || null,
       activeNewTopicsToday: remLogB.activeNewTopicsToday || locLogB.activeNewTopicsToday || [],
       unifiedGraves: canonicalUnifiedGraves
@@ -3699,22 +3913,6 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
   if (downloadedBundles['camp_tracker.json']) {
     const locCamp = localBundles['camp_tracker.json'] || {};
     const remCamp = downloadedBundles['camp_tracker.json'] || {};
-    const trkMap = new Map();
-    (locCamp.campTracker || []).forEach(t => { if (t && t.id) trkMap.set(t.id, t); });
-    (remCamp.campTracker || []).forEach(remT => {
-      if (remT && remT.id) {
-        const locT = trkMap.get(remT.id);
-        if (!locT) {
-          trkMap.set(remT.id, remT);
-        } else {
-          const locTime = safeTimestamp(locT.updatedAt || locT.createdAt);
-          const remTime = safeTimestamp(remT.updatedAt || remT.createdAt);
-          trkMap.set(remT.id, remTime >= locTime ? { ...locT, ...remT } : { ...remT, ...locT });
-        }
-      }
-    });
-
-    // Merge trashCamp tombstones with latest deletedAt
     const locTrashCamp = Array.isArray(locCamp.trashCamp) ? locCamp.trashCamp : [];
     const remTrashCamp = Array.isArray(remCamp.trashCamp) ? remCamp.trashCamp : [];
     const trashCampMap = new Map(locTrashCamp.map(t => [t.id, t]));
@@ -3728,37 +3926,12 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
     });
     const mergedTrashCamp = Array.from(trashCampMap.values());
 
-    // Prune camp tasks tombstoned in the merged trash registry
-    for (const [id, task] of trkMap.entries()) {
-      const campGrave = trashCampMap.get(id);
-      if (campGrave) {
-        const taskTime = safeTimestamp(task.updatedAt || task.createdAt);
-        if (safeTimestamp(campGrave.deletedAt) >= taskTime) {
-          trkMap.delete(id);
-        }
-      } else if (task.isDeleted && task.deletedAt) {
-        trkMap.delete(id);
-      }
-    }
-
-    const datMap = new Map();
-    (locCamp.campData || []).forEach(d => { if (d && d.key) datMap.set(d.key, d); });
-    (remCamp.campData || []).forEach(remD => {
-      if (remD && remD.key) {
-        const locD = datMap.get(remD.key);
-        if (!locD) {
-          datMap.set(remD.key, remD);
-        } else {
-          const locTime = safeTimestamp(locD.updatedAt || locD.lastModified);
-          const remTime = safeTimestamp(remD.updatedAt || remD.lastModified);
-          datMap.set(remD.key, remTime >= locTime ? { ...locD, ...remD } : { ...remD, ...locD });
-        }
-      }
-    });
+    const mergedCampTracker = mergeCampTrackers(locCamp.campTracker, remCamp.campTracker, mergedTrashCamp, canonicalUnifiedGraves);
+    const mergedCampData = mergeCampData(locCamp.campData, remCamp.campData);
 
     merged['camp_tracker.json'] = {
-      campTracker: Array.from(trkMap.values()),
-      campData: Array.from(datMap.values()),
+      campTracker: mergedCampTracker,
+      campData: mergedCampData,
       trashCamp: mergedTrashCamp
     };
   }

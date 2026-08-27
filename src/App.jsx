@@ -11338,7 +11338,8 @@ JSON Format:
       questionsSolved: campData?.type === 'qbank' ? Number(campData.questions) || 0 : 0,
       cardsReviewed: campData?.type === 'flashcards' ? Number(campData.cards) || 0 : 0,
       gtDetails: campData?.type === 'gt' ? campData.gtObj : null,
-      isManual: false
+      isManual: false,
+      updatedAt: new Date().toISOString()
     };
 
     sessions[period].push(newSessionItem);
@@ -11353,6 +11354,7 @@ JSON Format:
     const dayName = daysOfWeek[isNaN(d.getDay()) ? new Date().getDay() : d.getDay()];
 
     const historyItem = {
+      id: newSessionItem.id,
       date: dateStr,
       dayOfWeek: dayName,
       period,
@@ -11362,7 +11364,8 @@ JSON Format:
       pagesRead: campData?.type === 'notes' ? Number(campData.pages) || 0 : 0,
       questionsSolved: campData?.type === 'qbank' ? Number(campData.questions) || 0 : 0,
       cardsReviewed: campData?.type === 'flashcards' ? Number(campData.cards) || 0 : 0,
-      gtDetails: campData?.type === 'gt' ? campData.gtObj : null
+      gtDetails: campData?.type === 'gt' ? campData.gtObj : null,
+      updatedAt: new Date().toISOString()
     };
 
     timerHistory.push(historyItem);
