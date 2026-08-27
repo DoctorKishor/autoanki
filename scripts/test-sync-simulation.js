@@ -690,6 +690,73 @@ console.log('\nTEST 12: Dual-Browser Subject Tracker Sync Parity (ENT 2 Topics R
   assert(coverage === 67, `ENT coverage accurately calculated (found ${coverage}%)`);
 }
 
+// -----------------------------------------------------------------------------
+// TEST 13: Multi-Device Collaborative Subject Topic Mutation & Deletion Parity
+// -----------------------------------------------------------------------------
+console.log('\nTEST 13: Multi-Device Collaborative Subject Topic Mutation & Deletion Parity');
+{
+  const t0 = new Date('2026-08-28T08:00:00Z').toISOString();
+  const t1 = new Date('2026-08-28T09:00:00Z').toISOString();
+  const t2 = new Date('2026-08-28T10:00:00Z').toISOString();
+
+  // Device 1 (Local):
+  // - Added review for "Larynx: Part 1" at t1
+  // - Deleted review for "Ear: Part 1" at t1
+  // - "Pharynx" was untouched on Device 1 (still has old review from t0)
+  const locTracker = [
+    {
+      id: 'ent',
+      subject: 'ENT',
+      topics: {
+        'Ear: Part 1': { name: 'Ear: Part 1', studyDates: [], reviewCount: 0, lastReviewDate: null, updatedAt: t1 },
+        'Larynx: Part 1': { name: 'Larynx: Part 1', studyDates: ['2026-08-28'], reviewCount: 1, lastReviewDate: '2026-08-28', updatedAt: t1 },
+        'Pharynx': { name: 'Pharynx', studyDates: ['2026-08-27'], reviewCount: 1, lastReviewDate: '2026-08-27', updatedAt: t0 },
+        'Nose': { name: 'Nose', studyDates: [], reviewCount: 0 }
+      },
+      updatedAt: t1
+    }
+  ];
+
+  // Device 2 (Remote in cloud):
+  // - Deleted review for "Pharynx" at t2 (t2 > t0)
+  // - "Ear: Part 1" was untouched on Device 2 (still has old review from t0)
+  // - "Larynx: Part 1" was untouched on Device 2 (still 0 reviews from t0)
+  const remTracker = [
+    {
+      id: 'ent',
+      subject: 'ENT',
+      topics: {
+        'Ear: Part 1': { name: 'Ear: Part 1', studyDates: ['2026-08-27'], reviewCount: 1, lastReviewDate: '2026-08-27', updatedAt: t0 },
+        'Larynx: Part 1': { name: 'Larynx: Part 1', studyDates: [], reviewCount: 0, lastReviewDate: null, updatedAt: t0 },
+        'Pharynx': { name: 'Pharynx', studyDates: [], reviewCount: 0, lastReviewDate: null, updatedAt: t2 },
+        'Nose': { name: 'Nose', studyDates: [], reviewCount: 0 }
+      },
+      updatedAt: t2
+    }
+  ];
+
+  const merged = mergeSubjectTrackerArrays(locTracker, remTracker, [], [], []);
+  const entDoc = merged.find(d => d.id === 'ent');
+
+  assert(entDoc !== undefined, 'ENT doc exists in merged tracker');
+  const topics = entDoc.topics;
+
+  // 1. Device 1's fresh review for Larynx MUST be preserved
+  assert(topics['Larynx: Part 1'].reviewCount === 1, 'Larynx: Part 1 has review count 1 (Device 1 review preserved)');
+  assert(topics['Larynx: Part 1'].studyDates.includes('2026-08-28'), 'Larynx: Part 1 study date preserved');
+
+  // 2. Device 1's fresh deletion for Ear: Part 1 MUST be preserved (NOT resurrected by Device 2's older review)
+  assert(topics['Ear: Part 1'].reviewCount === 0, 'Ear: Part 1 review count is 0 (Device 1 deletion preserved)');
+  assert(topics['Ear: Part 1'].studyDates.length === 0, 'Ear: Part 1 studyDates is empty (NOT resurrected)');
+
+  // 3. Device 2's fresh deletion for Pharynx MUST be applied (Device 1's older review removed)
+  assert(topics['Pharynx'].reviewCount === 0, 'Pharynx review count is 0 (Device 2 deletion applied)');
+  assert(topics['Pharynx'].studyDates.length === 0, 'Pharynx studyDates is empty');
+
+  // 4. Untouched topic Nose remains intact
+  assert(topics['Nose'].reviewCount === 0, 'Nose remains unstudied');
+}
+
 console.log('\n======================================================');
 console.log(`🎉 ALL ${passedTests}/${totalTests} SYNC SIMULATION TESTS PASSED CLEANLY!`);
 console.log('======================================================\n');

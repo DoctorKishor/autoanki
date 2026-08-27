@@ -10117,6 +10117,7 @@ JSON Format:
 
     const isNowEmpty = updatedDates.length === 0 || remainingLogs.length === 0;
 
+    const nowIso = new Date().toISOString();
     let updatedTopicObj;
     if (isNowEmpty) {
       updatedTopicObj = {
@@ -10130,15 +10131,19 @@ JSON Format:
         nextReviewDue: null,
         interval: null,
         retrievability: null,
-        isLeech: false
+        isLeech: false,
+        updatedAt: nowIso
       };
     } else {
-      updatedTopicObj = recalculateTopicFSRSFromLogs(
-        { ...topicObj, studyDates: updatedDates },
-        remainingLogs,
-        fsrsConfig,
-        subjectTrackerData
-      );
+      updatedTopicObj = {
+        ...recalculateTopicFSRSFromLogs(
+          { ...topicObj, studyDates: updatedDates },
+          remainingLogs,
+          fsrsConfig,
+          subjectTrackerData
+        ),
+        updatedAt: nowIso
+      };
     }
 
     const updatedTopics = {
@@ -10151,7 +10156,7 @@ JSON Format:
       id: docId,
       subject: subject.trim(),
       topics: updatedTopics,
-      updatedAt: new Date().toISOString()
+      updatedAt: nowIso
     };
 
     setSubjectTrackerData(prev => {
