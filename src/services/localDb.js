@@ -2143,10 +2143,10 @@ export function deserializeBinaryValues(obj) {
 /**
  * Reads ALL entries from a given object store into a plain array with binary data safely serialized.
  */
-async function dumpStore(storeName) {
+async function dumpStore(storeName, options = {}) {
   try {
     const items = (await getAllLocalItems(storeName)) || [];
-    if (storeName === STORES.KV_STORE) {
+    if (storeName === STORES.KV_STORE && !options.includeMedia) {
       const sanitized = items.map(item => {
         if (item && (item.key === 'pages' || item.key === 'trash_pages') && Array.isArray(item.value)) {
           return {
@@ -2183,9 +2183,12 @@ async function dumpStore(storeName) {
  * Exports a COMPLETE zero-loss universal snapshot of all 9 IndexedDB stores
  * and all synchronized localStorage keys into a single structured payload.
  *
+ * @param {object} [options] - Export options
+ * @param {boolean} [options.includeMedia=false] - Whether to embed heavy image assets directly in the JSON snapshot
  * @returns {Promise<object>} Full snapshot object ready for JSON.stringify
  */
-export async function exportFullUniversalSnapshot() {
+export async function exportFullUniversalSnapshot(options = {}) {
+  const includeMedia = options.includeMedia === true;
   // 1. Dump all 9 IndexedDB object stores (binary-safe)
   const [
     topicsRaw,
@@ -2198,15 +2201,15 @@ export async function exportFullUniversalSnapshot() {
     topicHintsRaw,
     hintQuotaRaw,
   ] = await Promise.all([
-    dumpStore(STORES.TOPICS),
-    dumpStore(STORES.SETTINGS),
-    dumpStore(STORES.CAMP_TRACKER),
-    dumpStore(STORES.CAMP_DATA),
-    dumpStore(STORES.CAMP_DAILY_LOGS),
-    dumpStore(STORES.PYT_DATA),
-    dumpStore(STORES.KV_STORE),
-    dumpStore(STORES.TOPIC_HINTS),
-    dumpStore(STORES.HINT_QUOTA),
+    dumpStore(STORES.TOPICS, { includeMedia }),
+    dumpStore(STORES.SETTINGS, { includeMedia }),
+    dumpStore(STORES.CAMP_TRACKER, { includeMedia }),
+    dumpStore(STORES.CAMP_DATA, { includeMedia }),
+    dumpStore(STORES.CAMP_DAILY_LOGS, { includeMedia }),
+    dumpStore(STORES.PYT_DATA, { includeMedia }),
+    dumpStore(STORES.KV_STORE, { includeMedia }),
+    dumpStore(STORES.TOPIC_HINTS, { includeMedia }),
+    dumpStore(STORES.HINT_QUOTA, { includeMedia }),
   ]);
 
   // 2. Capture all 27 synchronized localStorage keys
@@ -2588,6 +2591,15 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
     } catch (e) {
       console.warn('[LocalDB] Error hydrating CAMP cache after import:', e);
     }
+
+    // Check if any restored pages require media asset download from Google Drive
+    try {
+      const restoredPages = (await getLocalPages()) || [];
+      const hasMissingMedia = restoredPages.some(p => p && p.hasMedia && !p.imageUrl && !p.base64 && !p.data);
+      if (hasMissingMedia) {
+        report.mediaSyncRequired = true;
+      }
+    } catch (e) {}
 
     emit(++step, totalSteps, 'Done!');
     report.success = true;

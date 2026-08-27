@@ -27215,8 +27215,9 @@ Return your response strictly as a JSON object matching this schema:
 
                                 for (let i = 0; i < 7; i++) {
                                   const d = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + i);
-                                  const tzoffset = d.getTimezoneOffset() * 60000;
-                                  const dateStr = (new Date(d.getTime() - tzoffset)).toISOString().slice(0, 10);
+                                  const mmStr = String(d.getMonth() + 1).padStart(2, '0');
+                                  const ddStr = String(d.getDate()).padStart(2, '0');
+                                  const dateStr = `${d.getFullYear()}-${mmStr}-${ddStr}`;
                                   dateKeys.push(dateStr);
                                 }
 

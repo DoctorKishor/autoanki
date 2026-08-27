@@ -783,18 +783,43 @@ export default function CampDashboard({
   const [historyFilterDate, setHistoryFilterDate] = useState('');
 
   // Rebuilds camp_sessions for a given date from remaining timer history after a deletion
-  const rebuildCampSessionsForDate = (dateStr, remainingHistory) => {
-    const relevantItems = remainingHistory.filter(h => h.date === dateStr);
+  const rebuildCampSessionsForDate = (dateStr, remainingHistory, deletedItem = null) => {
+    // 1. Get existing sessions to preserve manual sessions and stable IDs
+    let existingSessions = null;
+    if (dateStr === selectedDate) {
+      existingSessions = sessions;
+    } else {
+      try {
+        const saved = localStorage.getItem(`camp_sessions_${dateStr}`);
+        if (saved) existingSessions = JSON.parse(saved);
+      } catch (e) {}
+    }
+
+    const periods = ['preLunch', 'midDay', 'postDinner'];
     const rebuilt = {
       preLunch: [],
       midDay: [],
       postDinner: []
     };
-    relevantItems.forEach(item => {
+
+    // 2. Preserve any manual sessions from existing state
+    periods.forEach(p => {
+      if (existingSessions && Array.isArray(existingSessions[p])) {
+        const manualSessions = existingSessions[p].filter(s => s && s.isManual);
+        rebuilt[p].push(...manualSessions);
+      }
+    });
+
+    // 3. Reconstruct remaining timer sessions with deterministic IDs
+    const relevantItems = remainingHistory.filter(h => h && h.date === dateStr);
+    const nowIso = new Date().toISOString();
+
+    relevantItems.forEach((item, idx) => {
       if (!rebuilt[item.period]) return;
       const numHours = parseFloat(item.hours) || 0;
+      const stableId = item.id ? `timer_${item.id}` : (item.timestamp ? `timer_${item.timestamp}` : `timer_${dateStr}_${item.period}_${idx}`);
       rebuilt[item.period].push({
-        id: Date.now().toString() + '_' + Math.random().toString(36).substr(2, 9),
+        id: stableId,
         hours: numHours.toFixed(3),
         concentration: Number(item.concentration) || 7,
         type: item.type || 'notes',
@@ -802,13 +827,16 @@ export default function CampDashboard({
         questionsSolved: Number(item.questionsSolved) || 0,
         cardsReviewed: Number(item.cardsReviewed) || 0,
         gtDetails: item.gtDetails || null,
-        isManual: false
+        isManual: false,
+        updatedAt: nowIso
       });
     });
+
     localStorage.setItem(`camp_sessions_${dateStr}`, JSON.stringify(rebuilt));
     saveLocalCampDailyLogs(dateStr, { sessions: rebuilt }).catch(err => {
       console.error("[LocalDB] Error saving rebuilt daily sessions:", err);
     });
+
     // If this is the currently selected date, update UI state too
     if (dateStr === selectedDate) {
       setSessions(rebuilt);
@@ -820,9 +848,19 @@ export default function CampDashboard({
     const itemToDelete = timerHistory[indexToDelete];
     const updatedHistory = timerHistory.filter((_, idx) => idx !== indexToDelete);
     setTimerHistory(updatedHistory);
+
+    // Record tombstone for cloud sync
+    if (itemToDelete) {
+      const timerKey = itemToDelete.id ? String(itemToDelete.id) : (itemToDelete.timestamp ? String(itemToDelete.timestamp) : `timer_${itemToDelete.date || selectedDate}_${indexToDelete}`);
+      recordTombstone('camp_timer_history', timerKey, {
+        dateStr: itemToDelete.date || selectedDate,
+        deletedAt: new Date().toISOString()
+      }).catch(e => console.warn('[CampDashboard] Error recording timer tombstone:', e));
+    }
+
     // Rebuild camp_sessions for the affected date
     if (itemToDelete?.date) {
-      rebuildCampSessionsForDate(itemToDelete.date, updatedHistory);
+      rebuildCampSessionsForDate(itemToDelete.date, updatedHistory, itemToDelete);
     }
   };
 

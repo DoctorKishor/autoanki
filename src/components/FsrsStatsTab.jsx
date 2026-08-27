@@ -17,14 +17,18 @@ export default function FsrsStatsTab({ subjectTrackerData = [], studyLogs = [], 
       if (subDoc.topics && typeof subDoc.topics === 'object') {
         Object.entries(subDoc.topics).forEach(([tKey, topic]) => {
           const rawName = (topic?.name || tKey || '').trim();
-          if (rawName && Array.isArray(topic?.studyDates)) {
+          if (rawName) {
             const topName = rawName.toLowerCase();
-            topic.studyDates.forEach(dStr => {
-              if (dStr) {
-                map.add(`${subName}|${topName}|${dStr}`);
-                map.add(`${topName}|${dStr}`);
-              }
-            });
+            map.add(topName);
+            map.add(tKey.toLowerCase());
+            if (Array.isArray(topic?.studyDates)) {
+              topic.studyDates.forEach(dStr => {
+                if (dStr) {
+                  map.add(`${subName}|${topName}|${dStr}`);
+                  map.add(`${topName}|${dStr}`);
+                }
+              });
+            }
           }
         });
       }
@@ -65,15 +69,17 @@ export default function FsrsStatsTab({ subjectTrackerData = [], studyLogs = [], 
     return rawFsrsLogs.filter(log => {
       if (!log || typeof log !== 'object') return false;
 
-      // Validate log against active subjectTrackerData studyDates
-      if (log.subject && log.topicName) {
+      // Validate log against active subjectTrackerData studyDates (while preserving flashcard logs & renamed subjects)
+      if (log.subject && log.topicName && validTopicDatesMap.size > 0 && !log.cardId) {
         const subName = log.subject.trim().toLowerCase();
         const topName = log.topicName.trim().toLowerCase();
         const dStr = log.dateStr || (log.timestamp ? log.timestamp.split('T')[0] : null);
 
         if (dStr) {
-          const isValidKey = validTopicDatesMap.has(`${subName}|${topName}|${dStr}`) || validTopicDatesMap.has(`${topName}|${dStr}`);
-          if (!isValidKey) return false; // Exclude legacy or orphan unlinked logs
+          const isValidKey = validTopicDatesMap.has(`${subName}|${topName}|${dStr}`) ||
+                             validTopicDatesMap.has(`${topName}|${dStr}`) ||
+                             validTopicDatesMap.has(topName);
+          if (!isValidKey) return false;
         }
       }
 
