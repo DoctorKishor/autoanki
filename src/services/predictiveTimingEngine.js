@@ -29,22 +29,39 @@ export function extractAllTimingLogs(studyLogs) {
   if (!studyLogs) return [];
   const allLogs = [];
 
-  const days = Array.isArray(studyLogs)
-    ? studyLogs
-    : typeof studyLogs === 'object'
-      ? Object.values(studyLogs)
-      : [];
-
-  days.forEach(day => {
-    if (!day) return;
-    if (Array.isArray(day.fsrsLogs)) {
-      day.fsrsLogs.forEach(log => {
-        if (log && typeof log === 'object') {
-          allLogs.push({ ...log, dateStr: log.dateStr || day.dateStr });
-        }
-      });
-    }
-  });
+  if (Array.isArray(studyLogs)) {
+    studyLogs.forEach(day => {
+      if (!day) return;
+      if (Array.isArray(day.fsrsLogs)) {
+        day.fsrsLogs.forEach(log => {
+          if (log && typeof log === 'object') {
+            allLogs.push({ ...log, dateStr: log.dateStr || day.dateStr || day.date });
+          }
+        });
+      } else if (day.rating) {
+        allLogs.push(day);
+      }
+    });
+  } else if (typeof studyLogs === 'object') {
+    Object.entries(studyLogs).forEach(([dateKey, day]) => {
+      if (!day) return;
+      if (Array.isArray(day.fsrsLogs)) {
+        day.fsrsLogs.forEach(log => {
+          if (log && typeof log === 'object') {
+            allLogs.push({ ...log, dateStr: log.dateStr || day.dateStr || dateKey });
+          }
+        });
+      } else if (Array.isArray(day)) {
+        day.forEach(log => {
+          if (log && typeof log === 'object') {
+            allLogs.push({ ...log, dateStr: log.dateStr || dateKey });
+          }
+        });
+      } else if (day.rating) {
+        allLogs.push({ ...day, dateStr: day.dateStr || dateKey });
+      }
+    });
+  }
 
   return allLogs;
 }
@@ -417,19 +434,20 @@ export function calculateWeeklyWorkloadForecast(subjectTrackerData = [], studyLo
     if (Array.isArray(subjectTrackerData)) {
       subjectTrackerData.forEach(subDoc => {
         const subName = subDoc.subject || 'General';
-        if (subDoc.topics) {
-          Object.values(subDoc.topics).forEach(topic => {
-            if (!topic || !topic.name) return;
+        if (subDoc.topics && typeof subDoc.topics === 'object') {
+          Object.entries(subDoc.topics).forEach(([tKey, topic]) => {
+            const rawName = (topic?.name || tKey || '').trim();
+            if (!rawName) return;
 
             const isUnstudied = (!topic.reviewCount || topic.reviewCount === 0) && !topic.lastReviewDate;
-            const topicObj = { ...topic, subject: subName };
+            const topicObj = { ...topic, name: rawName, subject: subName };
 
             if (i === 0 && isUnstudied) {
               // Today's active new topics
               const isPicked = activeNewTopicsList.some(t =>
                 t.id === topic.id ||
-                t.name === topic.name ||
-                `${subName}_${topic.name}` === t.id
+                t.name === rawName ||
+                `${subName}_${rawName}` === t.id
               );
               if (isPicked) {
                 const pred = calculatePredictiveTopicTime(topicObj, subjectTrackerData, studyLogs);
@@ -488,9 +506,10 @@ export function calculateDynamicProfileMaturity(subjectTrackerData = [], studyLo
   if (Array.isArray(subjectTrackerData)) {
     subjectTrackerData.forEach(subDoc => {
       const subName = (subDoc.subject || 'General').toLowerCase();
-      if (subDoc.topics) {
-        Object.values(subDoc.topics).forEach(topic => {
-          if (topic && topic.name) {
+      if (subDoc.topics && typeof subDoc.topics === 'object') {
+        Object.entries(subDoc.topics).forEach(([tKey, topic]) => {
+          const rawName = (topic?.name || tKey || '').trim();
+          if (rawName) {
             totalCurriculumTopics++;
           }
         });

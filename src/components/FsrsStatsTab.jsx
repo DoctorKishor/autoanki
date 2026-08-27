@@ -15,9 +15,10 @@ export default function FsrsStatsTab({ subjectTrackerData = [], studyLogs = [], 
     subjectTrackerData.forEach(subDoc => {
       const subName = (subDoc.subject || '').trim().toLowerCase();
       if (subDoc.topics && typeof subDoc.topics === 'object') {
-        Object.values(subDoc.topics).forEach(topic => {
-          if (topic && typeof topic.name === 'string' && Array.isArray(topic.studyDates)) {
-            const topName = topic.name.trim().toLowerCase();
+        Object.entries(subDoc.topics).forEach(([tKey, topic]) => {
+          const rawName = (topic?.name || tKey || '').trim();
+          if (rawName && Array.isArray(topic?.studyDates)) {
+            const topName = rawName.toLowerCase();
             topic.studyDates.forEach(dStr => {
               if (dStr) {
                 map.add(`${subName}|${topName}|${dStr}`);
@@ -123,16 +124,17 @@ export default function FsrsStatsTab({ subjectTrackerData = [], studyLogs = [], 
 
     subjectTrackerData.forEach(subDoc => {
       const subName = subDoc.subject;
-      if (subDoc.topics) {
-        Object.values(subDoc.topics).forEach(topic => {
-          if (typeof topic.name === 'string' && topic.name.trim().length > 0) {
+      if (subDoc.topics && typeof subDoc.topics === 'object') {
+        Object.entries(subDoc.topics).forEach(([tKey, topic]) => {
+          const rawName = (topic?.name || tKey || '').trim();
+          if (rawName.length > 0) {
             totalTopicsCount++;
-            const cleanName = topic.name.trim().toLowerCase();
+            const cleanName = rawName.toLowerCase();
             const hasActiveLogs = reviewedTopicNames.has(cleanName);
             const hasReviews = (topic.reviewCount || 0) > 0 && Array.isArray(topic.studyDates) && topic.studyDates.length > 0;
 
-            // Only aggregate stability & difficulty if active revision logs exist for topic
-            if (filteredLogs.length > 0 && hasActiveLogs && hasReviews && topic.stability != null && topic.difficulty != null) {
+            // Only aggregate stability & difficulty if topic has reviews and non-null FSRS state
+            if (hasReviews && topic.stability != null && topic.difficulty != null) {
               sumStability += topic.stability;
               sumDifficulty += topic.difficulty;
               countFSRS++;
@@ -140,7 +142,7 @@ export default function FsrsStatsTab({ subjectTrackerData = [], studyLogs = [], 
 
             const lapses = topic.lapses || topic.lapsesCount || 0;
             if ((hasActiveLogs || hasReviews) && (lapses >= (fsrsConfig.lapses?.leechThreshold ?? 8) || topic.isLeech)) {
-              leechList.push({ ...topic, subject: subName, lapses });
+              leechList.push({ ...topic, name: rawName, subject: subName, lapses });
             }
           }
         });
@@ -167,8 +169,8 @@ export default function FsrsStatsTab({ subjectTrackerData = [], studyLogs = [], 
     }
 
     subjectTrackerData.forEach(subDoc => {
-      if (subDoc.topics) {
-        const topicsList = Object.values(subDoc.topics);
+      if (subDoc.topics && typeof subDoc.topics === 'object') {
+        const topicsList = Object.entries(subDoc.topics).map(([tKey, t]) => ({ name: (t?.name || tKey || '').trim(), ...(t || {}) }));
         topicsList.forEach(topic => {
           // Only forecast upcoming reviews for topics that have completed at least one review session
           if (topic.nextReviewDue && (topic.reviewCount || 0) > 0 && topic.lastReviewDate && daysMap[topic.nextReviewDue]) {
