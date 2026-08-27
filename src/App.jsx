@@ -5268,28 +5268,12 @@ export default function App() {
       }
     };
 
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        getGoogleDriveAuthState().then(state => {
-          if (state?.accessToken) {
-            syncWithGoogleDrive({
-              force: false,
-              interactive: false,
-              onConflict: (conflict) => setGdriveConflictData(conflict)
-            }).catch(() => { });
-          }
-        });
-      }
-    };
-
     window.addEventListener('gdrive-auth-changed', handleAuthChanged);
     window.addEventListener('gdrive-sync-status', handleSyncStatus);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       window.removeEventListener('gdrive-auth-changed', handleAuthChanged);
       window.removeEventListener('gdrive-sync-status', handleSyncStatus);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 

@@ -3727,8 +3727,7 @@ async function executeSyncInternal({
       emit(4, 10, 'Uploading initial collection to Google Drive…');
       const res = await executeOneWayPush(accessToken, vaultFolderId, mediaFolderId, localData, remoteFileMap, emit);
       if (res.success) {
-        const postData = await extractLocalBundles();
-        await saveLastSyncedHashes(postData.manifest.hashes);
+        await saveLastSyncedHashes(localData.manifest.hashes);
         logger.sync('INITIAL-PUSH-SUCCESS', 'Initial collection upload complete.');
       }
       return res;
@@ -3782,8 +3781,8 @@ async function executeSyncInternal({
       Object.keys(remoteHashes).length > 0 &&
       Object.keys(remoteHashes).every(k => remoteHashes[k] === lastSyncedHashes[k]);
 
-    // Scenario 1: Clean Fast-Forward Download
-    if (isLocalClean && !force) {
+    // Scenario 1: Clean Fast-Forward Download (only if remote is actually newer)
+    if (isLocalClean && !isRemoteClean && !force) {
       logger.sync('FAST-FORWARD-DOWNLOAD', 'Local had zero edits since last sync. Fast-forwarding local database to newer cloud version...');
       emit(3, 10, 'Fast-forwarding to newer cloud version…');
       const res = await executeOneWayDownload(accessToken, vaultFolderId, mediaFolderId, remoteFileMap, emit, {
@@ -3809,8 +3808,7 @@ async function executeSyncInternal({
       });
 
       if (pushRes.success) {
-        const postData = await extractLocalBundles();
-        await saveLastSyncedHashes(postData.manifest.hashes);
+        await saveLastSyncedHashes(localData.manifest.hashes);
         logger.sync('FAST-FORWARD-PUSH-SUCCESS', 'Cloud updated to fresh local state.');
         return pushRes;
       } else if (pushRes.action === 'concurrency_conflict') {
@@ -3933,8 +3931,7 @@ async function executeSyncInternal({
             remoteHashes: currentRemoteHashes
           });
           if (res.success) {
-            const postData = await extractLocalBundles();
-            await saveLastSyncedHashes(postData.manifest.hashes);
+            await saveLastSyncedHashes(localData.manifest.hashes);
           }
           return res;
         } else if (conflictResolution === 'download') {
@@ -4098,8 +4095,8 @@ async function executeOneWayPush(accessToken, vaultFolderId, mediaFolderId, loca
   const existingManifest = remoteFileMap.get('manifest.json');
   await uploadDriveFile(accessToken, vaultFolderId, 'manifest.json', localData.manifest, existingManifest?.id);
 
-  const postPushLocal = await extractLocalBundles();
-  await saveLastSyncedHashes(postPushLocal.manifest.hashes);
+  // Anchor to the exact hashes that were uploaded, not re-extracted (prevents race-condition anchor poisoning)
+  await saveLastSyncedHashes(localData.manifest.hashes);
 
   // 3. Queue Phase 2: Non-blocking media uploads (reads directly from DB to prevent heap closures)
   emit(++step, total, 'Sync complete! Media queued in background.');
