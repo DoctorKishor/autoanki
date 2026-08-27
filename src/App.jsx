@@ -16628,26 +16628,32 @@ JSON Format:
             setReviewUndoStack(prev => [...prev, action]);
             setReviewRedoStack([]);
           }}
-          onDeleteTimingLog={async (logId, dateStr) => {
-            if (!logId || !dateStr) return;
-            const nowIso = new Date().toISOString();
-            let removedLog = null;
-            setStudyLogs(prev => {
-              const dayLog = prev[dateStr];
-              if (!dayLog || !Array.isArray(dayLog.fsrsLogs)) return prev;
-              const filtered = dayLog.fsrsLogs.filter(l => l.id !== logId);
-              removedLog = dayLog.fsrsLogs.find(l => l.id === logId);
-              const removedPages = removedLog?.pageWeight || 1;
-              const updatedDayLog = {
-                ...dayLog,
-                cards: Math.max(0, (dayLog.cards || 0) - 1),
-                pages: Math.max(0, (dayLog.pages || 0) - removedPages),
-                fsrsLogs: filtered,
-                updatedAt: nowIso
-              };
-              return { ...prev, [dateStr]: updatedDayLog };
-            });
-            await deleteLocalStudyLogEntry(dateStr, logId, removedLog?.topicName, removedLog);
+          onDeleteTimingLog={async (logOrId, maybeDateStr) => {
+            if (!logOrId) return;
+            const logObj = typeof logOrId === 'object' ? logOrId : { id: logOrId, dateStr: maybeDateStr };
+            const sub = logObj.subject || 'General';
+            const top = logObj.topicName;
+            const dStr = logObj.dateStr || (logObj.timestamp ? logObj.timestamp.split('T')[0] : null);
+
+            if (top && dStr) {
+              await handleDeleteTrackerStudyDate(sub, top, null, dStr);
+            } else if (logObj.id && dStr) {
+              const nowIso = new Date().toISOString();
+              setStudyLogs(prev => {
+                const dayLog = prev[dStr];
+                if (!dayLog || !Array.isArray(dayLog.fsrsLogs)) return prev;
+                const filtered = dayLog.fsrsLogs.filter(l => l.id !== logObj.id);
+                const updatedDayLog = {
+                  ...dayLog,
+                  cards: Math.max(0, (dayLog.cards || 0) - 1),
+                  fsrsLogs: filtered,
+                  updatedAt: nowIso
+                };
+                return { ...prev, [dStr]: updatedDayLog };
+              });
+              await deleteLocalStudyLogEntry(dStr, logObj.id, top, logObj);
+              triggerDebouncedSmartPush();
+            }
           }}
           onOpenNotesModal={(topic) => setNotesModalTopic(topic)}
         />

@@ -760,6 +760,7 @@ export default function StudyVelocityTab({
                 <th className="py-3 px-4 text-center">Actual Time</th>
                 <th className="py-3 px-4 text-center">Pace (Mins/Pg)</th>
                 <th className="py-3 px-4 text-center">Tier</th>
+                <th className="py-3 px-4 text-center w-10">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-700/30 font-medium">
@@ -794,12 +795,32 @@ export default function StudyVelocityTab({
                           {log.revisionTier || 'R1'}
                         </span>
                       </td>
+                      <td className="py-3 px-4 text-center">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (window.confirm(`Delete review log for "${log.topicName || 'Topic'}" on ${dateDisplay}?`)) {
+                              if (typeof onDeleteTimingLog === 'function') {
+                                onDeleteTimingLog(log);
+                              }
+                            }
+                          }}
+                          className={`p-1.5 rounded-lg border transition-all hover:scale-105 active:scale-95 ${
+                            isDark
+                              ? 'text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border-slate-700/60 hover:border-rose-500/40'
+                              : 'text-slate-500 hover:text-rose-600 hover:bg-rose-50 border-slate-200 hover:border-rose-200'
+                          }`}
+                          title="Delete session log"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
                     </tr>
                   );
                 })
               ) : (
                 <tr>
-                  <td colSpan="8" className={`py-8 text-center text-xs font-semibold ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                  <td colSpan="9" className={`py-8 text-center text-xs font-semibold ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                     No timing logs recorded yet. Rate topics after study to build your velocity profile!
                   </td>
                 </tr>
