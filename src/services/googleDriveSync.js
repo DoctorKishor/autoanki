@@ -780,6 +780,9 @@ export async function extractLocalBundles() {
     if (ts > maxEntityUpdatedAt) maxEntityUpdatedAt = ts;
   };
 
+  const unifiedGraves = (await getUnifiedGraves()) || [];
+  unifiedGraves.forEach(g => { if (g) trackTimestamp(g.deletedAt); });
+
   // 1. Cards Bundle (Streamlined & Sanitized for Zero-Spike Memory Footprint)
   const flashcards = (await getLocalKV('flashcards')) || [];
   const trashCards = (await getLocalKV('trash_cards')) || [];
@@ -833,6 +836,23 @@ export async function extractLocalBundles() {
   if (Array.isArray(pytData)) {
     pytData.forEach(p => { if (p) trackTimestamp(p.updatedAt || p.createdAt); });
   }
+  if (Array.isArray(subjectTracker)) {
+    subjectTracker.forEach(doc => {
+      if (doc) {
+        if (doc.updatedAt) trackTimestamp(doc.updatedAt);
+        if (doc.topics && typeof doc.topics === 'object') {
+          Object.values(doc.topics).forEach(t => {
+            if (t) trackTimestamp(t.updatedAt || t.lastReviewDate || t.createdAt);
+          });
+        }
+      }
+    });
+  }
+  if (Array.isArray(pytUserProgress)) {
+    pytUserProgress.forEach(p => {
+      if (p && p.updatedAt) trackTimestamp(p.updatedAt);
+    });
+  }
 
   let totalTopicsCount = topics.length;
   if (Array.isArray(subjectTracker)) {
@@ -852,7 +872,8 @@ export async function extractLocalBundles() {
     pytData: serializeBinaryValues(pytData),
     subjectTracker,
     pytUserProgress,
-    textbooksMetadata
+    textbooksMetadata,
+    unifiedGraves
   };
   hashes.curriculum_topics = computeHash(bundles['curriculum_topics.json']);
 
@@ -880,7 +901,8 @@ export async function extractLocalBundles() {
     scheduleTemplates,
     campDailyLogs,
     timerState,
-    activeNewTopicsToday
+    activeNewTopicsToday,
+    unifiedGraves
   };
   hashes.study_logs = computeHash(bundles['study_logs.json']);
 
@@ -995,10 +1017,8 @@ export async function extractLocalBundles() {
     return copy;
   };
 
-  // Include unified graves in pages_bundle for cross-device tombstone propagation
-  const unifiedGraves = (await getUnifiedGraves()) || [];
+  // Include unified graves and trashPrompts in pages_bundle
   const trashPrompts = (await getLocalKV('trash_prompts')) || [];
-  unifiedGraves.forEach(g => { if (g) trackTimestamp(g.deletedAt); });
   trashPrompts.forEach(p => { if (p) trackTimestamp(p.deletedAt); });
 
   bundles['pages_bundle.json'] = {
@@ -1381,21 +1401,43 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
           await setLocalKV('trash_topics', Array.from(mergedTrashTopics.values()));
         }
 
+        const unifiedGraves = (await getUnifiedGraves()) || [];
+
         if (Array.isArray(incomingPyt)) {
+          const pytGraveMap = new Map();
+          unifiedGraves.forEach(g => {
+            if (!g) return;
+            const type = g.entityType || g.type;
+            if (type === 'pyt_topic') {
+              const delTime = safeTimestamp(g.deletedAt || g.timestamp || 0);
+              if (g.entityId) pytGraveMap.set(String(g.entityId).toLowerCase(), Math.max(delTime, pytGraveMap.get(String(g.entityId).toLowerCase()) || 0));
+              if (g.metadata?.subject) pytGraveMap.set(String(g.metadata.subject).toLowerCase(), Math.max(delTime, pytGraveMap.get(String(g.metadata.subject).toLowerCase()) || 0));
+            }
+          });
+
           for (const item of incomingPyt) {
-            if (item && item.key) await putLocalItem(STORES.PYT_DATA, item);
+            if (item && item.key) {
+              const key = String(item.key).toLowerCase();
+              const itemTime = safeTimestamp(item.updatedAt || item.createdAt || 0);
+              const delTime = pytGraveMap.get(key);
+              if (delTime && delTime >= itemTime) continue; // Tombstoned
+
+              const localItem = await getLocalItem(STORES.PYT_DATA, item.key);
+              if (!localItem || itemTime > safeTimestamp(localItem.updatedAt || localItem.createdAt || 0)) {
+                await putLocalItem(STORES.PYT_DATA, item);
+              }
+            }
           }
         }
 
         // Non-destructive entity-level merge for Subject Tracker Topics & FSRS states
         const localSubjectTracker = (await getLocalSubjectTrackerData()) || (await getLocalKV('subject_tracker_data')) || [];
-        const unifiedGraves = (await getUnifiedGraves()) || [];
         const mergedTracker = mergeSubjectTrackerArrays(localSubjectTracker, b.subjectTracker || [], localTrashTopics, incomingTrashTopics, unifiedGraves);
         await setLocalKV('subject_tracker_data', mergedTracker);
 
         // Non-destructive merge for PYT user progress
         const localPytProg = (await getLocalKV('pyt_user_progress')) || [];
-        const mergedPytProg = mergePytUserProgress(localPytProg, b.pytUserProgress || []);
+        const mergedPytProg = mergePytUserProgress(localPytProg, b.pytUserProgress || [], unifiedGraves);
         await setLocalKV('pyt_user_progress', mergedPytProg);
 
         // Non-destructive merge for textbooks metadata
@@ -2361,10 +2403,8 @@ export function mergeSubjectTrackerArrays(localTracker = [], remoteTracker = [],
 
       // Topic only in remote
       if (!locT && remT) {
-        const remTopicTime = safeTimestamp(remT.updatedAt || remT.lastReviewDate || remT.createdAt || 0);
-        // If local doc was updated more recently than this remote topic was touched, local doc deleted it
-        if (locDocTime > remTopicTime) {
-          return; // Prune (deletion wins)
+        if (isTopicTombstoned(key, tKey, remT)) {
+          return; // Prune (tombstoned deletion wins)
         }
         mergedTopics[tKey] = remT;
         return;
@@ -2372,62 +2412,66 @@ export function mergeSubjectTrackerArrays(localTracker = [], remoteTracker = [],
 
       // Topic only in local
       if (locT && !remT) {
-        const locTopicTime = safeTimestamp(locT.updatedAt || locT.lastReviewDate || locT.createdAt || 0);
-        // If remote doc was updated more recently than this local topic was touched, remote doc deleted it
-        if (remDocTime > locTopicTime) {
-          return; // Prune (deletion wins)
+        if (isTopicTombstoned(key, tKey, locT)) {
+          return; // Prune (tombstoned deletion wins)
         }
         mergedTopics[tKey] = locT;
         return;
       }
 
-      // Both exist: resolve by Last-Write-Wins (updatedAt / createdAt)
-      const locTopicTime = safeTimestamp(locT.updatedAt || locT.createdAt || locDocTime || 0);
-      const remTopicTime = safeTimestamp(remT.updatedAt || remT.createdAt || remDocTime || 0);
-      const locReviewDate = safeTimestamp(locT.lastReviewDate);
-      const remReviewDate = safeTimestamp(remT.lastReviewDate);
+      // Both exist: resolve by Last-Write-Wins strictly on topic-level updatedAt/timestamps (never falling back to parent doc timestamps)
+      const locTopicTime = safeTimestamp(locT.updatedAt || locT.lastReviewDate || locT.createdAt || 0);
+      const remTopicTime = safeTimestamp(remT.updatedAt || remT.lastReviewDate || remT.createdAt || 0);
+
+      const locHasReviews = Array.isArray(locT.studyDates) && locT.studyDates.length > 0;
+      const remHasReviews = Array.isArray(remT.studyDates) && remT.studyDates.length > 0;
 
       let winnerTopic = locT;
-      let isLocalFresher = locTopicTime >= remTopicTime;
+      let isLocalFresher = true;
 
-      if (remTopicTime > locTopicTime) {
+      if (locTopicTime === 0 && remTopicTime > 0) {
+        winnerTopic = remT;
+        isLocalFresher = false;
+      } else if (remTopicTime === 0 && locTopicTime > 0) {
+        winnerTopic = locT;
+        isLocalFresher = true;
+      } else if (remTopicTime > locTopicTime) {
         winnerTopic = remT;
         isLocalFresher = false;
       } else if (locTopicTime > remTopicTime) {
         winnerTopic = locT;
         isLocalFresher = true;
-      } else if (remReviewDate > locReviewDate) {
+      } else {
+        // Equal timestamps (or both 0): if one side has reviews and other does not, preserve the reviewed side
+        if (remHasReviews && !locHasReviews) {
+          winnerTopic = remT;
+          isLocalFresher = false;
+        } else if (locHasReviews && !remHasReviews) {
+          winnerTopic = locT;
+          isLocalFresher = true;
+        } else {
+          winnerTopic = locT;
+          isLocalFresher = true;
+        }
+      }
+
+      // If one side has reviews and the other has 0 reviews, but timestamps were close or defaulted,
+      // never let an unstudied topic with 0 reviews wipe out a studied topic unless the unstudied side
+      // has an explicit, newer updatedAt proving an intentional reset/undo!
+      if (remHasReviews && !locHasReviews && locTopicTime <= remTopicTime) {
         winnerTopic = remT;
         isLocalFresher = false;
-      } else if (locReviewDate > remReviewDate) {
+      } else if (locHasReviews && !remHasReviews && remTopicTime <= locTopicTime) {
         winnerTopic = locT;
         isLocalFresher = true;
-      } else {
-        const locReps = Number(locT.reviewCount || (Array.isArray(locT.studyDates) ? locT.studyDates.length : 0));
-        const remReps = Number(remT.reviewCount || (Array.isArray(remT.studyDates) ? remT.studyDates.length : 0));
-        winnerTopic = remReps >= locReps ? remT : locT;
-        isLocalFresher = locReps >= remReps;
       }
 
       // Study dates & review metrics:
-      // If one side is strictly fresher (e.g. after review, undo, or manual edit), the fresher side's studyDates & reviewCount take precedence
-      let finalStudyDates = [];
-      let finalReviewCount = 0;
-      let finalReps = 0;
-
-      if (locTopicTime !== remTopicTime) {
-        const fresherTopic = isLocalFresher ? locT : remT;
-        finalStudyDates = Array.isArray(fresherTopic.studyDates) ? fresherTopic.studyDates : [];
-        finalReviewCount = fresherTopic.reviewCount !== undefined ? Number(fresherTopic.reviewCount) : finalStudyDates.length;
-        finalReps = fresherTopic.reps !== undefined ? Number(fresherTopic.reps) : finalReviewCount;
-      } else {
-        // Equal timestamps (legacy/tie): union non-destructively
-        const locDates = Array.isArray(locT.studyDates) ? locT.studyDates : [];
-        const remDates = Array.isArray(remT.studyDates) ? remT.studyDates : [];
-        finalStudyDates = Array.from(new Set([...locDates, ...remDates])).filter(Boolean).sort();
-        finalReviewCount = Math.max(Number(winnerTopic.reviewCount || 0), Number(locT.reviewCount || 0), Number(remT.reviewCount || 0), finalStudyDates.length);
-        finalReps = Math.max(Number(winnerTopic.reps || 0), Number(locT.reps || 0), Number(remT.reps || 0), finalStudyDates.length);
-      }
+      // The fresher side (local if modified/reviewed/undone/deleted, or remote if remotely updated) is authoritative.
+      const fresherTopic = isLocalFresher ? locT : remT;
+      let finalStudyDates = Array.isArray(fresherTopic.studyDates) ? [...fresherTopic.studyDates] : [];
+      let finalReviewCount = fresherTopic.reviewCount !== undefined ? Number(fresherTopic.reviewCount) : finalStudyDates.length;
+      let finalReps = fresherTopic.reps !== undefined ? Number(fresherTopic.reps) : finalReviewCount;
 
       const mergedPage = winnerTopic.page || locT.page || remT.page || '';
       const mergedPageCount = winnerTopic.pageCount !== undefined ? winnerTopic.pageCount : (locT.pageCount || remT.pageCount);
@@ -2482,24 +2526,46 @@ export function mergeSubjectTrackerArrays(localTracker = [], remoteTracker = [],
 }
 
 /**
- * Merges PYT user progress by subject ID, taking the maximum review/completion count per topic.
+ * Merges PYT user progress by subject ID with strict timestamp awareness and tombstone pruning.
  */
-export function mergePytUserProgress(localProg = [], remoteProg = []) {
+export function mergePytUserProgress(localProg = [], remoteProg = [], unifiedGraves = []) {
   const locList = Array.isArray(localProg) ? localProg : [];
   const remList = Array.isArray(remoteProg) ? remoteProg : [];
+  const graves = Array.isArray(unifiedGraves) ? unifiedGraves : [];
+
+  const tombstoneMap = new Map();
+  graves.forEach(g => {
+    if (!g) return;
+    const type = g.entityType || g.type;
+    if (type === 'pyt_user_progress' || type === 'pyt_progress' || type === 'pyt_topic') {
+      const delTime = safeTimestamp(g.deletedAt || g.timestamp || 0);
+      if (g.entityId) tombstoneMap.set(String(g.entityId).toLowerCase(), Math.max(delTime, tombstoneMap.get(String(g.entityId).toLowerCase()) || 0));
+      if (g.metadata?.docId) tombstoneMap.set(String(g.metadata.docId).toLowerCase(), Math.max(delTime, tombstoneMap.get(String(g.metadata.docId).toLowerCase()) || 0));
+      if (g.metadata?.subject) tombstoneMap.set(String(g.metadata.subject).toLowerCase(), Math.max(delTime, tombstoneMap.get(String(g.metadata.subject).toLowerCase()) || 0));
+    }
+  });
+
+  const isDocTombstoned = (key, doc) => {
+    const docTime = safeTimestamp(doc?.updatedAt || doc?.createdAt || 0);
+    const delTime = tombstoneMap.get(String(key).toLowerCase());
+    return Boolean(delTime && delTime >= docTime);
+  };
+
   const map = new Map();
 
   locList.forEach(p => {
     if (p) {
       const k = String(p.id || p.subject || '').trim().toLowerCase();
-      if (k) map.set(k, { ...p });
+      if (k && !isDocTombstoned(k, p)) {
+        map.set(k, { ...p });
+      }
     }
   });
 
   remList.forEach(remP => {
     if (!remP) return;
     const k = String(remP.id || remP.subject || '').trim().toLowerCase();
-    if (!k) return;
+    if (!k || isDocTombstoned(k, remP)) return;
 
     if (!map.has(k)) {
       map.set(k, { ...remP });
@@ -2507,21 +2573,40 @@ export function mergePytUserProgress(localProg = [], remoteProg = []) {
     }
 
     const locP = map.get(k);
-    const locMap = locP.progress_map || {};
-    const remMap = remP.progress_map || {};
-    const mergedMap = { ...locMap };
+    const locTime = safeTimestamp(locP.updatedAt || locP.createdAt || 0);
+    const remTime = safeTimestamp(remP.updatedAt || remP.createdAt || 0);
 
-    Object.entries(remMap).forEach(([tKey, val]) => {
-      mergedMap[tKey] = Math.max(Number(locMap[tKey] || 0), Number(val || 0));
-    });
+    const isLocalFresher = locTime >= remTime;
+    const fresherDoc = isLocalFresher ? locP : remP;
+    const olderDoc = isLocalFresher ? remP : locP;
 
-    const maxTime = Math.max(safeTimestamp(locP.updatedAt), safeTimestamp(remP.updatedAt), Date.now());
+    // Progress map merge:
+    // The fresher side is authoritative for all keys present on either side.
+    // Keys present in the fresher side MUST keep their exact count (even if 0 or decremented!).
+    // Keys ONLY present in the older side (not present in fresher side) are merged in if fresher didn't explicitly delete them.
+    const fresherProgress = fresherDoc.progress_map || {};
+    const olderProgress = olderDoc.progress_map || {};
+    const mergedProgress = { ...olderProgress, ...fresherProgress };
+
+    // Merged topics: fresher side wins
+    const fresherMergedTopics = fresherDoc.merged_topics || {};
+    const olderMergedTopics = olderDoc.merged_topics || {};
+    const mergedTopics = { ...olderMergedTopics, ...fresherMergedTopics };
+
+    // Pages map: fresher side wins
+    const fresherPages = fresherDoc.pages_map || {};
+    const olderPages = olderDoc.pages_map || {};
+    const mergedPages = { ...olderPages, ...fresherPages };
+
+    const maxTime = Math.max(locTime, remTime, Date.now());
     map.set(k, {
-      ...remP,
-      ...locP,
+      ...olderDoc,
+      ...fresherDoc,
       id: locP.id || remP.id || k,
       subject: locP.subject || remP.subject || k,
-      progress_map: mergedMap,
+      progress_map: mergedProgress,
+      merged_topics: mergedTopics,
+      pages_map: mergedPages,
       updatedAt: new Date(maxTime).toISOString()
     });
   });
@@ -2776,6 +2861,8 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
 
   const gtGravesMap = new Map();
   const studyLogGravesMap = new Map();
+  const subLogGravesMap = new Map();
+  const trackerTopicGravesMap = new Map();
   (unifiedGraves || []).forEach(g => {
     if (!g) return;
     const type = g.entityType || g.type;
@@ -2794,8 +2881,38 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
         locTrashMap.set(String(g.entityId), Math.max(delTime, locTrashMap.get(String(g.entityId)) || 0));
         remTrashMap.set(String(g.entityId), Math.max(delTime, remTrashMap.get(String(g.entityId)) || 0));
       }
+    } else if (type === 'study_log_entry') {
+      if (g.entityId) subLogGravesMap.set(String(g.entityId).toLowerCase(), delTime);
+      if (g.metadata?.logId) subLogGravesMap.set(String(g.metadata.logId).toLowerCase(), delTime);
+      if (g.metadata?.dateStr && g.metadata?.topicName) {
+        subLogGravesMap.set(`${String(g.metadata.dateStr)}_${String(g.metadata.topicName).toLowerCase()}`, delTime);
+      }
+    } else if (type === 'tracker_topic' || type === 'topic') {
+      if (g.entityId) trackerTopicGravesMap.set(String(g.entityId).toLowerCase(), delTime);
+      if (g.metadata?.name) trackerTopicGravesMap.set(String(g.metadata.name).trim().toLowerCase(), delTime);
+      if (g.metadata?.topicName) trackerTopicGravesMap.set(String(g.metadata.topicName).trim().toLowerCase(), delTime);
     }
   });
+
+  const isFsrsLogTombstoned = (l, dKey) => {
+    if (!l || typeof l !== 'object') return true;
+    const logTime = safeTimestamp(l.timestamp || l.updatedAt || 0);
+    if (l.id) {
+      const delTime = subLogGravesMap.get(String(l.id).toLowerCase());
+      if (delTime && delTime >= logTime) return true;
+    }
+    if (l.topicName) {
+      const topDelTime = trackerTopicGravesMap.get(String(l.topicName).trim().toLowerCase());
+      if (topDelTime && topDelTime >= logTime) return true;
+      const targetDate = l.dateStr || dKey;
+      if (targetDate) {
+        const comboKey = `${String(targetDate)}_${String(l.topicName).trim().toLowerCase()}`;
+        const comboDelTime = subLogGravesMap.get(comboKey);
+        if (comboDelTime && comboDelTime >= logTime) return true;
+      }
+    }
+    return false;
+  };
 
   // 1. Prune local logs if remote or unified graves deleted them after their last update
   for (const [dateKey, log] of Object.entries(mergedLogs)) {
@@ -2804,6 +2921,18 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
       const logTime = safeTimestamp(log?.updatedAt || log?.lastReviewDate || 0);
       if (remDeletedAt > logTime) {
         delete mergedLogs[dateKey];
+        continue;
+      }
+    }
+    // Prune any tombstoned sub-logs inside local dayLog
+    if (log && Array.isArray(log.fsrsLogs)) {
+      const filtered = log.fsrsLogs.filter(l => !isFsrsLogTombstoned(l, dateKey));
+      if (filtered.length !== log.fsrsLogs.length) {
+        mergedLogs[dateKey] = {
+          ...log,
+          cards: Math.max(0, (log.cards || 0) - (log.fsrsLogs.length - filtered.length)),
+          fsrsLogs: filtered
+        };
       }
     }
   }
@@ -2824,15 +2953,19 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
     }
 
     if (!mergedLogs[dateKey]) {
-      mergedLogs[dateKey] = incLog;
+      const incFsrs = Array.isArray(incLog?.fsrsLogs) ? incLog.fsrsLogs.filter(l => !isFsrsLogTombstoned(l, dateKey)) : [];
+      mergedLogs[dateKey] = {
+        ...incLog,
+        fsrsLogs: incFsrs
+      };
     } else {
       const cur = mergedLogs[dateKey];
       const curTime = safeTimestamp(cur.updatedAt || cur.lastReviewDate || 0);
       const isLocalFresher = curTime > incTime;
       const isRemoteFresher = incTime > curTime;
 
-      const existingFsrs = Array.isArray(cur.fsrsLogs) ? cur.fsrsLogs : [];
-      const incomingFsrs = Array.isArray(incLog?.fsrsLogs) ? incLog.fsrsLogs : [];
+      const existingFsrs = Array.isArray(cur.fsrsLogs) ? cur.fsrsLogs.filter(l => !isFsrsLogTombstoned(l, dateKey)) : [];
+      const incomingFsrs = Array.isArray(incLog?.fsrsLogs) ? incLog.fsrsLogs.filter(l => !isFsrsLogTombstoned(l, dateKey)) : [];
 
       const fsrsMap = new Map();
       const getFsrsKey = (l) => l.id ||
@@ -3098,6 +3231,27 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
   const localBundles = localData.bundles || {};
   const merged = { ...localBundles };
 
+  // Aggregate all unified graves from local and remote bundles
+  const rawGraves = [
+    ...(downloadedBundles['pages_bundle.json']?.unifiedGraves || []),
+    ...(downloadedBundles['curriculum_topics.json']?.unifiedGraves || []),
+    ...(downloadedBundles['study_logs.json']?.unifiedGraves || []),
+    ...(localBundles['pages_bundle.json']?.unifiedGraves || []),
+    ...(localBundles['curriculum_topics.json']?.unifiedGraves || []),
+    ...(localBundles['study_logs.json']?.unifiedGraves || [])
+  ];
+  const gravesAggregateMap = new Map();
+  rawGraves.forEach(g => {
+    if (g && g.entityType && g.entityId) {
+      const k = `${g.entityType}::${g.entityId}`;
+      const exist = gravesAggregateMap.get(k);
+      if (!exist || safeTimestamp(g.deletedAt) > safeTimestamp(exist.deletedAt)) {
+        gravesAggregateMap.set(k, g);
+      }
+    }
+  });
+  const canonicalUnifiedGraves = Array.from(gravesAggregateMap.values());
+
   // 1. Cards Bundle (Timestamp-aware, Tie-breaking & Tombstone Pruning)
   if (downloadedBundles['cards_bundle.json']) {
     const locCardsB = localBundles['cards_bundle.json'] || {};
@@ -3123,27 +3277,28 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
         if (!localCard) {
           cardMap.set(inc.id, inc);
         } else {
-          const localRevTime = safeTimestamp(localCard.lastReviewDate || 0);
-          const incRevTime = safeTimestamp(inc.lastReviewDate || 0);
-
-          let latestRev = localCard;
-          if (incRevTime > localRevTime) {
-            latestRev = inc;
-          } else if (localRevTime > incRevTime) {
-            latestRev = localCard;
-          } else {
-            const locReps = localCard.reps || localCard.reviewCount || 0;
-            const incReps = inc.reps || inc.reviewCount || 0;
-            latestRev = incReps >= locReps ? inc : localCard;
-          }
-
           const localModTime = safeTimestamp(localCard.updatedAt || localCard.createdAt);
           const incModTime = safeTimestamp(inc.updatedAt || inc.createdAt);
           const latestContent = incModTime > localModTime ? inc : localCard;
 
+          const localRevTime = safeTimestamp(localCard.lastReviewDate || 0);
+          const incRevTime = safeTimestamp(inc.lastReviewDate || 0);
+
+          let latestRev = localCard;
+          if (incModTime > localModTime) {
+            latestRev = inc;
+          } else if (localModTime > incModTime) {
+            latestRev = localCard;
+          } else if (incRevTime > localRevTime) {
+            latestRev = inc;
+          } else {
+            latestRev = localCard;
+          }
+
           const mergedCard = {
             ...localCard,
             ...inc,
+            ...latestContent,
             front: latestContent.front,
             back: latestContent.back,
             note: latestContent.note,
@@ -3156,13 +3311,13 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
             difficulty: latestRev.difficulty,
             elapsed_days: latestRev.elapsed_days,
             scheduled_days: latestRev.scheduled_days,
-            reps: latestRev.reps !== undefined ? latestRev.reps : Math.max(localCard.reps || 0, inc.reps || 0),
-            lapses: latestRev.lapses !== undefined ? latestRev.lapses : Math.max(localCard.lapses || 0, inc.lapses || 0),
+            reps: latestRev.reps !== undefined ? latestRev.reps : (incModTime > localModTime ? (inc.reps || 0) : (localCard.reps || 0)),
+            lapses: latestRev.lapses !== undefined ? latestRev.lapses : (incModTime > localModTime ? (inc.lapses || 0) : (localCard.lapses || 0)),
             state: latestRev.state,
             lastReviewDate: latestRev.lastReviewDate,
             lastRating: latestRev.lastRating,
             retrievability: latestRev.retrievability,
-            history: latestRev.history || localCard.history || inc.history || [],
+            history: latestRev.history || (incModTime > localModTime ? (inc.history || localCard.history || []) : (localCard.history || inc.history || [])),
             updatedAt: new Date(Math.max(localModTime, incModTime, safeTimestamp(latestRev.updatedAt || 0))).toISOString()
           };
 
@@ -3197,7 +3352,7 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
     };
   }
 
-  // 2. Curriculum Topics (Non-destructive Topic & PYT Merging)
+  // 2. Curriculum Topics (Non-destructive Topic & PYT Merging with Global Graves)
   if (downloadedBundles['curriculum_topics.json']) {
     const locCur = localBundles['curriculum_topics.json'] || {};
     const remCur = downloadedBundles['curriculum_topics.json'] || {};
@@ -3248,29 +3403,50 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
 
     const locPyt = deserializeBinaryValues(locCur.pytData || []);
     const remPyt = deserializeBinaryValues(remCur.pytData || []);
+    const pytGraveMap = new Map();
+    canonicalUnifiedGraves.forEach(g => {
+      if (!g) return;
+      const type = g.entityType || g.type;
+      if (type === 'pyt_topic') {
+        const delTime = safeTimestamp(g.deletedAt || g.timestamp || 0);
+        if (g.entityId) pytGraveMap.set(String(g.entityId).toLowerCase(), Math.max(delTime, pytGraveMap.get(String(g.entityId).toLowerCase()) || 0));
+        if (g.metadata?.subject) pytGraveMap.set(String(g.metadata.subject).toLowerCase(), Math.max(delTime, pytGraveMap.get(String(g.metadata.subject).toLowerCase()) || 0));
+      }
+    });
+
+    const isPytTombstoned = (p) => {
+      if (!p) return false;
+      const key = String(p.key || p.id || p.subject || '').toLowerCase();
+      const pTime = safeTimestamp(p.updatedAt || p.createdAt || 0);
+      const delTime = pytGraveMap.get(key);
+      return Boolean(delTime && delTime >= pTime);
+    };
+
     const pytMap = new Map();
-    locPyt.forEach(p => { if (p && p.key) pytMap.set(p.key, p); });
+    locPyt.forEach(p => {
+      if (p && p.key && !isPytTombstoned(p)) pytMap.set(p.key, p);
+    });
     remPyt.forEach(p => {
-      if (p && p.key) {
+      if (p && p.key && !isPytTombstoned(p)) {
         const locP = pytMap.get(p.key);
         if (!locP) {
           pytMap.set(p.key, p);
         } else {
           const locTime = safeTimestamp(locP.updatedAt || locP.createdAt);
           const remTime = safeTimestamp(p.updatedAt || p.createdAt);
-          pytMap.set(p.key, remTime >= locTime ? p : locP);
+          pytMap.set(p.key, remTime > locTime ? p : locP);
         }
       }
     });
 
-    const unifiedGravesCur = (downloadedBundles['pages_bundle.json']?.unifiedGraves) || (localBundles['pages_bundle.json']?.unifiedGraves) || [];
     merged['curriculum_topics.json'] = {
       topics: serializeBinaryValues(Array.from(topicMap.values())),
       trashTopics: serializeBinaryValues(Array.from(mergedTrashTopics.values())),
       pytData: serializeBinaryValues(Array.from(pytMap.values())),
-      subjectTracker: mergeSubjectTrackerArrays(locCur.subjectTracker || [], remCur.subjectTracker || [], locTrashTopics, remTrashTopics, unifiedGravesCur),
-      pytUserProgress: mergePytUserProgress(locCur.pytUserProgress || [], remCur.pytUserProgress || []),
-      textbooksMetadata: mergeTextbooksMetadata(locCur.textbooksMetadata || [], remCur.textbooksMetadata || [])
+      subjectTracker: mergeSubjectTrackerArrays(locCur.subjectTracker || [], remCur.subjectTracker || [], locTrashTopics, remTrashTopics, canonicalUnifiedGraves),
+      pytUserProgress: mergePytUserProgress(locCur.pytUserProgress || [], remCur.pytUserProgress || [], canonicalUnifiedGraves),
+      textbooksMetadata: mergeTextbooksMetadata(locCur.textbooksMetadata || [], remCur.textbooksMetadata || []),
+      unifiedGraves: canonicalUnifiedGraves
     };
   }
 
@@ -3282,8 +3458,7 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
     const remLogs = remLogB.studyLogs || {};
     const locTrashLogs = locLogB.trashStudyLogs || [];
     const remTrashLogs = remLogB.trashStudyLogs || [];
-    const unifiedGraves = (downloadedBundles['pages_bundle.json']?.unifiedGraves) || (localBundles['pages_bundle.json']?.unifiedGraves) || [];
-    const mergedLogs = mergeStudyLogsObjects(locLogs, remLogs, locTrashLogs, remTrashLogs, unifiedGraves);
+    const mergedLogs = mergeStudyLogsObjects(locLogs, remLogs, locTrashLogs, remTrashLogs, canonicalUnifiedGraves);
 
     // Merge trash study logs with latest deletedAt
     const mergedTrashLogsMap = new Map((locTrashLogs || []).map(t => [t.dateKey, t]));
@@ -3345,7 +3520,8 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
       scheduleTemplates: mergedTemplates,
       campDailyLogs: Array.from(campDailyMap.values()),
       timerState: remLogB.timerState || locLogB.timerState || null,
-      activeNewTopicsToday: remLogB.activeNewTopicsToday || locLogB.activeNewTopicsToday || []
+      activeNewTopicsToday: remLogB.activeNewTopicsToday || locLogB.activeNewTopicsToday || [],
+      unifiedGraves: canonicalUnifiedGraves
     };
   }
 
@@ -4511,15 +4687,6 @@ export function triggerDebouncedSmartPush(customDelay = 5000, bypassCooldown = f
       console.warn('[GDriveSync] Smart push error:', err);
     });
   }, customDelay);
-}
-
-// Auto-listen to local database mutations to trigger debounced cloud pushes
-if (typeof window !== 'undefined') {
-  window.addEventListener('localdb-mutation', () => {
-    if (!isSyncInProgress && !isMutationNotificationSuppressed()) {
-      triggerDebouncedSmartPush();
-    }
-  });
 }
 
 /**

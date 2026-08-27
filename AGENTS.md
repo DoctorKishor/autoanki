@@ -14,14 +14,20 @@ All UI components, buttons, color schemes, theme modes (Light: `#e6ecf5`, Dark: 
 1. **Never use pitch black (`#000000`) for Dark Mode**: Always use `#222730` base with `neu-card-dark`, `neu-btn-dark`, `neu-pressed-dark`.
 2. **Hidden Scrollbars**: Maintain hidden scrollbars across all scrollable containers using `scrollbar-width: none !important` and `::-webkit-scrollbar { display: none !important; }`.
 3. **Button Consistency**: Action buttons in header bars must be grouped in uniform single-row grids (`grid grid-cols-N gap-2 w-full`) using matching heights (`h-[36px]` for `sm`, `42px` for `md`, `48px` for `lg`).
-4. **Save Actions**:
-   - `Save Page` calls `saveQueueItemToCloud(activeQueueId)` (or `saveLocalPage`)
-   - `Save All` calls `saveAllProcessedToCloud()` (handles both local database saving & cloud saving).
+4. **Save & Sync Actions**:
+   - `Save Page` calls `saveLocalPage(pageData)` to persist directly to IndexedDB.
+   - `Save All` calls `saveAllProcessedToLocal()` (persists all queued items to IndexedDB).
+   - Cloud synchronization is exclusively handled by `googleDriveSync.js` (`syncWithGoogleDrive`).
+5. **Framer Motion Everywhere & Unique Component Staggering**:
+   - Framer Motion entrance animations are **required everywhere** across all pages, views, panels, and modals.
+   - **Unique Per-Component Animations**: Every sub-component, card, header, control bar, widget, and list container within a page **MUST** have its own unique, staggered `motion.div` entrance animation rather than everything appearing at once (using staggered delays e.g. `0.05s`, `0.15s`, `0.25s`, directional vectors `y: -12`/`y: 16`/`x: -12`, and soft scaling `scale: 0.98 -> 1`).
+6. **Pill Switcher & Toggle Motion Standard**:
+   - All multi-option toggles, subtab switchers, and segment controls across the app **MUST** use the single sliding pill indicator design with exact `0.6s cubic-bezier(0, 0, 0, 1)` smooth deceleration motion transition (`transition: 'all 0.6s cubic-bezier(0, 0, 0, 1)'`).
 
 ---
 
-## 2. Architectural Direction (Local DB Transition)
-- **Offline-First Local Database Model**: The application is actively transitioning from Firebase/Cloud Firestore to a 100% offline-first local database model powered by `src/services/localDb.js` (IndexedDB / `AutoAnkiLocalDB`).
+## 2. Architectural Direction (100% Offline-First LocalDB & Google Drive Sync)
+- **Offline-First Local Database Model**: The application operates on a 100% offline-first local database model powered by `src/services/localDb.js` (IndexedDB / `AutoAnkiLocalDB`) with bi-directional cloud synchronization powered by `src/services/googleDriveSync.js`.
 
 ---
 
@@ -35,22 +41,22 @@ All UI components, buttons, color schemes, theme modes (Light: `#e6ecf5`, Dark: 
 
 ### 4.1 UI-Driven Refactoring (For Non-Coder User)
 - When the user describes a UI function, button, or menu (e.g., "the Flashcard Creator", "the Review Deck button", or "the Settings page"), automatically inspect and trace all of its underlying backend connections, components, and hooks.
-- Identify any Firebase/Firestore read, write, or query dependencies linked to that UI element and transition those operations to `localDb.js` (IndexedDB).
+- Identify any legacy read, write, or query dependencies linked to that UI element and ensure all operations persist via `localDb.js` (IndexedDB) and sync via `googleDriveSync.js`.
 
 ### 4.2 Strict Modular Control
-- Do **NOT** refactor or transition any menu, page, or UI feature from Firebase to `localDb.js` automatically.
-- Only transition **ONE** specific UI function, menu, or page at a time, strictly when explicitly requested by the user.
+- Do **NOT** refactor or touch unrelated menus, pages, or UI features automatically.
+- Only inspect, refactor, or audit **ONE** specific UI function, menu, or page at a time, strictly as requested in the audit checklist.
 
 ### 4.3 Preservation & Anti-Chaos Rules
 - Do **NOT** rename, delete, or reorganize existing files or folder structures unless explicitly requested.
-- Do **NOT** refactor or "clean up" unrelated code in files being edited—only touch code directly connected to the UI function being transitioned.
+- Do **NOT** refactor or "clean up" unrelated code in files being edited—only touch code directly connected to the UI function being transitioned or audited.
 - Ensure proper error handling is included for IndexedDB operations so failures don't silently break the UI.
 
 ### 4.4 Execution, Testing & Git Safety
-- Refactor both **Desktop** and **Mobile** views for the requested feature to ensure dual-view parity.
+- Refactor and audit both **Desktop** and **Mobile** views for the requested feature to ensure dual-view parity.
 - Keep all other untouched features running smoothly without side effects.
-- Run `npm run build` after making changes to verify zero compilation errors.
-- Once the build succeeds cleanly, make a Git commit to the `local-db-transition` branch with a simple, clear message describing what was changed.
+- Run `node scripts/test-sync-simulation.js` and `npm run build` after making changes to verify zero simulation failures or compilation errors.
+- Once the build succeeds cleanly, make a Git commit with a simple, clear message describing what was changed.
 - Explain what was transitioned in simple, non-technical terms, and wait for the user's next explicit command before touching anything else.
 
 ---
@@ -92,10 +98,12 @@ All UI components, buttons, color schemes, theme modes (Light: `#e6ecf5`, Dark: 
   2. **Google Drive Cloud Sync (`extractLocalBundles` / `hydrateLocalBundles`)**: Must partition, serialize (binary-safe), and hydrate the data within the appropriate sync bundle (Cards, Curriculum, Study Logs, FSRS, or CAMP).
   3. **Multi-Format Deck Exporters (`exportDeck`)**: All export formats (`.apkg`, `.anki` TSV, `.notion` CSV, `.pdf`, `.json`) must accurately map, format, and serialize the new attributes according to target platform specifications (e.g. Anki SQLite schema conventions, tag formatting with space delimiters, queue states, and column headers).
   4. **Rollback & Restore Integrity**: Ensure importing or restoring from any backup/export preserves 100% of the new fields without data corruption, loss, or silent defaults.
-### 4.10 Mandatory Bi-Directional Google Drive Sync Compatibility Standard
-- **Full Mutation-Vector Sync Parity**: For **EVERY** addition, modification, edit, reset, or deletion of any app feature, state, or data entity (flashcards, topics, decks, pages, study logs, GTs, CAMP trackers, subject trackers, schedules, templates, prompts, settings, or timer states):
-  1. **Two-Way Lifecycle Compatibility**: All mutation pathways (create, read, update, delete, undo, redo, clear all, bulk operations) **MUST** be 100% compatible with Google Drive sync (`googleDriveSync.js`) in both directions (upload & download).
-  2. **Strict Tombstone Recording on Deletions**: Every single deletion pathway (single item deletion, clear-all, zeroing out records, reset, bulk delete) **MUST** invoke the corresponding `localDb.js` deletion method (`deleteLocalCard`, `deleteLocalStudyLog`, `deleteLocalTopic`, `deleteLocalPage`, `deleteLocalPrompt`, etc.) to record permanent tombstones in both the entity trash store and the unified graves registry (`unified_graves`). Never rely solely on in-memory React state deletion or upserting zeroed-out records without calling the localDb deletion/tombstoning method, as cloud sync will treat missing local tombstones as remote additions and resurrect deleted data.
-  3. **Reanimation & Revocation Safety**: If an item is recreated, restored, or undone after deletion, ensure the tombstone is revoked (`revokeTombstone`) so Google Drive sync does not immediately re-delete the restored entity.
-  4. **Merge & Conflict Engine Parity**: Any new data structure, field, or schema modification must be audited across the bundle extractor (`extractLocalBundles`), domain-specific merge algorithms (`mergeCardsArrays`, `mergeStudyLogsObjects`, `mergeObjectMaps`, `mergeCampTrackers`), and hydrators (`hydrateLocalBundles`) to guarantee zero data loss, silent overwrites, or resurrection loops during sync.
+### 4.10 Mandatory Bi-Directional Google Drive Sync & Multi-Device Conflict-Free Standard
+- **Full Mutation-Vector Sync Parity**: For **EVERY** addition, modification, edit, reset, or deletion of any app feature, state, or data entity (flashcards, topics, decks, pages, study logs, GTs, CAMP trackers, subject trackers, PYT progress, schedules, templates, prompts, settings, or timer states):
+  1. **Full Lifecycle Mutation Tracing**: Every UI button, input, action, decrement (-), increment (+), edit, reset, undo, redo, and deletion path MUST be traced from the React state -> `localDb.js` (IndexedDB) -> `googleDriveSync.js` -> Cloud Vault.
+  2. **Active Granular Per-Entity Timestamping**: Every single modification MUST stamp a precise ISO `updatedAt` on the specific item/sub-entity being modified. Never shift timestamps wholesale across untouched sibling topics or documents.
+  3. **Strict Tombstone Recording on All Deletions**: Every deletion pathway (single item deletion, clear-all, zeroing out records, reset, undo, bulk delete) **MUST** invoke the corresponding `localDb.js` deletion method (`deleteLocalCard`, `deleteLocalStudyLog`, `deleteLocalStudyLogEntry`, `deleteLocalTopic`, `deleteLocalPytTopic`, `deleteLocalPytProgressDoc`, `deleteLocalPage`, `deleteLocalPrompt`, etc.) to record permanent tombstones in both the entity trash store and the unified graves registry (`unified_graves`). Never rely solely on in-memory React state deletion or upserting zeroed-out records without calling the localDb deletion/tombstoning method, as cloud sync will treat missing local tombstones as remote additions and resurrect deleted data.
+  4. **Reanimation & Revocation Safety**: If an item is recreated, restored, or undone after deletion, ensure the tombstone is revoked (`revokeTombstone`) so Google Drive sync does not immediately re-delete the restored entity.
+  5. **Collaborative Multi-Device Granular Merging (Google Docs / Google Sheets Style)**: Merge engines in `googleDriveSync.js` (`mergeBundlesInMemory` and domain mergers) MUST operate at the granular key/item level (puzzle-piece merging). If Device 1 modifies Topic A and Device 2 modifies Topic B, syncing both devices MUST preserve BOTH changes in 100% harmony without overwriting or resetting untouched sibling items to defaults. For conflicting modifications on the exact same item, resolution is strictly Last-Write-Wins (LWW) based on item `updatedAt`. Destructive additive operations (`Math.max` on counts/reps, `>=` remote biases, or unconditional array unions) are STRICTLY FORBIDDEN.
+  6. **Mandatory Sync Invariant for ALL New Features & Buttons**: Whenever a new function, button, UI view, subtab, or setting is created, modified, or replaced in the application, it **MUST be built in 100% unison with the sync architecture from Day 1**—including granular `updatedAt` stamps, `localDb.js` persistence, tombstoning on deletion, and bidirectional merge tests in `scripts/test-sync-simulation.js`.
 

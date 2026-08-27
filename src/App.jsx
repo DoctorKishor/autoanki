@@ -52,7 +52,7 @@ import {
   getLocalKV, setLocalKV, getLocalPrompts, replaceAllLocalPrompts, saveLocalPrompt, deleteLocalPrompt,
   getAllLocalPytTopics, saveLocalPytTopic, getAllLocalPytProgress, saveLocalPytProgressDoc,
   getLocalTextbooksMetadata, saveLocalTextbooksMetadata,
-  getLocalStudyLogs, saveLocalStudyLog, replaceAllLocalStudyLogs, deleteLocalStudyLog,
+  getLocalStudyLogs, saveLocalStudyLog, replaceAllLocalStudyLogs, deleteLocalStudyLog, deleteLocalStudyLogEntry,
   getLocalSubjectTrackerData, saveLocalSubjectTrackerDoc, replaceAllLocalSubjectTrackerData,
   getLocalStudySchedule, saveLocalScheduleEntry, replaceAllLocalStudySchedule,
   getLocalScheduleTemplates, saveLocalScheduleTemplate, deleteLocalScheduleTemplate, replaceAllLocalScheduleTemplates,
@@ -9041,6 +9041,7 @@ export default function App() {
     const docId = subject.trim().toLowerCase();
     if (!docId) return;
 
+    const nowIso = new Date().toISOString();
     const existingDoc = userPytProgress.find(d => d.id === docId);
     const currentMap = existingDoc ? existingDoc.progress_map || {} : {};
     const updatedMap = {
@@ -9052,14 +9053,15 @@ export default function App() {
     setUserPytProgress(prev => {
       const exists = prev.find(d => d.id === docId);
       if (exists) {
-        return prev.map(d => d.id === docId ? { ...d, progress_map: updatedMap } : d);
+        return prev.map(d => d.id === docId ? { ...d, progress_map: updatedMap, updatedAt: nowIso } : d);
       } else {
         return [
           ...prev,
           {
             id: docId,
             subject: subject.trim(),
-            progress_map: updatedMap
+            progress_map: updatedMap,
+            updatedAt: nowIso
           }
         ];
       }
@@ -9069,7 +9071,8 @@ export default function App() {
     try {
       await saveLocalPytProgressDoc(docId, {
         subject: subject.trim(),
-        progress_map: updatedMap
+        progress_map: updatedMap,
+        updatedAt: nowIso
       });
     } catch (err) {
       console.error("Error saving PYT progress to local DB:", err);
@@ -9087,6 +9090,7 @@ export default function App() {
   // Merge duplicate topics: do NOT touch master topics list, just merge user-side via merged_topics mapping
   const handlePytMerge = async (subject, canonicalTopic, allVariants) => {
     const docId = subject.trim().toLowerCase();
+    const nowIso = new Date().toISOString();
 
     const progressDoc = userPytProgress.find(p => p.id === docId);
     const currentMergedMap = progressDoc ? (progressDoc.merged_topics || {}) : {};
@@ -9112,7 +9116,8 @@ export default function App() {
       const updated = {
         ...(exists || { id: docId, subject: subject.trim() }),
         merged_topics: newMergedMap,
-        progress_map: newProgressMap
+        progress_map: newProgressMap,
+        updatedAt: nowIso
       };
       return exists ? list.map(p => p.id === docId ? updated : p) : [...list, updated];
     });
@@ -9123,7 +9128,8 @@ export default function App() {
       await saveLocalPytProgressDoc(docId, {
         subject: subject.trim(),
         merged_topics: newMergedMap,
-        progress_map: newProgressMap
+        progress_map: newProgressMap,
+        updatedAt: nowIso
       });
     } catch (err) {
       console.error('Error merging PYT topics:', err);
@@ -9133,6 +9139,7 @@ export default function App() {
   // Manual option to merge arbitrary topics
   const handlePytManualMerge = async (subject, sourceTopic, targetTopic) => {
     const docId = subject.trim().toLowerCase();
+    const nowIso = new Date().toISOString();
 
     const progressDoc = userPytProgress.find(p => p.id === docId);
     const currentMergedMap = progressDoc ? (progressDoc.merged_topics || {}) : {};
@@ -9152,7 +9159,8 @@ export default function App() {
       const updated = {
         ...(exists || { id: docId, subject: subject.trim() }),
         merged_topics: newMergedMap,
-        progress_map: newProgressMap
+        progress_map: newProgressMap,
+        updatedAt: nowIso
       };
       return exists ? list.map(p => p.id === docId ? updated : p) : [...list, updated];
     });
@@ -9161,7 +9169,8 @@ export default function App() {
       await saveLocalPytProgressDoc(docId, {
         subject: subject.trim(),
         merged_topics: newMergedMap,
-        progress_map: newProgressMap
+        progress_map: newProgressMap,
+        updatedAt: nowIso
       });
     } catch (err) {
       console.error("Error manual merging PYT topics:", err);
@@ -9171,18 +9180,20 @@ export default function App() {
   // Reset/Unmerge all topics for a subject
   const handleResetMergedPyt = async (subject) => {
     const docId = subject.trim().toLowerCase();
+    const nowIso = new Date().toISOString();
 
     setUserPytProgress(prev => {
       const list = Array.isArray(prev) ? prev : [];
       const exists = list.find(p => p.id === docId);
       if (!exists) return list;
-      return list.map(p => p.id === docId ? { ...p, merged_topics: {} } : p);
+      return list.map(p => p.id === docId ? { ...p, merged_topics: {}, updatedAt: nowIso } : p);
     });
 
     try {
       await saveLocalPytProgressDoc(docId, {
         subject: subject.trim(),
-        merged_topics: {}
+        merged_topics: {},
+        updatedAt: nowIso
       });
     } catch (err) {
       console.error("Error resetting merged topics:", err);
@@ -9192,6 +9203,7 @@ export default function App() {
   // Save/Update assigned page numbers for a topic
   const handleSavePytPages = async (subject, topicName, updatedPagesArray) => {
     const docId = subject.trim().toLowerCase();
+    const nowIso = new Date().toISOString();
 
     const progressDoc = userPytProgress.find(p => p.id === docId);
     const currentPagesMap = progressDoc ? (progressDoc.pages_map || {}) : {};
@@ -9202,7 +9214,8 @@ export default function App() {
       const exists = list.find(p => p.id === docId);
       const updated = {
         ...(exists || { id: docId, subject: subject.trim() }),
-        pages_map: newPagesMap
+        pages_map: newPagesMap,
+        updatedAt: nowIso
       };
       return exists ? list.map(p => p.id === docId ? updated : p) : [...list, updated];
     });
@@ -9210,7 +9223,8 @@ export default function App() {
     try {
       await saveLocalPytProgressDoc(docId, {
         subject: subject.trim(),
-        pages_map: newPagesMap
+        pages_map: newPagesMap,
+        updatedAt: nowIso
       });
     } catch (err) {
       console.error("Error saving PYT page numbers:", err);
@@ -10055,21 +10069,36 @@ JSON Format:
       updatedDates = updatedDates.filter(d => d !== targetDateStr);
     }
 
-    // 1. Remove log entry from studyLogs state and LocalDB
+    // 1. Remove log entry from studyLogs state and LocalDB with explicit tombstones
     let nextStudyLogs = { ...studyLogs };
     if (dateStrToRemove && nextStudyLogs[dateStrToRemove]) {
       const currentDayLog = nextStudyLogs[dateStrToRemove];
       if (currentDayLog && Array.isArray(currentDayLog.fsrsLogs)) {
+        const removedLogs = currentDayLog.fsrsLogs.filter(l =>
+          (l.subject?.toLowerCase() === subject.toLowerCase() && l.topicName?.toLowerCase() === topicName.toLowerCase()) ||
+          (l.topicName?.toLowerCase() === topicName.toLowerCase())
+        );
         const filteredLogs = currentDayLog.fsrsLogs.filter(l =>
-          !(l.subject?.toLowerCase() === subject.toLowerCase() && l.topicName?.toLowerCase() === topicName.toLowerCase())
+          !((l.subject?.toLowerCase() === subject.toLowerCase() && l.topicName?.toLowerCase() === topicName.toLowerCase()) ||
+            (l.topicName?.toLowerCase() === topicName.toLowerCase()))
         );
         const updatedDayLog = {
           ...currentDayLog,
-          cards: Math.max(0, (currentDayLog.cards || 0) - 1),
-          fsrsLogs: filteredLogs
+          cards: Math.max(0, (currentDayLog.cards || 0) - removedLogs.length),
+          fsrsLogs: filteredLogs,
+          updatedAt: new Date().toISOString()
         };
         nextStudyLogs = { ...nextStudyLogs, [dateStrToRemove]: updatedDayLog };
         saveLocalStudyLog(dateStrToRemove, updatedDayLog).catch(err => console.error("[LocalDB] Error deleting study log:", err));
+
+        // Record granular tombstones for each removed study log entry
+        for (const rLog of removedLogs) {
+          if (rLog?.id) {
+            deleteLocalStudyLogEntry(dateStrToRemove, rLog.id, topicName, rLog).catch(err =>
+              console.warn("[LocalDB] Error recording study log tombstone on date delete:", err)
+            );
+          }
+        }
       }
     }
     setStudyLogs(nextStudyLogs);
@@ -10187,7 +10216,7 @@ JSON Format:
     let nextStudyLogs = { ...studyLogs };
     let logsChanged = false;
 
-    Object.entries(nextStudyLogs).forEach(([dStr, dayLog]) => {
+    for (const [dStr, dayLog] of Object.entries(nextStudyLogs)) {
       if (dayLog && Array.isArray(dayLog.fsrsLogs)) {
         const matchingLogs = dayLog.fsrsLogs.filter(l =>
           l.subject?.toLowerCase() === subject.toLowerCase() &&
@@ -10207,9 +10236,18 @@ JSON Format:
           };
           nextStudyLogs[dStr] = updatedDayLog;
           saveLocalStudyLog(dStr, updatedDayLog).catch(err => console.error("[LocalDB] Error pruning study log:", err));
+          for (const mLog of matchingLogs) {
+            if (mLog && mLog.id) {
+              recordTombstone('study_log_entry', String(mLog.id), {
+                parentId: dStr,
+                deletedAt: nowIso,
+                metadata: { dateStr: dStr, logId: mLog.id, topicName: targetKey, subject }
+              }).catch(e => console.warn("[LocalDB] Error recording study log entry tombstone:", e));
+            }
+          }
         }
       }
-    });
+    }
 
     if (logsChanged) {
       setStudyLogs(nextStudyLogs);
@@ -10705,7 +10743,8 @@ JSON Format:
                   retrievability: null,
                   lapses: 0,
                   isLeech: false
-                } : {})
+                } : {}),
+                updatedAt: new Date().toISOString()
               };
             }
           });
@@ -10840,34 +10879,10 @@ JSON Format:
     }
   }, []);
 
-  // Real-time Google Drive Timer Sync: Check on mount, window focus, tab visibility, and adaptive 5s heartbeat
+  // Real-time Google Drive Timer Sync: Check once on mount / auth
   useEffect(() => {
     if (!gdriveAuthState?.accessToken) return;
-
-    // Check remote timer on startup/auth
     checkAndSyncRemoteTimerState(applyRemoteTimerState);
-
-    const handleFocusOrVisible = () => {
-      if (document.visibilityState === 'visible') {
-        checkAndSyncRemoteTimerState(applyRemoteTimerState);
-      }
-    };
-
-    window.addEventListener('focus', handleFocusOrVisible);
-    document.addEventListener('visibilitychange', handleFocusOrVisible);
-
-    // Adaptive 5s polling heartbeat when tab is active
-    const interval = setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        checkAndSyncRemoteTimerState(applyRemoteTimerState);
-      }
-    }, 5000);
-
-    return () => {
-      window.removeEventListener('focus', handleFocusOrVisible);
-      document.removeEventListener('visibilitychange', handleFocusOrVisible);
-      clearInterval(interval);
-    };
   }, [gdriveAuthState?.accessToken, applyRemoteTimerState]);
 
   // Modern double-beep chime alarm synthesized via native browser Web Audio API
@@ -14502,13 +14517,17 @@ JSON Format:
       const pagesVal = Math.max(0, Number(mobileSessionPages) || 0);
 
       const newHours = (todayLog.hours || 0) + hoursVal;
+      const nowIso = new Date().toISOString();
       const newQuestions = (todayLog.questions || 0) + questionsVal;
       const newCards = (todayLog.cards || 0) + cardsVal;
       const newPages = (todayLog.pages || 0) + pagesVal;
 
       const newSessionItem = {
-        id: Date.now().toString(),
+        id: `sess_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
         timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+        startedAt: nowIso,
+        createdAt: nowIso,
+        updatedAt: nowIso,
         hours: hoursVal,
         questions: questionsVal,
         cards: cardsVal,
@@ -14523,7 +14542,8 @@ JSON Format:
         cards: newCards,
         pages: newPages,
         sessions: updatedSessions,
-        gts: todayLog.gts || []
+        gts: todayLog.gts || [],
+        updatedAt: nowIso
       });
 
       // Clear inputs
@@ -14545,6 +14565,7 @@ JSON Format:
 
     try {
       setIsSaving(true);
+      const nowIso = new Date().toISOString();
       const todayLog = studyLogs[targetDate] || { questions: 0, cards: 0, hours: 0, pages: 0, gts: [], sessions: [] };
       const sessions = todayLog.sessions || [];
       const sessionToDelete = sessions.find(s => s.id === sessionId);
@@ -14564,7 +14585,8 @@ JSON Format:
         questions: newQuestions,
         cards: newCards,
         pages: newPages,
-        sessions: updatedSessions
+        sessions: updatedSessions,
+        updatedAt: nowIso
       });
 
       // Optimistic local state update
@@ -14576,7 +14598,8 @@ JSON Format:
           questions: newQuestions,
           cards: newCards,
           pages: newPages,
-          sessions: updatedSessions
+          sessions: updatedSessions,
+          updatedAt: nowIso
         }
       }));
 
@@ -14593,6 +14616,7 @@ JSON Format:
 
     try {
       setIsSaving(true);
+      const nowIso = new Date().toISOString();
       const todayLog = studyLogs[editingSessionTargetDate] || { questions: 0, cards: 0, hours: 0, pages: 0, gts: [], sessions: [] };
       const sessions = todayLog.sessions || [];
       const sessionToUpdate = sessions.find(s => s.id === editingSessionId);
@@ -14624,7 +14648,8 @@ JSON Format:
             hours: newHoursVal,
             questions: newQuestionsVal,
             cards: newCardsVal,
-            pages: newPagesVal
+            pages: newPagesVal,
+            updatedAt: nowIso
           };
         }
         return s;
@@ -14635,7 +14660,8 @@ JSON Format:
         questions: newQuestions,
         cards: newCards,
         pages: newPages,
-        sessions: updatedSessions
+        sessions: updatedSessions,
+        updatedAt: nowIso
       });
 
       // Optimistic local state update
@@ -16133,7 +16159,7 @@ JSON Format:
 
     const { docId, subject, topicName, logEntry, schedulerContext, previousDoc } = lastItem;
 
-    // 1. Synchronize studyLogs state: remove the logEntry on Undo
+    // 1. Synchronize studyLogs state: remove the logEntry on Undo and write tombstone
     let nextStudyLogs = { ...studyLogs };
     const nowIso = new Date().toISOString();
     if (logEntry && logEntry.dateStr) {
@@ -16151,6 +16177,11 @@ JSON Format:
         };
         nextStudyLogs = { ...nextStudyLogs, [targetDate]: updatedDayLog };
         saveLocalStudyLog(targetDate, updatedDayLog).catch(err => console.error("[LocalDB] Error undoing study log:", err));
+      }
+      if (logEntry.id) {
+        deleteLocalStudyLogEntry(targetDate, logEntry.id, topicName, logEntry).catch(err =>
+          console.warn("[LocalDB] Error writing study log tombstone on undo:", err)
+        );
       }
     }
     setStudyLogs(nextStudyLogs);
@@ -16537,11 +16568,12 @@ JSON Format:
           onDeleteTimingLog={async (logId, dateStr) => {
             if (!logId || !dateStr) return;
             const nowIso = new Date().toISOString();
+            let removedLog = null;
             setStudyLogs(prev => {
               const dayLog = prev[dateStr];
               if (!dayLog || !Array.isArray(dayLog.fsrsLogs)) return prev;
               const filtered = dayLog.fsrsLogs.filter(l => l.id !== logId);
-              const removedLog = dayLog.fsrsLogs.find(l => l.id === logId);
+              removedLog = dayLog.fsrsLogs.find(l => l.id === logId);
               const removedPages = removedLog?.pageWeight || 1;
               const updatedDayLog = {
                 ...dayLog,
@@ -16550,9 +16582,9 @@ JSON Format:
                 fsrsLogs: filtered,
                 updatedAt: nowIso
               };
-              saveLocalStudyLog(dateStr, updatedDayLog).catch(err => console.error("[LocalDB] Error saving pruned study log:", err));
               return { ...prev, [dateStr]: updatedDayLog };
             });
+            await deleteLocalStudyLogEntry(dateStr, logId, removedLog?.topicName, removedLog);
           }}
           onOpenNotesModal={(topic) => setNotesModalTopic(topic)}
         />

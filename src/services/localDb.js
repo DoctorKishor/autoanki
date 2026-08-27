@@ -873,6 +873,11 @@ export async function getAllLocalPytTopics() {
 export async function deleteLocalPytTopic(subjectName) {
   if (!subjectName) return false;
   const key = subjectName.trim().toLowerCase();
+  const nowIso = new Date().toISOString();
+  await recordTombstone('pyt_topic', key, {
+    deletedAt: nowIso,
+    metadata: { subject: subjectName.trim() }
+  });
   return deleteLocalItem(STORES.PYT_DATA, key);
 }
 
@@ -885,20 +890,37 @@ export async function getAllLocalPytProgress() {
 export async function saveLocalPytProgressDoc(docId, docData) {
   if (!docId) return null;
   const currentList = await getAllLocalPytProgress();
-  const existingIdx = currentList.findIndex(d => d.id === docId);
+  const key = docId.trim().toLowerCase();
+  const existingIdx = currentList.findIndex(d => d.id === key || d.id === docId);
+  const nowIso = new Date().toISOString();
   let updatedList;
   if (existingIdx >= 0) {
     updatedList = [...currentList];
     updatedList[existingIdx] = {
       ...updatedList[existingIdx],
       ...docData,
-      id: docId
+      id: key,
+      updatedAt: docData.updatedAt || nowIso
     };
   } else {
-    updatedList = [...currentList, { id: docId, ...docData }];
+    updatedList = [...currentList, { id: key, ...docData, updatedAt: docData.updatedAt || nowIso }];
   }
   await setLocalKV('pyt_user_progress', updatedList);
   return updatedList;
+}
+
+export async function deleteLocalPytProgressDoc(docId) {
+  if (!docId) return null;
+  const currentList = await getAllLocalPytProgress();
+  const key = docId.trim().toLowerCase();
+  const filtered = currentList.filter(d => d.id !== key && d.subject?.toLowerCase() !== key);
+  await setLocalKV('pyt_user_progress', filtered);
+  const nowIso = new Date().toISOString();
+  await recordTombstone('pyt_user_progress', key, {
+    deletedAt: nowIso,
+    metadata: { docId: key }
+  });
+  return filtered;
 }
 
 export async function getLocalTextbooksMetadata() {
@@ -978,6 +1000,53 @@ export async function deleteLocalStudyLog(dateKey) {
     return updated;
   }).catch(err => {
     console.error("[LocalDB] deleteLocalStudyLog mutex error:", err);
+    return getLocalStudyLogs();
+  });
+  return studyLogsWriteMutex;
+}
+
+export async function deleteLocalStudyLogEntry(dateStr, logId, topicName = null, deletedLogObj = null) {
+  if (!dateStr || !logId) return await getLocalStudyLogs();
+  const nowIso = new Date().toISOString();
+  studyLogsWriteMutex = studyLogsWriteMutex.then(async () => {
+    const current = await getLocalStudyLogs();
+    const existingDay = current[dateStr];
+    if (!existingDay || !Array.isArray(existingDay.fsrsLogs)) return current;
+
+    const filtered = existingDay.fsrsLogs.filter(l => l && l.id !== logId);
+    const removedLog = deletedLogObj || existingDay.fsrsLogs.find(l => l && l.id === logId);
+    const removedPages = removedLog?.pageWeight || 1;
+
+    const updatedDay = {
+      ...existingDay,
+      cards: Math.max(0, (existingDay.cards || 0) - 1),
+      pages: Math.max(0, (existingDay.pages || 0) - removedPages),
+      fsrsLogs: filtered,
+      updatedAt: nowIso
+    };
+
+    const updated = { ...current, [dateStr]: updatedDay };
+    await setLocalKV('study_logs', updated);
+
+    // Record granular tombstone for this specific study log entry
+    const cleanTopicName = topicName || removedLog?.topicName || null;
+    const cleanSubject = removedLog?.subject || null;
+    await recordTombstone('study_log_entry', String(logId), {
+      parentId: dateStr,
+      deletedAt: nowIso,
+      metadata: {
+        dateStr,
+        logId,
+        topicName: cleanTopicName,
+        subject: cleanSubject,
+        rating: removedLog?.rating
+      }
+    });
+
+    notifyLocalMutation('study_logs:entry_delete');
+    return updated;
+  }).catch(err => {
+    console.error("[LocalDB] deleteLocalStudyLogEntry mutex error:", err);
     return getLocalStudyLogs();
   });
   return studyLogsWriteMutex;
@@ -1065,7 +1134,7 @@ export async function saveLocalSubjectTrackerDoc(docId, docData) {
           await recordTombstone('tracker_topic', String(topicId), {
             parentId: normalizedDocId,
             deletedAt: nowIso,
-            metadata: { topicName: tKey, docId: normalizedDocId }
+            metadata: { topicName: tKey, docId: normalizedDocId, name: oldT?.name || tKey }
           });
         }
         await setLocalKV('trash_topics', trash);
@@ -1075,12 +1144,23 @@ export async function saveLocalSubjectTrackerDoc(docId, docData) {
     }
 
     const topicsToSave = {};
+    let hasAnyTopicModified = false;
     Object.entries(incomingTopics).forEach(([tName, tObj]) => {
       const prevTopic = existingTopics[tName];
+      const isNew = !prevTopic;
+      // Compare topic properties excluding volatile timestamps
+      let isModified = isNew;
+      if (!isNew && prevTopic && tObj) {
+        const pCopy = { ...prevTopic }; delete pCopy.updatedAt;
+        const tCopy = { ...tObj }; delete tCopy.updatedAt;
+        isModified = JSON.stringify(pCopy) !== JSON.stringify(tCopy);
+      }
+      if (isModified) hasAnyTopicModified = true;
+
       topicsToSave[tName] = {
         ...(prevTopic || {}),
         ...(tObj || {}),
-        updatedAt: tObj?.updatedAt || new Date().toISOString()
+        updatedAt: tObj?.updatedAt || (isModified ? new Date().toISOString() : (prevTopic?.updatedAt || undefined))
       };
     });
 
@@ -1090,7 +1170,7 @@ export async function saveLocalSubjectTrackerDoc(docId, docData) {
       id: normalizedDocId,
       subject: normalizedDocData.subject || existing?.subject || normalizedDocId,
       topics: topicsToSave,
-      updatedAt: normalizedDocData.updatedAt || new Date().toISOString()
+      updatedAt: normalizedDocData.updatedAt || (hasAnyTopicModified || deletedTopicKeys.length > 0 ? new Date().toISOString() : (existing?.updatedAt || new Date().toISOString()))
     };
 
     const updated = idx >= 0
@@ -2572,12 +2652,14 @@ export default {
   deleteLocalPytTopic,
   getAllLocalPytProgress,
   saveLocalPytProgressDoc,
+  deleteLocalPytProgressDoc,
   getLocalTextbooksMetadata,
   saveLocalTextbooksMetadata,
   getLocalStudyLogs,
   getTrashStudyLogs,
   saveTrashStudyLogs,
   deleteLocalStudyLog,
+  deleteLocalStudyLogEntry,
   saveLocalStudyLog,
   replaceAllLocalStudyLogs,
   getLocalSubjectTrackerData,
