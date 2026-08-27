@@ -10760,6 +10760,7 @@ JSON Format:
       }
       setIsStudyLoggerModalOpen(false);
       setIsSaving(false);
+      triggerDebouncedSmartPush();
     } catch (err) {
       console.error("Error saving daily stats:", err);
       alert("Failed to save study log: " + err.message);
@@ -10778,6 +10779,7 @@ JSON Format:
         delete next[dateKey];
         return next;
       });
+      triggerDebouncedSmartPush();
 
       // Prune this date from all topics in subjectTrackerData and reset FSRS for zero-log topics
       setSubjectTrackerData(prevTracker => {
@@ -14599,7 +14601,8 @@ JSON Format:
 
       const updatedSessions = [...(todayLog.sessions || []), newSessionItem];
 
-      await saveLocalStudyLog(localToday, {
+      const updatedDayLog = {
+        ...todayLog,
         hours: newHours,
         questions: newQuestions,
         cards: newCards,
@@ -14607,7 +14610,15 @@ JSON Format:
         sessions: updatedSessions,
         gts: todayLog.gts || [],
         updatedAt: nowIso
-      });
+      };
+
+      await saveLocalStudyLog(localToday, updatedDayLog);
+
+      // Optimistic local state update
+      setStudyLogs(prev => ({
+        ...prev,
+        [localToday]: updatedDayLog
+      }));
 
       // Clear inputs
       setMobileSessionHours('');
@@ -14615,6 +14626,7 @@ JSON Format:
       setMobileSessionCards('');
       setMobileSessionPages('');
       setIsSaving(false);
+      triggerDebouncedSmartPush();
     } catch (err) {
       console.error("Error saving mobile stats:", err);
       alert("Failed to save companion study log: " + err.message);
@@ -14637,36 +14649,34 @@ JSON Format:
         return;
       }
 
-      const newHours = Math.round(Math.max(0, (todayLog.hours || 0) - (sessionToDelete.hours || 0)) * 10) / 10;
+      const newHours = Math.round(Math.max(0, (todayLog.hours || 0) - (sessionToDelete.hours || 0)) * 1000) / 1000;
       const newQuestions = Math.max(0, (todayLog.questions || 0) - (sessionToDelete.questions || 0));
       const newCards = Math.max(0, (todayLog.cards || 0) - (sessionToDelete.cards || 0));
       const newPages = Math.max(0, (todayLog.pages || 0) - (sessionToDelete.pages || 0));
       const updatedSessions = sessions.filter(s => s.id !== sessionId);
 
-      await saveLocalStudyLog(targetDate, {
+      await recordTombstone('study_session', String(sessionId), { parentId: String(targetDate), deletedAt: nowIso });
+
+      const updatedDayLog = {
+        ...todayLog,
         hours: newHours,
         questions: newQuestions,
         cards: newCards,
         pages: newPages,
         sessions: updatedSessions,
         updatedAt: nowIso
-      });
+      };
+
+      await saveLocalStudyLog(targetDate, updatedDayLog);
 
       // Optimistic local state update
       setStudyLogs(prev => ({
         ...prev,
-        [targetDate]: {
-          ...(prev[targetDate] || {}),
-          hours: newHours,
-          questions: newQuestions,
-          cards: newCards,
-          pages: newPages,
-          sessions: updatedSessions,
-          updatedAt: nowIso
-        }
+        [targetDate]: updatedDayLog
       }));
 
       setIsSaving(false);
+      triggerDebouncedSmartPush();
     } catch (err) {
       console.error("Error deleting session:", err);
       alert("Failed to delete session: " + err.message);
@@ -14718,31 +14728,34 @@ JSON Format:
         return s;
       });
 
-      await saveLocalStudyLog(editingSessionTargetDate, {
+      const updatedDayLog = {
+        ...todayLog,
         hours: newHours,
         questions: newQuestions,
         cards: newCards,
         pages: newPages,
         sessions: updatedSessions,
         updatedAt: nowIso
-      });
+      };
+
+      await saveLocalStudyLog(editingSessionTargetDate, updatedDayLog);
 
       // Optimistic local state update
       setStudyLogs(prev => ({
         ...prev,
-        [editingSessionTargetDate]: {
-          ...(prev[editingSessionTargetDate] || {}),
-          hours: newHours,
-          questions: newQuestions,
-          cards: newCards,
-          pages: newPages,
-          sessions: updatedSessions
-        }
+        [editingSessionTargetDate]: updatedDayLog
       }));
 
       // Clear edit state
       setEditingSessionId(null);
       setEditingSessionTargetDate('');
+      setEditingSessionHours('');
+      setEditingSessionMinutes('');
+      setEditingSessionQuestions('');
+      setEditingSessionCards('');
+      setEditingSessionPages('');
+      setIsSaving(false);
+      triggerDebouncedSmartPush();
       setEditingSessionHours('');
       setEditingSessionMinutes('');
       setEditingSessionQuestions('');

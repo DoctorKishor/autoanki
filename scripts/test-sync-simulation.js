@@ -816,7 +816,110 @@ console.log("\nTEST 14: 2-Way Collaborative Sync on Removing Topic from Queue (X
   assert(topics['Ear: Part 3'].isPickedForToday === true, 'Ear: Part 3 concurrently picked on Device 2 is preserved');
 }
 
+// -----------------------------------------------------------------------------
+// TEST 15: Collaborative Multi-Device Streak Tracker & Study Session Merging
+// -----------------------------------------------------------------------------
+console.log("\nTEST 15: Collaborative Multi-Device Streak Tracker & Study Session Merging");
+{
+  const tMon = new Date('2026-08-24T10:00:00Z').toISOString();
+  const tTue = new Date('2026-08-25T14:00:00Z').toISOString();
+  const tWed1 = new Date('2026-08-26T09:00:00Z').toISOString();
+  const tWed2 = new Date('2026-08-26T18:00:00Z').toISOString();
+  const tDel = new Date('2026-08-26T20:00:00Z').toISOString();
+
+  // Device 1:
+  // - Studied on Monday (2026-08-24): 2 hours, 50 questions
+  // - Studied session 1 on Wednesday (2026-08-26): 1.5 hours, 30 questions
+  // - Deleted session 3 on Wednesday with tombstone
+  const locLogs = {
+    '2026-08-24': {
+      hours: 2.0,
+      questions: 50,
+      cards: 10,
+      pages: 0,
+      sessions: [
+        { id: 'sess-mon-1', hours: 2.0, questions: 50, cards: 10, pages: 0, createdAt: tMon, updatedAt: tMon }
+      ],
+      updatedAt: tMon
+    },
+    '2026-08-26': {
+      hours: 1.5,
+      questions: 30,
+      cards: 5,
+      pages: 0,
+      sessions: [
+        { id: 'sess-wed-1', hours: 1.5, questions: 30, cards: 5, pages: 0, createdAt: tWed1, updatedAt: tWed1 }
+      ],
+      updatedAt: tWed1
+    }
+  };
+
+  // Device 2:
+  // - Studied on Tuesday (2026-08-25): 3 hours, 80 questions
+  // - Studied session 2 on Wednesday (2026-08-26): 2.0 hours, 40 questions
+  // - Still has old session 3 on Wednesday (created before tDel)
+  const remLogs = {
+    '2026-08-25': {
+      hours: 3.0,
+      questions: 80,
+      cards: 25,
+      pages: 10,
+      sessions: [
+        { id: 'sess-tue-1', hours: 3.0, questions: 80, cards: 25, pages: 10, createdAt: tTue, updatedAt: tTue }
+      ],
+      updatedAt: tTue
+    },
+    '2026-08-26': {
+      hours: 3.0,
+      questions: 60,
+      cards: 15,
+      pages: 0,
+      sessions: [
+        { id: 'sess-wed-2', hours: 2.0, questions: 40, cards: 10, pages: 0, createdAt: tWed2, updatedAt: tWed2 },
+        { id: 'sess-wed-3', hours: 1.0, questions: 20, cards: 5, pages: 0, createdAt: tWed1, updatedAt: tWed1 }
+      ],
+      updatedAt: tWed2
+    }
+  };
+
+  const locGraves = [
+    { entityType: 'study_session', entityId: 'sess-wed-3', deletedAt: tDel }
+  ];
+
+  const merged = mergeStudyLogsObjects(locLogs, remLogs, [], [], locGraves);
+
+  // 1. Distinct dates: Both Monday (from Device 1) and Tuesday (from Device 2) are present
+  assert(merged['2026-08-24'] !== undefined, 'Monday log (Device 1) preserved in merged studyLogs');
+  assert(merged['2026-08-24'].hours === 2.0, 'Monday hours is 2.0');
+  assert(merged['2026-08-25'] !== undefined, 'Tuesday log (Device 2) preserved in merged studyLogs');
+  assert(merged['2026-08-25'].questions === 80, 'Tuesday questions is 80');
+
+  // Streak calculation verification on merged dataset
+  const activeDates = Object.keys(merged).filter(d => {
+    const l = merged[d];
+    return l && ((l.hours || 0) > 0 || (l.questions || 0) > 0 || (l.cards || 0) > 0);
+  }).sort();
+  assert(activeDates.length === 3, 'Streak spans 3 consecutive days (Mon, Tue, Wed)');
+  assert(activeDates[0] === '2026-08-24' && activeDates[1] === '2026-08-25' && activeDates[2] === '2026-08-26', 'Consecutive study dates intact');
+
+  // 2. Same-date session merging for Wednesday
+  const wedLog = merged['2026-08-26'];
+  assert(wedLog !== undefined, 'Wednesday log exists in merged studyLogs');
+  assert(wedLog.sessions.length === 2, 'Wednesday has 2 active sessions (sess-wed-1 and sess-wed-2)');
+  assert(wedLog.sessions.some(s => s.id === 'sess-wed-1'), 'sess-wed-1 from Device 1 is preserved');
+  assert(wedLog.sessions.some(s => s.id === 'sess-wed-2'), 'sess-wed-2 from Device 2 is preserved');
+
+  // 3. Tombstone preservation: sess-wed-3 deleted on Device 1 is NOT resurrected by Device 2
+  assert(!wedLog.sessions.some(s => s.id === 'sess-wed-3'), 'Deleted session sess-wed-3 is NOT resurrected');
+
+  // 4. Combined Wednesday metrics
+  assert(wedLog.hours === 3.5, `Wednesday combined hours is 3.5 (got ${wedLog.hours})`);
+  assert(wedLog.questions === 70, `Wednesday combined questions is 70 (got ${wedLog.questions})`);
+  assert(wedLog.cards === 15, `Wednesday combined cards is 15 (got ${wedLog.cards})`);
+}
+
 console.log('\n======================================================');
 console.log(`🎉 ALL ${passedTests}/${totalTests} SYNC SIMULATION TESTS PASSED CLEANLY!`);
 console.log('======================================================\n');
+
 

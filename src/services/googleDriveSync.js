@@ -2863,6 +2863,7 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
   const studyLogGravesMap = new Map();
   const subLogGravesMap = new Map();
   const trackerTopicGravesMap = new Map();
+  const sessionGravesMap = new Map();
   (unifiedGraves || []).forEach(g => {
     if (!g) return;
     const type = g.entityType || g.type;
@@ -2875,6 +2876,9 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
           gtGravesMap.set(`${String(g.parentId).trim().toLowerCase()}_${String(g.metadata.name).trim().toLowerCase()}`, delTime);
         }
       }
+    } else if (type === 'study_session' || type === 'session') {
+      if (g.entityId) sessionGravesMap.set(String(g.entityId).toLowerCase(), delTime);
+      if (g.metadata?.id) sessionGravesMap.set(String(g.metadata.id).toLowerCase(), delTime);
     } else if (type === 'study_log') {
       if (g.entityId) {
         studyLogGravesMap.set(String(g.entityId), delTime);
@@ -2910,6 +2914,17 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
         const comboDelTime = subLogGravesMap.get(comboKey);
         if (comboDelTime && comboDelTime >= logTime) return true;
       }
+    }
+    return false;
+  };
+
+  const isSessionTombstoned = (s) => {
+    if (!s || typeof s !== 'object') return true;
+    if (s.isDeleted || s.deletedAt) return true;
+    if (s.id) {
+      const delTime = sessionGravesMap.get(String(s.id).toLowerCase());
+      const sTime = safeTimestamp(s.updatedAt || s.startedAt || s.createdAt || 0);
+      if (delTime && delTime >= sTime) return true;
     }
     return false;
   };
@@ -2954,117 +2969,74 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
 
     if (!mergedLogs[dateKey]) {
       const incFsrs = Array.isArray(incLog?.fsrsLogs) ? incLog.fsrsLogs.filter(l => !isFsrsLogTombstoned(l, dateKey)) : [];
+      const incSessions = Array.isArray(incLog?.sessions) ? incLog.sessions.filter(s => !isSessionTombstoned(s)) : [];
       mergedLogs[dateKey] = {
         ...incLog,
-        fsrsLogs: incFsrs
+        fsrsLogs: incFsrs,
+        sessions: incSessions
       };
     } else {
       const cur = mergedLogs[dateKey];
       const curTime = safeTimestamp(cur.updatedAt || cur.lastReviewDate || 0);
-      const isLocalFresher = curTime > incTime;
-      const isRemoteFresher = incTime > curTime;
 
+      // Merge FSRS logs by ID/hash with deduplication and tombstone pruning
       const existingFsrs = Array.isArray(cur.fsrsLogs) ? cur.fsrsLogs.filter(l => !isFsrsLogTombstoned(l, dateKey)) : [];
       const incomingFsrs = Array.isArray(incLog?.fsrsLogs) ? incLog.fsrsLogs.filter(l => !isFsrsLogTombstoned(l, dateKey)) : [];
-
       const fsrsMap = new Map();
-      const getFsrsKey = (l) => l.id ||
+      const getFsrsKey = (l) => l.id ? String(l.id).toLowerCase() :
         (l.cardId && l.timestamp ? `${l.cardId}_${l.rating || 'r'}_${l.timestamp}` :
           (l.topicName && (l.timestamp || l.dateStr) ? `${l.topicName}_${l.rating || 'r'}_${l.timestamp || l.dateStr}` :
             computeHash(canonicalStringify(l))));
 
-      if (isLocalFresher) {
-        // Local is strictly newer (e.g. log was deleted, undone, or modified locally)
-        // Seed with local FSRS logs
-        existingFsrs.forEach(l => { if (l) fsrsMap.set(getFsrsKey(l), l); });
-        // Only accept remote logs if their individual timestamp is strictly newer than local's last update
-        incomingFsrs.forEach(l => {
-          if (l) {
-            const lTime = safeTimestamp(l.timestamp || l.updatedAt || 0);
-            if (lTime > curTime) {
-              const k = getFsrsKey(l);
-              fsrsMap.set(k, l);
-            }
-          }
-        });
-      } else if (isRemoteFresher) {
-        // Remote is strictly newer (edited on another device)
-        incomingFsrs.forEach(l => { if (l) fsrsMap.set(getFsrsKey(l), l); });
-        existingFsrs.forEach(l => {
-          if (l) {
-            const lTime = safeTimestamp(l.timestamp || l.updatedAt || 0);
-            if (lTime > incTime) {
-              const k = getFsrsKey(l);
-              fsrsMap.set(k, l);
-            }
-          }
-        });
-      } else {
-        // Equal timestamps: deduplicated union
-        existingFsrs.forEach(l => { if (l) fsrsMap.set(getFsrsKey(l), l); });
-        incomingFsrs.forEach(l => {
-          if (l) {
-            const k = getFsrsKey(l);
-            if (!fsrsMap.has(k)) {
-              fsrsMap.set(k, l);
-            } else {
-              const locItem = fsrsMap.get(k);
-              const locItemTime = safeTimestamp(locItem.timestamp || locItem.updatedAt || 0);
-              const remItemTime = safeTimestamp(l.timestamp || l.updatedAt || 0);
-              fsrsMap.set(k, remItemTime >= locItemTime ? l : locItem);
-            }
-          }
-        });
-      }
+      existingFsrs.forEach(l => {
+        if (l && !isFsrsLogTombstoned(l, dateKey)) {
+          fsrsMap.set(getFsrsKey(l), l);
+        }
+      });
 
+      incomingFsrs.forEach(l => {
+        if (l && !isFsrsLogTombstoned(l, dateKey)) {
+          const k = getFsrsKey(l);
+          if (!fsrsMap.has(k)) {
+            fsrsMap.set(k, l);
+          } else {
+            const locL = fsrsMap.get(k);
+            const locLTime = safeTimestamp(locL.timestamp || locL.updatedAt || 0);
+            const remLTime = safeTimestamp(l.timestamp || l.updatedAt || 0);
+            fsrsMap.set(k, remLTime >= locLTime ? l : locL);
+          }
+        }
+      });
+
+      const allFsrsLogs = Array.from(fsrsMap.values());
+
+      // Merge individual study sessions with deduplication and tombstone pruning
       const existingSessions = Array.isArray(cur.sessions) ? cur.sessions : [];
       const incomingSessions = Array.isArray(incLog?.sessions) ? incLog.sessions : [];
       const sessionMap = new Map();
-      const getSessionKey = (s) => s.id || (s.subject && s.startedAt ? `${s.subject}_${s.startedAt}_${s.duration || 0}` : computeHash(canonicalStringify(s)));
+      const getSessionKey = (s) => s.id ? String(s.id).toLowerCase() : (s.subject && s.startedAt ? `${s.subject}_${s.startedAt}_${s.duration || 0}` : computeHash(canonicalStringify(s)));
 
-      if (isLocalFresher) {
-        existingSessions.forEach(s => { if (s) sessionMap.set(getSessionKey(s), s); });
-        incomingSessions.forEach(s => {
-          if (s) {
-            const sTime = safeTimestamp(s.updatedAt || s.startedAt || 0);
-            if (sTime > curTime) {
-              sessionMap.set(getSessionKey(s), s);
-            }
-          }
-        });
-      } else if (isRemoteFresher) {
-        incomingSessions.forEach(s => { if (s) sessionMap.set(getSessionKey(s), s); });
-        existingSessions.forEach(s => {
-          if (s) {
-            const sTime = safeTimestamp(s.updatedAt || s.startedAt || 0);
-            if (sTime > incTime) {
-              sessionMap.set(getSessionKey(s), s);
-            }
-          }
-        });
-      } else {
-        existingSessions.forEach(s => { if (s) sessionMap.set(getSessionKey(s), s); });
-        incomingSessions.forEach(s => {
-          if (s) {
-            const k = getSessionKey(s);
-            if (!sessionMap.has(k)) {
-              sessionMap.set(k, s);
-            } else {
-              const locSess = sessionMap.get(k);
-              const locSessTime = safeTimestamp(locSess.updatedAt || locSess.startedAt || 0);
-              const remSessTime = safeTimestamp(s.updatedAt || s.startedAt || 0);
-              sessionMap.set(k, remSessTime >= locSessTime ? s : locSess);
-            }
-          }
-        });
-      }
-
-      // Prune deleted sessions if marked with isDeleted
-      for (const [sKey, sObj] of sessionMap.entries()) {
-        if (sObj.isDeleted || sObj.deletedAt) {
-          sessionMap.delete(sKey);
+      existingSessions.forEach(s => {
+        if (s && !isSessionTombstoned(s)) {
+          sessionMap.set(getSessionKey(s), s);
         }
-      }
+      });
+
+      incomingSessions.forEach(s => {
+        if (s && !isSessionTombstoned(s)) {
+          const k = getSessionKey(s);
+          if (!sessionMap.has(k)) {
+            sessionMap.set(k, s);
+          } else {
+            const locS = sessionMap.get(k);
+            const locSTime = safeTimestamp(locS.updatedAt || locS.startedAt || locS.createdAt || 0);
+            const remSTime = safeTimestamp(s.updatedAt || s.startedAt || s.createdAt || 0);
+            sessionMap.set(k, remSTime >= locSTime ? s : locS);
+          }
+        }
+      });
+
+      const allSessions = Array.from(sessionMap.values()).filter(s => !isSessionTombstoned(s));
 
       const existingGts = Array.isArray(cur.gts) ? cur.gts : [];
       const incomingGts = Array.isArray(incLog?.gts) ? incLog.gts : [];
@@ -3156,55 +3128,37 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
       // 3. Prune deleted GTs and tombstoned GTs
       const activeGts = reconciledGts.filter(g => g && !g.isDeleted && !g.deletedAt && !isGtTombstonedInGraves(g));
 
-      const allSessions = Array.from(sessionMap.values());
+      // Calculate aggregated daily totals non-destructively across both devices
       const sessionHours = allSessions.reduce((sum, s) => sum + (Number(s.duration || s.minutes || 0) / 60 || Number(s.hours || 0)), 0);
+      const sessionQuestions = allSessions.reduce((sum, s) => sum + Number(s.questions || 0), 0);
+      const sessionCards = allSessions.reduce((sum, s) => sum + Number(s.cards || 0), 0);
+      const sessionPages = allSessions.reduce((sum, s) => sum + Number(s.pages || 0), 0);
 
-      const baseLog = isLocalFresher ? cur : incLog;
-      const otherLog = isLocalFresher ? incLog : cur;
+      const locHours = Number(cur.hours !== undefined && cur.hours !== null && cur.hours !== '' ? cur.hours : (cur.studyHours || 0));
+      const remHours = Number(incLog?.hours !== undefined && incLog?.hours !== null && incLog?.hours !== '' ? incLog.hours : (incLog?.studyHours || 0));
+      const totalHours = sessionHours > 0
+        ? Number(sessionHours.toFixed(3))
+        : Math.round(Math.max(locHours, remHours) * 1000) / 1000;
 
-      let totalHours;
-      let totalCards;
-      let totalQuestions;
-      let totalPages;
+      const locQs = Number(cur.questions !== undefined && cur.questions !== null && cur.questions !== '' ? cur.questions : (cur.totalQuestionsAttempted || 0));
+      const remQs = Number(incLog?.questions !== undefined && incLog?.questions !== null && incLog?.questions !== '' ? incLog.questions : (incLog?.totalQuestionsAttempted || 0));
+      const totalQuestions = sessionQuestions > 0
+        ? Math.max(sessionQuestions, locQs, remQs)
+        : Math.max(locQs, remQs);
 
-      if (curTime !== incTime) {
-        // Clear LWW: The fresher record's explicit user values take precedence
-        totalHours = (baseLog.hours !== undefined && baseLog.hours !== null && baseLog.hours !== '')
-          ? Number(baseLog.hours)
-          : ((baseLog.studyHours !== undefined && baseLog.studyHours !== null && baseLog.studyHours !== '')
-            ? Number(baseLog.studyHours)
-            : (sessionHours > 0 ? Number(sessionHours.toFixed(2)) : Number(otherLog?.hours || otherLog?.studyHours || 0)));
+      const locCards = Number(cur.cards !== undefined && cur.cards !== null && cur.cards !== '' ? cur.cards : (cur.totalCardsReviewed || 0));
+      const remCards = Number(incLog?.cards !== undefined && incLog?.cards !== null && incLog?.cards !== '' ? incLog.cards : (incLog?.totalCardsReviewed || 0));
+      const totalCards = Math.max(locCards, remCards, sessionCards, allFsrsLogs.length);
 
-        totalCards = (baseLog.cards !== undefined && baseLog.cards !== null && baseLog.cards !== '')
-          ? Number(baseLog.cards)
-          : ((baseLog.totalCardsReviewed !== undefined && baseLog.totalCardsReviewed !== null && baseLog.totalCardsReviewed !== '')
-            ? Number(baseLog.totalCardsReviewed)
-            : fsrsMap.size);
+      const locPages = Number(cur.pages || 0);
+      const remPages = Number(incLog?.pages || 0);
+      const totalPages = Math.max(locPages, remPages, sessionPages);
 
-        totalQuestions = (baseLog.questions !== undefined && baseLog.questions !== null && baseLog.questions !== '')
-          ? Number(baseLog.questions)
-          : ((baseLog.totalQuestionsAttempted !== undefined && baseLog.totalQuestionsAttempted !== null && baseLog.totalQuestionsAttempted !== '')
-            ? Number(baseLog.totalQuestionsAttempted)
-            : Number(otherLog?.questions || otherLog?.totalQuestionsAttempted || 0));
-
-        totalPages = (baseLog.pages !== undefined && baseLog.pages !== null && baseLog.pages !== '')
-          ? Number(baseLog.pages)
-          : Number(otherLog?.pages || 0);
-      } else {
-        // Equal timestamps (or both missing/legacy logs): combine conservatively
-        totalHours = sessionHours > 0 ? Number(sessionHours.toFixed(2)) : Math.max(Number(cur.studyHours || cur.hours || 0), Number(incLog?.studyHours || incLog?.hours || 0));
-        totalCards = Math.max(Number(cur.totalCardsReviewed || cur.cards || 0), Number(incLog?.totalCardsReviewed || incLog?.cards || 0), fsrsMap.size);
-        totalQuestions = Math.max(Number(cur.totalQuestionsAttempted || cur.questions || 0), Number(incLog?.totalQuestionsAttempted || incLog?.questions || 0));
-        totalPages = Math.max(Number(cur.pages || 0), Number(incLog?.pages || 0));
-      }
-
-      const latestUpdatedAt = isLocalFresher
-        ? (cur.updatedAt || new Date(curTime || Date.now()).toISOString())
-        : (incLog?.updatedAt || new Date(incTime || Date.now()).toISOString());
+      const latestUpdatedAt = new Date(Math.max(curTime, incTime, Date.now())).toISOString();
 
       mergedLogs[dateKey] = {
-        ...otherLog,
-        ...baseLog,
+        ...incLog,
+        ...cur,
         cards: totalCards,
         totalCardsReviewed: totalCards,
         questions: totalQuestions,
@@ -3212,7 +3166,7 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
         hours: totalHours,
         studyHours: totalHours,
         pages: totalPages,
-        fsrsLogs: Array.from(fsrsMap.values()),
+        fsrsLogs: allFsrsLogs,
         sessions: allSessions,
         gts: activeGts,
         updatedAt: latestUpdatedAt
