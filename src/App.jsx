@@ -5958,34 +5958,6 @@ export default function App() {
   };
   const [isMobileAddingGt, setIsMobileAddingGt] = useState(false);
 
-  const [show1159Popup, setShow1159Popup] = useState(false);
-  const popupShownForDate = useRef('');
-
-  useEffect(() => {
-    const checkTime = () => {
-      const now = new Date();
-      const hrs = now.getHours();
-      const mins = now.getMinutes();
-      const dateStr = now.toLocaleDateString('en-CA');
-
-      if (hrs === 23 && mins === 59) {
-        if (popupShownForDate.current !== dateStr) {
-          const history = JSON.parse(localStorage.getItem('camp_history') || '[]');
-          const todayLabel = now.toLocaleDateString('en-US', { day: '2-digit', month: 'short' }).replace(' ', '-');
-          const loggedToday = history.some(h => h.date === todayLabel);
-
-          if (!loggedToday) {
-            setShow1159Popup(true);
-            popupShownForDate.current = dateStr;
-          }
-        }
-      }
-    };
-
-    const interval = setInterval(checkTime, 10000);
-    return () => clearInterval(interval);
-  }, []);
-
   // Mobile companion sub-tab state ('timeline' | 'scanner' | 'pomodoro')
   const [companionSubTab, setCompanionSubTab] = useState('timeline');
   // Scanned image file uploading state
@@ -43369,39 +43341,6 @@ Return your response strictly as a JSON object matching this schema:
                 </div>
               )}
 
-              {/* 11:59 PM CAMP REMINDER POPUP */}
-              {show1159Popup && (
-                <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
-                  <div className="bg-white rounded-3xl border border-gray-150 shadow-2xl p-6 max-w-sm w-full text-center space-y-4 animate-in fade-in zoom-in-95 duration-200">
-                    <div className="w-12 h-12 bg-amber-100 rounded-2xl flex items-center justify-center text-amber-600 mx-auto text-xl animate-bounce">
-                      ⚠️
-                    </div>
-                    <div className="space-y-1.5 text-left">
-                      <h3 className="text-sm font-black text-gray-800 uppercase tracking-wider text-center">Unsaved CAMP Progress!</h3>
-                      <p className="text-xs text-gray-500 font-semibold leading-relaxed text-center">
-                        It is 11:59 PM and you haven't logged your CAMP progress for today yet. Save it now to maintain your accountability streak!
-                      </p>
-                    </div>
-                    <div className="flex gap-3 pt-2">
-                      <button
-                        onClick={() => setShow1159Popup(false)}
-                        className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-black py-2.5 px-4 rounded-xl transition uppercase tracking-wider"
-                      >
-                        Remind Me
-                      </button>
-                      <button
-                        onClick={() => {
-                          setShow1159Popup(false);
-                          setCurrentTab('campTracker');
-                        }}
-                        className="flex-1 bg-sky-600 hover:bg-sky-700 text-white text-xs font-black py-2.5 px-4 rounded-xl transition shadow-md shadow-sky-600/10 uppercase tracking-wider"
-                      >
-                        Go to CAMP
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
 
               {activePdfViewerUrl && (
                 <PdfViewerModal

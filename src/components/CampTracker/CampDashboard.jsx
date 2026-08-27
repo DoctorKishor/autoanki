@@ -141,12 +141,6 @@ export default function CampDashboard({
   const lastSavedTimerHistoryRef = useRef(null);
   const lastSavedBedToBookRef = useRef({});
   const lastSavedSessionsRef = useRef({});
-
-  const [showYesterdayPrompt, setShowYesterdayPrompt] = useState(false);
-  const [yesterdayLabelText, setYesterdayLabelText] = useState('');
-  const [yesterdayDateVal, setYesterdayDateVal] = useState('');
-  const [hasPromptedYesterday, setHasPromptedYesterday] = useState(false);
-
   // Helper mapping functions to prevent broken select bindings with floats
   const getNearestHalfHour = (val) => {
     const num = parseFloat(val) || 0;
@@ -157,23 +151,6 @@ export default function CampDashboard({
     const num = Math.round(parseFloat(val)) || 7;
     return Math.max(1, Math.min(10, num)).toString();
   };
-
-  useEffect(() => {
-    if (hasPromptedYesterday) return;
-
-    const yesterdayDate = new Date();
-    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-    const yDateStr = yesterdayDate.toLocaleDateString('en-CA'); // YYYY-MM-DD
-    const yLabel = yesterdayDate.toLocaleDateString('en-US', { day: '2-digit', month: 'short' }).replace(' ', '-'); // e.g. "23-Jun"
-
-    const loggedYesterday = history.some(h => h.date === yLabel);
-    if (!loggedYesterday) {
-      setYesterdayLabelText(yLabel);
-      setYesterdayDateVal(yDateStr);
-      setShowYesterdayPrompt(true);
-      setHasPromptedYesterday(true);
-    }
-  }, [history, hasPromptedYesterday]);
 
   // Helper to reconstruct sessions for a given date from timer history if dailyLog is missing
   const reconstructSessionsFromTimerHistory = (dateStr, thList) => {
@@ -2072,61 +2049,6 @@ export default function CampDashboard({
         )}
       </AnimatePresence>
 
-      {/* YESTERDAY'S MISSED LOG PROMPT */}
-      <AnimatePresence>
-        {showYesterdayPrompt && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
-            <motion.div
-              initial={{ scale: 0.92, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.92, opacity: 0 }}
-              transition={{ duration: 0.25 }}
-              className={`${isDark ? 'neu-card-dark border border-slate-700' : 'neu-card-light border border-white/80'} rounded-3xl shadow-2xl max-w-sm w-full p-6 text-center space-y-4`}
-            >
-              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mx-auto text-xl animate-pulse ${
-                isDark ? 'neu-pressed-dark text-amber-400' : 'neu-pressed-light text-amber-600'
-              }`}>
-                📅
-              </div>
-              <div className="space-y-1.5 text-left">
-                <h3 className={`text-sm font-black uppercase tracking-wider text-center ${
-                  isDark ? 'text-slate-100' : 'text-slate-900'
-                }`}>
-                  Missed Yesterday's Log
-                </h3>
-                <p className={`text-xs font-semibold leading-relaxed text-center ${
-                  isDark ? 'text-slate-400' : 'text-slate-600'
-                }`}>
-                  You didn't log your CAMP progress for yesterday ({yesterdayLabelText}). Would you like to review and log it now? Your inputs are preserved.
-                </p>
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowYesterdayPrompt(false)}
-                  className={`flex-1 text-xs font-black py-3 px-4 rounded-2xl transition uppercase tracking-wider cursor-pointer ${
-                    isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-700'
-                  }`}
-                >
-                  Dismiss
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedDate(yesterdayDateVal);
-                    setShowYesterdayPrompt(false);
-                  }}
-                  className={`flex-1 text-xs font-black py-3 px-4 rounded-2xl transition uppercase tracking-wider cursor-pointer ${
-                    isDark ? 'neu-btn-accent-dark text-white' : 'neu-btn-accent-light text-white'
-                  }`}
-                >
-                  Log Yesterday
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
     </div>
   );
