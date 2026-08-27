@@ -963,6 +963,21 @@ export async function saveLocalStudyLog(dateStr, logData) {
     };
     const updated = { ...current, [dateStr]: updatedDay };
     await setLocalKV('study_logs', updated);
+
+    // Revoke any tombstone in trash_study_logs
+    try {
+      const trash = (await getLocalKV('trash_study_logs')) || [];
+      if (Array.isArray(trash) && trash.some(t => t?.dateKey === dateStr)) {
+        const filtered = trash.filter(t => t?.dateKey !== dateStr);
+        await setLocalKV('trash_study_logs', filtered);
+      }
+    } catch (e) {
+      console.warn('[LocalDB] Error pruning trash_study_logs on save:', e);
+    }
+
+    // Revoke from unified graves registry
+    await revokeTombstone('study_log', String(dateStr));
+
     return updated;
   }).catch(err => {
     console.error("[LocalDB] saveLocalStudyLog mutex error:", err);

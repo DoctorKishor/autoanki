@@ -10698,6 +10698,9 @@ JSON Format:
       const activeGts = (loggerGtsList || []).filter(g => g && !g.isDeleted);
       const nowIso = new Date().toISOString();
 
+      // Revoke tombstone for this study log date
+      await revokeTombstone('study_log', String(loggerDate));
+
       // Revoke tombstones for all active GTs being saved
       for (const gt of activeGts) {
         if (gt.id) await revokeTombstone('gt', String(gt.id));

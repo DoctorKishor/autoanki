@@ -3128,37 +3128,43 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
       // 3. Prune deleted GTs and tombstoned GTs
       const activeGts = reconciledGts.filter(g => g && !g.isDeleted && !g.deletedAt && !isGtTombstonedInGraves(g));
 
+      // Determine winner and loser based on Last-Write-Wins (LWW)
+      const isRemoteFresher = incTime > curTime;
+      const winner = isRemoteFresher ? incLog : cur;
+      const loser = isRemoteFresher ? cur : incLog;
+
       // Calculate aggregated daily totals non-destructively across both devices
       const sessionHours = allSessions.reduce((sum, s) => sum + (Number(s.duration || s.minutes || 0) / 60 || Number(s.hours || 0)), 0);
       const sessionQuestions = allSessions.reduce((sum, s) => sum + Number(s.questions || 0), 0);
       const sessionCards = allSessions.reduce((sum, s) => sum + Number(s.cards || 0), 0);
       const sessionPages = allSessions.reduce((sum, s) => sum + Number(s.pages || 0), 0);
 
-      const locHours = Number(cur.hours !== undefined && cur.hours !== null && cur.hours !== '' ? cur.hours : (cur.studyHours || 0));
-      const remHours = Number(incLog?.hours !== undefined && incLog?.hours !== null && incLog?.hours !== '' ? incLog.hours : (incLog?.studyHours || 0));
-      const totalHours = sessionHours > 0
-        ? Number(sessionHours.toFixed(3))
-        : Math.round(Math.max(locHours, remHours) * 1000) / 1000;
+      // Determine values strictly using LWW from winner
+      const winnerHours = Number(winner.hours !== undefined && winner.hours !== null && winner.hours !== '' ? winner.hours : (winner.studyHours ?? 0));
+      const winnerQs = Number(winner.questions !== undefined && winner.questions !== null && winner.questions !== '' ? winner.questions : (winner.totalQuestionsAttempted ?? 0));
+      const winnerCards = Number(winner.cards !== undefined && winner.cards !== null && winner.cards !== '' ? winner.cards : (winner.totalCardsReviewed ?? 0));
+      const winnerPages = Number(winner.pages !== undefined && winner.pages !== null && winner.pages !== '' ? winner.pages : 0);
 
-      const locQs = Number(cur.questions !== undefined && cur.questions !== null && cur.questions !== '' ? cur.questions : (cur.totalQuestionsAttempted || 0));
-      const remQs = Number(incLog?.questions !== undefined && incLog?.questions !== null && incLog?.questions !== '' ? incLog.questions : (incLog?.totalQuestionsAttempted || 0));
-      const totalQuestions = sessionQuestions > 0
-        ? Math.max(sessionQuestions, locQs, remQs)
-        : Math.max(locQs, remQs);
+      // If active sessions are present from either device, combine session metrics non-destructively.
+      // If no sub-sessions are present (e.g. manual report entry), strictly use winner's values (LWW).
+      const totalHours = allSessions.length > 0
+        ? Number(Math.max(sessionHours, winnerHours).toFixed(3))
+        : Number(winnerHours.toFixed(3));
 
-      const locCards = Number(cur.cards !== undefined && cur.cards !== null && cur.cards !== '' ? cur.cards : (cur.totalCardsReviewed || 0));
-      const remCards = Number(incLog?.cards !== undefined && incLog?.cards !== null && incLog?.cards !== '' ? incLog.cards : (incLog?.totalCardsReviewed || 0));
-      const totalCards = Math.max(locCards, remCards, sessionCards, allFsrsLogs.length);
+      const totalQuestions = allSessions.length > 0
+        ? Math.max(sessionQuestions, winnerQs)
+        : winnerQs;
 
-      const locPages = Number(cur.pages || 0);
-      const remPages = Number(incLog?.pages || 0);
-      const totalPages = Math.max(locPages, remPages, sessionPages);
+      const totalCards = Math.max(winnerCards, allFsrsLogs.length, sessionCards);
+      const totalPages = allSessions.length > 0
+        ? Math.max(sessionPages, winnerPages)
+        : winnerPages;
 
-      const latestUpdatedAt = new Date(Math.max(curTime, incTime, Date.now())).toISOString();
+      const latestUpdatedAt = winner.updatedAt || new Date(Math.max(curTime, incTime, Date.now())).toISOString();
+      const baseLog = isRemoteFresher ? { ...loser, ...winner } : { ...loser, ...winner };
 
       mergedLogs[dateKey] = {
-        ...incLog,
-        ...cur,
+        ...baseLog,
         cards: totalCards,
         totalCardsReviewed: totalCards,
         questions: totalQuestions,

@@ -918,6 +918,91 @@ console.log("\nTEST 15: Collaborative Multi-Device Streak Tracker & Study Sessio
   assert(wedLog.cards === 15, `Wednesday combined cards is 15 (got ${wedLog.cards})`);
 }
 
+// -----------------------------------------------------------------------------
+// TEST 16: Manual Study Report Modal Edits & Unchanged Date Parity (Zero Overwrite)
+// -----------------------------------------------------------------------------
+console.log("\nTEST 16: Manual Study Report Modal Edits & Unchanged Date Parity (Zero Overwrite)");
+{
+  const t0 = new Date('2026-08-27T08:00:00Z').toISOString();
+  const t1_edit = new Date('2026-08-27T12:00:00Z').toISOString(); // Device 1 edited at 12:00
+  const t2_edit = new Date('2026-08-27T14:00:00Z').toISOString(); // Device 2 edited at 14:00
+
+  // Scenario A:
+  // - Device 1 had an old report for 2026-08-27 with 4.0 hours and 100 questions (t0).
+  // - Device 2 was offline and still had the old t0 data.
+  // - User opened Manual Study Report Modal on Device 1 and edited it to 2.0 hours and 50 questions (t1_edit).
+  const locLogsA = {
+    '2026-08-27': {
+      hours: 2.0,
+      questions: 50,
+      cards: 20,
+      pages: 5,
+      updatedAt: t1_edit
+    }
+  };
+  const remLogsA = {
+    '2026-08-27': {
+      hours: 4.0,
+      questions: 100,
+      cards: 40,
+      pages: 10,
+      updatedAt: t0
+    }
+  };
+
+  const mergedA = mergeStudyLogsObjects(locLogsA, remLogsA, [], [], []);
+  assert(mergedA['2026-08-27'] !== undefined, '2026-08-27 exists in mergedA');
+  assert(mergedA['2026-08-27'].hours === 2.0, `Device 1 fresh manual report edit (2.0 hrs) is PRESERVED (got ${mergedA['2026-08-27'].hours}) - NOT overridden to 4.0`);
+  assert(mergedA['2026-08-27'].questions === 50, `Device 1 fresh questions edit (50) is PRESERVED (got ${mergedA['2026-08-27'].questions}) - NOT overridden to 100`);
+
+  // Scenario B:
+  // - Device 1 had untouched date 2026-08-26 (t0).
+  // - Device 2 edited 2026-08-26 in Manual Study Report Modal to 3.0 hours, 75 questions (t2_edit > t0).
+  const locLogsB = {
+    '2026-08-26': {
+      hours: 1.0,
+      questions: 25,
+      cards: 10,
+      pages: 2,
+      updatedAt: t0
+    }
+  };
+  const remLogsB = {
+    '2026-08-26': {
+      hours: 3.0,
+      questions: 75,
+      cards: 30,
+      pages: 8,
+      updatedAt: t2_edit
+    }
+  };
+
+  const mergedB = mergeStudyLogsObjects(locLogsB, remLogsB, [], [], []);
+  assert(mergedB['2026-08-26'] !== undefined, '2026-08-26 exists in mergedB');
+  assert(mergedB['2026-08-26'].hours === 3.0, `Device 2 fresher manual report edit (3.0 hrs) is APPLIED (got ${mergedB['2026-08-26'].hours})`);
+  assert(mergedB['2026-08-26'].questions === 75, `Device 2 fresher questions edit (75) is APPLIED (got ${mergedB['2026-08-26'].questions})`);
+
+  // Scenario C: Tombstone Revocation & Re-logging
+  // - Date 2026-08-25 was deleted on Device 1 at t0 with tombstone.
+  // - User re-logged a study report on 2026-08-25 at t1_edit (t1_edit > t0).
+  const locLogsC = {
+    '2026-08-25': {
+      hours: 1.5,
+      questions: 40,
+      cards: 15,
+      pages: 3,
+      updatedAt: t1_edit
+    }
+  };
+  const remGravesC = [
+    { entityType: 'study_log', entityId: '2026-08-25', deletedAt: t0 }
+  ];
+
+  const mergedC = mergeStudyLogsObjects(locLogsC, {}, [], [], remGravesC);
+  assert(mergedC['2026-08-25'] !== undefined, 'Re-logged date after previous tombstone is PRESERVED (NOT deleted by older tombstone)');
+  assert(mergedC['2026-08-25'].hours === 1.5, 'Re-logged date hours is 1.5');
+}
+
 console.log('\n======================================================');
 console.log(`🎉 ALL ${passedTests}/${totalTests} SYNC SIMULATION TESTS PASSED CLEANLY!`);
 console.log('======================================================\n');
