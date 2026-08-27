@@ -407,7 +407,7 @@ export default function SmartReviewHub({
 
     try {
       const allSubjectDocs = (await getLocalSubjectTrackerData()) || subjectTrackerData || [];
-      const subDoc = allSubjectDocs.find(d => 
+      const subDoc = allSubjectDocs.find(d =>
         (d.id && d.id.toLowerCase() === docId) ||
         (d.subject && d.subject.toLowerCase() === docId)
       );
@@ -415,9 +415,9 @@ export default function SmartReviewHub({
       if (subDoc && subDoc.topics) {
         const clonedTopics = { ...subDoc.topics };
         const cleanTargetName = (item.name || '').trim().toLowerCase();
-        let topicEntryKey = Object.keys(clonedTopics).find(k => 
-          k.trim().toLowerCase() === cleanTargetName || 
-          clonedTopics[k]?.name?.trim().toLowerCase() === cleanTargetName || 
+        let topicEntryKey = Object.keys(clonedTopics).find(k =>
+          k.trim().toLowerCase() === cleanTargetName ||
+          clonedTopics[k]?.name?.trim().toLowerCase() === cleanTargetName ||
           clonedTopics[k]?.id === item.id
         );
 
@@ -471,12 +471,12 @@ export default function SmartReviewHub({
 
     if (onUpdateSubjectDoc && subName && topicToRemove.name) {
       const docId = subName.trim().toLowerCase();
-      const subDoc = subjectTrackerData.find(d => 
+      const subDoc = subjectTrackerData.find(d =>
         (d.id && d.id.trim().toLowerCase() === docId) ||
         (d.subject && d.subject.trim().toLowerCase() === docId)
       );
       if (subDoc && subDoc.topics) {
-        const targetKey = Object.keys(subDoc.topics).find(k => 
+        const targetKey = Object.keys(subDoc.topics).find(k =>
           k.trim().toLowerCase() === topicToRemove.name.trim().toLowerCase() ||
           subDoc.topics[k]?.id === topicToRemove.id
         ) || topicToRemove.name;
@@ -524,9 +524,8 @@ export default function SmartReviewHub({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
             transition={{ duration: 0.25 }}
-            className={`fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-50 px-4 py-3 rounded-2xl text-xs font-black shadow-2xl backdrop-blur-md border flex items-center gap-3 ${
-              isDark ? 'bg-[#222730] text-white border-slate-700/80 neu-card-dark' : 'bg-white text-slate-800 border-slate-200/80 neu-card-light'
-            }`}
+            className={`fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-50 px-4 py-3 rounded-2xl text-xs font-black shadow-2xl backdrop-blur-md border flex items-center gap-3 ${isDark ? 'bg-[#222730] text-white border-slate-700/80 neu-card-dark' : 'bg-white text-slate-800 border-slate-200/80 neu-card-light'
+              }`}
           >
             <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
             <span className="truncate max-w-xs">{toastMessage}</span>
@@ -561,9 +560,8 @@ export default function SmartReviewHub({
         initial={{ opacity: 0, y: -12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, ease: 'easeOut' }}
-        className={`flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-5 rounded-3xl border shadow-lg shrink-0 ${
-          isDark ? 'bg-[#222730] border-slate-700/60 neu-card-dark' : 'neu-card-light border-slate-200/80 bg-[#e6ecf5]'
-        }`}
+        className={`flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-5 rounded-3xl border shadow-lg shrink-0 ${isDark ? 'bg-[#222730] border-slate-700/60 neu-card-dark' : 'neu-card-light border-slate-200/80 bg-[#e6ecf5]'
+          }`}
       >
         <div>
           <h2 className={`text-xl font-black tracking-tight flex items-center gap-2.5 ${isDark ? 'text-white' : 'text-slate-900'}`}>
@@ -582,15 +580,14 @@ export default function SmartReviewHub({
             onClick={onUndoRating}
             disabled={!canUndo}
             title="Undo last rating"
-            className={`px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-2xl text-[11px] sm:text-xs font-black uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-1.5 h-[42px] ${
-              canUndo
+            className={`px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-2xl text-[11px] sm:text-xs font-black uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-1.5 h-[42px] ${canUndo
                 ? isDark
                   ? 'neu-btn-dark text-amber-300 border border-amber-500/40 shadow-md active:scale-95 cursor-pointer'
                   : 'neu-btn-light text-amber-600 border border-amber-400/50 shadow-md active:scale-95 cursor-pointer'
                 : isDark
                   ? 'bg-slate-900/60 text-slate-600 border border-slate-800 cursor-not-allowed'
                   : 'bg-slate-200/60 text-slate-400 border border-slate-300 cursor-not-allowed'
-            }`}
+              }`}
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>Undo</span>
@@ -601,15 +598,14 @@ export default function SmartReviewHub({
             onClick={onRedoRating}
             disabled={!canRedo}
             title="Redo rating"
-            className={`px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-2xl text-[11px] sm:text-xs font-black uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-1.5 h-[42px] ${
-              canRedo
+            className={`px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-2xl text-[11px] sm:text-xs font-black uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-1.5 h-[42px] ${canRedo
                 ? isDark
                   ? 'neu-btn-dark text-sky-300 border border-sky-500/40 shadow-md active:scale-95 cursor-pointer'
                   : 'neu-btn-light text-sky-600 border border-sky-400/50 shadow-md active:scale-95 cursor-pointer'
                 : isDark
                   ? 'bg-slate-900/60 text-slate-600 border border-slate-800 cursor-not-allowed'
                   : 'bg-slate-200/60 text-slate-400 border border-slate-300 cursor-not-allowed'
-            }`}
+              }`}
           >
             <RotateCw className="w-3.5 h-3.5" />
             <span>Redo</span>
@@ -619,11 +615,10 @@ export default function SmartReviewHub({
           <button
             type="button"
             onClick={() => setIsAdHocModalOpen(true)}
-            className={`px-3 py-2 sm:px-4 sm:py-2.5 rounded-2xl text-[11px] sm:text-xs font-black uppercase tracking-wider shadow-sm transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer border active:scale-95 h-[42px] ${
-              isDark
+            className={`px-3 py-2 sm:px-4 sm:py-2.5 rounded-2xl text-[11px] sm:text-xs font-black uppercase tracking-wider shadow-sm transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer border active:scale-95 h-[42px] ${isDark
                 ? 'neu-btn-dark text-amber-400 border-amber-500/40 hover:border-amber-500/80'
                 : 'neu-btn-light text-amber-700 border-amber-300 hover:border-amber-400'
-            }`}
+              }`}
           >
             <Zap className="w-3.5 h-3.5 text-amber-500 shrink-0" />
             <span className="hidden sm:inline truncate">Ad-hoc Review</span>
@@ -634,9 +629,8 @@ export default function SmartReviewHub({
           <button
             type="button"
             onClick={() => setIsSettingsOpen(true)}
-            className={`px-3 py-2 sm:px-4 sm:py-2.5 rounded-2xl text-[11px] sm:text-xs font-bold uppercase tracking-wider shadow-sm transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer border active:scale-95 h-[42px] ${
-              isDark ? 'neu-btn-dark text-white border-slate-700' : 'neu-btn-light text-slate-800 border-slate-300'
-            }`}
+            className={`px-3 py-2 sm:px-4 sm:py-2.5 rounded-2xl text-[11px] sm:text-xs font-bold uppercase tracking-wider shadow-sm transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer border active:scale-95 h-[42px] ${isDark ? 'neu-btn-dark text-white border-slate-700' : 'neu-btn-light text-slate-800 border-slate-300'
+              }`}
           >
             <span>⚙️</span>
             <span>Settings</span>
@@ -649,15 +643,13 @@ export default function SmartReviewHub({
         initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.3, delay: 0.08 }}
-        className={`relative grid grid-cols-4 p-1.5 rounded-2xl border w-full max-w-3xl shrink-0 select-none overflow-hidden ${
-          isDark ? 'neu-pressed-dark border border-slate-700/60' : 'neu-pressed-light border border-slate-200/80'
-        }`}
+        className={`relative grid grid-cols-4 p-1.5 rounded-2xl border w-full max-w-3xl shrink-0 select-none overflow-hidden ${isDark ? 'neu-pressed-dark border border-slate-700/60' : 'neu-pressed-light border border-slate-200/80'
+          }`}
       >
         {/* Single Sliding Pill Indicator */}
         <div
-          className={`absolute top-1.5 bottom-1.5 rounded-xl shadow-md ${
-            isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
-          }`}
+          className={`absolute top-1.5 bottom-1.5 rounded-xl shadow-md ${isDark ? 'neu-btn-accent-dark' : 'neu-btn-accent-light'
+            }`}
           style={{
             left: `calc(0.375rem + ${Math.max(0, ['queue', 'analytics', 'velocity', 'leeches'].indexOf(subTab))} * ((100% - 0.75rem) / 4))`,
             width: `calc((100% - 0.75rem) / 4)`,
@@ -668,9 +660,8 @@ export default function SmartReviewHub({
         <button
           type="button"
           onClick={() => handleSetSubTab('queue')}
-          className={`relative z-10 py-2.5 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center transition-colors duration-300 px-1 text-center truncate ${
-            subTab === 'queue' ? 'text-white font-extrabold' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
-          }`}
+          className={`relative z-10 py-2.5 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center transition-colors duration-300 px-1 text-center truncate ${subTab === 'queue' ? 'text-white font-extrabold' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
+            }`}
         >
           <span className="hidden sm:inline">⚡ Study Hub ({overdueTopics.length + dueTodayTopics.length})</span>
           <span className="sm:hidden">⚡ Hub ({overdueTopics.length + dueTodayTopics.length})</span>
@@ -679,9 +670,8 @@ export default function SmartReviewHub({
         <button
           type="button"
           onClick={() => handleSetSubTab('analytics')}
-          className={`relative z-10 py-2.5 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center transition-colors duration-300 px-1 text-center truncate ${
-            subTab === 'analytics' ? 'text-white font-extrabold' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
-          }`}
+          className={`relative z-10 py-2.5 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center transition-colors duration-300 px-1 text-center truncate ${subTab === 'analytics' ? 'text-white font-extrabold' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
+            }`}
         >
           <span className="hidden sm:inline">📊 Analytics & Forecast</span>
           <span className="sm:hidden">📊 Analytics</span>
@@ -690,9 +680,8 @@ export default function SmartReviewHub({
         <button
           type="button"
           onClick={() => handleSetSubTab('velocity')}
-          className={`relative z-10 py-2.5 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center transition-colors duration-300 px-1 text-center truncate ${
-            subTab === 'velocity' ? 'text-white font-extrabold' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
-          }`}
+          className={`relative z-10 py-2.5 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center transition-colors duration-300 px-1 text-center truncate ${subTab === 'velocity' ? 'text-white font-extrabold' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
+            }`}
         >
           <span className="hidden sm:inline">⚡ Study Velocity</span>
           <span className="sm:hidden">⚡ Velocity</span>
@@ -701,9 +690,8 @@ export default function SmartReviewHub({
         <button
           type="button"
           onClick={() => handleSetSubTab('leeches')}
-          className={`relative z-10 py-2.5 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center transition-colors duration-300 px-1 text-center truncate ${
-            subTab === 'leeches' ? 'text-white font-extrabold' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
-          }`}
+          className={`relative z-10 py-2.5 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center transition-colors duration-300 px-1 text-center truncate ${subTab === 'leeches' ? 'text-white font-extrabold' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
+            }`}
         >
           <span className="hidden sm:inline">⚠️ Leech Focus ({leechTopics.length})</span>
           <span className="sm:hidden">⚠️ Leeches ({leechTopics.length})</span>
@@ -725,9 +713,8 @@ export default function SmartReviewHub({
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.05 }}
-              className={`p-5 rounded-2xl border shadow-md space-y-3 ${
-                isDark ? 'bg-[#222730] border-slate-700/60 neu-card-dark' : 'bg-white border-slate-200/80 neu-card-light'
-              }`}
+              className={`p-5 rounded-2xl border shadow-md space-y-3 ${isDark ? 'bg-[#222730] border-slate-700/60 neu-card-dark' : 'bg-white border-slate-200/80 neu-card-light'
+                }`}
             >
               <div className={`flex justify-between items-center text-xs font-black uppercase tracking-wider ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                 <span className="flex items-center gap-2">
@@ -757,9 +744,8 @@ export default function SmartReviewHub({
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className={`p-5 rounded-2xl border shadow-md space-y-3 ${
-                isDark ? 'bg-[#222730] border-slate-700/60 neu-card-dark' : 'bg-white border-slate-200/80 neu-card-light'
-              }`}
+              className={`p-5 rounded-2xl border shadow-md space-y-3 ${isDark ? 'bg-[#222730] border-slate-700/60 neu-card-dark' : 'bg-white border-slate-200/80 neu-card-light'
+                }`}
             >
               <div className={`flex justify-between items-center text-xs font-black uppercase tracking-wider ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                 <span className="flex items-center gap-2">
@@ -790,11 +776,10 @@ export default function SmartReviewHub({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
-            className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm ${
-              isDark
+            className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm ${isDark
                 ? 'bg-gradient-to-r from-amber-500/10 via-slate-900 to-amber-500/10 border-amber-500/30'
                 : 'bg-gradient-to-r from-amber-500/10 via-amber-100/50 to-amber-500/10 border-amber-300'
-            }`}
+              }`}
           >
             <div className="flex items-center gap-3">
               <Calendar className="w-5 h-5 text-amber-500 shrink-0" />
@@ -822,9 +807,8 @@ export default function SmartReviewHub({
                   <button
                     type="button"
                     onClick={() => setIsExamModalOpen(true)}
-                    className={`ml-1 px-3 py-1 rounded-xl text-xs font-bold border transition-all ${
-                      isDark ? 'neu-btn-dark text-amber-400 hover:border-amber-500/50' : 'neu-btn-light text-amber-700 hover:border-amber-400'
-                    }`}
+                    className={`ml-1 px-3 py-1 rounded-xl text-xs font-bold border transition-all ${isDark ? 'neu-btn-dark text-amber-400 hover:border-amber-500/50' : 'neu-btn-light text-amber-700 hover:border-amber-400'
+                      }`}
                   >
                     Edit / Manage
                   </button>
@@ -902,9 +886,8 @@ export default function SmartReviewHub({
                   </AnimatePresence>
                 </div>
               ) : (
-                <div className={`p-5 rounded-2xl border text-xs text-center font-semibold ${
-                  isDark ? 'bg-slate-900/50 border-slate-700/40 text-slate-400' : 'bg-white/80 border-slate-200/80 text-slate-600 neu-pressed-light'
-                }`}>
+                <div className={`p-5 rounded-2xl border text-xs text-center font-semibold ${isDark ? 'bg-slate-900/50 border-slate-700/40 text-slate-400' : 'bg-white/80 border-slate-200/80 text-slate-600 neu-pressed-light'
+                  }`}>
                   🎉 All reviews for today are completed! Check out New Topics below or review your analytics.
                 </div>
               )}
@@ -919,11 +902,10 @@ export default function SmartReviewHub({
 
                 <button
                   onClick={() => setIsPickModalOpen(true)}
-                  className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95 border ${
-                    isDark
+                  className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95 border ${isDark
                       ? 'neu-btn-dark text-emerald-400 border-emerald-500/40'
                       : 'neu-btn-light text-emerald-700 border-emerald-300'
-                  }`}
+                    }`}
                 >
                   <span>➕ Pick Today's New Topics</span>
                 </button>
@@ -954,9 +936,8 @@ export default function SmartReviewHub({
                   </AnimatePresence>
                 </div>
               ) : (
-                <div className={`p-6 rounded-2xl border text-center space-y-2 ${
-                  isDark ? 'bg-slate-900/40 border-slate-700/40 text-slate-400' : 'bg-white/80 border-slate-200/80 text-slate-600 neu-pressed-light'
-                }`}>
+                <div className={`p-6 rounded-2xl border text-center space-y-2 ${isDark ? 'bg-slate-900/40 border-slate-700/40 text-slate-400' : 'bg-white/80 border-slate-200/80 text-slate-600 neu-pressed-light'
+                  }`}>
                   <div className="text-xs font-bold text-slate-300">No new topics selected for today yet</div>
                   <p className="text-[11px] text-slate-400">Click <strong className="text-emerald-400">"➕ Pick Today's New Topics"</strong> above to manually choose or get AI-recommended topics for today's study session.</p>
                 </div>
@@ -1018,7 +999,6 @@ export default function SmartReviewHub({
                   (d.subject && d.subject.toLowerCase() === subDocId)
                 );
                 if (subDoc && subDoc.topics) {
-                  const nowIso = new Date().toISOString();
                   const updatedTopics = { ...subDoc.topics };
                   topicsInSub.forEach(top => {
                     const targetKey = Object.keys(updatedTopics).find(k =>
@@ -1029,12 +1009,11 @@ export default function SmartReviewHub({
                       updatedTopics[targetKey] = {
                         ...updatedTopics[targetKey],
                         activatedDate: todayStr,
-                        isPickedForToday: true,
-                        updatedAt: nowIso
+                        isPickedForToday: true
                       };
                     }
                   });
-                  await onUpdateSubjectDoc(subDoc.id || subDocId, { topics: updatedTopics, updatedAt: nowIso });
+                  await onUpdateSubjectDoc(subDoc.id || subDocId, { topics: updatedTopics });
                 }
               }
             })().catch(err => console.error("[SmartReviewHub] Error in sequential batch topic activation:", err));
@@ -1075,9 +1054,8 @@ export default function SmartReviewHub({
           transition={{ duration: 0.3 }}
           className="space-y-4"
         >
-          <div className={`p-4 rounded-2xl border flex items-center justify-between shadow-md ${
-            isDark ? 'bg-[#222730] border-slate-700/60 neu-card-dark' : 'bg-white border-slate-200/80 neu-card-light'
-          }`}>
+          <div className={`p-4 rounded-2xl border flex items-center justify-between shadow-md ${isDark ? 'bg-[#222730] border-slate-700/60 neu-card-dark' : 'bg-white border-slate-200/80 neu-card-light'
+            }`}>
             <div>
               <h3 className={`text-sm font-black flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
                 <span>⚠️</span> Leech Topics Focus Workspace ({leechTopics.length})
@@ -1098,9 +1076,8 @@ export default function SmartReviewHub({
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.25 }}
-                    className={`p-5 rounded-2xl border shadow-md space-y-3 ${
-                      isDark ? 'bg-[#222730] border-amber-500/40 neu-card-dark' : 'bg-white border-amber-300 neu-card-light'
-                    }`}
+                    className={`p-5 rounded-2xl border shadow-md space-y-3 ${isDark ? 'bg-[#222730] border-amber-500/40 neu-card-dark' : 'bg-white border-amber-300 neu-card-light'
+                      }`}
                   >
                     <div className="flex justify-between items-start">
                       <div>
@@ -1123,9 +1100,8 @@ export default function SmartReviewHub({
                         }}
                         onBlur={(e) => handleMnemonicChange(item, e.target.value)}
                         placeholder="Write a mnemonic or key memory clue..."
-                        className={`w-full p-2.5 rounded-xl text-xs focus:outline-none focus:border-amber-500/60 resize-y min-h-[64px] custom-scrollbar ${
-                          isDark ? 'bg-slate-900/80 border border-slate-700 text-slate-200' : 'bg-slate-50 border border-slate-300 text-slate-800 neu-pressed-light'
-                        }`}
+                        className={`w-full p-2.5 rounded-xl text-xs focus:outline-none focus:border-amber-500/60 resize-y min-h-[64px] custom-scrollbar ${isDark ? 'bg-slate-900/80 border border-slate-700 text-slate-200' : 'bg-slate-50 border border-slate-300 text-slate-800 neu-pressed-light'
+                          }`}
                       />
                     </div>
                   </motion.div>
@@ -1133,9 +1109,8 @@ export default function SmartReviewHub({
               })}
             </div>
           ) : (
-            <div className={`p-8 rounded-2xl border text-center space-y-2 ${
-              isDark ? 'bg-slate-900/40 border-slate-700/40' : 'bg-white/80 border-slate-200/80 neu-pressed-light'
-            }`}>
+            <div className={`p-8 rounded-2xl border text-center space-y-2 ${isDark ? 'bg-slate-900/40 border-slate-700/40' : 'bg-white/80 border-slate-200/80 neu-pressed-light'
+              }`}>
               <CheckCircle className="w-8 h-8 text-emerald-500 mx-auto" />
               <div className={`text-sm font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>No Problematic Leech Topics Detected</div>
               <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>All textbook chapter topics are within acceptable lapse thresholds!</p>
@@ -1151,9 +1126,8 @@ export default function SmartReviewHub({
             initial={{ opacity: 0, scale: 0.95, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 15 }}
-            className={`w-full max-w-lg p-6 rounded-3xl border shadow-2xl space-y-6 ${
-              isDark ? 'bg-[#222730] border-slate-700/80 text-white neu-card-dark' : 'bg-[#e6ecf5] border-slate-300 text-slate-900 neu-card-light'
-            }`}
+            className={`w-full max-w-lg p-6 rounded-3xl border shadow-2xl space-y-6 ${isDark ? 'bg-[#222730] border-slate-700/80 text-white neu-card-dark' : 'bg-[#e6ecf5] border-slate-300 text-slate-900 neu-card-light'
+              }`}
           >
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b pb-3 border-slate-700/40">
@@ -1164,9 +1138,8 @@ export default function SmartReviewHub({
               <button
                 type="button"
                 onClick={() => setIsExamModalOpen(false)}
-                className={`p-1.5 rounded-xl border transition-all cursor-pointer ${
-                  isDark ? 'neu-btn-dark text-slate-400 hover:text-white' : 'neu-btn-light text-slate-600 hover:text-slate-900'
-                }`}
+                className={`p-1.5 rounded-xl border transition-all cursor-pointer ${isDark ? 'neu-btn-dark text-slate-400 hover:text-white' : 'neu-btn-light text-slate-600 hover:text-slate-900'
+                  }`}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1177,7 +1150,7 @@ export default function SmartReviewHub({
               <h4 className="text-xs font-black uppercase tracking-wider text-amber-500 flex items-center gap-2">
                 <Plus className="w-4 h-4" /> Add Exam Target
               </h4>
-              
+
               {/* Presets */}
               <div className="flex flex-wrap gap-1.5">
                 {['NEET PG 2026', 'INI-CET 2026', 'FMGE 2026', 'USMLE Step 1'].map(preset => (
@@ -1185,11 +1158,10 @@ export default function SmartReviewHub({
                     key={preset}
                     type="button"
                     onClick={() => setNewExamTitle(preset)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all min-h-[36px] cursor-pointer focus-visible:ring-2 focus-visible:ring-amber-500 ${
-                      newExamTitle === preset
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all min-h-[36px] cursor-pointer focus-visible:ring-2 focus-visible:ring-amber-500 ${newExamTitle === preset
                         ? 'bg-amber-500 text-slate-950 border-amber-400 font-extrabold shadow-sm'
                         : isDark ? 'bg-slate-800 border-slate-700 text-slate-300 hover:border-amber-500/50' : 'bg-white border-slate-300 text-slate-700 hover:border-amber-400'
-                    }`}
+                      }`}
                   >
                     {preset}
                   </button>
@@ -1204,9 +1176,8 @@ export default function SmartReviewHub({
                     placeholder="e.g. NEET PG 2026"
                     value={newExamTitle}
                     onChange={(e) => setNewExamTitle(e.target.value)}
-                    className={`w-full px-3 py-2 rounded-xl text-xs font-semibold border outline-none ${
-                      isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
-                    }`}
+                    className={`w-full px-3 py-2 rounded-xl text-xs font-semibold border outline-none ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                      }`}
                   />
                 </div>
                 <div>
@@ -1215,9 +1186,8 @@ export default function SmartReviewHub({
                     type="date"
                     value={newExamDate}
                     onChange={(e) => setNewExamDate(e.target.value)}
-                    className={`w-full px-3 py-2 rounded-xl text-xs font-semibold border outline-none ${
-                      isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
-                    }`}
+                    className={`w-full px-3 py-2 rounded-xl text-xs font-semibold border outline-none ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                      }`}
                   />
                 </div>
               </div>
@@ -1253,9 +1223,8 @@ export default function SmartReviewHub({
                   {examProfiles.map((exam, idx) => (
                     <div
                       key={exam.id || idx}
-                      className={`p-3 rounded-xl border flex items-center justify-between ${
-                        isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200'
-                      }`}
+                      className={`p-3 rounded-xl border flex items-center justify-between ${isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200'
+                        }`}
                     >
                       <div className="flex items-center gap-2.5">
                         <Calendar className="w-4 h-4 text-amber-500" />
@@ -1285,9 +1254,8 @@ export default function SmartReviewHub({
               <button
                 type="button"
                 onClick={() => setIsExamModalOpen(false)}
-                className={`px-5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                  isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-700'
-                }`}
+                className={`px-5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${isDark ? 'neu-btn-dark text-slate-300' : 'neu-btn-light text-slate-700'
+                  }`}
               >
                 Close
               </button>
@@ -1304,9 +1272,8 @@ export default function SmartReviewHub({
             initial={{ opacity: 0, scale: 0.95, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 15 }}
-            className={`w-full max-w-2xl p-6 rounded-3xl border shadow-2xl space-y-5 max-h-[85vh] flex flex-col ${
-              isDark ? 'bg-[#222730] border-slate-700/80 text-white neu-card-dark' : 'bg-[#e6ecf5] border-slate-300 text-slate-900 neu-card-light'
-            }`}
+            className={`w-full max-w-2xl p-6 rounded-3xl border shadow-2xl space-y-5 max-h-[85vh] flex flex-col ${isDark ? 'bg-[#222730] border-slate-700/80 text-white neu-card-dark' : 'bg-[#e6ecf5] border-slate-300 text-slate-900 neu-card-light'
+              }`}
           >
             {/* Header */}
             <div className="flex items-center justify-between border-b pb-3 border-slate-700/40 shrink-0">
@@ -1323,9 +1290,8 @@ export default function SmartReviewHub({
                   setIsAdHocModalOpen(false);
                   setAdHocActiveTopic(null);
                 }}
-                className={`p-1.5 rounded-xl border transition-all cursor-pointer ${
-                  isDark ? 'neu-btn-dark text-slate-400 hover:text-white' : 'neu-btn-light text-slate-600 hover:text-slate-900'
-                }`}
+                className={`p-1.5 rounded-xl border transition-all cursor-pointer ${isDark ? 'neu-btn-dark text-slate-400 hover:text-white' : 'neu-btn-light text-slate-600 hover:text-slate-900'
+                  }`}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1377,9 +1343,8 @@ export default function SmartReviewHub({
                       placeholder="Search topic or chapter name (e.g., Brachial Plexus, Antihypertensives)..."
                       value={adHocSearch}
                       onChange={(e) => setAdHocSearch(e.target.value)}
-                      className={`w-full pl-10 pr-4 py-2.5 rounded-2xl text-xs font-semibold border outline-none ${
-                        isDark ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500' : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'
-                      }`}
+                      className={`w-full pl-10 pr-4 py-2.5 rounded-2xl text-xs font-semibold border outline-none ${isDark ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500' : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'
+                        }`}
                     />
                   </div>
 
@@ -1388,11 +1353,10 @@ export default function SmartReviewHub({
                     <button
                       type="button"
                       onClick={() => setAdHocSelectedSubject('all')}
-                      className={`px-3 py-1 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
-                        adHocSelectedSubject === 'all'
+                      className={`px-3 py-1 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${adHocSelectedSubject === 'all'
                           ? 'bg-amber-500 text-slate-950 border-amber-400'
                           : isDark ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-white border-slate-300 text-slate-700'
-                      }`}
+                        }`}
                     >
                       All Subjects
                     </button>
@@ -1401,11 +1365,10 @@ export default function SmartReviewHub({
                         key={subDoc.subject}
                         type="button"
                         onClick={() => setAdHocSelectedSubject(subDoc.subject)}
-                        className={`px-3 py-1 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
-                          adHocSelectedSubject === subDoc.subject
+                        className={`px-3 py-1 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${adHocSelectedSubject === subDoc.subject
                             ? 'bg-amber-500 text-slate-950 border-amber-400'
                             : isDark ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-white border-slate-300 text-slate-700'
-                        }`}
+                          }`}
                       >
                         {subDoc.subject}
                       </button>
@@ -1423,9 +1386,8 @@ export default function SmartReviewHub({
                     filteredAdHocTopics.map((topic, idx) => (
                       <div
                         key={topic.id || idx}
-                        className={`p-3.5 rounded-2xl border flex items-center justify-between gap-3 transition-all ${
-                          isDark ? 'bg-slate-900/80 border-slate-800 hover:border-amber-500/40' : 'bg-white border-slate-200 hover:border-amber-400'
-                        }`}
+                        className={`p-3.5 rounded-2xl border flex items-center justify-between gap-3 transition-all ${isDark ? 'bg-slate-900/80 border-slate-800 hover:border-amber-500/40' : 'bg-white border-slate-200 hover:border-amber-400'
+                          }`}
                       >
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
@@ -1508,21 +1470,20 @@ function RecursiveBlueprintNode({ node, depth = 0, recalledMap, onToggleRecall, 
           onToggleRecall(nodeId);
         }}
         style={{ paddingLeft: `${Math.min(depth, 6) * 12 + 8}px` }}
-        className={`py-2 px-2.5 rounded-xl text-xs font-medium border flex items-start gap-2 transition-all cursor-pointer select-none active:scale-[0.99] ${
-          isRecalled
+        className={`py-2 px-2.5 rounded-xl text-xs font-medium border flex items-start gap-2 transition-all cursor-pointer select-none active:scale-[0.99] ${isRecalled
             ? isDark
               ? 'bg-emerald-950/40 text-emerald-200 border-emerald-500/40'
               : 'bg-emerald-50 text-emerald-900 border-emerald-300'
             : isDark
               ? 'neu-pressed-dark text-slate-300 border-slate-800 hover:border-slate-700'
               : 'neu-pressed-light text-slate-700 border-slate-200 hover:border-slate-300'
-        }`}
+          }`}
       >
         {/* Recalled Checkbox */}
         <input
           type="checkbox"
           checked={isRecalled}
-          onChange={() => {}}
+          onChange={() => { }}
           className="mt-0.5 w-3.5 h-3.5 rounded accent-emerald-500 cursor-pointer shrink-0"
         />
 
@@ -2065,17 +2026,14 @@ function TopicCard({
       exit={{ opacity: 0, scale: 0.9, y: 12, transition: { duration: 0.2 } }}
       transition={{ duration: 0.25, delay: index * 0.04 }}
       whileHover={{ y: -2 }}
-      className={`p-4 rounded-2xl border shadow-md space-y-3 transition-transform ${
-        isDark ? 'bg-[#222730] neu-card-dark' : 'bg-white neu-card-light'
-      } ${
-        isOverdue ? 'border-rose-500/40' : isNew ? 'border-emerald-500/40' : isDark ? 'border-slate-700/60' : 'border-slate-200/80'
-      }`}
+      className={`p-4 rounded-2xl border shadow-md space-y-3 transition-transform ${isDark ? 'bg-[#222730] neu-card-dark' : 'bg-white neu-card-light'
+        } ${isOverdue ? 'border-rose-500/40' : isNew ? 'border-emerald-500/40' : isDark ? 'border-slate-700/60' : 'border-slate-200/80'
+        }`}
     >
       <div className="flex justify-between items-start gap-2">
         <div>
-          <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border ${
-            isDark ? 'bg-slate-800 text-indigo-300 border-slate-700' : 'bg-indigo-50 text-indigo-700 border-indigo-200'
-          }`}>
+          <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border ${isDark ? 'bg-slate-800 text-indigo-300 border-slate-700' : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+            }`}>
             {topic.subject}
           </span>
           <h5 className={`text-sm font-bold mt-1.5 ${isDark ? 'text-white' : 'text-slate-900'}`}>{topic.name}</h5>
@@ -2102,15 +2060,14 @@ function TopicCard({
               setIsNotesExpanded(prev => !prev);
             }}
             title={isNotesExpanded ? "Collapse Topic Notes" : topic.notes ? "Expand Topic Notes" : "Add/Expand Topic Notes"}
-            className={`p-1.5 rounded-xl border transition-all cursor-pointer ${
-              isNotesExpanded || topic.notes
+            className={`p-1.5 rounded-xl border transition-all cursor-pointer ${isNotesExpanded || topic.notes
                 ? isDark
                   ? 'bg-amber-500/20 text-amber-400 border-amber-500/40 hover:bg-amber-500/30 ring-1 ring-amber-500/20'
                   : 'bg-amber-100 text-amber-700 border-amber-300 hover:bg-amber-200 ring-1 ring-amber-400/30'
                 : isDark
                   ? 'bg-slate-800 text-slate-400 hover:text-white border-slate-700'
                   : 'bg-slate-100 text-slate-500 hover:text-slate-900 border-slate-200'
-            }`}
+              }`}
           >
             <FileText className="w-4 h-4" />
           </button>
@@ -2123,15 +2080,14 @@ function TopicCard({
               setIsHintsExpanded(prev => !prev);
             }}
             title={topicHints ? "Toggle Active-Recall Hints" : "Generate Active-Recall Hints"}
-            className={`p-1.5 rounded-xl border transition-all cursor-pointer ${
-              isHintsExpanded || topicHints
+            className={`p-1.5 rounded-xl border transition-all cursor-pointer ${isHintsExpanded || topicHints
                 ? isDark
                   ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30 ring-1 ring-amber-500/30'
                   : 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200 ring-1 ring-amber-400/40'
                 : isDark
                   ? 'bg-slate-800 text-slate-400 hover:text-amber-300 border-slate-700'
                   : 'bg-slate-100 text-slate-500 hover:text-amber-700 border-slate-200'
-            }`}
+              }`}
           >
             <Lightbulb className="w-4 h-4" />
           </button>
@@ -2141,11 +2097,10 @@ function TopicCard({
             type="button"
             onClick={handleOpenPreviewModal}
             title="Preview PDF Page Slice Text & Images"
-            className={`p-1.5 rounded-xl border transition-all cursor-pointer ${
-              isDark
+            className={`p-1.5 rounded-xl border transition-all cursor-pointer ${isDark
                 ? 'bg-blue-500/20 text-blue-300 border-blue-500/40 hover:bg-blue-500/30'
                 : 'bg-blue-100 text-blue-800 border-blue-300 hover:bg-blue-200'
-            }`}
+              }`}
           >
             <Eye className="w-4 h-4" />
           </button>
@@ -2159,11 +2114,10 @@ function TopicCard({
                 onRemove(topic);
               }}
               title="Remove from Today's Queue"
-              className={`p-1.5 rounded-xl border transition-all cursor-pointer ${
-                isDark
+              className={`p-1.5 rounded-xl border transition-all cursor-pointer ${isDark
                   ? 'bg-slate-800/80 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border-slate-700 hover:border-rose-500/40'
                   : 'bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-600 border-slate-200 hover:border-rose-300'
-              }`}
+                }`}
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -2193,9 +2147,8 @@ function TopicCard({
                     onOpenNotes(topic);
                   }
                 }}
-                className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-lg border transition ${
-                  isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300 border-slate-700' : 'neu-btn-light text-blue-600 border-slate-300'
-                }`}
+                className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-lg border transition ${isDark ? 'neu-btn-dark text-blue-400 hover:text-blue-300 border-slate-700' : 'neu-btn-light text-blue-600 border-slate-300'
+                  }`}
               >
                 ✏️ Edit Notes
               </button>
@@ -2209,9 +2162,8 @@ function TopicCard({
                     onOpenNotes(topic);
                   }
                 }}
-                className={`p-3 rounded-xl text-xs leading-relaxed max-h-36 overflow-y-auto cursor-pointer transition border rich-text-notes ${
-                  isDark ? 'neu-pressed-dark text-slate-200 border-slate-800 hover:border-amber-500/40' : 'neu-pressed-light text-slate-800 border-slate-200 hover:border-amber-400'
-                }`}
+                className={`p-3 rounded-xl text-xs leading-relaxed max-h-36 overflow-y-auto cursor-pointer transition border rich-text-notes ${isDark ? 'neu-pressed-dark text-slate-200 border-slate-800 hover:border-amber-500/40' : 'neu-pressed-light text-slate-800 border-slate-200 hover:border-amber-400'
+                  }`}
                 dangerouslySetInnerHTML={{ __html: topic.notes }}
               />
             ) : (
@@ -2222,9 +2174,8 @@ function TopicCard({
                     onOpenNotes(topic);
                   }
                 }}
-                className={`p-3 rounded-xl text-[11px] italic border border-dashed cursor-pointer transition ${
-                  isDark ? 'text-slate-500 border-slate-800 hover:text-slate-300 hover:border-slate-700' : 'text-slate-400 border-slate-200 hover:text-slate-600 hover:border-slate-300'
-                }`}
+                className={`p-3 rounded-xl text-[11px] italic border border-dashed cursor-pointer transition ${isDark ? 'text-slate-500 border-slate-800 hover:text-slate-300 hover:border-slate-700' : 'text-slate-400 border-slate-200 hover:text-slate-600 hover:border-slate-300'
+                  }`}
               >
                 No rich notes added yet. Click here to open editor window and add mnemonics, clinical pearls, or bullet lists...
               </div>
@@ -2255,9 +2206,8 @@ function TopicCard({
             </div>
 
             {isGeneratingHints ? (
-              <div className={`p-4 rounded-xl text-center space-y-1.5 border animate-pulse ${
-                isDark ? 'bg-amber-950/20 border-amber-500/30 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'
-              }`}>
+              <div className={`p-4 rounded-xl text-center space-y-1.5 border animate-pulse ${isDark ? 'bg-amber-950/20 border-amber-500/30 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'
+                }`}>
                 <p className="text-xs font-bold">⏳ Slicing PDF Pages & Generating AI Hints...</p>
                 <p className="text-[10px] opacity-75">Extracting textbook flow without revealing direct answers...</p>
               </div>
@@ -2343,9 +2293,8 @@ function TopicCard({
                         type="button"
                         onClick={handleRegenerateHints}
                         title="Regenerate Outline (Overwrites Old Record)"
-                        className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border transition flex items-center gap-1 cursor-pointer active:scale-95 ${
-                          isDark ? 'neu-btn-dark text-amber-300 border-amber-500/40 hover:border-amber-400' : 'neu-btn-light text-amber-700 border-amber-400'
-                        }`}
+                        className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border transition flex items-center gap-1 cursor-pointer active:scale-95 ${isDark ? 'neu-btn-dark text-amber-300 border-amber-500/40 hover:border-amber-400' : 'neu-btn-light text-amber-700 border-amber-400'
+                          }`}
                       >
                         <Sparkles className="w-3 h-3" />
                         <span>Regenerate</span>
@@ -2465,20 +2414,19 @@ function TopicCard({
                                                 e.stopPropagation();
                                                 setRecalledPointsMap(prev => ({ ...prev, [ptKey]: !prev[ptKey] }));
                                               }}
-                                              className={`p-2 rounded-xl text-xs font-medium border flex items-start gap-2.5 transition-all cursor-pointer select-none active:scale-[0.99] ${
-                                                isRecalled
+                                              className={`p-2 rounded-xl text-xs font-medium border flex items-start gap-2.5 transition-all cursor-pointer select-none active:scale-[0.99] ${isRecalled
                                                   ? isDark
                                                     ? 'bg-emerald-950/40 text-emerald-200 border-emerald-500/40'
                                                     : 'bg-emerald-50 text-emerald-900 border-emerald-300'
                                                   : isDark
                                                     ? 'neu-pressed-dark text-slate-300 border-slate-800 hover:border-slate-700'
                                                     : 'neu-pressed-light text-slate-700 border-slate-200 hover:border-slate-300'
-                                              }`}
+                                                }`}
                                             >
                                               <input
                                                 type="checkbox"
                                                 checked={isRecalled}
-                                                onChange={() => {}}
+                                                onChange={() => { }}
                                                 className="mt-0.5 w-3.5 h-3.5 rounded accent-emerald-500 cursor-pointer shrink-0"
                                               />
                                               <span className={`leading-relaxed ${isRecalled ? 'line-through opacity-85' : ''}`}>
@@ -2507,9 +2455,8 @@ function TopicCard({
                           key={hIdx}
                           initial={{ opacity: 0, x: -10 }}
                           animate={{ opacity: 1, x: 0 }}
-                          className={`p-2.5 rounded-xl text-xs font-medium border flex items-start gap-2 ${
-                            isDark ? 'neu-pressed-dark text-slate-200 border-slate-700/60' : 'neu-pressed-light text-slate-800 border-slate-200'
-                          }`}
+                          className={`p-2.5 rounded-xl text-xs font-medium border flex items-start gap-2 ${isDark ? 'neu-pressed-dark text-slate-200 border-slate-700/60' : 'neu-pressed-light text-slate-800 border-slate-200'
+                            }`}
                         >
                           <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 text-[9px] font-black font-mono shrink-0">
                             #{hIdx + 1}
@@ -2531,9 +2478,8 @@ function TopicCard({
                 )}
               </div>
             ) : (
-              <div className={`p-3.5 rounded-xl border text-center space-y-2 ${
-                isDark ? 'bg-slate-900/40 border-slate-800 text-slate-400' : 'bg-white border-slate-200 text-slate-600'
-              }`}>
+              <div className={`p-3.5 rounded-xl border text-center space-y-2 ${isDark ? 'bg-slate-900/40 border-slate-800 text-slate-400' : 'bg-white border-slate-200 text-slate-600'
+                }`}>
                 <p className="text-[11px] font-medium">No progressive hints generated for this topic yet.</p>
                 <button
                   type="button"

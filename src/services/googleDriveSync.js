@@ -55,12 +55,15 @@ import { runSystemIntegrityCheck } from './healthChecker.js';
 export const VAULT_FOLDER_NAME = 'AutoAnki_Sync_Vault';
 export const MEDIA_FOLDER_NAME = 'media';
 export const SYNC_STATE_KEY = 'google_drive_sync_state';
+export const VAULT_ID_LS_KEY = 'autoanki_gdrive_vault_id';
+export const MEDIA_ID_LS_KEY = 'autoanki_gdrive_media_id';
 
 // In-memory sync lock & event listeners
 let isSyncInProgress = false;
 let autoSyncDebounceTimer = null;
 let lastAutoPushTimestamp = 0;
 const AUTO_PUSH_COOLDOWN_MS = 30 * 1000; // 30s cooldown between auto pushes
+let ensureSyncVaultInFlightPromise = null;
 
 // Device identifier (persisted in localStorage or generated)
 export function getDeviceId() {
@@ -195,6 +198,45 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 25000) {
 }
 
 /**
+ * Direct file/folder lookup by ID.
+ * Strongly consistent and instantaneous (bypasses Google Drive search index latency).
+ */
+export async function getDriveItemById(accessToken, fileId) {
+  if (!fileId) return null;
+  try {
+    const url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?fields=id,name,mimeType,trashed,parents,createdTime,modifiedTime`;
+    const res = await fetchWithTimeout(url, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    }, 15000);
+    if (res.status === 404) return null;
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.trashed) return null;
+    return data;
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Searches for all folders matching a name and parent folder ID.
+ * Returns all matching folders sorted by createdTime asc.
+ */
+export async function findDriveFoldersByName(accessToken, folderName, parentFolderId = null) {
+  const parentQuery = parentFolderId ? `'${parentFolderId}' in parents` : "'root' in parents";
+  const query = `name = '${folderName}' and mimeType = 'application/vnd.google-apps.folder' and ${parentQuery} and trashed = false`;
+  const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&orderBy=${encodeURIComponent('createdTime asc')}&fields=files(id,name,mimeType,createdTime,modifiedTime)&pageSize=20`;
+  const res = await fetchWithTimeout(url, {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to query Google Drive for folders named "${folderName}": ${res.status} ${res.statusText}`);
+  }
+  const data = await res.json();
+  return data.files || [];
+}
+
+/**
  * Searches for a file or folder by name and parent folder ID.
  * Enforces sorting by createdTime asc so all client devices deterministically bind to the earliest canonical folder.
  */
@@ -258,6 +300,7 @@ export async function getSyncStateOverview() {
 
 /**
  * Lists all files inside a specific Google Drive folder with full nextPageToken pagination.
+ * Detects duplicate files with identical names and keeps the newest modified version while cleaning up duplicates.
  */
 async function listFilesInFolder(accessToken, folderId) {
   const allFiles = [];
@@ -283,7 +326,37 @@ async function listFilesInFolder(accessToken, folderId) {
     pageToken = data.nextPageToken || null;
   } while (pageToken);
 
-  return allFiles;
+  // Group by name to detect and clean up duplicate files created during interrupted uploads
+  const byName = new Map();
+  for (const f of allFiles) {
+    if (!f || !f.name) continue;
+    if (!byName.has(f.name)) {
+      byName.set(f.name, [f]);
+    } else {
+      byName.get(f.name).push(f);
+    }
+  }
+
+  const dedupedFiles = [];
+  for (const [name, files] of byName.entries()) {
+    if (files.length === 1) {
+      dedupedFiles.push(files[0]);
+    } else {
+      // Sort by modifiedTime desc to keep the newest version
+      files.sort((a, b) => (new Date(b.modifiedTime || 0).getTime()) - (new Date(a.modifiedTime || 0).getTime()));
+      const canonical = files[0];
+      dedupedFiles.push(canonical);
+
+      // Clean up older duplicate files in background
+      for (let i = 1; i < files.length; i++) {
+        deleteDriveFile(accessToken, files[i].id).catch(e => {
+          console.warn(`[GDriveSync] Failed to cleanup duplicate file "${name}":`, e);
+        });
+      }
+    }
+  }
+
+  return dedupedFiles;
 }
 
 /**
@@ -314,13 +387,26 @@ async function createDriveFolder(accessToken, folderName, parentFolderId = null)
 
 /**
  * Uploads or updates a JSON/text file using Google Drive REST API multipart upload conforming to RFC 2046.
+ * Reuses existing file ID when available to prevent duplicate file creation.
  */
 async function uploadDriveFile(accessToken, folderId, fileName, contentObj, existingFileId = null, keepalive = false) {
+  let targetFileId = existingFileId;
+  if (!targetFileId && folderId) {
+    try {
+      const existing = await findDriveItem(accessToken, fileName, folderId, false);
+      if (existing?.id) {
+        targetFileId = existing.id;
+      }
+    } catch (e) {
+      // Query error fallback to POST
+    }
+  }
+
   const jsonString = typeof contentObj === 'string' ? contentObj : JSON.stringify(contentObj);
   const metadata = {
     name: fileName,
     mimeType: 'application/json',
-    ...(existingFileId ? {} : { parents: [folderId] })
+    ...(targetFileId ? {} : { parents: [folderId] })
   };
 
   const boundary = '-------314159265358979323846';
@@ -338,11 +424,11 @@ async function uploadDriveFile(accessToken, folderId, fileName, contentObj, exis
     '\r\n' +
     closeDelimiter;
 
-  const url = existingFileId
-    ? `https://www.googleapis.com/upload/drive/v3/files/${existingFileId}?uploadType=multipart&fields=id,name,modifiedTime,size`
+  const url = targetFileId
+    ? `https://www.googleapis.com/upload/drive/v3/files/${targetFileId}?uploadType=multipart&fields=id,name,modifiedTime,size`
     : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,modifiedTime,size';
 
-  const method = existingFileId ? 'PATCH' : 'POST';
+  const method = targetFileId ? 'PATCH' : 'POST';
 
   const res = await fetchWithTimeout(url, {
     method,
@@ -365,10 +451,22 @@ async function uploadDriveFile(accessToken, folderId, fileName, contentObj, exis
  * Uploads a binary media file (e.g. image/webp, image/jpeg, or pdf blob) to Google Drive.
  */
 async function uploadDriveMediaFile(accessToken, mediaFolderId, fileName, mimeType, arrayBuffer, existingFileId = null) {
+  let targetFileId = existingFileId;
+  if (!targetFileId && mediaFolderId) {
+    try {
+      const existing = await findDriveItem(accessToken, fileName, mediaFolderId, false);
+      if (existing?.id) {
+        targetFileId = existing.id;
+      }
+    } catch (e) {
+      // Query error fallback to POST
+    }
+  }
+
   const metadata = {
     name: fileName,
     mimeType: mimeType || 'image/webp',
-    ...(existingFileId ? {} : { parents: [mediaFolderId] })
+    ...(targetFileId ? {} : { parents: [mediaFolderId] })
   };
 
   const boundary = '-------314159265358979323846';
@@ -386,11 +484,11 @@ async function uploadDriveMediaFile(accessToken, mediaFolderId, fileName, mimeTy
   combined.set(bytes, metaBytes.byteLength);
   combined.set(endBytes, metaBytes.byteLength + bytes.byteLength);
 
-  const url = existingFileId
-    ? `https://www.googleapis.com/upload/drive/v3/files/${existingFileId}?uploadType=multipart&fields=id,name,size`
+  const url = targetFileId
+    ? `https://www.googleapis.com/upload/drive/v3/files/${targetFileId}?uploadType=multipart&fields=id,name,size`
     : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,size';
 
-  const method = existingFileId ? 'PATCH' : 'POST';
+  const method = targetFileId ? 'PATCH' : 'POST';
 
   const res = await fetchWithTimeout(url, {
     method,
@@ -444,20 +542,169 @@ export async function deleteDriveFile(accessToken, fileId) {
 }
 
 /**
+ * Resolves or creates the canonical Sync Vault folder and media subfolder.
+ * Protects against Google Drive search index lag, concurrent sync triggers,
+ * and cleans up duplicate ghost folders created during interrupted syncs.
+ */
+async function resolveCanonicalSyncVault(accessToken) {
+  let vaultFolderId = null;
+  let mediaFolderId = null;
+
+  // 1. Fast Path: Verify cached vault folder ID via direct lookup
+  try {
+    const cachedVaultId = typeof localStorage !== 'undefined' ? localStorage.getItem(VAULT_ID_LS_KEY) : null;
+    if (cachedVaultId) {
+      const cachedVault = await getDriveItemById(accessToken, cachedVaultId);
+      if (
+        cachedVault &&
+        cachedVault.name === VAULT_FOLDER_NAME &&
+        cachedVault.mimeType === 'application/vnd.google-apps.folder' &&
+        !cachedVault.trashed
+      ) {
+        vaultFolderId = cachedVault.id;
+      }
+    }
+  } catch (e) {
+    console.warn('[GDriveSync] Failed to verify cached vault ID:', e);
+  }
+
+  // 2. Slow Path: Search root for all folders matching VAULT_FOLDER_NAME
+  if (!vaultFolderId) {
+    const matchingVaults = await findDriveFoldersByName(accessToken, VAULT_FOLDER_NAME, null);
+    if (matchingVaults.length === 0) {
+      // Create new vault folder
+      const newVault = await createDriveFolder(accessToken, VAULT_FOLDER_NAME);
+      vaultFolderId = newVault.id;
+      if (typeof localStorage !== 'undefined') localStorage.setItem(VAULT_ID_LS_KEY, vaultFolderId);
+    } else if (matchingVaults.length === 1) {
+      vaultFolderId = matchingVaults[0].id;
+      if (typeof localStorage !== 'undefined') localStorage.setItem(VAULT_ID_LS_KEY, vaultFolderId);
+    } else {
+      // Multiple duplicate folders found (due to prior interrupted syncs)
+      logger.sync('VAULT-DEDUP', `Found ${matchingVaults.length} duplicate vault folders. Resolving canonical folder...`);
+
+      // Check which folder contains files (e.g. manifest.json or bundles)
+      let canonicalVault = null;
+      const emptyGhostFolders = [];
+
+      for (const vFolder of matchingVaults) {
+        try {
+          const files = await listFilesInFolder(accessToken, vFolder.id);
+          const hasManifest = files.some(f => f.name === 'manifest.json' || f.name.endsWith('.json'));
+          if (hasManifest && !canonicalVault) {
+            canonicalVault = vFolder;
+          } else if (files.length === 0) {
+            emptyGhostFolders.push(vFolder);
+          }
+        } catch (e) {
+          console.warn('[GDriveSync] Error inspecting duplicate vault folder:', e);
+        }
+      }
+
+      // If no folder had manifest, take the earliest created folder
+      if (!canonicalVault) {
+        canonicalVault = matchingVaults[0];
+      }
+
+      vaultFolderId = canonicalVault.id;
+      if (typeof localStorage !== 'undefined') localStorage.setItem(VAULT_ID_LS_KEY, vaultFolderId);
+
+      // Clean up empty duplicate ghost folders in background
+      for (const ghost of emptyGhostFolders) {
+        if (ghost.id !== vaultFolderId) {
+          deleteDriveFile(accessToken, ghost.id).catch(e => {
+            console.warn('[GDriveSync] Failed to cleanup ghost vault folder:', e);
+          });
+        }
+      }
+    }
+  }
+
+  // 3. Fast Path: Verify cached media folder ID inside vaultFolderId
+  try {
+    const cachedMediaId = typeof localStorage !== 'undefined' ? localStorage.getItem(MEDIA_ID_LS_KEY) : null;
+    if (cachedMediaId) {
+      const cachedMedia = await getDriveItemById(accessToken, cachedMediaId);
+      if (
+        cachedMedia &&
+        cachedMedia.name === MEDIA_FOLDER_NAME &&
+        cachedMedia.mimeType === 'application/vnd.google-apps.folder' &&
+        !cachedMedia.trashed &&
+        Array.isArray(cachedMedia.parents) &&
+        cachedMedia.parents.includes(vaultFolderId)
+      ) {
+        mediaFolderId = cachedMedia.id;
+      }
+    }
+  } catch (e) {
+    console.warn('[GDriveSync] Failed to verify cached media ID:', e);
+  }
+
+  // 4. Slow Path: Search for media subfolder inside vaultFolderId
+  if (!mediaFolderId) {
+    const matchingMedia = await findDriveFoldersByName(accessToken, MEDIA_FOLDER_NAME, vaultFolderId);
+    if (matchingMedia.length === 0) {
+      const newMedia = await createDriveFolder(accessToken, MEDIA_FOLDER_NAME, vaultFolderId);
+      mediaFolderId = newMedia.id;
+      if (typeof localStorage !== 'undefined') localStorage.setItem(MEDIA_ID_LS_KEY, mediaFolderId);
+    } else if (matchingMedia.length === 1) {
+      mediaFolderId = matchingMedia[0].id;
+      if (typeof localStorage !== 'undefined') localStorage.setItem(MEDIA_ID_LS_KEY, mediaFolderId);
+    } else {
+      // Multiple duplicate media folders found
+      logger.sync('MEDIA-DEDUP', `Found ${matchingMedia.length} duplicate media folders. Resolving canonical folder...`);
+      let canonicalMedia = null;
+      const emptyGhostMedia = [];
+
+      for (const mFolder of matchingMedia) {
+        try {
+          const files = await listFilesInFolder(accessToken, mFolder.id);
+          if (files.length > 0 && !canonicalMedia) {
+            canonicalMedia = mFolder;
+          } else if (files.length === 0) {
+            emptyGhostMedia.push(mFolder);
+          }
+        } catch (e) {
+          console.warn('[GDriveSync] Error inspecting duplicate media folder:', e);
+        }
+      }
+
+      if (!canonicalMedia) {
+        canonicalMedia = matchingMedia[0];
+      }
+
+      mediaFolderId = canonicalMedia.id;
+      if (typeof localStorage !== 'undefined') localStorage.setItem(MEDIA_ID_LS_KEY, mediaFolderId);
+
+      for (const ghost of emptyGhostMedia) {
+        if (ghost.id !== mediaFolderId) {
+          deleteDriveFile(accessToken, ghost.id).catch(e => {
+            console.warn('[GDriveSync] Failed to cleanup ghost media folder:', e);
+          });
+        }
+      }
+    }
+  }
+
+  return { vaultFolderId, mediaFolderId };
+}
+
+/**
  * Initializes or resolves the primary Sync Vault folder and media subfolder.
+ * Singleton mutex ensures multiple simultaneous callers (sync, timer, etc.) await the exact same promise.
  */
 export async function ensureSyncVault(accessToken) {
-  let vault = await findDriveFolder(accessToken, VAULT_FOLDER_NAME);
-  if (!vault) {
-    vault = await createDriveFolder(accessToken, VAULT_FOLDER_NAME);
+  if (ensureSyncVaultInFlightPromise) {
+    return await ensureSyncVaultInFlightPromise;
   }
-
-  let media = await findDriveFolder(accessToken, MEDIA_FOLDER_NAME, vault.id);
-  if (!media) {
-    media = await createDriveFolder(accessToken, MEDIA_FOLDER_NAME, vault.id);
-  }
-
-  return { vaultFolderId: vault.id, mediaFolderId: media.id };
+  ensureSyncVaultInFlightPromise = (async () => {
+    try {
+      return await resolveCanonicalSyncVault(accessToken);
+    } finally {
+      ensureSyncVaultInFlightPromise = null;
+    }
+  })();
+  return await ensureSyncVaultInFlightPromise;
 }
 
 // ============================================================================
@@ -482,6 +729,8 @@ export const EXCLUDED_SYNC_LS_KEYS = new Set([
   'obs_paired_uid',
   'obs_token',
   'autoanki_gdrive_auth',
+  'autoanki_gdrive_vault_id',
+  'autoanki_gdrive_media_id',
   'autoanki_pending_sync_launch',
   'auto_anki_last_auto_backup',
   'auto_anki_last_manual_backup',
@@ -556,7 +805,7 @@ export async function extractLocalBundles() {
   const subjectTracker = (await getLocalSubjectTrackerData()) || (await getLocalKV('subject_tracker_data')) || [];
   const pytUserProgress = (await getLocalKV('pyt_user_progress')) || [];
   const textbooksMetadata = (await getLocalKV('textbooks_metadata')) || [];
-  
+
   topics.forEach(t => {
     if (t) trackTimestamp(t.updatedAt || t.lastReviewDate || t.createdAt);
   });
@@ -570,20 +819,9 @@ export async function extractLocalBundles() {
   let totalTopicsCount = topics.length;
   if (Array.isArray(subjectTracker)) {
     subjectTracker.forEach(doc => {
-      if (doc) {
-        trackTimestamp(doc.updatedAt);
-        if (doc.topics && typeof doc.topics === 'object') {
-          totalTopicsCount += Object.keys(doc.topics).length;
-          Object.values(doc.topics).forEach(t => {
-            if (t) trackTimestamp(t.updatedAt || t.lastReviewDate || t.createdAt);
-          });
-        }
+      if (doc && doc.topics && typeof doc.topics === 'object') {
+        totalTopicsCount += Object.keys(doc.topics).length;
       }
-    });
-  }
-  if (Array.isArray(pytUserProgress)) {
-    pytUserProgress.forEach(p => {
-      if (p) trackTimestamp(p.updatedAt);
     });
   }
   if (Array.isArray(pytData)) {
@@ -612,22 +850,7 @@ export async function extractLocalBundles() {
 
   Object.entries(studyLogs).forEach(([dateKey, log]) => {
     trackTimestamp(log?.updatedAt || dateKey);
-    if (log && Array.isArray(log.fsrsLogs)) {
-      log.fsrsLogs.forEach(l => {
-        if (l) trackTimestamp(l.timestamp || l.updatedAt);
-      });
-    }
   });
-  if (studySchedule && typeof studySchedule === 'object') {
-    Object.values(studySchedule).forEach(s => {
-      if (s) {
-        trackTimestamp(s.updatedAt);
-        if (Array.isArray(s.tasks)) {
-          s.tasks.forEach(t => { if (t) trackTimestamp(t.updatedAt); });
-        }
-      }
-    });
-  }
   trashStudyLogs.forEach(tl => {
     if (tl) trackTimestamp(tl.deletedAt);
   });
@@ -803,629 +1026,876 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
   const emit = (step, total, msg) => { if (onProgress) onProgress(step, total, msg); };
   const totalSteps = 7;
   let step = 0;
+  const syncStartTime = Number(options.syncStartTime || 0);
+  let hasInFlightEdits = false;
 
   // Suppress local mutation notifications during bulk bundle hydration to prevent auto-push feedback loops
   setMutationNotificationSuppressed(true);
   try {
-  // 1. Cards Bundle (Timestamp-Aware, Tombstone Pruning & FSRS Safe)
-  if (bundles['cards_bundle.json']) {
-    emit(++step, totalSteps, 'Hydrating Flashcards & FSRS memory statesΓÇª');
-    const b = bundles['cards_bundle.json'];
-    const incomingCards = deserializeBinaryValues(b.flashcards || []);
-    const incomingTrash = deserializeBinaryValues(b.trashCards || []);
+    // 1. Cards Bundle (Timestamp-Aware, Tombstone Pruning & FSRS Safe)
+    if (bundles['cards_bundle.json']) {
+      emit(++step, totalSteps, 'Hydrating Flashcards & FSRS memory states…');
+      const b = bundles['cards_bundle.json'];
+      const incomingCards = deserializeBinaryValues(b.flashcards || []);
+      const incomingTrash = deserializeBinaryValues(b.trashCards || []);
 
-    if (strategy === 'replace') {
-      await setLocalKV('flashcards', incomingCards);
-      await setLocalKV('trash_cards', incomingTrash);
-    } else {
-      // Merge cards by ID with safe timestamp check & trash tombstone awareness
-      const existing = (await getLocalKV('flashcards')) || [];
-      const localTrash = (await getLocalKV('trash_cards')) || [];
-      const localTrashMap = new Map(localTrash.map(c => [c.id, safeTimestamp(c.deletedAt)]));
-      const incomingTrashMap = new Map(incomingTrash.map(c => [c.id, safeTimestamp(c.deletedAt)]));
-      const map = new Map(existing.map(c => [c.id, c]));
+      if (strategy === 'replace') {
+        if (syncStartTime > 0) {
+          const liveCards = (await getLocalKV('flashcards')) || [];
+          const liveTrash = (await getLocalKV('trash_cards')) || [];
+          const cardMap = new Map(incomingCards.map(c => [c.id, c]));
+          const trashMap = new Map(incomingTrash.map(c => [c.id, c]));
 
-      incomingCards.forEach(inc => {
-        if (inc && inc.id) {
-          const localDeletedAt = localTrashMap.get(inc.id);
-          const incTime = safeTimestamp(inc.updatedAt || inc.lastReviewDate || inc.createdAt);
-          if (localDeletedAt && localDeletedAt > incTime) {
-            return;
-          }
-
-          const localCard = map.get(inc.id);
-          if (!localCard) {
-            map.set(inc.id, inc);
-          } else {
-            const localRevTime = safeTimestamp(localCard.lastReviewDate || 0);
-            const incRevTime = safeTimestamp(inc.lastReviewDate || 0);
-            
-            let latestRev = localCard;
-            if (incRevTime > localRevTime) {
-              latestRev = inc;
-            } else if (localRevTime > incRevTime) {
-              latestRev = localCard;
-            } else {
-              // Tie-break: prefer higher stability, then higher reps
-              const incStab = Number(inc.stability || 0);
-              const locStab = Number(localCard.stability || 0);
-              if (incStab > locStab) {
-                latestRev = inc;
-              } else if (locStab > incStab) {
-                latestRev = localCard;
-              } else {
-                const incReps = Number(inc.reps || 0);
-                const locReps = Number(localCard.reps || 0);
-                latestRev = incReps > locReps ? inc : localCard;
+          liveCards.forEach(liveCard => {
+            if (liveCard && liveCard.id) {
+              const liveTime = safeTimestamp(liveCard.updatedAt || liveCard.lastReviewDate || liveCard.createdAt);
+              if (liveTime >= syncStartTime) {
+                hasInFlightEdits = true;
+                cardMap.set(liveCard.id, liveCard);
               }
             }
+          });
 
-            const localContentTime = safeTimestamp(localCard.updatedAt || localCard.createdAt || 0);
-            const incContentTime = safeTimestamp(inc.updatedAt || inc.createdAt || 0);
-            const latestContent = incContentTime >= localContentTime ? inc : localCard;
+          liveTrash.forEach(liveT => {
+            if (liveT && liveT.id) {
+              const liveDelTime = safeTimestamp(liveT.deletedAt);
+              if (liveDelTime >= syncStartTime) {
+                hasInFlightEdits = true;
+                trashMap.set(liveT.id, liveT);
+                cardMap.delete(liveT.id);
+              }
+            }
+          });
 
-            // Merge: preserve latest content edits AND latest FSRS review parameters
-            const mergedCard = {
-              ...localCard,
-              ...inc,
-              ...latestContent,
-              stability: latestRev.stability !== undefined ? latestRev.stability : (latestContent.stability ?? 0),
-              difficulty: latestRev.difficulty !== undefined ? latestRev.difficulty : (latestContent.difficulty ?? 0),
-              reps: latestRev.reps !== undefined ? latestRev.reps : (latestContent.reps ?? 0),
-              lapses: latestRev.lapses !== undefined ? latestRev.lapses : (latestContent.lapses ?? 0),
-              due: latestRev.due || latestContent.due,
-              state: latestRev.state !== undefined ? latestRev.state : latestContent.state,
-              lastReviewDate: latestRev.lastReviewDate || latestContent.lastReviewDate,
-              scheduledDays: latestRev.scheduledDays !== undefined ? latestRev.scheduledDays : latestContent.scheduledDays,
-              history: Array.isArray(latestRev.history) && latestRev.history.length > 0 ? latestRev.history : (latestContent.history || []),
-              updatedAt: new Date(Math.max(localContentTime, incContentTime, localRevTime, incRevTime)).toISOString()
-            };
-            map.set(inc.id, mergedCard);
-          }
+          await setLocalKV('flashcards', Array.from(cardMap.values()));
+          await setLocalKV('trash_cards', Array.from(trashMap.values()));
+        } else {
+          await setLocalKV('flashcards', incomingCards);
+          await setLocalKV('trash_cards', incomingTrash);
         }
-      });
+      } else {
+        // Merge cards by ID with safe timestamp check & trash tombstone awareness
+        const existing = (await getLocalKV('flashcards')) || [];
+        const localTrash = (await getLocalKV('trash_cards')) || [];
+        const localTrashMap = new Map(localTrash.map(c => [c.id, safeTimestamp(c.deletedAt)]));
+        const incomingTrashMap = new Map(incomingTrash.map(c => [c.id, safeTimestamp(c.deletedAt)]));
+        const map = new Map(existing.map(c => [c.id, c]));
 
-      // Tombstone pruning: remove any local card that was deleted in the incoming trash
-      for (const [id, card] of map.entries()) {
-        const remoteDeletedAt = incomingTrashMap.get(id);
-        if (remoteDeletedAt) {
-          const localCardTime = safeTimestamp(card.updatedAt || card.lastReviewDate || card.createdAt);
-          if (remoteDeletedAt > localCardTime) {
-            map.delete(id);
-          }
-        }
-      }
+        incomingCards.forEach(inc => {
+          if (inc && inc.id) {
+            const localDeletedAt = localTrashMap.get(inc.id);
+            const incTime = safeTimestamp(inc.updatedAt || inc.lastReviewDate || inc.createdAt);
+            if (localDeletedAt && localDeletedAt > incTime) {
+              return;
+            }
 
-      await setLocalKV('flashcards', Array.from(map.values()));
-
-      // Merge trash cards with latest deletedAt
-      const mergedTrashMap = new Map(localTrash.map(c => [c.id, c]));
-      incomingTrash.forEach(c => {
-        if (c && c.id) {
-          const exist = mergedTrashMap.get(c.id);
-          if (!exist || safeTimestamp(c.deletedAt) > safeTimestamp(exist.deletedAt)) {
-            mergedTrashMap.set(c.id, c);
-          }
-        }
-      });
-      await setLocalKV('trash_cards', Array.from(mergedTrashMap.values()));
-    }
-  }
-
-  // 2. Curriculum Topics
-  if (bundles['curriculum_topics.json']) {
-    emit(++step, totalSteps, 'Hydrating Curriculum Topics & PYT ProgressΓÇª');
-    const b = bundles['curriculum_topics.json'];
-    const incomingTopics = deserializeBinaryValues(b.topics || []);
-    const incomingTrashTopics = deserializeBinaryValues(b.trashTopics || []);
-    const incomingPyt = deserializeBinaryValues(b.pytData || []);
-
-    if (strategy === 'replace') {
-      const db = await initDB();
-      // Atomic clear and put for topics
-      await new Promise((resolve, reject) => {
-        const tx = db.transaction(STORES.TOPICS, 'readwrite');
-        const st = tx.objectStore(STORES.TOPICS);
-        const clearReq = st.clear();
-        clearReq.onsuccess = () => {
-          incomingTopics.forEach(t => { if (t && t.id) st.put(t); });
-        };
-        clearReq.onerror = () => reject(clearReq.error);
-        tx.oncomplete = () => resolve(true);
-        tx.onerror = () => reject(tx.error);
-      });
-
-      await setLocalKV('trash_topics', incomingTrashTopics);
-
-      // Atomic clear and put for pytData
-      await new Promise((resolve, reject) => {
-        const tx = db.transaction(STORES.PYT_DATA, 'readwrite');
-        const st = tx.objectStore(STORES.PYT_DATA);
-        const clearReq = st.clear();
-        clearReq.onsuccess = () => {
-          incomingPyt.forEach(p => { if (p) st.put(p); });
-        };
-        clearReq.onerror = () => reject(clearReq.error);
-        tx.oncomplete = () => resolve(true);
-        tx.onerror = () => reject(tx.error);
-      });
-
-      if (b.subjectTracker) await setLocalKV('subject_tracker_data', b.subjectTracker);
-      if (b.pytUserProgress) await setLocalKV('pyt_user_progress', b.pytUserProgress);
-      if (b.textbooksMetadata) await setLocalKV('textbooks_metadata', b.textbooksMetadata);
-    } else {
-      if (Array.isArray(incomingTopics)) {
-        const existingTopics = (await getAllLocalTopics()) || [];
-        const localTrashTopics = (await getLocalKV('trash_topics')) || [];
-        const localTrashMap = new Map(localTrashTopics.map(t => [t.id, safeTimestamp(t.deletedAt)]));
-        const incomingTrashMap = new Map(incomingTrashTopics.map(t => [t.id, safeTimestamp(t.deletedAt)]));
-        const topMap = new Map(existingTopics.map(t => [t.id, t]));
-
-        incomingTopics.forEach(incT => {
-          if (incT && incT.id) {
-            const localDeletedAt = localTrashMap.get(incT.id);
-            const incTime = safeTimestamp(incT.updatedAt || incT.createdAt);
-            if (localDeletedAt && localDeletedAt > incTime) return;
-
-            const locT = topMap.get(incT.id);
-            if (!locT) {
-              topMap.set(incT.id, incT);
+            const localCard = map.get(inc.id);
+            if (!localCard) {
+              map.set(inc.id, inc);
             } else {
-              const locTime = safeTimestamp(locT.updatedAt || locT.createdAt);
-              topMap.set(incT.id, incTime >= locTime ? { ...locT, ...incT } : { ...incT, ...locT });
+              const localRevTime = safeTimestamp(localCard.lastReviewDate || 0);
+              const incRevTime = safeTimestamp(inc.lastReviewDate || 0);
+
+              let latestRev = localCard;
+              if (incRevTime > localRevTime) {
+                latestRev = inc;
+              } else if (localRevTime > incRevTime) {
+                latestRev = localCard;
+              } else {
+                // Tie-break: prefer higher stability, then higher reps
+                const incStab = Number(inc.stability || 0);
+                const locStab = Number(localCard.stability || 0);
+                if (incStab > locStab) {
+                  latestRev = inc;
+                } else if (locStab > incStab) {
+                  latestRev = localCard;
+                } else {
+                  const incReps = Number(inc.reps || 0);
+                  const locReps = Number(localCard.reps || 0);
+                  latestRev = incReps > locReps ? inc : localCard;
+                }
+              }
+
+              const localContentTime = safeTimestamp(localCard.updatedAt || localCard.createdAt || 0);
+              const incContentTime = safeTimestamp(inc.updatedAt || inc.createdAt || 0);
+              const latestContent = incContentTime >= localContentTime ? inc : localCard;
+
+              if (localContentTime >= syncStartTime || localRevTime >= syncStartTime) {
+                hasInFlightEdits = true;
+              }
+
+              // Merge: preserve latest content edits AND latest FSRS review parameters
+              const mergedCard = {
+                ...localCard,
+                ...inc,
+                ...latestContent,
+                stability: latestRev.stability !== undefined ? latestRev.stability : (latestContent.stability ?? 0),
+                difficulty: latestRev.difficulty !== undefined ? latestRev.difficulty : (latestContent.difficulty ?? 0),
+                reps: latestRev.reps !== undefined ? latestRev.reps : (latestContent.reps ?? 0),
+                lapses: latestRev.lapses !== undefined ? latestRev.lapses : (latestContent.lapses ?? 0),
+                due: latestRev.due || latestContent.due,
+                state: latestRev.state !== undefined ? latestRev.state : latestContent.state,
+                lastReviewDate: latestRev.lastReviewDate || latestContent.lastReviewDate,
+                scheduledDays: latestRev.scheduledDays !== undefined ? latestRev.scheduledDays : latestContent.scheduledDays,
+                history: Array.isArray(latestRev.history) && latestRev.history.length > 0 ? latestRev.history : (latestContent.history || []),
+                updatedAt: new Date(Math.max(localContentTime, incContentTime, localRevTime, incRevTime)).toISOString()
+              };
+              map.set(inc.id, mergedCard);
             }
           }
         });
 
-        // Prune topics deleted remotely
-        for (const [id, topic] of topMap.entries()) {
+        // Tombstone pruning: remove any local card that was deleted in the incoming trash
+        for (const [id, card] of map.entries()) {
           const remoteDeletedAt = incomingTrashMap.get(id);
           if (remoteDeletedAt) {
-            const localTopicTime = safeTimestamp(topic.updatedAt || topic.createdAt);
-            if (remoteDeletedAt > localTopicTime) {
-              topMap.delete(id);
+            const localCardTime = safeTimestamp(card.updatedAt || card.lastReviewDate || card.createdAt);
+            if (remoteDeletedAt > localCardTime) {
+              map.delete(id);
             }
           }
         }
 
-        await saveAllLocalTopics(Array.from(topMap.values()));
+        await setLocalKV('flashcards', Array.from(map.values()));
 
-        // Merge trash topics
-        const mergedTrashTopics = new Map(localTrashTopics.map(t => [t.id, t]));
-        incomingTrashTopics.forEach(t => {
-          if (t && t.id) {
-            const exist = mergedTrashTopics.get(t.id);
-            if (!exist || safeTimestamp(t.deletedAt) > safeTimestamp(exist.deletedAt)) {
-              mergedTrashTopics.set(t.id, t);
+        // Merge trash cards with latest deletedAt
+        const mergedTrashMap = new Map(localTrash.map(c => [c.id, c]));
+        incomingTrash.forEach(c => {
+          if (c && c.id) {
+            const exist = mergedTrashMap.get(c.id);
+            if (!exist || safeTimestamp(c.deletedAt) > safeTimestamp(exist.deletedAt)) {
+              mergedTrashMap.set(c.id, c);
             }
           }
         });
-        await setLocalKV('trash_topics', Array.from(mergedTrashTopics.values()));
+        await setLocalKV('trash_cards', Array.from(mergedTrashMap.values()));
       }
-
-      if (Array.isArray(incomingPyt)) {
-        for (const item of incomingPyt) {
-          if (item && item.key) await putLocalItem(STORES.PYT_DATA, item);
-        }
-      }
-
-      // Non-destructive entity-level merge for Subject Tracker Topics & FSRS states
-      const localSubjectTracker = (await getLocalSubjectTrackerData()) || (await getLocalKV('subject_tracker_data')) || [];
-      const mergedTracker = mergeSubjectTrackerArrays(localSubjectTracker, b.subjectTracker || [], localTrashTopics, incomingTrashTopics);
-      await setLocalKV('subject_tracker_data', mergedTracker);
-
-      // Non-destructive merge for PYT user progress
-      const localPytProg = (await getLocalKV('pyt_user_progress')) || [];
-      const mergedPytProg = mergePytUserProgress(localPytProg, b.pytUserProgress || []);
-      await setLocalKV('pyt_user_progress', mergedPytProg);
-
-      // Non-destructive merge for textbooks metadata
-      const localBooks = (await getLocalKV('textbooks_metadata')) || [];
-      const mergedBooks = mergeTextbooksMetadata(localBooks, b.textbooksMetadata || []);
-      await setLocalKV('textbooks_metadata', mergedBooks);
     }
-  }
 
-  // 3. Study Logs (Deep Merging & Session/GT Unioning with Tombstone Pruning)
-  if (bundles['study_logs.json']) {
-    emit(++step, totalSteps, 'Hydrating Study Logs & Velocity Telemetry…');
-    const b = bundles['study_logs.json'];
-    const incomingLogs = b.studyLogs || {};
-    const incomingTrash = b.trashStudyLogs || [];
+    // 2. Curriculum Topics
+    if (bundles['curriculum_topics.json']) {
+      emit(++step, totalSteps, 'Hydrating Curriculum Topics & PYT Progress…');
+      const b = bundles['curriculum_topics.json'];
+      const incomingTopics = deserializeBinaryValues(b.topics || []);
+      const incomingTrashTopics = deserializeBinaryValues(b.trashTopics || []);
+      const incomingPyt = deserializeBinaryValues(b.pytData || []);
 
-    if (strategy === 'replace') {
-      await setLocalKV('study_logs', incomingLogs);
-      await setLocalKV('trash_study_logs', incomingTrash);
-      if (b.studySchedule) await setLocalKV('study_schedule', b.studySchedule);
-      if (b.scheduleTemplates) await setLocalKV('schedule_templates', b.scheduleTemplates);
-      if (b.timerState) await setLocalKV('timerState', b.timerState);
-      if (b.activeNewTopicsToday) await setLocalKV('active_new_topics_today', b.activeNewTopicsToday);
-      if (Array.isArray(b.campDailyLogs)) {
+      if (strategy === 'replace') {
         const db = await initDB();
+        let finalTopics = incomingTopics;
+        let finalTrashTopics = incomingTrashTopics;
+        let finalSubjectTracker = b.subjectTracker || [];
+        let finalPytProg = b.pytUserProgress || [];
+
+        if (syncStartTime > 0) {
+          const liveTopics = (await getAllLocalTopics()) || [];
+          const liveTrashTopics = (await getLocalKV('trash_topics')) || [];
+          const liveSubjectTracker = (await getLocalSubjectTrackerData()) || (await getLocalKV('subject_tracker_data')) || [];
+          const livePytProg = (await getLocalKV('pyt_user_progress')) || [];
+
+          // Reconcile topics
+          const topMap = new Map(incomingTopics.map(t => [t.id, t]));
+          const topTrashMap = new Map(incomingTrashTopics.map(t => [t.id, t]));
+
+          liveTopics.forEach(locT => {
+            if (locT && locT.id) {
+              const locTime = safeTimestamp(locT.updatedAt || locT.createdAt);
+              if (locTime >= syncStartTime) {
+                hasInFlightEdits = true;
+                topMap.set(locT.id, locT);
+              }
+            }
+          });
+
+          liveTrashTopics.forEach(locT => {
+            if (locT && locT.id) {
+              const locDelTime = safeTimestamp(locT.deletedAt);
+              if (locDelTime >= syncStartTime) {
+                hasInFlightEdits = true;
+                topTrashMap.set(locT.id, locT);
+                topMap.delete(locT.id);
+              }
+            }
+          });
+
+          finalTopics = Array.from(topMap.values());
+          finalTrashTopics = Array.from(topTrashMap.values());
+
+          // Reconcile Subject Tracker Docs
+          const inFlightTrackerMap = new Map(finalSubjectTracker.map(d => [d.id, d]));
+          liveSubjectTracker.forEach(locDoc => {
+            if (locDoc && locDoc.id) {
+              const locDocTime = safeTimestamp(locDoc.updatedAt);
+              if (locDocTime >= syncStartTime) {
+                hasInFlightEdits = true;
+                const incDoc = inFlightTrackerMap.get(locDoc.id);
+                if (!incDoc) {
+                  inFlightTrackerMap.set(locDoc.id, locDoc);
+                } else {
+                  const mergedTopics = { ...(incDoc.topics || {}) };
+                  Object.entries(locDoc.topics || {}).forEach(([tKey, locTopic]) => {
+                    const locTopTime = safeTimestamp(locTopic?.updatedAt || locDocTime);
+                    if (locTopTime >= syncStartTime) {
+                      mergedTopics[tKey] = locTopic;
+                    }
+                  });
+                  inFlightTrackerMap.set(locDoc.id, {
+                    ...incDoc,
+                    ...locDoc,
+                    topics: mergedTopics,
+                    updatedAt: locDoc.updatedAt
+                  });
+                }
+              }
+            }
+          });
+          finalSubjectTracker = Array.from(inFlightTrackerMap.values());
+
+          // Reconcile PYT User Progress
+          const inFlightPytMap = new Map(finalPytProg.map(d => [d.id, d]));
+          livePytProg.forEach(locP => {
+            if (locP && locP.id) {
+              const locTime = safeTimestamp(locP.updatedAt);
+              if (locTime >= syncStartTime) {
+                hasInFlightEdits = true;
+                inFlightPytMap.set(locP.id, locP);
+              }
+            }
+          });
+          finalPytProg = Array.from(inFlightPytMap.values());
+        }
+
+        // Atomic clear and put for topics
         await new Promise((resolve, reject) => {
-          const tx = db.transaction(STORES.CAMP_DAILY_LOGS, 'readwrite');
-          const st = tx.objectStore(STORES.CAMP_DAILY_LOGS);
+          const tx = db.transaction(STORES.TOPICS, 'readwrite');
+          const st = tx.objectStore(STORES.TOPICS);
           const clearReq = st.clear();
           clearReq.onsuccess = () => {
-            b.campDailyLogs.forEach(log => { if (log && log.dateStr) st.put(log); });
+            finalTopics.forEach(t => { if (t && t.id) st.put(t); });
           };
           clearReq.onerror = () => reject(clearReq.error);
           tx.oncomplete = () => resolve(true);
           tx.onerror = () => reject(tx.error);
         });
-      }
-    } else {
-      // Deep-merge study logs by date with session unioning and tombstone pruning
-      const existing = (await getLocalStudyLogs()) || {};
-      const localTrash = (await getTrashStudyLogs()) || (await getLocalKV('trash_study_logs')) || [];
-      const unifiedGraves = (await getUnifiedGraves()) || [];
-      const merged = mergeStudyLogsObjects(existing, incomingLogs, localTrash, incomingTrash, unifiedGraves);
-      await setLocalKV('study_logs', merged);
 
-      // Merge and union trash study logs
-      const mergedTrashMap = new Map(localTrash.map(t => [t.dateKey, t]));
-      incomingTrash.forEach(t => {
-        if (t && t.dateKey) {
-          const exist = mergedTrashMap.get(t.dateKey);
-          if (!exist || safeTimestamp(t.deletedAt) > safeTimestamp(exist.deletedAt)) {
-            mergedTrashMap.set(t.dateKey, t);
-          }
-        }
-      });
-      await setLocalKV('trash_study_logs', Array.from(mergedTrashMap.values()));
+        await setLocalKV('trash_topics', finalTrashTopics);
 
-      if (b.studySchedule) {
-        const existSched = (await getLocalKV('study_schedule')) || {};
-        await setLocalKV('study_schedule', mergeStudyScheduleObjects(existSched, b.studySchedule));
-      }
-      if (b.scheduleTemplates) await setLocalKV('schedule_templates', b.scheduleTemplates);
-      if (Array.isArray(b.campDailyLogs)) {
-        for (const log of b.campDailyLogs) {
-          if (log && log.dateStr) {
-            const existingLog = await getLocalItem(STORES.CAMP_DAILY_LOGS, log.dateStr);
-            if (!existingLog) {
-              await putLocalItem(STORES.CAMP_DAILY_LOGS, log);
-            } else {
-              const mergedSessions = Array.isArray(existingLog.sessions) ? [...existingLog.sessions] : [];
-              const existSessionKeys = new Set(mergedSessions.map(s => s?.id || s?.startedAt || (s ? s.subject + '_' + s.duration : '')));
-              const incomingSessions = Array.isArray(log.sessions) ? log.sessions : [];
-              incomingSessions.forEach(s => {
-                if (s) {
-                  const k = s.id || s.startedAt || (s.subject + '_' + s.duration);
-                  if (!existSessionKeys.has(k)) {
-                    mergedSessions.push(s);
-                  }
-                }
-              });
-              await putLocalItem(STORES.CAMP_DAILY_LOGS, {
-                ...existingLog,
-                ...log,
-                sessions: mergedSessions,
-                bedToBook: log.bedToBook || existingLog.bedToBook
-              });
-            }
-          }
-        }
-      }
-      if (b.activeNewTopicsToday) {
-        await setLocalKV('active_new_topics_today', b.activeNewTopicsToday);
-      }
-    }
-  }
+        // Atomic clear and put for pytData
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction(STORES.PYT_DATA, 'readwrite');
+          const st = tx.objectStore(STORES.PYT_DATA);
+          const clearReq = st.clear();
+          clearReq.onsuccess = () => {
+            incomingPyt.forEach(p => { if (p) st.put(p); });
+          };
+          clearReq.onerror = () => reject(clearReq.error);
+          tx.oncomplete = () => resolve(true);
+          tx.onerror = () => reject(tx.error);
+        });
 
-  // 4. FSRS Config & Settings (including persistent cross-device settings)
-  if (bundles['fsrs_config.json']) {
-    emit(++step, totalSteps, 'Hydrating FSRS-6 Config, Hints & Preferences…');
-    const b = bundles['fsrs_config.json'];
-    if (b.fsrsConfig) await saveFSRSConfig(b.fsrsConfig);
-    if (b.localUserProfile) await setLocalKV('local_user_profile', b.localUserProfile);
-    if (b.aiRecommendations) {
-      await setLocalKV('ai_topic_recommendations', b.aiRecommendations);
-    }
+        if (finalSubjectTracker) await setLocalKV('subject_tracker_data', finalSubjectTracker);
+        if (finalPytProg) await setLocalKV('pyt_user_progress', finalPytProg);
+        if (b.textbooksMetadata) await setLocalKV('textbooks_metadata', b.textbooksMetadata);
+      } else {
+        if (Array.isArray(incomingTopics)) {
+          const existingTopics = (await getAllLocalTopics()) || [];
+          const localTrashTopics = (await getLocalKV('trash_topics')) || [];
+          const localTrashMap = new Map(localTrashTopics.map(t => [t.id, safeTimestamp(t.deletedAt)]));
+          const incomingTrashMap = new Map(incomingTrashTopics.map(t => [t.id, safeTimestamp(t.deletedAt)]));
+          const topMap = new Map(existingTopics.map(t => [t.id, t]));
 
-    if (strategy === 'replace') {
-      if (Array.isArray(b.customPrompts)) {
-        await setLocalKV('custom_prompts', b.customPrompts);
-      }
-      const db = await initDB();
-      // Atomic clear and put for TOPIC_HINTS
-      await new Promise((resolve, reject) => {
-        const tx = db.transaction(STORES.TOPIC_HINTS, 'readwrite');
-        const st = tx.objectStore(STORES.TOPIC_HINTS);
-        const clearReq = st.clear();
-        clearReq.onsuccess = () => {
-          if (Array.isArray(b.topicHints)) {
-            b.topicHints.forEach(h => { if (h && h.topicId) st.put(h); });
-          }
-        };
-        clearReq.onerror = () => reject(clearReq.error);
-        tx.oncomplete = () => resolve(true);
-        tx.onerror = () => reject(tx.error);
-      });
+          incomingTopics.forEach(incT => {
+            if (incT && incT.id) {
+              const localDeletedAt = localTrashMap.get(incT.id);
+              const incTime = safeTimestamp(incT.updatedAt || incT.createdAt);
+              if (localDeletedAt && localDeletedAt > incTime) return;
 
-      // Atomic clear and put for HINT_QUOTA
-      await new Promise((resolve, reject) => {
-        const tx = db.transaction(STORES.HINT_QUOTA, 'readwrite');
-        const st = tx.objectStore(STORES.HINT_QUOTA);
-        const clearReq = st.clear();
-        clearReq.onsuccess = () => {
-          if (Array.isArray(b.hintQuota)) {
-            b.hintQuota.forEach(q => { if (q && q.dateStr) st.put(q); });
-          }
-        };
-        clearReq.onerror = () => reject(clearReq.error);
-        tx.oncomplete = () => resolve(true);
-        tx.onerror = () => reject(tx.error);
-      });
-
-      // For SETTINGS: preserve local google_drive_auth, replace all other clean keys
-      const localAuth = await getLocalSetting('google_drive_auth');
-      await new Promise((resolve, reject) => {
-        const tx = db.transaction(STORES.SETTINGS, 'readwrite');
-        const st = tx.objectStore(STORES.SETTINGS);
-        const clearReq = st.clear();
-        clearReq.onsuccess = () => {
-          if (localAuth) st.put({ key: 'google_drive_auth', value: localAuth });
-          if (Array.isArray(b.settings)) {
-            b.settings.forEach(s => {
-              if (s && s.key && isCleanSettingKey(s.key)) st.put(s);
-            });
-          }
-        };
-        clearReq.onerror = () => reject(clearReq.error);
-        tx.oncomplete = () => resolve(true);
-        tx.onerror = () => reject(tx.error);
-      });
-    } else {
-      // Merge custom prompts non-destructively, pruning tombstoned entries
-      if (Array.isArray(b.customPrompts)) {
-        const existingPrompts = (await getLocalKV('custom_prompts')) || [];
-        const promptMap = new Map(existingPrompts.map(p => [p.id, p]));
-        // Determine the combined set of prompt tombstones
-        const localTrashPrompts = (await getLocalKV('trash_prompts')) || [];
-        const localTrashPromptMap = new Map(localTrashPrompts.map(p => [p.id, safeTimestamp(p.deletedAt)]));
-        b.customPrompts.forEach(p => {
-          if (p && p.id) {
-            const localDeletedAt = localTrashPromptMap.get(p.id);
-            const incTime = safeTimestamp(p.updatedAt || p.createdAt);
-            // Only add if not locally tombstoned after the incoming version
-            if (!localDeletedAt || localDeletedAt <= incTime) {
-              const existing = promptMap.get(p.id);
-              if (!existing) {
-                promptMap.set(p.id, p);
+              const locT = topMap.get(incT.id);
+              if (!locT) {
+                topMap.set(incT.id, incT);
               } else {
-                const locTime = safeTimestamp(existing.updatedAt || existing.createdAt);
-                promptMap.set(p.id, incTime >= locTime ? p : existing);
+                const locTime = safeTimestamp(locT.updatedAt || locT.createdAt);
+                if (locTime >= syncStartTime) hasInFlightEdits = true;
+                topMap.set(incT.id, incTime >= locTime ? { ...locT, ...incT } : { ...incT, ...locT });
+              }
+            }
+          });
+
+          // Prune topics deleted remotely
+          for (const [id, topic] of topMap.entries()) {
+            const remoteDeletedAt = incomingTrashMap.get(id);
+            if (remoteDeletedAt) {
+              const localTopicTime = safeTimestamp(topic.updatedAt || topic.createdAt);
+              if (remoteDeletedAt > localTopicTime) {
+                topMap.delete(id);
               }
             }
           }
-        });
-        await setLocalKV('custom_prompts', Array.from(promptMap.values()));
-      }
 
-      if (Array.isArray(b.topicHints)) {
-        for (const h of b.topicHints) {
-          if (h && h.topicId) await putLocalItem(STORES.TOPIC_HINTS, h);
-        }
-      }
-      if (Array.isArray(b.hintQuota)) {
-        for (const q of b.hintQuota) {
-          if (q && q.dateStr) await putLocalItem(STORES.HINT_QUOTA, q);
-        }
-      }
-      if (Array.isArray(b.settings)) {
-        for (const s of b.settings) {
-          if (s && s.key && isCleanSettingKey(s.key)) {
-            await putLocalItem(STORES.SETTINGS, s);
-          }
-        }
-      }
-    }
+          await saveAllLocalTopics(Array.from(topMap.values()));
 
-    // Hydrate localStorage snapshot settings into browser localStorage
-    if (b.localStorageSnapshot && typeof b.localStorageSnapshot === 'object') {
-      try {
-        if (typeof window !== 'undefined' && window.localStorage) {
-          Object.entries(b.localStorageSnapshot).forEach(([k, v]) => {
-            if (v !== null && v !== undefined && isCleanLsKey(k)) {
-              localStorage.setItem(k, v);
+          // Merge trash topics
+          const mergedTrashTopics = new Map(localTrashTopics.map(t => [t.id, t]));
+          incomingTrashTopics.forEach(t => {
+            if (t && t.id) {
+              const exist = mergedTrashTopics.get(t.id);
+              if (!exist || safeTimestamp(t.deletedAt) > safeTimestamp(exist.deletedAt)) {
+                mergedTrashTopics.set(t.id, t);
+              }
             }
           });
+          await setLocalKV('trash_topics', Array.from(mergedTrashTopics.values()));
         }
-      } catch (e) {
-        console.warn('[GDriveSync] Error hydrating localStorage settings:', e);
-      }
-    }
-  }
 
-  // 5. CAMP Tracker
-  if (bundles['camp_tracker.json']) {
-    emit(++step, totalSteps, 'Hydrating CAMP tracker logs…');
-    const b = bundles['camp_tracker.json'];
-    if (strategy === 'replace') {
-      const db = await initDB();
-      // Atomic clear and replace for CAMP_TRACKER
-      await new Promise((resolve, reject) => {
-        const tx = db.transaction(STORES.CAMP_TRACKER, 'readwrite');
-        const st = tx.objectStore(STORES.CAMP_TRACKER);
-        const clearReq = st.clear();
-        clearReq.onsuccess = () => {
-          if (Array.isArray(b.campTracker)) {
-            b.campTracker.forEach(t => { if (t && t.id) st.put(t); });
+        if (Array.isArray(incomingPyt)) {
+          for (const item of incomingPyt) {
+            if (item && item.key) await putLocalItem(STORES.PYT_DATA, item);
           }
-        };
-        clearReq.onerror = () => reject(clearReq.error);
-        tx.oncomplete = () => resolve(true);
-        tx.onerror = () => reject(tx.error);
-      });
+        }
 
-      // Atomic clear and replace for CAMP_DATA
-      await new Promise((resolve, reject) => {
-        const tx = db.transaction(STORES.CAMP_DATA, 'readwrite');
-        const st = tx.objectStore(STORES.CAMP_DATA);
-        const clearReq = st.clear();
-        clearReq.onsuccess = () => {
-          if (Array.isArray(b.campData)) {
-            b.campData.forEach(d => { if (d && d.key) st.put(d); });
-          }
-        };
-        clearReq.onerror = () => reject(clearReq.error);
-        tx.oncomplete = () => resolve(true);
-        tx.onerror = () => reject(tx.error);
-      });
-    } else {
-      if (Array.isArray(b.campTracker)) {
-        for (const t of b.campTracker) {
-          if (t && t.id) await putLocalItem(STORES.CAMP_TRACKER, t);
-        }
-      }
-      if (Array.isArray(b.campData)) {
-        for (const d of b.campData) {
-          if (d && d.key) await putLocalItem(STORES.CAMP_DATA, d);
-        }
+        // Non-destructive entity-level merge for Subject Tracker Topics & FSRS states
+        const localSubjectTracker = (await getLocalSubjectTrackerData()) || (await getLocalKV('subject_tracker_data')) || [];
+        const unifiedGraves = (await getUnifiedGraves()) || [];
+        const mergedTracker = mergeSubjectTrackerArrays(localSubjectTracker, b.subjectTracker || [], localTrashTopics, incomingTrashTopics, unifiedGraves);
+        await setLocalKV('subject_tracker_data', mergedTracker);
+
+        // Non-destructive merge for PYT user progress
+        const localPytProg = (await getLocalKV('pyt_user_progress')) || [];
+        const mergedPytProg = mergePytUserProgress(localPytProg, b.pytUserProgress || []);
+        await setLocalKV('pyt_user_progress', mergedPytProg);
+
+        // Non-destructive merge for textbooks metadata
+        const localBooks = (await getLocalKV('textbooks_metadata')) || [];
+        const mergedBooks = mergeTextbooksMetadata(localBooks, b.textbooksMetadata || []);
+        await setLocalKV('textbooks_metadata', mergedBooks);
       }
     }
 
-    // Always persist trashCamp tombstones (both strategies)
-    if (Array.isArray(b.trashCamp)) {
-      try {
-        const localTrashCamp = (await getLocalKV('trash_camp')) || [];
-        const trashCampMap = new Map(localTrashCamp.map(t => [t.id, t]));
-        b.trashCamp.forEach(t => {
-          if (t && t.id) {
-            const exist = trashCampMap.get(t.id);
+    // 3. Study Logs (Deep Merging & Session/GT Unioning with Tombstone Pruning)
+    if (bundles['study_logs.json']) {
+      emit(++step, totalSteps, 'Hydrating Study Logs & Velocity Telemetry…');
+      const b = bundles['study_logs.json'];
+      const incomingLogs = b.studyLogs || {};
+      const incomingTrash = b.trashStudyLogs || [];
+
+      if (strategy === 'replace') {
+        let finalLogs = incomingLogs;
+        let finalTrash = incomingTrash;
+        let finalSchedule = b.studySchedule;
+
+        if (syncStartTime > 0) {
+          const liveLogs = (await getLocalStudyLogs()) || (await getLocalKV('study_logs')) || {};
+          const liveTrash = (await getTrashStudyLogs()) || (await getLocalKV('trash_study_logs')) || [];
+          const liveSchedule = (await getLocalKV('study_schedule')) || {};
+
+          const logsMap = { ...incomingLogs };
+          Object.entries(liveLogs).forEach(([dateStr, liveDayLog]) => {
+            if (liveDayLog) {
+              const liveTime = safeTimestamp(liveDayLog.updatedAt);
+              if (liveTime >= syncStartTime) {
+                hasInFlightEdits = true;
+                logsMap[dateStr] = liveDayLog;
+              }
+            }
+          });
+          finalLogs = logsMap;
+
+          const trashMap = new Map(incomingTrash.map(t => [t.dateKey, t]));
+          liveTrash.forEach(locT => {
+            if (locT && locT.dateKey) {
+              const locDelTime = safeTimestamp(locT.deletedAt);
+              if (locDelTime >= syncStartTime) {
+                hasInFlightEdits = true;
+                trashMap.set(locT.dateKey, locT);
+                delete finalLogs[locT.dateKey];
+              }
+            }
+          });
+          finalTrash = Array.from(trashMap.values());
+
+          if (b.studySchedule || Object.keys(liveSchedule).length > 0) {
+            const schedMap = { ...(b.studySchedule || {}) };
+            Object.entries(liveSchedule).forEach(([dateStr, liveSched]) => {
+              if (liveSched && safeTimestamp(liveSched.updatedAt) >= syncStartTime) {
+                hasInFlightEdits = true;
+                schedMap[dateStr] = liveSched;
+              }
+            });
+            finalSchedule = schedMap;
+          }
+        }
+
+        await setLocalKV('study_logs', finalLogs);
+        await setLocalKV('trash_study_logs', finalTrash);
+        if (finalSchedule) await setLocalKV('study_schedule', finalSchedule);
+        if (b.scheduleTemplates) await setLocalKV('schedule_templates', b.scheduleTemplates);
+        if (b.timerState) await setLocalKV('timerState', b.timerState);
+        if (b.activeNewTopicsToday) await setLocalKV('active_new_topics_today', b.activeNewTopicsToday);
+        if (Array.isArray(b.campDailyLogs)) {
+          const db = await initDB();
+          await new Promise((resolve, reject) => {
+            const tx = db.transaction(STORES.CAMP_DAILY_LOGS, 'readwrite');
+            const st = tx.objectStore(STORES.CAMP_DAILY_LOGS);
+            const clearReq = st.clear();
+            clearReq.onsuccess = () => {
+              b.campDailyLogs.forEach(log => { if (log && log.dateStr) st.put(log); });
+            };
+            clearReq.onerror = () => reject(clearReq.error);
+            tx.oncomplete = () => resolve(true);
+            tx.onerror = () => reject(tx.error);
+          });
+        }
+      } else {
+        // Deep-merge study logs by date with session unioning and tombstone pruning
+        const existing = (await getLocalStudyLogs()) || {};
+        const localTrash = (await getTrashStudyLogs()) || (await getLocalKV('trash_study_logs')) || [];
+        const unifiedGraves = (await getUnifiedGraves()) || [];
+        const merged = mergeStudyLogsObjects(existing, incomingLogs, localTrash, incomingTrash, unifiedGraves);
+        await setLocalKV('study_logs', merged);
+
+        // Merge and union trash study logs
+        const mergedTrashMap = new Map(localTrash.map(t => [t.dateKey, t]));
+        incomingTrash.forEach(t => {
+          if (t && t.dateKey) {
+            const exist = mergedTrashMap.get(t.dateKey);
             if (!exist || safeTimestamp(t.deletedAt) > safeTimestamp(exist.deletedAt)) {
-              trashCampMap.set(t.id, t);
+              mergedTrashMap.set(t.dateKey, t);
             }
           }
         });
-        await setLocalKV('trash_camp', Array.from(trashCampMap.values()));
-      } catch (e) {
-        console.warn('[GDriveSync] Error hydrating trashCamp:', e);
+        await setLocalKV('trash_study_logs', Array.from(mergedTrashMap.values()));
+
+        if (b.studySchedule) {
+          const existSched = (await getLocalKV('study_schedule')) || {};
+          await setLocalKV('study_schedule', { ...existSched, ...b.studySchedule });
+        }
+        if (b.scheduleTemplates) await setLocalKV('schedule_templates', b.scheduleTemplates);
+        if (Array.isArray(b.campDailyLogs)) {
+          for (const log of b.campDailyLogs) {
+            if (log && log.dateStr) {
+              const existingLog = await getLocalItem(STORES.CAMP_DAILY_LOGS, log.dateStr);
+              if (!existingLog) {
+                await putLocalItem(STORES.CAMP_DAILY_LOGS, log);
+              } else {
+                const mergedSessions = Array.isArray(existingLog.sessions) ? [...existingLog.sessions] : [];
+                const existSessionKeys = new Set(mergedSessions.map(s => s?.id || s?.startedAt || (s ? s.subject + '_' + s.duration : '')));
+                const incomingSessions = Array.isArray(log.sessions) ? log.sessions : [];
+                incomingSessions.forEach(s => {
+                  if (s) {
+                    const k = s.id || s.startedAt || (s.subject + '_' + s.duration);
+                    if (!existSessionKeys.has(k)) {
+                      mergedSessions.push(s);
+                    }
+                  }
+                });
+                await putLocalItem(STORES.CAMP_DAILY_LOGS, {
+                  ...existingLog,
+                  ...log,
+                  sessions: mergedSessions,
+                  bedToBook: log.bedToBook || existingLog.bedToBook
+                });
+              }
+            }
+          }
+        }
+        if (b.activeNewTopicsToday) {
+          await setLocalKV('active_new_topics_today', b.activeNewTopicsToday);
+        }
       }
     }
-  }
 
-  // 6. Scanned Pages & Image Occlusions (Zero-Data-Loss Restoration with Tombstone Pruning)
-  if (bundles['pages_bundle.json']) {
-    emit(++step, totalSteps, 'Hydrating Scanned Pages & Image OcclusionsΓÇª');
-    const b = bundles['pages_bundle.json'];
-    const incomingPages = deserializeBinaryValues(b.pages || []);
-    const incomingTrashPages = deserializeBinaryValues(b.trashPages || []);
+    // 4. FSRS Config & Settings (including persistent cross-device settings)
+    if (bundles['fsrs_config.json']) {
+      emit(++step, totalSteps, 'Hydrating FSRS-6 Config, Hints & Preferences…');
+      const b = bundles['fsrs_config.json'];
+      if (b.fsrsConfig) await saveFSRSConfig(b.fsrsConfig);
+      if (b.localUserProfile) await setLocalKV('local_user_profile', b.localUserProfile);
+      if (b.aiRecommendations) {
+        await setLocalKV('ai_topic_recommendations', b.aiRecommendations);
+      }
 
-    if (strategy === 'replace') {
-      // Retain existing local image blobs if incoming metadata stripped them
-      const localPages = (await getLocalPages()) || [];
-      const localMap = new Map(localPages.map(p => [p.id, p]));
-      const hydratedPages = incomingPages.map(p => {
-        const local = localMap.get(p.id);
-        return {
-          ...p,
-          data: local?.data || p.data,
-          originalImage: local?.originalImage || p.originalImage,
-          imageUrl: local?.imageUrl || p.imageUrl
-        };
-      });
-      await setLocalKV('pages', hydratedPages);
-      await setLocalKV('trash_pages', incomingTrashPages);
-    } else {
-      const existing = (await getLocalPages()) || [];
-      const localTrashPages = (await getLocalKV('trash_pages')) || [];
-      const localTrashMap = new Map(localTrashPages.map(p => [p.id, safeTimestamp(p.deletedAt)]));
-      const incomingTrashMap = new Map(incomingTrashPages.map(p => [p.id, safeTimestamp(p.deletedAt)]));
-      const map = new Map(existing.map(p => [p.id, p]));
+      if (strategy === 'replace') {
+        let finalPrompts = Array.isArray(b.customPrompts) ? b.customPrompts : [];
+        if (syncStartTime > 0) {
+          const livePrompts = (await getLocalKV('custom_prompts')) || [];
+          const promptMap = new Map(finalPrompts.map(p => [p.id, p]));
+          livePrompts.forEach(p => {
+            if (p && p.id && safeTimestamp(p.updatedAt || p.createdAt) >= syncStartTime) {
+              hasInFlightEdits = true;
+              promptMap.set(p.id, p);
+            }
+          });
+          finalPrompts = Array.from(promptMap.values());
+        }
+        if (finalPrompts.length > 0) {
+          await setLocalKV('custom_prompts', finalPrompts);
+        }
 
-      incomingPages.forEach(p => {
-        if (p && p.id) {
-          const localDeletedAt = localTrashMap.get(p.id);
-          const incTime = safeTimestamp(p.updatedAt || p.createdAt);
-          if (localDeletedAt && localDeletedAt > incTime) {
-            // Page was deleted locally after incoming version was updated
-            return;
+        const db = await initDB();
+        // Atomic clear and put for TOPIC_HINTS
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction(STORES.TOPIC_HINTS, 'readwrite');
+          const st = tx.objectStore(STORES.TOPIC_HINTS);
+          const clearReq = st.clear();
+          clearReq.onsuccess = () => {
+            if (Array.isArray(b.topicHints)) {
+              b.topicHints.forEach(h => { if (h && h.topicId) st.put(h); });
+            }
+          };
+          clearReq.onerror = () => reject(clearReq.error);
+          tx.oncomplete = () => resolve(true);
+          tx.onerror = () => reject(tx.error);
+        });
+
+        // Atomic clear and put for HINT_QUOTA
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction(STORES.HINT_QUOTA, 'readwrite');
+          const st = tx.objectStore(STORES.HINT_QUOTA);
+          const clearReq = st.clear();
+          clearReq.onsuccess = () => {
+            if (Array.isArray(b.hintQuota)) {
+              b.hintQuota.forEach(q => { if (q && q.dateStr) st.put(q); });
+            }
+          };
+          clearReq.onerror = () => reject(clearReq.error);
+          tx.oncomplete = () => resolve(true);
+          tx.onerror = () => reject(tx.error);
+        });
+
+        // For SETTINGS: preserve local google_drive_auth, in-flight settings, replace other clean keys
+        const localAuth = await getLocalSetting('google_drive_auth');
+        const liveSettings = syncStartTime > 0 ? ((await getAllLocalSettings()) || []) : [];
+        const inFlightSettingsMap = new Map();
+        liveSettings.forEach(s => {
+          if (s && s.key && safeTimestamp(s.updatedAt) >= syncStartTime) {
+            hasInFlightEdits = true;
+            inFlightSettingsMap.set(s.key, s);
           }
+        });
 
-          const localP = map.get(p.id);
-          if (!localP) {
-            map.set(p.id, p);
-          } else {
-            const locTime = safeTimestamp(localP.updatedAt || localP.createdAt);
-            map.set(p.id, {
-              ...(incTime >= locTime ? { ...localP, ...p } : { ...p, ...localP }),
-              data: localP.data || p.data,
-              originalImage: localP.originalImage || p.originalImage,
-              imageUrl: localP.imageUrl || p.imageUrl
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction(STORES.SETTINGS, 'readwrite');
+          const st = tx.objectStore(STORES.SETTINGS);
+          const clearReq = st.clear();
+          clearReq.onsuccess = () => {
+            if (localAuth) st.put({ key: 'google_drive_auth', value: localAuth });
+            if (Array.isArray(b.settings)) {
+              b.settings.forEach(s => {
+                if (s && s.key && isCleanSettingKey(s.key)) {
+                  const inFlight = inFlightSettingsMap.get(s.key);
+                  st.put(inFlight || s);
+                  inFlightSettingsMap.delete(s.key);
+                }
+              });
+            }
+            for (const s of inFlightSettingsMap.values()) {
+              if (s && s.key && isCleanSettingKey(s.key)) {
+                st.put(s);
+              }
+            }
+          };
+          clearReq.onerror = () => reject(clearReq.error);
+          tx.oncomplete = () => resolve(true);
+          tx.onerror = () => reject(tx.error);
+        });
+      } else {
+        // Merge custom prompts non-destructively, pruning tombstoned entries
+        if (Array.isArray(b.customPrompts)) {
+          const existingPrompts = (await getLocalKV('custom_prompts')) || [];
+          const promptMap = new Map(existingPrompts.map(p => [p.id, p]));
+          const localTrashPrompts = (await getLocalKV('trash_prompts')) || [];
+          const localTrashPromptMap = new Map(localTrashPrompts.map(p => [p.id, safeTimestamp(p.deletedAt)]));
+          b.customPrompts.forEach(p => {
+            if (p && p.id) {
+              const localDeletedAt = localTrashPromptMap.get(p.id);
+              const incTime = safeTimestamp(p.updatedAt || p.createdAt);
+              if (!localDeletedAt || localDeletedAt <= incTime) {
+                const existing = promptMap.get(p.id);
+                if (!existing) {
+                  promptMap.set(p.id, p);
+                } else {
+                  const locTime = safeTimestamp(existing.updatedAt || existing.createdAt);
+                  if (locTime >= syncStartTime) hasInFlightEdits = true;
+                  promptMap.set(p.id, incTime >= locTime ? p : existing);
+                }
+              }
+            }
+          });
+          await setLocalKV('custom_prompts', Array.from(promptMap.values()));
+        }
+
+        if (Array.isArray(b.topicHints)) {
+          for (const h of b.topicHints) {
+            if (h && h.topicId) await putLocalItem(STORES.TOPIC_HINTS, h);
+          }
+        }
+        if (Array.isArray(b.hintQuota)) {
+          for (const q of b.hintQuota) {
+            if (q && q.dateStr) await putLocalItem(STORES.HINT_QUOTA, q);
+          }
+        }
+        if (Array.isArray(b.settings)) {
+          for (const s of b.settings) {
+            if (s && s.key && isCleanSettingKey(s.key)) {
+              await putLocalItem(STORES.SETTINGS, s);
+            }
+          }
+        }
+      }
+
+      // Hydrate localStorage snapshot settings into browser localStorage
+      if (b.localStorageSnapshot && typeof b.localStorageSnapshot === 'object') {
+        try {
+          if (typeof window !== 'undefined' && window.localStorage) {
+            Object.entries(b.localStorageSnapshot).forEach(([k, v]) => {
+              if (v !== null && v !== undefined && isCleanLsKey(k)) {
+                localStorage.setItem(k, v);
+              }
             });
           }
-        }
-      });
-
-      // Tombstone pruning: remove any local page that was deleted in incoming trash
-      for (const [id, page] of map.entries()) {
-        const remoteDeletedAt = incomingTrashMap.get(id);
-        if (remoteDeletedAt) {
-          const localPageTime = safeTimestamp(page.updatedAt || page.createdAt);
-          if (remoteDeletedAt > localPageTime) {
-            map.delete(id);
-          }
+        } catch (e) {
+          console.warn('[GDriveSync] Error hydrating localStorage settings:', e);
         }
       }
-
-      await setLocalKV('pages', Array.from(map.values()));
-
-      // Merge trash pages with latest deletedAt
-      const mergedTrashPages = new Map(localTrashPages.map(p => [p.id, p]));
-      incomingTrashPages.forEach(p => {
-        if (p && p.id) {
-          const exist = mergedTrashPages.get(p.id);
-          if (!exist || safeTimestamp(p.deletedAt) > safeTimestamp(exist.deletedAt)) {
-            mergedTrashPages.set(p.id, p);
-          }
-        }
-      });
-      await setLocalKV('trash_pages', Array.from(mergedTrashPages.values()));
     }
 
-    // Always persist unified graves from the incoming bundle (both strategies)
-    if (Array.isArray(b.unifiedGraves)) {
-      try {
-        const localGraves = (await getLocalKV('unified_graves')) || [];
-        const gravesMap = new Map(localGraves.map(g => [`${g.entityType}::${g.entityId}`, g]));
-        b.unifiedGraves.forEach(g => {
-          if (g && g.entityType && g.entityId) {
-            const k = `${g.entityType}::${g.entityId}`;
-            const exist = gravesMap.get(k);
-            if (!exist || safeTimestamp(g.deletedAt) > safeTimestamp(exist.deletedAt)) {
-              gravesMap.set(k, g);
+    // 5. CAMP Tracker
+    if (bundles['camp_tracker.json']) {
+      emit(++step, totalSteps, 'Hydrating CAMP tracker logs…');
+      const b = bundles['camp_tracker.json'];
+      if (strategy === 'replace') {
+        const db = await initDB();
+        let finalCampTracker = Array.isArray(b.campTracker) ? b.campTracker : [];
+        let finalCampData = Array.isArray(b.campData) ? b.campData : [];
+
+        if (syncStartTime > 0) {
+          const liveCampTracker = (await getAllLocalItems(STORES.CAMP_TRACKER)) || [];
+          const liveCampData = (await getAllLocalItems(STORES.CAMP_DATA)) || [];
+          const trackerMap = new Map(finalCampTracker.map(t => [t.id, t]));
+          liveCampTracker.forEach(t => {
+            if (t && t.id && safeTimestamp(t.updatedAt) >= syncStartTime) {
+              hasInFlightEdits = true;
+              trackerMap.set(t.id, t);
             }
-          }
+          });
+          finalCampTracker = Array.from(trackerMap.values());
+
+          const dataMap = new Map(finalCampData.map(d => [d.key, d]));
+          liveCampData.forEach(d => {
+            if (d && d.key && safeTimestamp(d.updatedAt) >= syncStartTime) {
+              hasInFlightEdits = true;
+              dataMap.set(d.key, d);
+            }
+          });
+          finalCampData = Array.from(dataMap.values());
+        }
+
+        // Atomic clear and replace for CAMP_TRACKER
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction(STORES.CAMP_TRACKER, 'readwrite');
+          const st = tx.objectStore(STORES.CAMP_TRACKER);
+          const clearReq = st.clear();
+          clearReq.onsuccess = () => {
+            finalCampTracker.forEach(t => { if (t && t.id) st.put(t); });
+          };
+          clearReq.onerror = () => reject(clearReq.error);
+          tx.oncomplete = () => resolve(true);
+          tx.onerror = () => reject(tx.error);
         });
-        await setLocalKV('unified_graves', Array.from(gravesMap.values()));
-      } catch (e) {
-        console.warn('[GDriveSync] Error hydrating unified graves:', e);
+
+        // Atomic clear and replace for CAMP_DATA
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction(STORES.CAMP_DATA, 'readwrite');
+          const st = tx.objectStore(STORES.CAMP_DATA);
+          const clearReq = st.clear();
+          clearReq.onsuccess = () => {
+            finalCampData.forEach(d => { if (d && d.key) st.put(d); });
+          };
+          clearReq.onerror = () => reject(clearReq.error);
+          tx.oncomplete = () => resolve(true);
+          tx.onerror = () => reject(tx.error);
+        });
+      } else {
+        if (Array.isArray(b.campTracker)) {
+          for (const t of b.campTracker) {
+            if (t && t.id) await putLocalItem(STORES.CAMP_TRACKER, t);
+          }
+        }
+        if (Array.isArray(b.campData)) {
+          for (const d of b.campData) {
+            if (d && d.key) await putLocalItem(STORES.CAMP_DATA, d);
+          }
+        }
+      }
+
+      // Always persist trashCamp tombstones (both strategies)
+      if (Array.isArray(b.trashCamp)) {
+        try {
+          const localTrashCamp = (await getLocalKV('trash_camp')) || [];
+          const trashCampMap = new Map(localTrashCamp.map(t => [t.id, t]));
+          b.trashCamp.forEach(t => {
+            if (t && t.id) {
+              const exist = trashCampMap.get(t.id);
+              if (!exist || safeTimestamp(t.deletedAt) > safeTimestamp(exist.deletedAt)) {
+                trashCampMap.set(t.id, t);
+              }
+            }
+          });
+          await setLocalKV('trash_camp', Array.from(trashCampMap.values()));
+        } catch (e) {
+          console.warn('[GDriveSync] Error hydrating trashCamp:', e);
+        }
       }
     }
 
-    // Always persist trashPrompts from the incoming bundle (both strategies)
-    if (Array.isArray(b.trashPrompts)) {
-      try {
-        const localTrashPrompts = (await getLocalKV('trash_prompts')) || [];
-        const trashPromptMap = new Map(localTrashPrompts.map(p => [p.id, p]));
-        b.trashPrompts.forEach(p => {
+    // 6. Scanned Pages & Image Occlusions (Zero-Data-Loss Restoration with Tombstone Pruning)
+    if (bundles['pages_bundle.json']) {
+      emit(++step, totalSteps, 'Hydrating Scanned Pages & Image Occlusions…');
+      const b = bundles['pages_bundle.json'];
+      const incomingPages = deserializeBinaryValues(b.pages || []);
+      const incomingTrashPages = deserializeBinaryValues(b.trashPages || []);
+
+      if (strategy === 'replace') {
+        const localPages = (await getLocalPages()) || [];
+        const localTrashPages = (await getLocalKV('trash_pages')) || [];
+        const localMap = new Map(localPages.map(p => [p.id, p]));
+        const hydratedPages = incomingPages.map(p => {
+          const local = localMap.get(p.id);
+          return {
+            ...p,
+            data: local?.data || p.data,
+            originalImage: local?.originalImage || p.originalImage,
+            imageUrl: local?.imageUrl || p.imageUrl
+          };
+        });
+
+        let finalPages = hydratedPages;
+        let finalTrash = incomingTrashPages;
+
+        if (syncStartTime > 0) {
+          const pageMap = new Map(hydratedPages.map(p => [p.id, p]));
+          const trashMap = new Map(incomingTrashPages.map(p => [p.id, p]));
+
+          localPages.forEach(p => {
+            if (p && p.id && safeTimestamp(p.updatedAt || p.createdAt) >= syncStartTime) {
+              hasInFlightEdits = true;
+              pageMap.set(p.id, p);
+            }
+          });
+
+          localTrashPages.forEach(p => {
+            if (p && p.id && safeTimestamp(p.deletedAt) >= syncStartTime) {
+              hasInFlightEdits = true;
+              trashMap.set(p.id, p);
+              pageMap.delete(p.id);
+            }
+          });
+
+          finalPages = Array.from(pageMap.values());
+          finalTrash = Array.from(trashMap.values());
+        }
+
+        await setLocalKV('pages', finalPages);
+        await setLocalKV('trash_pages', finalTrash);
+      } else {
+        const existing = (await getLocalPages()) || [];
+        const localTrashPages = (await getLocalKV('trash_pages')) || [];
+        const localTrashMap = new Map(localTrashPages.map(p => [p.id, safeTimestamp(p.deletedAt)]));
+        const incomingTrashMap = new Map(incomingTrashPages.map(p => [p.id, safeTimestamp(p.deletedAt)]));
+        const map = new Map(existing.map(p => [p.id, p]));
+
+        incomingPages.forEach(p => {
           if (p && p.id) {
-            const exist = trashPromptMap.get(p.id);
-            if (!exist || safeTimestamp(p.deletedAt) > safeTimestamp(exist.deletedAt)) {
-              trashPromptMap.set(p.id, p);
+            const localDeletedAt = localTrashMap.get(p.id);
+            const incTime = safeTimestamp(p.updatedAt || p.createdAt);
+            if (localDeletedAt && localDeletedAt > incTime) {
+              return;
+            }
+
+            const localP = map.get(p.id);
+            if (!localP) {
+              map.set(p.id, p);
+            } else {
+              const locTime = safeTimestamp(localP.updatedAt || localP.createdAt);
+              if (locTime >= syncStartTime) hasInFlightEdits = true;
+              map.set(p.id, {
+                ...(incTime >= locTime ? { ...localP, ...p } : { ...p, ...localP }),
+                data: localP.data || p.data,
+                originalImage: localP.originalImage || p.originalImage,
+                imageUrl: localP.imageUrl || p.imageUrl
+              });
             }
           }
         });
-        await setLocalKV('trash_prompts', Array.from(trashPromptMap.values()));
-      } catch (e) {
-        console.warn('[GDriveSync] Error hydrating trashPrompts:', e);
+
+        // Tombstone pruning: remove any local page that was deleted in incoming trash
+        for (const [id, page] of map.entries()) {
+          const remoteDeletedAt = incomingTrashMap.get(id);
+          if (remoteDeletedAt) {
+            const localPageTime = safeTimestamp(page.updatedAt || page.createdAt);
+            if (remoteDeletedAt > localPageTime) {
+              map.delete(id);
+            }
+          }
+        }
+
+        await setLocalKV('pages', Array.from(map.values()));
+
+        // Merge trash pages with latest deletedAt
+        const mergedTrashPages = new Map(localTrashPages.map(p => [p.id, p]));
+        incomingTrashPages.forEach(p => {
+          if (p && p.id) {
+            const exist = mergedTrashPages.get(p.id);
+            if (!exist || safeTimestamp(p.deletedAt) > safeTimestamp(exist.deletedAt)) {
+              mergedTrashPages.set(p.id, p);
+            }
+          }
+        });
+        await setLocalKV('trash_pages', Array.from(mergedTrashPages.values()));
+      }
+
+      // Always persist unified graves from the incoming bundle (both strategies)
+      if (Array.isArray(b.unifiedGraves)) {
+        try {
+          const localGraves = (await getLocalKV('unified_graves')) || [];
+          const gravesMap = new Map(localGraves.map(g => [`${g.entityType}::${g.entityId}`, g]));
+          b.unifiedGraves.forEach(g => {
+            if (g && g.entityType && g.entityId) {
+              const k = `${g.entityType}::${g.entityId}`;
+              const exist = gravesMap.get(k);
+              if (!exist || safeTimestamp(g.deletedAt) > safeTimestamp(exist.deletedAt)) {
+                gravesMap.set(k, g);
+              }
+            }
+          });
+          await setLocalKV('unified_graves', Array.from(gravesMap.values()));
+        } catch (e) {
+          console.warn('[GDriveSync] Error hydrating unified graves:', e);
+        }
+      }
+
+      // Always persist trashPrompts from the incoming bundle (both strategies)
+      if (Array.isArray(b.trashPrompts)) {
+        try {
+          const localTrashPrompts = (await getLocalKV('trash_prompts')) || [];
+          const trashPromptMap = new Map(localTrashPrompts.map(p => [p.id, p]));
+          b.trashPrompts.forEach(p => {
+            if (p && p.id) {
+              const exist = trashPromptMap.get(p.id);
+              if (!exist || safeTimestamp(p.deletedAt) > safeTimestamp(exist.deletedAt)) {
+                trashPromptMap.set(p.id, p);
+              }
+            }
+          });
+          await setLocalKV('trash_prompts', Array.from(trashPromptMap.values()));
+        } catch (e) {
+          console.warn('[GDriveSync] Error hydrating trashPrompts:', e);
+        }
       }
     }
-  }
 
-  emit(++step, totalSteps, 'Local database hydrated successfully.');
+    emit(++step, totalSteps, 'Local database hydrated successfully.');
+    return { success: true, hasInFlightEdits };
   } finally {
     if (!options.deferUnsuppress) {
       setMutationNotificationSuppressed(false);
@@ -1743,14 +2213,15 @@ export async function saveLastSyncedHashes(hashes) {
  * Merges Subject Tracker array documents with topic-level LWW conflict resolution and deletion awareness.
  * Guarantees Zero-Data-Loss: newer ratings, study dates, and notes always win.
  */
-export function mergeSubjectTrackerArrays(localTracker = [], remoteTracker = [], localTrashTopics = [], remoteTrashTopics = []) {
+export function mergeSubjectTrackerArrays(localTracker = [], remoteTracker = [], localTrashTopics = [], remoteTrashTopics = [], unifiedGraves = []) {
   const locList = Array.isArray(localTracker) ? localTracker : [];
   const remList = Array.isArray(remoteTracker) ? remoteTracker : [];
-  
+
   const locTrash = Array.isArray(localTrashTopics) ? localTrashTopics : [];
   const remTrash = Array.isArray(remoteTrashTopics) ? remoteTrashTopics : [];
+  const graves = Array.isArray(unifiedGraves) ? unifiedGraves : [];
 
-  // Index tombstones by topicId, topicName, and composite keys
+  // Index tombstones by topicId, topicName, and composite keys from all trash stores & unified graves
   const trashTimeMap = new Map();
   [...locTrash, ...remTrash].forEach(t => {
     if (!t) return;
@@ -1767,6 +2238,23 @@ export function mergeSubjectTrackerArrays(localTracker = [], remoteTracker = [],
     if (t.docId && t.topicName) {
       const compKey = `${String(t.docId).toLowerCase()}_${String(t.topicName).toLowerCase()}`;
       trashTimeMap.set(compKey, Math.max(delTime, trashTimeMap.get(compKey) || 0));
+    }
+  });
+
+  graves.forEach(g => {
+    if (!g) return;
+    const type = g.entityType || g.type;
+    if (type === 'tracker_topic' || type === 'topic') {
+      const delTime = safeTimestamp(g.deletedAt || g.timestamp || 0);
+      if (g.entityId) trashTimeMap.set(String(g.entityId).toLowerCase(), Math.max(delTime, trashTimeMap.get(String(g.entityId).toLowerCase()) || 0));
+      if (g.metadata?.topicName) trashTimeMap.set(String(g.metadata.topicName).toLowerCase(), Math.max(delTime, trashTimeMap.get(String(g.metadata.topicName).toLowerCase()) || 0));
+      if (g.metadata?.name) trashTimeMap.set(String(g.metadata.name).toLowerCase(), Math.max(delTime, trashTimeMap.get(String(g.metadata.name).toLowerCase()) || 0));
+      if ((g.parentId || g.metadata?.docId) && (g.metadata?.topicName || g.metadata?.name)) {
+        const pId = g.parentId || g.metadata?.docId;
+        const tName = g.metadata?.topicName || g.metadata?.name;
+        const compKey = `${String(pId).toLowerCase()}_${String(tName).toLowerCase()}`;
+        trashTimeMap.set(compKey, Math.max(delTime, trashTimeMap.get(compKey) || 0));
+      }
     }
   });
 
@@ -1789,7 +2277,7 @@ export function mergeSubjectTrackerArrays(localTracker = [], remoteTracker = [],
   };
 
   const map = new Map();
-  
+
   // Index all local subject documents
   locList.forEach(doc => {
     if (doc) {
@@ -1797,13 +2285,13 @@ export function mergeSubjectTrackerArrays(localTracker = [], remoteTracker = [],
       if (key) map.set(key, { ...doc });
     }
   });
-  
+
   // Merge remote subject documents
   remList.forEach(remDoc => {
     if (!remDoc) return;
     const key = String(remDoc.id || remDoc.subject || '').trim().toLowerCase();
     if (!key) return;
-    
+
     if (!map.has(key)) {
       const remTopics = remDoc.topics && typeof remDoc.topics === 'object' ? remDoc.topics : {};
       const filteredRemTopics = {};
@@ -1815,17 +2303,17 @@ export function mergeSubjectTrackerArrays(localTracker = [], remoteTracker = [],
       map.set(key, { ...remDoc, topics: filteredRemTopics });
       return;
     }
-    
+
     const locDoc = map.get(key);
     const locDocTime = safeTimestamp(locDoc.updatedAt || locDoc.createdAt || 0);
     const remDocTime = safeTimestamp(remDoc.updatedAt || remDoc.createdAt || 0);
 
     const locTopics = locDoc.topics && typeof locDoc.topics === 'object' ? locDoc.topics : {};
     const remTopics = remDoc.topics && typeof remDoc.topics === 'object' ? remDoc.topics : {};
-    
+
     const mergedTopics = {};
     const allTopicKeys = new Set([...Object.keys(locTopics), ...Object.keys(remTopics)]);
-    
+
     allTopicKeys.forEach(tKey => {
       const locT = locTopics[tKey];
       const remT = remTopics[tKey];
@@ -1834,78 +2322,116 @@ export function mergeSubjectTrackerArrays(localTracker = [], remoteTracker = [],
       if (isTopicTombstoned(key, tKey, locT || remT)) {
         return;
       }
-      
+
       // Topic only in remote
       if (!locT && remT) {
+        const remTopicTime = safeTimestamp(remT.updatedAt || remT.lastReviewDate || remT.createdAt || 0);
+        // If local doc was updated more recently than this remote topic was touched, local doc deleted it
+        if (locDocTime > remTopicTime) {
+          return; // Prune (deletion wins)
+        }
         mergedTopics[tKey] = remT;
         return;
       }
-      
+
       // Topic only in local
       if (locT && !remT) {
+        const locTopicTime = safeTimestamp(locT.updatedAt || locT.lastReviewDate || locT.createdAt || 0);
+        // If remote doc was updated more recently than this local topic was touched, remote doc deleted it
+        if (remDocTime > locTopicTime) {
+          return; // Prune (deletion wins)
+        }
         mergedTopics[tKey] = locT;
         return;
       }
-      
-      // Both exist: resolve by Last-Write-Wins and FSRS state recency
+
+      // Both exist: resolve by Last-Write-Wins (updatedAt / createdAt)
+      const locTopicTime = safeTimestamp(locT.updatedAt || locT.createdAt || locDocTime || 0);
+      const remTopicTime = safeTimestamp(remT.updatedAt || remT.createdAt || remDocTime || 0);
       const locReviewDate = safeTimestamp(locT.lastReviewDate);
       const remReviewDate = safeTimestamp(remT.lastReviewDate);
-      const locTopicTime = safeTimestamp(locT.updatedAt || locT.createdAt || 0);
-      const remTopicTime = safeTimestamp(remT.updatedAt || remT.createdAt || 0);
 
       let winnerTopic = locT;
-      if (remReviewDate > locReviewDate) {
+      let isLocalFresher = locTopicTime >= remTopicTime;
+
+      if (remTopicTime > locTopicTime) {
         winnerTopic = remT;
-      } else if (locReviewDate > remReviewDate) {
-        winnerTopic = locT;
-      } else if (remTopicTime > locTopicTime) {
-        winnerTopic = remT;
+        isLocalFresher = false;
       } else if (locTopicTime > remTopicTime) {
         winnerTopic = locT;
+        isLocalFresher = true;
+      } else if (remReviewDate > locReviewDate) {
+        winnerTopic = remT;
+        isLocalFresher = false;
+      } else if (locReviewDate > remReviewDate) {
+        winnerTopic = locT;
+        isLocalFresher = true;
       } else {
         const locReps = Number(locT.reviewCount || (Array.isArray(locT.studyDates) ? locT.studyDates.length : 0));
         const remReps = Number(remT.reviewCount || (Array.isArray(remT.studyDates) ? remT.studyDates.length : 0));
         winnerTopic = remReps >= locReps ? remT : locT;
+        isLocalFresher = locReps >= remReps;
       }
-      
-      // Non-destructive preservation of study dates & notes
-      const locDates = Array.isArray(locT.studyDates) ? locT.studyDates : [];
-      const remDates = Array.isArray(remT.studyDates) ? remT.studyDates : [];
-      const combinedStudyDates = Array.from(new Set([...locDates, ...remDates])).filter(Boolean).sort();
-      
-      const mergedPage = winnerTopic.page !== undefined ? winnerTopic.page : (locT.page !== undefined ? locT.page : (remT.page || ''));
-      const mergedEndPage = winnerTopic.endPage !== undefined ? winnerTopic.endPage : (locT.endPage !== undefined ? locT.endPage : (remT.endPage || ''));
-      const mergedPageCount = winnerTopic.pageCount !== undefined ? winnerTopic.pageCount : (locT.pageCount !== undefined ? locT.pageCount : remT.pageCount);
-      const mergedPageWeight = winnerTopic.pageWeight !== undefined ? winnerTopic.pageWeight : (locT.pageWeight !== undefined ? locT.pageWeight : remT.pageWeight);
-      const mergedNotes = winnerTopic.notes !== undefined ? winnerTopic.notes : (locT.notes !== undefined ? locT.notes : remT.notes);
-      const mergedMnemonics = winnerTopic.mnemonics !== undefined ? winnerTopic.mnemonics : (locT.mnemonics !== undefined ? locT.mnemonics : remT.mnemonics);
-      
-      const latestTopicTime = Math.max(locReviewDate, remReviewDate, locTopicTime, remTopicTime, safeTimestamp(winnerTopic.updatedAt), Date.now());
-      
+
+      // Study dates & review metrics:
+      // If one side is strictly fresher (e.g. after review, undo, or manual edit), the fresher side's studyDates & reviewCount take precedence
+      let finalStudyDates = [];
+      let finalReviewCount = 0;
+      let finalReps = 0;
+
+      if (locTopicTime !== remTopicTime) {
+        const fresherTopic = isLocalFresher ? locT : remT;
+        finalStudyDates = Array.isArray(fresherTopic.studyDates) ? fresherTopic.studyDates : [];
+        finalReviewCount = fresherTopic.reviewCount !== undefined ? Number(fresherTopic.reviewCount) : finalStudyDates.length;
+        finalReps = fresherTopic.reps !== undefined ? Number(fresherTopic.reps) : finalReviewCount;
+      } else {
+        // Equal timestamps (legacy/tie): union non-destructively
+        const locDates = Array.isArray(locT.studyDates) ? locT.studyDates : [];
+        const remDates = Array.isArray(remT.studyDates) ? remT.studyDates : [];
+        finalStudyDates = Array.from(new Set([...locDates, ...remDates])).filter(Boolean).sort();
+        finalReviewCount = Math.max(Number(winnerTopic.reviewCount || 0), Number(locT.reviewCount || 0), Number(remT.reviewCount || 0), finalStudyDates.length);
+        finalReps = Math.max(Number(winnerTopic.reps || 0), Number(locT.reps || 0), Number(remT.reps || 0), finalStudyDates.length);
+      }
+
+      const mergedPage = winnerTopic.page || locT.page || remT.page || '';
+      const mergedPageCount = winnerTopic.pageCount !== undefined ? winnerTopic.pageCount : (locT.pageCount || remT.pageCount);
+      const mergedPageWeight = winnerTopic.pageWeight !== undefined ? winnerTopic.pageWeight : (locT.pageWeight || remT.pageWeight);
+      const mergedNotes = winnerTopic.notes !== undefined ? winnerTopic.notes : (locT.notes || remT.notes);
+      const mergedMnemonics = winnerTopic.mnemonics !== undefined ? winnerTopic.mnemonics : (locT.mnemonics || remT.mnemonics);
+
+      const latestTopicTime = Math.max(locTopicTime, remTopicTime, safeTimestamp(winnerTopic.updatedAt));
+
       mergedTopics[tKey] = {
         ...locT,
         ...remT,
         ...winnerTopic,
         page: mergedPage,
-        ...(mergedEndPage !== undefined ? { endPage: mergedEndPage } : {}),
         ...(mergedPageCount !== undefined ? { pageCount: mergedPageCount } : {}),
         ...(mergedPageWeight !== undefined ? { pageWeight: mergedPageWeight } : {}),
         ...(mergedNotes !== undefined ? { notes: mergedNotes } : {}),
         ...(mergedMnemonics !== undefined ? { mnemonics: mergedMnemonics } : {}),
-        studyDates: combinedStudyDates,
-        reviewCount: Math.max(Number(winnerTopic.reviewCount || 0), Number(locT.reviewCount || 0), Number(remT.reviewCount || 0), combinedStudyDates.length),
-        reps: Math.max(Number(winnerTopic.reps || 0), Number(locT.reps || 0), Number(remT.reps || 0), combinedStudyDates.length),
+        studyDates: finalStudyDates,
+        reviewCount: finalReviewCount,
+        reps: finalReps,
+        stability: winnerTopic.stability !== undefined ? winnerTopic.stability : null,
+        difficulty: winnerTopic.difficulty !== undefined ? winnerTopic.difficulty : null,
+        retrievability: winnerTopic.retrievability !== undefined ? winnerTopic.retrievability : null,
+        interval: winnerTopic.interval !== undefined ? winnerTopic.interval : null,
+        nextReviewDue: winnerTopic.nextReviewDue !== undefined ? winnerTopic.nextReviewDue : null,
+        lastReviewDate: winnerTopic.lastReviewDate !== undefined ? winnerTopic.lastReviewDate : (finalStudyDates.length > 0 ? finalStudyDates[finalStudyDates.length - 1] : null),
+        lapses: winnerTopic.lapses !== undefined ? winnerTopic.lapses : 0,
+        isLeech: Boolean(winnerTopic.isLeech),
         activatedDate: winnerTopic.activatedDate || locT.activatedDate || remT.activatedDate || null,
         updatedAt: new Date(latestTopicTime || Date.now()).toISOString()
       };
     });
-    
+
     const maxDocTime = Math.max(
       locDocTime,
       remDocTime,
       ...Object.values(mergedTopics).map(t => safeTimestamp(t.updatedAt || t.lastReviewDate))
     );
-    
+
     map.set(key, {
       ...remDoc,
       ...locDoc,
@@ -1915,52 +2441,44 @@ export function mergeSubjectTrackerArrays(localTracker = [], remoteTracker = [],
       updatedAt: new Date(maxDocTime || Date.now()).toISOString()
     });
   });
-  
+
   return Array.from(map.values());
 }
 
 /**
- * Merges PYT user progress by subject ID, taking the maximum review/completion count per topic and unioning page/merge maps.
+ * Merges PYT user progress by subject ID, taking the maximum review/completion count per topic.
  */
 export function mergePytUserProgress(localProg = [], remoteProg = []) {
   const locList = Array.isArray(localProg) ? localProg : [];
   const remList = Array.isArray(remoteProg) ? remoteProg : [];
   const map = new Map();
-  
+
   locList.forEach(p => {
     if (p) {
       const k = String(p.id || p.subject || '').trim().toLowerCase();
       if (k) map.set(k, { ...p });
     }
   });
-  
+
   remList.forEach(remP => {
     if (!remP) return;
     const k = String(remP.id || remP.subject || '').trim().toLowerCase();
     if (!k) return;
-    
+
     if (!map.has(k)) {
       map.set(k, { ...remP });
       return;
     }
-    
+
     const locP = map.get(k);
     const locMap = locP.progress_map || {};
     const remMap = remP.progress_map || {};
     const mergedMap = { ...locMap };
-    
+
     Object.entries(remMap).forEach(([tKey, val]) => {
       mergedMap[tKey] = Math.max(Number(locMap[tKey] || 0), Number(val || 0));
     });
 
-    const locPages = locP.pages_map || {};
-    const remPages = remP.pages_map || {};
-    const mergedPages = { ...locPages, ...remPages };
-
-    const locMerged = locP.merged_topics || {};
-    const remMerged = remP.merged_topics || {};
-    const mergedTopics = { ...locMerged, ...remMerged };
-    
     const maxTime = Math.max(safeTimestamp(locP.updatedAt), safeTimestamp(remP.updatedAt), Date.now());
     map.set(k, {
       ...remP,
@@ -1968,95 +2486,11 @@ export function mergePytUserProgress(localProg = [], remoteProg = []) {
       id: locP.id || remP.id || k,
       subject: locP.subject || remP.subject || k,
       progress_map: mergedMap,
-      pages_map: mergedPages,
-      merged_topics: mergedTopics,
       updatedAt: new Date(maxTime).toISOString()
     });
   });
-  
+
   return Array.from(map.values());
-}
-
-/**
- * Merges Study Schedule objects by date, merging tasks non-destructively.
- */
-export function mergeStudyScheduleObjects(locSched = {}, remSched = {}) {
-  const loc = (locSched && typeof locSched === 'object') ? locSched : {};
-  const rem = (remSched && typeof remSched === 'object') ? remSched : {};
-  const merged = {};
-  const allDates = new Set([...Object.keys(loc), ...Object.keys(rem)]);
-
-  allDates.forEach(dateStr => {
-    const locDay = loc[dateStr];
-    const remDay = rem[dateStr];
-
-    if (!locDay && remDay) {
-      merged[dateStr] = remDay;
-      return;
-    }
-    if (locDay && !remDay) {
-      merged[dateStr] = locDay;
-      return;
-    }
-
-    // Both exist for this date
-    const locTasks = Array.isArray(locDay?.tasks) ? locDay.tasks : [];
-    const remTasks = Array.isArray(remDay?.tasks) ? remDay.tasks : [];
-
-    const getTaskKey = (t) => {
-      if (t.id) return String(t.id).toLowerCase();
-      const sub = (t.subject || '').trim().toLowerCase();
-      const top = (t.topicName || t.topic || '').trim().toLowerCase();
-      if (sub || top) return `${sub}_${top}`;
-      return computeHash(canonicalStringify(t));
-    };
-
-    const taskMap = new Map();
-    locTasks.forEach(t => {
-      if (t) taskMap.set(getTaskKey(t), { ...t });
-    });
-
-    remTasks.forEach(remT => {
-      if (!remT) return;
-      const k = getTaskKey(remT);
-      if (!taskMap.has(k)) {
-        taskMap.set(k, { ...remT });
-      } else {
-        const locT = taskMap.get(k);
-        const locTTime = safeTimestamp(locT.updatedAt || locDay.updatedAt || 0);
-        const remTTime = safeTimestamp(remT.updatedAt || remDay.updatedAt || 0);
-
-        // If either marked it completed, it stays completed (max state / CRDT)
-        const isCompleted = Boolean(locT.completed || remT.completed);
-        const winner = remTTime >= locTTime ? remT : locT;
-        const rating = winner.rating || locT.rating || remT.rating;
-
-        taskMap.set(k, {
-          ...locT,
-          ...remT,
-          ...winner,
-          completed: isCompleted,
-          ...(rating ? { rating } : {}),
-          updatedAt: new Date(Math.max(locTTime, remTTime, Date.now())).toISOString()
-        });
-      }
-    });
-
-    const maxDayTime = Math.max(
-      safeTimestamp(locDay?.updatedAt || 0),
-      safeTimestamp(remDay?.updatedAt || 0),
-      ...Array.from(taskMap.values()).map(t => safeTimestamp(t.updatedAt || 0))
-    );
-
-    merged[dateStr] = {
-      ...remDay,
-      ...locDay,
-      tasks: Array.from(taskMap.values()),
-      updatedAt: new Date(maxDayTime || Date.now()).toISOString()
-    };
-  });
-
-  return merged;
 }
 
 /**
@@ -2066,11 +2500,11 @@ export function mergeTextbooksMetadata(localBooks = [], remoteBooks = []) {
   const locList = Array.isArray(localBooks) ? localBooks : [];
   const remList = Array.isArray(remoteBooks) ? remoteBooks : [];
   const map = new Map();
-  
+
   locList.forEach(b => {
     if (b && b.id) map.set(b.id, { ...b });
   });
-  
+
   remList.forEach(remB => {
     if (!remB || !remB.id) return;
     const k = remB.id;
@@ -2078,12 +2512,12 @@ export function mergeTextbooksMetadata(localBooks = [], remoteBooks = []) {
       map.set(k, { ...remB });
       return;
     }
-    
+
     const locB = map.get(k);
     const locTime = safeTimestamp(locB.updatedAt || locB.lastOpened || 0);
     const remTime = safeTimestamp(remB.updatedAt || remB.lastOpened || 0);
     const winner = remTime >= locTime ? remB : locB;
-    
+
     map.set(k, {
       ...locB,
       ...remB,
@@ -2091,7 +2525,7 @@ export function mergeTextbooksMetadata(localBooks = [], remoteBooks = []) {
       updatedAt: new Date(Math.max(locTime, remTime, Date.now())).toISOString()
     });
   });
-  
+
   return Array.from(map.values());
 }
 
@@ -2305,9 +2739,12 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
   const remTrashMap = new Map((remTrashLogs || []).map(t => [t.dateKey, safeTimestamp(t.deletedAt)]));
 
   const gtGravesMap = new Map();
+  const studyLogGravesMap = new Map();
   (unifiedGraves || []).forEach(g => {
-    if (g && (g.entityType === 'gt' || g.type === 'gt')) {
-      const delTime = safeTimestamp(g.deletedAt || g.timestamp || 0);
+    if (!g) return;
+    const type = g.entityType || g.type;
+    const delTime = safeTimestamp(g.deletedAt || g.timestamp || 0);
+    if (type === 'gt') {
       if (g.entityId) gtGravesMap.set(String(g.entityId).toLowerCase(), delTime);
       if (g.metadata?.name) {
         gtGravesMap.set(String(g.metadata.name).trim().toLowerCase(), delTime);
@@ -2315,12 +2752,18 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
           gtGravesMap.set(`${String(g.parentId).trim().toLowerCase()}_${String(g.metadata.name).trim().toLowerCase()}`, delTime);
         }
       }
+    } else if (type === 'study_log') {
+      if (g.entityId) {
+        studyLogGravesMap.set(String(g.entityId), delTime);
+        locTrashMap.set(String(g.entityId), Math.max(delTime, locTrashMap.get(String(g.entityId)) || 0));
+        remTrashMap.set(String(g.entityId), Math.max(delTime, remTrashMap.get(String(g.entityId)) || 0));
+      }
     }
   });
 
-  // 1. Prune local logs if remote deleted them after their last update
+  // 1. Prune local logs if remote or unified graves deleted them after their last update
   for (const [dateKey, log] of Object.entries(mergedLogs)) {
-    const remDeletedAt = remTrashMap.get(dateKey);
+    const remDeletedAt = remTrashMap.get(dateKey) || studyLogGravesMap.get(dateKey);
     if (remDeletedAt) {
       const logTime = safeTimestamp(log?.updatedAt || log?.lastReviewDate || 0);
       if (remDeletedAt > logTime) {
@@ -2331,8 +2774,8 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
 
   // 2. Process incoming remote logs
   for (const [dateKey, incLog] of Object.entries(remLogs || {})) {
-    const locDeletedAt = locTrashMap.get(dateKey);
-    const remDeletedAt = remTrashMap.get(dateKey);
+    const locDeletedAt = locTrashMap.get(dateKey) || studyLogGravesMap.get(dateKey);
+    const remDeletedAt = remTrashMap.get(dateKey) || studyLogGravesMap.get(dateKey);
     const incTime = safeTimestamp(incLog?.updatedAt || incLog?.lastReviewDate || 0);
 
     // If local deleted this log after incoming update, do NOT resurrect
@@ -2349,50 +2792,103 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
     } else {
       const cur = mergedLogs[dateKey];
       const curTime = safeTimestamp(cur.updatedAt || cur.lastReviewDate || 0);
+      const isLocalFresher = curTime > incTime;
+      const isRemoteFresher = incTime > curTime;
 
       const existingFsrs = Array.isArray(cur.fsrsLogs) ? cur.fsrsLogs : [];
       const incomingFsrs = Array.isArray(incLog?.fsrsLogs) ? incLog.fsrsLogs : [];
 
       const fsrsMap = new Map();
-      const getFsrsKey = (l) => l.id || 
-        (l.cardId && l.timestamp ? `${l.cardId}_${l.rating || 'r'}_${l.timestamp}` : 
-        (l.topicName && (l.timestamp || l.dateStr) ? `${l.topicName}_${l.rating || 'r'}_${l.timestamp || l.dateStr}` : 
-        computeHash(canonicalStringify(l))));
-      
-      existingFsrs.forEach(l => { if (l) fsrsMap.set(getFsrsKey(l), l); });
-      incomingFsrs.forEach(l => {
-        if (l) {
-          const k = getFsrsKey(l);
-          if (!fsrsMap.has(k)) {
-            fsrsMap.set(k, l);
-          } else {
-            const locItem = fsrsMap.get(k);
-            const locItemTime = safeTimestamp(locItem.timestamp || locItem.updatedAt || 0);
-            const remItemTime = safeTimestamp(l.timestamp || l.updatedAt || 0);
-            fsrsMap.set(k, remItemTime >= locItemTime ? l : locItem);
+      const getFsrsKey = (l) => l.id ||
+        (l.cardId && l.timestamp ? `${l.cardId}_${l.rating || 'r'}_${l.timestamp}` :
+          (l.topicName && (l.timestamp || l.dateStr) ? `${l.topicName}_${l.rating || 'r'}_${l.timestamp || l.dateStr}` :
+            computeHash(canonicalStringify(l))));
+
+      if (isLocalFresher) {
+        // Local is strictly newer (e.g. log was deleted, undone, or modified locally)
+        // Seed with local FSRS logs
+        existingFsrs.forEach(l => { if (l) fsrsMap.set(getFsrsKey(l), l); });
+        // Only accept remote logs if their individual timestamp is strictly newer than local's last update
+        incomingFsrs.forEach(l => {
+          if (l) {
+            const lTime = safeTimestamp(l.timestamp || l.updatedAt || 0);
+            if (lTime > curTime) {
+              const k = getFsrsKey(l);
+              fsrsMap.set(k, l);
+            }
           }
-        }
-      });
+        });
+      } else if (isRemoteFresher) {
+        // Remote is strictly newer (edited on another device)
+        incomingFsrs.forEach(l => { if (l) fsrsMap.set(getFsrsKey(l), l); });
+        existingFsrs.forEach(l => {
+          if (l) {
+            const lTime = safeTimestamp(l.timestamp || l.updatedAt || 0);
+            if (lTime > incTime) {
+              const k = getFsrsKey(l);
+              fsrsMap.set(k, l);
+            }
+          }
+        });
+      } else {
+        // Equal timestamps: deduplicated union
+        existingFsrs.forEach(l => { if (l) fsrsMap.set(getFsrsKey(l), l); });
+        incomingFsrs.forEach(l => {
+          if (l) {
+            const k = getFsrsKey(l);
+            if (!fsrsMap.has(k)) {
+              fsrsMap.set(k, l);
+            } else {
+              const locItem = fsrsMap.get(k);
+              const locItemTime = safeTimestamp(locItem.timestamp || locItem.updatedAt || 0);
+              const remItemTime = safeTimestamp(l.timestamp || l.updatedAt || 0);
+              fsrsMap.set(k, remItemTime >= locItemTime ? l : locItem);
+            }
+          }
+        });
+      }
 
       const existingSessions = Array.isArray(cur.sessions) ? cur.sessions : [];
       const incomingSessions = Array.isArray(incLog?.sessions) ? incLog.sessions : [];
       const sessionMap = new Map();
       const getSessionKey = (s) => s.id || (s.subject && s.startedAt ? `${s.subject}_${s.startedAt}_${s.duration || 0}` : computeHash(canonicalStringify(s)));
-      
-      existingSessions.forEach(s => { if (s) sessionMap.set(getSessionKey(s), s); });
-      incomingSessions.forEach(s => {
-        if (s) {
-          const k = getSessionKey(s);
-          if (!sessionMap.has(k)) {
-            sessionMap.set(k, s);
-          } else {
-            const locSess = sessionMap.get(k);
-            const locSessTime = safeTimestamp(locSess.updatedAt || locSess.startedAt || 0);
-            const remSessTime = safeTimestamp(s.updatedAt || s.startedAt || 0);
-            sessionMap.set(k, remSessTime >= locSessTime ? s : locSess);
+
+      if (isLocalFresher) {
+        existingSessions.forEach(s => { if (s) sessionMap.set(getSessionKey(s), s); });
+        incomingSessions.forEach(s => {
+          if (s) {
+            const sTime = safeTimestamp(s.updatedAt || s.startedAt || 0);
+            if (sTime > curTime) {
+              sessionMap.set(getSessionKey(s), s);
+            }
           }
-        }
-      });
+        });
+      } else if (isRemoteFresher) {
+        incomingSessions.forEach(s => { if (s) sessionMap.set(getSessionKey(s), s); });
+        existingSessions.forEach(s => {
+          if (s) {
+            const sTime = safeTimestamp(s.updatedAt || s.startedAt || 0);
+            if (sTime > incTime) {
+              sessionMap.set(getSessionKey(s), s);
+            }
+          }
+        });
+      } else {
+        existingSessions.forEach(s => { if (s) sessionMap.set(getSessionKey(s), s); });
+        incomingSessions.forEach(s => {
+          if (s) {
+            const k = getSessionKey(s);
+            if (!sessionMap.has(k)) {
+              sessionMap.set(k, s);
+            } else {
+              const locSess = sessionMap.get(k);
+              const locSessTime = safeTimestamp(locSess.updatedAt || locSess.startedAt || 0);
+              const remSessTime = safeTimestamp(s.updatedAt || s.startedAt || 0);
+              sessionMap.set(k, remSessTime >= locSessTime ? s : locSess);
+            }
+          }
+        });
+      }
 
       // Prune deleted sessions if marked with isDeleted
       for (const [sKey, sObj] of sessionMap.entries()) {
@@ -2439,7 +2935,7 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
       };
 
       // 1. Seed with local GTs
-      existingGts.forEach(g => { 
+      existingGts.forEach(g => {
         if (g) {
           if (isGtTombstonedInGraves(g)) {
             reconciledGts.push({ ...g, isDeleted: true, deletedAt: new Date(gtGravesMap.get(g.id) || Date.now()).toISOString() });
@@ -2494,25 +2990,44 @@ export function mergeStudyLogsObjects(locLogs = {}, remLogs = {}, locTrashLogs =
       const allSessions = Array.from(sessionMap.values());
       const sessionHours = allSessions.reduce((sum, s) => sum + (Number(s.duration || s.minutes || 0) / 60 || Number(s.hours || 0)), 0);
 
-      const isLocalFresher = curTime >= incTime;
       const baseLog = isLocalFresher ? cur : incLog;
       const otherLog = isLocalFresher ? incLog : cur;
 
-      const locCards = (cur.cards !== undefined && cur.cards !== null && cur.cards !== '') ? Number(cur.cards) : Number(cur.totalCardsReviewed || 0);
-      const remCards = (incLog?.cards !== undefined && incLog?.cards !== null && incLog?.cards !== '') ? Number(incLog.cards) : Number(incLog?.totalCardsReviewed || 0);
-      const totalCards = Math.max(locCards, remCards, fsrsMap.size);
+      let totalHours;
+      let totalCards;
+      let totalQuestions;
+      let totalPages;
 
-      const locQuestions = (cur.questions !== undefined && cur.questions !== null && cur.questions !== '') ? Number(cur.questions) : Number(cur.totalQuestionsAttempted || 0);
-      const remQuestions = (incLog?.questions !== undefined && incLog?.questions !== null && incLog?.questions !== '') ? Number(incLog.questions) : Number(incLog?.totalQuestionsAttempted || 0);
-      const totalQuestions = Math.max(locQuestions, remQuestions);
+      if (curTime !== incTime) {
+        // Clear LWW: The fresher record's explicit user values take precedence
+        totalHours = (baseLog.hours !== undefined && baseLog.hours !== null && baseLog.hours !== '')
+          ? Number(baseLog.hours)
+          : ((baseLog.studyHours !== undefined && baseLog.studyHours !== null && baseLog.studyHours !== '')
+            ? Number(baseLog.studyHours)
+            : (sessionHours > 0 ? Number(sessionHours.toFixed(2)) : Number(otherLog?.hours || otherLog?.studyHours || 0)));
 
-      const locPages = Number(cur.pages || 0);
-      const remPages = Number(incLog?.pages || 0);
-      const totalPages = Math.max(locPages, remPages);
+        totalCards = (baseLog.cards !== undefined && baseLog.cards !== null && baseLog.cards !== '')
+          ? Number(baseLog.cards)
+          : ((baseLog.totalCardsReviewed !== undefined && baseLog.totalCardsReviewed !== null && baseLog.totalCardsReviewed !== '')
+            ? Number(baseLog.totalCardsReviewed)
+            : fsrsMap.size);
 
-      const locHours = (cur.hours !== undefined && cur.hours !== null && cur.hours !== '') ? Number(cur.hours) : Number(cur.studyHours || 0);
-      const remHours = (incLog?.hours !== undefined && incLog?.hours !== null && incLog?.hours !== '') ? Number(incLog.hours) : Number(incLog?.studyHours || 0);
-      const totalHours = sessionHours > 0 ? Number(sessionHours.toFixed(2)) : Math.max(locHours, remHours);
+        totalQuestions = (baseLog.questions !== undefined && baseLog.questions !== null && baseLog.questions !== '')
+          ? Number(baseLog.questions)
+          : ((baseLog.totalQuestionsAttempted !== undefined && baseLog.totalQuestionsAttempted !== null && baseLog.totalQuestionsAttempted !== '')
+            ? Number(baseLog.totalQuestionsAttempted)
+            : Number(otherLog?.questions || otherLog?.totalQuestionsAttempted || 0));
+
+        totalPages = (baseLog.pages !== undefined && baseLog.pages !== null && baseLog.pages !== '')
+          ? Number(baseLog.pages)
+          : Number(otherLog?.pages || 0);
+      } else {
+        // Equal timestamps (or both missing/legacy logs): combine conservatively
+        totalHours = sessionHours > 0 ? Number(sessionHours.toFixed(2)) : Math.max(Number(cur.studyHours || cur.hours || 0), Number(incLog?.studyHours || incLog?.hours || 0));
+        totalCards = Math.max(Number(cur.totalCardsReviewed || cur.cards || 0), Number(incLog?.totalCardsReviewed || incLog?.cards || 0), fsrsMap.size);
+        totalQuestions = Math.max(Number(cur.totalQuestionsAttempted || cur.questions || 0), Number(incLog?.totalQuestionsAttempted || incLog?.questions || 0));
+        totalPages = Math.max(Number(cur.pages || 0), Number(incLog?.pages || 0));
+      }
 
       const latestUpdatedAt = isLocalFresher
         ? (cur.updatedAt || new Date(curTime || Date.now()).toISOString())
@@ -2574,7 +3089,7 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
         } else {
           const localRevTime = safeTimestamp(localCard.lastReviewDate || 0);
           const incRevTime = safeTimestamp(inc.lastReviewDate || 0);
-          
+
           let latestRev = localCard;
           if (incRevTime > localRevTime) {
             latestRev = inc;
@@ -2712,11 +3227,12 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
       }
     });
 
+    const unifiedGravesCur = (downloadedBundles['pages_bundle.json']?.unifiedGraves) || (localBundles['pages_bundle.json']?.unifiedGraves) || [];
     merged['curriculum_topics.json'] = {
       topics: serializeBinaryValues(Array.from(topicMap.values())),
       trashTopics: serializeBinaryValues(Array.from(mergedTrashTopics.values())),
       pytData: serializeBinaryValues(Array.from(pytMap.values())),
-      subjectTracker: mergeSubjectTrackerArrays(locCur.subjectTracker || [], remCur.subjectTracker || [], locTrashTopics, remTrashTopics),
+      subjectTracker: mergeSubjectTrackerArrays(locCur.subjectTracker || [], remCur.subjectTracker || [], locTrashTopics, remTrashTopics, unifiedGravesCur),
       pytUserProgress: mergePytUserProgress(locCur.pytUserProgress || [], remCur.pytUserProgress || []),
       textbooksMetadata: mergeTextbooksMetadata(locCur.textbooksMetadata || [], remCur.textbooksMetadata || [])
     };
@@ -2744,7 +3260,7 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
       }
     });
 
-    const mergedSched = mergeStudyScheduleObjects(locLogB.studySchedule || {}, remLogB.studySchedule || {});
+    const mergedSched = { ...(locLogB.studySchedule || {}), ...(remLogB.studySchedule || {}) };
     const mergedTemplates = remLogB.scheduleTemplates || locLogB.scheduleTemplates || [];
 
     const locCampLogs = Array.isArray(locLogB.campDailyLogs) ? locLogB.campDailyLogs : [];
@@ -3159,6 +3675,7 @@ async function executeSyncInternal({
     const initialRemoteSyncVersion = remoteManifest?.syncVersion || null;
 
     // Extract local data
+    const syncStartTime = Date.now();
     emit(3, 10, 'Calculating local entity checksums…');
     const localData = await extractLocalBundles();
     const localManifest = localData.manifest;
@@ -3210,7 +3727,8 @@ async function executeSyncInternal({
       emit(3, 10, 'Downloading your collection from Google Drive…');
       const res = await executeOneWayDownload(accessToken, vaultFolderId, mediaFolderId, remoteFileMap, emit, {
         localHashes,
-        remoteHashes
+        remoteHashes,
+        syncStartTime
       });
       if (res.success) {
         const postData = await extractLocalBundles();
@@ -3234,7 +3752,8 @@ async function executeSyncInternal({
       emit(3, 10, 'Fast-forwarding to newer cloud version…');
       const res = await executeOneWayDownload(accessToken, vaultFolderId, mediaFolderId, remoteFileMap, emit, {
         localHashes,
-        remoteHashes
+        remoteHashes,
+        syncStartTime
       });
       if (res.success) {
         const postData = await extractLocalBundles();
@@ -3332,7 +3851,7 @@ async function executeSyncInternal({
       if (remoteFsrsFile) {
         downloadDriveFile(accessToken, remoteFsrsFile.id, true).then(remoteFsrs => {
           debugAuditBundleDiff('fsrs_config', localData.bundles['fsrs_config.json'], remoteFsrs);
-        }).catch(() => {});
+        }).catch(() => { });
       }
     }
 
@@ -3423,7 +3942,7 @@ async function executeSyncInternal({
       const pushRes = await executeOneWayPush(accessToken, vaultFolderId, mediaFolderId, stagedMergedData, freshRemoteFileMap, emit, {
         remoteHashes: currentRemoteHashes
       });
-      
+
       if (!pushRes.success) {
         throw new Error(`Cloud upload failed: ${pushRes.message || 'Unknown network error'}`);
       }
@@ -3432,8 +3951,9 @@ async function executeSyncInternal({
       logger.sync('TWO-PHASE-COMMIT-3', 'Committing merged collection to local IndexedDB...');
       emit(9, 10, 'Committing merged collection to local storage…');
       setMutationNotificationSuppressed(true);
+      let hydrateRes = null;
       try {
-        await hydrateLocalBundles(stagedMergedData.bundles, 'replace', (s, t, m) => emit(9, 10, m), { deferUnsuppress: true });
+        hydrateRes = await hydrateLocalBundles(stagedMergedData.bundles, 'replace', (s, t, m) => emit(9, 10, m), { deferUnsuppress: true, syncStartTime });
         const postHydrationLocal = await extractLocalBundles();
         await saveLastSyncedHashes(postHydrationLocal.manifest.hashes);
       } finally {
@@ -3446,6 +3966,11 @@ async function executeSyncInternal({
       }
       lastAutoPushTimestamp = Date.now();
       emitDataHydratedEvent({ strategy: 'replace', bundleKeys: Object.keys(stagedMergedData.bundles) });
+
+      if (hydrateRes?.hasInFlightEdits) {
+        logger.sync('INFLIGHT-PRESERVED', 'Preserved in-flight local modifications made during sync. Scheduling follow-up sync push to cloud...');
+        triggerDebouncedSmartPush(2000, true);
+      }
 
       // Phase 4: Download missing media in background if pages bundle changed
       if (modifiedBundleNames.includes('pages_bundle.json')) {
@@ -3564,12 +4089,12 @@ async function executeOneWayPush(accessToken, vaultFolderId, mediaFolderId, loca
 /**
  * Executes a safe one-way download from Google Drive with completeness validation & selective bundle downloads.
  */
-async function executeOneWayDownload(accessToken, vaultFolderId, mediaFolderId, remoteFileMap, emit, { localHashes = null, remoteHashes = null } = {}) {
+async function executeOneWayDownload(accessToken, vaultFolderId, mediaFolderId, remoteFileMap, emit, { localHashes = null, remoteHashes = null, syncStartTime = 0 } = {}) {
   emit(1, 6, 'Checking cloud bundles for delta download…');
   const downloadedBundles = {};
   const ALL_BUNDLE_NAMES = new Set(['cards_bundle.json', 'curriculum_topics.json', 'study_logs.json', 'fsrs_config.json', 'camp_tracker.json', 'pages_bundle.json']);
   const filesToDownload = Array.from(remoteFileMap.entries()).filter(([name]) => ALL_BUNDLE_NAMES.has(name));
-  
+
   const locHashes = localHashes || {};
   const remHashes = remoteHashes || {};
   let downloadedCount = 0;
@@ -3604,8 +4129,9 @@ async function executeOneWayDownload(accessToken, vaultFolderId, mediaFolderId, 
   emit(4, 6, 'Applying cloud updates to local database…');
   setMutationNotificationSuppressed(true);
   let postHydrationLocal = null;
+  let hydrateRes = null;
   try {
-    await hydrateLocalBundles(downloadedBundles, 'replace', (s, t, m) => emit(5, 6, m), { deferUnsuppress: true });
+    hydrateRes = await hydrateLocalBundles(downloadedBundles, 'replace', (s, t, m) => emit(5, 6, m), { deferUnsuppress: true, syncStartTime });
     postHydrationLocal = await extractLocalBundles();
     await saveLastSyncedHashes(postHydrationLocal.manifest.hashes);
   } finally {
@@ -3655,6 +4181,11 @@ async function executeOneWayDownload(accessToken, vaultFolderId, mediaFolderId, 
   emit(6, 6, 'Cloud download complete. Queueing media downloads…');
   emitSyncEvent('synced', { message: 'Cloud collection restored.' });
   emitDataHydratedEvent({ strategy: 'replace', bundleKeys: Object.keys(downloadedBundles) });
+
+  if (hydrateRes?.hasInFlightEdits) {
+    logger.sync('INFLIGHT-PRESERVED', 'Preserved in-flight local modifications made during download. Scheduling follow-up sync push...');
+    triggerDebouncedSmartPush(2000, true);
+  }
 
   // Phase 2: Non-blocking background media download if pages_bundle was among downloaded bundles
   if (downloadedBundles['pages_bundle.json']) {
@@ -3769,48 +4300,43 @@ export async function syncMediaFromDrive(accessToken, mediaFolderId) {
   let currentToken = (await getValidAccessToken(false)) || accessToken;
   if (!currentToken || !mediaFolderId) return;
 
-  logger.sync('MEDIA-SYNC-START', 'Checking remote media folder for missing media items...', { mediaFolderId });
-  console.log('[GDriveSync] [MEDIA-SYNC-START] Checking remote media folder for missing media items...');
-
-  const remoteMedia = await listFilesInFolder(currentToken, mediaFolderId);
-  if (remoteMedia.length === 0) {
-    logger.sync('MEDIA-SYNC-EMPTY', 'No media files found in remote media folder.');
-    return;
-  }
-
   const localPages = (await getLocalPages()) || [];
-  const localPageMap = new Map(localPages.map(p => [String(p.id), p]));
   const localCards = (await getLocalKV('flashcards')) || [];
+
+  const localPageMap = new Map(localPages.map(p => [String(p.id), p]));
   const localCardMap = new Map(localCards.map(c => [String(c.id), c]));
-  let hasPageUpdates = false;
-  let hasCardUpdates = false;
 
-  // Identify missing media files for pages & cards
+  const remoteFiles = await listFilesInFolder(currentToken, mediaFolderId);
+  if (remoteFiles.length === 0) return;
+
   const missingFiles = [];
-  for (const file of remoteMedia) {
-    const pageMatch = file.name.match(/^page_([^.]+)/i);
-    const cardMatch = file.name.match(/^card_([^.]+)/i);
 
+  for (const f of remoteFiles) {
+    const pageMatch = f.name.match(/^page_(.+)\.webp$/);
     if (pageMatch) {
       const pageId = pageMatch[1];
-      const localPage = localPageMap.get(String(pageId));
+      const localPage = localPageMap.get(pageId);
       if (localPage && !localPage.data && !localPage.imageUrl && !localPage.originalImage && !localPage.base64) {
-        missingFiles.push({ type: 'page', file, id: pageId });
+        missingFiles.push({ type: 'page', file: f, id: pageId });
       }
-    } else if (cardMatch) {
+      continue;
+    }
+
+    const cardMatch = f.name.match(/^card_(.+)\.webp$/);
+    if (cardMatch) {
       const cardId = cardMatch[1];
-      const localCard = localCardMap.get(String(cardId));
+      const localCard = localCardMap.get(cardId);
       if (localCard && !localCard.customImage && !localCard.imageUrl && !localCard.base64) {
-        missingFiles.push({ type: 'card', file, id: cardId });
+        missingFiles.push({ type: 'card', file: f, id: cardId });
       }
     }
   }
 
   const totalToDownload = missingFiles.length;
-  if (totalToDownload === 0) {
-    logger.sync('MEDIA-SYNC-UP-TO-DATE', 'All local pages and cards have media hydrated.');
-    return;
-  }
+  if (totalToDownload === 0) return;
+
+  logger.sync('MEDIA-DOWNLOAD-START', `Found ${totalToDownload} missing media files in Drive vault. Downloading in chunked batches...`);
+  console.log(`[GDriveSync] [MEDIA-DOWNLOAD-START] Downloading ${totalToDownload} missing media item(s)...`);
 
   emitSyncEvent('syncing', {
     message: `Downloading media 0/${totalToDownload} (0%)`,
@@ -3822,6 +4348,9 @@ export async function syncMediaFromDrive(accessToken, mediaFolderId) {
   // Download in throttled batches of 4 to protect mobile memory
   const BATCH_SIZE = 4;
   let downloadedCount = 0;
+  let hasPageUpdates = false;
+  let hasCardUpdates = false;
+
   for (let i = 0; i < missingFiles.length; i += BATCH_SIZE) {
     const chunk = missingFiles.slice(i, i + BATCH_SIZE);
     const freshToken = (await getValidAccessToken(false)) || currentToken;
@@ -3926,17 +4455,17 @@ export async function syncMediaFromDrive(accessToken, mediaFolderId) {
  * Triggers a debounced smart push when decks or reviews are completed.
  * Enforces a 5s debounce with a 30s cooldown and trailing timer guarantees.
  */
-export function triggerDebouncedSmartPush() {
+export function triggerDebouncedSmartPush(customDelay = 5000, bypassCooldown = false) {
   if (autoSyncDebounceTimer) clearTimeout(autoSyncDebounceTimer);
 
   autoSyncDebounceTimer = setTimeout(async () => {
     const now = Date.now();
     const elapsed = now - lastAutoPushTimestamp;
-    if (elapsed < AUTO_PUSH_COOLDOWN_MS) {
+    if (!bypassCooldown && elapsed < AUTO_PUSH_COOLDOWN_MS) {
       const remaining = AUTO_PUSH_COOLDOWN_MS - elapsed;
       console.log(`[GDriveSync] Auto-push deferred for remaining cooldown (${Math.round(remaining / 1000)}s)`);
       if (autoSyncDebounceTimer) clearTimeout(autoSyncDebounceTimer);
-      autoSyncDebounceTimer = setTimeout(triggerDebouncedSmartPush, remaining + 500);
+      autoSyncDebounceTimer = setTimeout(() => triggerDebouncedSmartPush(5000, false), remaining + 500);
       return;
     }
 
@@ -3948,7 +4477,7 @@ export function triggerDebouncedSmartPush() {
     syncWithGoogleDrive({ force: false, interactive: false }).catch(err => {
       console.warn('[GDriveSync] Smart push error:', err);
     });
-  }, 5000);
+  }, customDelay);
 }
 
 // Auto-listen to local database mutations to trigger debounced cloud pushes
@@ -4029,7 +4558,7 @@ function getStoredTimerMeta() {
       const stored = localStorage.getItem(TIMER_META_KEY);
       if (stored) return JSON.parse(stored);
     }
-  } catch (e) {}
+  } catch (e) { }
   return { lastPushed: 0, lastKnownRemoteModified: null };
 }
 
@@ -4038,7 +4567,7 @@ function saveStoredTimerMeta(lastPushed, lastKnownRemoteModified) {
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(TIMER_META_KEY, JSON.stringify({ lastPushed, lastKnownRemoteModified }));
     }
-  } catch (e) {}
+  } catch (e) { }
 }
 
 const initialTimerMeta = getStoredTimerMeta();

@@ -103,7 +103,7 @@ export function initDB() {
 
     request.onsuccess = (event) => {
       const db = event.target.result;
-      
+
       // Handle connection unexpected closure
       db.onversionchange = () => {
         db.close();
@@ -758,7 +758,7 @@ export async function saveLocalPrompts(promptsInput) {
   if (!Array.isArray(promptsInput) || promptsInput.length === 0) return getLocalPrompts();
   const existing = await getLocalPrompts();
   const merged = [...existing];
-  
+
   promptsInput.forEach(p => {
     const idx = merged.findIndex(item => item.id === p.id);
     if (idx !== -1) {
@@ -767,7 +767,7 @@ export async function saveLocalPrompts(promptsInput) {
       merged.push(p);
     }
   });
-  
+
   await setLocalKV('custom_prompts', merged);
   return merged;
 }
@@ -866,18 +866,16 @@ export async function saveLocalPytProgressDoc(docId, docData) {
   if (!docId) return null;
   const currentList = await getAllLocalPytProgress();
   const existingIdx = currentList.findIndex(d => d.id === docId);
-  const nowIso = new Date().toISOString();
   let updatedList;
   if (existingIdx >= 0) {
     updatedList = [...currentList];
     updatedList[existingIdx] = {
       ...updatedList[existingIdx],
       ...docData,
-      id: docId,
-      updatedAt: docData?.updatedAt || nowIso
+      id: docId
     };
   } else {
-    updatedList = [...currentList, { id: docId, ...docData, updatedAt: docData?.updatedAt || nowIso }];
+    updatedList = [...currentList, { id: docId, ...docData }];
   }
   await setLocalKV('pyt_user_progress', updatedList);
   return updatedList;
@@ -1112,12 +1110,7 @@ export async function getLocalStudySchedule() {
 export async function saveLocalScheduleEntry(dateStr, entryData) {
   if (!dateStr) return await getLocalStudySchedule();
   const current = await getLocalStudySchedule();
-  const nowIso = new Date().toISOString();
-  const mergedEntry = { 
-    ...(current[dateStr] || {}), 
-    ...entryData,
-    updatedAt: entryData?.updatedAt || nowIso
-  };
+  const mergedEntry = { ...(current[dateStr] || {}), ...entryData };
 
   const hasTasks = Array.isArray(mergedEntry.tasks) && mergedEntry.tasks.length > 0;
   const hasNotes = typeof mergedEntry.notes === 'string' && mergedEntry.notes.trim().length > 0;
@@ -1363,7 +1356,7 @@ export async function deleteTopicHintsLocal(topicId) {
   if (!topicId) return;
   try {
     await runTx(STORES.TOPIC_HINTS, 'readwrite', store => store.delete(topicId));
-  } catch (e) {}
+  } catch (e) { }
   await setLocalKV(`topic_hints_${topicId}`, null);
 }
 
@@ -1378,7 +1371,7 @@ export async function checkDailyHintQuotaLocal(maxQuota = 500) {
   let record = null;
   try {
     record = await runTx(STORES.HINT_QUOTA, 'readonly', store => store.get(todayStr));
-  } catch (e) {}
+  } catch (e) { }
   if (!record) {
     record = await getLocalKV(`hint_quota_${todayStr}`);
   }
@@ -1405,7 +1398,7 @@ export async function incrementDailyHintQuotaLocal() {
   await setLocalKV(`hint_quota_${todayStr}`, record);
   try {
     await runTx(STORES.HINT_QUOTA, 'readwrite', store => store.put(record));
-  } catch (e) {}
+  } catch (e) { }
 
   return newCount;
 }
@@ -1485,7 +1478,7 @@ export async function calculateDetailedStorageBreakdown() {
   let campData = null;
   try {
     campData = await getLocalCampData('camp_data');
-  } catch (e) {}
+  } catch (e) { }
   const timerState = (await getLocalTimerState()) || null;
   const studyLogsBytes =
     getByteSize(studyLogs) +
@@ -1558,11 +1551,11 @@ export async function calculateDetailedStorageBreakdown() {
   for (const item of allPytItems) {
     const itemKey = (item?.id || item?.key || '').toLowerCase();
     const isPdf = itemKey.startsWith('pyt_pdf_') ||
-                  item?.data instanceof ArrayBuffer ||
-                  (item?.data && typeof item.data === 'object' && item.data.__type === 'ArrayBuffer') ||
-                  item?.fileName ||
-                  item?.pdfFileName ||
-                  item?.fileSize;
+      item?.data instanceof ArrayBuffer ||
+      (item?.data && typeof item.data === 'object' && item.data.__type === 'ArrayBuffer') ||
+      item?.fileName ||
+      item?.pdfFileName ||
+      item?.fileSize;
 
     if (isPdf) {
       processedKeys.add(itemKey);
@@ -1635,12 +1628,12 @@ export async function calculateDetailedStorageBreakdown() {
   let topicHints = [];
   try {
     topicHints = (await getAllLocalItems(STORES.TOPIC_HINTS)) || [];
-  } catch (e) {}
+  } catch (e) { }
   const prompts = (await getLocalPrompts()) || [];
   let hintQuotas = [];
   try {
     hintQuotas = (await getAllLocalItems(STORES.HINT_QUOTA)) || [];
-  } catch (e) {}
+  } catch (e) { }
   const aiHintsBytes = getByteSize(topicHints) + getByteSize(prompts) + getByteSize(hintQuotas);
 
   // 7. Settings & Local Storage
@@ -1656,7 +1649,7 @@ export async function calculateDetailedStorageBreakdown() {
         localStorageItemCount++;
       }
     }
-  } catch (e) {}
+  } catch (e) { }
   const settingsBytes = getByteSize(settings) + localStorageBytes;
 
   const totalCalculatedBytes =
@@ -1853,12 +1846,12 @@ export async function purgeRecycleBinLocal() {
  * Maps logical bundle names to their store/key sources for granular export/import.
  */
 export const SNAPSHOT_BUNDLES = {
-  cards_fsrs:          'cards_fsrs',
-  topics_curriculum:   'topics_curriculum',
+  cards_fsrs: 'cards_fsrs',
+  topics_curriculum: 'topics_curriculum',
   study_logs_velocity: 'study_logs_velocity',
-  scans_media:         'scans_media',
-  settings_prompts:    'settings_prompts',
-  recycle_bin:         'recycle_bin',
+  scans_media: 'scans_media',
+  settings_prompts: 'settings_prompts',
+  recycle_bin: 'recycle_bin',
 };
 
 export const LS_KEYS_TO_SNAPSHOT = [
@@ -2100,15 +2093,15 @@ export async function exportFullUniversalSnapshot() {
       schemaVersion: DB_VERSION,
     },
     stores: {
-      topics:          topicsRaw,
-      settings:        settingsRaw,
-      camp_tracker:    campTrackerRaw,
-      camp_data:       campDataRaw,
+      topics: topicsRaw,
+      settings: settingsRaw,
+      camp_tracker: campTrackerRaw,
+      camp_data: campDataRaw,
       camp_daily_logs: campDailyLogsRaw,
-      pyt_data:        pytDataRaw,
-      kv_store:        kvStoreRaw,
-      topic_hints:     topicHintsRaw,
-      hint_quota:      hintQuotaRaw,
+      pyt_data: pytDataRaw,
+      kv_store: kvStoreRaw,
+      topic_hints: topicHintsRaw,
+      hint_quota: hintQuotaRaw,
     },
     localStorageSnapshot,
   };
@@ -2225,12 +2218,12 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
         const localTrashCards = (await getLocalKV('trash_cards')) || [];
         const trashMap = new Map(localTrashCards.map(tc => [tc.id, tc.deletedAt || 0]));
         const map = new Map(existing.map(c => [c.id, c]));
-        
+
         incoming.forEach(c => {
           if (!c || !c.id) return;
           const localDeletedAt = trashMap.get(c.id);
           if (localDeletedAt && localDeletedAt > (c.updatedAt || 0)) return;
-          
+
           if (!map.has(c.id)) {
             map.set(c.id, c);
           } else {

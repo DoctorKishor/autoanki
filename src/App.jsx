@@ -4930,11 +4930,10 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => setIsDiagnosticsLogsOpen(true)}
-                className={`flex items-center justify-center gap-2 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider transition-all duration-300 active:scale-95 cursor-pointer border shrink-0 ${
-                  settingsThemeMode === 'dark'
+                className={`flex items-center justify-center gap-2 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider transition-all duration-300 active:scale-95 cursor-pointer border shrink-0 ${settingsThemeMode === 'dark'
                     ? 'bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border-cyan-500/40 shadow-lg shadow-cyan-500/10'
                     : 'bg-cyan-600 hover:bg-cyan-700 text-white shadow-lg shadow-cyan-600/20'
-                }`}
+                  }`}
               >
                 <Terminal className="w-4 h-4" />
                 <span>Open Diagnostics & Health Hub</span>
@@ -9044,7 +9043,7 @@ export default function App() {
           syncWithGoogleDrive({ force: false, interactive: false }).catch(err => console.log('[App] Pending launch sync skipped:', err));
         }, 3000);
       }
-    } catch (_) {}
+    } catch (_) { }
 
     return () => {
       window.removeEventListener('gdrive-data-hydrated', handleDataHydrated);
@@ -9266,7 +9265,6 @@ export default function App() {
     const cleanTopicName = topicName.trim();
     let cleanPage = String(pageNumber || "").trim();
     let cleanEndPage = String(endPage || "").trim();
-    const nowIso = new Date().toISOString();
 
     const p1 = parseInt(cleanPage, 10);
     const p2 = parseInt(cleanEndPage, 10);
@@ -9283,12 +9281,10 @@ export default function App() {
       const updatedTopics = {
         ...currentTopics,
         [cleanTopicName]: {
-          ...(currentTopics[cleanTopicName] || {}),
           name: cleanTopicName,
           page: cleanPage,
           endPage: cleanEndPage,
-          studyDates: currentTopics[cleanTopicName]?.studyDates || [],
-          updatedAt: nowIso
+          studyDates: currentTopics[cleanTopicName]?.studyDates || []
         }
       };
 
@@ -9297,7 +9293,7 @@ export default function App() {
         id: docId,
         subject: subject.trim(),
         topics: updatedTopics,
-        updatedAt: nowIso
+        updatedAt: new Date().toISOString()
       };
 
       saveLocalSubjectTrackerDoc(docId, updatedDoc).catch(err => console.error("[LocalDB] Error adding tracker topic:", err));
@@ -9309,7 +9305,6 @@ export default function App() {
   const handleAddBulkTrackerTopics = async (subject, newTopicsList) => {
     if (!subject || !Array.isArray(newTopicsList) || newTopicsList.length === 0) return 0;
     const docId = subject.trim().toLowerCase();
-    const nowIso = new Date().toISOString();
     let countAdded = 0;
 
     setSubjectTrackerData(prev => {
@@ -9324,12 +9319,10 @@ export default function App() {
           const cleanPage = typeof topic === 'object' && topic.page ? String(topic.page).trim() : '';
           const cleanEndPage = typeof topic === 'object' && topic.endPage ? String(topic.endPage).trim() : '';
           currentTopics[cleanName] = {
-            ...(currentTopics[cleanName] || {}),
             name: cleanName,
             page: cleanPage,
             endPage: cleanEndPage,
-            studyDates: currentTopics[cleanName]?.studyDates || [],
-            updatedAt: nowIso
+            studyDates: currentTopics[cleanName]?.studyDates || []
           };
           countAdded++;
         }
@@ -9339,7 +9332,7 @@ export default function App() {
         ...(docExists || { id: docId, subject: subject.trim() }),
         subject: subject.trim(),
         topics: currentTopics,
-        updatedAt: nowIso
+        updatedAt: new Date().toISOString()
       };
 
       saveLocalSubjectTrackerDoc(docId, updatedDoc).catch(err => console.error("[LocalDB] Bulk add tracker topics error:", err));
@@ -9354,14 +9347,12 @@ export default function App() {
     if (!subject || !topicName) return;
     const docId = subject.trim().toLowerCase();
     const cleanTopicName = topicName.trim();
-    const nowIso = new Date().toISOString();
 
     const existingDoc = subjectTrackerData.find(p => p.id === docId);
     const currentTopics = existingDoc && existingDoc.topics ? JSON.parse(JSON.stringify(existingDoc.topics)) : {};
     const topicObj = currentTopics[cleanTopicName] || { name: cleanTopicName, studyDates: [] };
 
     topicObj.notes = notesHtml;
-    topicObj.updatedAt = nowIso;
     currentTopics[cleanTopicName] = topicObj;
 
     const updatedDoc = {
@@ -9369,7 +9360,7 @@ export default function App() {
       id: docId,
       subject: subject.trim(),
       topics: currentTopics,
-      updatedAt: nowIso
+      updatedAt: new Date().toISOString()
     };
 
     setSubjectTrackerData(prev => {
@@ -9927,7 +9918,6 @@ JSON Format:
     topicObj.lastReviewDate = fsrsResult.lastReviewDate;
     topicObj.reviewCount = fsrsResult.reviewCount;
     topicObj.lapses = fsrsResult.lapses != null ? fsrsResult.lapses : (topicObj.lapses || 0) + (rating === 1 ? 1 : 0);
-    topicObj.updatedAt = new Date().toISOString();
 
     if (!Array.isArray(topicObj.studyDates)) {
       topicObj.studyDates = [];
@@ -9944,7 +9934,7 @@ JSON Format:
       id: docId,
       subject: subjectName,
       topics: topicsMap,
-      updatedAt: topicObj.updatedAt
+      updatedAt: new Date().toISOString()
     };
 
     // 1. Optimistic React State Update
@@ -10114,7 +10104,6 @@ JSON Format:
 
     const isNowEmpty = updatedDates.length === 0 || remainingLogs.length === 0;
 
-    const nowIso = new Date().toISOString();
     let updatedTopicObj;
     if (isNowEmpty) {
       updatedTopicObj = {
@@ -10128,19 +10117,15 @@ JSON Format:
         nextReviewDue: null,
         interval: null,
         retrievability: null,
-        isLeech: false,
-        updatedAt: nowIso
+        isLeech: false
       };
     } else {
-      updatedTopicObj = {
-        ...recalculateTopicFSRSFromLogs(
-          { ...topicObj, studyDates: updatedDates },
-          remainingLogs,
-          fsrsConfig,
-          subjectTrackerData
-        ),
-        updatedAt: nowIso
-      };
+      updatedTopicObj = recalculateTopicFSRSFromLogs(
+        { ...topicObj, studyDates: updatedDates },
+        remainingLogs,
+        fsrsConfig,
+        subjectTrackerData
+      );
     }
 
     const updatedTopics = {
@@ -10153,7 +10138,7 @@ JSON Format:
       id: docId,
       subject: subject.trim(),
       topics: updatedTopics,
-      updatedAt: nowIso
+      updatedAt: new Date().toISOString()
     };
 
     setSubjectTrackerData(prev => {
@@ -10199,6 +10184,7 @@ JSON Format:
   const handleDeleteTrackerTopic = async (subject, topicName) => {
     if (!subject || !topicName) return;
     const docId = subject.trim().toLowerCase();
+    const nowIso = new Date().toISOString();
 
     const localData = await getLocalSubjectTrackerData();
     const docExists = localData.find(p => p.id === docId) || subjectTrackerData.find(p => p.id === docId);
@@ -10232,7 +10218,8 @@ JSON Format:
           const updatedDayLog = {
             ...dayLog,
             cards: Math.max(0, (dayLog.cards || 0) - matchingLogs.length),
-            fsrsLogs: remainingDayLogs
+            fsrsLogs: remainingDayLogs,
+            updatedAt: nowIso
           };
           nextStudyLogs[dStr] = updatedDayLog;
           saveLocalStudyLog(dStr, updatedDayLog).catch(err => console.error("[LocalDB] Error pruning study log:", err));
@@ -10243,6 +10230,14 @@ JSON Format:
     if (logsChanged) {
       setStudyLogs(nextStudyLogs);
     }
+
+    // Record tombstone in unified_graves
+    const topicId = deletedTopicObj?.id || `${docId}_${targetKey}`;
+    recordTombstone('tracker_topic', String(topicId), {
+      parentId: docId,
+      deletedAt: nowIso,
+      metadata: { topicName: targetKey, docId, name: deletedTopicObj?.name || targetKey }
+    }).catch(e => console.warn("[LocalDB] Error recording tracker topic tombstone:", e));
 
     // Push action to reviewUndoStack for Undo/Redo support
     setReviewUndoStack(prev => [
@@ -10261,14 +10256,14 @@ JSON Format:
     setReviewRedoStack([]);
 
     setSubjectTrackerData(prev => {
-      return prev.map(p => p.id === docId ? { ...p, topics: currentTopics, updatedAt: new Date().toISOString() } : p);
+      return prev.map(p => p.id === docId ? { ...p, topics: currentTopics, updatedAt: nowIso } : p);
     });
 
     try {
       await saveLocalSubjectTrackerDoc(docId, {
         ...docExists,
         topics: currentTopics,
-        updatedAt: new Date().toISOString()
+        updatedAt: nowIso
       });
     } catch (err) {
       console.error("Error deleting tracker topic locally:", err);
@@ -10460,8 +10455,8 @@ JSON Format:
       });
       updatedGts.push(tombstonedGt);
 
-      const updatedDayLog = { 
-        ...currentDayLog, 
+      const updatedDayLog = {
+        ...currentDayLog,
         gts: updatedGts,
         updatedAt: nowIso
       };
@@ -10633,7 +10628,7 @@ JSON Format:
 
       for (const oldGt of existingGts) {
         if (oldGt) {
-          const stillExists = activeGts.some(newGt => 
+          const stillExists = activeGts.some(newGt =>
             (oldGt.id && newGt.id === oldGt.id) ||
             ((oldGt.name || oldGt.testName) && (newGt.name || newGt.testName) === (oldGt.name || oldGt.testName))
           );
@@ -10832,7 +10827,7 @@ JSON Format:
   const applyRemoteTimerState = useCallback((remote) => {
     if (!remote || typeof remote !== 'object') return;
     setRawTimerState(prev => ({ ...prev, ...remote }));
-    saveLocalTimerState(remote).catch(() => {});
+    saveLocalTimerState(remote).catch(() => { });
 
     // Recalculate local ticking values based on remote timestamp anchors
     if (remote.pomodoroStatus === 'running') {
@@ -12269,8 +12264,8 @@ JSON Format:
             type="button"
             onClick={() => setStudyActiveTab('record')}
             className={`relative flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 z-10 transition-colors duration-300 ${studyActiveTab === 'record'
-                ? 'text-white font-black'
-                : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+              ? 'text-white font-black'
+              : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
               }`}
           >
             <Activity className="w-3.5 h-3.5" />
@@ -12280,8 +12275,8 @@ JSON Format:
             type="button"
             onClick={() => setStudyActiveTab('manual')}
             className={`relative flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 z-10 transition-colors duration-300 ${studyActiveTab === 'manual'
-                ? 'text-white font-black'
-                : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+              ? 'text-white font-black'
+              : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
               }`}
           >
             <Edit3 className="w-3.5 h-3.5" />
@@ -12299,8 +12294,8 @@ JSON Format:
                 {/* Streaks Counters summary cards (2-column side-by-side on mobile) */}
                 <div className="grid grid-cols-2 gap-3 sm:gap-4">
                   <div className={`p-4 sm:p-5 rounded-2xl sm:rounded-3xl flex flex-col justify-between transition-colors duration-300 ${isDark
-                      ? 'neu-card-dark bg-gradient-to-br from-[#27201c] to-[#222730] border border-orange-500/20 shadow-xl'
-                      : 'neu-card-light bg-gradient-to-br from-orange-50 to-amber-50/40 border border-orange-200/60 shadow-md'
+                    ? 'neu-card-dark bg-gradient-to-br from-[#27201c] to-[#222730] border border-orange-500/20 shadow-xl'
+                    : 'neu-card-light bg-gradient-to-br from-orange-50 to-amber-50/40 border border-orange-200/60 shadow-md'
                     }`}>
                     <div>
                       <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center mb-2.5 ${isDark ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-orange-100 text-orange-600'
@@ -12316,8 +12311,8 @@ JSON Format:
                   </div>
 
                   <div className={`p-4 sm:p-5 rounded-2xl sm:rounded-3xl flex flex-col justify-between transition-colors duration-300 ${isDark
-                      ? 'neu-card-dark bg-gradient-to-br from-[#27241c] to-[#222730] border border-amber-500/20 shadow-xl'
-                      : 'neu-card-light bg-gradient-to-br from-amber-50 to-yellow-50/40 border border-amber-200/60 shadow-md'
+                    ? 'neu-card-dark bg-gradient-to-br from-[#27241c] to-[#222730] border border-amber-500/20 shadow-xl'
+                    : 'neu-card-light bg-gradient-to-br from-amber-50 to-yellow-50/40 border border-amber-200/60 shadow-md'
                     }`}>
                     <div>
                       <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center mb-2.5 ${isDark ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-amber-100 text-amber-600'
@@ -12533,8 +12528,8 @@ JSON Format:
 
                           {/* Inner glowing center representing milestone achievements */}
                           <div className={`absolute w-24 h-24 !rounded-full flex flex-col items-center justify-center transition-all duration-300 ${totalProgressPercent >= 100
-                              ? isDark ? 'bg-orange-500/20 text-orange-400 scale-105 shadow-inner border border-orange-500/30 !rounded-full' : 'bg-orange-50 text-orange-500 scale-105 shadow-inner !rounded-full'
-                              : isDark ? 'neu-pressed-dark text-slate-300 !rounded-full' : 'neu-pressed-light text-slate-700 !rounded-full'
+                            ? isDark ? 'bg-orange-500/20 text-orange-400 scale-105 shadow-inner border border-orange-500/30 !rounded-full' : 'bg-orange-50 text-orange-500 scale-105 shadow-inner !rounded-full'
+                            : isDark ? 'neu-pressed-dark text-slate-300 !rounded-full' : 'neu-pressed-light text-slate-700 !rounded-full'
                             }`}>
                             <Flame className={`w-8 h-8 ${totalProgressPercent >= 100 ? 'animate-bounce fill-current' : ''}`} />
                             <span className={`text-xl font-black mt-1 ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{totalProgressPercent}%</span>
@@ -13083,8 +13078,8 @@ JSON Format:
                               type="button"
                               onClick={() => setLoggerGtType('NEETPG')}
                               className={`flex-1 py-2 text-xs font-black rounded-xl border transition ${loggerGtType === 'NEETPG'
-                                  ? 'bg-orange-500 text-white border-transparent shadow-sm'
-                                  : isDark ? 'neu-btn-dark text-slate-300 border-white/10' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                ? 'bg-orange-500 text-white border-transparent shadow-sm'
+                                : isDark ? 'neu-btn-dark text-slate-300 border-white/10' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
                                 }`}
                             >
                               NEET PG (+4, -1)
@@ -13093,8 +13088,8 @@ JSON Format:
                               type="button"
                               onClick={() => setLoggerGtType('INICET')}
                               className={`flex-1 py-2 text-xs font-black rounded-xl border transition ${loggerGtType === 'INICET'
-                                  ? 'bg-orange-500 text-white border-transparent shadow-sm'
-                                  : isDark ? 'neu-btn-dark text-slate-300 border-white/10' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                ? 'bg-orange-500 text-white border-transparent shadow-sm'
+                                : isDark ? 'neu-btn-dark text-slate-300 border-white/10' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
                                 }`}
                             >
                               INI CET (+1, -1/3)
@@ -13107,8 +13102,8 @@ JSON Format:
                                 type="button"
                                 onClick={() => setLoggerNeetPattern('200')}
                                 className={`flex-1 py-1 text-[10px] font-extrabold rounded-lg transition ${loggerNeetPattern === '200'
-                                    ? 'bg-orange-500 text-white shadow-sm'
-                                    : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
+                                  ? 'bg-orange-500 text-white shadow-sm'
+                                  : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
                                   }`}
                               >
                                 200 Qs / 800 Marks (Old Pattern)
@@ -13117,8 +13112,8 @@ JSON Format:
                                 type="button"
                                 onClick={() => setLoggerNeetPattern('180')}
                                 className={`flex-1 py-1 text-[10px] font-extrabold rounded-lg transition ${loggerNeetPattern === '180'
-                                    ? 'bg-orange-500 text-white shadow-sm'
-                                    : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
+                                  ? 'bg-orange-500 text-white shadow-sm'
+                                  : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
                                   }`}
                               >
                                 180 Qs / 720 Marks (New Pattern)
@@ -13368,9 +13363,8 @@ JSON Format:
                     <button
                       onClick={() => deleteStudyLog(loggerDate)}
                       disabled={isSaving}
-                      className={`px-4 py-2.5 text-xs font-black rounded-2xl flex items-center gap-1.5 active:scale-95 transition-all disabled:opacity-50 cursor-pointer ${
-                        isDark ? 'text-red-400 hover:bg-red-500/15 border border-red-500/25' : 'text-red-600 hover:bg-red-50 border border-red-200'
-                      }`}
+                      className={`px-4 py-2.5 text-xs font-black rounded-2xl flex items-center gap-1.5 active:scale-95 transition-all disabled:opacity-50 cursor-pointer ${isDark ? 'text-red-400 hover:bg-red-500/15 border border-red-500/25' : 'text-red-600 hover:bg-red-50 border border-red-200'
+                        }`}
                       title="Delete this day's entire study log (tombstones the entry so sync won't restore it)"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -13479,8 +13473,8 @@ JSON Format:
                           type="button"
                           onClick={() => setEditGtType('NEETPG')}
                           className={`flex-1 py-2 text-xs font-black rounded-xl border transition ${editGtType === 'NEETPG'
-                              ? 'bg-orange-500 text-white border-transparent shadow-sm'
-                              : isDark ? 'neu-btn-dark text-slate-300 border-white/10' : 'neu-btn-light text-slate-700 border-white/70'
+                            ? 'bg-orange-500 text-white border-transparent shadow-sm'
+                            : isDark ? 'neu-btn-dark text-slate-300 border-white/10' : 'neu-btn-light text-slate-700 border-white/70'
                             }`}
                         >
                           NEET PG (+4, -1)
@@ -13489,8 +13483,8 @@ JSON Format:
                           type="button"
                           onClick={() => setEditGtType('INICET')}
                           className={`flex-1 py-2 text-xs font-black rounded-xl border transition ${editGtType === 'INICET'
-                              ? 'bg-orange-500 text-white border-transparent shadow-sm'
-                              : isDark ? 'neu-btn-dark text-slate-300 border-white/10' : 'neu-btn-light text-slate-700 border-white/70'
+                            ? 'bg-orange-500 text-white border-transparent shadow-sm'
+                            : isDark ? 'neu-btn-dark text-slate-300 border-white/10' : 'neu-btn-light text-slate-700 border-white/70'
                             }`}
                         >
                           INI CET (+1, -1/3)
@@ -13503,8 +13497,8 @@ JSON Format:
                             type="button"
                             onClick={() => setEditNeetPattern('200')}
                             className={`flex-1 py-1 text-[10px] font-extrabold rounded-lg transition ${editNeetPattern === '200'
-                                ? 'bg-orange-500 text-white shadow-sm'
-                                : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
+                              ? 'bg-orange-500 text-white shadow-sm'
+                              : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
                               }`}
                           >
                             200 Qs / 800 Marks (Pre-2025)
@@ -13513,8 +13507,8 @@ JSON Format:
                             type="button"
                             onClick={() => setEditNeetPattern('180')}
                             className={`flex-1 py-1 text-[10px] font-extrabold rounded-lg transition ${editNeetPattern === '180'
-                                ? 'bg-orange-500 text-white shadow-sm'
-                                : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
+                              ? 'bg-orange-500 text-white shadow-sm'
+                              : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
                               }`}
                           >
                             180 Qs / 720 Marks (2025+)
@@ -13826,9 +13820,8 @@ JSON Format:
                     type="button"
                     onClick={() => handleDeleteTimelineGt(editGtTargetDate, editGtTargetId || editGtTargetOrigName, editGtTargetIndex)}
                     disabled={isSaving}
-                    className={`px-4 py-2.5 text-xs font-black rounded-2xl flex items-center gap-1.5 active:scale-95 transition-all disabled:opacity-50 cursor-pointer ${
-                      isDark ? 'text-red-400 hover:bg-red-500/15 border border-red-500/25' : 'text-red-600 hover:bg-red-50 border border-red-200'
-                    }`}
+                    className={`px-4 py-2.5 text-xs font-black rounded-2xl flex items-center gap-1.5 active:scale-95 transition-all disabled:opacity-50 cursor-pointer ${isDark ? 'text-red-400 hover:bg-red-500/15 border border-red-500/25' : 'text-red-600 hover:bg-red-50 border border-red-200'
+                      }`}
                     title="Delete this mock test from records"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -14024,8 +14017,8 @@ JSON Format:
             type="button"
             onClick={() => handleSwitchTimerType('pomodoro')}
             className={`relative flex-1 py-2 text-[9px] sm:text-[10px] font-black uppercase tracking-tight sm:tracking-wider rounded-xl cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 z-10 transition-colors duration-300 px-0.5 sm:px-1 ${activeType === 'pomodoro'
-                ? (isDark ? 'text-orange-400 font-extrabold' : 'text-orange-600 font-extrabold')
-                : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800')
+              ? (isDark ? 'text-orange-400 font-extrabold' : 'text-orange-600 font-extrabold')
+              : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800')
               }`}
           >
             <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
@@ -14035,8 +14028,8 @@ JSON Format:
             type="button"
             onClick={() => handleSwitchTimerType('timer')}
             className={`relative flex-1 py-2 text-[9px] sm:text-[10px] font-black uppercase tracking-tight sm:tracking-wider rounded-xl cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 z-10 transition-colors duration-300 px-0.5 sm:px-1 ${activeType === 'timer'
-                ? (isDark ? 'text-indigo-400 font-extrabold' : 'text-indigo-600 font-extrabold')
-                : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800')
+              ? (isDark ? 'text-indigo-400 font-extrabold' : 'text-indigo-600 font-extrabold')
+              : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800')
               }`}
           >
             <Hourglass className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
@@ -14046,8 +14039,8 @@ JSON Format:
             type="button"
             onClick={() => handleSwitchTimerType('stopwatch')}
             className={`relative flex-1 py-2 text-[9px] sm:text-[10px] font-black uppercase tracking-tight sm:tracking-wider rounded-xl cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 z-10 transition-colors duration-300 px-0.5 sm:px-1 ${activeType === 'stopwatch'
-                ? (isDark ? 'text-emerald-400 font-extrabold' : 'text-emerald-600 font-extrabold')
-                : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800')
+              ? (isDark ? 'text-emerald-400 font-extrabold' : 'text-emerald-600 font-extrabold')
+              : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800')
               }`}
           >
             <Timer className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
@@ -16158,6 +16151,7 @@ JSON Format:
 
     // 1. Synchronize studyLogs state: remove the logEntry on Undo
     let nextStudyLogs = { ...studyLogs };
+    const nowIso = new Date().toISOString();
     if (logEntry && logEntry.dateStr) {
       const targetDate = logEntry.dateStr;
       const prevDayLog = nextStudyLogs[targetDate];
@@ -16168,7 +16162,8 @@ JSON Format:
           ...prevDayLog,
           cards: Math.max(0, (prevDayLog.cards || 0) - 1),
           pages: Math.max(0, (prevDayLog.pages || 0) - removedPageWeight),
-          fsrsLogs: filteredFsrsLogs
+          fsrsLogs: filteredFsrsLogs,
+          updatedAt: nowIso
         };
         nextStudyLogs = { ...nextStudyLogs, [targetDate]: updatedDayLog };
         saveLocalStudyLog(targetDate, updatedDayLog).catch(err => console.error("[LocalDB] Error undoing study log:", err));
@@ -16203,7 +16198,10 @@ JSON Format:
 
       if (previousDoc && previousDoc.topics && previousDoc.topics[targetKey]) {
         // Restore exact pre-rating state if available
-        topicsMap[targetKey] = previousDoc.topics[targetKey];
+        topicsMap[targetKey] = {
+          ...previousDoc.topics[targetKey],
+          updatedAt: nowIso
+        };
       } else if (currentTopic) {
         const targetDate = logEntry?.dateStr;
         const updatedDates = (currentTopic.studyDates || []).filter(d => d !== targetDate);
@@ -16219,18 +16217,22 @@ JSON Format:
             lastReviewDate: null,
             reviewCount: 0,
             lapses: 0,
-            isLeech: false
+            isLeech: false,
+            updatedAt: nowIso
           };
         } else {
           const recalculatedTopic = recalculateTopicFSRSFromLogs({ ...currentTopic, studyDates: updatedDates }, remainingLogs, fsrsConfig, list);
-          topicsMap[targetKey] = recalculatedTopic;
+          topicsMap[targetKey] = {
+            ...recalculatedTopic,
+            updatedAt: nowIso
+          };
         }
       }
 
       const updatedDoc = {
         ...existingDoc,
         topics: topicsMap,
-        updatedAt: new Date().toISOString()
+        updatedAt: nowIso
       };
 
       saveLocalSubjectTrackerDoc(targetDocId, updatedDoc).catch(err => console.error("[LocalDB] Error updating subject doc on undo:", err));
@@ -16550,6 +16552,7 @@ JSON Format:
           }}
           onDeleteTimingLog={async (logId, dateStr) => {
             if (!logId || !dateStr) return;
+            const nowIso = new Date().toISOString();
             setStudyLogs(prev => {
               const dayLog = prev[dateStr];
               if (!dayLog || !Array.isArray(dayLog.fsrsLogs)) return prev;
@@ -16560,7 +16563,8 @@ JSON Format:
                 ...dayLog,
                 cards: Math.max(0, (dayLog.cards || 0) - 1),
                 pages: Math.max(0, (dayLog.pages || 0) - removedPages),
-                fsrsLogs: filtered
+                fsrsLogs: filtered,
+                updatedAt: nowIso
               };
               saveLocalStudyLog(dateStr, updatedDayLog).catch(err => console.error("[LocalDB] Error saving pruned study log:", err));
               return { ...prev, [dateStr]: updatedDayLog };
@@ -17088,8 +17092,8 @@ JSON Format:
                   const existing = textbooksMetadata.find(tb => (tb.subject || '').toLowerCase() === (selectedSubjectTrackerSubject || '').toLowerCase());
                   return (
                     <div className={`p-4 rounded-2xl border text-xs space-y-1.5 ${existing
-                        ? isDark ? 'bg-emerald-950/20 border-emerald-500/30 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                        : isDark ? 'bg-amber-950/20 border-amber-500/30 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'
+                      ? isDark ? 'bg-emerald-950/20 border-emerald-500/30 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                      : isDark ? 'bg-amber-950/20 border-amber-500/30 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'
                       }`}>
                       <div className="font-bold flex items-center justify-between">
                         <span>{existing ? '✓ Attached Master PDF:' : '⚠️ Status:'}</span>
@@ -25234,23 +25238,22 @@ Return your response strictly as a JSON object matching this schema:
                         }
                       }
                     }}
-                    className={`ios-dynamic-island ${settingsThemeMode === 'dark' ? 'dark' : 'light'} ${
-                      isDailyMetricsOpen
+                    className={`ios-dynamic-island ${settingsThemeMode === 'dark' ? 'dark' : 'light'} ${isDailyMetricsOpen
                         ? 'active'
                         : ((timerState.pomodoroStatus && timerState.pomodoroStatus !== 'idle') ||
-                           (timerState.timerStatus && timerState.timerStatus !== 'idle') ||
-                           (timerState.stopwatchStatus && timerState.stopwatchStatus !== 'idle'))
+                          (timerState.timerStatus && timerState.timerStatus !== 'idle') ||
+                          (timerState.stopwatchStatus && timerState.stopwatchStatus !== 'idle'))
                           ? (islandMobileState === 'semi' ? 'mobile-timer-semi' : (islandMobileState === 'mini' ? 'mobile-timer-mini' : (islandMobileState === 'pill' ? 'mobile-pill' : 'mobile-hole')))
                           : (islandMobileState === 'pill' ? 'mobile-pill' : 'mobile-hole')
-                    }`}
+                      }`}
                     title={isDailyMetricsOpen ? "Click to open Study Room Manual Log" : (((timerState.pomodoroStatus && timerState.pomodoroStatus !== 'idle') ||
-                                                       (timerState.timerStatus && timerState.timerStatus !== 'idle') ||
-                                                       (timerState.stopwatchStatus && timerState.stopwatchStatus !== 'idle'))
+                      (timerState.timerStatus && timerState.timerStatus !== 'idle') ||
+                      (timerState.stopwatchStatus && timerState.stopwatchStatus !== 'idle'))
                       ? "Swipe to cycle (Hole / Stats / Timer), tap to expand"
                       : "Swipe to reveal mini stats, tap to open Momentum Drawer")}
                   >
                     {/* STATS COMPACT PILL */}
-                    <div 
+                    <div
                       className="compact-content cursor-pointer"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -25285,7 +25288,7 @@ Return your response strictly as a JSON object matching this schema:
                     </div>
 
                     {/* TIMER MINI CAPSULE (Image 1) */}
-                    <div 
+                    <div
                       className="compact-timer-mini flex items-center justify-between w-full px-3 cursor-pointer"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -25298,7 +25301,7 @@ Return your response strictly as a JSON object matching this schema:
                     </div>
 
                     {/* TIMER EXPANDED CARD (Same size and aesthetic as stats expanded view) */}
-                    <div 
+                    <div
                       className="compact-timer-semi flex flex-col justify-between w-full h-full cursor-pointer select-none"
                       onClick={() => {
                         if (Date.now() - (islandExpandedTimeRef.current || 0) > 400) {
@@ -25320,11 +25323,10 @@ Return your response strictly as a JSON object matching this schema:
                           </span>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <span className={`px-1.5 py-0.5 rounded-lg text-[8px] sm:text-[9px] font-black uppercase tracking-wider border flex items-center gap-1 ${
-                            activeTimerInfo.isRunning
+                          <span className={`px-1.5 py-0.5 rounded-lg text-[8px] sm:text-[9px] font-black uppercase tracking-wider border flex items-center gap-1 ${activeTimerInfo.isRunning
                               ? (settingsThemeMode === 'dark' ? 'bg-blue-500/15 text-blue-400 border-blue-500/30 animate-pulse' : 'bg-blue-50 text-blue-700 border-blue-200 animate-pulse')
                               : (settingsThemeMode === 'dark' ? 'bg-amber-500/15 text-amber-400 border-amber-500/30' : 'bg-amber-50 text-amber-700 border-amber-200')
-                          }`}>
+                            }`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${activeTimerInfo.isRunning ? 'bg-blue-500' : 'bg-amber-500'}`} />
                             {activeTimerInfo.isRunning ? 'Running' : 'Paused'}
                           </span>
@@ -25350,11 +25352,10 @@ Return your response strictly as a JSON object matching this schema:
                       <div className="flex items-center justify-between gap-2 pt-1 flex-1">
                         {/* Left: Time Display & Hint */}
                         <div className="flex items-center gap-2">
-                          <div className={`px-3 py-1.5 rounded-xl border flex flex-col items-start justify-center ${
-                            settingsThemeMode === 'dark'
+                          <div className={`px-3 py-1.5 rounded-xl border flex flex-col items-start justify-center ${settingsThemeMode === 'dark'
                               ? 'bg-white/[0.04] border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]'
                               : 'bg-white/70 border-white/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]'
-                          }`}>
+                            }`}>
                             <div className="flex items-baseline gap-1.5">
                               <span className="font-mono text-xl sm:text-2xl font-black tracking-tight leading-none text-blue-500 dark:text-blue-400">
                                 {activeTimerInfo.timeStr}
@@ -25404,11 +25405,10 @@ Return your response strictly as a JSON object matching this schema:
                               e.stopPropagation();
                               handleResetTimer();
                             }}
-                            className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl active:scale-95 flex items-center justify-center transition border cursor-pointer shrink-0 ${
-                              settingsThemeMode === 'dark'
+                            className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl active:scale-95 flex items-center justify-center transition border cursor-pointer shrink-0 ${settingsThemeMode === 'dark'
                                 ? 'bg-white/5 hover:bg-white/10 text-slate-300 border-white/10'
                                 : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
-                            }`}
+                              }`}
                             title="Reset Timer"
                           >
                             <RotateCcw className="w-4 h-4" />
@@ -25418,7 +25418,7 @@ Return your response strictly as a JSON object matching this schema:
                     </div>
 
                     {/* Expanded Content (Today's Momentum Drawer) */}
-                    <div 
+                    <div
                       className="expanded-content cursor-pointer"
                       onClick={() => {
                         if (Date.now() - (islandExpandedTimeRef.current || 0) > 400) {
@@ -25437,9 +25437,8 @@ Return your response strictly as a JSON object matching this schema:
                           <span className="text-[9px] sm:text-[10px] font-bold opacity-60">{todayStr}</span>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <span className={`px-1.5 py-0.5 rounded-lg text-[8px] sm:text-[9px] font-black uppercase tracking-wider border flex items-center gap-1 ${
-                            settingsThemeMode === 'dark' ? 'bg-orange-500/15 text-orange-400 border-orange-500/30' : 'bg-orange-50 text-orange-700 border-orange-200'
-                          }`}>
+                          <span className={`px-1.5 py-0.5 rounded-lg text-[8px] sm:text-[9px] font-black uppercase tracking-wider border flex items-center gap-1 ${settingsThemeMode === 'dark' ? 'bg-orange-500/15 text-orange-400 border-orange-500/30' : 'bg-orange-50 text-orange-700 border-orange-200'
+                            }`}>
                             <Flame className="w-2.5 h-2.5" /> {streakStats.currentStreak}d Streak
                           </span>
                           <button
@@ -25506,8 +25505,7 @@ Return your response strictly as a JSON object matching this schema:
                     <button
                       onClick={handleHeaderSync}
                       disabled={isSyncing || gdriveSyncState.isSyncing}
-                      className={`relative ${(justSynced || gdriveSyncState.mediaProgress) ? 'w-auto px-2.5 h-8 gap-1.5' : 'w-8 h-8'} rounded-xl flex items-center justify-center transition-all duration-300 active:scale-95 cursor-pointer ${
-                        justSynced
+                      className={`relative ${(justSynced || gdriveSyncState.mediaProgress) ? 'w-auto px-2.5 h-8 gap-1.5' : 'w-8 h-8'} rounded-xl flex items-center justify-center transition-all duration-300 active:scale-95 cursor-pointer ${justSynced
                           ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-[0_0_15px_rgba(52,211,153,0.3)] scale-[1.03]'
                           : settingsThemeMode === 'dark' ? 'neu-btn-dark text-slate-300 hover:text-white' : 'neu-btn-light text-slate-700 hover:text-slate-950'
                         } ${(isSyncing || gdriveSyncState.isSyncing) ? 'opacity-95' : ''}`}
@@ -26164,10 +26162,10 @@ Return your response strictly as a JSON object matching this schema:
                                                   toggleCardSuspended(card);
                                                 }}
                                                 className={`text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1 transition ${card.isSuspended
-                                                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
-                                                    : settingsThemeMode === 'dark'
-                                                      ? 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-slate-200'
-                                                      : 'bg-slate-100 text-slate-500 border border-slate-200 hover:text-slate-700'
+                                                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
+                                                  : settingsThemeMode === 'dark'
+                                                    ? 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-slate-200'
+                                                    : 'bg-slate-100 text-slate-500 border border-slate-200 hover:text-slate-700'
                                                   }`}
                                                 title={card.isSuspended ? "Card is Suspended on export. Click to activate." : "Click to Suspend on export"}
                                               >
@@ -26785,10 +26783,10 @@ Return your response strictly as a JSON object matching this schema:
                                         toggleCardSuspended(card);
                                       }}
                                       className={`text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1 transition ${card.isSuspended
-                                          ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-sm'
-                                          : settingsThemeMode === 'dark'
-                                            ? 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-slate-200'
-                                            : 'bg-slate-100 text-slate-500 border border-slate-200 hover:text-slate-700'
+                                        ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-sm'
+                                        : settingsThemeMode === 'dark'
+                                          ? 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-slate-200'
+                                          : 'bg-slate-100 text-slate-500 border border-slate-200 hover:text-slate-700'
                                         }`}
                                       title={card.isSuspended ? "Card is Suspended on export. Click to activate." : "Click to Suspend on export"}
                                     >
@@ -30215,8 +30213,8 @@ Return your response strictly as a JSON object matching this schema:
                                       const meta = textbooksMetadata.find(tb => (tb.subject || '').toLowerCase() === activeSubName.toLowerCase());
                                       return (
                                         <div className={`p-3.5 rounded-2xl border text-xs flex items-center justify-between gap-3 ${meta
-                                            ? isDark ? 'bg-emerald-950/20 border-emerald-500/30 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                                            : isDark ? 'bg-amber-950/20 border-amber-500/30 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'
+                                          ? isDark ? 'bg-emerald-950/20 border-emerald-500/30 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                                          : isDark ? 'bg-amber-950/20 border-amber-500/30 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'
                                           }`}>
                                           <div className="flex items-center gap-2">
                                             <span>{meta ? '✓' : '⚠️'}</span>
@@ -30233,10 +30231,10 @@ Return your response strictly as a JSON object matching this schema:
                                     <div className="space-y-2">
                                       <label className="text-xs font-black uppercase tracking-wider text-slate-400">1. Master Subject PDF File</label>
                                       <label className={`w-full p-4 rounded-2xl border border-dashed flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all ${subjectPdfUploading
-                                          ? 'opacity-50 pointer-events-none'
-                                          : isDark
-                                            ? 'bg-slate-900/60 border-slate-700 hover:border-blue-400 text-slate-300'
-                                            : 'bg-white/80 border-slate-300 hover:border-blue-500 text-slate-700'
+                                        ? 'opacity-50 pointer-events-none'
+                                        : isDark
+                                          ? 'bg-slate-900/60 border-slate-700 hover:border-blue-400 text-slate-300'
+                                          : 'bg-white/80 border-slate-300 hover:border-blue-500 text-slate-700'
                                         }`}>
                                         <input
                                           type="file"
@@ -30758,8 +30756,8 @@ Return your response strictly as a JSON object matching this schema:
                         exit={{ opacity: 0, y: 20, scale: 0.96 }}
                         transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
                         className={`fixed left-3 right-3 sm:left-auto sm:right-6 sm:w-[380px] bottom-[78px] z-50 p-4 sm:p-5 rounded-3xl border shadow-2xl overflow-hidden ${settingsThemeMode === 'dark'
-                            ? 'neu-card-dark border-gray-800 text-slate-100'
-                            : 'neu-card-light border-gray-200/90 text-slate-800'
+                          ? 'neu-card-dark border-gray-800 text-slate-100'
+                          : 'neu-card-light border-gray-200/90 text-slate-800'
                           }`}
                       >
                         {/* Drawer Category Header */}
@@ -30854,8 +30852,8 @@ Return your response strictly as a JSON object matching this schema:
                                     <ItemIcon className="w-4.5 h-4.5" />
                                   </div>
                                   <span className={`text-xs sm:text-sm font-bold tracking-wide break-words whitespace-normal leading-snug transition-colors ${isActive
-                                      ? (settingsThemeMode === 'dark' ? 'text-blue-400 font-extrabold' : 'text-blue-600 font-extrabold')
-                                      : (settingsThemeMode === 'dark' ? 'text-gray-200 group-hover:text-white' : 'text-gray-800 group-hover:text-gray-950')
+                                    ? (settingsThemeMode === 'dark' ? 'text-blue-400 font-extrabold' : 'text-blue-600 font-extrabold')
+                                    : (settingsThemeMode === 'dark' ? 'text-gray-200 group-hover:text-white' : 'text-gray-800 group-hover:text-gray-950')
                                     }`}>
                                     {item.label}
                                   </span>
@@ -30893,14 +30891,14 @@ Return your response strictly as a JSON object matching this schema:
                           setActiveMobileCategory(prev => prev === cat.id ? null : cat.id);
                         }}
                         className={`flex flex-col items-center justify-center gap-1 min-w-0 flex-1 py-1 transition-all active:scale-95 select-none ${isDrawerOpen || hasActiveItem
-                            ? (settingsThemeMode === 'dark' ? 'text-sky-400' : 'text-blue-600')
-                            : 'text-gray-400'
+                          ? (settingsThemeMode === 'dark' ? 'text-sky-400' : 'text-blue-600')
+                          : 'text-gray-400'
                           }`}
                       >
                         <div
                           className={`w-10 h-10 flex items-center justify-center rounded-2xl transition-all duration-300 ${isDrawerOpen || hasActiveItem
-                              ? (settingsThemeMode === 'dark' ? 'neu-pressed-dark shadow-[inset_0_2px_4px_rgba(0,0,0,0.6),0_0_12px_rgba(56,189,248,0.25)]' : 'neu-pressed-light shadow-[inset_0_2px_4px_rgba(0,0,0,0.1),0_0_12px_rgba(37,99,235,0.2)]')
-                              : (settingsThemeMode === 'dark' ? 'neu-btn-dark' : 'neu-btn-light')
+                            ? (settingsThemeMode === 'dark' ? 'neu-pressed-dark shadow-[inset_0_2px_4px_rgba(0,0,0,0.6),0_0_12px_rgba(56,189,248,0.25)]' : 'neu-pressed-light shadow-[inset_0_2px_4px_rgba(0,0,0,0.1),0_0_12px_rgba(37,99,235,0.2)]')
+                            : (settingsThemeMode === 'dark' ? 'neu-btn-dark' : 'neu-btn-light')
                             }`}
                         >
                           <CatIcon className="w-5 h-5" />
@@ -31017,8 +31015,8 @@ Return your response strictly as a JSON object matching this schema:
                                   }`}
                               >
                                 <span className={`text-[10px] font-black uppercase tracking-wider whitespace-nowrap truncate block text-left ${(isExpanded && isSidebarExpanded) || hasActiveItem
-                                    ? (settingsThemeMode === 'dark' ? 'text-sky-400 font-extrabold' : 'text-blue-600 font-extrabold')
-                                    : (settingsThemeMode === 'dark' ? 'text-slate-400 group-hover:text-slate-200' : 'text-slate-500 group-hover:text-slate-800')
+                                  ? (settingsThemeMode === 'dark' ? 'text-sky-400 font-extrabold' : 'text-blue-600 font-extrabold')
+                                  : (settingsThemeMode === 'dark' ? 'text-slate-400 group-hover:text-slate-200' : 'text-slate-500 group-hover:text-slate-800')
                                   }`}>
                                   {cat.label}
                                 </span>
@@ -31229,8 +31227,8 @@ Return your response strictly as a JSON object matching this schema:
                           type="button"
                           onClick={() => setIsWidgetCustomizerOpen(true)}
                           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition font-black text-[10px] uppercase tracking-wider active:scale-95 cursor-pointer ${settingsThemeMode === 'dark'
-                              ? 'liquid-glass-pill-dark text-blue-400 hover:text-white'
-                              : 'liquid-glass-pill-light text-blue-600 hover:text-blue-800'
+                            ? 'liquid-glass-pill-dark text-blue-400 hover:text-white'
+                            : 'liquid-glass-pill-light text-blue-600 hover:text-blue-800'
                             }`}
                           title="Customize Dashboard Widgets"
                         >
@@ -31282,7 +31280,7 @@ Return your response strictly as a JSON object matching this schema:
                       </div>
 
                       {/* Expanded Content */}
-                      <div 
+                      <div
                         className="expanded-content cursor-pointer"
                         onClick={() => {
                           setCurrentTab('study');
@@ -31299,14 +31297,12 @@ Return your response strictly as a JSON object matching this schema:
                             <span className="text-[10px] font-bold opacity-60">{todayStr}</span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border flex items-center gap-1 ${
-                              settingsThemeMode === 'dark' ? 'bg-orange-500/15 text-orange-400 border-orange-500/30' : 'bg-orange-50 text-orange-700 border-orange-200'
-                            }`}>
+                            <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border flex items-center gap-1 ${settingsThemeMode === 'dark' ? 'bg-orange-500/15 text-orange-400 border-orange-500/30' : 'bg-orange-50 text-orange-700 border-orange-200'
+                              }`}>
                               <Flame className="w-2.5 h-2.5" /> {streakStats.currentStreak}d Streak
                             </span>
-                            <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border ${
-                              settingsThemeMode === 'dark' ? 'bg-blue-500/15 text-blue-300 border-blue-500/30' : 'bg-blue-50 text-blue-700 border-blue-200'
-                            }`}>
+                            <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border ${settingsThemeMode === 'dark' ? 'bg-blue-500/15 text-blue-300 border-blue-500/30' : 'bg-blue-50 text-blue-700 border-blue-200'
+                              }`}>
                               ⚡ Active
                             </span>
                             <button
@@ -31372,8 +31368,8 @@ Return your response strictly as a JSON object matching this schema:
                         <div
                           onClick={() => setIsTimerFullscreen(true)}
                           className={`flex items-center gap-2 px-3.5 py-1.5 rounded-2xl text-xs font-black shadow-sm font-mono tracking-tight animate-in slide-in-from-right-2 border cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all ${settingsThemeMode === 'dark'
-                              ? 'liquid-glass-pill-dark text-white shadow-[0_4px_20px_rgba(59,130,246,0.2)]'
-                              : 'liquid-glass-pill-light text-slate-800 shadow-[0_4px_20px_rgba(59,130,246,0.1)]'
+                            ? 'liquid-glass-pill-dark text-white shadow-[0_4px_20px_rgba(59,130,246,0.2)]'
+                            : 'liquid-glass-pill-light text-slate-800 shadow-[0_4px_20px_rgba(59,130,246,0.1)]'
                             }`}
                           title="Click to open Fullscreen Study Room"
                         >
@@ -31386,10 +31382,10 @@ Return your response strictly as a JSON object matching this schema:
                           )}
 
                           <span className={`text-[9px] uppercase tracking-wider font-extrabold ${timerState.timerType === 'stopwatch'
-                              ? 'text-emerald-400'
-                              : timerState.timerType === 'timer'
-                                ? 'text-indigo-400'
-                                : 'text-orange-400'
+                            ? 'text-emerald-400'
+                            : timerState.timerType === 'timer'
+                              ? 'text-indigo-400'
+                              : 'text-orange-400'
                             }`}>
                             {timerState.timerType === 'stopwatch'
                               ? 'Stopwatch'
@@ -31447,8 +31443,7 @@ Return your response strictly as a JSON object matching this schema:
                         type="button"
                         onClick={handleHeaderSync}
                         disabled={isSyncing || gdriveSyncState.isSyncing}
-                        className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-300 cursor-pointer active:scale-95 relative overflow-hidden ${
-                          justSynced
+                        className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-300 cursor-pointer active:scale-95 relative overflow-hidden ${justSynced
                             ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-[0_0_18px_rgba(52,211,153,0.35)] scale-[1.02]'
                             : (isSyncing || gdriveSyncState.isSyncing)
                               ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30 shadow-sm cursor-wait'
@@ -31518,10 +31513,10 @@ Return your response strictly as a JSON object matching this schema:
                       <div className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 ${settingsThemeMode === 'dark' ? 'liquid-glass-pill-dark' : 'liquid-glass-pill-light'
                         }`}>
                         <div className={`w-1.5 h-1.5 rounded-full ${justSynced
-                            ? 'bg-emerald-400 shadow-xs shadow-emerald-400 animate-ping'
-                            : gdriveSyncState.isSyncing
-                              ? 'bg-amber-400 animate-pulse'
-                              : (gdriveAuthState ? 'bg-emerald-400 animate-pulse' : 'bg-blue-400')
+                          ? 'bg-emerald-400 shadow-xs shadow-emerald-400 animate-ping'
+                          : gdriveSyncState.isSyncing
+                            ? 'bg-amber-400 animate-pulse'
+                            : (gdriveAuthState ? 'bg-emerald-400 animate-pulse' : 'bg-blue-400')
                           }`} />
                         <span className={
                           gdriveAuthState
@@ -32350,10 +32345,10 @@ Return your response strictly as a JSON object matching this schema:
                                                     toggleCardSuspended(card);
                                                   }}
                                                   className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1 transition ${card.isSuspended
-                                                      ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-sm'
-                                                      : settingsThemeMode === 'dark'
-                                                        ? 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-slate-200'
-                                                        : 'bg-slate-100 text-slate-500 border border-slate-200 hover:text-slate-700'
+                                                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-sm'
+                                                    : settingsThemeMode === 'dark'
+                                                      ? 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-slate-200'
+                                                      : 'bg-slate-100 text-slate-500 border border-slate-200 hover:text-slate-700'
                                                     }`}
                                                   title={card.isSuspended ? "Card is Suspended on export. Click to activate." : "Click to Suspend on export"}
                                                 >
@@ -32720,8 +32715,8 @@ Return your response strictly as a JSON object matching this schema:
                                   whileTap={{ scale: 0.97 }}
                                   onClick={() => setNewFolderDialog({ isOpen: true, basePath: hierarchy || '', input: '' })}
                                   className={`h-[34px] px-3.5 rounded-xl transition flex items-center gap-1.5 text-xs font-bold shadow-sm cursor-pointer ${settingsThemeMode === 'dark'
-                                      ? 'neu-btn-dark text-gray-200 hover:text-white border border-gray-700/50'
-                                      : 'neu-btn-light text-gray-700 hover:text-gray-900 border border-white/80'
+                                    ? 'neu-btn-dark text-gray-200 hover:text-white border border-gray-700/50'
+                                    : 'neu-btn-light text-gray-700 hover:text-gray-900 border border-white/80'
                                     }`}
                                   title={hierarchy ? `Create subfolder inside "${hierarchy.split('::').pop()}"` : "Create new folder"}
                                 >
@@ -32733,8 +32728,8 @@ Return your response strictly as a JSON object matching this schema:
                                   whileTap={{ scale: 0.97 }}
                                   onClick={() => openManualCardModal(null)}
                                   className={`h-[34px] px-3.5 rounded-xl transition flex items-center gap-1.5 text-xs font-bold shadow-sm cursor-pointer ${settingsThemeMode === 'dark'
-                                      ? 'neu-btn-dark text-gray-200 hover:text-white border border-gray-700/50'
-                                      : 'neu-btn-light text-gray-700 hover:text-gray-900 border border-white/80'
+                                    ? 'neu-btn-dark text-gray-200 hover:text-white border border-gray-700/50'
+                                    : 'neu-btn-light text-gray-700 hover:text-gray-900 border border-white/80'
                                     }`}
                                   title="Add Manual Flashcard"
                                 >
@@ -32750,8 +32745,8 @@ Return your response strictly as a JSON object matching this schema:
                                   }}
                                   disabled={selectedFolderCardCount === 0}
                                   className={`h-[34px] px-3.5 rounded-xl transition flex items-center gap-1.5 text-xs font-bold shadow-sm ${selectedFolderCardCount === 0
-                                      ? 'opacity-40 cursor-not-allowed pointer-events-none'
-                                      : 'cursor-pointer'
+                                    ? 'opacity-40 cursor-not-allowed pointer-events-none'
+                                    : 'cursor-pointer'
                                     } ${settingsThemeMode === 'dark'
                                       ? 'neu-btn-dark text-gray-200 hover:text-white border border-gray-700/50'
                                       : 'neu-btn-light text-gray-700 hover:text-gray-900 border border-white/80'
@@ -32868,8 +32863,8 @@ Return your response strictly as a JSON object matching this schema:
                                             type="button"
                                             onClick={handleLibraryZoomIn}
                                             className={`p-2.5 rounded-xl transition shadow-md cursor-pointer ${settingsThemeMode === 'dark'
-                                                ? 'neu-btn-dark text-gray-200 hover:text-white border border-gray-700/50'
-                                                : 'neu-btn-light text-gray-700 hover:text-gray-900 border border-white/80'
+                                              ? 'neu-btn-dark text-gray-200 hover:text-white border border-gray-700/50'
+                                              : 'neu-btn-light text-gray-700 hover:text-gray-900 border border-white/80'
                                               }`}
                                             title="Zoom In (or scroll wheel)"
                                           >
@@ -32879,8 +32874,8 @@ Return your response strictly as a JSON object matching this schema:
                                             type="button"
                                             onClick={handleLibraryResetZoom}
                                             className={`px-2 py-1.5 rounded-xl text-[10px] font-black transition shadow-md cursor-pointer flex items-center justify-center min-w-[36px] ${settingsThemeMode === 'dark'
-                                                ? 'neu-btn-dark text-gray-200 hover:text-white border border-gray-700/50'
-                                                : 'neu-btn-light text-gray-700 hover:text-gray-900 border border-white/80'
+                                              ? 'neu-btn-dark text-gray-200 hover:text-white border border-gray-700/50'
+                                              : 'neu-btn-light text-gray-700 hover:text-gray-900 border border-white/80'
                                               }`}
                                             title="Reset Zoom (1:1)"
                                           >
@@ -32890,8 +32885,8 @@ Return your response strictly as a JSON object matching this schema:
                                             type="button"
                                             onClick={handleLibraryZoomOut}
                                             className={`p-2.5 rounded-xl transition shadow-md cursor-pointer ${settingsThemeMode === 'dark'
-                                                ? 'neu-btn-dark text-gray-200 hover:text-white border border-gray-700/50'
-                                                : 'neu-btn-light text-gray-700 hover:text-gray-900 border border-white/80'
+                                              ? 'neu-btn-dark text-gray-200 hover:text-white border border-gray-700/50'
+                                              : 'neu-btn-light text-gray-700 hover:text-gray-900 border border-white/80'
                                               }`}
                                             title="Zoom Out (or scroll wheel)"
                                           >
@@ -33081,10 +33076,10 @@ Return your response strictly as a JSON object matching this schema:
                                                           toggleCardSuspended(card);
                                                         }}
                                                         className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1 transition ${card.isSuspended
-                                                            ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-sm'
-                                                            : settingsThemeMode === 'dark'
-                                                              ? 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-slate-200'
-                                                              : 'bg-slate-100 text-slate-500 border border-slate-200 hover:text-slate-700'
+                                                          ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-sm'
+                                                          : settingsThemeMode === 'dark'
+                                                            ? 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-slate-200'
+                                                            : 'bg-slate-100 text-slate-500 border border-slate-200 hover:text-slate-700'
                                                           }`}
                                                         title={card.isSuspended ? "Card is Suspended on export. Click to activate." : "Click to Suspend on export"}
                                                       >
@@ -33440,8 +33435,8 @@ Return your response strictly as a JSON object matching this schema:
                                               whileTap={{ scale: 0.97 }}
                                               onClick={() => setNewFolderDialog({ isOpen: true, basePath: hierarchy || '', input: '' })}
                                               className={`aspect-[4/3] rounded-3xl p-5 border-2 border-dashed transition-all cursor-pointer group flex flex-col justify-between ${settingsThemeMode === 'dark'
-                                                  ? 'border-blue-500/30 hover:border-blue-500/80 bg-blue-500/5 hover:bg-blue-500/10 text-gray-200'
-                                                  : 'border-blue-400/40 hover:border-blue-500/80 bg-blue-500/5 hover:bg-blue-50/80 text-gray-700'
+                                                ? 'border-blue-500/30 hover:border-blue-500/80 bg-blue-500/5 hover:bg-blue-500/10 text-gray-200'
+                                                : 'border-blue-400/40 hover:border-blue-500/80 bg-blue-500/5 hover:bg-blue-50/80 text-gray-700'
                                                 }`}
                                               title={`Create new subfolder in ${hierarchy || 'Root'}`}
                                             >
@@ -33616,10 +33611,10 @@ Return your response strictly as a JSON object matching this schema:
                                                       toggleCardSuspended(card);
                                                     }}
                                                     className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1 transition ${card.isSuspended
-                                                        ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-sm'
-                                                        : settingsThemeMode === 'dark'
-                                                          ? 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-slate-200'
-                                                          : 'bg-slate-100 text-slate-500 border border-slate-200 hover:text-slate-700'
+                                                      ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-sm'
+                                                      : settingsThemeMode === 'dark'
+                                                        ? 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-slate-200'
+                                                        : 'bg-slate-100 text-slate-500 border border-slate-200 hover:text-slate-700'
                                                       }`}
                                                     title={card.isSuspended ? "Card is Suspended on export. Click to activate." : "Click to Suspend on export"}
                                                   >
@@ -33699,8 +33694,8 @@ Return your response strictly as a JSON object matching this schema:
                                             type="button"
                                             onClick={() => setLibraryCardsLimit(prev => prev + 40)}
                                             className={`px-6 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition shadow-md flex items-center gap-2 cursor-pointer ${settingsThemeMode === 'dark'
-                                                ? 'neu-btn-dark text-blue-400 hover:text-white border border-gray-700/50'
-                                                : 'neu-btn-light text-blue-600 hover:text-blue-700 border border-white/80'
+                                              ? 'neu-btn-dark text-blue-400 hover:text-white border border-gray-700/50'
+                                              : 'neu-btn-light text-blue-600 hover:text-blue-700 border border-white/80'
                                               }`}
                                           >
                                             <Layers className="w-4 h-4" /> Load More Cards ({Math.min(libraryCardsLimit, pageCards.length)} of {pageCards.length})
@@ -36033,8 +36028,8 @@ Return your response strictly as a JSON object matching this schema:
                                         setIsEditGtModalOpen(true);
                                       }}
                                       className={`px-4 py-2 border text-xs font-black uppercase tracking-wider rounded-xl shadow-sm transition duration-150 flex items-center gap-1.5 active:scale-95 shrink-0 font-mono ${isDark
-                                          ? 'neu-btn-dark text-slate-200 border-slate-750 hover:text-white'
-                                          : 'bg-white border-gray-200 text-gray-700 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200'
+                                        ? 'neu-btn-dark text-slate-200 border-slate-750 hover:text-white'
+                                        : 'bg-white border-gray-200 text-gray-700 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200'
                                         }`}
                                     >
                                       <Edit3 className="w-3.5 h-3.5" />
@@ -38018,8 +38013,8 @@ Return your response strictly as a JSON object matching this schema:
                                     <button
                                       onClick={() => setTimelineViewMode('timeline')}
                                       className={`relative w-28 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${timelineViewMode === 'timeline'
-                                          ? 'text-white font-extrabold'
-                                          : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                                        ? 'text-white font-extrabold'
+                                        : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
                                         }`}
                                     >
                                       Timeline View
@@ -38027,8 +38022,8 @@ Return your response strictly as a JSON object matching this schema:
                                     <button
                                       onClick={() => setTimelineViewMode('list')}
                                       className={`relative w-28 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${timelineViewMode === 'list'
-                                          ? 'text-white font-extrabold'
-                                          : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                                        ? 'text-white font-extrabold'
+                                        : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
                                         }`}
                                     >
                                       List Agenda
@@ -38205,8 +38200,8 @@ Return your response strictly as a JSON object matching this schema:
                                           <div
                                             key={task.id}
                                             className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${task.completed
-                                                ? isDark ? 'neu-pressed-dark border-emerald-900/40 bg-emerald-950/20' : 'border-emerald-200 bg-emerald-50/40'
-                                                : isDark ? 'neu-card-dark border-slate-800 hover:border-slate-700' : 'neu-card-light border-slate-200 hover:border-slate-300'
+                                              ? isDark ? 'neu-pressed-dark border-emerald-900/40 bg-emerald-950/20' : 'border-emerald-200 bg-emerald-50/40'
+                                              : isDark ? 'neu-card-dark border-slate-800 hover:border-slate-700' : 'neu-card-light border-slate-200 hover:border-slate-300'
                                               }`}
                                           >
                                             <div className="flex flex-col min-w-0 pr-4 select-none flex-grow">
@@ -38218,11 +38213,11 @@ Return your response strictly as a JSON object matching this schema:
                                                   className="w-4.5 h-4.5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer shrink-0"
                                                 />
                                                 <span className={`w-2 h-2 rounded-full shrink-0 ${task.color === 'blue' ? 'bg-blue-500' :
-                                                    task.color === 'purple' ? 'bg-purple-500' :
-                                                      task.color === 'emerald' ? 'bg-emerald-500' :
-                                                        task.color === 'amber' ? 'bg-amber-500' :
-                                                          task.color === 'rose' ? 'bg-rose-500' :
-                                                            task.color === 'violet' ? 'bg-violet-500' : 'bg-blue-500'
+                                                  task.color === 'purple' ? 'bg-purple-500' :
+                                                    task.color === 'emerald' ? 'bg-emerald-500' :
+                                                      task.color === 'amber' ? 'bg-amber-500' :
+                                                        task.color === 'rose' ? 'bg-rose-500' :
+                                                          task.color === 'violet' ? 'bg-violet-500' : 'bg-blue-500'
                                                   }`} />
                                                 <span className={`text-xs font-black truncate ${task.completed ? 'line-through opacity-50 font-medium' : isDark ? 'text-slate-100' : 'text-slate-800'}`}>
                                                   {task.topic}
@@ -38933,8 +38928,8 @@ Return your response strictly as a JSON object matching this schema:
                                             setIsSubjectPdfModalOpen(true);
                                           }}
                                           className={`w-full py-2.5 px-4 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider border transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md active:scale-95 ${attachedPdf
-                                              ? isDark ? 'neu-btn-dark text-emerald-300 border-emerald-500/40 hover:border-emerald-400' : 'neu-btn-light text-emerald-800 border-emerald-300 hover:border-emerald-400'
-                                              : isDark ? 'neu-btn-dark text-amber-300 border-amber-500/50 hover:border-amber-400 ring-2 ring-amber-500/30' : 'neu-btn-light text-amber-800 border-amber-400 hover:border-amber-500 ring-2 ring-amber-400/30'
+                                            ? isDark ? 'neu-btn-dark text-emerald-300 border-emerald-500/40 hover:border-emerald-400' : 'neu-btn-light text-emerald-800 border-emerald-300 hover:border-emerald-400'
+                                            : isDark ? 'neu-btn-dark text-amber-300 border-amber-500/50 hover:border-amber-400 ring-2 ring-amber-500/30' : 'neu-btn-light text-amber-800 border-amber-400 hover:border-amber-500 ring-2 ring-amber-400/30'
                                             }`}
                                         >
                                           <span>📁 {attachedPdf ? `Master PDF (+${attachedPdf.pageOffset || 0} p. offset)` : 'Upload Master Subject PDF & Offset'}</span>
@@ -39083,8 +39078,8 @@ Return your response strictly as a JSON object matching this schema:
                                         const meta = textbooksMetadata.find(tb => (tb.subject || '').toLowerCase() === activeSubName.toLowerCase());
                                         return (
                                           <div className={`p-3.5 rounded-2xl border text-xs flex items-center justify-between gap-3 ${meta
-                                              ? isDark ? 'bg-emerald-950/20 border-emerald-500/30 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                                              : isDark ? 'bg-amber-950/20 border-amber-500/30 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'
+                                            ? isDark ? 'bg-emerald-950/20 border-emerald-500/30 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                                            : isDark ? 'bg-amber-950/20 border-amber-500/30 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'
                                             }`}>
                                             <div className="flex items-center gap-2">
                                               <span>{meta ? '✓' : '⚠️'}</span>
@@ -39101,10 +39096,10 @@ Return your response strictly as a JSON object matching this schema:
                                       <div className="space-y-2">
                                         <label className="text-xs font-black uppercase tracking-wider text-slate-400">1. Master Subject PDF File</label>
                                         <label className={`w-full p-4 rounded-2xl border border-dashed flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all ${subjectPdfUploading
-                                            ? 'opacity-50 pointer-events-none'
-                                            : isDark
-                                              ? 'bg-slate-900/60 border-slate-700 hover:border-blue-400 text-slate-300'
-                                              : 'bg-white/80 border-slate-300 hover:border-blue-500 text-slate-700'
+                                          ? 'opacity-50 pointer-events-none'
+                                          : isDark
+                                            ? 'bg-slate-900/60 border-slate-700 hover:border-blue-400 text-slate-300'
+                                            : 'bg-white/80 border-slate-300 hover:border-blue-500 text-slate-700'
                                           }`}>
                                           <input
                                             type="file"
@@ -40317,10 +40312,10 @@ Return your response strictly as a JSON object matching this schema:
                             type="button"
                             onClick={() => setEditingCard({ ...editingCard, isSuspended: !editingCard.isSuspended })}
                             className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all shrink-0 ${editingCard.isSuspended
-                                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-sm'
-                                : settingsThemeMode === 'dark'
-                                  ? 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'
-                                  : 'bg-slate-200 text-slate-600 hover:text-slate-900 border border-slate-300'
+                              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-sm'
+                              : settingsThemeMode === 'dark'
+                                ? 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'
+                                : 'bg-slate-200 text-slate-600 hover:text-slate-900 border border-slate-300'
                               }`}
                           >
                             {editingCard.isSuspended ? (
@@ -40686,15 +40681,15 @@ Return your response strictly as a JSON object matching this schema:
                       exit={{ opacity: 0, scale: 0.92, y: 20 }}
                       transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
                       className={`relative w-full max-w-md rounded-3xl p-6 shadow-2xl border text-left space-y-5 ${settingsThemeMode === 'dark'
-                          ? 'neu-card-dark text-white border-slate-700/80 bg-[#222730]'
-                          : 'neu-card-light text-slate-800 border-slate-200 bg-white'
+                        ? 'neu-card-dark text-white border-slate-700/80 bg-[#222730]'
+                        : 'neu-card-light text-slate-800 border-slate-200 bg-white'
                         }`}
                     >
                       <div className="flex justify-between items-start">
                         <div>
                           <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-lg border ${settingsThemeMode === 'dark'
-                              ? 'bg-slate-800/80 text-blue-400 border-blue-500/30'
-                              : 'bg-blue-50 text-blue-700 border-blue-200'
+                            ? 'bg-slate-800/80 text-blue-400 border-blue-500/30'
+                            : 'bg-blue-50 text-blue-700 border-blue-200'
                             }`}>
                             {ratingPopoverTopic.subject}
                           </span>
@@ -41649,8 +41644,8 @@ Return your response strictly as a JSON object matching this schema:
                                   onClick={() => setCurrentCropIndex(prev => Math.max(0, prev - 1))}
                                   disabled={currentCropIndex === 0}
                                   className={`w-9 h-9 border rounded-xl flex items-center justify-center transition active:scale-95 shrink-0 cursor-pointer ${settingsThemeMode === 'dark'
-                                      ? 'border-gray-700 bg-slate-800 hover:bg-slate-700 text-white disabled:opacity-30'
-                                      : 'border-gray-250 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-40'
+                                    ? 'border-gray-700 bg-slate-800 hover:bg-slate-700 text-white disabled:opacity-30'
+                                    : 'border-gray-250 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-40'
                                     }`}
                                 >
                                   <ChevronLeft className="w-5 h-5" />
@@ -41659,8 +41654,8 @@ Return your response strictly as a JSON object matching this schema:
                                   onClick={() => setCurrentCropIndex(prev => Math.min(customCropCards.length - 1, prev + 1))}
                                   disabled={currentCropIndex === customCropCards.length - 1}
                                   className={`w-9 h-9 border rounded-xl flex items-center justify-center transition active:scale-95 shrink-0 cursor-pointer ${settingsThemeMode === 'dark'
-                                      ? 'border-gray-700 bg-slate-800 hover:bg-slate-700 text-white disabled:opacity-30'
-                                      : 'border-gray-250 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-40'
+                                    ? 'border-gray-700 bg-slate-800 hover:bg-slate-700 text-white disabled:opacity-30'
+                                    : 'border-gray-250 bg-white hover:bg-gray-50 text-gray-700 disabled:opacity-40'
                                     }`}
                                 >
                                   <ChevronRight className="w-5 h-5" />
@@ -42107,8 +42102,8 @@ Return your response strictly as a JSON object matching this schema:
                           <button
                             onClick={() => setSchedulerModalTab('manual')}
                             className={`relative flex-1 py-2 text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${schedulerModalTab === 'manual'
-                                ? 'text-white font-extrabold'
-                                : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                              ? 'text-white font-extrabold'
+                              : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
                               }`}
                           >
                             Manual Entry
@@ -42116,8 +42111,8 @@ Return your response strictly as a JSON object matching this schema:
                           <button
                             onClick={() => setSchedulerModalTab('ai')}
                             className={`relative flex-1 py-2 text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${schedulerModalTab === 'ai'
-                                ? 'text-white font-extrabold'
-                                : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                              ? 'text-white font-extrabold'
+                              : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
                               }`}
                           >
                             AI Schedule Extractor
@@ -42162,8 +42157,8 @@ Return your response strictly as a JSON object matching this schema:
                                   type="button"
                                   onClick={() => setSchedulerTaskSource('custom')}
                                   className={`relative flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${schedulerTaskSource === 'custom'
-                                      ? 'text-white font-extrabold'
-                                      : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                                    ? 'text-white font-extrabold'
+                                    : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
                                     }`}
                                 >
                                   Custom Text Input
@@ -42172,8 +42167,8 @@ Return your response strictly as a JSON object matching this schema:
                                   type="button"
                                   onClick={() => setSchedulerTaskSource('tracker')}
                                   className={`relative flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer select-none flex items-center justify-center z-10 transition-colors duration-300 ${schedulerTaskSource === 'tracker'
-                                      ? 'text-white font-extrabold'
-                                      : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
+                                    ? 'text-white font-extrabold'
+                                    : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900')
                                     }`}
                                 >
                                   Integrated Subject Tracker

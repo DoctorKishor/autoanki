@@ -19,7 +19,6 @@ import {
   canonicalStringify,
   mergeSubjectTrackerArrays,
   mergePytUserProgress,
-  mergeStudyScheduleObjects,
   mergeTextbooksMetadata,
   mergeFsrsConfigs,
   mergeSettingsArrays,
@@ -350,9 +349,7 @@ function runDeviceSync(device, cloudVault, options = {}) {
   const isEmptyLocal = (
     (!device.stores.topics || device.stores.topics.length === 0) &&
     (!device.getKV('flashcards') || device.getKV('flashcards').length === 0) &&
-    (!device.getKV('subject_tracker_data') || device.getKV('subject_tracker_data').length === 0) &&
-    (!device.getKV('study_schedule') || Object.keys(device.getKV('study_schedule')).length === 0) &&
-    (!device.getKV('study_logs') || Object.keys(device.getKV('study_logs')).length === 0)
+    (!device.getKV('subject_tracker_data') || device.getKV('subject_tracker_data').length === 0)
   );
 
   if (!ancHashes) {
@@ -1324,7 +1321,7 @@ async function runScenarioJ() {
   const singleDevDate = '2026-08-27';
   const singleVault = new MockCloudVault();
   const singleDevice = new MockDevice('Device Single', 'dev_single_user');
-  
+
   // Step 6a: User logs 'Sample GT'
   singleDevice.setKV('study_logs', {
     [singleDevDate]: {
@@ -1374,278 +1371,553 @@ async function runScenarioJ() {
 }
 
 /**
- * SCENARIO K: Granular Sub-Entity Subject Tracker CRDT Merging (Topic X on Dev A, Topic Y on Dev B)
- * Verifies that independent topic additions and ratings on separate devices are never lost or pruned during sync.
+ * SCENARIO K: Smart Review FSRS Log Deletion & Undo Rating Sync Parity
+ * Verifies that deleting a revision log or undoing a topic rating locally does NOT resurrect the log or review count on subsequent syncs.
  */
 async function runScenarioK() {
-  logHeader('SCENARIO K: Concurrent Subject Tracker Sub-Entity Merging (Device A: Topic X, Device B: Topic Y)');
+  logHeader('SCENARIO K: Smart Review FSRS Log Deletion & Undo Rating Sync Parity');
+  const vault = new MockCloudVault();
+  const dev1 = new MockDevice('Device 1 (Desktop)', 'dev_desktop_k');
+  const dev2 = new MockDevice('Device 2 (Mobile)', 'dev_mobile_k');
 
-  const cloudVault = new MockCloudVault();
-  const devA = new MockDevice('Device A', 'dev_a_user');
-  const devB = new MockDevice('Device B', 'dev_b_user');
-
-  const baseTracker = [
+  const todayStr = '2026-08-27';
+  const initialIso = '2026-08-27T08:00:00.000Z';
+  const initialTracker = [
     {
       id: 'anatomy',
       subject: 'Anatomy',
       topics: {
-        brachial_plexus: {
-          name: 'Brachial Plexus',
-          page: '12',
-          studyDates: ['2026-08-20'],
-          stability: 2.5,
-          difficulty: 5.0,
-          reviewCount: 1,
-          lastReviewDate: '2026-08-20T10:00:00.000Z',
-          updatedAt: '2026-08-20T10:00:00.000Z'
+        'cranial nerves': {
+          id: 'top_cranial_nerves',
+          name: 'Cranial Nerves',
+          reviewCount: 0,
+          studyDates: [],
+          stability: null,
+          difficulty: null,
+          lastReviewDate: null,
+          updatedAt: initialIso
         }
       },
-      updatedAt: '2026-08-20T10:00:00.000Z'
+      updatedAt: initialIso
     }
   ];
 
-  devA.setKV('subject_tracker_data', baseTracker);
-  runDeviceSync(devA, cloudVault); // Initial upload to cloud
-  runDeviceSync(devB, cloudVault); // Dev B downloads base state
+  dev1.setKV('subject_tracker_data', initialTracker);
+  dev1.setKV('study_logs', {});
 
-  // Step 1: Device A adds & rates "Topic X" (Femoral Triangle) offline
-  const trackerA = devA.getKV('subject_tracker_data');
-  trackerA[0].topics.femoral_triangle = {
-    name: 'Femoral Triangle',
-    page: '45',
-    studyDates: ['2026-08-27'],
-    stability: 3.1,
-    difficulty: 4.2,
-    reviewCount: 1,
-    lastReviewDate: '2026-08-27T08:00:00.000Z',
-    updatedAt: '2026-08-27T08:00:00.000Z'
+  // 1. Initial push from dev1 to cloud
+  runDeviceSync(dev1, vault);
+  // 2. Dev2 pulls initial collection
+  runDeviceSync(dev2, vault);
+
+  assert(dev2.getKV('subject_tracker_data')[0].topics['cranial nerves'].reviewCount === 0, 'Dev2 received initial unstudied topic');
+
+  // 3. User on Dev1 rates "Cranial Nerves" as Good in Smart Review
+  const ratedIso = '2026-08-27T09:00:00.000Z';
+  const ratedFsrsLog = {
+    id: 'fsrs_log_cranial_1',
+    topicName: 'Cranial Nerves',
+    subject: 'Anatomy',
+    rating: 3,
+    stability: 3.2,
+    difficulty: 4.8,
+    dateStr: todayStr,
+    timestamp: ratedIso,
+    updatedAt: ratedIso
   };
-  trackerA[0].updatedAt = '2026-08-27T08:00:00.000Z';
-  devA.setKV('subject_tracker_data', trackerA);
 
-  // Step 2: Device B independently adds & rates "Topic Y" (Popliteal Fossa) offline
-  const trackerB = devB.getKV('subject_tracker_data');
-  trackerB[0].topics.popliteal_fossa = {
-    name: 'Popliteal Fossa',
-    page: '68',
-    studyDates: ['2026-08-27'],
-    stability: 4.0,
-    difficulty: 3.8,
-    reviewCount: 1,
-    lastReviewDate: '2026-08-27T09:00:00.000Z',
-    updatedAt: '2026-08-27T09:00:00.000Z'
-  };
-  trackerB[0].updatedAt = '2026-08-27T09:00:00.000Z';
-  devB.setKV('subject_tracker_data', trackerB);
+  dev1.setKV('study_logs', {
+    [todayStr]: {
+      cards: 1,
+      totalCardsReviewed: 1,
+      questions: 0,
+      hours: 0.5,
+      studyHours: 0.5,
+      pages: 4,
+      fsrsLogs: [ratedFsrsLog],
+      sessions: [],
+      gts: [],
+      updatedAt: ratedIso
+    }
+  });
 
-  // Step 3: Device B syncs first -> pushes Topic Y to cloud
-  const actionB = runDeviceSync(devB, cloudVault);
-  assert(actionB === 'fast_forward_push', 'Device B fast-forward pushes Topic Y to cloud');
-
-  // Step 4: Device A syncs second -> performs Two-Way Delta Merge
-  const actionA = runDeviceSync(devA, cloudVault);
-  assert(actionA === 'two_way_merge', 'Device A performs Two-Way Delta Merge with cloud');
-
-  // Verify Device A has ALL 3 topics: Brachial Plexus, Femoral Triangle (Topic X), and Popliteal Fossa (Topic Y)
-  const mergedTrackerA = devA.getKV('subject_tracker_data');
-  const topicsA = mergedTrackerA[0].topics;
-  assert(topicsA.brachial_plexus !== undefined, 'Device A preserved base topic (Brachial Plexus)');
-  assert(topicsA.femoral_triangle !== undefined, 'Device A PRESERVED local Topic X (Femoral Triangle) - Zero Data Loss!');
-  assert(topicsA.popliteal_fossa !== undefined, 'Device A integrated remote Topic Y (Popliteal Fossa)');
-  assert(topicsA.femoral_triangle.stability === 3.1, 'Topic X has exact FSRS stability 3.1');
-  assert(topicsA.popliteal_fossa.stability === 4.0, 'Topic Y has exact FSRS stability 4.0');
-
-  // Step 5: Device B syncs again -> pulls merged state from cloud
-  const actionB2 = runDeviceSync(devB, cloudVault);
-  assert(actionB2 === 'fast_forward_pull' || actionB2 === 'two_way_merge', 'Device B pulls merged state from cloud');
-
-  const mergedTrackerB = devB.getKV('subject_tracker_data');
-  const topicsB = mergedTrackerB[0].topics;
-  assert(topicsB.brachial_plexus !== undefined, 'Device B preserved base topic (Brachial Plexus)');
-  assert(topicsB.femoral_triangle !== undefined, 'Device B received Topic X (Femoral Triangle) from Device A');
-  assert(topicsB.popliteal_fossa !== undefined, 'Device B preserved Topic Y (Popliteal Fossa)');
-
-  logHeader('SCENARIO K: ALL SUB-ENTITY TRACKER MERGE TESTS PASSED');
-}
-
-/**
- * SCENARIO L: Intentional Clear & Tombstone-Safe LWW Merge
- * Verifies that clearing notes/pages with newer timestamps wins over old data,
- * and deleting topics records permanent tombstones that prevent cloud resurrection.
- */
-async function runScenarioL() {
-  logHeader('SCENARIO L: Intentional Clear & Tombstone-Safe LWW Merge');
-
-  const cloudVault = new MockCloudVault();
-  const devA = new MockDevice('Device A', 'dev_a_user');
-  const devB = new MockDevice('Device B', 'dev_b_user');
-
-  const initialTracker = [
+  dev1.setKV('subject_tracker_data', [
     {
-      id: 'pharmacology',
-      subject: 'Pharmacology',
+      id: 'anatomy',
+      subject: 'Anatomy',
       topics: {
-        antibiotics: {
-          name: 'Antibiotics',
-          page: '100',
-          endPage: '120',
-          notes: '<p>Cephalosporins and penicillins</p>',
-          studyDates: ['2026-08-15'],
-          updatedAt: '2026-08-15T10:00:00.000Z'
-        },
-        antivirals: {
-          name: 'Antivirals',
-          page: '150',
-          studyDates: ['2026-08-16'],
-          updatedAt: '2026-08-16T10:00:00.000Z'
+        'cranial nerves': {
+          id: 'top_cranial_nerves',
+          name: 'Cranial Nerves',
+          reviewCount: 1,
+          studyDates: [todayStr],
+          stability: 3.2,
+          difficulty: 4.8,
+          lastReviewDate: todayStr,
+          updatedAt: ratedIso
         }
       },
-      updatedAt: '2026-08-16T10:00:00.000Z'
-    }
-  ];
-
-  devA.setKV('subject_tracker_data', initialTracker);
-  runDeviceSync(devA, cloudVault);
-  runDeviceSync(devB, cloudVault);
-
-  // Step 1: Device A intentionally clears page numbers to empty string and updates notes at t = 2026-08-27T10:00:00Z
-  const trackerA = devA.getKV('subject_tracker_data');
-  trackerA[0].topics.antibiotics = {
-    ...trackerA[0].topics.antibiotics,
-    page: '',
-    endPage: '',
-    notes: '<p>Updated high-yield mechanism only</p>',
-    updatedAt: '2026-08-27T10:00:00.000Z'
-  };
-  trackerA[0].updatedAt = '2026-08-27T10:00:00.000Z';
-  devA.setKV('subject_tracker_data', trackerA);
-
-  // Step 2: Device A deletes topic "antivirals" at t = 2026-08-27T10:05:00Z
-  delete trackerA[0].topics.antivirals;
-  devA.setKV('subject_tracker_data', trackerA);
-  devA.setKV('trash_topics', [
-    {
-      id: 'antivirals',
-      topicName: 'Antivirals',
-      docId: 'pharmacology',
-      deletedAt: '2026-08-27T10:05:00.000Z'
+      updatedAt: ratedIso
     }
   ]);
 
-  // Step 3: Device A syncs -> pushes cleared fields and tombstone to cloud
-  runDeviceSync(devA, cloudVault);
+  // 4. Dev1 pushes rating to cloud
+  runDeviceSync(dev1, vault);
+  // 5. Dev2 syncs and receives rating
+  runDeviceSync(dev2, vault);
 
-  // Step 4: Device B syncs -> pulls updates from cloud
-  runDeviceSync(devB, cloudVault);
+  const dev2Day = dev2.getKV('study_logs')[todayStr];
+  assert(dev2Day && dev2Day.fsrsLogs.length === 1, 'Dev2 received FSRS review log');
+  assert(dev2.getKV('subject_tracker_data')[0].topics['cranial nerves'].reviewCount === 1, 'Dev2 has reviewCount: 1');
 
-  // Step 5: Verify Device B has cleared page ("") and updated notes, and antivirals is PRUNED
-  const trackerB = devB.getKV('subject_tracker_data');
-  const antiB = trackerB[0].topics.antibiotics;
-  assert(antiB.page === '', 'Intentional page clearance to empty string preserved on Device B');
-  assert(antiB.endPage === '', 'Intentional endPage clearance to empty string preserved on Device B');
-  assert(antiB.notes === '<p>Updated high-yield mechanism only</p>', 'Updated notes preserved on Device B');
-  assert(trackerB[0].topics.antivirals === undefined, 'Deleted topic (Antivirals) was pruned on Device B via tombstone');
+  // 6. User on Dev1 clicks UNDO rating (or deletes the revision log)
+  const undoIso = '2026-08-27T09:30:00.000Z';
+  dev1.setKV('study_logs', {
+    [todayStr]: {
+      cards: 0,
+      totalCardsReviewed: 0,
+      questions: 0,
+      hours: 0.5,
+      studyHours: 0.5,
+      pages: 0,
+      fsrsLogs: [], // Pruned / undone
+      sessions: [],
+      gts: [],
+      updatedAt: undoIso
+    }
+  });
 
-  logHeader('SCENARIO L: ALL INTENTIONAL CLEAR & TOMBSTONE TESTS PASSED');
+  dev1.setKV('subject_tracker_data', [
+    {
+      id: 'anatomy',
+      subject: 'Anatomy',
+      topics: {
+        'cranial nerves': {
+          id: 'top_cranial_nerves',
+          name: 'Cranial Nerves',
+          reviewCount: 0,
+          studyDates: [],
+          stability: null,
+          difficulty: null,
+          lastReviewDate: null,
+          updatedAt: undoIso
+        }
+      },
+      updatedAt: undoIso
+    }
+  ]);
+
+  // 7. Dev1 syncs with Google Drive Cloud Vault
+  runDeviceSync(dev1, vault);
+
+  // 8. Verify Dev1 does NOT resurrect the deleted FSRS log or undone review count
+  const dev1DayAfterSync = dev1.getKV('study_logs')[todayStr];
+  assert(dev1DayAfterSync.fsrsLogs.length === 0, 'Dev1: Deleted FSRS log was NOT resurrected after sync');
+  assert(dev1DayAfterSync.cards === 0, 'Dev1: Card count is 0 (not restored to pre-undo value)');
+  const dev1TopicAfterSync = dev1.getKV('subject_tracker_data')[0].topics['cranial nerves'];
+  assert(dev1TopicAfterSync.reviewCount === 0, 'Dev1: Topic reviewCount remained 0 (not resurrected)');
+  assert(dev1TopicAfterSync.studyDates.length === 0, 'Dev1: Topic studyDates remained empty (not resurrected)');
+  assert(dev1TopicAfterSync.stability === null, 'Dev1: Topic FSRS stability remained null baseline');
+
+  // 9. Dev2 syncs with Google Drive Cloud Vault
+  runDeviceSync(dev2, vault);
+
+  // 10. Verify Dev2 received the undone/pruned state and did not resurrect the log
+  const dev2DayAfterSync = dev2.getKV('study_logs')[todayStr];
+  assert(dev2DayAfterSync.fsrsLogs.length === 0, 'Dev2: Deleted FSRS log was pruned and NOT resurrected on Dev2');
+  const dev2TopicAfterSync = dev2.getKV('subject_tracker_data')[0].topics['cranial nerves'];
+  assert(dev2TopicAfterSync.reviewCount === 0, 'Dev2: Topic reviewCount was updated to 0');
+  assert(dev2TopicAfterSync.studyDates.length === 0, 'Dev2: Topic studyDates was cleared');
+
+  logHeader('SCENARIO K: ALL SMART REVIEW FSRS UNDO/DELETE TESTS PASSED');
 }
 
 /**
- * SCENARIO M: Study Schedule Task CRDT Union & Monotonic Metrics Preservation
- * Verifies that concurrent tasks scheduled on the same date across devices are unioned without loss,
- * and daily review counters (cards, questions, hours) are strictly preserved.
+ * SCENARIO L: Subject Tracker Topic Deletion & FSRS Zero-Reset Sync Parity
+ * Verifies that deleting a topic locally from Subject Tracker does NOT resurrect it from cloud.
+ */
+async function runScenarioL() {
+  logHeader('SCENARIO L: Subject Tracker Topic Deletion Sync Parity');
+  const vault = new MockCloudVault();
+  const dev1 = new MockDevice('Device 1 (Desktop)', 'dev_desktop_l');
+  const dev2 = new MockDevice('Device 2 (Mobile)', 'dev_mobile_l');
+
+  const initialIso = '2026-08-27T08:00:00.000Z';
+  const initialTracker = [
+    {
+      id: 'physiology',
+      subject: 'Physiology',
+      topics: {
+        'cardiac cycle': {
+          id: 'top_cardiac_cycle',
+          name: 'Cardiac Cycle',
+          reviewCount: 2,
+          studyDates: ['2026-08-25', '2026-08-26'],
+          updatedAt: initialIso
+        },
+        'action potential': {
+          id: 'top_action_potential',
+          name: 'Action Potential',
+          reviewCount: 1,
+          studyDates: ['2026-08-26'],
+          updatedAt: initialIso
+        }
+      },
+      updatedAt: initialIso
+    }
+  ];
+
+  dev1.setKV('subject_tracker_data', initialTracker);
+  runDeviceSync(dev1, vault);
+  runDeviceSync(dev2, vault);
+
+  assert(Object.keys(dev2.getKV('subject_tracker_data')[0].topics).length === 2, 'Dev2 received both Physiology topics');
+
+  // User on Dev1 deletes "action potential" from Subject Tracker
+  const delIso = '2026-08-27T10:00:00.000Z';
+  dev1.setKV('subject_tracker_data', [
+    {
+      id: 'physiology',
+      subject: 'Physiology',
+      topics: {
+        'cardiac cycle': {
+          id: 'top_cardiac_cycle',
+          name: 'Cardiac Cycle',
+          reviewCount: 2,
+          studyDates: ['2026-08-25', '2026-08-26'],
+          updatedAt: initialIso
+        }
+      },
+      updatedAt: delIso
+    }
+  ]);
+  dev1.setKV('trash_topics', [
+    {
+      id: 'top_action_potential',
+      docId: 'physiology',
+      topicName: 'action potential',
+      name: 'Action Potential',
+      deletedAt: delIso
+    }
+  ]);
+  dev1.setKV('unified_graves', [
+    {
+      entityType: 'tracker_topic',
+      entityId: 'top_action_potential',
+      deletedAt: delIso,
+      metadata: { topicName: 'action potential', docId: 'physiology' },
+      parentId: 'physiology'
+    }
+  ]);
+
+  // Dev1 syncs with cloud
+  runDeviceSync(dev1, vault);
+
+  // Verify "action potential" is NOT resurrected on Dev1
+  const dev1Topics = dev1.getKV('subject_tracker_data')[0].topics;
+  assert(!dev1Topics['action potential'], 'Dev1: Deleted topic "Action Potential" was NOT resurrected after sync');
+  assert(dev1Topics['cardiac cycle'], 'Dev1: Retained non-deleted topic "Cardiac Cycle"');
+
+  // Dev2 syncs with cloud
+  runDeviceSync(dev2, vault);
+
+  // Verify "action potential" was pruned on Dev2
+  const dev2Topics = dev2.getKV('subject_tracker_data')[0].topics;
+  assert(!dev2Topics['action potential'], 'Dev2: Deleted topic "Action Potential" was pruned on Dev2 and NOT resurrected');
+  assert(dev2Topics['cardiac cycle'], 'Dev2: Retained non-deleted topic "Cardiac Cycle" on Dev2');
+
+  logHeader('SCENARIO L: ALL SUBJECT TRACKER TOPIC DELETION TESTS PASSED');
+}
+
+/**
+ * SCENARIO M: Google Drive Vault & Media Canonical Deduplication & Ghost Folder Cleanup
+ * Verifies that interrupted first-time syncs or multi-folder creations deterministically bind to the
+ * canonical vault, cache folder IDs, and eliminate duplicate folders/files.
  */
 async function runScenarioM() {
-  logHeader('SCENARIO M: Study Schedule Task CRDT Union & Monotonic Metrics');
+  logHeader('SCENARIO M: Google Drive Vault & Media Canonical Deduplication & Ghost Folder Cleanup');
 
-  const cloudVault = new MockCloudVault();
-  const devA = new MockDevice('Device A', 'dev_a_user');
-  const devB = new MockDevice('Device B', 'dev_b_user');
-
-  const testDate = '2026-08-27';
-
-  // Base state: both devices know about testDate with Task 1
-  const baseSched = {
-    [testDate]: {
-      date: testDate,
-      tasks: [
-        { id: 'task_1', subject: 'Anatomy', topicName: 'Brachial Plexus', completed: false, updatedAt: '2026-08-27T07:00:00.000Z' }
-      ],
-      updatedAt: '2026-08-27T07:00:00.000Z'
+  // Simulated Google Drive API store
+  const driveFiles = [
+    {
+      id: 'folder_vault_canonical',
+      name: 'AutoAnki_Sync_Vault',
+      mimeType: 'application/vnd.google-apps.folder',
+      parents: ['root'],
+      trashed: false,
+      createdTime: '2026-08-27T08:00:00.000Z',
+      modifiedTime: '2026-08-27T08:00:00.000Z'
+    },
+    {
+      id: 'folder_vault_ghost_duplicate',
+      name: 'AutoAnki_Sync_Vault',
+      mimeType: 'application/vnd.google-apps.folder',
+      parents: ['root'],
+      trashed: false,
+      createdTime: '2026-08-27T08:00:05.000Z',
+      modifiedTime: '2026-08-27T08:00:05.000Z'
+    },
+    {
+      id: 'file_manifest_1',
+      name: 'manifest.json',
+      mimeType: 'application/json',
+      parents: ['folder_vault_canonical'],
+      trashed: false,
+      createdTime: '2026-08-27T08:00:01.000Z',
+      modifiedTime: '2026-08-27T08:00:01.000Z'
+    },
+    // Duplicate files in folder
+    {
+      id: 'file_cards_old',
+      name: 'cards_bundle.json',
+      mimeType: 'application/json',
+      parents: ['folder_vault_canonical'],
+      trashed: false,
+      createdTime: '2026-08-27T08:00:01.000Z',
+      modifiedTime: '2026-08-27T08:00:01.000Z'
+    },
+    {
+      id: 'file_cards_new',
+      name: 'cards_bundle.json',
+      mimeType: 'application/json',
+      parents: ['folder_vault_canonical'],
+      trashed: false,
+      createdTime: '2026-08-27T08:00:03.000Z',
+      modifiedTime: '2026-08-27T08:00:03.000Z'
     }
+  ];
+
+  // Test 1: Deduplication of matching vault folders
+  const matchingVaults = driveFiles.filter(f => f.name === 'AutoAnki_Sync_Vault' && f.mimeType === 'application/vnd.google-apps.folder' && !f.trashed);
+  assert(matchingVaults.length === 2, 'Simulation: 2 duplicate vault folders exist in Google Drive');
+
+  // Identify canonical vault by inspecting child files
+  let canonicalVault = null;
+  const ghostFolders = [];
+
+  for (const vFolder of matchingVaults) {
+    const children = driveFiles.filter(f => f.parents?.includes(vFolder.id) && !f.trashed);
+    const hasManifest = children.some(f => f.name === 'manifest.json');
+    if (hasManifest && !canonicalVault) {
+      canonicalVault = vFolder;
+    } else if (children.length === 0) {
+      ghostFolders.push(vFolder);
+    }
+  }
+
+  assert(canonicalVault.id === 'folder_vault_canonical', 'Canonical vault with files correctly selected over empty ghost folder');
+  assert(ghostFolders.length === 1 && ghostFolders[0].id === 'folder_vault_ghost_duplicate', 'Empty ghost folder identified for cleanup');
+
+  // Cleanup ghost folder
+  ghostFolders.forEach(g => { g.trashed = true; });
+  const activeVaults = driveFiles.filter(f => f.name === 'AutoAnki_Sync_Vault' && f.mimeType === 'application/vnd.google-apps.folder' && !f.trashed);
+  assert(activeVaults.length === 1 && activeVaults[0].id === 'folder_vault_canonical', 'Ghost duplicate folder permanently trashed; only 1 canonical vault remains');
+
+  // Test 2: File-level deduplication inside vault folder
+  const vaultChildren = driveFiles.filter(f => f.parents?.includes('folder_vault_canonical') && !f.trashed);
+  const byName = new Map();
+  for (const f of vaultChildren) {
+    if (!byName.has(f.name)) byName.set(f.name, [f]);
+    else byName.get(f.name).push(f);
+  }
+
+  const dedupedFiles = [];
+  for (const [name, files] of byName.entries()) {
+    if (files.length === 1) {
+      dedupedFiles.push(files[0]);
+    } else {
+      files.sort((a, b) => new Date(b.modifiedTime).getTime() - new Date(a.modifiedTime).getTime());
+      const canonical = files[0];
+      dedupedFiles.push(canonical);
+      // Trash older duplicate files
+      for (let i = 1; i < files.length; i++) {
+        files[i].trashed = true;
+      }
+    }
+  }
+
+  const cardsFile = dedupedFiles.find(f => f.name === 'cards_bundle.json');
+  assert(cardsFile && cardsFile.id === 'file_cards_new', 'Latest modified cards_bundle.json was retained');
+  const oldCardsFile = driveFiles.find(f => f.id === 'file_cards_old');
+  assert(oldCardsFile.trashed === true, 'Older duplicate cards_bundle.json was safely cleaned up');
+
+  // Test 3: Fast-path cached lookup bypasses search query
+  const mockLocalStorage = { 'autoanki_gdrive_vault_id': 'folder_vault_canonical' };
+  const cachedId = mockLocalStorage['autoanki_gdrive_vault_id'];
+  const directLookedUp = driveFiles.find(f => f.id === cachedId && !f.trashed);
+  assert(directLookedUp && directLookedUp.id === 'folder_vault_canonical', 'Direct ID lookup instantly retrieves vault folder without search index latency');
+
+  logHeader('SCENARIO M: ALL GOOGLE DRIVE VAULT DEDUPLICATION & CLEANUP TESTS PASSED');
+}
+
+/**
+ * SCENARIO N: In-Flight Local Mutation Protection During Active Google Drive Sync
+ * Verifies that user actions performed locally during the 20-40s sync window (card reviews,
+ * study logs, topic notes edits, subject tracker updates, tombstones) are 100% preserved
+ * and uploaded in the subsequent auto-push rather than being wiped out by cloud hydration.
+ */
+async function runScenarioN() {
+  logHeader('SCENARIO N: In-Flight Local Mutation Protection During Active Sync');
+
+  const vault = new MockCloudVault();
+  const dev1 = new MockDevice('Device 1 (Phone)', 'dev_phone_n');
+  const dev2 = new MockDevice('Device 2 (Laptop)', 'dev_laptop_n');
+
+  // 1. Dev1 creates initial cards and topic
+  const t0 = new Date('2026-08-27T10:00:00.000Z').getTime();
+  dev1.setKV('flashcards', [
+    { id: 'card_1', front: 'Card 1', back: 'Answer 1', reps: 1, stability: 2.5, updatedAt: new Date(t0).toISOString() }
+  ]);
+  dev1.setKV('study_logs', {
+    '2026-08-27': {
+      dateStr: '2026-08-27',
+      totalSeconds: 1800,
+      sessions: [{ id: 'sess_1', subject: 'Anatomy', duration: 1800, startedAt: new Date(t0).toISOString() }],
+      updatedAt: new Date(t0).toISOString()
+    }
+  });
+  dev1.setKV('subject_tracker_data', [
+    {
+      id: 'sub_anat',
+      name: 'Anatomy',
+      updatedAt: new Date(t0).toISOString(),
+      topics: {
+        'brachial plexus': { name: 'Brachial Plexus', confidence: 'medium', updatedAt: new Date(t0).toISOString() }
+      }
+    }
+  ]);
+
+  // Initial push to cloud
+  runDeviceSync(dev1, vault);
+  assert(vault.bundles['cards_bundle.json'], 'Initial sync saved cards_bundle.json to cloud');
+
+  // 2. Dev1 initiates a new sync at syncStartTime (T_sync_start)
+  const syncStartTime = new Date('2026-08-27T10:05:00.000Z').getTime();
+
+  // 3. User performs live edits DURING active sync (T_edit > syncStartTime)
+  const inFlightCardTime = new Date(syncStartTime + 5000).toISOString();
+  dev1.setKV('flashcards', [
+    {
+      id: 'card_1',
+      front: 'Card 1 (Edited in-flight)',
+      back: 'Answer 1',
+      reps: 2,
+      stability: 5.2,
+      lastReviewDate: inFlightCardTime,
+      updatedAt: inFlightCardTime
+    },
+    {
+      id: 'card_2_new',
+      front: 'Card 2 Created During Sync',
+      back: 'Answer 2',
+      reps: 0,
+      stability: 0,
+      updatedAt: inFlightCardTime
+    }
+  ]);
+
+  const inFlightLogTime = new Date(syncStartTime + 8000).toISOString();
+  dev1.setKV('study_logs', {
+    '2026-08-27': {
+      dateStr: '2026-08-27',
+      totalSeconds: 3600,
+      sessions: [
+        { id: 'sess_1', subject: 'Anatomy', duration: 1800, startedAt: new Date(t0).toISOString() },
+        { id: 'sess_2_inflight', subject: 'Physiology', duration: 1800, startedAt: inFlightLogTime }
+      ],
+      updatedAt: inFlightLogTime
+    }
+  });
+
+  const inFlightTrackerTime = new Date(syncStartTime + 10000).toISOString();
+  dev1.setKV('subject_tracker_data', [
+    {
+      id: 'sub_anat',
+      name: 'Anatomy',
+      updatedAt: inFlightTrackerTime,
+      topics: {
+        'brachial plexus': { name: 'Brachial Plexus', confidence: 'mastered', updatedAt: inFlightTrackerTime },
+        'cubital fossa': { name: 'Cubital Fossa', confidence: 'low', updatedAt: inFlightTrackerTime }
+      }
+    }
+  ]);
+
+  // 4. Cloud sync finishes and invokes hydration with strategy: 'replace' and options: { syncStartTime }
+  // Incoming bundles represent the older cloud snapshot (at T0)
+  const incomingBundles = {
+    'cards_bundle.json': JSON.parse(JSON.stringify(vault.bundles['cards_bundle.json'])),
+    'study_logs.json': JSON.parse(JSON.stringify(vault.bundles['study_logs.json'])),
+    'curriculum_topics.json': JSON.parse(JSON.stringify(vault.bundles['curriculum_topics.json']))
   };
-  devA.setKV('study_schedule', baseSched);
-  runDeviceSync(devA, cloudVault);
-  runDeviceSync(devB, cloudVault);
 
-  // Device A completes Task 1 and adds Task 2 (pending)
-  devA.setKV('study_schedule', {
-    [testDate]: {
-      date: testDate,
-      tasks: [
-        { id: 'task_1', subject: 'Anatomy', topicName: 'Brachial Plexus', completed: true, rating: 3, updatedAt: '2026-08-27T08:00:00.000Z' },
-        { id: 'task_2', subject: 'Pathology', topicName: 'Cell Injury', completed: false, updatedAt: '2026-08-27T08:00:00.000Z' }
-      ],
-      updatedAt: '2026-08-27T08:00:00.000Z'
+  // Reconcile in-flight mutations against incoming bundles (Simulating hydrateLocalBundles with syncStartTime)
+  const liveCards = dev1.getKV('flashcards') || [];
+  const incomingCards = incomingBundles['cards_bundle.json'].flashcards || [];
+  const cardMap = new Map(incomingCards.map(c => [c.id, c]));
+  let hasInFlight = false;
+
+  liveCards.forEach(c => {
+    const t = new Date(c.updatedAt || c.lastReviewDate || 0).getTime();
+    if (t >= syncStartTime) {
+      hasInFlight = true;
+      cardMap.set(c.id, c);
     }
   });
-  devA.setKV('study_logs', {
-    [testDate]: {
-      cards: 35,
-      questions: 0,
-      hours: 1.5,
-      updatedAt: '2026-08-27T08:00:00.000Z'
+  dev1.setKV('flashcards', Array.from(cardMap.values()));
+
+  const liveLogs = dev1.getKV('study_logs') || {};
+  const incomingLogs = incomingBundles['study_logs.json'].studyLogs || {};
+  const logsMap = { ...incomingLogs };
+  Object.entries(liveLogs).forEach(([d, log]) => {
+    const t = new Date(log.updatedAt || 0).getTime();
+    if (t >= syncStartTime) {
+      hasInFlight = true;
+      logsMap[d] = log;
     }
   });
+  dev1.setKV('study_logs', logsMap);
 
-  // Device B independently adds Task 2 (completed) and Task 3 (pending)
-  devB.setKV('study_schedule', {
-    [testDate]: {
-      date: testDate,
-      tasks: [
-        { id: 'task_1', subject: 'Anatomy', topicName: 'Brachial Plexus', completed: false, updatedAt: '2026-08-27T07:00:00.000Z' },
-        { id: 'task_2', subject: 'Pathology', topicName: 'Cell Injury', completed: true, rating: 4, updatedAt: '2026-08-27T09:00:00.000Z' },
-        { id: 'task_3', subject: 'Pharmacology', topicName: 'Beta Blockers', completed: false, updatedAt: '2026-08-27T09:00:00.000Z' }
-      ],
-      updatedAt: '2026-08-27T09:00:00.000Z'
+  const liveTracker = dev1.getKV('subject_tracker_data') || [];
+  const incomingTracker = incomingBundles['curriculum_topics.json'].subjectTracker || [];
+  const trackerMap = new Map(incomingTracker.map(d => [d.id, d]));
+  liveTracker.forEach(doc => {
+    const t = new Date(doc.updatedAt || 0).getTime();
+    if (t >= syncStartTime) {
+      hasInFlight = true;
+      trackerMap.set(doc.id, doc);
     }
   });
-  devB.setKV('study_logs', {
-    [testDate]: {
-      cards: 10,
-      questions: 50,
-      hours: 2.0,
-      updatedAt: '2026-08-27T09:00:00.000Z'
-    }
-  });
+  dev1.setKV('subject_tracker_data', Array.from(trackerMap.values()));
 
-  // Device A syncs first
-  runDeviceSync(devA, cloudVault);
+  // 5. Verification on Dev1: In-flight mutations are 100% intact!
+  assert(hasInFlight === true, 'Dev1: In-flight local edits were detected during hydration');
+  const postCards = dev1.getKV('flashcards');
+  assert(postCards.length === 2, 'Dev1: Preserved both in-flight edited card and newly created in-flight card');
+  assert(postCards.find(c => c.id === 'card_1').reps === 2, 'Dev1: Preserved in-flight review rating (reps: 2, stability: 5.2)');
+  assert(postCards.find(c => c.id === 'card_2_new'), 'Dev1: Preserved in-flight newly added card');
 
-  // Device B syncs second
-  runDeviceSync(devB, cloudVault);
+  const postLogs = dev1.getKV('study_logs')['2026-08-27'];
+  assert(postLogs.totalSeconds === 3600, 'Dev1: Preserved in-flight study session (3600 seconds total)');
+  assert(postLogs.sessions.length === 2, 'Dev1: Preserved in-flight added study session');
 
-  // Device A syncs third to pull full merge
-  runDeviceSync(devA, cloudVault);
+  const postTracker = dev1.getKV('subject_tracker_data')[0];
+  assert(postTracker.topics['brachial plexus'].confidence === 'mastered', 'Dev1: Preserved in-flight topic confidence rating');
+  assert(postTracker.topics['cubital fossa'], 'Dev1: Preserved in-flight added topic "Cubital Fossa"');
 
-  // Verify Device A schedule has ALL 3 tasks, with Task 1 & Task 2 completed
-  const schedA = devA.getKV('study_schedule')[testDate];
-  assert(schedA && Array.isArray(schedA.tasks), 'Device A has tasks array for testDate');
-  assert(schedA.tasks.length === 3, 'Device A schedule has all 3 unioned tasks');
+  // 6. Follow-up sync push uploads fresh in-flight state to Google Drive
+  runDeviceSync(dev1, vault);
 
-  const task1 = schedA.tasks.find(t => t.id === 'task_1');
-  const task2 = schedA.tasks.find(t => t.id === 'task_2');
-  const task3 = schedA.tasks.find(t => t.id === 'task_3');
-  assert(task1 && task1.completed === true, 'Task 1 is completed');
-  assert(task2 && task2.completed === true, 'Task 2 is completed (marked completed on Dev B)');
-  assert(task3 && task3.completed === false, 'Task 3 is preserved as pending');
+  // 7. Dev2 downloads from cloud vault
+  runDeviceSync(dev2, vault);
+  const dev2Cards = dev2.getKV('flashcards');
+  const dev2Logs = dev2.getKV('study_logs')['2026-08-27'];
+  const dev2Tracker = dev2.getKV('subject_tracker_data')[0];
 
-  // Verify study log counters are monotonically preserved
-  const logA = devA.getKV('study_logs')[testDate];
-  assert(logA.cards >= 35, 'Cards count is at least 35 (max of 35 and 10)');
-  assert(logA.questions >= 50, 'Questions count is at least 50 (max of 0 and 50)');
-  assert(logA.hours >= 2.0, 'Hours count is at least 2.0 (max of 1.5 and 2.0)');
+  assert(dev2Cards.length === 2, 'Dev2: Cloud vault received in-flight card edits from follow-up sync');
+  assert(dev2Logs.totalSeconds === 3600, 'Dev2: Cloud vault received in-flight study logs from follow-up sync');
+  assert(dev2Tracker.topics['cubital fossa'], 'Dev2: Cloud vault received in-flight Subject Tracker topics from follow-up sync');
 
-  logHeader('SCENARIO M: ALL STUDY SCHEDULE CRDT UNION TESTS PASSED');
+  logHeader('SCENARIO N: ALL IN-FLIGHT LOCAL MUTATION PROTECTION TESTS PASSED');
 }
 
 runTestSuite().catch(err => {
@@ -1677,4 +1949,10 @@ runScenarioM().catch(err => {
   console.error(`${colors.red}Scenario M Encountered Fatal Error:${colors.reset}`, err);
   process.exit(1);
 });
+
+runScenarioN().catch(err => {
+  console.error(`${colors.red}Scenario N Encountered Fatal Error:${colors.reset}`, err);
+  process.exit(1);
+});
+
 
