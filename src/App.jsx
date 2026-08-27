@@ -8710,9 +8710,10 @@ export default function App() {
     trackerList.forEach(subDoc => {
       const subName = (subDoc.subject || '').trim().toLowerCase();
       if (subDoc.topics && typeof subDoc.topics === 'object') {
-        Object.values(subDoc.topics).forEach(topic => {
-          if (topic && typeof topic.name === 'string' && Array.isArray(topic.studyDates)) {
-            const topName = topic.name.trim().toLowerCase();
+        Object.entries(subDoc.topics).forEach(([tKey, topic]) => {
+          const rawName = (topic?.name || tKey || '').trim();
+          if (rawName && Array.isArray(topic?.studyDates)) {
+            const topName = rawName.toLowerCase();
             topic.studyDates.forEach(dStr => {
               if (dStr) {
                 validKeys.add(`${subName}|${topName}|${dStr}`);
@@ -8760,9 +8761,63 @@ export default function App() {
   };
 
   // Helper to reconcile subjectTrackerData reviewed topics with studyLogs
-  // Ensures raw study logs are preserved cleanly without phantom log synthesis or mutating page/card inflation
+  // Restores any missing FSRS study logs for topics that have recorded studyDates in subjectTrackerData
   const reconcileTrackerWithStudyLogs = (rawLogs, trackerList) => {
-    return { reconciledLogs: rawLogs || {}, reconciled: false };
+    if (!trackerList || !Array.isArray(trackerList) || trackerList.length === 0) {
+      return { reconciledLogs: rawLogs || {}, reconciled: false };
+    }
+
+    let reconciled = false;
+    const nextLogs = { ...(rawLogs || {}) };
+
+    trackerList.forEach(subDoc => {
+      const subName = subDoc.subject || 'General';
+      if (subDoc.topics && typeof subDoc.topics === 'object') {
+        Object.entries(subDoc.topics).forEach(([tKey, topic]) => {
+          const rawName = (topic?.name || tKey || '').trim();
+          if (!rawName) return;
+
+          const studyDates = Array.isArray(topic.studyDates) ? topic.studyDates : [];
+          if (studyDates.length === 0) return;
+
+          studyDates.forEach(dStr => {
+            if (!dStr) return;
+            const existingDay = nextLogs[dStr] || { cards: 0, hours: 0, questions: 0, fsrsLogs: [] };
+            const currentFsrs = Array.isArray(existingDay.fsrsLogs) ? existingDay.fsrsLogs : [];
+
+            // Check if this topic review already exists in this day's FSRS logs
+            const exists = currentFsrs.some(l =>
+              l && l.topicName && l.topicName.trim().toLowerCase() === rawName.toLowerCase() &&
+              (!l.subject || l.subject.trim().toLowerCase() === subName.trim().toLowerCase())
+            );
+
+            if (!exists) {
+              reconciled = true;
+              const reconstructedLog = {
+                id: `log_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+                topicName: rawName,
+                subject: subName,
+                dateStr: dStr,
+                timestamp: `${dStr}T12:00:00.000Z`,
+                rating: topic.rating || 3,
+                stability: topic.stability || null,
+                difficulty: topic.difficulty || null,
+                pageWeight: topic.pageWeight || topic.pageCount || 1,
+                reviewCount: topic.reviewCount || 1
+              };
+              nextLogs[dStr] = {
+                ...existingDay,
+                cards: Math.max(existingDay.cards || 0, currentFsrs.length + 1),
+                fsrsLogs: [...currentFsrs, reconstructedLog],
+                updatedAt: new Date().toISOString()
+              };
+            }
+          });
+        });
+      }
+    });
+
+    return { reconciledLogs: nextLogs, reconciled };
   };
 
   // --- LAZY STUDY LOGS LOADER (IndexedDB Offline-First) ---
@@ -8774,9 +8829,12 @@ export default function App() {
       const currentTracker = (Array.isArray(subjectTrackerData) && subjectTrackerData.length > 0)
         ? subjectTrackerData
         : (await getLocalSubjectTrackerData()) || [];
-      const { cleanedLogs } = sanitizeStudyLogsWithTracker(logs || {}, currentTracker);
-      const { reconciledLogs } = reconcileTrackerWithStudyLogs(cleanedLogs, currentTracker);
+      const { cleanedLogs, modified } = sanitizeStudyLogsWithTracker(logs || {}, currentTracker);
+      const { reconciledLogs, reconciled } = reconcileTrackerWithStudyLogs(cleanedLogs, currentTracker);
       setStudyLogs(reconciledLogs);
+      if (reconciled || modified) {
+        replaceAllLocalStudyLogs(reconciledLogs).catch(e => console.warn('[LocalDB] Reconciled study logs persist error:', e));
+      }
       studyLogsLoaded.current = true;
     } catch (err) { console.error('Failed to load study logs from IndexedDB:', err); }
     finally { setIsStudyLogsLoading(false); }
