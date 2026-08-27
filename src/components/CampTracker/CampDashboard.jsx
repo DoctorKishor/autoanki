@@ -610,6 +610,7 @@ export default function CampDashboard({
     const [yr, mo, dy] = targetDateStr.split('-').map(Number);
     const dateObj = new Date(yr, mo - 1, dy);
     const dateLabel = dateObj.toLocaleDateString('en-US', { day: '2-digit', month: 'short' }).replace(' ', '-');
+    const nowIso = new Date().toISOString();
 
     const updatedHistory = [...history];
     const dayIndex = updatedHistory.findIndex(h => 
@@ -620,7 +621,8 @@ export default function CampDashboard({
       date: dateLabel,
       fullDate: targetDateStr,
       timestamp: dateObj.getTime(),
-      score: Number(efficiencyScore.toFixed(1))
+      score: Number(efficiencyScore.toFixed(1)),
+      updatedAt: nowIso
     };
 
     if (dayIndex >= 0) {
@@ -639,6 +641,16 @@ export default function CampDashboard({
     });
 
     setHistory(updatedHistory);
+    lastSavedHistoryRef.current = JSON.stringify(updatedHistory);
+    localStorage.setItem('camp_history', JSON.stringify(updatedHistory));
+
+    // Revoke any prior tombstone for this history entry
+    revokeTombstone('camp_history_entry', String(targetDateStr)).catch(() => {});
+    revokeTombstone('camp_history_entry', String(dateLabel)).catch(() => {});
+
+    // Save immediately and deterministically to IndexedDB
+    saveLocalCampData('history', updatedHistory).catch(e => console.error('[CampDashboard] Error saving history:', e));
+    saveLocalCampDailyLogs(targetDateStr, { sessions, bedToBook }).catch(e => console.error('[CampDashboard] Error saving daily logs:', e));
 
     setTimeout(() => {
       setSaveStatus('Progress Logged Successfully!');
@@ -739,6 +751,9 @@ export default function CampDashboard({
     }
     const updatedHistory = history.filter((_, idx) => idx !== indexToDelete);
     setHistory(updatedHistory);
+    lastSavedHistoryRef.current = JSON.stringify(updatedHistory);
+    localStorage.setItem('camp_history', JSON.stringify(updatedHistory));
+    saveLocalCampData('history', updatedHistory).catch(e => console.error('[CampDashboard] Error saving history on delete:', e));
   };
 
   // State for session history filter

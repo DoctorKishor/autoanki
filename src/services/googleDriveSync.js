@@ -1785,7 +1785,7 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
         }
         if (Array.isArray(b.campData)) {
           const liveCampData = (await getAllLocalItems(STORES.CAMP_DATA)) || [];
-          const mergedData = mergeCampData(liveCampData, b.campData);
+          const mergedData = mergeCampData(liveCampData, b.campData, (await getUnifiedGraves()) || []);
           for (const d of mergedData) {
             if (d && d.key) await putLocalItem(STORES.CAMP_DATA, d);
           }
@@ -3437,7 +3437,24 @@ export function mergeCampDailyLogs(locLogs = [], remLogs = [], unifiedGraves = [
 /**
  * Merges CAMP Data stores (STORES.CAMP_DATA / campData array: history, timer_history, student_info)
  */
-export function mergeCampData(locData = [], remData = []) {
+export function mergeCampData(locData = [], remData = [], unifiedGraves = []) {
+  const deadHistoryMap = new Map();
+  (unifiedGraves || []).forEach(g => {
+    if (g && (g.entityType === 'camp_history_entry' || g.type === 'camp_history_entry')) {
+      const delTime = safeTimestamp(g.deletedAt || g.timestamp || 0);
+      if (g.entityId) deadHistoryMap.set(String(g.entityId).toLowerCase(), Math.max(delTime, deadHistoryMap.get(String(g.entityId).toLowerCase()) || 0));
+    }
+  });
+
+  const isHistoryTombstoned = (h) => {
+    if (!h) return false;
+    const k = String(h.fullDate || h.date || h.timestamp || '').toLowerCase();
+    if (!k) return false;
+    const delTime = deadHistoryMap.get(k);
+    const hTime = safeTimestamp(h.updatedAt || 0);
+    return Boolean(delTime && delTime >= hTime);
+  };
+
   const datMap = new Map();
   (locData || []).forEach(d => { if (d && d.key) datMap.set(d.key, d); });
 
@@ -3445,14 +3462,19 @@ export function mergeCampData(locData = [], remData = []) {
     if (!remD || !remD.key) return;
     const locD = datMap.get(remD.key);
     if (!locD) {
-      datMap.set(remD.key, remD);
+      if (remD.key === 'history') {
+        const remHist = (Array.isArray(remD.data) ? remD.data : []).filter(h => !isHistoryTombstoned(h));
+        datMap.set('history', { ...remD, data: remHist });
+      } else {
+        datMap.set(remD.key, remD);
+      }
     } else {
       const locTime = safeTimestamp(locD.updatedAt || 0);
       const remTime = safeTimestamp(remD.updatedAt || 0);
 
       if (remD.key === 'history') {
-        const locHist = Array.isArray(locD.data) ? locD.data : [];
-        const remHist = Array.isArray(remD.data) ? remD.data : [];
+        const locHist = (Array.isArray(locD.data) ? locD.data : []).filter(h => !isHistoryTombstoned(h));
+        const remHist = (Array.isArray(remD.data) ? remD.data : []).filter(h => !isHistoryTombstoned(h));
         const histMap = new Map();
         const getHistKey = (h) => h.fullDate || h.date || String(h.timestamp);
 
@@ -3464,9 +3486,17 @@ export function mergeCampData(locData = [], remData = []) {
           if (!exist) {
             histMap.set(k, h);
           } else {
-            const existTime = exist.timestamp || (exist.fullDate ? new Date(exist.fullDate).getTime() : 0);
-            const incomingTime = h.timestamp || (h.fullDate ? new Date(h.fullDate).getTime() : 0);
-            histMap.set(k, incomingTime >= existTime ? { ...exist, ...h } : { ...h, ...exist });
+            // Compare item-level updatedAt timestamps; if remote is strictly newer, remote wins, otherwise local is preserved
+            const existTime = safeTimestamp(exist.updatedAt || locTime);
+            const incomingTime = safeTimestamp(h.updatedAt || remTime);
+            const winningItem = incomingTime > existTime ? h : exist;
+            histMap.set(k, {
+              ...exist,
+              ...h,
+              ...winningItem,
+              score: winningItem.score !== undefined ? winningItem.score : (exist.score !== undefined ? exist.score : h.score),
+              updatedAt: new Date(Math.max(existTime, incomingTime, Date.now())).toISOString()
+            });
           }
         });
 
@@ -3497,7 +3527,15 @@ export function mergeCampData(locData = [], remData = []) {
           if (!exist) {
             thMap.set(k, t);
           } else {
-            thMap.set(k, { ...exist, ...t });
+            const locSTime = safeTimestamp(exist.updatedAt || locTime);
+            const remSTime = safeTimestamp(t.updatedAt || remTime);
+            const winningT = remSTime > locSTime ? t : exist;
+            thMap.set(k, {
+              ...exist,
+              ...t,
+              ...winningT,
+              updatedAt: new Date(Math.max(locSTime, remSTime, Date.now())).toISOString()
+            });
           }
         });
 
@@ -3927,7 +3965,7 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
     const mergedTrashCamp = Array.from(trashCampMap.values());
 
     const mergedCampTracker = mergeCampTrackers(locCamp.campTracker, remCamp.campTracker, mergedTrashCamp, canonicalUnifiedGraves);
-    const mergedCampData = mergeCampData(locCamp.campData, remCamp.campData);
+    const mergedCampData = mergeCampData(locCamp.campData, remCamp.campData, canonicalUnifiedGraves);
 
     merged['camp_tracker.json'] = {
       campTracker: mergedCampTracker,

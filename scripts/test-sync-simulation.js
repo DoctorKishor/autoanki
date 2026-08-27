@@ -1304,6 +1304,49 @@ console.log('\nTEST 18: CAMP Tracker, Daily Sessions & Multi-Device Sync Parity'
   assert(c1Task !== undefined && c1Task.completed === true, 'Device 1 completed state on C1 task is PRESERVED');
   const c2Task = mergedTrackerD.find(t => t.id === 'camp_task_c2_1');
   assert(c2Task !== undefined && c2Task.completed === true, 'Device 2 C2 task is MERGED');
+
+  // Scenario E: Past Logged Date Score Edit Preservation on Sync (Zero Reversion)
+  const locCampDataE = [
+    {
+      key: 'history',
+      data: [
+        { date: '20-Aug', fullDate: '2026-08-20', timestamp: 1787184000000, score: 9.2, updatedAt: t2_edit }
+      ],
+      updatedAt: t2_edit
+    }
+  ];
+  const remCampDataE = [
+    {
+      key: 'history',
+      data: [
+        { date: '20-Aug', fullDate: '2026-08-20', timestamp: 1787184000000, score: 7.0, updatedAt: t1_edit }
+      ],
+      updatedAt: t1_edit
+    }
+  ];
+
+  const mergedDataE = mergeCampData(locCampDataE, remCampDataE, []);
+  const histItemE = mergedDataE.find(d => d.key === 'history');
+  assert(histItemE !== undefined, 'history exists in mergedDataE');
+  assert(histItemE.data.length === 1, 'Only 1 entry for 20-Aug');
+  assert(histItemE.data[0].score === 9.2, `Edited score 9.2 is PRESERVED (got ${histItemE.data[0].score}) - NOT reverted to 7.0`);
+
+  // Scenario F: History Entry Deletion with Tombstone
+  const locCampDataF = [
+    {
+      key: 'history',
+      data: [],
+      updatedAt: t3_delete
+    }
+  ];
+  const gravesF = [
+    { entityType: 'camp_history_entry', entityId: '2026-08-20', deletedAt: t3_delete }
+  ];
+
+  const mergedDataF = mergeCampData(locCampDataF, remCampDataE, gravesF);
+  const histItemF = mergedDataF.find(d => d.key === 'history');
+  assert(histItemF !== undefined, 'history exists in mergedDataF');
+  assert(histItemF.data.length === 0, 'Deleted history entry is PRUNED by tombstone and NOT resurrected');
 }
 
 console.log('\n======================================================');
