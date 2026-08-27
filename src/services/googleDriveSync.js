@@ -4177,8 +4177,7 @@ async function executeSyncInternal({
       emitDataHydratedEvent({ strategy: 'replace', bundleKeys: Object.keys(stagedMergedData.bundles) });
 
       if (hydrateRes?.hasInFlightEdits) {
-        logger.sync('INFLIGHT-PRESERVED', 'Preserved in-flight local modifications made during sync. Scheduling follow-up sync push to cloud...');
-        triggerDebouncedSmartPush(2000, true);
+        logger.sync('INFLIGHT-PRESERVED', 'Preserved in-flight local modifications made during sync.');
       }
 
       // Phase 4: Download missing media in background if pages bundle changed
@@ -4392,8 +4391,7 @@ async function executeOneWayDownload(accessToken, vaultFolderId, mediaFolderId, 
   emitDataHydratedEvent({ strategy: 'replace', bundleKeys: Object.keys(downloadedBundles) });
 
   if (hydrateRes?.hasInFlightEdits) {
-    logger.sync('INFLIGHT-PRESERVED', 'Preserved in-flight local modifications made during download. Scheduling follow-up sync push...');
-    triggerDebouncedSmartPush(2000, true);
+    logger.sync('INFLIGHT-PRESERVED', 'Preserved in-flight local modifications made during download.');
   }
 
   // Phase 2: Non-blocking background media download if pages_bundle was among downloaded bundles
@@ -4665,6 +4663,7 @@ export async function syncMediaFromDrive(accessToken, mediaFolderId) {
  * Enforces a 5s debounce with a 30s cooldown and trailing timer guarantees.
  */
 export function triggerDebouncedSmartPush(customDelay = 5000, bypassCooldown = false) {
+  if (isSyncInProgress) return;
   if (autoSyncDebounceTimer) clearTimeout(autoSyncDebounceTimer);
 
   autoSyncDebounceTimer = setTimeout(async () => {
