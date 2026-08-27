@@ -82,14 +82,22 @@ export default function CampDashboard({
     return norm;
   };
 
+  const safeJsonParse = (str, fallback) => {
+    try {
+      return str ? JSON.parse(str) : fallback;
+    } catch (e) {
+      return fallback;
+    }
+  };
+
   // 1. Initial State
   const [studentInfo, setStudentInfo] = useState(() => {
     const saved = localStorage.getItem('camp_student_info');
-    return saved ? JSON.parse(saved) : {
+    return safeJsonParse(saved, {
       name: '',
       email: '',
       phone: ''
-    };
+    });
   });
 
   const [bedToBook, setBedToBook] = useState(() => {
@@ -99,7 +107,8 @@ export default function CampDashboard({
 
   const [sessions, setSessions] = useState(() => {
     const saved = localStorage.getItem(`camp_sessions_${todayDateStr}`);
-    return saved ? normalizeSessions(JSON.parse(saved)) : {
+    const parsed = safeJsonParse(saved, null);
+    return parsed ? normalizeSessions(parsed) : {
       preLunch: [],
       midDay: [],
       postDinner: []
@@ -108,12 +117,12 @@ export default function CampDashboard({
 
   const [history, setHistory] = useState(() => {
     const saved = localStorage.getItem('camp_history');
-    return saved ? JSON.parse(saved) : [];
+    return safeJsonParse(saved, []);
   });
 
   const [timerHistory, setTimerHistory] = useState(() => {
     const saved = localStorage.getItem('camp_timer_history');
-    return saved ? JSON.parse(saved) : [];
+    return safeJsonParse(saved, []);
   });
 
   const [selectedCell, setSelectedCell] = useState(null);

@@ -3658,7 +3658,7 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
   });
   const canonicalUnifiedGraves = Array.from(gravesAggregateMap.values());
 
-  // 1. Cards Bundle (Timestamp-aware, Tie-breaking & Tombstone Pruning)
+  // 1. Cards Bundle (Timestamp-aware, Tie-breaking & Tombstone Pruning with Unified Graves)
   if (downloadedBundles['cards_bundle.json']) {
     const locCardsB = localBundles['cards_bundle.json'] || {};
     const remCardsB = downloadedBundles['cards_bundle.json'] || {};
@@ -3669,13 +3669,22 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
 
     const locTrashMap = new Map(locTrash.map(c => [c.id, safeTimestamp(c.deletedAt)]));
     const remTrashMap = new Map(remTrash.map(c => [c.id, safeTimestamp(c.deletedAt)]));
+    const cardGraveMap = new Map();
+    canonicalUnifiedGraves.forEach(g => {
+      if (g && (g.entityType === 'card' || g.type === 'card') && g.entityId) {
+        cardGraveMap.set(String(g.entityId), Math.max(safeTimestamp(g.deletedAt), cardGraveMap.get(String(g.entityId)) || 0));
+      }
+    });
+
     const cardMap = new Map(locCards.map(c => [c.id, c]));
 
     remCards.forEach(inc => {
       if (inc && inc.id) {
         const localDeletedAt = locTrashMap.get(inc.id);
+        const graveDeletedAt = cardGraveMap.get(String(inc.id));
+        const maxDeletedAt = Math.max(localDeletedAt || 0, graveDeletedAt || 0);
         const incTime = safeTimestamp(inc.updatedAt || inc.lastReviewDate || inc.createdAt);
-        if (localDeletedAt && localDeletedAt > incTime) {
+        if (maxDeletedAt && maxDeletedAt > incTime) {
           return;
         }
 
@@ -3734,9 +3743,11 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
 
     for (const [id, card] of cardMap.entries()) {
       const remoteDeletedAt = remTrashMap.get(id);
-      if (remoteDeletedAt) {
+      const graveDeletedAt = cardGraveMap.get(String(id));
+      const maxDeletedAt = Math.max(remoteDeletedAt || 0, graveDeletedAt || 0);
+      if (maxDeletedAt) {
         const localCardTime = safeTimestamp(card.updatedAt || card.lastReviewDate || card.createdAt);
-        if (remoteDeletedAt > localCardTime) {
+        if (maxDeletedAt > localCardTime) {
           cardMap.delete(id);
         }
       }
@@ -3749,6 +3760,13 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
         if (!exist || safeTimestamp(c.deletedAt) > safeTimestamp(exist.deletedAt)) {
           mergedTrashMap.set(c.id, c);
         }
+      }
+    });
+
+    // Also populate mergedTrashMap from unified graves for cards
+    cardGraveMap.forEach((delTime, cId) => {
+      if (!mergedTrashMap.has(cId)) {
+        mergedTrashMap.set(cId, { id: cId, deletedAt: new Date(delTime).toISOString() });
       }
     });
 
@@ -3820,78 +3838,117 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
       }
     });
 
-    const isPytTombstoned = (p) => {
-      if (!p) return false;
-      const key = String(p.key || p.id || p.subject || '').toLowerCase();
-      const pTime = safeTimestamp(p.updatedAt || p.createdAt || 0);
-      const delTime = pytGraveMap.get(key);
-      return Boolean(delTime && delTime >= pTime);
-    };
-
-    const pytMap = new Map();
-    locPyt.forEach(p => {
-      if (p && p.key && !isPytTombstoned(p)) pytMap.set(p.key, p);
-    });
-    remPyt.forEach(p => {
-      if (p && p.key && !isPytTombstoned(p)) {
-        const locP = pytMap.get(p.key);
-        if (!locP) {
-          pytMap.set(p.key, p);
-        } else {
-          const locTime = safeTimestamp(locP.updatedAt || locP.createdAt);
-          const remTime = safeTimestamp(p.updatedAt || p.createdAt);
-          pytMap.set(p.key, remTime > locTime ? p : locP);
-        }
+    const pytProgGraveMap = new Map();
+    canonicalUnifiedGraves.forEach(g => {
+      if (!g) return;
+      const type = g.entityType || g.type;
+      if (type === 'pyt_progress') {
+        const delTime = safeTimestamp(g.deletedAt || g.timestamp || 0);
+        if (g.entityId) pytProgGraveMap.set(String(g.entityId).toLowerCase(), Math.max(delTime, pytProgGraveMap.get(String(g.entityId).toLowerCase()) || 0));
+        if (g.metadata?.subject) pytProgGraveMap.set(String(g.metadata.subject).toLowerCase(), Math.max(delTime, pytProgGraveMap.get(String(g.metadata.subject).toLowerCase()) || 0));
       }
     });
+
+    const trackerGraveMap = new Map();
+    canonicalUnifiedGraves.forEach(g => {
+      if (!g) return;
+      const type = g.entityType || g.type;
+      if (type === 'tracker_topic') {
+        const delTime = safeTimestamp(g.deletedAt || g.timestamp || 0);
+        if (g.entityId) trackerGraveMap.set(String(g.entityId).toLowerCase(), Math.max(delTime, trackerGraveMap.get(String(g.entityId).toLowerCase()) || 0));
+        if (g.parentId && g.metadata?.topicName) trackerGraveMap.set(`${String(g.parentId).toLowerCase()}_${String(g.metadata.topicName).toLowerCase()}`, Math.max(delTime, trackerGraveMap.get(`${String(g.parentId).toLowerCase()}_${String(g.metadata.topicName).toLowerCase()}`) || 0));
+      }
+    });
+
+    const pytMap = new Map();
+    locPyt.forEach(doc => {
+      if (!doc) return;
+      const docId = String(doc.id || doc.subject || '').trim().toLowerCase();
+      if (!docId) return;
+      const graveTime = pytGraveMap.get(docId) || pytGraveMap.get(String(doc.subject || '').toLowerCase()) || pytProgGraveMap.get(docId) || pytProgGraveMap.get(String(doc.subject || '').toLowerCase());
+      if (graveTime) {
+        const docTime = safeTimestamp(doc.updatedAt || doc.createdAt || 0);
+        if (graveTime > docTime) return;
+      }
+      pytMap.set(docId, doc);
+    });
+
+    remPyt.forEach(incDoc => {
+      if (!incDoc) return;
+      const docId = String(incDoc.id || incDoc.subject || '').trim().toLowerCase();
+      if (!docId) return;
+      const graveTime = pytGraveMap.get(docId) || pytGraveMap.get(String(incDoc.subject || '').toLowerCase()) || pytProgGraveMap.get(docId) || pytProgGraveMap.get(String(incDoc.subject || '').toLowerCase());
+      const incTime = safeTimestamp(incDoc.updatedAt || incDoc.createdAt || 0);
+      if (graveTime && graveTime > incTime) return;
+
+      const locDoc = pytMap.get(docId);
+      if (!locDoc) {
+        pytMap.set(docId, incDoc);
+      } else {
+        const locTime = safeTimestamp(locDoc.updatedAt || locDoc.createdAt || 0);
+        pytMap.set(docId, incTime >= locTime ? { ...locDoc, ...incDoc } : { ...incDoc, ...locDoc });
+      }
+    });
+
+    const mergedSubjectTracker = mergeSubjectTrackerArrays(
+      locCur.subjectTracker || [],
+      remCur.subjectTracker || [],
+      locTrashTopics,
+      remTrashTopics,
+      canonicalUnifiedGraves
+    );
+
+    const mergedPytUserProgress = mergePytUserProgress(
+      locCur.pytUserProgress || [],
+      remCur.pytUserProgress || [],
+      canonicalUnifiedGraves
+    );
+
+    const mergedTextbooks = mergeTextbooksMetadata(
+      locCur.textbooksMetadata || [],
+      remCur.textbooksMetadata || []
+    );
 
     merged['curriculum_topics.json'] = {
       topics: serializeBinaryValues(Array.from(topicMap.values())),
       trashTopics: serializeBinaryValues(Array.from(mergedTrashTopics.values())),
       pytData: serializeBinaryValues(Array.from(pytMap.values())),
-      subjectTracker: mergeSubjectTrackerArrays(locCur.subjectTracker || [], remCur.subjectTracker || [], locTrashTopics, remTrashTopics, canonicalUnifiedGraves),
-      pytUserProgress: mergePytUserProgress(locCur.pytUserProgress || [], remCur.pytUserProgress || [], canonicalUnifiedGraves),
-      textbooksMetadata: mergeTextbooksMetadata(locCur.textbooksMetadata || [], remCur.textbooksMetadata || []),
+      subjectTracker: mergedSubjectTracker,
+      pytUserProgress: mergedPytUserProgress,
+      textbooksMetadata: mergedTextbooks,
       unifiedGraves: canonicalUnifiedGraves
     };
   }
 
-  // 3. Study Logs (Additive Sessions, Collision-Resistant Keys & Canonical Dates with Tombstone Pruning)
+  // 3. Study Logs (Daily Sessions, GTs, FSRS Reviews & Tombstone Pruning)
   if (downloadedBundles['study_logs.json']) {
-    const locLogB = localBundles['study_logs.json'] || {};
-    const remLogB = downloadedBundles['study_logs.json'] || {};
-    const locLogs = locLogB.studyLogs || {};
-    const remLogs = remLogB.studyLogs || {};
-    const locTrashLogs = locLogB.trashStudyLogs || [];
-    const remTrashLogs = remLogB.trashStudyLogs || [];
-    const mergedLogs = mergeStudyLogsObjects(locLogs, remLogs, locTrashLogs, remTrashLogs, canonicalUnifiedGraves);
+    const locLogsB = localBundles['study_logs.json'] || {};
+    const remLogsB = downloadedBundles['study_logs.json'] || {};
+    const locLogs = locLogsB.studyLogs || {};
+    const locTrash = locLogsB.trashStudyLogs || [];
+    const remLogs = remLogsB.studyLogs || {};
+    const remTrash = remLogsB.trashStudyLogs || [];
 
-    // Merge trash study logs with latest deletedAt
-    const mergedTrashLogsMap = new Map((locTrashLogs || []).map(t => [t.dateKey, t]));
-    (remTrashLogs || []).forEach(t => {
-      if (t && t.dateKey) {
-        const exist = mergedTrashLogsMap.get(t.dateKey);
+    const mergedStudyLogs = mergeStudyLogsObjects(locLogs, remLogs, locTrash, remTrash, canonicalUnifiedGraves);
+
+    const mergedTrashLogsMap = new Map(locTrash.map(t => [t.id, t]));
+    remTrash.forEach(t => {
+      if (t && t.id) {
+        const exist = mergedTrashLogsMap.get(t.id);
         if (!exist || safeTimestamp(t.deletedAt) > safeTimestamp(exist.deletedAt)) {
-          mergedTrashLogsMap.set(t.dateKey, t);
+          mergedTrashLogsMap.set(t.id, t);
         }
       }
     });
 
-    const mergedSched = mergeStudyScheduleObjects(locLogB.studySchedule || {}, remLogB.studySchedule || {}, canonicalUnifiedGraves);
-    const mergedTemplates = remLogB.scheduleTemplates || locLogB.scheduleTemplates || [];
-
-    const locCampLogs = Array.isArray(locLogB.campDailyLogs) ? locLogB.campDailyLogs : [];
-    const remCampLogs = Array.isArray(remLogB.campDailyLogs) ? remLogB.campDailyLogs : [];
-    const mergedCampDailyLogs = mergeCampDailyLogs(locCampLogs, remCampLogs, canonicalUnifiedGraves);
+    const mergedSchedule = mergeStudyScheduleObjects(locLogsB.studySchedule || {}, remLogsB.studySchedule || {}, canonicalUnifiedGraves);
+    const mergedTimerState = { ...(remLogsB.timerState || {}), ...(locLogsB.timerState || {}) };
 
     merged['study_logs.json'] = {
-      studyLogs: mergedLogs,
+      studyLogs: mergedStudyLogs,
       trashStudyLogs: Array.from(mergedTrashLogsMap.values()),
-      studySchedule: mergedSched,
-      scheduleTemplates: mergedTemplates,
-      campDailyLogs: mergedCampDailyLogs,
-      timerState: remLogB.timerState || locLogB.timerState || null,
-      activeNewTopicsToday: remLogB.activeNewTopicsToday || locLogB.activeNewTopicsToday || [],
+      studySchedule: mergedSchedule,
+      timerState: mergedTimerState,
       unifiedGraves: canonicalUnifiedGraves
     };
   }
@@ -3987,7 +4044,7 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
     };
   }
 
-  // 6. Pages & Occlusions
+  // 6. Pages & Occlusions (Timestamp-aware & Unified Graves Pruning)
   if (downloadedBundles['pages_bundle.json']) {
     const locPagesB = localBundles['pages_bundle.json'] || {};
     const remPagesB = downloadedBundles['pages_bundle.json'] || {};
@@ -3998,13 +4055,22 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
 
     const locTrashMap = new Map(locTrash.map(p => [p.id, safeTimestamp(p.deletedAt)]));
     const remTrashMap = new Map(remTrash.map(p => [p.id, safeTimestamp(p.deletedAt)]));
+    const pageGraveMap = new Map();
+    canonicalUnifiedGraves.forEach(g => {
+      if (g && (g.entityType === 'page' || g.type === 'page') && g.entityId) {
+        pageGraveMap.set(String(g.entityId), Math.max(safeTimestamp(g.deletedAt), pageGraveMap.get(String(g.entityId)) || 0));
+      }
+    });
+
     const pageMap = new Map(locPages.map(p => [p.id, p]));
 
     remPages.forEach(p => {
       if (p && p.id) {
         const localDeletedAt = locTrashMap.get(p.id);
+        const graveDeletedAt = pageGraveMap.get(String(p.id));
+        const maxDeletedAt = Math.max(localDeletedAt || 0, graveDeletedAt || 0);
         const incTime = safeTimestamp(p.updatedAt || p.createdAt);
-        if (localDeletedAt && localDeletedAt > incTime) return;
+        if (maxDeletedAt && maxDeletedAt > incTime) return;
 
         const locP = pageMap.get(p.id);
         if (!locP) {
@@ -4018,9 +4084,11 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
 
     for (const [id, page] of pageMap.entries()) {
       const remoteDeletedAt = remTrashMap.get(id);
-      if (remoteDeletedAt) {
+      const graveDeletedAt = pageGraveMap.get(String(id));
+      const maxDeletedAt = Math.max(remoteDeletedAt || 0, graveDeletedAt || 0);
+      if (maxDeletedAt) {
         const localPageTime = safeTimestamp(page.updatedAt || page.createdAt);
-        if (remoteDeletedAt > localPageTime) {
+        if (maxDeletedAt > localPageTime) {
           pageMap.delete(id);
         }
       }
@@ -4033,6 +4101,13 @@ export function mergeBundlesInMemory(localData, downloadedBundles) {
         if (!exist || safeTimestamp(p.deletedAt) > safeTimestamp(exist.deletedAt)) {
           mergedTrashMap.set(p.id, p);
         }
+      }
+    });
+
+    // Also populate mergedTrashMap from unified graves for pages
+    pageGraveMap.forEach((delTime, pId) => {
+      if (!mergedTrashMap.has(pId)) {
+        mergedTrashMap.set(pId, { id: pId, deletedAt: new Date(delTime).toISOString() });
       }
     });
 

@@ -593,7 +593,31 @@ export async function getLocalCards() {
 
 export async function replaceAllLocalCards(cardsArray) {
   const finalArray = Array.isArray(cardsArray) ? cardsArray : [];
+  const nowIso = new Date().toISOString();
   cardsWriteMutex = cardsWriteMutex.then(async () => {
+    const existing = await getLocalCards();
+    const incomingIds = new Set(finalArray.map(c => c && c.id).filter(Boolean));
+    const omittedCards = (existing || []).filter(c => c && c.id && !incomingIds.has(c.id));
+
+    if (omittedCards.length > 0) {
+      try {
+        const trash = (await getLocalKV('trash_cards')) || [];
+        const existingTrashIds = new Set(trash.map(tc => tc && tc.id));
+        omittedCards.forEach(c => {
+          if (!existingTrashIds.has(c.id)) {
+            trash.push({ ...c, deletedAt: nowIso });
+          }
+        });
+        await setLocalKV('trash_cards', trash);
+        for (const c of omittedCards) {
+          await recordTombstone('card', String(c.id), { deletedAt: nowIso });
+        }
+        logger.db('BATCH-CARDS-TOMBSTONED', `Recorded tombstones for ${omittedCards.length} omitted flashcards`);
+      } catch (e) {
+        logger.warn('BATCH-CARDS-TOMBSTONE-ERROR', 'Error recording card tombstones on replaceAll:', e);
+      }
+    }
+
     await setLocalKV('flashcards', finalArray);
     notifyLocalMutation('cards:replace');
     return finalArray;
@@ -613,6 +637,7 @@ export async function saveLocalCards(cardsInput) {
     cardsInput.forEach(c => {
       if (c && c.id) {
         map.set(c.id, { ...map.get(c.id), ...c, updatedAt: c.updatedAt || Date.now() });
+        revokeTombstone('card', String(c.id)).catch(() => {});
       }
     });
     const merged = Array.from(map.values());
@@ -699,7 +724,31 @@ export async function getLocalPageById(pageId) {
 
 export async function replaceAllLocalPages(pagesArray) {
   const finalArray = Array.isArray(pagesArray) ? pagesArray.map(deduplicatePageMedia) : [];
+  const nowIso = new Date().toISOString();
   pagesWriteMutex = pagesWriteMutex.then(async () => {
+    const existing = await getLocalPages();
+    const incomingIds = new Set(finalArray.map(p => p && p.id).filter(Boolean));
+    const omittedPages = (existing || []).filter(p => p && p.id && !incomingIds.has(p.id));
+
+    if (omittedPages.length > 0) {
+      try {
+        const trash = (await getLocalKV('trash_pages')) || [];
+        const existingTrashIds = new Set(trash.map(tp => tp && tp.id));
+        omittedPages.forEach(p => {
+          if (!existingTrashIds.has(p.id)) {
+            trash.push({ ...p, deletedAt: nowIso });
+          }
+        });
+        await setLocalKV('trash_pages', trash);
+        for (const p of omittedPages) {
+          await recordTombstone('page', String(p.id), { deletedAt: nowIso });
+        }
+        logger.db('BATCH-PAGES-TOMBSTONED', `Recorded tombstones for ${omittedPages.length} omitted pages`);
+      } catch (e) {
+        logger.warn('BATCH-PAGES-TOMBSTONE-ERROR', 'Error recording page tombstones on replaceAll:', e);
+      }
+    }
+
     await setLocalKV('pages', finalArray);
     notifyLocalMutation('pages:replace');
     return finalArray;
@@ -719,6 +768,7 @@ export async function saveLocalPages(pagesInput) {
       if (p && p.id) {
         const cleaned = deduplicatePageMedia(p);
         map.set(p.id, { ...map.get(p.id), ...cleaned, updatedAt: cleaned.updatedAt || Date.now() });
+        revokeTombstone('page', String(p.id)).catch(() => {});
       }
     });
     const merged = Array.from(map.values());

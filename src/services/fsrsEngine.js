@@ -247,7 +247,7 @@ export const calculateInitialState = (
 
   // Fix Bug 2.6: always parse as local-timezone midnight to prevent IST UTC off-by-one.
   // new Date('YYYY-MM-DD') is parsed as UTC; appending T00:00:00 forces local-timezone interpretation.
-  const nowStr = new Date().toISOString().split('T')[0];
+  const nowStr = new Date().toLocaleDateString('en-CA');
   const reviewDate = new Date(`${reviewDateStr || nowStr}T00:00:00`);
   reviewDate.setHours(0, 0, 0, 0);
 
@@ -415,7 +415,7 @@ export const recalculateTopicFSRSFromLogs = (topic, topicLogs, fsrsConfig, subje
 
   sortedLogs.forEach(log => {
     const rating = typeof log.rating === 'number' ? log.rating : 3;
-    const dateStr = log.dateStr || (log.timestamp ? log.timestamp.split('T')[0] : new Date().toISOString().split('T')[0]);
+    const dateStr = log.dateStr || (log.timestamp ? log.timestamp.split('T')[0] : new Date().toLocaleDateString('en-CA'));
 
     if (dateStr && !uniqueStudyDates.includes(dateStr)) {
       uniqueStudyDates.push(dateStr);

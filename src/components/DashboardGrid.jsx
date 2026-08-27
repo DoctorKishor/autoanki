@@ -226,7 +226,7 @@ export default function DashboardGrid({
   const pagesToday = todayLog.pages || 0;
 
   // Percentage of daily card goal
-  const progressPercent = Math.min(100, Math.round((cardsToday / dailyCardTarget) * 100));
+  const progressPercent = dailyCardTarget > 0 ? Math.min(100, Math.round((cardsToday / dailyCardTarget) * 100)) : 0;
 
   // Streak alert status
   const isStreakSafe = cardsToday > 0 || hoursToday > 0 || questionsToday > 0 || pagesToday > 0 || (todayLog.gts && todayLog.gts.filter(g => g && !g.isDeleted).length > 0);

@@ -1181,11 +1181,11 @@ const HierarchicalSunburst = ({ deckPaths, libraryPages, deckCardCounts = {}, on
 
       const children = Object.values(node.children);
       if (children.length > 0) {
-        const totalChildCards = children.reduce((sum, c) => sum + (c.tCCount || 1), 0);
+        const totalChildCards = children.reduce((sum, c) => sum + (c.tCCount || 1), 0) || 1;
         let currentAngle = startA;
 
         children.forEach(child => {
-          const childRatio = (child.tCCount || 1) / totalChildCards;
+          const childRatio = totalChildCards > 0 ? (child.tCCount || 1) / totalChildCards : 0;
           const childSweep = sweep * childRatio;
           layoutNode(child, currentAngle, currentAngle + childSweep, depth + 1);
           currentAngle += childSweep;
@@ -1260,7 +1260,7 @@ const HierarchicalSunburst = ({ deckPaths, libraryPages, deckCardCounts = {}, on
   };
 
   const totalRootCards = treeRoot.tCCount || 1;
-  const percent = ((displayNode.tCCount / totalRootCards) * 100).toFixed(1);
+  const percent = totalRootCards > 0 ? ((displayNode.tCCount / totalRootCards) * 100).toFixed(1) : '0.0';
 
   return (
     <div className={`flex flex-col md:flex-row items-center gap-8 w-full p-6 rounded-3xl transition ${isDark ? 'neu-card-dark text-white' : 'neu-card-light text-slate-800'}`}>
@@ -5907,7 +5907,7 @@ export default function App() {
   const [studyLogs, setStudyLogs] = useState({}); // { "YYYY-MM-DD": { questions, cards, hours, gts: [] } }
   const [selectedStreakTag, setSelectedStreakTag] = useState('Topper'); // Topper, Consistent, Legend, Rookie
   const [isStudyLoggerModalOpen, setIsStudyLoggerModalOpen] = useState(false);
-  const [loggerDate, setLoggerDate] = useState(new Date().toISOString().split('T')[0]);
+  const [loggerDate, setLoggerDate] = useState(new Date().toLocaleDateString('en-CA'));
   const [loggerQuestions, setLoggerQuestions] = useState('');
   const [loggerCards, setLoggerCards] = useState('');
   const [loggerPages, setLoggerPages] = useState('');
@@ -13608,7 +13608,7 @@ JSON Format:
                             <span>Unattempted: <strong className={`font-mono ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{Math.max(0, totalQs - attended)}</strong></span>
                           </div>
                           <div className={`h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-white/10' : 'bg-slate-200'}`}>
-                            <div className="h-full bg-orange-500 transition-all duration-300" style={{ width: `${Math.min(100, (attended / totalQs) * 100)}%` }} />
+                            <div className="h-full bg-orange-500 transition-all duration-300" style={{ width: `${totalQs > 0 ? Math.min(100, (attended / totalQs) * 100) : 0}%` }} />
                           </div>
                           <div className="flex items-center justify-between pt-1 font-bold">
                             <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>Calculated Score:</span>
@@ -15267,7 +15267,7 @@ JSON Format:
     for (let i = 364; i >= 0; i--) {
       const d = new Date();
       d.setDate(now.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
+      const dateStr = d.toLocaleDateString('en-CA');
       contributions[dateStr] = 0;
     }
 
@@ -15287,7 +15287,7 @@ JSON Format:
       if (timeVal > 0) {
         try {
           const d = new Date(timeVal);
-          const dateStr = d.toISOString().split('T')[0];
+          const dateStr = d.toLocaleDateString('en-CA');
           if (contributions[dateStr] !== undefined) {
             contributions[dateStr] += 1;
           }
@@ -15729,7 +15729,7 @@ JSON Format:
             id: 'log_' + Math.random().toString(36).substring(2, 9),
             subject: subjectName.trim(),
             topicName: cleanTopicName,
-            dateStr: review.dateStr || new Date().toISOString().split('T')[0],
+            dateStr: review.dateStr || new Date().toLocaleDateString('en-CA'),
             rating: review.rating,
             stability: fsrsResult.stability,
             difficulty: fsrsResult.difficulty,
@@ -15851,7 +15851,7 @@ JSON Format:
       }
     });
 
-    const todayStrForCompare = new Date().toISOString().split('T')[0];
+    const todayStrForCompare = new Date().toLocaleDateString('en-CA');
     const getDaysOverdueStr = (dueStr) => {
       if (!dueStr) return 0;
       const today = new Date(`${todayStrForCompare}T00:00:00`);
@@ -19908,8 +19908,21 @@ Return a JSON object matching the provided schema. Today's year context: ${new D
     try {
       setIsSaving(true);
       const nowTs = Date.now();
+      const nowIso = new Date().toISOString();
       const targetPageIds = new Set(allTargetPages.map(p => p.id));
       const targetCardIds = new Set(allTargetCards.map(c => c.id));
+
+      // Record immutable tombstones for all deleted cards and pages
+      for (const card of allTargetCards) {
+        if (card && card.id) {
+          await recordTombstone('card', String(card.id), { deletedAt: nowIso });
+        }
+      }
+      for (const page of allTargetPages) {
+        if (page && page.id) {
+          await recordTombstone('page', String(page.id), { deletedAt: nowIso });
+        }
+      }
 
       const remainingPages = (allLocalPages || []).filter(p => !targetPageIds.has(p.id));
       const remainingCards = (allLocalCards || []).filter(c => !targetCardIds.has(c.id));
