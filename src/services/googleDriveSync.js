@@ -1564,14 +1564,16 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
 
         // For SETTINGS: preserve local google_drive_auth, in-flight settings, replace other clean keys
         const localAuth = await getLocalSetting('google_drive_auth');
-        const liveSettings = syncStartTime > 0 ? ((await getAllLocalSettings()) || []) : [];
+        const liveSettings = syncStartTime > 0 ? ((await getAllLocalItems(STORES.SETTINGS)) || []) : [];
         const inFlightSettingsMap = new Map();
-        liveSettings.forEach(s => {
-          if (s && s.key && safeTimestamp(s.updatedAt) >= syncStartTime) {
-            hasInFlightEdits = true;
-            inFlightSettingsMap.set(s.key, s);
-          }
-        });
+        if (Array.isArray(liveSettings)) {
+          liveSettings.forEach(s => {
+            if (s && s.key && safeTimestamp(s.updatedAt) >= syncStartTime) {
+              hasInFlightEdits = true;
+              inFlightSettingsMap.set(s.key, s);
+            }
+          });
+        }
 
         await new Promise((resolve, reject) => {
           const tx = db.transaction(STORES.SETTINGS, 'readwrite');
