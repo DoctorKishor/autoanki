@@ -1552,7 +1552,13 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
           const existingLogs = (await getAllLocalItems(STORES.CAMP_DAILY_LOGS)) || [];
           const mergedLogs = mergeCampDailyLogs(existingLogs, b.campDailyLogs, unifiedGraves);
           for (const log of mergedLogs) {
-            if (log && log.dateStr) await putLocalItem(STORES.CAMP_DAILY_LOGS, log);
+            if (log && log.dateStr) {
+              await putLocalItem(STORES.CAMP_DAILY_LOGS, log);
+              if (typeof window !== 'undefined' && window.localStorage) {
+                if (log.sessions) localStorage.setItem(`camp_sessions_${log.dateStr}`, JSON.stringify(log.sessions));
+                if (log.bedToBook) localStorage.setItem(`camp_bedToBook_${log.dateStr}`, log.bedToBook);
+              }
+            }
           }
         }
         if (b.activeNewTopicsToday) {
@@ -1787,7 +1793,14 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
           const liveCampData = (await getAllLocalItems(STORES.CAMP_DATA)) || [];
           const mergedData = mergeCampData(liveCampData, b.campData, (await getUnifiedGraves()) || []);
           for (const d of mergedData) {
-            if (d && d.key) await putLocalItem(STORES.CAMP_DATA, d);
+            if (d && d.key) {
+              await putLocalItem(STORES.CAMP_DATA, d);
+              if (typeof window !== 'undefined' && window.localStorage && d.data) {
+                if (d.key === 'history') localStorage.setItem('camp_history', JSON.stringify(d.data));
+                if (d.key === 'timer_history') localStorage.setItem('camp_timer_history', JSON.stringify(d.data));
+                if (d.key === 'student_info') localStorage.setItem('camp_student_info', JSON.stringify(d.data));
+              }
+            }
           }
         }
       }

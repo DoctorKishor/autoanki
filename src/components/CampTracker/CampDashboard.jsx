@@ -175,6 +175,30 @@ export default function CampDashboard({
     }
   }, [history, hasPromptedYesterday]);
 
+  // Helper to reconstruct sessions for a given date from timer history if dailyLog is missing
+  const reconstructSessionsFromTimerHistory = (dateStr, thList) => {
+    const list = Array.isArray(thList) ? thList : [];
+    const relevant = list.filter(h => h && h.date === dateStr);
+    if (relevant.length === 0) return null;
+    const reconstructed = { preLunch: [], midDay: [], postDinner: [] };
+    relevant.forEach(item => {
+      const period = item.period && reconstructed[item.period] ? item.period : 'preLunch';
+      reconstructed[period].push({
+        id: item.id || ('th_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5)),
+        hours: (parseFloat(item.hours) || 0).toString(),
+        concentration: Number(item.concentration) || 7,
+        type: item.type || 'notes',
+        pagesRead: Number(item.pagesRead) || 0,
+        questionsSolved: Number(item.questionsSolved) || 0,
+        cardsReviewed: Number(item.cardsReviewed) || 0,
+        gtDetails: item.gtDetails || null,
+        isManual: Boolean(item.isManual),
+        updatedAt: item.updatedAt || new Date().toISOString()
+      });
+    });
+    return reconstructed;
+  };
+
   // 1.5. Fetch local CAMP data from IndexedDB on mount and on cloud sync hydration to populate state safely
   useEffect(() => {
     let active = true;
@@ -193,29 +217,58 @@ export default function CampDashboard({
           setHistory(histData);
           lastSavedHistoryRef.current = JSON.stringify(histData);
           localStorage.setItem('camp_history', JSON.stringify(histData));
+        } else {
+          lastSavedHistoryRef.current = JSON.stringify(history);
         }
 
+        let effectiveThData = timerHistory;
         if (thData && Array.isArray(thData)) {
+          effectiveThData = thData;
           setTimerHistory(thData);
           lastSavedTimerHistoryRef.current = JSON.stringify(thData);
           localStorage.setItem('camp_timer_history', JSON.stringify(thData));
+        } else {
+          lastSavedTimerHistoryRef.current = JSON.stringify(timerHistory);
         }
 
         if (infoData && typeof infoData === 'object') {
           setStudentInfo(infoData);
           lastSavedStudentInfoRef.current = JSON.stringify(infoData);
           localStorage.setItem('camp_student_info', JSON.stringify(infoData));
+        } else {
+          lastSavedStudentInfoRef.current = JSON.stringify(studentInfo);
         }
 
+        let loadedSessions = null;
         if (dailyLog && dailyLog.sessions) {
-          const norm = normalizeSessions(dailyLog.sessions);
-          setSessions(norm);
-          lastSavedSessionsRef.current[selectedDate] = JSON.stringify(norm);
+          loadedSessions = normalizeSessions(dailyLog.sessions);
+        } else {
+          loadedSessions = reconstructSessionsFromTimerHistory(selectedDate, effectiveThData);
+          if (!loadedSessions) {
+            const cached = localStorage.getItem(`camp_sessions_${selectedDate}`);
+            if (cached) {
+              try { loadedSessions = normalizeSessions(JSON.parse(cached)); } catch (e) {}
+            }
+          }
         }
-        if (dailyLog && dailyLog.bedToBook) {
-          setBedToBook(dailyLog.bedToBook);
-          lastSavedBedToBookRef.current[selectedDate] = dailyLog.bedToBook;
+
+        if (loadedSessions) {
+          setSessions(loadedSessions);
+          lastSavedSessionsRef.current[selectedDate] = JSON.stringify(loadedSessions);
+          localStorage.setItem(`camp_sessions_${selectedDate}`, JSON.stringify(loadedSessions));
+        } else {
+          const empty = { preLunch: [], midDay: [], postDinner: [] };
+          setSessions(empty);
+          lastSavedSessionsRef.current[selectedDate] = JSON.stringify(empty);
         }
+
+        const b2bVal = dailyLog?.bedToBook || localStorage.getItem(`camp_bedToBook_${selectedDate}`) || 'Less than 45 mins';
+        setBedToBook(b2bVal);
+        lastSavedBedToBookRef.current[selectedDate] = b2bVal;
+        localStorage.setItem(`camp_bedToBook_${selectedDate}`, b2bVal);
+
+        currentSessionsDateRef.current = selectedDate;
+        currentB2bDateRef.current = selectedDate;
       } catch (err) {
         console.error("[LocalDB] Error loading CAMP data:", err);
       } finally {
@@ -238,7 +291,7 @@ export default function CampDashboard({
       active = false;
       window.removeEventListener('gdrive-data-hydrated', handleSyncHydration);
     };
-  }, [selectedDate]);
+  }, []);
 
   // 1.6. Reactively load sessions and B2B whenever selectedDate changes
   useEffect(() => {
@@ -249,41 +302,34 @@ export default function CampDashboard({
       try {
         const log = await getLocalCampDailyLogs(selectedDate);
         if (!active) return;
-        if (log) {
-          if (log.sessions) {
-            const norm = normalizeSessions(log.sessions);
-            setSessions(norm);
-            lastSavedSessionsRef.current[selectedDate] = JSON.stringify(norm);
-            localStorage.setItem(`camp_sessions_${selectedDate}`, JSON.stringify(norm));
-          } else {
-            setSessions({ preLunch: [], midDay: [], postDinner: [] });
-            lastSavedSessionsRef.current[selectedDate] = JSON.stringify({ preLunch: [], midDay: [], postDinner: [] });
-          }
-          if (log.bedToBook) {
-            setBedToBook(log.bedToBook);
-            lastSavedBedToBookRef.current[selectedDate] = log.bedToBook;
-            localStorage.setItem(`camp_bedToBook_${selectedDate}`, log.bedToBook);
-          } else {
-            setBedToBook('Less than 45 mins');
-            lastSavedBedToBookRef.current[selectedDate] = 'Less than 45 mins';
-          }
+        
+        let loadedSessions = null;
+        if (log && log.sessions) {
+          loadedSessions = normalizeSessions(log.sessions);
         } else {
-          const savedSessions = localStorage.getItem(`camp_sessions_${selectedDate}`);
-          let parsedSessions = { preLunch: [], midDay: [], postDinner: [] };
-          if (savedSessions) {
-            try {
-              parsedSessions = normalizeSessions(JSON.parse(savedSessions));
-            } catch (err) {
-              console.error("Error parsing sessions cache:", err);
+          loadedSessions = reconstructSessionsFromTimerHistory(selectedDate, timerHistory);
+          if (!loadedSessions) {
+            const savedSessions = localStorage.getItem(`camp_sessions_${selectedDate}`);
+            if (savedSessions) {
+              try { loadedSessions = normalizeSessions(JSON.parse(savedSessions)); } catch (e) {}
             }
           }
-          const savedB2B = localStorage.getItem(`camp_bedToBook_${selectedDate}`);
-          const b2bValue = savedB2B || 'Less than 45 mins';
-          setSessions(parsedSessions);
-          setBedToBook(b2bValue);
-          lastSavedSessionsRef.current[selectedDate] = JSON.stringify(parsedSessions);
-          lastSavedBedToBookRef.current[selectedDate] = b2bValue;
         }
+
+        if (loadedSessions) {
+          setSessions(loadedSessions);
+          lastSavedSessionsRef.current[selectedDate] = JSON.stringify(loadedSessions);
+          localStorage.setItem(`camp_sessions_${selectedDate}`, JSON.stringify(loadedSessions));
+        } else {
+          const empty = { preLunch: [], midDay: [], postDinner: [] };
+          setSessions(empty);
+          lastSavedSessionsRef.current[selectedDate] = JSON.stringify(empty);
+        }
+
+        const b2bVal = log?.bedToBook || localStorage.getItem(`camp_bedToBook_${selectedDate}`) || 'Less than 45 mins';
+        setBedToBook(b2bVal);
+        lastSavedBedToBookRef.current[selectedDate] = b2bVal;
+        localStorage.setItem(`camp_bedToBook_${selectedDate}`, b2bVal);
       } catch (err) {
         console.error("[LocalDB] Error loading daily CAMP log:", err);
       } finally {
@@ -297,7 +343,7 @@ export default function CampDashboard({
 
     loadDaily();
     return () => { active = false; };
-  }, [selectedDate]);
+  }, [selectedDate, timerHistory]);
 
   // 2. Persist Student Info
   useEffect(() => {

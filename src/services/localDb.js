@@ -2554,7 +2554,7 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
       try {
         if (typeof window !== 'undefined' && window.localStorage) {
           Object.entries(lsSnap).forEach(([k, v]) => {
-            if (strategy === 'replace' || localStorage.getItem(k) === null) {
+            if (strategy === 'replace' || localStorage.getItem(k) === null || k.startsWith('camp_')) {
               if (v !== null && v !== undefined) localStorage.setItem(k, v);
             }
           });
@@ -2562,6 +2562,31 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
       } catch (e) {
         report.errors.push('localStorage restore failed: ' + e.message);
       }
+    }
+
+    // Hydrate CAMP data directly from restored stores into browser storage
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        if (Array.isArray(stores.camp_data)) {
+          const hist = stores.camp_data.find(d => d && d.key === 'history');
+          if (hist && hist.data) localStorage.setItem('camp_history', JSON.stringify(hist.data));
+          const th = stores.camp_data.find(d => d && d.key === 'timer_history');
+          if (th && th.data) localStorage.setItem('camp_timer_history', JSON.stringify(th.data));
+          const si = stores.camp_data.find(d => d && d.key === 'student_info');
+          if (si && si.data) localStorage.setItem('camp_student_info', JSON.stringify(si.data));
+        }
+        if (Array.isArray(stores.camp_daily_logs)) {
+          stores.camp_daily_logs.forEach(log => {
+            if (log && log.dateStr) {
+              if (log.sessions) localStorage.setItem(`camp_sessions_${log.dateStr}`, JSON.stringify(log.sessions));
+              if (log.bedToBook) localStorage.setItem(`camp_bedToBook_${log.dateStr}`, log.bedToBook);
+            }
+          });
+        }
+        window.dispatchEvent(new CustomEvent('gdrive-data-hydrated'));
+      }
+    } catch (e) {
+      console.warn('[LocalDB] Error hydrating CAMP cache after import:', e);
     }
 
     emit(++step, totalSteps, 'Done!');
