@@ -89,82 +89,101 @@ export async function extractTopicPdfSlice({
   const pdfDoc = await loadingTask.promise;
   const totalPdfPages = pdfDoc.numPages;
 
-  // 2. Calculate Effective Page Range
-  const { effStart, effEnd } = calculateEffectivePageRange(startPage, endPage, pageOffset, totalPdfPages, isPreSplit);
+  try {
+    // 2. Calculate Effective Page Range
+    const { effStart, effEnd } = calculateEffectivePageRange(startPage, endPage, pageOffset, totalPdfPages, isPreSplit);
 
-  // Helper render loop
-  const renderSlice = async (renderScale, jpegQuality) => {
-    let combinedText = '';
-    const imagesList = [];
-    let totalBytes = 0;
+    // Helper render loop
+    const renderSlice = async (renderScale, jpegQuality) => {
+      let combinedText = '';
+      const imagesList = [];
+      let totalBytes = 0;
 
-    for (let p = effStart; p <= effEnd; p++) {
-      const page = await pdfDoc.getPage(p);
+      for (let p = effStart; p <= effEnd; p++) {
+        const page = await pdfDoc.getPage(p);
 
-      // Extract raw text
-      try {
-        const textContent = await page.getTextContent();
-        const pageText = textContent.items.map(item => item.str).join(' ');
-        if (pageText.trim()) {
-          combinedText += `\n--- PAGE ${p} ---\n` + pageText.trim() + '\n';
+        // Extract raw text
+        try {
+          const textContent = await page.getTextContent();
+          const pageText = textContent.items.map(item => item.str).join(' ');
+          if (pageText.trim()) {
+            combinedText += `\n--- PAGE ${p} ---\n` + pageText.trim() + '\n';
+          }
+        } catch (e) {
+          console.warn(`[pdfSliceService] Text extraction warning on page ${p}:`, e);
         }
-      } catch (e) {
-        console.warn(`[pdfSliceService] Text extraction warning on page ${p}:`, e);
+
+        // Render page image on offscreen canvas
+        const viewport = page.getViewport({ scale: renderScale });
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        await page.render({ canvasContext: context, viewport }).promise;
+
+        const dataUrl = canvas.toDataURL('image/jpeg', jpegQuality);
+        const base64Data = dataUrl.split(',')[1] || '';
+
+        // Free canvas bitmap immediately
+        canvas.width = 0;
+        canvas.height = 0;
+
+        totalBytes += base64Data.length;
+        imagesList.push({
+          pageNumber: p,
+          base64: base64Data
+        });
+        
+        // Clean up page resources
+        if (typeof page.cleanup === 'function') {
+          page.cleanup();
+        }
       }
 
-      // Render page image on offscreen canvas
-      const viewport = page.getViewport({ scale: renderScale });
-      const canvas = document.createElement('canvas');
-      const context = canvas.getContext('2d');
-      canvas.height = viewport.height;
-      canvas.width = viewport.width;
+      return {
+        text: combinedText.trim(),
+        images: imagesList,
+        bytes: totalBytes
+      };
+    };
 
-      await page.render({ canvasContext: context, viewport }).promise;
+    // 3. Initial Render (High Quality: scale 1.2, quality 0.8)
+    let result = await renderSlice(1.2, 0.8);
+    let payloadMb = parseFloat((result.bytes / 1024 / 1024).toFixed(2));
 
-      const dataUrl = canvas.toDataURL('image/jpeg', jpegQuality);
-      const base64Data = dataUrl.split(',')[1] || '';
-
-      totalBytes += base64Data.length;
-      imagesList.push({
-        pageNumber: p,
-        base64: base64Data
-      });
+    // 4. Adaptive Compression Safeguard: If payload > 10 MB, auto-compress (scale 0.9, quality 0.55)
+    if (payloadMb > 10) {
+      console.warn(`[pdfSliceService] Payload size ${payloadMb} MB exceeds 10 MB. Applying adaptive compression (scale 0.9, quality 0.55)...`);
+      result = await renderSlice(0.9, 0.55);
+      payloadMb = parseFloat((result.bytes / 1024 / 1024).toFixed(2));
     }
 
+    // 5. Hard Safety Cap Check (15 MB)
+    if (payloadMb > maxPayloadMb) {
+      console.warn(`[pdfSliceService] Compressed payload ${payloadMb} MB exceeds safety threshold ${maxPayloadMb} MB.`);
+    }
+
+    const isScanned = !result.text || result.text.length < 50;
+
     return {
-      text: combinedText.trim(),
-      images: imagesList,
-      bytes: totalBytes
+      extractedText: result.text,
+      pageImages: result.images,
+      isScannedPdf: isScanned,
+      totalPayloadSizeMb: payloadMb,
+      pageCount: effEnd - effStart + 1,
+      effStart,
+      effEnd
     };
-  };
-
-  // 3. Initial Render (High Quality: scale 1.2, quality 0.8)
-  let result = await renderSlice(1.2, 0.8);
-  let payloadMb = parseFloat((result.bytes / 1024 / 1024).toFixed(2));
-
-  // 4. Adaptive Compression Safeguard: If payload > 10 MB, auto-compress (scale 0.9, quality 0.55)
-  if (payloadMb > 10) {
-    console.warn(`[pdfSliceService] Payload size ${payloadMb} MB exceeds 10 MB. Applying adaptive compression (scale 0.9, quality 0.55)...`);
-    result = await renderSlice(0.9, 0.55);
-    payloadMb = parseFloat((result.bytes / 1024 / 1024).toFixed(2));
+  } finally {
+    // Explicitly release all PDF.js document bitmaps and workers from RAM
+    try {
+      if (typeof pdfDoc.cleanup === 'function') await pdfDoc.cleanup();
+      if (typeof pdfDoc.destroy === 'function') await pdfDoc.destroy();
+    } catch (cleanupErr) {
+      console.warn('[pdfSliceService] Error destroying pdfDoc:', cleanupErr);
+    }
   }
-
-  // 5. Hard Safety Cap Check (15 MB)
-  if (payloadMb > maxPayloadMb) {
-    console.warn(`[pdfSliceService] Compressed payload ${payloadMb} MB exceeds safety threshold ${maxPayloadMb} MB.`);
-  }
-
-  const isScanned = !result.text || result.text.length < 50;
-
-  return {
-    extractedText: result.text,
-    pageImages: result.images,
-    isScannedPdf: isScanned,
-    totalPayloadSizeMb: payloadMb,
-    pageCount: effEnd - effStart + 1,
-    effStart,
-    effEnd
-  };
 }
 
 /**

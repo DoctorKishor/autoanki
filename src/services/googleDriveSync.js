@@ -780,7 +780,7 @@ export async function extractLocalBundles() {
     if (ts > maxEntityUpdatedAt) maxEntityUpdatedAt = ts;
   };
 
-  // 1. Cards Bundle
+  // 1. Cards Bundle (Streamlined & Sanitized for Zero-Spike Memory Footprint)
   const flashcards = (await getLocalKV('flashcards')) || [];
   const trashCards = (await getLocalKV('trash_cards')) || [];
   const cardsCount = flashcards.length;
@@ -792,9 +792,27 @@ export async function extractLocalBundles() {
     if (tc) trackTimestamp(tc.deletedAt);
   });
 
+  const cleanCardForBundle = (c) => {
+    if (!c || typeof c !== 'object') return c;
+    const copy = { ...c };
+    if (typeof copy.customImage === 'string' && (copy.customImage.startsWith('data:') || copy.customImage.startsWith('blob:') || copy.customImage.length > 2048)) {
+      copy.hasMedia = true;
+      delete copy.customImage;
+    }
+    if (typeof copy.imageUrl === 'string' && (copy.imageUrl.startsWith('data:') || copy.imageUrl.startsWith('blob:') || copy.imageUrl.length > 2048)) {
+      copy.hasMedia = true;
+      delete copy.imageUrl;
+    }
+    if (typeof copy.base64 === 'string' && copy.base64.length > 2048) {
+      copy.hasMedia = true;
+      delete copy.base64;
+    }
+    return copy;
+  };
+
   bundles['cards_bundle.json'] = {
-    flashcards: serializeBinaryValues(flashcards),
-    trashCards: serializeBinaryValues(trashCards)
+    flashcards: serializeBinaryValues(flashcards.map(cleanCardForBundle)),
+    trashCards: serializeBinaryValues(trashCards.map(cleanCardForBundle))
   };
   hashes.cards_bundle = computeHash(bundles['cards_bundle.json']);
 
@@ -1040,10 +1058,23 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
       const incomingTrash = deserializeBinaryValues(b.trashCards || []);
 
       if (strategy === 'replace') {
+        const liveCards = (await getLocalKV('flashcards')) || [];
+        const liveCardMap = new Map(liveCards.map(c => [c.id, c]));
+        const preservedIncomingCards = incomingCards.map(inc => {
+          if (!inc || !inc.id) return inc;
+          const loc = liveCardMap.get(inc.id);
+          if (!loc) return inc;
+          return {
+            ...inc,
+            customImage: inc.customImage || loc.customImage,
+            imageUrl: inc.imageUrl || loc.imageUrl,
+            base64: inc.base64 || loc.base64
+          };
+        });
+
         if (syncStartTime > 0) {
-          const liveCards = (await getLocalKV('flashcards')) || [];
           const liveTrash = (await getLocalKV('trash_cards')) || [];
-          const cardMap = new Map(incomingCards.map(c => [c.id, c]));
+          const cardMap = new Map(preservedIncomingCards.map(c => [c.id, c]));
           const trashMap = new Map(incomingTrash.map(c => [c.id, c]));
 
           liveCards.forEach(liveCard => {
@@ -1070,7 +1101,7 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
           await setLocalKV('flashcards', Array.from(cardMap.values()));
           await setLocalKV('trash_cards', Array.from(trashMap.values()));
         } else {
-          await setLocalKV('flashcards', incomingCards);
+          await setLocalKV('flashcards', preservedIncomingCards);
           await setLocalKV('trash_cards', incomingTrash);
         }
       } else {
@@ -1129,6 +1160,9 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
                 ...localCard,
                 ...inc,
                 ...latestContent,
+                customImage: latestContent.customImage || localCard.customImage || inc.customImage,
+                imageUrl: latestContent.imageUrl || localCard.imageUrl || inc.imageUrl,
+                base64: latestContent.base64 || localCard.base64 || inc.base64,
                 stability: latestRev.stability !== undefined ? latestRev.stability : (latestContent.stability ?? 0),
                 difficulty: latestRev.difficulty !== undefined ? latestRev.difficulty : (latestContent.difficulty ?? 0),
                 reps: latestRev.reps !== undefined ? latestRev.reps : (latestContent.reps ?? 0),

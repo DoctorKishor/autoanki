@@ -668,8 +668,27 @@ export async function getLocalPages() {
   return pages || [];
 }
 
+export function deduplicatePageMedia(p) {
+  if (!p || typeof p !== 'object') return p;
+  const copy = { ...p };
+  if (copy.originalImage && typeof copy.originalImage === 'string') {
+    if (copy.imageUrl === copy.originalImage) delete copy.imageUrl;
+    if (copy.base64 === copy.originalImage) delete copy.base64;
+    if (copy.compressedImage === copy.originalImage) delete copy.compressedImage;
+  } else if (copy.imageUrl && typeof copy.imageUrl === 'string') {
+    if (copy.base64 === copy.imageUrl) delete copy.base64;
+  }
+  return copy;
+}
+
+export async function getLocalPageById(pageId) {
+  if (!pageId) return null;
+  const pages = await getLocalPages();
+  return pages.find(p => p && p.id === pageId) || null;
+}
+
 export async function replaceAllLocalPages(pagesArray) {
-  const finalArray = Array.isArray(pagesArray) ? pagesArray : [];
+  const finalArray = Array.isArray(pagesArray) ? pagesArray.map(deduplicatePageMedia) : [];
   pagesWriteMutex = pagesWriteMutex.then(async () => {
     await setLocalKV('pages', finalArray);
     notifyLocalMutation('pages:replace');
@@ -688,7 +707,8 @@ export async function saveLocalPages(pagesInput) {
     const map = new Map(existing.map(p => [p.id, p]));
     pagesInput.forEach(p => {
       if (p && p.id) {
-        map.set(p.id, { ...map.get(p.id), ...p, updatedAt: p.updatedAt || Date.now() });
+        const cleaned = deduplicatePageMedia(p);
+        map.set(p.id, { ...map.get(p.id), ...cleaned, updatedAt: cleaned.updatedAt || Date.now() });
       }
     });
     const merged = Array.from(map.values());
@@ -2535,6 +2555,8 @@ export default {
   saveLocalCard,
   deleteLocalCard,
   getLocalPages,
+  getLocalPageById,
+  deduplicatePageMedia,
   saveLocalPages,
   replaceAllLocalPages,
   saveLocalPage,
