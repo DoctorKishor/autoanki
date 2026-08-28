@@ -7569,42 +7569,83 @@ export default function App() {
 
   // Dynamic Header Upcoming Exam Target Countdown
   const headerUpcomingExam = useMemo(() => {
+    const parseLocalDate = (dateStr) => {
+      if (!dateStr) return null;
+      if (typeof dateStr === 'string') {
+        const parts = dateStr.split('-');
+        if (parts.length === 3) {
+          const [y, m, d] = parts.map(Number);
+          if (y && m && d) return new Date(y, m - 1, d);
+        }
+      }
+      const d = new Date(dateStr);
+      return isNaN(d.getTime()) ? null : d;
+    };
+
+    const candidates = [];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const candidates = [];
 
-    (examProfiles || []).forEach(profile => {
-      if (!profile || !profile.targetDate) return;
-      const dObj = new Date(profile.targetDate);
-      dObj.setHours(0, 0, 0, 0);
-      if (!isNaN(dObj.getTime()) && dObj >= today) {
-        candidates.push({
-          title: profile.name || 'Target Exam',
-          dateStr: profile.targetDate,
-          dateObj: dObj,
-          isTentative: Boolean(profile.isTentative)
-        });
-      }
-    });
+    // 1. Check examProfiles
+    if (Array.isArray(examProfiles)) {
+      examProfiles.forEach(prof => {
+        if (!prof) return;
+        const dStr = prof.date || prof.examDate || prof.targetDate;
+        const dObj = parseLocalDate(dStr);
+        if (dObj && dObj >= today) {
+          candidates.push({
+            title: prof.name || prof.title || prof.examTitle || 'Target Exam',
+            dateStr: dStr,
+            dateObj: dObj,
+            isTentative: Boolean(prof.isTentative)
+          });
+        }
+      });
+    }
 
-    if (typeof studySchedule === 'object' && studySchedule !== null) {
-      Object.entries(studySchedule).forEach(([dStr, dayObj]) => {
-        if (!dayObj || !dayObj.tasks) return;
-        const dObj = new Date(dStr);
-        dObj.setHours(0, 0, 0, 0);
-        if (isNaN(dObj.getTime()) || dObj < today) return;
+    // 2. Check studySchedule items specifically tagged as exams
+    if (studySchedule) {
+      const scheduleArray = Array.isArray(studySchedule)
+        ? studySchedule
+        : typeof studySchedule === 'object'
+          ? Object.values(studySchedule)
+          : [];
 
-        (dayObj.tasks || []).forEach(task => {
-          if (!task) return;
-          if (task.isExam || task.isExamTarget || task.examTitle || task.type === 'exam') {
+      scheduleArray.forEach(item => {
+        if (!item) return;
+        const dStr = item.date || item.examDate || item.dateStr;
+        const dObj = parseLocalDate(dStr);
+        if (dObj && dObj >= today) {
+          const isExplicitExam = Boolean(item.isExam || item.isExamTarget || item.examTitle || item.type === 'exam');
+          if (isExplicitExam) {
             candidates.push({
-              title: task.examTitle || task.title || task.text || 'Scheduled Exam',
+              title: item.examTitle || item.title || item.subject || 'Competitive Exam',
               dateStr: dStr,
               dateObj: dObj,
-              isTentative: Boolean(task.isTentative)
+              isTentative: Boolean(item.isTentative)
             });
           }
-        });
+        }
+
+        // Also check nested tasks if item is a day container
+        if (Array.isArray(item.tasks)) {
+          item.tasks.forEach(task => {
+            if (!task) return;
+            const taskDStr = task.date || task.examDate || dStr;
+            const taskDObj = parseLocalDate(taskDStr);
+            if (taskDObj && taskDObj >= today) {
+              const isTaskExam = Boolean(task.isExam || task.isExamTarget || task.examTitle || task.type === 'exam');
+              if (isTaskExam) {
+                candidates.push({
+                  title: task.examTitle || task.title || task.text || 'Scheduled Exam',
+                  dateStr: taskDStr,
+                  dateObj: taskDObj,
+                  isTentative: Boolean(task.isTentative)
+                });
+              }
+            }
+          });
+        }
       });
     }
 
