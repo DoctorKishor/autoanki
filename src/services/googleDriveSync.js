@@ -3001,100 +3001,159 @@ export function mergeTextbooksMetadata(localBooks = [], remoteBooks = []) {
 }
 
 /**
- * Merges two FSRS configuration objects across all 7 categories deeply and non-destructively.
+ * Merges two FSRS configuration objects across all 7 categories deeply, granularly, and non-destructively.
+ * Each setting category (dailyLimits, newTopics, lapses, displayOrder, easyDays, advancedRules,
+ * perSubjectRetention, weights, globalDesiredRetention, retentionMode, enabled) is evaluated
+ * independently via category timestamps so changes on one device do not overwrite untouched settings on another.
  */
 export function mergeFsrsConfigs(loc = {}, rem = {}) {
   if (!loc || typeof loc !== 'object') return rem || {};
   if (!rem || typeof rem !== 'object') return loc || {};
 
-  const locTime = safeTimestamp(loc.updatedAt || loc.lastModified);
-  const remTime = safeTimestamp(rem.updatedAt || rem.lastModified);
-  const winnerBase = remTime > locTime ? rem : loc;
+  const locRootTime = safeTimestamp(loc.updatedAt || loc.lastModified);
+  const remRootTime = safeTimestamp(rem.updatedAt || rem.lastModified);
+  const mergedTimestamps = { ...(rem.timestamps || {}), ...(loc.timestamps || {}) };
 
   // 1. Daily Limits
+  const locDailyTime = safeTimestamp(loc.timestamps?.dailyLimits || locRootTime);
+  const remDailyTime = safeTimestamp(rem.timestamps?.dailyLimits || remRootTime);
   const locDaily = loc.dailyLimits || {};
   const remDaily = rem.dailyLimits || {};
-  const winnerDaily = winnerBase.dailyLimits || {};
+  const winnerDaily = remDailyTime > locDailyTime ? remDaily : locDaily;
+  const loserDaily = remDailyTime > locDailyTime ? locDaily : remDaily;
+
   const mergedSubjectOverrides = {
-    ...(remDaily.subjectOverrides || {}),
-    ...(locDaily.subjectOverrides || {})
+    ...(loserDaily.subjectOverrides || {}),
+    ...(winnerDaily.subjectOverrides || {})
   };
   Object.keys(locDaily.subjectOverrides || {}).forEach(sub => {
     if (remDaily.subjectOverrides && remDaily.subjectOverrides[sub]) {
       const locSub = locDaily.subjectOverrides[sub];
       const remSub = remDaily.subjectOverrides[sub];
-      mergedSubjectOverrides[sub] = (locTime >= remTime) ? { ...remSub, ...locSub } : { ...locSub, ...remSub };
+      mergedSubjectOverrides[sub] = (locDailyTime >= remDailyTime) ? { ...remSub, ...locSub } : { ...locSub, ...remSub };
     }
   });
 
   const mergedDailyLimits = {
     ...DEFAULT_FSRS_CONFIG.dailyLimits,
-    ...(remTime > locTime ? locDaily : remDaily),
+    ...loserDaily,
     ...winnerDaily,
     subjectOverrides: mergedSubjectOverrides,
-    todayOverride: (locTime >= remTime)
+    todayOverride: (locDailyTime >= remDailyTime)
       ? (locDaily.todayOverride || remDaily.todayOverride || null)
       : (remDaily.todayOverride || locDaily.todayOverride || null)
   };
+  mergedTimestamps.dailyLimits = new Date(Math.max(locDailyTime, remDailyTime) || Date.now()).toISOString();
 
   // 2. New Topics
+  const locNewTopicsTime = safeTimestamp(loc.timestamps?.newTopics || locRootTime);
+  const remNewTopicsTime = safeTimestamp(rem.timestamps?.newTopics || remRootTime);
+  const winnerNewTopics = remNewTopicsTime > locNewTopicsTime ? (rem.newTopics || {}) : (loc.newTopics || {});
+  const loserNewTopics = remNewTopicsTime > locNewTopicsTime ? (loc.newTopics || {}) : (rem.newTopics || {});
   const mergedNewTopics = {
     ...DEFAULT_FSRS_CONFIG.newTopics,
-    ...(remTime > locTime ? (loc.newTopics || {}) : (rem.newTopics || {})),
-    ...(winnerBase.newTopics || {})
+    ...loserNewTopics,
+    ...winnerNewTopics
   };
+  mergedTimestamps.newTopics = new Date(Math.max(locNewTopicsTime, remNewTopicsTime) || Date.now()).toISOString();
 
   // 3. Lapses & Leeches
+  const locLapsesTime = safeTimestamp(loc.timestamps?.lapses || locRootTime);
+  const remLapsesTime = safeTimestamp(rem.timestamps?.lapses || remRootTime);
+  const winnerLapses = remLapsesTime > locLapsesTime ? (rem.lapses || {}) : (loc.lapses || {});
+  const loserLapses = remLapsesTime > locLapsesTime ? (loc.lapses || {}) : (rem.lapses || {});
   const mergedLapses = {
     ...DEFAULT_FSRS_CONFIG.lapses,
-    ...(remTime > locTime ? (loc.lapses || {}) : (rem.lapses || {})),
-    ...(winnerBase.lapses || {})
+    ...loserLapses,
+    ...winnerLapses
   };
+  mergedTimestamps.lapses = new Date(Math.max(locLapsesTime, remLapsesTime) || Date.now()).toISOString();
 
   // 4. Display Order
+  const locDisplayTime = safeTimestamp(loc.timestamps?.displayOrder || locRootTime);
+  const remDisplayTime = safeTimestamp(rem.timestamps?.displayOrder || remRootTime);
+  const winnerDisplay = remDisplayTime > locDisplayTime ? (rem.displayOrder || {}) : (loc.displayOrder || {});
+  const loserDisplay = remDisplayTime > locDisplayTime ? (loc.displayOrder || {}) : (rem.displayOrder || {});
   const mergedDisplayOrder = {
     ...DEFAULT_FSRS_CONFIG.displayOrder,
-    ...(remTime > locTime ? (loc.displayOrder || {}) : (rem.displayOrder || {})),
-    ...(winnerBase.displayOrder || {})
+    ...loserDisplay,
+    ...winnerDisplay
   };
+  mergedTimestamps.displayOrder = new Date(Math.max(locDisplayTime, remDisplayTime) || Date.now()).toISOString();
 
   // 5. Easy Days
+  const locEasyTime = safeTimestamp(loc.timestamps?.easyDays || locRootTime);
+  const remEasyTime = safeTimestamp(rem.timestamps?.easyDays || remRootTime);
+  const winnerEasy = remEasyTime > locEasyTime ? (rem.easyDays || {}) : (loc.easyDays || {});
+  const loserEasy = remEasyTime > locEasyTime ? (loc.easyDays || {}) : (rem.easyDays || {});
   const mergedEasyDays = {
     ...DEFAULT_FSRS_CONFIG.easyDays,
-    ...(remTime > locTime ? (loc.easyDays || {}) : (rem.easyDays || {})),
-    ...(winnerBase.easyDays || {})
+    ...loserEasy,
+    ...winnerEasy
   };
+  mergedTimestamps.easyDays = new Date(Math.max(locEasyTime, remEasyTime) || Date.now()).toISOString();
 
   // 6. Advanced Rules
+  const locAdvTime = safeTimestamp(loc.timestamps?.advancedRules || locRootTime);
+  const remAdvTime = safeTimestamp(rem.timestamps?.advancedRules || remRootTime);
+  const winnerAdv = remAdvTime > locAdvTime ? (rem.advancedRules || {}) : (loc.advancedRules || {});
+  const loserAdv = remAdvTime > locAdvTime ? (loc.advancedRules || {}) : (rem.advancedRules || {});
   const mergedAdvancedRules = {
     ...DEFAULT_FSRS_CONFIG.advancedRules,
-    ...(remTime > locTime ? (loc.advancedRules || {}) : (rem.advancedRules || {})),
-    ...(winnerBase.advancedRules || {})
+    ...loserAdv,
+    ...winnerAdv
   };
+  mergedTimestamps.advancedRules = new Date(Math.max(locAdvTime, remAdvTime) || Date.now()).toISOString();
 
   // 7. Per-Subject Retention
+  const locSubRetTime = safeTimestamp(loc.timestamps?.perSubjectRetention || locRootTime);
+  const remSubRetTime = safeTimestamp(rem.timestamps?.perSubjectRetention || remRootTime);
+  const winnerSubRet = remSubRetTime > locSubRetTime ? (rem.perSubjectRetention || {}) : (loc.perSubjectRetention || {});
+  const loserSubRet = remSubRetTime > locSubRetTime ? (loc.perSubjectRetention || {}) : (rem.perSubjectRetention || {});
   const mergedPerSubjectRetention = {
     ...DEFAULT_FSRS_CONFIG.perSubjectRetention,
-    ...(remTime > locTime ? (loc.perSubjectRetention || {}) : (rem.perSubjectRetention || {})),
-    ...(winnerBase.perSubjectRetention || {})
+    ...loserSubRet,
+    ...winnerSubRet
   };
+  mergedTimestamps.perSubjectRetention = new Date(Math.max(locSubRetTime, remSubRetTime) || Date.now()).toISOString();
 
-  // Weights: preserve custom weights if present
-  let mergedWeights = (winnerBase.weights && Array.isArray(winnerBase.weights) && winnerBase.weights.length >= 17)
-    ? winnerBase.weights
-    : (loc.weights || rem.weights || DEFAULT_FSRS_CONFIG.weights);
+  // 8. Weights
+  const locWeightsTime = safeTimestamp(loc.timestamps?.weights || locRootTime);
+  const remWeightsTime = safeTimestamp(rem.timestamps?.weights || remRootTime);
+  const winnerWeights = remWeightsTime > locWeightsTime ? (rem.weights || loc.weights) : (loc.weights || rem.weights);
+  const mergedWeights = (winnerWeights && Array.isArray(winnerWeights) && winnerWeights.length >= 17)
+    ? winnerWeights
+    : (DEFAULT_FSRS_CONFIG.weights || [
+        0.4072, 1.1829, 3.1262, 15.4722, 7.2102, 0.5316, 1.0651, 0.0589, 1.5330,
+        0.1544, 1.0071, 1.9395, 0.1100, 0.2900, 2.2700, 0.1500, 2.9898, 0.5100,
+        0.3400, 0.0000, 0.2345
+      ]);
+  mergedTimestamps.weights = new Date(Math.max(locWeightsTime, remWeightsTime) || Date.now()).toISOString();
 
-  const mergedDesiredRetention = winnerBase.globalDesiredRetention ?? loc.globalDesiredRetention ?? rem.globalDesiredRetention ?? DEFAULT_FSRS_CONFIG.globalDesiredRetention;
-  const mergedRetentionMode = winnerBase.retentionMode ?? loc.retentionMode ?? rem.retentionMode ?? DEFAULT_FSRS_CONFIG.retentionMode;
-  const mergedEnabled = winnerBase.enabled ?? loc.enabled ?? rem.enabled ?? true;
+  // 9. Global Desired Retention
+  const locDrTime = safeTimestamp(loc.timestamps?.globalDesiredRetention || locRootTime);
+  const remDrTime = safeTimestamp(rem.timestamps?.globalDesiredRetention || remRootTime);
+  const mergedDesiredRetention = (remDrTime > locDrTime ? (rem.globalDesiredRetention ?? loc.globalDesiredRetention) : (loc.globalDesiredRetention ?? rem.globalDesiredRetention)) ?? DEFAULT_FSRS_CONFIG.globalDesiredRetention;
+  mergedTimestamps.globalDesiredRetention = new Date(Math.max(locDrTime, remDrTime) || Date.now()).toISOString();
 
-  // FIX-11: Preserve updatedAt from the latest config to maintain correct LWW semantics on future syncs
-  const mergedUpdatedAt = new Date(Math.max(locTime, remTime) || Date.now()).toISOString();
+  // 10. Retention Mode
+  const locRmTime = safeTimestamp(loc.timestamps?.retentionMode || locRootTime);
+  const remRmTime = safeTimestamp(rem.timestamps?.retentionMode || remRootTime);
+  const mergedRetentionMode = (remRmTime > locRmTime ? (rem.retentionMode ?? loc.retentionMode) : (loc.retentionMode ?? rem.retentionMode)) ?? DEFAULT_FSRS_CONFIG.retentionMode;
+  mergedTimestamps.retentionMode = new Date(Math.max(locRmTime, remRmTime) || Date.now()).toISOString();
+
+  // 11. Enabled
+  const locEnTime = safeTimestamp(loc.timestamps?.enabled || locRootTime);
+  const remEnTime = safeTimestamp(rem.timestamps?.enabled || remRootTime);
+  const mergedEnabled = (remEnTime > locEnTime ? (rem.enabled ?? loc.enabled) : (loc.enabled ?? rem.enabled)) ?? true;
+  mergedTimestamps.enabled = new Date(Math.max(locEnTime, remEnTime) || Date.now()).toISOString();
+
+  // Aggregate Root Timestamp
+  const allSectionTimes = Object.values(mergedTimestamps).map(safeTimestamp).concat([locRootTime, remRootTime]);
+  const mergedUpdatedAt = new Date(Math.max(...allSectionTimes) || Date.now()).toISOString();
 
   const result = {
     ...DEFAULT_FSRS_CONFIG,
-    ...(remTime > locTime ? loc : rem),
-    ...winnerBase,
     enabled: mergedEnabled,
     retentionMode: mergedRetentionMode,
     globalDesiredRetention: mergedDesiredRetention,
@@ -3106,6 +3165,7 @@ export function mergeFsrsConfigs(loc = {}, rem = {}) {
     advancedRules: mergedAdvancedRules,
     perSubjectRetention: mergedPerSubjectRetention,
     weights: mergedWeights,
+    timestamps: mergedTimestamps,
     updatedAt: mergedUpdatedAt
   };
   delete result.lastModified;

@@ -2457,6 +2457,120 @@ console.log('TEST 43: FSRS Settings Modal Dual-Property Limits & Multi-Device Gr
   assert(merged.weights[0] === 0.45, 'Local custom weights are preserved');
 }
 
+console.log('TEST 44: Granular Multi-Device Collaborative FSRS Merging (Zero Cross-Setting Overwrite)');
+{
+  const tBase = new Date('2026-08-29T08:00:00Z').toISOString();
+  const tDev1 = new Date('2026-08-29T10:00:00Z').toISOString();
+  const tDev2 = new Date('2026-08-29T09:30:00Z').toISOString();
+
+  // Device 1 only edited Daily Limits at 10:00
+  const dev1Fsrs = {
+    globalDesiredRetention: 0.90,
+    dailyLimits: {
+      newPagesPerDay: 50,
+      maxReviewPagesPerDay: 150
+    },
+    easyDays: {
+      mon: 'normal',
+      sun: 'normal'
+    },
+    weights: [0.4, 0.6, 2.4, 5.8, 4.93, 0.94, 0.86, 0.01, 1.49, 0.14, 0.94, 2.18, 0.05, 0.34, 1.26, 0.29, 2.61, 0.0, 0.0, 0.0, 0.0],
+    timestamps: {
+      dailyLimits: tDev1,
+      easyDays: tBase,
+      weights: tBase,
+      globalDesiredRetention: tBase
+    },
+    updatedAt: tDev1
+  };
+
+  // Device 2 edited Easy Days, Custom Weights, and Desired Retention at 09:30
+  const dev2Fsrs = {
+    globalDesiredRetention: 0.85,
+    dailyLimits: {
+      newPagesPerDay: 15,
+      maxReviewPagesPerDay: 30
+    },
+    easyDays: {
+      mon: 'normal',
+      sun: 'minimum'
+    },
+    weights: [0.55, 0.75, 2.8, 6.2, 5.3, 1.1, 0.95, 0.03, 1.6, 0.16, 0.98, 2.3, 0.07, 0.36, 1.4, 0.32, 2.8, 0.0, 0.0, 0.0, 0.0],
+    timestamps: {
+      dailyLimits: tBase,
+      easyDays: tDev2,
+      weights: tDev2,
+      globalDesiredRetention: tDev2
+    },
+    updatedAt: tDev2
+  };
+
+  const merged = mergeFsrsConfigs(dev1Fsrs, dev2Fsrs);
+
+  // Device 1's newer Daily Limits must be preserved
+  assert(merged.dailyLimits.newPagesPerDay === 50, 'Device 1 daily limits (newPages: 50) preserved');
+  assert(merged.dailyLimits.maxReviewPagesPerDay === 150, 'Device 1 daily limits (maxReview: 150) preserved');
+
+  // Device 2's newer Easy Days, Weights, and Retention must be preserved
+  assert(merged.easyDays.sun === 'minimum', 'Device 2 easy days (sun: minimum) preserved');
+  assert(merged.weights[0] === 0.55, 'Device 2 custom weights preserved without getting overwritten');
+  assert(merged.globalDesiredRetention === 0.85, 'Device 2 desired retention (0.85) preserved');
+}
+
+console.log('TEST 45: FSRS Reset to Defaults Timestamping & Multi-Device Propagation');
+{
+  const tOld = new Date('2026-08-29T08:00:00Z').toISOString();
+  const tReset = new Date('2026-08-29T11:00:00Z').toISOString();
+
+  // Device 2 has old customized settings
+  const dev2Custom = {
+    globalDesiredRetention: 0.82,
+    dailyLimits: { newPagesPerDay: 100, maxReviewPagesPerDay: 300 },
+    easyDays: { sun: 'minimum', sat: 'minimum' },
+    weights: [0.9, 0.9, 3.5, 7.0, 6.0, 1.5, 1.2, 0.05, 1.8, 0.2, 1.1, 2.5, 0.08, 0.4, 1.5, 0.4, 3.0, 0.0, 0.0, 0.0, 0.0],
+    timestamps: {
+      dailyLimits: tOld,
+      easyDays: tOld,
+      weights: tOld,
+      globalDesiredRetention: tOld
+    },
+    updatedAt: tOld
+  };
+
+  // Device 1 clicks Reset Defaults at 11:00 (stamps all categories with tReset)
+  const dev1Reset = {
+    globalDesiredRetention: 0.90,
+    dailyLimits: { newPagesPerDay: 15, maxReviewPagesPerDay: 30 },
+    easyDays: { sun: 'normal', sat: 'normal', mon: 'normal', tue: 'normal', wed: 'normal', thu: 'normal', fri: 'normal' },
+    weights: [
+      0.4072, 1.1829, 3.1262, 15.4722, 7.2102, 0.5316, 1.0651, 0.0589, 1.5330,
+      0.1544, 1.0071, 1.9395, 0.1100, 0.2900, 2.2700, 0.1500, 2.9898, 0.5100,
+      0.3400, 0.0000, 0.2345
+    ],
+    timestamps: {
+      dailyLimits: tReset,
+      newTopics: tReset,
+      lapses: tReset,
+      displayOrder: tReset,
+      easyDays: tReset,
+      advancedRules: tReset,
+      perSubjectRetention: tReset,
+      weights: tReset,
+      globalDesiredRetention: tReset,
+      retentionMode: tReset,
+      enabled: tReset
+    },
+    updatedAt: tReset
+  };
+
+  const merged = mergeFsrsConfigs(dev1Reset, dev2Custom);
+
+  assert(merged.globalDesiredRetention === 0.90, 'Reset global retention (0.90) overrides old custom retention (0.82)');
+  assert(merged.dailyLimits.newPagesPerDay === 15, 'Reset daily limits (15) overrides old custom limits (100)');
+  assert(merged.easyDays.sun === 'normal', 'Reset easy days (sun: normal) overrides old custom minimum');
+  assert(merged.weights[0] === 0.4072, 'Reset weights override old custom weights');
+}
+
 console.log('\n======================================================');
 console.log(`🎉 ALL ${passedTests}/${totalTests} SYNC SIMULATION TESTS PASSED CLEANLY!`);
 console.log('======================================================\n');

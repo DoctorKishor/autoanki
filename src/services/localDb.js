@@ -1675,7 +1675,7 @@ export const DEFAULT_FSRS_CONFIG = {
 export async function getFSRSConfig() {
   const saved = await getLocalSetting('fsrs_config');
   if (!saved || typeof saved !== 'object') {
-    return DEFAULT_FSRS_CONFIG;
+    return { ...DEFAULT_FSRS_CONFIG, timestamps: {} };
   }
   return {
     ...DEFAULT_FSRS_CONFIG,
@@ -1686,13 +1686,18 @@ export async function getFSRSConfig() {
     displayOrder: { ...DEFAULT_FSRS_CONFIG.displayOrder, ...(saved.displayOrder || {}) },
     easyDays: { ...DEFAULT_FSRS_CONFIG.easyDays, ...(saved.easyDays || {}) },
     advancedRules: { ...DEFAULT_FSRS_CONFIG.advancedRules, ...(saved.advancedRules || {}) },
-    perSubjectRetention: { ...DEFAULT_FSRS_CONFIG.perSubjectRetention, ...(saved.perSubjectRetention || {}) }
+    perSubjectRetention: { ...DEFAULT_FSRS_CONFIG.perSubjectRetention, ...(saved.perSubjectRetention || {}) },
+    timestamps: (saved.timestamps && typeof saved.timestamps === 'object') ? saved.timestamps : {}
   };
 }
 
 export async function saveFSRSConfig(config, preserveTimestamp = false) {
   const existing = await getFSRSConfig();
   const nowIso = new Date().toISOString();
+  const incomingTimestamps = config?.timestamps && typeof config.timestamps === 'object' ? config.timestamps : {};
+  const existingTimestamps = existing?.timestamps && typeof existing.timestamps === 'object' ? existing.timestamps : {};
+  const mergedTimestamps = { ...existingTimestamps, ...incomingTimestamps };
+
   const merged = {
     ...existing,
     ...config,
@@ -1731,6 +1736,7 @@ export async function saveFSRSConfig(config, preserveTimestamp = false) {
       ...(existing.perSubjectRetention || {}),
       ...(config?.perSubjectRetention || {})
     },
+    timestamps: mergedTimestamps,
     updatedAt: (preserveTimestamp && config?.updatedAt) ? config.updatedAt : nowIso
   };
   await saveLocalSetting('fsrs_config', merged);

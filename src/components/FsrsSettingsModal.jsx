@@ -177,11 +177,16 @@ export default function FsrsSettingsModal({
     return `${year}-${month}-${day}`;
   }, []);
 
+  const initialConfigRef = useRef(null);
+  const isResetRef = useRef(false);
+
   // Update temp state when modal opens or fsrsConfig changes
   React.useEffect(() => {
-    if (fsrsConfig) {
+    if (fsrsConfig && isOpen) {
+      initialConfigRef.current = JSON.parse(JSON.stringify(fsrsConfig));
       setTempConfig(JSON.parse(JSON.stringify(fsrsConfig)));
       setWeightsText((fsrsConfig.weights || DEFAULT_FSRS6_WEIGHTS).join(', '));
+      isResetRef.current = false;
     }
   }, [fsrsConfig, isOpen]);
 
@@ -195,7 +200,70 @@ export default function FsrsSettingsModal({
   if (!isOpen) return null;
 
   const handleSave = () => {
-    onSaveConfig({ ...tempConfig, updatedAt: new Date().toISOString() });
+    const nowIso = new Date().toISOString();
+    const prev = initialConfigRef.current || {};
+    const existingTimestamps = { ...(prev.timestamps || {}), ...(tempConfig.timestamps || {}) };
+    const newTimestamps = { ...existingTimestamps };
+
+    // If Reset Defaults was triggered, stamp ALL sections with the new timestamp
+    if (isResetRef.current) {
+      newTimestamps.dailyLimits = nowIso;
+      newTimestamps.newTopics = nowIso;
+      newTimestamps.lapses = nowIso;
+      newTimestamps.displayOrder = nowIso;
+      newTimestamps.easyDays = nowIso;
+      newTimestamps.advancedRules = nowIso;
+      newTimestamps.perSubjectRetention = nowIso;
+      newTimestamps.weights = nowIso;
+      newTimestamps.globalDesiredRetention = nowIso;
+      newTimestamps.retentionMode = nowIso;
+      newTimestamps.enabled = nowIso;
+    } else {
+      // Granularly detect which section was modified and stamp only the modified sections
+      if (JSON.stringify(tempConfig.dailyLimits) !== JSON.stringify(prev.dailyLimits)) {
+        newTimestamps.dailyLimits = nowIso;
+      }
+      if (JSON.stringify(tempConfig.newTopics) !== JSON.stringify(prev.newTopics)) {
+        newTimestamps.newTopics = nowIso;
+      }
+      if (JSON.stringify(tempConfig.lapses) !== JSON.stringify(prev.lapses)) {
+        newTimestamps.lapses = nowIso;
+      }
+      if (JSON.stringify(tempConfig.displayOrder) !== JSON.stringify(prev.displayOrder)) {
+        newTimestamps.displayOrder = nowIso;
+      }
+      if (JSON.stringify(tempConfig.easyDays) !== JSON.stringify(prev.easyDays)) {
+        newTimestamps.easyDays = nowIso;
+      }
+      if (JSON.stringify(tempConfig.advancedRules) !== JSON.stringify(prev.advancedRules)) {
+        newTimestamps.advancedRules = nowIso;
+      }
+      if (JSON.stringify(tempConfig.perSubjectRetention) !== JSON.stringify(prev.perSubjectRetention)) {
+        newTimestamps.perSubjectRetention = nowIso;
+      }
+      if (JSON.stringify(tempConfig.weights) !== JSON.stringify(prev.weights)) {
+        newTimestamps.weights = nowIso;
+      }
+      if (tempConfig.globalDesiredRetention !== prev.globalDesiredRetention) {
+        newTimestamps.globalDesiredRetention = nowIso;
+      }
+      if (tempConfig.retentionMode !== prev.retentionMode) {
+        newTimestamps.retentionMode = nowIso;
+      }
+      if (tempConfig.enabled !== prev.enabled) {
+        newTimestamps.enabled = nowIso;
+      }
+      // If none changed but save was clicked, ensure active category is stamped
+      if (Object.keys(newTimestamps).length === 0) {
+        newTimestamps[activeCategory] = nowIso;
+      }
+    }
+
+    onSaveConfig({
+      ...tempConfig,
+      timestamps: newTimestamps,
+      updatedAt: nowIso
+    });
     onClose();
   };
 
@@ -1292,7 +1360,9 @@ export default function FsrsSettingsModal({
             <button
               onClick={() => {
                 if (window.confirm("Reset all FSRS Spaced Repetition settings to factory defaults?")) {
+                  isResetRef.current = true;
                   setTempConfig(JSON.parse(JSON.stringify(DEFAULT_FSRS_CONFIG)));
+                  setWeightsText((DEFAULT_FSRS_CONFIG.weights || DEFAULT_FSRS6_WEIGHTS).join(', '));
                 }
               }}
               className={`px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer border text-center ${
