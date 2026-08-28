@@ -16405,8 +16405,9 @@ JSON Format:
 
     // Action 3: Redo Delete Tracker Topic / Chapter
     if (lastItem.actionType === 'DELETE_TRACKER_TOPIC') {
-      const { docId, subject, topicName } = lastItem;
+      const { docId, subject, topicName, deletedTopicObj } = lastItem;
       const targetDocId = docId || (subject ? subject.trim().toLowerCase() : null);
+      const nowIso = new Date().toISOString();
 
       setSubjectTrackerData(prev => {
         const list = Array.isArray(prev) ? prev : [];
@@ -16421,8 +16422,34 @@ JSON Format:
         const updatedDoc = {
           ...existingDoc,
           topics: topicsMap,
-          updatedAt: new Date().toISOString()
+          updatedAt: nowIso
         };
+
+        // Re-record tombstone in unified_graves on Redo
+        const topicId = deletedTopicObj?.id || `${targetDocId}_${topicName}`;
+        recordTombstone('tracker_topic', String(topicId), {
+          parentId: targetDocId,
+          deletedAt: nowIso,
+          metadata: { topicName, docId: targetDocId, name: deletedTopicObj?.name || topicName }
+        }).catch(e => console.warn("[LocalDB] Error re-recording tracker topic tombstone on redo:", e));
+
+        // Re-add to trash_topics
+        Promise.resolve().then(async () => {
+          try {
+            const trash = (await getLocalKV('trash_topics')) || [];
+            const filtered = trash.filter(t => t?.id !== topicId && !(t?.docId === targetDocId && t?.topicName === topicName));
+            filtered.push({
+              ...(deletedTopicObj || { id: topicId, name: topicName }),
+              id: topicId,
+              docId: targetDocId,
+              topicName,
+              deletedAt: nowIso
+            });
+            await setLocalKV('trash_topics', filtered);
+          } catch (e) {
+            console.warn('[LocalDB] Error updating trash_topics on Redo:', e);
+          }
+        });
 
         saveLocalSubjectTrackerDoc(targetDocId, updatedDoc).catch(err => console.error("[LocalDB] Error re-deleting topic:", err));
 
@@ -16463,7 +16490,7 @@ JSON Format:
 
     const { docId, subject, topicName, logEntry, schedulerContext } = lastItem;
 
-    // 1. Synchronize studyLogs state: restore the logEntry on Redo
+    // 1. Synchronize studyLogs state: restore the logEntry on Redo and revoke tombstone
     let nextStudyLogs = { ...studyLogs };
     if (logEntry && logEntry.dateStr) {
       const targetDate = logEntry.dateStr;
@@ -16477,6 +16504,13 @@ JSON Format:
       };
       nextStudyLogs = { ...nextStudyLogs, [targetDate]: updatedDayLog };
       saveLocalStudyLog(targetDate, updatedDayLog).catch(err => console.error("[LocalDB] Error redoing study log:", err));
+
+      // Revoke any tombstone for this restored study log entry to prevent deletion during cloud sync
+      if (logEntry.id) {
+        revokeTombstone('study_log_entry', String(logEntry.id)).catch(err =>
+          console.warn("[LocalDB] Error revoking study log tombstone on redo:", err)
+        );
+      }
     }
     setStudyLogs(nextStudyLogs);
 

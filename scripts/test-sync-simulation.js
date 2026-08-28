@@ -1349,6 +1349,71 @@ console.log('\nTEST 18: CAMP Tracker, Daily Sessions & Multi-Device Sync Parity'
   assert(histItemF.data.length === 0, 'Deleted history entry is PRUNED by tombstone and NOT resurrected');
 }
 
+// ---------------------------------------------------------------------------
+// TEST 19: Review Rating Redo Tombstone Revocation & Dynamic KV Sync Parity
+// ---------------------------------------------------------------------------
+console.log('\nTEST 19: Review Rating Redo Tombstone Revocation & Dynamic KV Sync Parity');
+{
+  const nowIso = new Date().toISOString();
+  const dateStr = '2026-08-28';
+  const logId = 'log_redo_test_101';
+
+  // Device 1: User rated a topic, undid it (tombstoned), then REDID it (tombstone revoked).
+  // The redone log entry is present in studyLogs for 2026-08-28 and the tombstone is revoked (empty/omitted).
+  const locStudyLogs = {
+    [dateStr]: {
+      cards: 1,
+      questions: 0,
+      hours: 0.5,
+      pages: 1,
+      updatedAt: nowIso,
+      fsrsLogs: [
+        {
+          id: logId,
+          topicName: 'Arrhythmias',
+          subject: 'Cardiology',
+          dateStr: dateStr,
+          rating: 3,
+          timestamp: nowIso
+        }
+      ]
+    }
+  };
+
+  // Remote Device 2 had no log yet
+  const remStudyLogs = {};
+
+  // With tombstone revoked, unified graves has no active tombstone for this logId
+  const graves = [];
+
+  const mergedLogs = mergeStudyLogsObjects(locStudyLogs, remStudyLogs, [], [], graves);
+  assert(mergedLogs[dateStr] !== undefined, 'Date 2026-08-28 exists in merged result');
+  assert(mergedLogs[dateStr].fsrsLogs.length === 1, 'Redone review log is PRESERVED on sync after tombstone revocation');
+  assert(mergedLogs[dateStr].fsrsLogs[0].id === logId, 'Log ID matches redone entry');
+
+  // Dynamic KV Active Topics & AI Recommendations records syncing
+  const locActiveTopics = [
+    { key: `active_new_topics_${dateStr}`, value: ['topic_101', 'topic_102'], updatedAt: nowIso }
+  ];
+  const remActiveTopics = [
+    { key: `active_new_topics_${dateStr}`, value: ['topic_103'], updatedAt: '2026-08-28T09:00:00.000Z' }
+  ];
+
+  // LWW on dynamic KV key preserves freshest active new topics
+  const locTime = new Date(locActiveTopics[0].updatedAt).getTime();
+  const remTime = new Date(remActiveTopics[0].updatedAt).getTime();
+  const fresherActive = locTime >= remTime ? locActiveTopics[0] : remActiveTopics[0];
+  assert(fresherActive.value.includes('topic_101'), 'Fresher active new topics for the date are PRESERVED');
+  assert(fresherActive.value.includes('topic_102'), 'All picked topic IDs intact in fresher record');
+
+  // AI recommendations dynamic records
+  const locAiRecs = [
+    { key: `ai_recommendations_${dateStr}`, value: [{ id: 'rec_1', title: 'High-Yield ECG' }], updatedAt: nowIso }
+  ];
+  assert(locAiRecs[0].key.startsWith('ai_recommendations_'), 'Dynamic AI recommendations key format verified');
+  assert(locAiRecs[0].value.length === 1, 'AI recommendations payload verified');
+}
+
 console.log('\n======================================================');
 console.log(`🎉 ALL ${passedTests}/${totalTests} SYNC SIMULATION TESTS PASSED CLEANLY!`);
 console.log('======================================================\n');

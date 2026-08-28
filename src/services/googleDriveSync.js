@@ -884,6 +884,10 @@ export async function extractLocalBundles() {
   const scheduleTemplates = (await getLocalKV('schedule_templates')) || [];
   const campDailyLogs = (await getAllLocalItems(STORES.CAMP_DAILY_LOGS)) || [];
   const timerState = (await getLocalKV('timerState')) || null;
+  const allKvItems = (await getAllLocalItems(STORES.KV_STORE)) || [];
+  const activeNewTopicsRecords = allKvItems
+    .filter(r => r && typeof r.key === 'string' && r.key.startsWith('active_new_topics_'))
+    .sort((a, b) => (a.key || '').localeCompare(b.key || ''));
   const activeNewTopicsToday = (await getLocalKV('active_new_topics_today')) || [];
   const logsDaysCount = Object.keys(studyLogs).length;
 
@@ -902,6 +906,7 @@ export async function extractLocalBundles() {
     campDailyLogs,
     timerState,
     activeNewTopicsToday,
+    activeNewTopicsRecords,
     unifiedGraves
   };
   hashes.study_logs = computeHash(bundles['study_logs.json']);
@@ -947,6 +952,9 @@ export async function extractLocalBundles() {
     delete localUserProfile.deviceId;
   }
 
+  const aiRecommendationsRecords = allKvItems
+    .filter(r => r && typeof r.key === 'string' && r.key.startsWith('ai_recommendations_'))
+    .sort((a, b) => (a.key || '').localeCompare(b.key || ''));
   const aiRecommendations = (await getLocalKV('ai_topic_recommendations')) || null;
 
   const localStorageSnapshot = {};
@@ -973,6 +981,7 @@ export async function extractLocalBundles() {
     customPrompts,
     localUserProfile,
     aiRecommendations,
+    aiRecommendationsRecords,
     localStorageSnapshot
   };
   hashes.fsrs_config = computeHash(bundles['fsrs_config.json']);
@@ -1508,6 +1517,11 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
         if (b.scheduleTemplates) await setLocalKV('schedule_templates', b.scheduleTemplates);
         if (b.timerState) await setLocalKV('timerState', b.timerState);
         if (b.activeNewTopicsToday) await setLocalKV('active_new_topics_today', b.activeNewTopicsToday);
+        if (Array.isArray(b.activeNewTopicsRecords)) {
+          for (const r of b.activeNewTopicsRecords) {
+            if (r && r.key) await putLocalItem(STORES.KV_STORE, r);
+          }
+        }
         if (Array.isArray(b.campDailyLogs)) {
           const db = await initDB();
           await new Promise((resolve, reject) => {
@@ -1564,6 +1578,16 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
         if (b.activeNewTopicsToday) {
           await setLocalKV('active_new_topics_today', b.activeNewTopicsToday);
         }
+        if (Array.isArray(b.activeNewTopicsRecords)) {
+          for (const r of b.activeNewTopicsRecords) {
+            if (r && r.key) {
+              const loc = await getLocalItem(STORES.KV_STORE, r.key);
+              if (!loc || safeTimestamp(r.updatedAt) >= safeTimestamp(loc.updatedAt)) {
+                await putLocalItem(STORES.KV_STORE, r);
+              }
+            }
+          }
+        }
       }
     }
 
@@ -1575,6 +1599,20 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
       if (b.localUserProfile) await setLocalKV('local_user_profile', b.localUserProfile);
       if (b.aiRecommendations) {
         await setLocalKV('ai_topic_recommendations', b.aiRecommendations);
+      }
+      if (Array.isArray(b.aiRecommendationsRecords)) {
+        for (const r of b.aiRecommendationsRecords) {
+          if (r && r.key) {
+            if (strategy === 'replace') {
+              await putLocalItem(STORES.KV_STORE, r);
+            } else {
+              const loc = await getLocalItem(STORES.KV_STORE, r.key);
+              if (!loc || safeTimestamp(r.updatedAt) >= safeTimestamp(loc.updatedAt)) {
+                await putLocalItem(STORES.KV_STORE, r);
+              }
+            }
+          }
+        }
       }
 
       if (strategy === 'replace') {

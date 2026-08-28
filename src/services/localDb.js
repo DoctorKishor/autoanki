@@ -636,7 +636,7 @@ export async function saveLocalCards(cardsInput) {
     const map = new Map(existing.map(c => [c.id, c]));
     cardsInput.forEach(c => {
       if (c && c.id) {
-        map.set(c.id, { ...map.get(c.id), ...c, updatedAt: c.updatedAt || Date.now() });
+        map.set(c.id, { ...map.get(c.id), ...c, updatedAt: c.updatedAt || new Date().toISOString() });
         revokeTombstone('card', String(c.id)).catch(() => {});
       }
     });
@@ -2508,8 +2508,8 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
         if (stores.camp_daily_logs) await atomicClearAndPut(STORES.CAMP_DAILY_LOGS, stores.camp_daily_logs);
         const logKvs = kvSubset(['study_logs', 'study_schedule', 'schedule_templates', 'timerState', 'active_new_topics_today']);
         for (const r of logKvs) await putLocalItem(STORES.KV_STORE, r);
-        // Also restore camp dynamic KV keys
-        const campDynamic = kv.filter(r => r && (r.key?.startsWith('active_new_topics_')));
+        // Also restore dynamic KV keys (active_new_topics_ and ai_recommendations_)
+        const campDynamic = kv.filter(r => r && (r.key?.startsWith('active_new_topics_') || r.key?.startsWith('ai_recommendations_')));
         for (const r of campDynamic) await putLocalItem(STORES.KV_STORE, r);
       } else {
         // Merge: deep-merge daily logs with fsrsLogs combination & unified property naming
@@ -2562,9 +2562,14 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
           }
           await setLocalKV('study_logs', mergedLogs);
         }
-        // Also merge camp dynamic KV keys
-        const campDynamic = kv.filter(r => r && (r.key?.startsWith('active_new_topics_')));
-        for (const r of campDynamic) await putLocalItem(STORES.KV_STORE, r);
+        // Also merge dynamic KV keys (active_new_topics_ and ai_recommendations_)
+        const campDynamic = kv.filter(r => r && (r.key?.startsWith('active_new_topics_') || r.key?.startsWith('ai_recommendations_')));
+        for (const r of campDynamic) {
+          const loc = await getLocalItem(STORES.KV_STORE, r.key);
+          if (!loc || _sts(r.updatedAt) >= _sts(loc.updatedAt)) {
+            await putLocalItem(STORES.KV_STORE, r);
+          }
+        }
         await mergeKV(kvSubset(['study_schedule', 'schedule_templates', 'timerState']));
       }
       report.restored.push('study_logs_velocity');
@@ -2622,12 +2627,21 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
         if (stores.settings) await atomicClearAndPut(STORES.SETTINGS, stores.settings);
         if (stores.hint_quota) await atomicClearAndPut(STORES.HINT_QUOTA, stores.hint_quota);
         if (stores.topic_hints) await atomicClearAndPut(STORES.TOPIC_HINTS, stores.topic_hints);
+        const aiRecs = kv.filter(r => r && r.key?.startsWith('ai_recommendations_'));
+        for (const r of aiRecs) await putLocalItem(STORES.KV_STORE, r);
         await mergeKV(kvSubset(['custom_prompts', 'local_user_profile']));
       } else {
         // Merge: put all settings (upsert by key — non-destructive)
         if (Array.isArray(stores.settings)) await bulkPut(STORES.SETTINGS, stores.settings);
         if (Array.isArray(stores.topic_hints)) await bulkPut(STORES.TOPIC_HINTS, stores.topic_hints);
         if (Array.isArray(stores.hint_quota)) await bulkPut(STORES.HINT_QUOTA, stores.hint_quota);
+        const aiRecs = kv.filter(r => r && r.key?.startsWith('ai_recommendations_'));
+        for (const r of aiRecs) {
+          const loc = await getLocalItem(STORES.KV_STORE, r.key);
+          if (!loc || _sts(r.updatedAt) >= _sts(loc.updatedAt)) {
+            await putLocalItem(STORES.KV_STORE, r);
+          }
+        }
         await mergeKV(kvSubset(['custom_prompts', 'local_user_profile']));
       }
       report.restored.push('settings_prompts');
