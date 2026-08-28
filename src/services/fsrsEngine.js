@@ -395,13 +395,21 @@ export const recalculateTopicFSRSFromLogs = (topic, topicLogs, fsrsConfig, subje
     return cleaned;
   }
 
-  // Fix Bug 2.5: use numeric timestamp comparison instead of localeCompare.
-  // Mixed formats (ISO timestamp vs bare dateStr) were sorting incorrectly, corrupting FSRS replay.
-  const sortedLogs = [...topicLogs].sort((a, b) => {
-    const dA = new Date(a.timestamp || (a.dateStr ? `${a.dateStr}T00:00:00` : 0)).getTime();
-    const dB = new Date(b.timestamp || (b.dateStr ? `${b.dateStr}T00:00:00` : 0)).getTime();
-    return dA - dB;
-  });
+  // FIX-21: Normalize all timestamps to local-noon anchored epoch to prevent UTC-boundary day flips in UTC+ timezones (IST)
+  const normalizeLogTimestamp = (log) => {
+    if (!log) return 0;
+    if (log.timestamp) {
+      const t = new Date(log.timestamp).getTime();
+      if (!isNaN(t)) return t;
+    }
+    if (log.dateStr) {
+      const t = new Date(`${log.dateStr}T12:00:00`).getTime();
+      if (!isNaN(t)) return t;
+    }
+    return 0;
+  };
+
+  const sortedLogs = [...topicLogs].sort((a, b) => normalizeLogTimestamp(a) - normalizeLogTimestamp(b));
 
   const subjectName = topic.subject || '';
   const activeDR = fsrsConfig?.retentionMode === 'perSubject'

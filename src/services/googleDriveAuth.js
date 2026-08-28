@@ -106,43 +106,32 @@ export async function saveCustomGoogleClientId(clientId) {
  */
 export async function getGoogleDriveAuthState() {
   try {
-    let authState = await getLocalSetting(GOOGLE_DRIVE_AUTH_KEY, null);
-    if (!authState && typeof localStorage !== 'undefined') {
-      const cached = localStorage.getItem('autoanki_gdrive_auth');
-      if (cached) {
-        try {
-          authState = JSON.parse(cached);
-          // Restore to IndexedDB if it was only in localStorage
-          if (authState) {
-            saveLocalSetting(GOOGLE_DRIVE_AUTH_KEY, authState).catch(() => {});
-          }
-        } catch {}
-      }
-    }
+    const authState = await getLocalSetting(GOOGLE_DRIVE_AUTH_KEY, null);
     if (!authState || typeof authState !== 'object') return null;
     return authState;
   } catch (err) {
-    console.warn('[GoogleAuth] Reading auth state fallback from localStorage:', err);
-    if (typeof localStorage !== 'undefined') {
-      try {
-        const cached = localStorage.getItem('autoanki_gdrive_auth');
-        return cached ? JSON.parse(cached) : null;
-      } catch {}
-    }
+    console.warn('[GoogleAuth] Error reading auth state from IndexedDB:', err);
     return null;
   }
 }
 
 /**
- * Saves Google Drive auth state to LocalDB and localStorage and dispatches a window event.
+ * Saves Google Drive auth state to LocalDB and non-sensitive status marker to localStorage.
  * @param {object} authState 
  */
 export async function saveGoogleDriveAuthState(authState) {
   try {
     await saveLocalSetting(GOOGLE_DRIVE_AUTH_KEY, authState);
+    // FIX-19: Store only a non-sensitive marker in localStorage without exposing OAuth access tokens
     if (typeof localStorage !== 'undefined') {
-      if (authState) {
-        localStorage.setItem('autoanki_gdrive_auth', JSON.stringify(authState));
+      if (authState && authState.accessToken) {
+        const safeMarker = {
+          connected: true,
+          email: authState.user?.email || '',
+          name: authState.user?.name || '',
+          connectedAt: authState.connectedAt || new Date().toISOString()
+        };
+        localStorage.setItem('autoanki_gdrive_auth', JSON.stringify(safeMarker));
       } else {
         localStorage.removeItem('autoanki_gdrive_auth');
       }
@@ -153,12 +142,6 @@ export async function saveGoogleDriveAuthState(authState) {
     return authState;
   } catch (err) {
     console.error('[GoogleAuth] Error saving auth state to LocalDB:', err);
-    if (typeof localStorage !== 'undefined') {
-      try {
-        if (authState) localStorage.setItem('autoanki_gdrive_auth', JSON.stringify(authState));
-        else localStorage.removeItem('autoanki_gdrive_auth');
-      } catch {}
-    }
     throw err;
   }
 }

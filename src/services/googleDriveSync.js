@@ -2266,11 +2266,15 @@ function getDeviceAncestorKey() {
 export async function getLastSyncedHashes() {
   try {
     const key = getDeviceAncestorKey();
-    const fromIdb = await getLocalKV(key);
-    if (fromIdb && typeof fromIdb === 'object') return fromIdb;
-    // Fallback to legacy shared key if migrating
-    const legacy = await getLocalKV('autoanki_last_synced_hashes');
-    if (legacy && typeof legacy === 'object') return legacy;
+    let raw = (await getLocalKV(key)) || (await getLocalKV('autoanki_last_synced_hashes'));
+    if (raw && typeof raw === 'object') {
+      // FIX-20: Strip any .json extension from keys for deterministic matching
+      const normalized = {};
+      for (const [k, v] of Object.entries(raw)) {
+        normalized[k.replace(/\.json$/i, '')] = v;
+      }
+      return normalized;
+    }
   } catch (e) {
     console.warn('[GDriveSync] Error getting last synced hashes from LocalDB:', e);
   }
@@ -2280,10 +2284,28 @@ export async function getLastSyncedHashes() {
 export async function saveLastSyncedHashes(hashes) {
   if (!hashes || typeof hashes !== 'object') return;
   try {
-    await setLocalKV(getDeviceAncestorKey(), hashes);
+    // FIX-20: Normalize hash keys before saving to IDB
+    const normalized = {};
+    for (const [k, v] of Object.entries(hashes)) {
+      normalized[k.replace(/\.json$/i, '')] = v;
+    }
+    await setLocalKV(getDeviceAncestorKey(), normalized);
   } catch (e) {
     console.warn('[GDriveSync] Error saving last synced hashes to LocalDB:', e);
   }
+}
+
+// FIX-18: Throttling for post-sync integrity health checks to at most once per hour
+let lastIntegrityCheckTimestamp = 0;
+const ONE_HOUR_MS = 60 * 60 * 1000;
+
+function scheduleThrottledIntegrityCheck() {
+  const now = Date.now();
+  if (now - lastIntegrityCheckTimestamp < ONE_HOUR_MS) return;
+  lastIntegrityCheckTimestamp = now;
+  setTimeout(() => {
+    runSystemIntegrityCheck({ silent: true }).catch(console.warn);
+  }, 3000);
 }
 
 /**
@@ -4371,7 +4393,7 @@ async function executeSyncInternal({
       logger.sync('IN-SYNC', `[NO-OP] ${msg}`, { hashes: localHashes });
       emit(10, 10, msg);
       emitSyncEvent('synced', { message: msg });
-      setTimeout(() => runSystemIntegrityCheck({ silent: true }).catch(console.warn), 1000);
+      scheduleThrottledIntegrityCheck();
       return { success: true, action: force ? 'synced' : 'noop', message: msg };
     }
 
@@ -4471,7 +4493,7 @@ async function executeSyncInternal({
       logger.sync('IN-SYNC', `[NO-OP] ${msg}`, { hashes: localHashes });
       emit(10, 10, msg);
       emitSyncEvent('synced', { message: msg });
-      setTimeout(() => runSystemIntegrityCheck({ silent: true }).catch(console.warn), 1000);
+      scheduleThrottledIntegrityCheck();
       if (mediaFolderId) {
         setTimeout(() => {
           syncMediaFromDrive(accessToken, mediaFolderId).catch(e => {
@@ -4654,14 +4676,14 @@ async function executeSyncInternal({
       logger.sync('SUCCESS', 'Two-phase merge and sync completed successfully!');
       emit(10, 10, 'Synchronization complete.');
       emitSyncEvent('synced', { message: 'Sync finished successfully.' });
-      setTimeout(() => runSystemIntegrityCheck({ silent: true }).catch(console.warn), 1000);
+      scheduleThrottledIntegrityCheck();
       return { success: true, action: 'merged', message: 'Merged and synchronized successfully with Google Drive.' };
     }
 
     logger.sync('SUCCESS', 'Synchronization complete.');
     emit(10, 10, 'Synchronization complete.');
     emitSyncEvent('synced', { message: 'Sync finished successfully.' });
-    setTimeout(() => runSystemIntegrityCheck({ silent: true }).catch(console.warn), 1000);
+    scheduleThrottledIntegrityCheck();
     return { success: true, action: 'synced', message: 'Sync finished successfully.' };
   } catch (err) {
     logger.error('SYNC-FAIL', 'Google Drive synchronization failed:', err);
