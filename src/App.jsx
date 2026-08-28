@@ -9302,6 +9302,8 @@ export default function App() {
       cleanEndPage = String(p1);
     }
 
+    const nowIso = new Date().toISOString();
+
     setSubjectTrackerData(prev => {
       const list = Array.isArray(prev) ? prev : [];
       const docExists = list.find(p => p.id === docId);
@@ -9312,7 +9314,9 @@ export default function App() {
           name: cleanTopicName,
           page: cleanPage,
           endPage: cleanEndPage,
-          studyDates: currentTopics[cleanTopicName]?.studyDates || []
+          studyDates: currentTopics[cleanTopicName]?.studyDates || [],
+          createdAt: currentTopics[cleanTopicName]?.createdAt || nowIso,
+          updatedAt: nowIso
         }
       };
 
@@ -9321,7 +9325,7 @@ export default function App() {
         id: docId,
         subject: subject.trim(),
         topics: updatedTopics,
-        updatedAt: new Date().toISOString()
+        updatedAt: nowIso
       };
 
       saveLocalSubjectTrackerDoc(docId, updatedDoc).catch(err => console.error("[LocalDB] Error adding tracker topic:", err));
@@ -9334,6 +9338,7 @@ export default function App() {
     if (!subject || !Array.isArray(newTopicsList) || newTopicsList.length === 0) return 0;
     const docId = subject.trim().toLowerCase();
     let countAdded = 0;
+    const nowIso = new Date().toISOString();
 
     setSubjectTrackerData(prev => {
       const list = Array.isArray(prev) ? prev : [];
@@ -9350,7 +9355,9 @@ export default function App() {
             name: cleanName,
             page: cleanPage,
             endPage: cleanEndPage,
-            studyDates: currentTopics[cleanName]?.studyDates || []
+            studyDates: currentTopics[cleanName]?.studyDates || [],
+            createdAt: currentTopics[cleanName]?.createdAt || nowIso,
+            updatedAt: nowIso
           };
           countAdded++;
         }
@@ -9358,9 +9365,10 @@ export default function App() {
 
       const updatedDoc = {
         ...(docExists || { id: docId, subject: subject.trim() }),
+        id: docId,
         subject: subject.trim(),
         topics: currentTopics,
-        updatedAt: new Date().toISOString()
+        updatedAt: nowIso
       };
 
       saveLocalSubjectTrackerDoc(docId, updatedDoc).catch(err => console.error("[LocalDB] Bulk add tracker topics error:", err));
@@ -9375,12 +9383,14 @@ export default function App() {
     if (!subject || !topicName) return;
     const docId = subject.trim().toLowerCase();
     const cleanTopicName = topicName.trim();
+    const nowIso = new Date().toISOString();
 
     const existingDoc = subjectTrackerData.find(p => p.id === docId);
     const currentTopics = existingDoc && existingDoc.topics ? JSON.parse(JSON.stringify(existingDoc.topics)) : {};
-    const topicObj = currentTopics[cleanTopicName] || { name: cleanTopicName, studyDates: [] };
+    const topicObj = currentTopics[cleanTopicName] || { name: cleanTopicName, studyDates: [], createdAt: nowIso };
 
     topicObj.notes = notesHtml;
+    topicObj.updatedAt = nowIso;
     currentTopics[cleanTopicName] = topicObj;
 
     const updatedDoc = {
@@ -9388,7 +9398,7 @@ export default function App() {
       id: docId,
       subject: subject.trim(),
       topics: currentTopics,
-      updatedAt: new Date().toISOString()
+      updatedAt: nowIso
     };
 
     setSubjectTrackerData(prev => {
@@ -10204,6 +10214,8 @@ JSON Format:
       console.error("Error deleting study date locally:", err);
     }
 
+    triggerDebouncedSmartPush();
+
     // 3. Uncheck matching task in Study Schedule if present
     if (dateStrToRemove && studySchedule[dateStrToRemove]) {
       const entry = studySchedule[dateStrToRemove];
@@ -10319,12 +10331,16 @@ JSON Format:
     try {
       await saveLocalSubjectTrackerDoc(docId, {
         ...docExists,
+        id: docId,
+        subject: subject.trim(),
         topics: currentTopics,
         updatedAt: nowIso
       });
     } catch (err) {
       console.error("Error deleting tracker topic locally:", err);
     }
+
+    triggerDebouncedSmartPush();
 
     setLastRatedToast({
       message: `Deleted chapter/topic "${topicName}"`,
@@ -15710,6 +15726,7 @@ JSON Format:
             }
           );
 
+          const nowIso = new Date().toISOString();
           topics[cleanTopicName].difficulty = fsrsResult.difficulty;
           topics[cleanTopicName].stability = fsrsResult.stability;
           topics[cleanTopicName].retrievability = fsrsResult.retrievability;
@@ -15718,6 +15735,7 @@ JSON Format:
           topics[cleanTopicName].lastReviewDate = fsrsResult.lastReviewDate;
           topics[cleanTopicName].reviewCount = fsrsResult.reviewCount;
           topics[cleanTopicName].lapses = fsrsResult.lapses != null ? fsrsResult.lapses : (topics[cleanTopicName].lapses || 0) + (review.rating === 1 ? 1 : 0);
+          topics[cleanTopicName].updatedAt = nowIso;
 
           if (!topics[cleanTopicName].studyDates.includes(review.dateStr)) {
             topics[cleanTopicName].studyDates.push(review.dateStr);
@@ -15734,7 +15752,7 @@ JSON Format:
             stability: fsrsResult.stability,
             difficulty: fsrsResult.difficulty,
             nextReviewDue: fsrsResult.nextReviewDue,
-            timestamp: new Date().toISOString()
+            timestamp: nowIso
           };
           if (logEntry.dateStr) {
             const currentDayLog = studyLogs[logEntry.dateStr] || {};
@@ -15745,8 +15763,10 @@ JSON Format:
         });
 
         await saveLocalSubjectTrackerDoc(docId, {
+          id: docId,
           subject: subjectName.trim(),
-          topics
+          topics,
+          updatedAt: new Date().toISOString()
         });
       }
 
@@ -15802,9 +15822,11 @@ JSON Format:
       cleanEnd = String(p1);
     }
 
+    const nowIso = new Date().toISOString();
+
     setSubjectTrackerData(prev => {
       const list = Array.isArray(prev) ? prev : [];
-      const idx = list.findIndex(p => p.id === docId);
+      const idx = list.findIndex(d => d.id === docId);
       if (idx < 0) return list;
 
       const existingDoc = list[idx];
@@ -15814,7 +15836,8 @@ JSON Format:
       currentTopics[topicName] = {
         ...currentTopics[topicName],
         page: cleanStart,
-        endPage: cleanEnd
+        endPage: cleanEnd,
+        updatedAt: nowIso
       };
 
       const updatedDoc = {
@@ -15822,7 +15845,7 @@ JSON Format:
         id: docId,
         subject: subject.trim(),
         topics: currentTopics,
-        updatedAt: new Date().toISOString()
+        updatedAt: nowIso
       };
 
       saveLocalSubjectTrackerDoc(docId, updatedDoc).catch(err => console.error("[LocalDB] Error updating topic pages:", err));
@@ -15879,6 +15902,7 @@ JSON Format:
     const previewSummary = {};
 
     const capLimit = parseInt(maxDailyReviewCap, 10) || 30;
+    const nowIso = new Date().toISOString();
     allTopicsToSchedule.forEach(item => {
       const currentTopicWeight = getTopicWeight(item.topic, item.subDoc.topics);
       if (allocatedPagesInCurrentDay + currentTopicWeight > capLimit) {
@@ -15888,6 +15912,7 @@ JSON Format:
 
       const dateStr = `${currentTargetDate.getFullYear()}-${String(currentTargetDate.getMonth() + 1).padStart(2, '0')}-${String(currentTargetDate.getDate()).padStart(2, '0')}`;
       item.topic.nextReviewDue = dateStr;
+      item.topic.updatedAt = nowIso;
       allocatedPagesInCurrentDay += currentTopicWeight;
 
       if (!previewSummary[dateStr]) {
@@ -15907,10 +15932,13 @@ JSON Format:
     if (!reschedulePreview) return;
     setIsSaving(true);
     try {
+      const nowIso = new Date().toISOString();
       for (const subDoc of reschedulePreview.updatedTrackerData) {
         await saveLocalSubjectTrackerDoc(subDoc.id, {
+          id: subDoc.id,
           subject: subDoc.subject,
-          topics: subDoc.topics
+          topics: subDoc.topics,
+          updatedAt: nowIso
         });
       }
 
@@ -15918,6 +15946,7 @@ JSON Format:
       setOriginalCap(maxDailyReviewCap);
       await saveLocalSetting('max_daily_review_cap', maxDailyReviewCap);
       setReschedulePreview(null);
+      triggerDebouncedSmartPush();
       alert(`Successfully rescheduled all ${reschedulePreview.totalTopics} topics locally!`);
     } catch (err) {
       console.error("Failed to commit rescheduled topics locally:", err);
@@ -16337,6 +16366,8 @@ JSON Format:
       isUndo: true,
       timestamp: Date.now()
     });
+
+    triggerDebouncedSmartPush();
   };
 
   const handleRedoReviewRating = async () => {
@@ -16373,6 +16404,7 @@ JSON Format:
             const topicObj = { ...topicsMap[targetKey] };
             delete topicObj.activatedDate;
             delete topicObj.isPickedForToday;
+            topicObj.updatedAt = new Date().toISOString();
             topicsMap[targetKey] = topicObj;
           }
           const updatedDoc = { ...existingDoc, topics: topicsMap, updatedAt: new Date().toISOString() };
@@ -16386,6 +16418,7 @@ JSON Format:
         topicName: topic?.name,
         timestamp: Date.now()
       });
+      triggerDebouncedSmartPush();
       return;
     }
 
@@ -16400,6 +16433,7 @@ JSON Format:
         topicName,
         timestamp: Date.now()
       });
+      triggerDebouncedSmartPush();
       return;
     }
 
@@ -16421,6 +16455,8 @@ JSON Format:
 
         const updatedDoc = {
           ...existingDoc,
+          id: targetDocId,
+          subject: existingDoc.subject || (subject ? subject.trim() : targetDocId),
           topics: topicsMap,
           updatedAt: nowIso
         };
@@ -16469,7 +16505,8 @@ JSON Format:
                 const updatedDayLog = {
                   ...dayLog,
                   cards: Math.max(0, (dayLog.cards || 0) - removedCount),
-                  fsrsLogs: remainingDayLogs
+                  fsrsLogs: remainingDayLogs,
+                  updatedAt: nowIso
                 };
                 nextLogs[dStr] = updatedDayLog;
                 saveLocalStudyLog(dStr, updatedDayLog).catch(err => console.error("[LocalDB] Error re-pruning study log on redo:", err));
@@ -16485,10 +16522,12 @@ JSON Format:
         topicName,
         timestamp: Date.now()
       });
+      triggerDebouncedSmartPush();
       return;
     }
 
     const { docId, subject, topicName, logEntry, schedulerContext } = lastItem;
+    const nowIso = new Date().toISOString();
 
     // 1. Synchronize studyLogs state: restore the logEntry on Redo and revoke tombstone
     let nextStudyLogs = { ...studyLogs };
@@ -16500,7 +16539,8 @@ JSON Format:
         ...prevDayLog,
         cards: (prevDayLog.cards || 0) + 1,
         pages: (prevDayLog.pages || 0) + restoredPageWeight,
-        fsrsLogs: [...(prevDayLog.fsrsLogs || []), logEntry]
+        fsrsLogs: [...(prevDayLog.fsrsLogs || []), logEntry],
+        updatedAt: nowIso
       };
       nextStudyLogs = { ...nextStudyLogs, [targetDate]: updatedDayLog };
       saveLocalStudyLog(targetDate, updatedDayLog).catch(err => console.error("[LocalDB] Error redoing study log:", err));
@@ -16541,12 +16581,17 @@ JSON Format:
       const targetDate = logEntry?.dateStr;
       const studyDates = Array.from(new Set([...(currentTopic.studyDates || []), targetDate])).filter(Boolean).sort();
       const recalculatedTopic = recalculateTopicFSRSFromLogs({ ...currentTopic, studyDates }, remainingLogs, fsrsConfig, list);
-      topicsMap[topicName] = recalculatedTopic;
+      topicsMap[topicName] = {
+        ...recalculatedTopic,
+        updatedAt: nowIso
+      };
 
       const updatedDoc = {
         ...existingDoc,
+        id: targetDocId,
+        subject: existingDoc.subject || (subject ? subject.trim() : targetDocId),
         topics: topicsMap,
-        updatedAt: new Date().toISOString()
+        updatedAt: nowIso
       };
 
       saveLocalSubjectTrackerDoc(targetDocId, updatedDoc).catch(err => console.error("[LocalDB] Error updating subject doc on redo:", err));
@@ -16581,6 +16626,8 @@ JSON Format:
       topicName,
       timestamp: Date.now()
     });
+
+    triggerDebouncedSmartPush();
   };
 
   const handleUpdateSubjectTrackerDoc = (docIdOrUpdatedDoc, maybePartialDoc = null) => {
