@@ -1772,12 +1772,23 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
                 }
               });
             }
+            if (b.fsrsConfig) {
+              st.put({
+                key: 'fsrs_config',
+                value: b.fsrsConfig,
+                updatedAt: b.fsrsConfig.updatedAt || new Date().toISOString()
+              });
+            }
             if (localAuth) st.put({ key: 'google_drive_auth', value: localAuth });
           };
           clearReq.onerror = () => reject(clearReq.error);
           tx.oncomplete = () => resolve(true);
           tx.onerror = () => reject(tx.error);
         });
+
+        if (b.fsrsConfig) {
+          await saveFSRSConfig(b.fsrsConfig, true);
+        }
       } else {
         // Merge custom prompts non-destructively, pruning tombstoned entries
         if (Array.isArray(b.customPrompts)) {
@@ -3017,8 +3028,8 @@ export function mergeFsrsConfigs(loc = {}, rem = {}) {
   });
 
   const mergedDailyLimits = {
-    ...remDaily,
-    ...locDaily,
+    ...DEFAULT_FSRS_CONFIG.dailyLimits,
+    ...(remTime > locTime ? locDaily : remDaily),
     ...winnerDaily,
     subjectOverrides: mergedSubjectOverrides,
     todayOverride: (locTime >= remTime)
@@ -3028,46 +3039,54 @@ export function mergeFsrsConfigs(loc = {}, rem = {}) {
 
   // 2. New Topics
   const mergedNewTopics = {
-    ...(rem.newTopics || {}),
-    ...(loc.newTopics || {}),
+    ...DEFAULT_FSRS_CONFIG.newTopics,
+    ...(remTime > locTime ? (loc.newTopics || {}) : (rem.newTopics || {})),
     ...(winnerBase.newTopics || {})
   };
 
   // 3. Lapses & Leeches
   const mergedLapses = {
-    ...(rem.lapses || {}),
-    ...(loc.lapses || {}),
+    ...DEFAULT_FSRS_CONFIG.lapses,
+    ...(remTime > locTime ? (loc.lapses || {}) : (rem.lapses || {})),
     ...(winnerBase.lapses || {})
   };
 
   // 4. Display Order
   const mergedDisplayOrder = {
-    ...(rem.displayOrder || {}),
-    ...(loc.displayOrder || {}),
+    ...DEFAULT_FSRS_CONFIG.displayOrder,
+    ...(remTime > locTime ? (loc.displayOrder || {}) : (rem.displayOrder || {})),
     ...(winnerBase.displayOrder || {})
   };
 
   // 5. Easy Days
   const mergedEasyDays = {
-    ...(rem.easyDays || {}),
-    ...(loc.easyDays || {}),
+    ...DEFAULT_FSRS_CONFIG.easyDays,
+    ...(remTime > locTime ? (loc.easyDays || {}) : (rem.easyDays || {})),
     ...(winnerBase.easyDays || {})
   };
 
   // 6. Advanced Rules
   const mergedAdvancedRules = {
-    ...(rem.advancedRules || {}),
-    ...(loc.advancedRules || {}),
+    ...DEFAULT_FSRS_CONFIG.advancedRules,
+    ...(remTime > locTime ? (loc.advancedRules || {}) : (rem.advancedRules || {})),
     ...(winnerBase.advancedRules || {})
   };
 
   // 7. Per-Subject Retention
-  const mergedPerSubjectRetention = (remTime > locTime)
-    ? { ...(loc.perSubjectRetention || {}), ...(rem.perSubjectRetention || {}) }
-    : { ...(rem.perSubjectRetention || {}), ...(loc.perSubjectRetention || {}) };
+  const mergedPerSubjectRetention = {
+    ...DEFAULT_FSRS_CONFIG.perSubjectRetention,
+    ...(remTime > locTime ? (loc.perSubjectRetention || {}) : (rem.perSubjectRetention || {})),
+    ...(winnerBase.perSubjectRetention || {})
+  };
 
   // Weights: preserve custom weights if present
-  let mergedWeights = winnerBase.weights || loc.weights || rem.weights;
+  let mergedWeights = (winnerBase.weights && Array.isArray(winnerBase.weights) && winnerBase.weights.length >= 17)
+    ? winnerBase.weights
+    : (loc.weights || rem.weights || DEFAULT_FSRS_CONFIG.weights);
+
+  const mergedDesiredRetention = winnerBase.globalDesiredRetention ?? loc.globalDesiredRetention ?? rem.globalDesiredRetention ?? DEFAULT_FSRS_CONFIG.globalDesiredRetention;
+  const mergedRetentionMode = winnerBase.retentionMode ?? loc.retentionMode ?? rem.retentionMode ?? DEFAULT_FSRS_CONFIG.retentionMode;
+  const mergedEnabled = winnerBase.enabled ?? loc.enabled ?? rem.enabled ?? true;
 
   // FIX-11: Preserve updatedAt from the latest config to maintain correct LWW semantics on future syncs
   const mergedUpdatedAt = new Date(Math.max(locTime, remTime) || Date.now()).toISOString();
@@ -3076,6 +3095,9 @@ export function mergeFsrsConfigs(loc = {}, rem = {}) {
     ...DEFAULT_FSRS_CONFIG,
     ...(remTime > locTime ? loc : rem),
     ...winnerBase,
+    enabled: mergedEnabled,
+    retentionMode: mergedRetentionMode,
+    globalDesiredRetention: mergedDesiredRetention,
     dailyLimits: mergedDailyLimits,
     newTopics: mergedNewTopics,
     lapses: mergedLapses,
