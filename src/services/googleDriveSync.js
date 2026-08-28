@@ -4624,6 +4624,21 @@ async function executeSyncInternal({
 
       if (hydrateRes?.hasInFlightEdits) {
         logger.sync('INFLIGHT-PRESERVED', 'Preserved in-flight local modifications made during sync.');
+        // FIX-14: Schedule immediate re-push so preserved local in-flight edits reach the cloud
+        logger.sync('INFLIGHT-REPUSH', 'Scheduling immediate re-push to sync in-flight edits to cloud...');
+        setTimeout(async () => {
+          try {
+            const freshLocal = await extractLocalBundles();
+            const freshFiles = await listFilesInFolder(accessToken, vaultFolderId);
+            const freshFileMap = new Map(freshFiles.map(f => [f.name, f]));
+            await executeOneWayPush(accessToken, vaultFolderId, mediaFolderId, freshLocal, freshFileMap, () => {});
+            const postRepushLocal = await extractLocalBundles();
+            await saveLastSyncedHashes(postRepushLocal.manifest.hashes);
+            logger.sync('INFLIGHT-REPUSH-SUCCESS', 'In-flight edits successfully pushed to cloud.');
+          } catch (repushErr) {
+            logger.warn('INFLIGHT-REPUSH-FAIL', 'Could not re-push in-flight edits:', repushErr);
+          }
+        }, 1000);
       }
 
       // Phase 4: Download missing media in background if pages bundle changed
@@ -4838,6 +4853,11 @@ async function executeOneWayDownload(accessToken, vaultFolderId, mediaFolderId, 
 
   if (hydrateRes?.hasInFlightEdits) {
     logger.sync('INFLIGHT-PRESERVED', 'Preserved in-flight local modifications made during download.');
+    // FIX-14: Schedule smart push to upload preserved in-flight edits after download
+    logger.sync('INFLIGHT-REPUSH-QUEUED', 'Queuing re-push to upload in-flight edits after download...');
+    setTimeout(() => {
+      triggerDebouncedSmartPush(2000, true);
+    }, 1500);
   }
 
   // Phase 2: Non-blocking background media download if pages_bundle was among downloaded bundles
@@ -5054,16 +5074,19 @@ export async function syncMediaFromDrive(accessToken, mediaFolderId) {
     setMutationNotificationSuppressed(true);
     try {
       if (hasPageUpdates) {
+        // FIX-16: Re-read fresh pages from IndexedDB AFTER downloads to avoid overwriting concurrent user edits
         const currentPages = (await getLocalPages()) || [];
         const currentMap = new Map(currentPages.map(p => [String(p.id), p]));
         for (const [id, updatedP] of localPageMap.entries()) {
           if (currentMap.has(id)) {
-            const existingCur = currentMap.get(id);
-            if (!existingCur.data && updatedP.data) existingCur.data = updatedP.data;
-            if (!existingCur.imageUrl && updatedP.imageUrl) existingCur.imageUrl = updatedP.imageUrl;
-            if (!existingCur.originalImage && updatedP.originalImage) existingCur.originalImage = updatedP.originalImage;
-            if (!existingCur.base64 && updatedP.base64) existingCur.base64 = updatedP.base64;
-            existingCur.hasMedia = true;
+            const freshCurrent = currentMap.get(id);
+            if (!freshCurrent.data && updatedP.data) freshCurrent.data = updatedP.data;
+            if (!freshCurrent.imageUrl && updatedP.imageUrl) freshCurrent.imageUrl = updatedP.imageUrl;
+            if (!freshCurrent.originalImage && updatedP.originalImage) freshCurrent.originalImage = updatedP.originalImage;
+            if (!freshCurrent.base64 && updatedP.base64) freshCurrent.base64 = updatedP.base64;
+            if (updatedP.data || updatedP.imageUrl || updatedP.originalImage || updatedP.base64) {
+              freshCurrent.hasMedia = true;
+            }
           }
         }
         await saveLocalPages(Array.from(currentMap.values()));
@@ -5074,10 +5097,10 @@ export async function syncMediaFromDrive(accessToken, mediaFolderId) {
         const currentMap = new Map(currentCards.map(c => [String(c.id), c]));
         for (const [id, updatedC] of localCardMap.entries()) {
           if (currentMap.has(id)) {
-            const existingCur = currentMap.get(id);
-            if (!existingCur.customImage && updatedC.customImage) existingCur.customImage = updatedC.customImage;
-            if (!existingCur.imageUrl && updatedC.imageUrl) existingCur.imageUrl = updatedC.imageUrl;
-            if (!existingCur.base64 && updatedC.base64) existingCur.base64 = updatedC.base64;
+            const freshCurrent = currentMap.get(id);
+            if (!freshCurrent.customImage && updatedC.customImage) freshCurrent.customImage = updatedC.customImage;
+            if (!freshCurrent.imageUrl && updatedC.imageUrl) freshCurrent.imageUrl = updatedC.imageUrl;
+            if (!freshCurrent.base64 && updatedC.base64) freshCurrent.base64 = updatedC.base64;
           }
         }
         await setLocalKV('flashcards', Array.from(currentMap.values()));
@@ -5144,6 +5167,30 @@ export function handleAppExitKeepaliveSync() {
     }
   } catch (e) {
     console.warn('[GDriveSync] Exit sync flag error:', e);
+  }
+}
+
+/**
+ * FIX-17: Checks for pending sync flag set during previous session exit and initiates background sync.
+ */
+export async function checkAndResumePendingSync() {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    const pending = localStorage.getItem('autoanki_pending_sync_launch');
+    if (pending === 'true') {
+      localStorage.removeItem('autoanki_pending_sync_launch');
+      const auth = await getGoogleDriveAuthState();
+      if (auth?.accessToken) {
+        logger.sync('PENDING-SYNC-RESUME', 'Resuming pending sync from previous session exit...');
+        setTimeout(() => {
+          syncWithGoogleDrive({ force: false, interactive: false }).catch(err => {
+            logger.warn('PENDING-SYNC-FAIL', 'Pending sync on resume failed:', err);
+          });
+        }, 3000);
+      }
+    }
+  } catch (e) {
+    console.warn('[GDriveSync] checkAndResumePendingSync error:', e);
   }
 }
 
@@ -5296,8 +5343,13 @@ export async function checkAndSyncRemoteTimerState(onRemoteUpdate) {
     const remoteFile = await findDriveItem(auth.accessToken, TIMER_STATE_FILE, vaultFolderId);
     if (!remoteFile) return false;
 
-    if (lastKnownRemoteTimerModified && remoteFile.modifiedTime <= lastKnownRemoteTimerModified) {
-      return false;
+    // FIX-15: Use numeric epoch comparison for robust RFC3339 timestamp handling
+    if (lastKnownRemoteTimerModified) {
+      const remoteMs = new Date(remoteFile.modifiedTime).getTime();
+      const knownMs = new Date(lastKnownRemoteTimerModified).getTime();
+      if (!isNaN(remoteMs) && !isNaN(knownMs) && remoteMs <= knownMs) {
+        return false;
+      }
     }
 
     const remoteState = await downloadDriveFile(auth.accessToken, remoteFile.id, true);
