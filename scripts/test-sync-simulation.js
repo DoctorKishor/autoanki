@@ -21,6 +21,7 @@ import {
   mergeCampTrackers,
   mergeTopicHintsArrays,
   mergeSettingsArrays,
+  mergeFsrsConfigs,
   mergeBundlesInMemory
 } from '../src/services/googleDriveSync.js';
 
@@ -2403,9 +2404,63 @@ console.log('TEST 42: API Keys, AI Models & GitHub Sync Details Multi-Device Pro
   assert(keys.aiFeatureModels?.flashcardGen === 'gemini-2.5-pro', 'AI feature model selection propagated successfully');
 }
 
+console.log('TEST 43: FSRS Settings Modal Dual-Property Limits & Multi-Device Granular Convergence');
+{
+  const tLoc = new Date('2026-08-29T09:00:00Z').toISOString();
+  const tRem = new Date('2026-08-29T08:30:00Z').toISOString();
+
+  // Local device updated daily limits and custom weights
+  const locFsrs = {
+    globalDesiredRetention: 0.88,
+    dailyLimits: {
+      newPagesPerDay: 45,
+      maxReviewPagesPerDay: 150,
+      newCardsPerDay: 45,
+      maxReviewsPerDay: 150,
+      applyNewLimitToDeck: true,
+      applyReviewLimitToDeck: true
+    },
+    displayOrder: {
+      newReviewOrder: 'reviewFirst',
+      newSortOrder: 'random'
+    },
+    weights: [0.45, 0.65, 2.5, 5.9, 5.0, 1.0, 0.9, 0.02, 1.5, 0.15, 0.95, 2.2, 0.06, 0.35, 1.3, 0.3, 2.7, 0.0, 0.0, 0.0, 0.0],
+    updatedAt: tLoc
+  };
+
+  // Remote device had older config with easyDays enabled
+  const remFsrs = {
+    globalDesiredRetention: 0.90,
+    dailyLimits: {
+      newPagesPerDay: 20,
+      maxReviewPagesPerDay: 200,
+      newCardsPerDay: 20,
+      maxReviewsPerDay: 200
+    },
+    easyDays: {
+      enabled: true,
+      days: [0, 6],
+      easyDayRetention: 0.85
+    },
+    updatedAt: tRem
+  };
+
+  const merged = mergeFsrsConfigs(locFsrs, remFsrs);
+
+  assert(merged.globalDesiredRetention === 0.88, 'Local desired retention (0.88) wins by newer timestamp');
+  assert(merged.dailyLimits.newPagesPerDay === 45, 'Local newPagesPerDay (45) is preserved');
+  assert(merged.dailyLimits.maxReviewPagesPerDay === 150, 'Local maxReviewPagesPerDay (150) is preserved');
+  assert(merged.dailyLimits.newCardsPerDay === 45, 'Synchronized newCardsPerDay is 45');
+  assert(merged.dailyLimits.maxReviewsPerDay === 150, 'Synchronized maxReviewsPerDay is 150');
+  assert(merged.displayOrder.newReviewOrder === 'reviewFirst', 'Local displayOrder is preserved');
+  assert(merged.easyDays.enabled === true, 'Remote easyDays configuration is preserved without being discarded');
+  assert(merged.weights[0] === 0.45, 'Local custom weights are preserved');
+}
+
 console.log('\n======================================================');
 console.log(`🎉 ALL ${passedTests}/${totalTests} SYNC SIMULATION TESTS PASSED CLEANLY!`);
 console.log('======================================================\n');
+
 
 
 

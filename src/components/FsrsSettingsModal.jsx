@@ -195,7 +195,7 @@ export default function FsrsSettingsModal({
   if (!isOpen) return null;
 
   const handleSave = () => {
-    onSaveConfig(tempConfig);
+    onSaveConfig({ ...tempConfig, updatedAt: new Date().toISOString() });
     onClose();
   };
 

@@ -37,6 +37,7 @@ import {
   saveLocalStudyLog,
   getFSRSConfig,
   saveFSRSConfig,
+  DEFAULT_FSRS_CONFIG,
   saveInternalSnapshot,
   STORES,
   initDB,
@@ -1678,7 +1679,7 @@ export async function hydrateLocalBundles(bundles, strategy = 'merge', onProgres
     if (bundles['fsrs_config.json']) {
       emit(++step, totalSteps, 'Hydrating FSRS-6 Config, Hints & Preferences…');
       const b = bundles['fsrs_config.json'];
-      if (b.fsrsConfig) await saveFSRSConfig(b.fsrsConfig);
+      if (b.fsrsConfig) await saveFSRSConfig(b.fsrsConfig, true);
       if (b.localUserProfile) await setLocalKV('local_user_profile', b.localUserProfile);
       if (b.aiRecommendations) {
         await setLocalKV('ai_topic_recommendations', b.aiRecommendations);
@@ -3002,6 +3003,7 @@ export function mergeFsrsConfigs(loc = {}, rem = {}) {
   // 1. Daily Limits
   const locDaily = loc.dailyLimits || {};
   const remDaily = rem.dailyLimits || {};
+  const winnerDaily = winnerBase.dailyLimits || {};
   const mergedSubjectOverrides = {
     ...(remDaily.subjectOverrides || {}),
     ...(locDaily.subjectOverrides || {})
@@ -3017,9 +3019,11 @@ export function mergeFsrsConfigs(loc = {}, rem = {}) {
   const mergedDailyLimits = {
     ...remDaily,
     ...locDaily,
-    ...winnerBase.dailyLimits,
+    ...winnerDaily,
     subjectOverrides: mergedSubjectOverrides,
-    todayOverride: locDaily.todayOverride || remDaily.todayOverride || null
+    todayOverride: (locTime >= remTime)
+      ? (locDaily.todayOverride || remDaily.todayOverride || null)
+      : (remDaily.todayOverride || locDaily.todayOverride || null)
   };
 
   // 2. New Topics
@@ -3058,10 +3062,9 @@ export function mergeFsrsConfigs(loc = {}, rem = {}) {
   };
 
   // 7. Per-Subject Retention
-  const mergedPerSubjectRetention = {
-    ...(rem.perSubjectRetention || {}),
-    ...(loc.perSubjectRetention || {})
-  };
+  const mergedPerSubjectRetention = (remTime > locTime)
+    ? { ...(loc.perSubjectRetention || {}), ...(rem.perSubjectRetention || {}) }
+    : { ...(rem.perSubjectRetention || {}), ...(loc.perSubjectRetention || {}) };
 
   // Weights: preserve custom weights if present
   let mergedWeights = winnerBase.weights || loc.weights || rem.weights;
@@ -3070,8 +3073,8 @@ export function mergeFsrsConfigs(loc = {}, rem = {}) {
   const mergedUpdatedAt = new Date(Math.max(locTime, remTime) || Date.now()).toISOString();
 
   const result = {
-    ...rem,
-    ...loc,
+    ...DEFAULT_FSRS_CONFIG,
+    ...(remTime > locTime ? loc : rem),
     ...winnerBase,
     dailyLimits: mergedDailyLimits,
     newTopics: mergedNewTopics,
@@ -5894,6 +5897,10 @@ export async function syncMediaFromDrive(accessToken, mediaFolderId) {
  * Enforces a 5s debounce with a 30s cooldown and trailing timer guarantees.
  */
 export function triggerDebouncedSmartPush(customDelay = 5000, bypassCooldown = false) {
+  // Sync strictly on App Launch and Manual click unless background auto-sync is explicitly enabled by user
+  const autoSyncEnabled = typeof localStorage !== 'undefined' && localStorage.getItem('autoanki_auto_sync_on_changes') === 'true';
+  if (!autoSyncEnabled) return;
+
   if (isSyncInProgress) return;
   if (autoSyncDebounceTimer) clearTimeout(autoSyncDebounceTimer);
 
@@ -6125,21 +6132,20 @@ export async function checkAndSyncRemoteTimerState(onRemoteUpdate) {
     if (!remoteState || typeof remoteState !== 'object') return false;
 
     lastKnownRemoteTimerModified = remoteFile.modifiedTime;
-    saveStoredTimerMeta(lastPushedTimerTimestamp, lastKnownRemoteTimerModified);
-
     const localDeviceId = getDeviceId();
-    // Ignore if update originated from this same device earlier
-    if (remoteState.deviceId === localDeviceId && remoteState.updatedAt <= lastPushedTimerTimestamp) {
-      return false;
-    }
+    const isFromOtherDevice = remoteState.deviceId && remoteState.deviceId !== localDeviceId;
+    const isNewerLocalPush = remoteState.deviceId === localDeviceId && remoteState.updatedAt > lastPushedTimerTimestamp;
 
-    if (remoteState.updatedAt && remoteState.updatedAt > lastPushedTimerTimestamp) {
+    if (isFromOtherDevice || isNewerLocalPush || (!lastPushedTimerTimestamp && remoteState.updatedAt)) {
+      lastPushedTimerTimestamp = Math.max(lastPushedTimerTimestamp, remoteState.updatedAt || Date.now());
+      saveStoredTimerMeta(lastPushedTimerTimestamp, lastKnownRemoteTimerModified);
       if (typeof onRemoteUpdate === 'function') {
         onRemoteUpdate(remoteState);
       }
       return true;
     }
 
+    saveStoredTimerMeta(lastPushedTimerTimestamp, lastKnownRemoteTimerModified);
     return false;
   } catch (err) {
     console.warn('[GDriveTimer] Error checking remote timer state:', err);

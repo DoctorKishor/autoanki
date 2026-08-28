@@ -1406,7 +1406,11 @@ export default function DashboardGrid({
                       handlePauseActiveTimer();
                     } else {
                       if (activeType === 'stopwatch') {
-                        handleStartStopwatchTimer();
+                        if (timerState?.stopwatchStatus === 'paused') {
+                          handleResumeActiveTimer();
+                        } else {
+                          handleStartStopwatchTimer();
+                        }
                       } else {
                         handleResumeActiveTimer();
                       }

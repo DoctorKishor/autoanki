@@ -1690,10 +1690,49 @@ export async function getFSRSConfig() {
   };
 }
 
-export async function saveFSRSConfig(config) {
+export async function saveFSRSConfig(config, preserveTimestamp = false) {
   const existing = await getFSRSConfig();
   const nowIso = new Date().toISOString();
-  const merged = { ...existing, ...config, updatedAt: config?.updatedAt || nowIso };
+  const merged = {
+    ...existing,
+    ...config,
+    dailyLimits: {
+      ...DEFAULT_FSRS_CONFIG.dailyLimits,
+      ...(existing.dailyLimits || {}),
+      ...(config?.dailyLimits || {})
+    },
+    newTopics: {
+      ...DEFAULT_FSRS_CONFIG.newTopics,
+      ...(existing.newTopics || {}),
+      ...(config?.newTopics || {})
+    },
+    lapses: {
+      ...DEFAULT_FSRS_CONFIG.lapses,
+      ...(existing.lapses || {}),
+      ...(config?.lapses || {})
+    },
+    displayOrder: {
+      ...DEFAULT_FSRS_CONFIG.displayOrder,
+      ...(existing.displayOrder || {}),
+      ...(config?.displayOrder || {})
+    },
+    easyDays: {
+      ...DEFAULT_FSRS_CONFIG.easyDays,
+      ...(existing.easyDays || {}),
+      ...(config?.easyDays || {})
+    },
+    advancedRules: {
+      ...DEFAULT_FSRS_CONFIG.advancedRules,
+      ...(existing.advancedRules || {}),
+      ...(config?.advancedRules || {})
+    },
+    perSubjectRetention: {
+      ...DEFAULT_FSRS_CONFIG.perSubjectRetention,
+      ...(existing.perSubjectRetention || {}),
+      ...(config?.perSubjectRetention || {})
+    },
+    updatedAt: (preserveTimestamp && config?.updatedAt) ? config.updatedAt : nowIso
+  };
   await saveLocalSetting('fsrs_config', merged);
   return merged;
 }

@@ -7431,10 +7431,12 @@ export default function App() {
 
   const updateFsrsConfig = async (updates) => {
     try {
-      const updated = await saveFSRSConfig(updates);
+      const nowIso = new Date().toISOString();
+      const updated = await saveFSRSConfig({ ...updates, updatedAt: nowIso });
       setFsrsConfig(updated);
       if (updated.dailyLimits?.maxReviewPagesPerDay) {
         setMaxDailyReviewCap(updated.dailyLimits.maxReviewPagesPerDay);
+        await saveLocalSetting('max_daily_review_cap', updated.dailyLimits.maxReviewPagesPerDay);
       }
       triggerDebouncedSmartPush();
       return updated;
@@ -9209,7 +9211,9 @@ export default function App() {
           setExamProfiles(freshExamProfiles);
         }
         if (Array.isArray(freshPrompts)) setCustomPrompts(freshPrompts);
-        if (typeof freshCap === 'number') setMaxDailyReviewCap(freshCap);
+        if (typeof freshCap === 'number' && (!freshFsrs || !freshFsrs.dailyLimits?.maxReviewPagesPerDay)) {
+          setMaxDailyReviewCap(freshCap);
+        }
         if (freshHierarchy?.paths && Array.isArray(freshHierarchy.paths)) {
           setDeckPaths(freshHierarchy.paths);
         }
@@ -11237,10 +11241,31 @@ JSON Format:
     }
   }, []);
 
-  // Real-time Google Drive Timer Sync: Check once on mount / auth
+  // Real-time Google Drive Timer Sync: Check on mount, focus, and periodic interval
   useEffect(() => {
     if (!gdriveAuthState?.accessToken) return;
     checkAndSyncRemoteTimerState(applyRemoteTimerState);
+
+    const handleFocus = () => {
+      if (document.visibilityState === 'visible' || document.hasFocus()) {
+        checkAndSyncRemoteTimerState(applyRemoteTimerState);
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleFocus);
+
+    const timerPollInterval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        checkAndSyncRemoteTimerState(applyRemoteTimerState);
+      }
+    }, 15000);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleFocus);
+      clearInterval(timerPollInterval);
+    };
   }, [gdriveAuthState?.accessToken, applyRemoteTimerState]);
 
   // Modern double-beep chime alarm synthesized via native browser Web Audio API
@@ -11359,20 +11384,21 @@ JSON Format:
           const oldDateStr = getLocalDayString(startedAtTime);
 
           // Auto-log time before midnight
-          if (secondsToLog > 0 && state.pomodoroMode === 'study') {
+          if (secondsToLog > 0 && (state.pomodoroMode || state.mode || 'study') === 'study') {
             autoLogTimeForDate(secondsToLog, oldDateStr, true, false);
           }
 
           setLocalTimerTimeLeft(secondsRemaining);
 
           if (secondsRemaining === 0) {
-            const nextRounds = state.pomodoroMode === 'study' ? (state.pomodoroRounds || 0) + 1 : (state.pomodoroRounds || 0);
+            const currentRounds = state.pomodoroRounds || 0;
+            const nextRounds = (state.pomodoroMode || state.mode || 'study') === 'study' ? currentRounds + 1 : currentRounds;
             let nextMode = 'study';
             let nextDuration = state.pomodoroDuration || 1500;
             const targetRounds = state.pomodoroTargetRounds || 4;
             let isLongBreak = false;
 
-            if (state.pomodoroMode === 'study') {
+            if ((state.pomodoroMode || state.mode || 'study') === 'study') {
               if (nextRounds >= targetRounds) {
                 nextMode = 'break';
                 nextDuration = state.pomodoroLongBreakDuration || 1200;
@@ -11386,20 +11412,27 @@ JSON Format:
               nextDuration = state.pomodoroDuration || 1500;
             }
 
-            saveLocalTimerState({
+            const nextTimerState = {
+              ...state,
               pomodoroStatus: 'running',
               pomodoroMode: nextMode,
+              mode: nextMode,
               pomodoroTimeLeft: nextDuration,
               pomodoroTimeLeftAtStart: nextDuration,
               pomodoroStartedAt: midnightTime,
               pomodoroRounds: isLongBreak ? 0 : nextRounds
-            }).catch(console.error);
+            };
+            setTimerState(nextTimerState);
+            saveLocalTimerState(nextTimerState).catch(console.error);
           } else {
-            saveLocalTimerState({
+            const nextTimerState = {
+              ...state,
               pomodoroTimeLeft: secondsRemaining,
               pomodoroTimeLeftAtStart: secondsRemaining,
               pomodoroStartedAt: midnightTime
-            }).catch(console.error);
+            };
+            setTimerState(nextTimerState);
+            saveLocalTimerState(nextTimerState).catch(console.error);
           }
           return;
         }
@@ -11413,13 +11446,15 @@ JSON Format:
 
         if (currentLeft === 0) {
           clearInterval(tick);
-          const nextRounds = state.pomodoroMode === 'study' ? (state.pomodoroRounds || 0) + 1 : (state.pomodoroRounds || 0);
+          const currentRounds = state.pomodoroRounds || 0;
+          const currentMode = state.pomodoroMode || state.mode || 'study';
+          const nextRounds = currentMode === 'study' ? currentRounds + 1 : currentRounds;
           let nextMode = 'study';
           let nextDuration = state.pomodoroDuration || 1500;
           let isLongBreak = false;
           const targetRounds = state.pomodoroTargetRounds || 4;
 
-          if (state.pomodoroMode === 'study') {
+          if (currentMode === 'study') {
             if (nextRounds >= targetRounds) {
               nextMode = 'break';
               nextDuration = state.pomodoroLongBreakDuration || 1200; // default 20 mins
@@ -11433,9 +11468,11 @@ JSON Format:
             nextDuration = state.pomodoroDuration || 1500;
           }
 
-          saveLocalTimerState({
+          const nextTimerState = {
+            ...state,
             pomodoroStatus: 'running',
             pomodoroMode: nextMode,
+            mode: nextMode,
             pomodoroDuration: state.pomodoroDuration || 1500,
             pomodoroBreakDuration: state.pomodoroBreakDuration || 300,
             pomodoroLongBreakDuration: state.pomodoroLongBreakDuration || 1200,
@@ -11444,7 +11481,13 @@ JSON Format:
             pomodoroTimeLeftAtStart: nextDuration,
             pomodoroStartedAt: Date.now(),
             pomodoroRounds: isLongBreak ? 0 : nextRounds
-          }).then(() => {
+          };
+
+          setTimerState(nextTimerState);
+          setLocalTimerTimeLeft(nextDuration);
+
+          saveLocalTimerState(nextTimerState).then(() => {
+            pushTimerStateToDrive(nextTimerState, true);
             playAlarmSound();
             if (!isObsOverlay) {
               const longBreakMinsText = Math.round((state.pomodoroLongBreakDuration || 1200) / 60);
@@ -11452,13 +11495,13 @@ JSON Format:
               const breakMsg = isLongBreak
                 ? `Time for a well-deserved ${longBreakMinsText}-minute Long Break!`
                 : `Time for a ${shortBreakMinsText}-minute Short Break!`;
-              if (state.pomodoroMode === 'study') {
+              if (currentMode === 'study') {
                 alert(`🎉 Focus Session Completed! ${breakMsg}`);
-                const mins = Math.round(state.pomodoroDuration / 60);
+                const mins = Math.round((state.pomodoroDuration || 1500) / 60);
                 const hrs = Number((mins / 60).toFixed(1));
                 handleLogPomodoroBlock(hrs);
               } else {
-                alert(`💪 Break Completed! Ready to focus for another ${Math.round(state.pomodoroDuration / 60)} minutes?`);
+                alert(`💪 Break Completed! Ready to focus for another ${Math.round((state.pomodoroDuration || 1500) / 60)} minutes?`);
               }
             }
           }).catch(err => console.error("Error completing Pomodoro block:", err));
@@ -11495,18 +11538,24 @@ JSON Format:
           setLocalCustomTimerTimeLeft(secondsRemaining);
 
           if (secondsRemaining === 0) {
-            saveLocalTimerState({
+            const idleTimerState = {
+              ...state,
               timerStatus: 'idle',
               timerTimeLeft: state.timerDuration,
               timerTimeLeftAtStart: state.timerDuration,
               timerStartedAt: null
-            }).catch(console.error);
+            };
+            setTimerState(idleTimerState);
+            saveLocalTimerState(idleTimerState).catch(console.error);
           } else {
-            saveLocalTimerState({
+            const midTimerState = {
+              ...state,
               timerTimeLeft: secondsRemaining,
               timerTimeLeftAtStart: secondsRemaining,
               timerStartedAt: midnightTime
-            }).catch(console.error);
+            };
+            setTimerState(midTimerState);
+            saveLocalTimerState(midTimerState).catch(console.error);
           }
           return;
         }
@@ -11517,12 +11566,19 @@ JSON Format:
 
         if (currentLeft === 0) {
           clearInterval(tick);
-          saveLocalTimerState({
+          const idleTimerState = {
+            ...state,
             timerStatus: 'idle',
             timerTimeLeft: state.timerDuration,
             timerTimeLeftAtStart: state.timerDuration,
             timerStartedAt: null
-          }).then(() => {
+          };
+
+          setTimerState(idleTimerState);
+          setLocalCustomTimerTimeLeft(state.timerDuration);
+
+          saveLocalTimerState(idleTimerState).then(() => {
+            pushTimerStateToDrive(idleTimerState, true);
             playAlarmSound();
             if (!isObsOverlay) {
               alert(`⏰ Custom Countdown Timer has completed successfully!`);
@@ -11559,11 +11615,14 @@ JSON Format:
 
           setLocalStopwatchTime(nowTime - midnightTime);
 
-          saveLocalTimerState({
+          const nextStopwatchState = {
+            ...state,
             stopwatchStartedAt: midnightTime,
             stopwatchElapsedBeforePause: 0,
             stopwatchLaps: []
-          }).catch(console.error);
+          };
+          setTimerState(nextStopwatchState);
+          saveLocalTimerState(nextStopwatchState).catch(console.error);
           return;
         }
 
@@ -11580,6 +11639,8 @@ JSON Format:
     timerState.pomodoroStartedAt,
     timerState.timerStartedAt,
     timerState.stopwatchStartedAt,
+    timerState.pomodoroMode,
+    timerState.mode,
     isObsOverlay
   ]);
 
@@ -12088,26 +12149,30 @@ JSON Format:
       const updates = {};
 
       if (timerState.timerType === 'pomodoro') {
-        const duration = timerState.pomodoroMode === 'study'
-          ? timerState.pomodoroDuration
-          : (timerState.pomodoroBreakDuration || 300);
+        const duration = (timerState.pomodoroMode === 'break' || timerState.pomodoroMode === 'longBreak')
+          ? (timerState.pomodoroMode === 'longBreak' ? (timerState.pomodoroLongBreakDuration || 1200) : (timerState.pomodoroBreakDuration || 300))
+          : (timerState.pomodoroDuration || 1500);
         updates.pomodoroStatus = 'idle';
         updates.pomodoroStartedAt = null;
         updates.pomodoroTimeLeft = duration;
         updates.pomodoroTimeLeftAtStart = duration;
         updates.pomodoroRounds = 0;
+        setLocalTimerTimeLeft(duration);
         playStateChangeSound('reset');
       } else if (timerState.timerType === 'timer') {
+        const duration = timerState.timerDuration || 600;
         updates.timerStatus = 'idle';
-        updates.timerTimeLeft = timerState.timerDuration;
-        updates.timerTimeLeftAtStart = timerState.timerDuration;
+        updates.timerTimeLeft = duration;
+        updates.timerTimeLeftAtStart = duration;
         updates.timerStartedAt = null;
+        setLocalCustomTimerTimeLeft(duration);
         playStateChangeSound('reset');
       } else if (timerState.timerType === 'stopwatch') {
         updates.stopwatchStatus = 'idle';
         updates.stopwatchStartedAt = null;
         updates.stopwatchElapsedBeforePause = 0;
         updates.stopwatchLaps = [];
+        setLocalStopwatchTime(0);
         playStateChangeSound('reset');
       }
 
