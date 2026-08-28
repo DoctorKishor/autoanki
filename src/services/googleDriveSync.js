@@ -7,7 +7,8 @@
 
 import {
   getValidAccessToken,
-  getGoogleDriveAuthState
+  getGoogleDriveAuthState,
+  renewGoogleDriveToken
 } from './googleDriveAuth.js';
 
 import {
@@ -146,9 +147,14 @@ export function computeHash(input) {
  */
 export function safeTimestamp(val) {
   if (!val) return 0;
-  if (typeof val === 'number') return isFinite(val) ? val : 0;
+  // Maximum future tolerance: 10 minutes ahead of current device time
+  const maxFutureTime = Date.now() + 10 * 60 * 1000;
+  if (typeof val === 'number') {
+    return isFinite(val) ? Math.min(val, maxFutureTime) : 0;
+  }
   const parsed = new Date(val).getTime();
-  return isNaN(parsed) ? 0 : parsed;
+  if (isNaN(parsed)) return 0;
+  return Math.min(parsed, maxFutureTime);
 }
 
 /**
@@ -175,25 +181,94 @@ function emitDataHydratedEvent(details = {}) {
 }
 
 // ============================================================================
-// GOOGLE DRIVE REST API HELPERS (v3 with Timeout Controls)
+// GOOGLE DRIVE REST API HELPERS (v3 with Timeout, Rate-Limit Backoff & 401 Recovery)
 // ============================================================================
 
 /**
- * Executes a fetch request with timeout protection via AbortController.
+ * Executes a fetch request with timeout protection via AbortController,
+ * automatic exponential backoff on HTTP 429 / 5xx server errors,
+ * and automatic silent token renewal retry on 401 Unauthorized.
  */
-async function fetchWithTimeout(url, options = {}, timeoutMs = 25000) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const res = await fetch(url, { ...options, signal: controller.signal });
-    return res;
-  } catch (err) {
-    if (err.name === 'AbortError') {
-      throw new Error(`Google Drive request timed out after ${timeoutMs / 1000}s`);
+async function fetchWithTimeout(url, options = {}, timeoutMs = 25000, maxRetries = 3) {
+  let attempt = 0;
+  let currentOptions = { ...options };
+
+  while (attempt <= maxRetries) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { ...currentOptions, signal: controller.signal });
+
+      // 1. Transient rate-limiting or server glitch (429, 500, 502, 503, 504)
+      if ((res.status === 429 || (res.status >= 500 && res.status <= 504)) && attempt < maxRetries) {
+        attempt++;
+        const backoffMs = Math.min(8000, Math.pow(2, attempt) * 1000 + Math.random() * 500);
+        console.warn(`[GDriveSync] Google Drive returned status ${res.status}. Retrying in ${Math.round(backoffMs)}ms (Attempt ${attempt}/${maxRetries})...`);
+        clearTimeout(timer);
+        await new Promise(r => setTimeout(r, backoffMs));
+        continue;
+      }
+
+      // 2. Mid-stream OAuth token expiration (401 Unauthorized)
+      if (res.status === 401 && attempt < maxRetries) {
+        attempt++;
+        console.warn(`[GDriveSync] Received 401 Unauthorized. Attempting silent token renewal (Attempt ${attempt}/${maxRetries})...`);
+        try {
+          const freshToken = await renewGoogleDriveToken('', 8000);
+          if (freshToken) {
+            currentOptions.headers = {
+              ...(currentOptions.headers || {}),
+              Authorization: `Bearer ${freshToken}`
+            };
+            clearTimeout(timer);
+            continue;
+          }
+        } catch (renewErr) {
+          console.warn('[GDriveSync] Silent token renewal during 401 retry failed:', renewErr);
+        }
+      }
+
+      // 3. User storage quota exceeded (403 or 507)
+      if (res.status === 403 || res.status === 507) {
+        try {
+          const clonedRes = res.clone();
+          const errBody = await clonedRes.json();
+          const reason = errBody?.error?.errors?.[0]?.reason || errBody?.error?.message || '';
+          if (reason.includes('storageQuotaExceeded') || reason.includes('quota') || res.status === 507) {
+            clearTimeout(timer);
+            throw new Error('Your Google Drive storage is full. Please free up space in Google Drive or empty your trash to continue syncing.');
+          }
+        } catch (parseErr) {
+          if (parseErr.message && parseErr.message.includes('Google Drive storage is full')) {
+            throw parseErr;
+          }
+        }
+      }
+
+      return res;
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        if (attempt < maxRetries) {
+          attempt++;
+          const backoffMs = 1500 * attempt;
+          console.warn(`[GDriveSync] Request timed out after ${timeoutMs / 1000}s. Retrying in ${backoffMs}ms (Attempt ${attempt}/${maxRetries})...`);
+          clearTimeout(timer);
+          await new Promise(r => setTimeout(r, backoffMs));
+          continue;
+        }
+        throw new Error(`Google Drive request timed out after ${timeoutMs / 1000}s`);
+      }
+      if (attempt < maxRetries && err.message && !err.message.includes('Google Drive storage is full')) {
+        attempt++;
+        const backoffMs = 1500 * attempt;
+        clearTimeout(timer);
+        await new Promise(r => setTimeout(r, backoffMs));
+        continue;
+      }
+      throw err;
+    } finally {
+      clearTimeout(timer);
     }
-    throw err;
-  } finally {
-    clearTimeout(timer);
   }
 }
 
@@ -5301,6 +5376,13 @@ export function triggerDebouncedSmartPush(customDelay = 5000, bypassCooldown = f
       console.warn('[GDriveSync] Smart push error:', err);
     });
   }, customDelay);
+}
+
+// Automatically trigger debounced smart push when any local database mutation occurs
+if (typeof window !== 'undefined') {
+  window.addEventListener('localdb-mutation', () => {
+    triggerDebouncedSmartPush(5000, false);
+  });
 }
 
 /**

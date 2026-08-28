@@ -111,6 +111,11 @@ export function initDB() {
         console.warn('[LocalDB] Database connection closed due to version change.');
       };
 
+      // Proactively request storage persistence against browser disk eviction
+      if (typeof navigator !== 'undefined' && navigator.storage?.persist) {
+        navigator.storage.persist().catch(() => {});
+      }
+
       console.log('[LocalDB] IndexedDB connected successfully.');
       resolve(db);
     };
@@ -390,9 +395,18 @@ export function isMutationNotificationSuppressed() {
   return mutationSuppressDepth > 0;
 }
 
+// Cross-tab broadcast channel for multi-tab synchronization
+let crossTabMutationChannel = null;
+try {
+  if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+    crossTabMutationChannel = new BroadcastChannel('auto_anki_localdb_channel');
+  }
+} catch (e) {}
+
 /**
  * Dispatches a global event when local database records are modified,
- * allowing background sync engines to trigger debounced cloud pushes.
+ * allowing background sync engines to trigger debounced cloud pushes
+ * and broadcasting to other open tabs.
  */
 export function notifyLocalMutation(mutationType = 'mutation') {
   if (mutationSuppressDepth > 0) return;
@@ -400,6 +414,11 @@ export function notifyLocalMutation(mutationType = 'mutation') {
     window.dispatchEvent(new CustomEvent('localdb-mutation', {
       detail: { type: mutationType, timestamp: Date.now() }
     }));
+  }
+  if (crossTabMutationChannel) {
+    try {
+      crossTabMutationChannel.postMessage({ type: mutationType, timestamp: Date.now() });
+    } catch (e) {}
   }
 }
 
