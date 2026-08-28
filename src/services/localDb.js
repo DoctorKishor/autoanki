@@ -2028,6 +2028,24 @@ export async function purgeRecycleBinLocal() {
   await setLocalKV('trash_cards', []);
   await setLocalKV('trash_topics', []);
   await setLocalKV('trash_study_logs', []);
+  await setLocalKV('trash_camp', []);
+  await setLocalKV('trash_prompts', []);
+
+  // Prune unified_graves: retain tombstones from recent 90 days to keep database lean
+  try {
+    const now = Date.now();
+    const ninetyDaysMs = 90 * 24 * 60 * 60 * 1000;
+    const graves = (await getUnifiedGraves()) || [];
+    const prunedGraves = graves.filter(g => {
+      if (!g || !g.deletedAt) return false;
+      const delTime = new Date(g.deletedAt).getTime();
+      return !isNaN(delTime) && (now - delTime) < ninetyDaysMs;
+    });
+    await saveUnifiedGraves(prunedGraves);
+  } catch (e) {
+    console.warn('[LocalDB] Could not prune unified_graves on recycle bin purge:', e);
+  }
+
   return true;
 }
 
@@ -2398,11 +2416,18 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
 
   const totalSteps = bundles.length + 2; // bundles + settings + localStorage
   let step = 0;
+  // FIX-01C: Inline safe timestamp parser to prevent circular imports
+  const _sts = (v) => {
+    if (!v) return 0;
+    if (typeof v === 'number') return isFinite(v) ? v : 0;
+    const p = new Date(v).getTime();
+    return isNaN(p) ? 0 : p;
+  };
 
   try {
-    // ΓöÇΓöÇ Bundle: cards_fsrs ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // ── Bundle: cards_fsrs ─────────────────────────────────────────────
     if (bundles.includes('cards_fsrs')) {
-      emit(++step, totalSteps, 'Restoring Flashcards & FSRS StatesΓÇª');
+      emit(++step, totalSteps, 'Restoring Flashcards & FSRS States…');
       const cardKv = kvSubset(['flashcards']);
       if (strategy === 'replace') {
         // Remove flashcards KV entry then put incoming
@@ -2413,20 +2438,22 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
         const existing = await getLocalCards();
         const incoming = cardKv.find(r => r.key === 'flashcards')?.value || [];
         const localTrashCards = (await getLocalKV('trash_cards')) || [];
-        const trashMap = new Map(localTrashCards.map(tc => [tc.id, tc.deletedAt || 0]));
+        // FIX-01: Use _sts on deletedAt to prevent string-vs-number comparison bug
+        const trashMap = new Map(localTrashCards.map(tc => [tc.id, _sts(tc.deletedAt)]));
         const map = new Map(existing.map(c => [c.id, c]));
 
         incoming.forEach(c => {
           if (!c || !c.id) return;
           const localDeletedAt = trashMap.get(c.id);
-          if (localDeletedAt && localDeletedAt > (c.updatedAt || 0)) return;
+          const incomingCardTime = _sts(c.updatedAt || c.lastReviewDate || c.createdAt);
+          if (localDeletedAt && localDeletedAt > incomingCardTime) return;
 
           if (!map.has(c.id)) {
             map.set(c.id, c);
           } else {
             const current = map.get(c.id);
-            const currentTs = current.updatedAt || current.lastReviewDate || 0;
-            const incomingTs = c.updatedAt || c.lastReviewDate || 0;
+            const currentTs = _sts(current.updatedAt || current.lastReviewDate || current.createdAt);
+            const incomingTs = incomingCardTime;
             if (incomingTs >= currentTs) {
               map.set(c.id, { ...current, ...c });
             }
@@ -2437,9 +2464,9 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
       report.restored.push('cards_fsrs');
     }
 
-    // ΓöÇΓöÇ Bundle: topics_curriculum ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // ── Bundle: topics_curriculum ─────────────────────────────────────
     if (bundles.includes('topics_curriculum')) {
-      emit(++step, totalSteps, 'Restoring Curriculum Topics & PYT ProgressΓÇª');
+      emit(++step, totalSteps, 'Restoring Curriculum Topics & PYT Progress…');
       if (strategy === 'replace') {
         if (stores.topics) await atomicClearAndPut(STORES.TOPICS, stores.topics);
         if (stores.pyt_data) await atomicClearAndPut(STORES.PYT_DATA, stores.pyt_data);
@@ -2457,8 +2484,8 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
               topicMap.set(t.id, t);
             } else {
               const current = topicMap.get(t.id);
-              const currentTs = current.updatedAt || current.lastReviewDate || 0;
-              const incomingTs = t.updatedAt || t.lastReviewDate || 0;
+              const currentTs = _sts(current.updatedAt || current.lastReviewDate || current.createdAt);
+              const incomingTs = _sts(t.updatedAt || t.lastReviewDate || t.createdAt);
               if (incomingTs >= currentTs) {
                 topicMap.set(t.id, { ...current, ...t });
               }
@@ -2472,9 +2499,9 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
       report.restored.push('topics_curriculum');
     }
 
-    // ΓöÇΓöÇ Bundle: study_logs_velocity ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // ── Bundle: study_logs_velocity ───────────────────────────────────
     if (bundles.includes('study_logs_velocity')) {
-      emit(++step, totalSteps, 'Restoring Study Logs & Velocity TelemetryΓÇª');
+      emit(++step, totalSteps, 'Restoring Study Logs & Velocity Telemetry…');
       if (strategy === 'replace') {
         if (stores.camp_tracker) await atomicClearAndPut(STORES.CAMP_TRACKER, stores.camp_tracker);
         if (stores.camp_data) await atomicClearAndPut(STORES.CAMP_DATA, stores.camp_data);
@@ -2499,6 +2526,13 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
               mergedLogs[dateKey] = incDay;
             } else {
               const curDay = mergedLogs[dateKey];
+              // FIX-02: Use LWW based on updatedAt for scalar values instead of Math.max
+              const curTime = _sts(curDay.updatedAt);
+              const incTime = _sts(incDay.updatedAt);
+              const isIncFresher = incTime > curTime;
+              const fresherDay = isIncFresher ? incDay : curDay;
+              const olderDay = isIncFresher ? curDay : incDay;
+
               const combinedFsrs = [...(curDay.fsrsLogs || []), ...(incDay.fsrsLogs || [])];
               const seenLogKeys = new Set();
               const dedupedFsrs = combinedFsrs.filter(log => {
@@ -2507,20 +2541,22 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
                 seenLogKeys.add(k);
                 return true;
               });
-              const totalCards = Math.max(curDay.totalCardsReviewed || curDay.cards || 0, incDay.totalCardsReviewed || incDay.cards || 0, dedupedFsrs.length);
-              const totalQuestions = Math.max(curDay.totalQuestionsAttempted || curDay.questions || 0, incDay.totalQuestionsAttempted || incDay.questions || 0);
-              const totalHours = Math.max(curDay.studyHours || curDay.hours || 0, incDay.studyHours || incDay.hours || 0);
+
+              const totalCards = fresherDay.totalCardsReviewed ?? fresherDay.cards ?? (olderDay.totalCardsReviewed ?? olderDay.cards ?? dedupedFsrs.length);
+              const totalQuestions = fresherDay.totalQuestionsAttempted ?? fresherDay.questions ?? (olderDay.totalQuestionsAttempted ?? olderDay.questions ?? 0);
+              const totalHours = fresherDay.studyHours ?? fresherDay.hours ?? (olderDay.studyHours ?? olderDay.hours ?? 0);
 
               mergedLogs[dateKey] = {
-                ...curDay,
-                ...incDay,
+                ...olderDay,
+                ...fresherDay,
                 totalCardsReviewed: totalCards,
                 cards: totalCards,
                 totalQuestionsAttempted: totalQuestions,
                 questions: totalQuestions,
                 studyHours: totalHours,
                 hours: totalHours,
-                fsrsLogs: dedupedFsrs
+                fsrsLogs: dedupedFsrs,
+                updatedAt: new Date(Math.max(curTime, incTime) || Date.now()).toISOString()
               };
             }
           }
@@ -2534,9 +2570,9 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
       report.restored.push('study_logs_velocity');
     }
 
-    // ΓöÇΓöÇ Bundle: scans_media ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // ── Bundle: scans_media ───────────────────────────────────────────
     if (bundles.includes('scans_media')) {
-      emit(++step, totalSteps, 'Restoring Scanned Pages & Textbook MetadataΓÇª');
+      emit(++step, totalSteps, 'Restoring Scanned Pages & Textbook Metadata…');
       const pagesKvs = kvSubset(['pages', 'textbooks_metadata']);
       if (strategy === 'replace') {
         await deleteLocalItem(STORES.KV_STORE, 'pages');
@@ -2546,13 +2582,32 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
         const existing = (await getLocalPages()) || [];
         const incoming = pagesKvs.find(r => r.key === 'pages')?.value || [];
         const localTrashPages = (await getLocalKV('trash_pages')) || [];
-        const trashMap = new Map(localTrashPages.map(tp => [tp.id, tp.deletedAt || 0]));
+        // FIX-01B: Use _sts on deletedAt
+        const trashMap = new Map(localTrashPages.map(tp => [tp.id, _sts(tp.deletedAt)]));
         const map = new Map(existing.map(p => [p.id, p]));
         incoming.forEach(p => {
           if (!p || !p.id) return;
           const localDeletedAt = trashMap.get(p.id);
-          if (localDeletedAt && localDeletedAt > (p.updatedAt || 0)) return;
-          if (!map.has(p.id)) map.set(p.id, p);
+          const incomingPageTime = _sts(p.updatedAt || p.createdAt);
+          if (localDeletedAt && localDeletedAt > incomingPageTime) return;
+          if (!map.has(p.id)) {
+            map.set(p.id, p);
+          } else {
+            // FIX-01B: Preserve media assets on merge
+            const currentP = map.get(p.id);
+            const currentPTime = _sts(currentP.updatedAt || currentP.createdAt);
+            const winner = incomingPageTime >= currentPTime ? p : currentP;
+            map.set(p.id, {
+              ...currentP,
+              ...p,
+              ...winner,
+              data: winner.data || currentP.data || p.data,
+              imageUrl: winner.imageUrl || currentP.imageUrl || p.imageUrl,
+              originalImage: winner.originalImage || currentP.originalImage || p.originalImage,
+              base64: winner.base64 || currentP.base64 || p.base64,
+              hasMedia: winner.hasMedia || currentP.hasMedia || p.hasMedia || false
+            });
+          }
         });
         await setLocalKV('pages', Array.from(map.values()));
         await mergeKV(kvSubset(['textbooks_metadata']));
@@ -2560,16 +2615,16 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
       report.restored.push('scans_media');
     }
 
-    // ΓöÇΓöÇ Bundle: settings_prompts ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // ── Bundle: settings_prompts ──────────────────────────────────────
     if (bundles.includes('settings_prompts')) {
-      emit(++step, totalSteps, 'Restoring FSRS-6 Config, API Keys & PromptsΓÇª');
+      emit(++step, totalSteps, 'Restoring FSRS-6 Config, API Keys & Prompts…');
       if (strategy === 'replace') {
         if (stores.settings) await atomicClearAndPut(STORES.SETTINGS, stores.settings);
         if (stores.hint_quota) await atomicClearAndPut(STORES.HINT_QUOTA, stores.hint_quota);
         if (stores.topic_hints) await atomicClearAndPut(STORES.TOPIC_HINTS, stores.topic_hints);
         await mergeKV(kvSubset(['custom_prompts', 'local_user_profile']));
       } else {
-        // Merge: put all settings (upsert by key ΓÇö non-destructive)
+        // Merge: put all settings (upsert by key — non-destructive)
         if (Array.isArray(stores.settings)) await bulkPut(STORES.SETTINGS, stores.settings);
         if (Array.isArray(stores.topic_hints)) await bulkPut(STORES.TOPIC_HINTS, stores.topic_hints);
         if (Array.isArray(stores.hint_quota)) await bulkPut(STORES.HINT_QUOTA, stores.hint_quota);
@@ -2578,30 +2633,52 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
       report.restored.push('settings_prompts');
     }
 
-    // ΓöÇΓöÇ Bundle: recycle_bin ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // ── Bundle: recycle_bin ───────────────────────────────────────────
     if (bundles.includes('recycle_bin')) {
-      emit(++step, totalSteps, 'Restoring Recycle BinΓÇª');
-      const trashKvs = kvSubset(['trash_pages', 'trash_cards', 'trash_topics', 'trash_study_logs']);
+      emit(++step, totalSteps, 'Restoring Recycle Bin…');
+      // FIX-04: Include trash_camp, trash_prompts, and unified_graves in restore
+      const trashKvs = kvSubset(['trash_pages', 'trash_cards', 'trash_topics', 'trash_study_logs', 'trash_camp', 'trash_prompts', 'unified_graves']);
       if (strategy === 'replace') {
-        for (const r of trashKvs) await putLocalItem(STORES.KV_STORE, r);
+        for (const r of trashKvs) {
+          if (r.key === 'unified_graves') {
+            await saveUnifiedGraves(r.value || []);
+          } else {
+            await putLocalItem(STORES.KV_STORE, r);
+          }
+        }
       } else {
         // Merge trash: union by id or dateKey
         for (const r of trashKvs) {
-          const existing = (await getLocalKV(r.key)) || [];
-          const incoming = r.value || [];
-          const map = new Map(existing.map(x => [x.id || x.dateKey, x]));
-          incoming.forEach(x => {
-            const k = x?.id || x?.dateKey;
-            if (x && k && !map.has(k)) map.set(k, x);
-          });
-          await setLocalKV(r.key, Array.from(map.values()));
+          if (r.key === 'unified_graves') {
+            const existingGraves = (await getUnifiedGraves()) || [];
+            const gravesMap = new Map(existingGraves.map(g => [`${g.entityType}::${g.entityId}`, g]));
+            (r.value || []).forEach(g => {
+              if (g && g.entityType && g.entityId) {
+                const k = `${g.entityType}::${g.entityId}`;
+                const ex = gravesMap.get(k);
+                if (!ex || _sts(g.deletedAt) > _sts(ex.deletedAt)) {
+                  gravesMap.set(k, g);
+                }
+              }
+            });
+            await saveUnifiedGraves(Array.from(gravesMap.values()));
+          } else {
+            const existing = (await getLocalKV(r.key)) || [];
+            const incoming = r.value || [];
+            const map = new Map(existing.map(x => [x.id || x.dateKey, x]));
+            incoming.forEach(x => {
+              const k = x?.id || x?.dateKey;
+              if (x && k && !map.has(k)) map.set(k, x);
+            });
+            await setLocalKV(r.key, Array.from(map.values()));
+          }
         }
       }
       report.restored.push('recycle_bin');
     }
 
-    // ΓöÇΓöÇ Restore localStorage snapshot ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
-    emit(++step, totalSteps, 'Restoring LocalStorage preferencesΓÇª');
+    // ── Restore localStorage snapshot ────────────────────────────────
+    emit(++step, totalSteps, 'Restoring LocalStorage preferences…');
     const lsSnap = payload.localStorageSnapshot;
     if (lsSnap && typeof lsSnap === 'object') {
       try {
@@ -2673,7 +2750,8 @@ export async function importUniversalSnapshot(payload, strategy = 'merge', selec
  * @returns {Promise<object>} Saved snapshot manifest
  */
 export async function saveInternalSnapshot(label = 'auto', customPayload = null) {
-  const payload = customPayload || (await exportFullUniversalSnapshot());
+  // FIX-05: Exclude heavy media from internal automatic snapshots to prevent IndexedDB storage bloat
+  const payload = customPayload || (await exportFullUniversalSnapshot({ includeMedia: false }));
   const id = `snap_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   let byteSize = 0;
   try {
